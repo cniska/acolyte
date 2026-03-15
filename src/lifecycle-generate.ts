@@ -235,14 +235,14 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
 
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const abort = new AbortController();
+  const controller = new AbortController();
 
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       const err = new Error(`Step timed out after ${timeoutMs}ms of inactivity`);
       (err as Error & { code: string }).code = LIFECYCLE_ERROR_CODES.timeout;
-      abort.abort(err);
+      controller.abort(err);
     }, timeoutMs);
   };
 
@@ -254,13 +254,19 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       ...(typeof temperature === "number" ? { temperature } : {}),
       maxNudges: ctx.policy.maxNudgesPerGeneration,
     });
+    const fullOutput = streamOutput.getFullOutput();
+    // If the AI SDK rejects an internal promise outside the reader chain, pipe it into the
+    // abort controller so the reader loop exits immediately instead of waiting for the timeout.
+    fullOutput.catch((err) => {
+      controller.abort(err instanceof Error ? err : new Error(String(err)));
+    });
     const reader = streamOutput.fullStream.getReader();
     while (true) {
       const result = await Promise.race([
         reader.read(),
         new Promise<never>((_, reject) => {
-          abort.signal.addEventListener("abort", () => reject(abort.signal.reason), { once: true });
-          if (abort.signal.aborted) reject(abort.signal.reason);
+          controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });
+          if (controller.signal.aborted) reject(controller.signal.reason);
         }),
       ]);
       if (result.done) break;
@@ -275,7 +281,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       }
       processStreamChunk(ctx, chunk);
     }
-    return (await streamOutput.getFullOutput()) as GenerateResult;
+    return (await fullOutput) as GenerateResult;
   } finally {
     if (timeoutId !== null) clearTimeout(timeoutId);
   }

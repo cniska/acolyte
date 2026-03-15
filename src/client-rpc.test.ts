@@ -126,17 +126,17 @@ describe("rpc websocket lifecycle", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     const client = createClient({ apiUrl: "http://localhost:6767" });
-    const abortController = new AbortController();
+    const controller = new AbortController();
 
     const run = client.replyStream(
       { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcabort" },
-      { onEvent: () => {}, signal: abortController.signal },
+      { onEvent: () => {}, signal: controller.signal },
     );
 
     for (let i = 0; i < 100 && !sent.some((msg) => msg.type === "chat.start"); i += 1) {
       await Promise.resolve();
     }
-    abortController.abort();
+    controller.abort();
 
     await expect(run).rejects.toThrow("Request aborted");
     expect(sent.some((msg) => msg.type === "chat.start")).toBe(true);

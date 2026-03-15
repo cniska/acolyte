@@ -72,7 +72,7 @@ export async function runShellCommand(
   ensureCommandScopedToWorkspace(trimmed, workspace);
 
   const startedAt = Date.now();
-  const abortController = new AbortController();
+  const controller = new AbortController();
   const proc = Bun.spawn({
     cmd: ["bash", "-lc", trimmed],
     cwd: workspace,
@@ -87,18 +87,18 @@ export async function runShellCommand(
       // no-op
     }
     // Abort stream readers in case child processes keep pipes open after kill.
-    abortController.abort();
+    controller.abort();
   }, timeoutMs);
 
   const [stdoutText, stderrText] = await Promise.all([
-    readStreamText(proc.stdout as ReadableStream<Uint8Array> | null, "stdout", onChunk, abortController.signal),
-    readStreamText(proc.stderr as ReadableStream<Uint8Array> | null, "stderr", onChunk, abortController.signal),
+    readStreamText(proc.stdout as ReadableStream<Uint8Array> | null, "stdout", onChunk, controller.signal),
+    readStreamText(proc.stderr as ReadableStream<Uint8Array> | null, "stderr", onChunk, controller.signal),
   ]);
   const exitCode = await proc.exited;
   const durationMs = Date.now() - startedAt;
   clearTimeout(timer);
 
-  const timedOut = durationMs >= timeoutMs || abortController.signal.aborted;
+  const timedOut = durationMs >= timeoutMs || controller.signal.aborted;
   const headers = [
     timedOut ? `TIMED OUT after ${timeoutMs}ms` : "",
     `exit_code=${exitCode}`,

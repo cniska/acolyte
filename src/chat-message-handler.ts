@@ -97,8 +97,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       return;
     }
     input.setProgressText(t("chat.progress.thinking"));
-    const abortController = new AbortController();
-    input.setInterrupt(() => abortController.abort());
+    const controller = new AbortController();
+    input.setInterrupt(() => controller.abort());
     const thinkingStartedAt = Date.now();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
@@ -116,7 +116,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         modeModels: appConfig.models,
         sessionId: input.currentSession.id,
         useMemory: input.useMemory,
-        signal: abortController.signal,
+        signal: controller.signal,
         onEvent: (event) => {
           switch (event.type) {
             case "status":
