@@ -15,6 +15,7 @@ const behaviorScenarioIdSchema = z.enum([
   "scoped-edit-code-rename",
   "scoped-edit-code-rename-shorthand",
   "class-field-edit-code-rename",
+  "scoped-edit-code-rename-target",
   "structured-edit-code-replace",
 ]);
 
@@ -685,6 +686,41 @@ async function validateClassFieldEditCodeRenameWorkspace(workspace: string): Pro
   return issues;
 }
 
+async function createScopedEditCodeRenameTargetWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.ts",
+    [
+      "class ProviderConfig {",
+      '  alias = "acolyte-mini";',
+      "  render() {",
+      "    const alias = this.alias;",
+      "    return { alias, member: this.alias, other: config.alias };",
+      "  }",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScopedEditCodeRenameTargetWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.ts");
+  if (!content.includes('  defaultAlias = "acolyte-mini";')) {
+    issues.push("ProviderConfig member alias should be renamed to defaultAlias");
+  }
+  if (!content.includes("const alias = this.defaultAlias;")) {
+    issues.push("local alias binding should still read from this.defaultAlias");
+  }
+  if (!content.includes("return { alias, member: this.defaultAlias, other: config.alias };")) {
+    issues.push("member references should use this.defaultAlias while local alias stays unchanged");
+  }
+  if (content.includes("const defaultAlias = this.defaultAlias;")) {
+    issues.push("local alias variable should not be renamed when target is member");
+  }
+  return issues;
+}
+
 async function createStructuredEditCodeReplaceWorkspace(workspace: string): Promise<void> {
   await writeWorkspaceFile(
     workspace,
@@ -757,6 +793,26 @@ function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
   }
   if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.js"))) {
     issues.push("class-field rename scenario should not fall back to edit-file on src/provider-config.js");
+  }
+  return issues;
+}
+
+function validateScopedEditCodeRenameTargetTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.ts")) {
+    issues.push("first tool call should be read-file on src/provider-config.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/provider-config.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("scoped rename target scenario should use edit-code on src/provider-config.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`scoped rename target scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"))) {
+    issues.push("scoped rename target scenario should not fall back to edit-file on src/provider-config.ts");
   }
   return issues;
 }
@@ -916,6 +972,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createClassFieldEditCodeRenameWorkspace,
     validate: validateClassFieldEditCodeRenameWorkspace,
     validateTrace: validateClassFieldEditCodeRenameTrace,
+  },
+  {
+    id: "scoped-edit-code-rename-target",
+    description: "Scoped rename can target the class member explicitly when local and member names collide.",
+    prompt:
+      'In src/provider-config.ts, rename the `alias` member to `defaultAlias` inside `ProviderConfig` only. There is also a local `alias` in the same scope, so use `edit-code` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig", target: "member" }. Update only that file, then stop.',
+    expectedChanges: ["src/provider-config.ts"],
+    setup: createScopedEditCodeRenameTargetWorkspace,
+    validate: validateScopedEditCodeRenameTargetWorkspace,
+    validateTrace: validateScopedEditCodeRenameTargetTrace,
   },
   {
     id: "structured-edit-code-replace",
