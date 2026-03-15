@@ -80,6 +80,15 @@ function searchFilesRecovery(kind: SearchFilesRecoveryKind): ToolRecovery {
           "If you already know the exact file, read it directly. Otherwise broaden the scope or use find-files to locate the target file before searching again.",
         nextTool: "find-files",
       };
+    case "switch-to-read":
+      return {
+        tool: "search-files",
+        kind,
+        summary: "Your search-files query found no matches in the scoped file.",
+        instruction:
+          "If the file is still the right target, switch to read-file and inspect the current text directly before deciding the next edit or search.",
+        nextTool: "read-file",
+      };
     default:
       return kind satisfies never;
   }
@@ -137,6 +146,7 @@ export async function searchFiles(
       searchFilesRecovery("broaden-scope"),
     );
   }
+  const singleScopedFile = normalizedPaths.length === 1 && allFiles.length === 1 ? normalizedPaths[0] : undefined;
   const matches: string[] = [];
   const regexes = normalized.map((pattern) => {
     try {
@@ -167,7 +177,16 @@ export async function searchFiles(
     }
   }
 
-  return matches.length > 0 ? matches.join("\n") : "No matches.";
+  if (matches.length > 0) return matches.join("\n");
+  if (singleScopedFile) {
+    throw createToolError(
+      TOOL_ERROR_CODES.searchFilesNoMatch,
+      `search-files found no matches in scoped file: ${singleScopedFile}`,
+      undefined,
+      { ...searchFilesRecovery("switch-to-read"), targetPaths: [singleScopedFile] },
+    );
+  }
+  return "No matches.";
 }
 
 export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {

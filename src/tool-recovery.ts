@@ -47,8 +47,8 @@ export type ScanCodeRecovery = {
   instruction: string;
 } & ToolRecoveryHints;
 
-export type SearchFilesRecoveryKind = "broaden-scope";
-export const SEARCH_FILES_RECOVERY_KINDS: readonly SearchFilesRecoveryKind[] = ["broaden-scope"];
+export type SearchFilesRecoveryKind = "broaden-scope" | "switch-to-read";
+export const SEARCH_FILES_RECOVERY_KINDS: readonly SearchFilesRecoveryKind[] = ["broaden-scope", "switch-to-read"];
 export type SearchFilesRecovery = {
   tool: "search-files";
   kind: SearchFilesRecoveryKind;

@@ -10,6 +10,7 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-deps-rename",
   "bounded-return-fix",
   "scan-code-yaml-recovery",
+  "search-files-no-match-recovery",
   "scoped-edit-code-rename",
   "class-field-edit-code-rename",
   "structured-edit-code-replace",
@@ -425,6 +426,63 @@ async function validateScanCodeYamlRecoveryWorkspace(workspace: string): Promise
   return issues;
 }
 
+async function createSearchFilesNoMatchRecoveryWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.ts",
+    [
+      'export const MODEL_ALIAS = "acolyte-mini";',
+      "",
+      "export function resolveProviderLabel(alias: string): string {",
+      '  return alias === MODEL_ALIAS ? "default" : "custom";',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateSearchFilesNoMatchRecoveryWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.ts");
+  if (!content.includes('export const DEFAULT_ALIAS = "acolyte-mini";')) {
+    issues.push("src/provider-config.ts should rename MODEL_ALIAS to DEFAULT_ALIAS");
+  }
+  if (content.includes("MODEL_ALIAS")) {
+    issues.push("src/provider-config.ts should not keep MODEL_ALIAS");
+  }
+  if (!content.includes('return alias === DEFAULT_ALIAS ? "default" : "custom";')) {
+    issues.push("src/provider-config.ts should update the provider label comparison to DEFAULT_ALIAS");
+  }
+  return issues;
+}
+
+function validateSearchFilesNoMatchRecoveryTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const scopedSearchCalls = toolCallLines.filter(
+    (line) => line.includes("tool=search-files") && line.includes("src/provider-config.ts"),
+  ).length;
+  if (scopedSearchCalls === 0) {
+    issues.push("search-files no-match scenario should attempt search-files on src/provider-config.ts");
+  }
+  const readCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("src/provider-config.ts"),
+  ).length;
+  if (readCalls === 0) {
+    issues.push("search-files no-match scenario should recover with read-file on src/provider-config.ts");
+  }
+  const editCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+  ).length;
+  if (editCalls === 0) {
+    issues.push("search-files no-match scenario should update src/provider-config.ts");
+  }
+  if (editCalls > 1) {
+    issues.push(`search-files no-match scenario should edit src/provider-config.ts at most once, saw ${editCalls}`);
+  }
+  return issues;
+}
+
 function validateScanCodeYamlRecoveryTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
@@ -695,6 +753,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createScanCodeYamlRecoveryWorkspace,
     validate: validateScanCodeYamlRecoveryWorkspace,
     validateTrace: validateScanCodeYamlRecoveryTrace,
+  },
+  {
+    id: "search-files-no-match-recovery",
+    description: "Recover from a scoped search-files no-match by switching to read-file.",
+    prompt:
+      "Use `search-files` on src/provider-config.ts to look for DEFAULT_ALIAS first. If that search finds no matches, recover by reading the file directly. Then rename MODEL_ALIAS to DEFAULT_ALIAS in src/provider-config.ts, keep the same alias value, update only that file, and stop.",
+    expectedChanges: ["src/provider-config.ts"],
+    setup: createSearchFilesNoMatchRecoveryWorkspace,
+    validate: validateSearchFilesNoMatchRecoveryWorkspace,
+    validateTrace: validateSearchFilesNoMatchRecoveryTrace,
   },
   {
     id: "scoped-edit-code-rename",

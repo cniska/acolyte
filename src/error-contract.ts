@@ -9,6 +9,7 @@ export const TOOL_ERROR_CODES = {
   editCodeReplacementMetaMismatch: "E_EDIT_CODE_REPLACEMENT_META_MISMATCH",
   editCodeUnsupportedFile: "E_EDIT_CODE_UNSUPPORTED_FILE",
   searchFilesEmptyScope: "E_SEARCH_FILES_EMPTY_SCOPE",
+  searchFilesNoMatch: "E_SEARCH_FILES_NO_MATCH",
   scanCodeUnsupportedFile: "E_SCAN_CODE_UNSUPPORTED_FILE",
 } as const;
 

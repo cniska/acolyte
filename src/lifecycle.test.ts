@@ -821,6 +821,34 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
+  test("returns regenerate when search-files scoped no-match exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.searchFilesNoMatch,
+        tool: "search-files",
+        message: "search-files failed: [E_SEARCH_FILES_NO_MATCH] search-files found no matches in scoped file: src/provider-config.ts",
+        recovery: {
+          tool: "search-files",
+          kind: "switch-to-read",
+          summary: "Your search-files query found no matches in the scoped file.",
+          instruction: "Switch to read-file and inspect the file directly.",
+          nextTool: "read-file",
+          targetPaths: ["src/provider-config.ts"],
+        },
+      },
+      result: { text: "Attempted search.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("Your search-files query found no matches in the scoped file.");
+      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
+      expect(action.feedback?.instruction).toContain("read-file");
+    }
+  });
+
   test("returns done when there is no structured tool recovery", () => {
     const ctx = createMockContext({
       initialMode: "work",
