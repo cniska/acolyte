@@ -168,11 +168,7 @@ function attachToolOutputHandler(ctx: RunContext) {
   };
 }
 
-export async function runLifecycle(input: LifecycleInput) {
-  return runLifecycleWith(input);
-}
-
-export async function runLifecycleWith(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
+export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
   const policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
   let debugSequence = 0;

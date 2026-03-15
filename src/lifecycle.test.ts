@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
 import type { LifecycleDeps } from "./lifecycle";
-import { runLifecycleWith, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { createSessionContext } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
@@ -71,7 +71,7 @@ describe("runLifecycle", () => {
       phaseFinalize,
     };
 
-    const response = await runLifecycleWith(
+    const response = await runLifecycle(
       {
         request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
         soulPrompt: "SOUL",

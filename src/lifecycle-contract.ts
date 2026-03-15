@@ -1,5 +1,5 @@
 import type { Agent, AgentMode } from "./agent-contract";
-import type { ChatRequest, ChatResponse } from "./api";
+import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
@@ -192,5 +192,3 @@ type GuardStats = { blocked: number; flagSet: number };
 export function guardStatsFromSession(session: SessionContext): GuardStats {
   return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
 }
-
-export type LifecycleResult = ChatResponse;
