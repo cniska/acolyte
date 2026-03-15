@@ -146,6 +146,11 @@ describe("character classes", () => {
     expect(ignored(["file[a-z].ts"], "filea.ts")).toBe(true);
     expect(ignored(["file[a-z].ts"], "fileA.ts")).toBe(false);
   });
+
+  test("negated class excludes listed characters", () => {
+    expect(ignored(["file[!abc].ts"], "filed.ts")).toBe(true);
+    expect(ignored(["file[!abc].ts"], "filea.ts")).toBe(false);
+  });
 });
 
 describe("nested gitignore contexts", () => {

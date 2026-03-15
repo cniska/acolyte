@@ -42,7 +42,7 @@ function globToRegex(glob: string, anchored: boolean): string {
         re += "[^/]";
         break; // exactly one non-separator character
       default:
-        re += token.startsWith("[") && token.endsWith("]") ? token : escapeRegex(token);
+        re += token.startsWith("[") && token.endsWith("]") ? token.replace(/^\[!/, "[^") : escapeRegex(token);
     }
   }
 
