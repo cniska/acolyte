@@ -139,6 +139,7 @@ function createEditCodeTool(input: ToolkitInput) {
       "Use `edit-code` for AST-aware refactors or structural code rewrites.",
       "Prefer explicit operation objects.",
       'For identifier renames, use { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }.',
+      "Scoped rename follows the symbol kind inside the named scope: local renames update local references and shorthand uses, while member renames stay on the declared member and `this.member` references.",
       'For broader rewrites, use { op: "replace", rule, replacement, within?, withinSymbol? }.',
       '`rule` may be a pattern shorthand (`"console.log($ARG)"`), a structured pattern object ({ context, selector, strictness }), or a recursive ast-grep rule object ({ all, any, not, kind, regex, inside, has, pattern }).',
       "Use `any` when any one child rule may match, `all` when all child rules must match the same node, `inside` to restrict matches to an ancestor scope, `has` to require a descendant match, and `stopBy`/`field` only when you need relational scoping details.",

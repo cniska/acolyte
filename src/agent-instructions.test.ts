@@ -44,6 +44,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("Do not call another write tool on the same named file after a successful bounded edit");
     expect(out).toContain("prefer `scan-code` + `edit-code`");
     expect(out).toContain("`withinSymbol` naming that enclosing symbol");
+    expect(out).toContain("symbol-aware within that scope");
     expect(out).toContain("do not search for that symbol first");
     expect(out).toContain('{ op: "rename", from: "result", to: "patternResult"');
     expect(out).toContain('{ op: "rename", from: "result", to: "matchResult", withinSymbol: "scanFile" }');
@@ -87,6 +88,7 @@ describe("createInstructions", () => {
     expect(out).toContain("edit-code");
     expect(out).toContain("AST");
     expect(out).toContain("Prefer explicit operation objects");
+    expect(out).toContain("Scoped rename follows the symbol kind inside the named scope");
     expect(out).toContain("not for plain text replacements or post-edit reassurance on a bounded named-file task");
     expect(out).toContain("prefer `withinSymbol` with the enclosing name");
     expect(out).toContain("refine the rename scope or rule");
