@@ -5,7 +5,7 @@ import { join } from "node:path";
 const WORKDIR = "/tmp/acolyte-benchmarks";
 const MAX_FILE_LINES = 10_000;
 
-type Lang = "typescript" | "python" | "rust";
+type Lang = "typescript" | "python" | "rust" | "go";
 
 interface Project {
   name: string;
@@ -23,6 +23,7 @@ const PROJECTS: Project[] = [
   { name: "continue", url: "https://github.com/continuedev/continue.git", lang: "typescript" },
   { name: "cline", url: "https://github.com/cline/cline.git", lang: "typescript" },
   { name: "openclaw", url: "https://github.com/openclaw/openclaw.git", lang: "typescript" },
+  { name: "plandex", url: "https://github.com/plandex-ai/plandex.git", lang: "go" },
 ];
 
 // --- file collection ---
@@ -78,6 +79,18 @@ function findTestRs(dir: string): string[] {
   return walk(dir).filter(
     (f) => f.endsWith(".rs") && !pathExcluded(f, RS_EXCLUDE_DIRS) && (f.includes("/tests/") || f.endsWith("_test.rs")),
   );
+}
+
+const GO_EXCLUDE_DIRS = ["/.git/", "/vendor/"];
+
+function findSourceGo(dir: string): string[] {
+  return walk(dir).filter(
+    (f) => f.endsWith(".go") && !pathExcluded(f, GO_EXCLUDE_DIRS) && !f.endsWith("_test.go"),
+  );
+}
+
+function findTestGo(dir: string): string[] {
+  return walk(dir).filter((f) => f.endsWith("_test.go") && !pathExcluded(f, GO_EXCLUDE_DIRS));
 }
 
 // --- counting helpers ---
@@ -225,6 +238,29 @@ function countDepsRust(dir: string): { runtime: number; dev: number } {
   return { runtime: runtime.size, dev: dev.size };
 }
 
+function countDepsGo(dir: string): { runtime: number; dev: number } {
+  const modFiles = walk(dir).filter((f) => f.endsWith("/go.mod") && !pathExcluded(f, GO_EXCLUDE_DIRS));
+  if (modFiles.length === 0) return { runtime: 0, dev: 0 };
+  const runtime = new Set<string>();
+  for (const modFile of modFiles) {
+    const text = readFileSync(modFile, "utf8");
+    let inRequire = false;
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed === "require (" || trimmed === "require(") { inRequire = true; continue; }
+      if (inRequire && trimmed === ")") { inRequire = false; continue; }
+      if (inRequire && trimmed && !trimmed.startsWith("//") && !trimmed.includes("// indirect")) {
+        runtime.add(trimmed.split(/\s/)[0]);
+      }
+      if (!inRequire && trimmed.startsWith("require ") && !trimmed.includes("// indirect")) {
+        const pkg = trimmed.replace(/^require\s+/, "").split(/\s/)[0];
+        if (pkg !== "(") runtime.add(pkg);
+      }
+    }
+  }
+  return { runtime: runtime.size, dev: 0 };
+}
+
 // --- git helpers ---
 
 function cloneOrUpdate(name: string, url: string): void {
@@ -278,6 +314,10 @@ for (const p of PROJECTS) {
       sourceRaw = findSourceRs(dir);
       testRaw = findTestRs(dir);
       break;
+    case "go":
+      sourceRaw = findSourceGo(dir);
+      testRaw = findTestGo(dir);
+      break;
   }
 
   const src = readFiles(sourceRaw);
@@ -295,6 +335,9 @@ for (const p of PROJECTS) {
     case "rust":
       deps = countDepsRust(dir);
       break;
+    case "go":
+      deps = countDepsGo(dir);
+      break;
   }
 
   const testRatio = src.lineCount > 0 ? (test.count / src.lineCount).toFixed(2) : "0.00";
@@ -307,6 +350,7 @@ for (const p of PROJECTS) {
   if (p.lang === "typescript") barrelFiles = src.files.filter((f) => f.endsWith("/index.ts")).length;
   else if (p.lang === "python") barrelFiles = src.files.filter((f) => f.endsWith("/__init__.py")).length;
   else if (p.lang === "rust") barrelFiles = src.files.filter((f) => f.endsWith("/mod.rs")).length;
+  else if (p.lang === "go") barrelFiles = src.files.filter((f) => f.endsWith("/doc.go")).length;
 
   const repoPath = p.url.replace("https://github.com/", "").replace(".git", "");
   const initialCommit = getCreatedDate(repoPath);
@@ -368,6 +412,18 @@ for (const p of PROJECTS) {
     console.log(`  unsafe /1k:       ${per1k(unsafeCount, src.lineCount)}  (${unsafeCount} total)`);
     console.log(`  .unwrap() /1k:    ${per1k(unwrap, src.lineCount)}  (${unwrap} total)`);
     console.log(`  .expect() /1k:    ${per1k(expectCalls, src.lineCount)}  (${expectCalls} total)`);
+    console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
+  } else if (p.lang === "go") {
+    const anyInterface = countMatches(src.lines, /\bany\b|interface\{\}/g);
+    const panicCalls = countMatches(src.lines, /\bpanic\(/g);
+    const nolint = countMatches(src.lines, /\/\/nolint|\/\/ nolint/g);
+    const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
+    const comments = src.lines.filter((l) => l.trimStart().startsWith("//")).length;
+
+    console.log(`  any/interface{} /1k: ${per1k(anyInterface, src.lineCount)}  (${anyInterface} total)`);
+    console.log(`  panic() /1k:      ${per1k(panicCalls, src.lineCount)}  (${panicCalls} total)`);
+    console.log(`  nolint /1k:       ${per1k(nolint, src.lineCount)}  (${nolint} total)`);
     console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
     console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
   }
