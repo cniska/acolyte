@@ -39,6 +39,7 @@ These must always hold. Break them and the system breaks.
 4. Never amend commits already pushed to remote — create a new commit instead.
 5. Cut releases only for user-facing features or meaningful bug fixes — not for internal refactors or tooling cleanup alone.
 6. PR titles follow the same Conventional Commit format. Summaries: short bullets, no prose.
+7. When creating or updating a pull request, read and follow the local PR template if the repo provides one.
 
 ## Code
 
