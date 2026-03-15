@@ -46,6 +46,8 @@ describe("createModeInstructions", () => {
     expect(out).toContain("`withinSymbol` naming that enclosing symbol");
     expect(out).toContain("do not search for that symbol first");
     expect(out).toContain('{ op: "rename", from: "result", to: "patternResult"');
+    expect(out).toContain('{ op: "rename", from: "result", to: "matchResult", withinSymbol: "scanFile" }');
+    expect(out).toContain('{ op: "replace", rule: { all: [{ kind: "call_expression" }');
     expect(out).toContain("repeated plain-text rewrite inside one known file");
     expect(out).toContain("Trust type signatures");
   });
@@ -90,6 +92,7 @@ describe("createInstructions", () => {
     expect(out).toContain("refine the rename scope or rule");
     expect(out).toContain('{ op: "rename", from: "result", to: "patternResult"');
     expect(out).toContain('withinSymbol: "scanFile"');
+    expect(out).toContain('{ op: "replace", rule: { all: [{ kind: "call_expression" }');
     expect(out).toContain("broadening the rewrite to unrelated matches");
     expect(out).toContain("calling another write tool on that same file");
     expect(out).toContain("do not re-read the same file unless the edit fails or the direct read output was truncated");
