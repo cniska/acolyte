@@ -43,8 +43,17 @@ export type GenerateResult = {
 
 export type LifecycleSignal = "done" | "no_op" | "blocked";
 
-export type ToolOutputEvent = { toolName: string; content: ToolOutput; toolCallId?: string };
-export type ToolCallStart = { toolName: string; startedAtMs: number; args?: Record<string, unknown> };
+export type ToolOutputEvent = {
+  toolName: string;
+  content: ToolOutput;
+  toolCallId?: string;
+};
+
+export type ToolCallStart = {
+  toolName: string;
+  startedAtMs: number;
+  targetPaths?: string[];
+};
 export type PromptUsage = {
   inputTokens: number;
   inputBudgetTokens: number;

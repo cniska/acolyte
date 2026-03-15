@@ -339,10 +339,10 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
 
 function didResolveToolRecovery(
   recovery: NonNullable<RunContext["currentError"]>["recovery"],
-  started: { toolName: string; args?: Record<string, unknown> },
+  started: { toolName: string; targetPaths?: string[] },
 ): boolean {
   if (!recovery?.resolvesOn || recovery.resolvesOn.length === 0) return false;
-  const targets = extractToolTargetPaths(started.args ?? {}, started.toolName);
+  const targets = started.targetPaths ?? [];
   return recovery.resolvesOn.some((resolution) => {
     if (resolution.tool !== started.toolName) return false;
     if (!resolution.targetPaths || resolution.targetPaths.length === 0) return true;
@@ -350,7 +350,7 @@ function didResolveToolRecovery(
   });
 }
 
-function clearResolvedToolError(ctx: RunContext, started: { toolName: string; args?: Record<string, unknown> }): void {
+function clearResolvedToolError(ctx: RunContext, started: { toolName: string; targetPaths?: string[] }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
   const failedTool = ctx.currentError.tool;
@@ -386,8 +386,12 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         ctx.observedTools.add(toolName);
-        ctx.toolCallStartedAt.set(p.toolCallId, { toolName, startedAtMs: Date.now(), args: p.args });
         const args = (p.args ?? {}) as Record<string, unknown>;
+        ctx.toolCallStartedAt.set(p.toolCallId, {
+          toolName,
+          startedAtMs: Date.now(),
+          targetPaths: extractToolTargetPaths(args, toolName),
+        });
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
         let queue = ctx.nativeIdQueue.get(toolName);
