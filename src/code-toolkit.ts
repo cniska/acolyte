@@ -36,7 +36,8 @@ function formatScanCodeResult(result: ScanCodeResult): string {
               .map(([key, value]) => `${key}=${value}`)
               .join(", ")}}`
           : "";
-      lines.push(`${match.relPath}:${match.line}: ${truncated}${captureStr}`);
+      const symbolStr = match.enclosingSymbol ? ` [${match.enclosingSymbol}]` : "";
+      lines.push(`${match.relPath}:${match.line}:${symbolStr} ${truncated}${captureStr}`);
     }
     if (multi && patternResult.matches.length === 0) lines.push("No matches.");
   }
@@ -59,12 +60,15 @@ function createScanCodeTool(input: ToolkitInput) {
       "Batch multiple files and patterns in one call.",
       "Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
       "For keyword or regex searches prefer `search-files`.",
+      "Each match includes an `enclosingSymbol` in the output — use it directly as `withinSymbol` in a follow-up `edit-code` call.",
+      "Pass `withinSymbol` to narrow scan results to a specific named declaration.",
     ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
       language: z.string().optional(),
       maxResults: z.number().int().min(1).max(200).optional(),
+      withinSymbol: z.string().min(1).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("scan-code"),
@@ -103,6 +107,7 @@ function createScanCodeTool(input: ToolkitInput) {
           pattern: toolInput.patterns,
           language: toolInput.language,
           maxResults: toolInput.maxResults ?? 50,
+          withinSymbol: toolInput.withinSymbol,
         });
         const result = compactToolOutput(formatScanCodeResult(rawScan), budget);
         return { kind: "scan-code", paths, patterns: toolInput.patterns, output: result };
