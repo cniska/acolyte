@@ -53,8 +53,13 @@ function createScanCodeTool(input: ToolkitInput) {
     permissions: ["read"],
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries.",
-    instruction:
-      "Use `scan-code` for AST pattern matching. Always pass `paths` and `patterns` as arrays. Batch multiple files and patterns in one call. Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task. For keyword or regex searches prefer `search-files`.",
+    instruction: [
+      "Use `scan-code` for AST pattern matching.",
+      "Always pass `paths` and `patterns` as arrays.",
+      "Batch multiple files and patterns in one call.",
+      "Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
+      "For keyword or regex searches prefer `search-files`.",
+    ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
@@ -130,8 +135,22 @@ function createEditCodeTool(input: ToolkitInput) {
     permissions: ["read", "write"],
     description:
       'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` must be a specific file, not \'.\' or a directory. For non-code files use `edit-file`.',
-    instruction:
-      'Use `edit-code` for AST-aware refactors or structural code rewrites. Prefer explicit operation objects. For identifier renames, use { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. For broader rewrites, use { op: "replace", rule, replacement, within?, withinSymbol? }. `rule` may be a pattern shorthand (`"console.log($ARG)"`), a structured pattern object ({ context, selector, strictness }), or a recursive ast-grep rule object ({ all, any, not, kind, regex, inside, has, pattern }). Use `any` when any one child rule may match, `all` when all child rules must match the same node, `inside` to restrict matches to an ancestor scope, `has` to require a descendant match, and `stopBy`/`field` only when you need relational scoping details. Example rename: { op: "rename", from: "result", to: "matchResult", withinSymbol: "scanFile" }. Example replace rule: { op: "replace", rule: { all: [{ kind: "call_expression" }, { inside: { pattern: "function $NAME() { $$$BODY }", stopBy: "end" } }] }, replacement: "..." }. `path` must be a concrete file path, and you should read that file directly right before editing it. When the change must stay inside one named helper, declaration, or block, prefer `withinSymbol` with the enclosing name. If `edit-code` reports no AST matches, refine the rename scope or rule against the latest read-file text for that same file instead of broadening the rewrite to unrelated matches. The `edit-code` result already includes a diff preview. If that preview shows the requested bounded change, stop immediately instead of re-reading, searching, reviewing, or calling another write tool on that same file in work mode. Prefer `edit-file` for single-location text edits and repeated plain-text replacements within one file.',
+    instruction: [
+      "Use `edit-code` for AST-aware refactors or structural code rewrites.",
+      "Prefer explicit operation objects.",
+      'For identifier renames, use { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }.',
+      'For broader rewrites, use { op: "replace", rule, replacement, within?, withinSymbol? }.',
+      '`rule` may be a pattern shorthand (`"console.log($ARG)"`), a structured pattern object ({ context, selector, strictness }), or a recursive ast-grep rule object ({ all, any, not, kind, regex, inside, has, pattern }).',
+      "Use `any` when any one child rule may match, `all` when all child rules must match the same node, `inside` to restrict matches to an ancestor scope, `has` to require a descendant match, and `stopBy`/`field` only when you need relational scoping details.",
+      'Example rename: { op: "rename", from: "result", to: "matchResult", withinSymbol: "scanFile" }.',
+      'Example replace rule: { op: "replace", rule: { all: [{ kind: "call_expression" }, { inside: { pattern: "function $NAME() { $$$BODY }", stopBy: "end" } }] }, replacement: "..." }.',
+      "`path` must be a concrete file path, and you should read that file directly right before editing it.",
+      "When the change must stay inside one named helper, declaration, or block, prefer `withinSymbol` with the enclosing name.",
+      "If `edit-code` reports no AST matches, refine the rename scope or rule against the latest read-file text for that same file instead of broadening the rewrite to unrelated matches.",
+      "The `edit-code` result already includes a diff preview.",
+      "If that preview shows the requested bounded change, stop immediately instead of re-reading, searching, reviewing, or calling another write tool on that same file in work mode.",
+      "Prefer `edit-file` for single-location text edits and repeated plain-text replacements within one file.",
+    ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z.array(editCodeEditSchema).min(1),

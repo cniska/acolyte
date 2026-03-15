@@ -120,8 +120,15 @@ function createSearchFilesTool(input: ToolkitInput) {
     permissions: ["read"],
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `find-files` instead.",
-    instruction:
-      "Use `search-files` to search file contents by text or regex. Batch related queries via `patterns` and scope with `paths` when you know the target area. If the needed text is already visible in `read-file`, edit from that evidence instead of searching the same file again. For one named file with a repeated literal replacement, do not use `search-files`; read the file once and make one consolidated `edit-file` call. For a multi-file rename or repeated replacement, if a named file has separated occurrences you have not yet anchored to exact snippets, run one scoped `search-files` on that file before `edit-file` so you can batch small exact edits instead of guessing a larger `find` block. When building an `edit-file` call, every `find` snippet must come from the current `read-file` text or scoped `search-files` hits for that file; do not invent old lines that are not present. When fixing a visible path or link, keep the local reference style from the target file.",
+    instruction: [
+      "Use `search-files` to search file contents by text or regex.",
+      "Batch related queries via `patterns` and scope with `paths` when you know the target area.",
+      "If the needed text is already visible in `read-file`, edit from that evidence instead of searching the same file again.",
+      "For one named file with a repeated literal replacement, do not use `search-files`; read the file once and make one consolidated `edit-file` call.",
+      "For a multi-file rename or repeated replacement, if a named file has separated occurrences you have not yet anchored to exact snippets, run one scoped `search-files` on that file before `edit-file` so you can batch small exact edits instead of guessing a larger `find` block.",
+      "When building an `edit-file` call, every `find` snippet must come from the current `read-file` text or scoped `search-files` hits for that file; do not invent old lines that are not present.",
+      "When fixing a visible path or link, keep the local reference style from the target file.",
+    ].join(" "),
     inputSchema: z
       .object({
         pattern: z.string().min(1).optional(),
@@ -187,8 +194,12 @@ function createReadFileTool(input: ToolkitInput) {
     permissions: ["read"],
     description:
       "Read one or more text files. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Omit start/end to read the entire file (preferred). Only use line ranges for files over 500 lines. Never re-read a file you already have. Batch multiple files only while discovering scope or comparing targets.",
-    instruction:
-      "Use `read-file` to inspect code before editing. Read whole files by default and use start/end only for very large files. Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `edit-file` or `edit-code`. For one named file with a repeated literal replacement, read it once, compute the edits from that text, and do not re-read the same file unless the edit fails or the direct read output was truncated and you need the remaining ranges.",
+    instruction: [
+      "Use `read-file` to inspect code before editing.",
+      "Read whole files by default and use start/end only for very large files.",
+      "Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `edit-file` or `edit-code`.",
+      "For one named file with a repeated literal replacement, read it once, compute the edits from that text, and do not re-read the same file unless the edit fails or the direct read output was truncated and you need the remaining ranges.",
+    ].join(" "),
     inputSchema: z.object({
       paths: z
         .array(
@@ -265,8 +276,21 @@ function createEditFileTool(input: ToolkitInput) {
     permissions: ["read", "write"],
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `read-file` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `create-file`. For code renames or structural edits use `edit-code`.",
-    instruction:
-      "Use `edit-file` for text edits. For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that file. Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style. When changing multiple places in one file, use several small exact edits in one call rather than one oversized `find` block that spans distant locations. The `edit-file` result already includes a diff preview. If that preview shows the requested bounded change, stop instead of re-reading, searching, reviewing, or editing that same file again in work mode. For bounded 'each'/'every'/'all' replacements in one named file, use the latest file text to collect all visible requested occurrences into the same `edit-file` call whenever possible. If the same requested literal appears in multiple visible locations, include every visible location in that one call rather than editing only the first contiguous block. Completion means no requested matches remain in that file, not just that one edit succeeded. For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file`; `replace` is only the new text for that region. Batch multiple edits to the same file into one call. If the change is a repeated plain-text rewrite in one known file, keep using one consolidated `edit-file` call. Switch to `edit-code` only for real AST-aware refactors or structural code rewrites.",
+    instruction: [
+      "Use `edit-file` for text edits.",
+      "For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `read-file` of that file.",
+      "Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style.",
+      "When changing multiple places in one file, use several small exact edits in one call rather than one oversized `find` block that spans distant locations.",
+      "The `edit-file` result already includes a diff preview.",
+      "If that preview shows the requested bounded change, stop instead of re-reading, searching, reviewing, or editing that same file again in work mode.",
+      "For bounded 'each'/'every'/'all' replacements in one named file, use the latest file text to collect all visible requested occurrences into the same `edit-file` call whenever possible.",
+      "If the same requested literal appears in multiple visible locations, include every visible location in that one call rather than editing only the first contiguous block.",
+      "Completion means no requested matches remain in that file, not just that one edit succeeded.",
+      "For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `read-file`; `replace` is only the new text for that region.",
+      "Batch multiple edits to the same file into one call.",
+      "If the change is a repeated plain-text rewrite in one known file, keep using one consolidated `edit-file` call.",
+      "Switch to `edit-code` only for real AST-aware refactors or structural code rewrites.",
+    ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
