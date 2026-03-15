@@ -16,88 +16,100 @@ function escapeRegex(char: string): string {
   return char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
-function compileGitignorePattern(raw: string): CompiledPattern | null {
-  let pattern = raw.trim();
-
-  // Empty lines and comments
-  if (!pattern || pattern.startsWith("#")) return null;
-
-  // Escaped hash is a literal hash
-  if (pattern.startsWith("\\#")) pattern = pattern.slice(1);
-
-  // Negation
-  const negated = pattern.startsWith("!");
-  if (negated) pattern = pattern.slice(1).trim();
-  if (!pattern) return null;
-
-  // Directory-only pattern
-  const dirOnly = pattern.endsWith("/");
-  if (dirOnly) pattern = pattern.slice(0, -1);
-
-  // A pattern is anchored if it contains a slash anywhere (other than the
-  // trailing slash already removed) — or has a leading slash.
-  const hasLeadingSlash = pattern.startsWith("/");
-  if (hasLeadingSlash) pattern = pattern.slice(1);
-  const anchored = hasLeadingSlash || pattern.includes("/");
-
-  // Convert gitignore glob syntax to a regex string.
-  let regexStr = anchored ? "^" : "(^|/)";
+// Convert a normalised gitignore glob (no leading/trailing slash, no ! prefix)
+// to a regex string. `anchored` is true when the pattern must match from the
+// root of the gitignore directory (i.e. it originally contained a slash).
+function globToRegex(glob: string, anchored: boolean): string {
+  // Anchored patterns match from the root; unanchored match at any path segment.
+  let re = anchored ? "^" : "(^|/)";
   let i = 0;
 
-  while (i < pattern.length) {
-    const ch = pattern[i];
+  while (i < glob.length) {
+    const ch = glob[i];
 
-    // /**/ and /** must be detected at the slash, so the slash is consumed as
-    // part of the double-star sequence rather than emitted separately.
-    if (ch === "/" && pattern[i + 1] === "*" && pattern[i + 2] === "*") {
-      if (pattern[i + 3] === "/") {
-        // /**/ — match a single slash or slash + one-or-more path segments + slash
-        regexStr += "/(.+/)?";
+    // Detect /**/ and /** at the slash so the slash is consumed as part of the
+    // double-star token rather than emitted as a literal separator.
+    if (ch === "/" && glob[i + 1] === "*" && glob[i + 2] === "*") {
+      if (glob[i + 3] === "/") {
+        re += "/(.+/)?"; // /**/ — zero or more intermediate directories
         i += 4;
       } else {
-        // /** at end — match slash and everything inside
-        regexStr += "/.*";
+        re += "/.*"; // /** — slash followed by anything
         i += 3;
       }
       continue;
     }
 
-    if (ch === "*" && pattern[i + 1] === "*") {
-      if (i === 0 && pattern[i + 2] === "/") {
-        // Leading **/ — match any number of leading directories
-        regexStr += "(.+/)?";
+    if (ch === "*" && glob[i + 1] === "*") {
+      if (i === 0 && glob[i + 2] === "/") {
+        re += "(.+/)?"; // leading **/ — any number of leading directories
         i += 3;
       } else {
-        // Bare ** (no surrounding slashes) — match everything
-        regexStr += ".*";
+        re += ".*"; // bare ** — match everything including slashes
         i += 2;
       }
     } else if (ch === "*") {
-      regexStr += "[^/]*";
+      re += "[^/]*"; // single * — anything within one path segment
       i += 1;
     } else if (ch === "?") {
-      regexStr += "[^/]";
+      re += "[^/]"; // ? — exactly one non-separator character
       i += 1;
     } else if (ch === "[") {
-      const close = pattern.indexOf("]", i + 1);
+      const close = glob.indexOf("]", i + 1);
       if (close === -1) {
-        regexStr += escapeRegex(ch);
+        re += escapeRegex(ch); // unclosed bracket — treat as literal
         i += 1;
       } else {
-        // Pass character classes through verbatim
-        regexStr += pattern.slice(i, close + 1);
+        re += glob.slice(i, close + 1); // character class — pass through verbatim
         i = close + 1;
       }
     } else {
-      regexStr += escapeRegex(ch);
+      re += escapeRegex(ch);
       i += 1;
     }
   }
 
-  regexStr += "(/|$)";
+  re += "(/|$)";
+  return re;
+}
 
+type ParsedPattern = {
+  glob: string;
+  negated: boolean;
+  dirOnly: boolean;
+  anchored: boolean;
+};
+
+// Parse a raw gitignore line into its component parts, or return null if the
+// line should be skipped (blank, comment, or empty after stripping modifiers).
+function parseGitignorePattern(raw: string): ParsedPattern | null {
+  let p = raw.trim();
+
+  if (!p || p.startsWith("#")) return null;
+  if (p.startsWith("\\#")) p = p.slice(1); // escaped hash → literal #
+
+  const negated = p.startsWith("!");
+  if (negated) p = p.slice(1).trim();
+  if (!p) return null;
+
+  const dirOnly = p.endsWith("/");
+  if (dirOnly) p = p.slice(0, -1);
+
+  // A pattern is anchored when it contains a slash anywhere other than the
+  // trailing slash already stripped above — or when it starts with a slash.
+  const hasLeadingSlash = p.startsWith("/");
+  if (hasLeadingSlash) p = p.slice(1);
+  const anchored = hasLeadingSlash || p.includes("/");
+
+  return { glob: p, negated, dirOnly, anchored };
+}
+
+function compileGitignorePattern(raw: string): CompiledPattern | null {
+  const parsed = parseGitignorePattern(raw);
+  if (!parsed) return null;
   try {
-    return { regex: new RegExp(regexStr), negated, dirOnly };
+    const regex = new RegExp(globToRegex(parsed.glob, parsed.anchored));
+    return { regex, negated: parsed.negated, dirOnly: parsed.dirOnly };
   } catch {
     return null;
   }
