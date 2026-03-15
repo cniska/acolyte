@@ -6,22 +6,22 @@ import {
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
-  parseErrorInfo,
+  parseError,
   recoveryActionForError,
   serializeToolError,
 } from "./error-handling";
 import { createToolError, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 
 describe("error handling helpers", () => {
-  test("parseErrorInfo extracts code from coded string", () => {
-    const parsed = parseErrorInfo(`[E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations`);
+  test("parseError extracts code from coded string", () => {
+    const parsed = parseError(`[E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations`);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.code).toBe(TOOL_ERROR_CODES.editFileMultiMatch);
   });
 
-  test("parseErrorInfo handles nested object payload", () => {
-    const parsed = parseErrorInfo({
+  test("parseError handles nested object payload", () => {
+    const parsed = parseError({
       error: { message: "timeout", code: LIFECYCLE_ERROR_CODES.timeout, kind: "timeout" },
     });
     expect(parsed.ok).toBe(true);
@@ -31,8 +31,8 @@ describe("error handling helpers", () => {
     expect(parsed.value.kind).toBe("timeout");
   });
 
-  test("parseErrorInfo preserves structured tool recovery metadata", () => {
-    const parsed = parseErrorInfo(
+  test("parseError preserves structured tool recovery metadata", () => {
+    const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editFileFindNotFound, "stale find", undefined, {
         tool: "edit-file",
         kind: "refresh-snippet",
@@ -82,8 +82,8 @@ describe("error handling helpers", () => {
     });
   });
 
-  test("parseErrorInfo preserves structured edit-code recovery metadata", () => {
-    const parsed = parseErrorInfo(
+  test("parseError preserves structured edit-code recovery metadata", () => {
+    const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "No AST matches found", undefined, {
         tool: "edit-code",
         kind: "refine-pattern",
@@ -133,8 +133,8 @@ describe("error handling helpers", () => {
     });
   });
 
-  test("parseErrorInfo preserves structured scan-code recovery metadata", () => {
-    const parsed = parseErrorInfo(
+  test("parseError preserves structured scan-code recovery metadata", () => {
+    const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.scanCodeUnsupportedFile, "unsupported file", undefined, {
         tool: "scan-code",
         kind: "use-supported-file",
@@ -156,8 +156,8 @@ describe("error handling helpers", () => {
     });
   });
 
-  test("parseErrorInfo drops invalid tool recovery hints", () => {
-    const parsed = parseErrorInfo({
+  test("parseError drops invalid tool recovery hints", () => {
+    const parsed = parseError({
       error: {
         message: "unsupported file",
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
@@ -182,8 +182,8 @@ describe("error handling helpers", () => {
     });
   });
 
-  test("parseErrorInfo returns invalid payload for unsupported shapes", () => {
-    const parsed = parseErrorInfo({ foo: "bar" });
+  test("parseError returns invalid payload for unsupported shapes", () => {
+    const parsed = parseError({ foo: "bar" });
     expect(parsed.ok).toBe(false);
   });
 
