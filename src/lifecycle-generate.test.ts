@@ -246,7 +246,11 @@ describe("phaseGenerate", () => {
             },
             {
               type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/provider-config.ts" } },
+              payload: {
+                toolCallId: "call_2",
+                toolName: "read-file",
+                result: { output: "File: src/provider-config.ts" },
+              },
             },
           ];
           return {

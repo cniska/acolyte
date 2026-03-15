@@ -24,10 +24,12 @@ const phaseGenerate = mock(async (ctx: { result?: unknown }) => {
   ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
 });
 
-const phaseEvaluate = mock(async (ctx: { session: { flags: { totalStepLimit?: number } }; result?: { text: string } }) => {
-  expect(ctx.session.flags.totalStepLimit).toBe(12);
-  expect(ctx.result?.text).toBe("Generated output");
-});
+const phaseEvaluate = mock(
+  async (ctx: { session: { flags: { totalStepLimit?: number } }; result?: { text: string } }) => {
+    expect(ctx.session.flags.totalStepLimit).toBe(12);
+    expect(ctx.result?.text).toBe("Generated output");
+  },
+);
 
 const phaseFinalize = mock(
   (ctx: { result?: { text: string } }): ChatResponse => ({
