@@ -312,6 +312,36 @@ describe("editCode", () => {
     expect(content).toContain('  alias = "x";');
   });
 
+  test("ambiguous scoped rename fails with recovery when target is omitted", async () => {
+    const filePath = `/tmp/acolyte-test-ast-ambiguous-rename-auto-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "x";',
+        "  method() {",
+        "    const alias = this.alias;",
+        "    return { alias, member: this.alias, other: config.alias };",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await expect(
+      editCode({
+        workspace: WORKSPACE,
+        path: filePath,
+        edits: [{ op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig" }],
+      }),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeNoMatch,
+      recovery: { tool: "edit-code", kind: "clarify-rename-target" },
+      message: expect.stringContaining('target: "local" or target: "member"'),
+    });
+  });
+
   test("scoped local rename rewrites shorthand destructuring bindings", async () => {
     const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
     tempFiles.push(filePath);

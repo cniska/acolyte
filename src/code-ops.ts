@@ -38,6 +38,17 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
         nextTool: "read-file",
         targetPaths: [path],
       };
+    case "clarify-rename-target":
+      return {
+        tool: "edit-code",
+        kind,
+        summary: "This scoped rename matches both local and member symbols.",
+        instruction:
+          `Keep the change in '${path}' and retry the rename with an explicit target. ` +
+          'Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.',
+        nextTool: "edit-code",
+        targetPaths: [path],
+      };
     case "fix-replacement":
       return {
         tool: "edit-code",
@@ -322,6 +333,17 @@ function resolveRenameMode(matches: napi.SgNode[]): RenameMode {
   return mode ?? "text";
 }
 
+function hasRenameModeConflict(matches: napi.SgNode[]): boolean {
+  let sawLocal = false;
+  let sawMember = false;
+  for (const match of matches) {
+    const classified = classifyRenameDeclaration(match);
+    if (classified === "local") sawLocal = true;
+    if (classified === "member") sawMember = true;
+  }
+  return sawLocal && sawMember;
+}
+
 function requestedRenameMode(edit: EditCodeRenameEdit): RenameMode | null {
   if (edit.target === "local") return "local";
   if (edit.target === "member") return "member";
@@ -435,6 +457,14 @@ export async function editCode(input: {
         `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
         undefined,
         editCodeRecovery(input.path, "refine-pattern"),
+      );
+    }
+    if (isRenameEdit(edit) && !edit.target && hasRenameModeConflict(matches)) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+        undefined,
+        editCodeRecovery(input.path, "clarify-rename-target"),
       );
     }
     const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
