@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";
 import {
-  editFileRecoveryEvaluator,
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
+  toolRecoveryEvaluator,
   verifyCycle,
 } from "./lifecycle-evaluators";
 import { phaseFinalize } from "./lifecycle-finalize";
@@ -695,7 +695,7 @@ describe("repeatedFailureEvaluator", () => {
   });
 });
 
-describe("editFileRecoveryEvaluator", () => {
+describe("toolRecoveryEvaluator", () => {
   test("returns regenerate when edit-file exposes structured recovery", () => {
     const session = createSessionContext();
     session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
@@ -717,17 +717,101 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = editFileRecoveryEvaluator.evaluate(ctx);
+    const action = toolRecoveryEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("edit-file");
+      expect(action.feedback?.source).toBe("tool-recovery");
       expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
       expect(action.feedback?.details).toContain("Find text matched 3 locations");
       expect(action.feedback?.instruction).toContain("src/priority.ts");
     }
   });
 
-  test("returns done when there is no structured edit-file recovery", () => {
+  test("returns regenerate when edit-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.editCodeNoMatch,
+        tool: "edit-code",
+        message: "edit-code failed: [E_EDIT_CODE_NO_MATCH] No AST matches found for pattern: return $VALUE",
+        recovery: {
+          tool: "edit-code",
+          kind: "refine-pattern",
+          summary: "Your AST pattern did not match the current file.",
+          instruction: "Refine the pattern against the latest file syntax.",
+          nextTool: "read-file",
+          targetPaths: ["src/code-ops.ts"],
+        },
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
+      expect(action.feedback?.details).toContain("No AST matches found");
+      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
+      expect(action.feedback?.instruction).toContain("Refine the pattern");
+    }
+  });
+
+  test("returns regenerate when scan-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
+        },
+      },
+      result: { text: "Attempted scan.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
+      expect(action.feedback?.details).toContain("notes.yaml");
+      expect(action.feedback?.details).toContain("Suggested next tool: search-files");
+      expect(action.feedback?.details).toContain("Suggested paths: notes.yaml");
+      expect(action.feedback?.instruction).toContain("search-files");
+    }
+  });
+
+  test("returns done for structured recovery while active mode is verify", () => {
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use search-files for plain-text lookup.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
+        },
+      },
+      result: { text: "Attempted verify scan.", toolCalls: [] },
+    });
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when there is no structured tool recovery", () => {
     const ctx = createMockContext({
       initialMode: "work",
       currentError: {
@@ -737,7 +821,7 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done after a later successful write for disambiguate-match recovery", () => {
@@ -763,7 +847,7 @@ describe("editFileRecoveryEvaluator", () => {
       },
       result: { text: "Applied the change.", toolCalls: [] },
     });
-    expect(editFileRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 
@@ -962,14 +1046,14 @@ describe("createGenerationInput", () => {
         feedback: [
           { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
           { source: "lint", mode: "work", summary: "Lint errors detected" },
-          { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
+          { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
         ],
       },
     });
     expect(input).toContain("USER: fix it");
     expect(input).toContain("Lifecycle feedback (lint)");
     expect(input).toContain("Lint errors detected");
-    expect(input).toContain("Lifecycle feedback (edit-file)");
+    expect(input).toContain("Lifecycle feedback (tool-recovery)");
     expect(input).toContain("Use a bounded edit next");
     expect(input).not.toContain("Task boundary:\n- src/a.ts");
   });
@@ -1003,7 +1087,11 @@ describe("consumeLifecycleFeedback", () => {
           details: "Task boundary:\n- src/a.ts",
         },
         { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
-        { source: "edit-file" as const, mode: "work" as const, summary: "Use a bounded edit next" },
+        {
+          source: "tool-recovery" as const,
+          mode: "work" as const,
+          summary: "Use a bounded edit next",
+        },
       ],
     };
 
@@ -1011,7 +1099,7 @@ describe("consumeLifecycleFeedback", () => {
 
     expect(consumed).toEqual([
       { source: "lint", mode: "work", summary: "Lint errors detected" },
-      { source: "edit-file", mode: "work", summary: "Use a bounded edit next" },
+      { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
     ]);
     expect(state.feedback).toEqual([
       { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },

@@ -9,6 +9,10 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-rename",
   "two-file-deps-rename",
   "bounded-return-fix",
+  "scan-code-yaml-recovery",
+  "scoped-edit-code-rename",
+  "class-field-edit-code-rename",
+  "structured-edit-code-replace",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -386,6 +390,246 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   return issues;
 }
 
+async function createScanCodeYamlRecoveryWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "config/models.yaml",
+    ["models:", "  default_alias: acolyte-mini", "  fallback_alias: acolyte-nano", ""].join("\n"),
+  );
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.ts",
+    [
+      'export const MODEL_ALIAS = "acolyte-mini";',
+      "",
+      "export function resolveProviderLabel(alias: string): string {",
+      '  return alias === MODEL_ALIAS ? "default" : "custom";',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScanCodeYamlRecoveryWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.ts");
+  if (!content.includes('export const DEFAULT_ALIAS = "acolyte-mini";')) {
+    issues.push("src/provider-config.ts should rename MODEL_ALIAS to DEFAULT_ALIAS");
+  }
+  if (content.includes("MODEL_ALIAS")) {
+    issues.push("src/provider-config.ts should not keep MODEL_ALIAS");
+  }
+  if (!content.includes('return alias === DEFAULT_ALIAS ? "default" : "custom";')) {
+    issues.push("src/provider-config.ts should update the provider label comparison to DEFAULT_ALIAS");
+  }
+  return issues;
+}
+
+function validateScanCodeYamlRecoveryTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const scanYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=scan-code") && line.includes("config/models.yaml"),
+  ).length;
+  if (scanYamlCalls === 0) {
+    issues.push("scan-code recovery scenario should attempt scan-code on config/models.yaml");
+  }
+  const searchYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=search-files") && line.includes("config/models.yaml"),
+  ).length;
+  const readYamlCalls = toolCallLines.filter(
+    (line) => line.includes("tool=read-file") && line.includes("config/models.yaml"),
+  ).length;
+  if (searchYamlCalls + readYamlCalls === 0) {
+    issues.push("scan-code recovery scenario should recover with a plain-text lookup on config/models.yaml");
+  }
+  const editTargetCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+  ).length;
+  if (editTargetCalls === 0) {
+    issues.push("scan-code recovery scenario should update src/provider-config.ts");
+  }
+  if (editTargetCalls > 1) {
+    issues.push(`scan-code recovery scenario should edit src/provider-config.ts at most once, saw ${editTargetCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-code") && line.includes("src/provider-config.ts"))) {
+    issues.push("scan-code recovery scenario should not switch to edit-code for src/provider-config.ts");
+  }
+  return issues;
+}
+
+async function createScopedEditCodeRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/code-ops.ts",
+    [
+      "export function scanCode(results: string[]): string {",
+      "  const totalMatches = () => results.reduce((sum, result) => sum + result.length, 0);",
+      "  const scanFile = (items: string[]): string[] => {",
+      "    const output: string[] = [];",
+      "    for (const result of items) {",
+      "      output.push(result.toUpperCase());",
+      "    }",
+      "    return output;",
+      "  };",
+      "  const lines = scanFile(results);",
+      "  return totalMatches() + ':' + lines.join(',');",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScopedEditCodeRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/code-ops.ts");
+  if (!content.includes("for (const patternResult of items)")) {
+    issues.push("scanFile loop variable should be renamed to patternResult");
+  }
+  if (!content.includes("output.push(patternResult.toUpperCase());")) {
+    issues.push("scanFile loop body should use patternResult");
+  }
+  if (!content.includes("results.reduce((sum, result) => sum + result.length, 0)")) {
+    issues.push("totalMatches reducer should keep the outer result variable unchanged");
+  }
+  if (content.includes("sum + patternResult.length")) {
+    issues.push("outer totalMatches reducer should not rename result to patternResult");
+  }
+  return issues;
+}
+
+async function createClassFieldEditCodeRenameWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/provider-config.js",
+    [
+      "class ProviderConfig {",
+      '  alias = "acolyte-mini";',
+      "  label() {",
+      "    return this.alias;",
+      "  }",
+      "}",
+      "",
+      'const alias = "outside";',
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateClassFieldEditCodeRenameWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/provider-config.js");
+  if (!content.includes('defaultAlias = "acolyte-mini";')) {
+    issues.push("ProviderConfig class field should be renamed to defaultAlias");
+  }
+  if (content.includes('  alias = "acolyte-mini";')) {
+    issues.push("ProviderConfig class field should not keep alias");
+  }
+  if (!content.includes("return this.defaultAlias;")) {
+    issues.push("ProviderConfig method should use this.defaultAlias");
+  }
+  if (!content.includes('const alias = "outside";')) {
+    issues.push("top-level alias should remain unchanged");
+  }
+  return issues;
+}
+
+async function createStructuredEditCodeReplaceWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/logger-migration.ts",
+    [
+      "export function logMessages(): void {",
+      '  console.log("first");',
+      '  console.info("second");',
+      '  console.warn("third");',
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateStructuredEditCodeReplaceWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/logger-migration.ts");
+  if (!content.includes('logger.debug("first");')) {
+    issues.push("logger migration should replace console.log with logger.debug");
+  }
+  if (!content.includes('logger.debug("second");')) {
+    issues.push("logger migration should replace console.info with logger.debug");
+  }
+  if (!content.includes('console.warn("third");')) {
+    issues.push("logger migration should leave console.warn unchanged");
+  }
+  if (content.includes('console.log("first");')) {
+    issues.push("logger migration should not keep console.log");
+  }
+  if (content.includes('console.info("second");')) {
+    issues.push("logger migration should not keep console.info");
+  }
+  return issues;
+}
+
+function validateStructuredEditCodeReplaceTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/logger-migration.ts")) {
+    issues.push("first tool call should be read-file on src/logger-migration.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/logger-migration.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("structured replace scenario should use edit-code on src/logger-migration.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`structured replace scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/logger-migration.ts"))) {
+    issues.push("structured replace scenario should not fall back to edit-file on src/logger-migration.ts");
+  }
+  return issues;
+}
+
+function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.js")) {
+    issues.push("first tool call should be read-file on src/provider-config.js");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/provider-config.js"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("class-field rename scenario should use edit-code on src/provider-config.js");
+  if (editCodeCalls > 2) {
+    issues.push(`class-field rename scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.js"))) {
+    issues.push("class-field rename scenario should not fall back to edit-file on src/provider-config.js");
+  }
+  return issues;
+}
+
+function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/code-ops.ts")) {
+    issues.push("first tool call should be read-file on src/code-ops.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/code-ops.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("scoped edit-code scenario should use edit-code on src/code-ops.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`scoped edit-code scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/code-ops.ts"))) {
+    issues.push("scoped edit-code scenario should not fall back to edit-file on src/code-ops.ts");
+  }
+  return issues;
+}
+
 export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
   {
     id: "docs-link-fix",
@@ -441,6 +685,46 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createBoundedReturnFixWorkspace,
     validate: validateBoundedReturnFixWorkspace,
     validateTrace: validateBoundedReturnFixTrace,
+  },
+  {
+    id: "scan-code-yaml-recovery",
+    description: "Recover from unsupported scan-code input by switching to plain-text lookup.",
+    prompt:
+      "Use scan-code on config/models.yaml to find the default alias. Then in src/provider-config.ts rename MODEL_ALIAS to DEFAULT_ALIAS and keep the same alias value. If scan-code cannot read the yaml file, recover with the appropriate plain-text tool. Update only src/provider-config.ts, then stop.",
+    expectedChanges: ["src/provider-config.ts"],
+    setup: createScanCodeYamlRecoveryWorkspace,
+    validate: validateScanCodeYamlRecoveryWorkspace,
+    validateTrace: validateScanCodeYamlRecoveryTrace,
+  },
+  {
+    id: "scoped-edit-code-rename",
+    description: "Scoped helper-only rename using edit-code with within.",
+    prompt:
+      'In src/code-ops.ts, rename the loop variable `result` to `patternResult` inside the `scanFile` helper only. Use `edit-code` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update only that file, then stop.',
+    expectedChanges: ["src/code-ops.ts"],
+    setup: createScopedEditCodeRenameWorkspace,
+    validate: validateScopedEditCodeRenameWorkspace,
+    validateTrace: validateScopedEditCodeRenameTrace,
+  },
+  {
+    id: "class-field-edit-code-rename",
+    description: "Scoped class-field rename using edit-code with withinSymbol.",
+    prompt:
+      'In src/provider-config.js, rename `alias` to `defaultAlias` inside `ProviderConfig` only. Use `edit-code` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig" }. Update only that file, then stop.',
+    expectedChanges: ["src/provider-config.js"],
+    setup: createClassFieldEditCodeRenameWorkspace,
+    validate: validateClassFieldEditCodeRenameWorkspace,
+    validateTrace: validateClassFieldEditCodeRenameTrace,
+  },
+  {
+    id: "structured-edit-code-replace",
+    description: "Structured edit-code replace using a rule object with any.",
+    prompt:
+      'In src/logger-migration.ts, replace console.log(...) and console.info(...) with logger.debug(...) using `edit-code` and a structured replace edit like { op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }. Leave console.warn unchanged. Update only that file, then stop.',
+    expectedChanges: ["src/logger-migration.ts"],
+    setup: createStructuredEditCodeReplaceWorkspace,
+    validate: validateStructuredEditCodeReplaceWorkspace,
+    validateTrace: validateStructuredEditCodeReplaceTrace,
   },
 ];
 

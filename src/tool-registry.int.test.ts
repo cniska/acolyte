@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { toolsForAgent } from "./tool-registry";
 
 describe("tool error wrapper integration", () => {

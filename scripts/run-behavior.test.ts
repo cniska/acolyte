@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { BEHAVIOR_SCENARIO_LIST, parseBehaviorScenarioId } from "./behavior-scenarios";
-import { analyzeBehavior, parseArgs } from "./run-behavior";
+import { analyzeBehavior, parseArgs, summarizeTrace } from "./run-behavior";
 
 describe("run-behavior args", () => {
   test("parseArgs applies defaults", () => {
@@ -37,13 +37,34 @@ describe("behavior scenarios", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
 
-  test("includes bounded-return-fix and two-file-deps-rename scenarios", () => {
+  test("includes bounded-return-fix, scan-code-yaml-recovery, two-file-deps-rename, scoped-edit-code-rename, class-field-edit-code-rename, and structured-edit-code-replace scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scan-code-yaml-recovery")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-edit-code-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "structured-edit-code-replace")).toBe(true);
   });
 });
 
 describe("behavior analysis", () => {
+  test("summarizeTrace counts code tools in fallback trace mode", () => {
+    const trace = summarizeTrace([
+      "ts level=debug event=lifecycle.generate.start task_id=task_123",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=read-file path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=scan-code path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=edit-code path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.signal.accepted task_id=task_123 signal=done",
+    ]);
+
+    expect(trace).toBeDefined();
+    expect(trace?.taskId).toBe("task_123");
+    expect(trace?.readCalls).toBe(1);
+    expect(trace?.searchCalls).toBe(1);
+    expect(trace?.writeCalls).toBe(1);
+    expect(trace?.lifecycleSignal).toBe("done");
+  });
+
   test("analyzeBehavior scores a clean bounded run highly", () => {
     const analysis = analyzeBehavior({
       exitCode: 0,

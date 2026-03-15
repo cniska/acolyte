@@ -1,21 +1,15 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
-import {
-  EDIT_FILE_RECOVERY_KINDS,
-  type EditFileRecoveryKind,
-  ERROR_KINDS,
-  type ErrorCode,
-  type ErrorKind,
-  extractToolErrorCode,
-  LIFECYCLE_ERROR_CODES,
-  type ToolRecovery,
-} from "./error-primitives";
+import { CodedError } from "./coded-error";
+import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
+import { extractToolErrorCode } from "./tool-error";
+import { parseToolRecovery, type ToolRecovery } from "./tool-recovery";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
-export type AppError<TCode extends string = string, TMeta = unknown> = Error & { code: TCode; meta?: TMeta };
+export type AppError<TCode extends string = string, TMeta = unknown> = CodedError<TCode, TMeta>;
 export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
@@ -36,10 +30,7 @@ export function createAppError<TCode extends string, TMeta = unknown>(
   message: string,
   meta?: TMeta,
 ): AppError<TCode, TMeta> {
-  const error = new Error(message) as AppError<TCode, TMeta>;
-  error.code = code;
-  if (meta !== undefined) error.meta = meta;
-  return error;
+  return new CodedError(code, message, meta !== undefined ? { meta } : undefined);
 }
 
 export function createErrorStats(initialValue = 0): Record<ErrorCategory, number> {
@@ -109,55 +100,11 @@ export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
   }
 }
 
-export function parseErrorInfo(value: unknown): ParseErrorResult {
-  if (typeof value === "string") return { ok: true, value: { message: value, code: extractToolErrorCode(value) } };
-  if (value instanceof Error) {
-    const code = "code" in value && typeof value.code === "string" ? value.code : extractToolErrorCode(value.message);
-    const kind = "kind" in value && typeof value.kind === "string" ? value.kind : undefined;
-    const recovery = "recovery" in value ? parseToolRecovery((value as { recovery?: unknown }).recovery) : undefined;
-    return { ok: true, value: { message: value.message, code, kind, recovery } };
-  }
-  if (typeof value === "object" && value !== null) {
-    const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown; recovery?: unknown };
-    if (typeof rec.message === "string") {
-      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.message);
-      const kind = typeof rec.kind === "string" ? rec.kind : undefined;
-      return { ok: true, value: { message: rec.message, code, kind, recovery: parseToolRecovery(rec.recovery) } };
-    }
-    if (typeof rec.error === "string") {
-      const code = typeof rec.code === "string" ? rec.code : extractToolErrorCode(rec.error);
-      const kind = typeof rec.kind === "string" ? rec.kind : undefined;
-      return { ok: true, value: { message: rec.error, code, kind, recovery: parseToolRecovery(rec.recovery) } };
-    }
-    if (rec.error !== undefined) {
-      const nested = parseErrorInfo(rec.error);
-      if (!nested.ok) return nested;
-      return {
-        ok: true,
-        value: {
-          ...nested.value,
-          code: typeof rec.code === "string" ? rec.code : nested.value.code,
-          kind: typeof rec.kind === "string" ? rec.kind : nested.value.kind,
-          recovery: parseToolRecovery(rec.recovery) ?? nested.value.recovery,
-        },
-      };
-    }
-  }
+export function parseError(value: unknown): ParseErrorResult {
+  if (typeof value === "string") return { ok: true, value: parseMessageFields(value) };
+  if (value instanceof Error) return { ok: true, value: parseErrorInstance(value) };
+  if (typeof value === "object" && value !== null) return parseErrorObject(value);
   return { ok: false, error: "invalid_error_payload" };
-}
-
-function parseToolRecovery(value: unknown): ToolRecovery | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const rec = value as Record<string, unknown>;
-  if (
-    rec.tool === "edit-file" &&
-    EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind) &&
-    typeof rec.summary === "string" &&
-    typeof rec.instruction === "string"
-  ) {
-    return rec as ToolRecovery;
-  }
-  return undefined;
 }
 
 export function recoveryActionForError(
@@ -170,7 +117,7 @@ export function recoveryActionForError(
 }
 
 export function serializeToolError(value: unknown): SerializedToolError {
-  const parsed = parseErrorInfo(value);
+  const parsed = parseError(value);
   if (!parsed.ok) return { error: { message: "Tool error" } };
   const { message, code, kind, recovery } = parsed.value;
   return {
@@ -179,6 +126,44 @@ export function serializeToolError(value: unknown): SerializedToolError {
       ...(code ? { code } : {}),
       ...(kind ? { kind } : {}),
       ...(recovery ? { recovery } : {}),
+    },
+  };
+}
+
+function parseMessageFields(
+  message: string,
+  overrides?: { code?: unknown; kind?: unknown; recovery?: unknown },
+): ParsedError {
+  return {
+    message,
+    code: typeof overrides?.code === "string" ? overrides.code : extractToolErrorCode(message),
+    kind: typeof overrides?.kind === "string" ? overrides.kind : undefined,
+    recovery: parseToolRecovery(overrides?.recovery),
+  };
+}
+
+function parseErrorInstance(error: Error): ParsedError {
+  return parseMessageFields(error.message, {
+    code: "code" in error ? error.code : undefined,
+    kind: "kind" in error ? error.kind : undefined,
+    recovery: "recovery" in error ? error.recovery : undefined,
+  });
+}
+
+function parseErrorObject(value: object): ParseErrorResult {
+  const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown; recovery?: unknown };
+  if (typeof rec.message === "string") return { ok: true, value: parseMessageFields(rec.message, rec) };
+  if (typeof rec.error === "string") return { ok: true, value: parseMessageFields(rec.error, rec) };
+  if (rec.error === undefined) return { ok: false, error: "invalid_error_payload" };
+  const nested = parseError(rec.error);
+  if (!nested.ok) return nested;
+  return {
+    ok: true,
+    value: {
+      ...nested.value,
+      code: typeof rec.code === "string" ? rec.code : nested.value.code,
+      kind: typeof rec.kind === "string" ? rec.kind : nested.value.kind,
+      recovery: parseToolRecovery(rec.recovery) ?? nested.value.recovery,
     },
   };
 }

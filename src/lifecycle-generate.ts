@@ -4,6 +4,7 @@ import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -11,9 +12,8 @@ import {
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,
-  parseErrorInfo,
+  parseError,
 } from "./error-handling";
-import { extractToolErrorCode, LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -27,6 +27,7 @@ import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdown
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
+import { extractToolErrorCode } from "./tool-error";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
 
@@ -268,7 +269,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       if (chunk.type === "tool-error") {
         const p = chunk.payload;
         if (!p?.toolName && !p?.toolCallId) {
-          const parsed = parseErrorInfo(p?.error ?? p?.message);
+          const parsed = parseError(p?.error ?? p?.message);
           throw new Error(parsed.ok ? parsed.value.message : "Model stream error");
         }
       }
@@ -387,7 +388,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
           typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
         const isError = Boolean(resultRecord && "error" in resultRecord);
         if (isError) {
-          const parsed = parseErrorInfo(resultRecord?.error);
+          const parsed = parseError(resultRecord?.error);
           const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
           const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
           captureError(ctx, errorInfo.message, {
@@ -408,7 +409,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     case "tool-error": {
       const p = chunk.payload;
       const raw = p?.error ?? p?.message;
-      const parsed = parseErrorInfo(raw);
+      const parsed = parseError(raw);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const payloadCode = typeof p?.code === "string" ? p.code : undefined;
       const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;

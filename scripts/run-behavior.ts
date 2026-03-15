@@ -123,7 +123,7 @@ async function readLogLines(logPath: string): Promise<string[]> {
   }
 }
 
-function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySchema> | undefined {
+export function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSummarySchema> | undefined {
   const taskId = [...lines]
     .reverse()
     .map((line) => parseTaskId(line))
