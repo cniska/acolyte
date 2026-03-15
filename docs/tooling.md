@@ -55,7 +55,7 @@ A scan tool and an edit tool may both use ast-grep internally, but their input m
 Practical implications:
 
 - Query tools get their own simpler vocabulary even if a richer one exists internally
-- Mutation tools can borrow query-like concepts (e.g. `withinSymbol`) but only as **scoping constraints**, not as a general query language
+- Mutation tools may expose scoping constraints (e.g. `withinSymbol`, `within`) that narrow where the edit applies — these are targeting aids, not a query language
 - New capabilities in the underlying engine (e.g. new ast-grep rule types) should be evaluated **separately for query and mutation exposure**
 
 Internal implementations may share compilers, rule objects, or AST helpers, but these should remain implementation details.

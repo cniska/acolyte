@@ -36,8 +36,10 @@ function formatScanCodeResult(result: ScanCodeResult): string {
               .map(([key, value]) => `${key}=${value}`)
               .join(", ")}}`
           : "";
-      const symbolStr = match.enclosingSymbol ? ` [${match.enclosingSymbol}]` : "";
-      lines.push(`${match.path}:${match.line}:${symbolStr} ${truncated}${captureStr}`);
+      const prefix = match.enclosingSymbol
+        ? `${match.path}:${match.line}:[${match.enclosingSymbol}] `
+        : `${match.path}:${match.line}: `;
+      lines.push(`${prefix}${truncated}${captureStr}`.trimEnd());
     }
     if (multi && patternResult.matches.length === 0) lines.push("No matches.");
   }
@@ -61,14 +63,12 @@ function createScanCodeTool(input: ToolkitInput) {
       "Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
       "For keyword or regex searches prefer `search-files`.",
       "Each match includes an `enclosingSymbol` in the output — use it directly as `withinSymbol` in a follow-up `edit-code` call.",
-      "Pass `withinSymbol` to narrow scan results to a specific named declaration.",
     ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
       patterns: z.array(z.string().min(1)).min(1),
       language: z.string().optional(),
       maxResults: z.number().int().min(1).max(200).optional(),
-      withinSymbol: z.string().min(1).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("scan-code"),
@@ -107,7 +107,6 @@ function createScanCodeTool(input: ToolkitInput) {
           pattern: toolInput.patterns,
           language: toolInput.language,
           maxResults: toolInput.maxResults ?? 50,
-          withinSymbol: toolInput.withinSymbol,
         });
         const result = compactToolOutput(formatScanCodeResult(rawScan), budget);
         return { kind: "scan-code", paths, patterns: toolInput.patterns, output: result };
@@ -131,6 +130,7 @@ function createEditCodeTool(input: ToolkitInput) {
     removed: z.number().int().nonnegative(),
     matches: z.number().int().nonnegative(),
     edits: z.number().int().nonnegative(),
+    affectedSymbols: z.array(z.string()),
     output: z.string(),
   });
   return createTool({
@@ -184,6 +184,7 @@ function createEditCodeTool(input: ToolkitInput) {
           removed: totals.removed,
           matches: editResult.matches,
           edits: editResult.edits,
+          affectedSymbols: editResult.affectedSymbols,
           output: result,
         };
       });

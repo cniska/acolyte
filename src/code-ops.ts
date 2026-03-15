@@ -558,7 +558,6 @@ export async function scanCode(input: {
   pattern: string | string[];
   language?: string;
   maxResults?: number;
-  withinSymbol?: string;
 }): Promise<ScanCodeResult> {
   const maxResults = input.maxResults ?? 50;
   const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
@@ -583,7 +582,6 @@ export async function scanCode(input: {
       const found = tree.root().findAll({ rule: { pattern: result.pattern } });
       for (const match of found) {
         if (totalMatches() >= maxResults) return;
-        if (input.withinSymbol && !matchIsWithinSymbol(match, input.withinSymbol)) continue;
         const range = match.range();
         const text = match.text().split("\n")[0] ?? "";
         const captures: Record<string, string> = {};

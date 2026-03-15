@@ -897,21 +897,4 @@ describe("scanCode", () => {
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: '"active"' });
     expect(result.patterns[0]?.matches[0]?.enclosingSymbol).toBe("Status");
   });
-
-  test("withinSymbol scopes scan to TypeScript enum", async () => {
-    const filePath = `/tmp/acolyte-test-scan-within-enum-${testUuid()}.ts`;
-    tempFiles.push(filePath);
-    await writeFile(
-      filePath,
-      ["enum Color {", "  Red = 1,", "  Green = 2,", "}", "enum Size {", "  Small = 1,", "}", ""].join("\n"),
-      "utf8",
-    );
-    const result = await scanCode({
-      workspace: WORKSPACE,
-      paths: [filePath],
-      pattern: "1",
-      withinSymbol: "Color",
-    });
-    expect(result.matches).toBe(1);
-  });
 });
