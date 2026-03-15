@@ -66,7 +66,7 @@ lifecycle → guard → cache → toolkit → registry
 
 - **guard:** pre-execution safety/redundancy checks and post-execution call recording.
 - **cache:** per-task reuse layer for read-only and search tool results.
-- **toolkit:** domain tool definitions with guarded execution (`core-toolkit`, `git-toolkit`).
+- **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`).
 - **registry:** toolkit registration, permission filtering, and agent-facing tool surface.
 - **details:** see [Tooling](./tooling.md).
 

@@ -25,7 +25,7 @@ Acolyte is designed for developers who want the power of an AI coding agent with
 | Tool guards | Behavioral guards that detect and block degenerate patterns at runtime |
 | Memory | Context distillation extracts facts from conversations into 3-tier persistent storage |
 | Context budgeting | Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation |
-| Developer experience | Ink TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
+| Developer experience | Custom React TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
 
 ### Daemon architecture
 
@@ -49,7 +49,7 @@ The system prompt is measured and reserved before history allocation begins. Rem
 
 ### Developer experience
 
-The CLI ships a full TUI built with [Ink](https://github.com/vadimdemedes/ink): fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills. A model picker queries provider APIs for available models. Tool output is structured with typed rendering. AST-based editing and scanning via [ast-grep](https://ast-grep.github.io/).
+The CLI ships a custom React-based TUI: fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills. A model picker queries provider APIs for available models. Tool output is structured with typed rendering. AST-based editing and scanning run through [ast-grep](https://ast-grep.github.io/).
 
 ---
 

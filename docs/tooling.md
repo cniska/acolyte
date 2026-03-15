@@ -9,7 +9,7 @@ lifecycle → guard → cache → toolkit → registry
 ## Layers
 
 - **guard**: pre-execution checks and post-execution call recording.
-- **toolkit**: domain tool definitions (`core-toolkit`, `git-toolkit`).
+- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`).
 - **registry**: permission filtering and agent-facing tool surface.
 
 ## Guarded execution
@@ -40,6 +40,7 @@ This reduces redundant I/O and avoids re-sending identical tool results to the m
 ## Key files
 
 - `src/file-toolkit.ts`
+- `src/code-toolkit.ts`
 - `src/git-toolkit.ts`
 - `src/tool-registry.ts`
 - `src/tool-guards.ts`

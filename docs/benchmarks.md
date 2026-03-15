@@ -9,7 +9,7 @@ All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Fi
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, and evaluators | 21,271 | 168 | 12 + 6 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, evaluators, and AST code tools | 22,206 | 174 | 12 + 6 |
 | **Aider** | Python | AI pair programming in your terminal | 25,938 | 105 | 35 + 17 |
 | **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 216,720 | 1,059 | 173 + 79 |
 | **Pi** | TypeScript | Terminal coding agent harness with extensions | 100,500 | 395 | 50 + 19 |
@@ -21,7 +21,7 @@ All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Fi
 
 Source lines exclude test files, generated code, and files over 10k lines. Dependencies shown as direct runtime + dev.
 
-Acolyte ships with 12 runtime dependencies because the daemon owns the stack — no framework, no ORM, no bundler. The AI SDK handles model calls, Zod handles validation, Ink handles the TUI, tiktoken handles token counting. Everything else is owned code.
+Acolyte ships with 12 runtime dependencies because the daemon owns the stack — no framework, no ORM, no bundler. The AI SDK handles model calls, Zod handles validation, the custom React reconciler owns the TUI, and tiktoken handles token counting. Everything else is owned code.
 
 ## Type Safety (TypeScript projects, per 1k source lines)
 
@@ -33,7 +33,7 @@ Acolyte ships with 12 runtime dependencies because the daemon owns the stack —
 | Lint ignores (`biome-ignore` / `eslint-disable`) | 0.1 | 0.0 | 0.0 | 0.1 | 0.2 | 0.1 |
 | `: unknown` usage | 5.1 | 1.5 | 1.1 | 0.4 | 0.3 | 5.7 |
 
-Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high rates — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system. OpenClaw also favors `unknown` heavily. Continue has the highest `any` density.
+Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high rates — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system. OpenClaw also favors `unknown` heavily. Continue still has the highest `any` density.
 
 ## Type Safety (Python / Rust projects, per 1k source lines)
 
@@ -68,7 +68,7 @@ Near-zero tech debt markers (2 total). The guard and evaluator system catches is
 | Test lines | 16,433 | 12,410 | 41,784 | 36,020 | 5,579 | 143,114 | 82,506 | 48,170 | 518,527 |
 | Test / source ratio | **0.77** | 0.48 | 0.19 | 0.36 | 0.05 | **1.17** | 0.36 | 0.24 | 0.76 |
 
-Acolyte maintains a 0.76 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose has notably low test density.
+Acolyte maintains a 0.79 test/source ratio because the lifecycle phases, guards, and tools are each independent modules with clean interfaces — testable by design, not by retrofit. Four dedicated test types: unit (`*.test.ts`), integration (`*.int.test.ts`), TUI visual regression (`*.tui.test.ts`), and performance (`*.perf.test.ts`). OpenHands leads on raw ratio. Goose has notably low test density.
 
 ## Module Cohesion
 
@@ -79,7 +79,7 @@ Acolyte maintains a 0.76 test/source ratio because the lifecycle phases, guards,
 | Largest file | 620 | 2,486 | 4,964 | 4,465 | 2,506 | 1,715 | 3,229 | 4,758 | 2,814 |
 | Barrel / index files | 1 | 5 | 51 | 26 | 44 | 85 | 73 | 47 | 79 |
 
-Acolyte has the smallest average file size and fewest large files. The flat `src/` layout keeps modules at the same depth — minimal barrel re-exports, no deep nesting, no circular dependency chains.
+Acolyte still has the smallest average file size and fewest large files. The flat `src/` layout keeps modules at the same depth — minimal barrel re-exports, no deep nesting, no circular dependency chains.
 
 ## Error Handling (TypeScript projects, per 1k source lines)
 
@@ -89,7 +89,7 @@ Acolyte has the smallest average file size and fewest large files. The flat `src
 | `try { ... }` blocks | 5.5 | 1.3 | 4.2 | 6.1 | 3.8 | 4.8 |
 | `.catch()` calls | 0.6 | 2.2 | 0.3 | 1.1 | 0.3 | 1.0 |
 
-Acolyte validates at boundaries with Zod `.safeParse()` at 13x+ the rate of most other projects. Every RPC payload, model response, and config file is validated before entering the system — errors surface as structured results, not uncaught exceptions.
+Acolyte validates at boundaries with Zod `.safeParse()` at 11x+ the rate of most other projects. Every RPC payload, model response, and config file is validated before entering the system — errors surface as structured results, not uncaught exceptions.
 
 ## Summary
 
@@ -97,8 +97,8 @@ Acolyte validates at boundaries with Zod `.safeParse()` at 13x+ the rate of most
 |---|---|---|---|---|---|---|---|---|---|
 | Type safety | Best | Clean | Weak | Mid | Unwrap-heavy | Type-ignore-heavy | Weakest | Mid | Good |
 | Tech debt | Zero | Low | Low | Zero | Low | Mid | Highest | Mid | Zero |
-| Test density | High (0.76) | Mid (0.48) | Low (0.19) | Mid (0.35) | Lowest (0.04) | Highest (1.15) | Mid (0.36) | Low (0.23) | High (0.74) |
-| Module size | Smallest (124) | Mid (247) | Mid (203) | Mid (251) | Largest (373) | Mid (174) | Mid (158) | Mid (165) | Mid (181) |
+| Test density | High (0.79) | Mid (0.48) | Low (0.20) | Mid (0.36) | Lowest (0.05) | Highest (1.17) | Mid (0.36) | Low (0.24) | High (0.76) |
+| Module size | Smallest (128) | Mid (247) | Mid (204) | Mid (254) | Largest (374) | Mid (174) | Mid (158) | Mid (165) | Mid (181) |
 | Dependencies | Lightest (18) | Light (52) | Heavy (252) | Light (69) | Heavy (154) | Mid (90) | Heavy (350) | Heavy (225) | Heavy (156) |
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 

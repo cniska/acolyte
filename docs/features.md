@@ -37,7 +37,7 @@ Shipped, user-visible capabilities.
 
 - Find/search/read files.
 - Edit/create/delete files.
-- AST scan and AST edit.
+- Structural code scanning and editing via dedicated `scan-code` and `edit-code` tools.
 - Git status/diff.
 - Shell command execution.
 - Web search/fetch.
