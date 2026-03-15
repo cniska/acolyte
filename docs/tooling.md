@@ -41,6 +41,25 @@ Read-only and search tools (`read-file`, `find-files`, `search-files`, `scan-cod
 
 This reduces redundant I/O and avoids re-sending identical tool results to the model.
 
+## Query vs mutation tools
+
+Tools are divided into two categories with fundamentally different design constraints.
+
+**Query tools** (`read-file`, `find-files`, `search-files`, `scan-code`) are read-only and exploratory. Their contracts should be simple and discoverable — the caller is asking *“show me what’s there.”* Input schemas should reflect the user's mental model of searching, not the engine's internal capabilities.
+
+**Mutation tools** (`edit-file`, `create-file`, `delete-file`, `edit-code`) change workspace state. Their contracts can be more expressive because precise targeting matters — the cost of a wrong match is a bad edit.
+
+The key principle: **do not unify query and mutation contracts just because they share an implementation.**  
+A scan tool and an edit tool may both use ast-grep internally, but their input models serve different purposes and should be designed independently. Leaking mutation rule language into query tools couples them unnecessarily and complicates the caller’s mental model.
+
+Practical implications:
+
+- Query tools get their own simpler vocabulary even if a richer one exists internally
+- Mutation tools can borrow query-like concepts (e.g. `withinSymbol`) but only as **scoping constraints**, not as a general query language
+- New capabilities in the underlying engine (e.g. new ast-grep rule types) should be evaluated **separately for query and mutation exposure**
+
+Internal implementations may share compilers, rule objects, or AST helpers, but these should remain implementation details.
+
 ## Extension seams
 
 - Add tools by extending toolkit modules.
