@@ -7,6 +7,7 @@ import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import {
+  createDiffSummaryEmitter,
   emitFindSummary,
   emitSearchSummary,
   findResultPaths,
@@ -15,23 +16,6 @@ import {
   summarizeUnifiedDiff,
   TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
-
-function emitDiffSummaryHeader(
-  toolName: "edit-file" | "edit-code" | "create-file",
-  label: string,
-  path: string,
-  rawResult: string,
-  onOutput: ToolkitInput["onOutput"],
-  toolCallId: string,
-): void {
-  const { files, added, removed } = summarizeUnifiedDiff(rawResult);
-  const touchedFiles = files > 0 ? files : 1;
-  onOutput({
-    toolName,
-    content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
-    toolCallId,
-  });
-}
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -261,6 +245,11 @@ function createReadFileTool(input: ToolkitInput) {
 
 function createEditFileTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
+  const emitDiffSummaryHeader = createDiffSummaryEmitter({
+    toolName: "edit-file",
+    label: t("tool.label.edit"),
+    onOutput,
+  });
   const outputSchema = z.object({
     kind: z.literal("edit-file"),
     path: z.string().min(1),
@@ -297,7 +286,7 @@ function createEditFileTool(input: ToolkitInput) {
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader("edit-file", t("tool.label.edit"), toolInput.path, rawResult, onOutput, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, rawResult, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "edit-file", content, toolCallId });
         const totals = summarizeUnifiedDiff(rawResult);
@@ -317,6 +306,11 @@ function createEditFileTool(input: ToolkitInput) {
 
 function createCreateFileTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
+  const emitDiffSummaryHeader = createDiffSummaryEmitter({
+    toolName: "create-file",
+    label: t("tool.label.create"),
+    onOutput,
+  });
   return createTool({
     id: "create-file",
     label: t("tool.label.create"),
@@ -345,7 +339,7 @@ function createCreateFileTool(input: ToolkitInput) {
           content: toolInput.content,
           overwrite: true,
         });
-        emitDiffSummaryHeader("create-file", t("tool.label.create"), toolInput.path, rawResult, onOutput, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, rawResult, toolCallId);
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "create-file", content, toolCallId });
         const totals = summarizeUnifiedDiff(rawResult);

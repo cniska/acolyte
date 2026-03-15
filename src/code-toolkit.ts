@@ -7,24 +7,7 @@ import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
-
-function emitDiffSummaryHeader(
-  toolName: "edit-code",
-  label: string,
-  path: string,
-  rawResult: string,
-  onOutput: ToolkitInput["onOutput"],
-  toolCallId: string,
-): void {
-  const { files, added, removed } = summarizeUnifiedDiff(rawResult);
-  const touchedFiles = files > 0 ? files : 1;
-  onOutput({
-    toolName,
-    content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
-    toolCallId,
-  });
-}
+import { createDiffSummaryEmitter, numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -125,6 +108,11 @@ function createScanCodeTool(input: ToolkitInput) {
 
 function createEditCodeTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
+  const emitDiffSummaryHeader = createDiffSummaryEmitter({
+    toolName: "edit-code",
+    label: t("tool.label.edit"),
+    onOutput,
+  });
   const outputSchema = z.object({
     kind: z.literal("edit-code"),
     path: z.string().min(1),
@@ -156,14 +144,7 @@ function createEditCodeTool(input: ToolkitInput) {
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(
-          "edit-code",
-          t("tool.label.edit"),
-          toolInput.path,
-          editResult.output,
-          onOutput,
-          toolCallId,
-        );
+        emitDiffSummaryHeader(toolInput.path, editResult.output, toolCallId);
         for (const content of numberedUnifiedDiffLines(editResult.output))
           onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = summarizeUnifiedDiff(editResult.output);

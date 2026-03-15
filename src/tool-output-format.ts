@@ -40,6 +40,23 @@ export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
   return { files, added, removed };
 }
 
+export function createDiffSummaryEmitter(input: {
+  toolName: string;
+  label: string;
+  onOutput: ToolOutputListener;
+}): (path: string, rawResult: string, toolCallId: string) => void {
+  const { toolName, label, onOutput } = input;
+  return (path, rawResult, toolCallId) => {
+    const { files, added, removed } = summarizeUnifiedDiff(rawResult);
+    const touchedFiles = files > 0 ? files : 1;
+    onOutput({
+      toolName,
+      content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
+      toolCallId,
+    });
+  };
+}
+
 export function emitHeadTailLines(
   toolName: string,
   rawText: string,
