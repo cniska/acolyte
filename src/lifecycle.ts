@@ -15,6 +15,28 @@ import { renderToolOutput } from "./tool-output-content";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
+export type LifecycleDeps = {
+  resolveInitialMode: typeof resolveInitialMode;
+  resolveLifecyclePolicy: typeof resolveLifecyclePolicy;
+  phasePrepare: typeof phasePrepare;
+  createModeAgent: typeof createModeAgent;
+  phaseGenerate: typeof phaseGenerate;
+  shouldYieldNow: typeof shouldYieldNow;
+  phaseEvaluate: typeof phaseEvaluate;
+  phaseFinalize: typeof phaseFinalize;
+};
+
+const defaultLifecycleDeps: LifecycleDeps = {
+  resolveInitialMode,
+  resolveLifecyclePolicy,
+  phasePrepare,
+  createModeAgent,
+  phaseGenerate,
+  shouldYieldNow,
+  phaseEvaluate,
+  phaseFinalize,
+};
+
 export function shouldCommitMemory(input: LifecycleInput): boolean {
   return input.request.useMemory !== false;
 }
@@ -60,11 +82,12 @@ function createRunContext(
     prepared: ReturnType<typeof phasePrepare>;
     emit: RunContext["emit"];
     policy: RunContext["policy"];
+    createModeAgent: typeof createModeAgent;
   },
 ): RunContext {
   const session = params.prepared.session;
   const previousOnGuard = session.onGuard;
-  const agent = createModeAgent({
+  const agent = params.createModeAgent({
     soulPrompt: input.soulPrompt,
     mode: params.initialMode,
     workspace: input.workspace,
@@ -146,8 +169,12 @@ function attachToolOutputHandler(ctx: RunContext) {
 }
 
 export async function runLifecycle(input: LifecycleInput) {
+  return runLifecycleWith(input);
+}
+
+export async function runLifecycleWith(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  const policy = resolveLifecyclePolicy(input.lifecyclePolicy);
+  const policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
   let debugSequence = 0;
   let ctxRef: RunContext | undefined;
   const debugSink = input.onDebug ?? (() => {});
@@ -161,9 +188,9 @@ export async function runLifecycle(input: LifecycleInput) {
     });
   };
 
-  const { mode: initialMode, model } = resolveInitialMode(input.request, debug);
+  const { mode: initialMode, model } = deps.resolveInitialMode(input.request, debug);
 
-  const prepared = phasePrepare({
+  const prepared = deps.phasePrepare({
     request: input.request,
     workspace: input.workspace,
     taskId: input.taskId,
@@ -178,7 +205,15 @@ export async function runLifecycle(input: LifecycleInput) {
     },
   });
 
-  const ctx = createRunContext(input, { debug, initialMode, model, prepared, emit, policy });
+  const ctx = createRunContext(input, {
+    debug,
+    initialMode,
+    model,
+    prepared,
+    emit,
+    policy,
+    createModeAgent: deps.createModeAgent,
+  });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
@@ -187,15 +222,15 @@ export async function runLifecycle(input: LifecycleInput) {
   if (ctx.promptUsage.activeSkillName) {
     emit({ type: "status", message: `skill:${ctx.promptUsage.activeSkillName}` });
   }
-  await phaseGenerate(ctx, {
+  await deps.phaseGenerate(ctx, {
     cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });
 
-  if (!ctx.result) return phaseFinalize(ctx);
-  if (shouldYieldNow(ctx, input.shouldYield)) return phaseFinalize(ctx);
+  if (!ctx.result) return deps.phaseFinalize(ctx);
+  if (deps.shouldYieldNow(ctx, input.shouldYield)) return deps.phaseFinalize(ctx);
 
-  await phaseEvaluate(ctx, input.shouldYield);
+  await deps.phaseEvaluate(ctx, input.shouldYield);
 
   // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {
@@ -214,5 +249,5 @@ export async function runLifecycle(input: LifecycleInput) {
     );
   }
 
-  return phaseFinalize(ctx);
+  return deps.phaseFinalize(ctx);
 }

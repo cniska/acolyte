@@ -1,5 +1,94 @@
-import { describe, expect, test } from "bun:test";
-import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { describe, expect, mock, test } from "bun:test";
+import type { ChatResponse } from "./api";
+import type { LifecycleDeps } from "./lifecycle";
+import { runLifecycleWith, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import { createSessionContext } from "./tool-guards";
+import type { Toolset } from "./tool-registry";
+
+const phasePrepare = mock(() => ({
+  session: createSessionContext(),
+  tools: {} as unknown as Toolset,
+  baseAgentInput: "BASE_INPUT",
+  promptUsage: {
+    inputTokens: 0,
+    inputBudgetTokens: 8000,
+    systemPromptTokens: 0,
+    toolTokens: 0,
+    memoryTokens: 0,
+    messageTokens: 0,
+    inputTruncated: false,
+    includedHistoryMessages: 0,
+    totalHistoryMessages: 0,
+  },
+}));
+
+const phaseGenerate = mock(async (ctx: { result?: unknown }) => {
+  ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+});
+
+const phaseEvaluate = mock(
+  async (ctx: { session: { flags: { totalStepLimit?: number } }; result?: { text: string } }) => {
+    expect(ctx.session.flags.totalStepLimit).toBe(12);
+    expect(ctx.result?.text).toBe("Generated output");
+  },
+);
+
+const phaseFinalize = mock(
+  (ctx: { result?: { text: string } }): ChatResponse => ({
+    model: "gpt-5-mini",
+    output: ctx.result?.text ?? "",
+  }),
+);
+
+const createModeAgent = mock(() => ({
+  id: "test-agent",
+  name: "test-agent",
+  instructions: "",
+  model: {} as never,
+  tools: {},
+  async stream() {
+    throw new Error("createModeAgent stream should not be called in runLifecycle unit test");
+  },
+}));
+
+describe("runLifecycle", () => {
+  test("orchestrates prepare, generate, evaluate, and finalize", async () => {
+    const deps: LifecycleDeps = {
+      resolveInitialMode: () => ({ mode: "work", model: "gpt-5-mini" }),
+      resolveLifecyclePolicy: () => ({
+        ...defaultLifecyclePolicy,
+        initialMaxSteps: 3,
+        stepTimeoutMs: 1000,
+        totalMaxSteps: 12,
+        maxNudgesPerGeneration: 1,
+      }),
+      phasePrepare,
+      createModeAgent,
+      phaseGenerate,
+      shouldYieldNow: () => false,
+      phaseEvaluate,
+      phaseFinalize,
+    };
+
+    const response = await runLifecycleWith(
+      {
+        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
+        soulPrompt: "SOUL",
+        workspace: "/tmp/workspace",
+        taskId: "task_test",
+      },
+      deps,
+    );
+
+    expect(phasePrepare).toHaveBeenCalledTimes(1);
+    expect(createModeAgent).toHaveBeenCalledTimes(1);
+    expect(phaseGenerate).toHaveBeenCalledTimes(1);
+    expect(phaseEvaluate).toHaveBeenCalledTimes(1);
+    expect(phaseFinalize).toHaveBeenCalledTimes(1);
+    expect(response).toEqual({ model: "gpt-5-mini", output: "Generated output" });
+  });
+});
 
 describe("shouldCommitMemory", () => {
   test("returns false when request disables memory", () => {

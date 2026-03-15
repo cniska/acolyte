@@ -14,27 +14,29 @@ import {
 } from "./config-contract";
 import { t } from "./i18n";
 
-const DEFAULT_CONFIG = {
-  port: 6767,
-  locale: "en" as const,
-  model: "gpt-5-mini",
-  openaiBaseUrl: "https://api.openai.com/v1",
-  anthropicBaseUrl: "https://api.anthropic.com/v1",
-  googleBaseUrl: "https://generativelanguage.googleapis.com",
-  logFormat: "logfmt" as LogFormat,
-  transportMode: "rpc" as const,
-  distillMessageThreshold: 20,
-  distillReflectionThresholdTokens: 8_000,
-  distillMaxOutputTokens: 1_000,
-  memoryBudgetTokens: 1_200,
-  memorySources: ["stored", "distill_project", "distill_user", "distill_session"] as const,
-  contextMaxTokens: 8_000,
-  maxHistoryMessages: 40,
-  maxMessageTokens: 600,
-  maxAttachmentMessageTokens: 3_000,
-  maxPinnedMessageTokens: 1_200,
-  replyTimeoutMs: 180_000,
-};
+function createDefaultConfig() {
+  return {
+    port: 6767,
+    locale: "en" as const,
+    model: "gpt-5-mini",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    anthropicBaseUrl: "https://api.anthropic.com/v1",
+    googleBaseUrl: "https://generativelanguage.googleapis.com",
+    logFormat: "logfmt" as LogFormat,
+    transportMode: "rpc" as const,
+    distillMessageThreshold: 20,
+    distillReflectionThresholdTokens: 8_000,
+    distillMaxOutputTokens: 1_000,
+    memoryBudgetTokens: 1_200,
+    memorySources: ["stored", "distill_project", "distill_user", "distill_session"] as const,
+    contextMaxTokens: 8_000,
+    maxHistoryMessages: 40,
+    maxMessageTokens: 600,
+    maxAttachmentMessageTokens: 3_000,
+    maxPinnedMessageTokens: 1_200,
+    replyTimeoutMs: 180_000,
+  };
+}
 
 export type ConfigOptions = {
   homeDir?: string;
@@ -154,32 +156,33 @@ function serializeToml(config: Config): string {
 }
 
 function resolveConfig(config: Config): ResolvedConfig {
-  const model = config.model ?? DEFAULT_CONFIG.model;
-  const port = config.port ?? DEFAULT_CONFIG.port;
+  const defaults = createDefaultConfig();
+  const model = config.model ?? defaults.model;
+  const port = config.port ?? defaults.port;
   return {
     port,
-    locale: config.locale ?? DEFAULT_CONFIG.locale,
+    locale: config.locale ?? defaults.locale,
     model,
     models: config.models ?? {},
     temperatures: config.temperatures ?? {},
     distillModel: config.distillModel ?? model,
-    distillMessageThreshold: config.distillMessageThreshold ?? DEFAULT_CONFIG.distillMessageThreshold,
+    distillMessageThreshold: config.distillMessageThreshold ?? defaults.distillMessageThreshold,
     distillReflectionThresholdTokens:
-      config.distillReflectionThresholdTokens ?? DEFAULT_CONFIG.distillReflectionThresholdTokens,
-    distillMaxOutputTokens: config.distillMaxOutputTokens ?? DEFAULT_CONFIG.distillMaxOutputTokens,
-    memoryBudgetTokens: config.memoryBudgetTokens ?? DEFAULT_CONFIG.memoryBudgetTokens,
-    memorySources: config.memorySources ?? [...DEFAULT_CONFIG.memorySources],
-    openaiBaseUrl: config.openaiBaseUrl ?? DEFAULT_CONFIG.openaiBaseUrl,
-    anthropicBaseUrl: config.anthropicBaseUrl ?? DEFAULT_CONFIG.anthropicBaseUrl,
-    googleBaseUrl: config.googleBaseUrl ?? DEFAULT_CONFIG.googleBaseUrl,
-    logFormat: config.logFormat ?? DEFAULT_CONFIG.logFormat,
-    transportMode: config.transportMode ?? DEFAULT_CONFIG.transportMode,
-    contextMaxTokens: config.contextMaxTokens ?? DEFAULT_CONFIG.contextMaxTokens,
-    maxHistoryMessages: config.maxHistoryMessages ?? DEFAULT_CONFIG.maxHistoryMessages,
-    maxMessageTokens: config.maxMessageTokens ?? DEFAULT_CONFIG.maxMessageTokens,
-    maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? DEFAULT_CONFIG.maxAttachmentMessageTokens,
-    maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? DEFAULT_CONFIG.maxPinnedMessageTokens,
-    replyTimeoutMs: config.replyTimeoutMs ?? DEFAULT_CONFIG.replyTimeoutMs,
+      config.distillReflectionThresholdTokens ?? defaults.distillReflectionThresholdTokens,
+    distillMaxOutputTokens: config.distillMaxOutputTokens ?? defaults.distillMaxOutputTokens,
+    memoryBudgetTokens: config.memoryBudgetTokens ?? defaults.memoryBudgetTokens,
+    memorySources: config.memorySources ?? [...defaults.memorySources],
+    openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
+    anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
+    googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,
+    logFormat: config.logFormat ?? defaults.logFormat,
+    transportMode: config.transportMode ?? defaults.transportMode,
+    contextMaxTokens: config.contextMaxTokens ?? defaults.contextMaxTokens,
+    maxHistoryMessages: config.maxHistoryMessages ?? defaults.maxHistoryMessages,
+    maxMessageTokens: config.maxMessageTokens ?? defaults.maxMessageTokens,
+    maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? defaults.maxAttachmentMessageTokens,
+    maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? defaults.maxPinnedMessageTokens,
+    replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
   };
 }
 

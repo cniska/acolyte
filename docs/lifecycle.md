@@ -55,3 +55,4 @@ resolve → prepare → generate → evaluate → finalize
 - `ToolRecovery` is a tool-owned contract for stable failure recovery.
 - Lifecycle consumes it generically; it does not hardcode tool-specific retry policy.
 - Recovery may include optional next-step hints like a suggested next tool or target paths when the tool can state them concretely.
+- Recovery may also declare which successful follow-up tool result resolves the failure, so lifecycle can clear it without tool-specific heuristics.

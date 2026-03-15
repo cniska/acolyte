@@ -2,7 +2,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { createToolError } from "./tool-error";
-import type { EditFileRecoveryKind, ToolRecovery } from "./tool-recovery";
+import type { EditFileRecoveryKind, SearchFilesRecoveryKind, ToolRecovery } from "./tool-recovery";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
@@ -69,6 +69,39 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
   }
 }
 
+function searchFilesRecovery(kind: SearchFilesRecoveryKind, targetPaths?: string[]): ToolRecovery {
+  switch (kind) {
+    case "broaden-scope":
+      return {
+        tool: "search-files",
+        kind,
+        summary: "Your search-files scope resolved to no searchable files.",
+        instruction:
+          "If you already know the exact file, read it directly. Otherwise broaden the scope or use find-files to locate the target file before searching again.",
+        nextTool: "find-files",
+        resolvesOn: [{ tool: "find-files" }],
+      };
+    case "switch-to-read":
+      return {
+        tool: "search-files",
+        kind,
+        summary: "Your search-files query found no matches in the scoped file.",
+        instruction:
+          "If the file is still the right target, switch to read-file and inspect the current text directly before deciding the next edit or search.",
+        nextTool: "read-file",
+        ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
+        resolvesOn: [
+          {
+            tool: "read-file",
+            ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
+          },
+        ],
+      };
+    default:
+      return kind satisfies never;
+  }
+}
+
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
@@ -111,7 +144,17 @@ export async function searchFiles(
 ): Promise<string> {
   const normalized = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
   if (normalized.length === 0) throw new Error("Search pattern cannot be empty");
+  const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   const allFiles = await resolveSearchScopeFiles(workspace, paths);
+  if (normalizedPaths.length > 0 && allFiles.length === 0) {
+    throw createToolError(
+      TOOL_ERROR_CODES.searchFilesEmptyScope,
+      `search-files scope resolved to no files: ${normalizedPaths.join(", ")}`,
+      undefined,
+      searchFilesRecovery("broaden-scope"),
+    );
+  }
+  const singleScopedFile = normalizedPaths.length === 1 && allFiles.length === 1 ? normalizedPaths[0] : undefined;
   const matches: string[] = [];
   const regexes = normalized.map((pattern) => {
     try {
@@ -142,7 +185,16 @@ export async function searchFiles(
     }
   }
 
-  return matches.length > 0 ? matches.join("\n") : "No matches.";
+  if (matches.length > 0) return matches.join("\n");
+  if (singleScopedFile) {
+    throw createToolError(
+      TOOL_ERROR_CODES.searchFilesNoMatch,
+      `search-files found no matches in scoped file: ${singleScopedFile}`,
+      undefined,
+      searchFilesRecovery("switch-to-read", [singleScopedFile]),
+    );
+  }
+  return "No matches.";
 }
 
 export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {

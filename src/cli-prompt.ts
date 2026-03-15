@@ -156,7 +156,7 @@ export async function handlePrompt(
     );
 
     if (reply.error) {
-      printError(`Error: ${reply.error}`);
+      printError(reply.error);
     } else {
       await assistantRenderer.renderReply(reply.output, hasPrintedToolProgress);
     }

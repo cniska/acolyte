@@ -197,6 +197,156 @@ describe("phaseGenerate", () => {
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 
+  test("clears a search-files recovery after read-file succeeds on the suggested path", async () => {
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                args: { patterns: ["alias"], paths: ["src/provider-config.ts"] },
+              },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                error: {
+                  message: "search-files found no matches in scoped file: src/provider-config.ts",
+                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
+                  recovery: {
+                    tool: "search-files" as const,
+                    kind: "switch-to-read" as const,
+                    summary: "Your search-files query found no matches in the scoped file.",
+                    instruction: "Switch to read-file and inspect the file directly.",
+                    nextTool: "read-file" as const,
+                    targetPaths: ["src/provider-config.ts"],
+                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/provider-config.ts"] }],
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_2",
+                toolName: "read-file",
+                args: { paths: [{ path: "src/provider-config.ts" }] },
+              },
+            },
+            {
+              type: "tool-result" as const,
+              payload: {
+                toolCallId: "call_2",
+                toolName: "read-file",
+                result: { output: "File: src/provider-config.ts" },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("does not clear a search-files recovery after read-file succeeds on a different path", async () => {
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                args: { patterns: ["alias"], paths: ["src/provider-config.ts"] },
+              },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "search-files",
+                error: {
+                  message: "search-files found no matches in scoped file: src/provider-config.ts",
+                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
+                  recovery: {
+                    tool: "search-files" as const,
+                    kind: "switch-to-read" as const,
+                    summary: "Your search-files query found no matches in the scoped file.",
+                    instruction: "Switch to read-file and inspect the file directly.",
+                    nextTool: "read-file" as const,
+                    targetPaths: ["src/provider-config.ts"],
+                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/provider-config.ts"] }],
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_2",
+                toolName: "read-file",
+                args: { paths: [{ path: "src/other.ts" }] },
+              },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/other.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("search-files");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
   test("fails fast when fullOutput rejects outside the reader chain", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },

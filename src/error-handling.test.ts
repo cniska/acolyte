@@ -165,6 +165,54 @@ describe("error handling helpers", () => {
     });
   });
 
+  test("parseError preserves structured search-files recovery metadata", () => {
+    const parsed = parseError(
+      createToolError(TOOL_ERROR_CODES.searchFilesEmptyScope, "empty search scope", undefined, {
+        tool: "search-files",
+        kind: "broaden-scope",
+        summary: "Your search-files scope resolved to no searchable files.",
+        instruction: "Broaden the scope or use find-files first.",
+        nextTool: "find-files",
+        resolvesOn: [{ tool: "find-files" }],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "search-files",
+      kind: "broaden-scope",
+      summary: "Your search-files scope resolved to no searchable files.",
+      instruction: "Broaden the scope or use find-files first.",
+      nextTool: "find-files",
+      resolvesOn: [{ tool: "find-files" }],
+    });
+  });
+
+  test("parseError preserves structured scoped no-match search-files recovery metadata", () => {
+    const parsed = parseError(
+      createToolError(TOOL_ERROR_CODES.searchFilesNoMatch, "no match in scoped file", undefined, {
+        tool: "search-files",
+        kind: "switch-to-read",
+        summary: "Your search-files query found no matches in the scoped file.",
+        instruction: "Switch to read-file and inspect the file directly.",
+        nextTool: "read-file",
+        targetPaths: ["src/provider-config.ts"],
+        resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "search-files",
+      kind: "switch-to-read",
+      summary: "Your search-files query found no matches in the scoped file.",
+      instruction: "Switch to read-file and inspect the file directly.",
+      nextTool: "read-file",
+      targetPaths: ["src/provider-config.ts"],
+      resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
+    });
+  });
+
   test("parseError drops invalid tool recovery hints", () => {
     const parsed = parseError({
       error: {

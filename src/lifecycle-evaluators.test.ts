@@ -429,6 +429,68 @@ describe("toolRecoveryEvaluator", () => {
     expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
+  test("returns regenerate when search-files empty-scope exposes structured recovery", () => {
+    const ctx = createRunContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.searchFilesEmptyScope,
+        tool: "search-files",
+        message:
+          "search-files failed: [E_SEARCH_FILES_EMPTY_SCOPE] search-files scope resolved to no files: src/missing",
+        recovery: {
+          tool: "search-files",
+          kind: "broaden-scope",
+          summary: "Your search-files scope resolved to no searchable files.",
+          instruction: "Broaden the scope or use find-files to locate the target file before searching again.",
+          nextTool: "find-files",
+        },
+      },
+      result: { text: "Attempted search.", toolCalls: [] },
+    });
+
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your search-files scope resolved to no searchable files.");
+      expect(action.feedback?.details).toContain("E_SEARCH_FILES_EMPTY_SCOPE");
+      expect(action.feedback?.details).toContain("Suggested next tool: find-files");
+      expect(action.feedback?.instruction).toContain("find-files");
+    }
+  });
+
+  test("returns regenerate when search-files no-match exposes structured recovery", () => {
+    const ctx = createRunContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.searchFilesNoMatch,
+        tool: "search-files",
+        message:
+          "search-files failed: [E_SEARCH_FILES_NO_MATCH] search-files found no matches in scoped file: src/provider-config.ts",
+        recovery: {
+          tool: "search-files",
+          kind: "switch-to-read",
+          summary: "Your search-files query found no matches in the scoped file.",
+          instruction: "Switch to read-file and inspect the file directly.",
+          nextTool: "read-file",
+          targetPaths: ["src/provider-config.ts"],
+        },
+      },
+      result: { text: "Attempted search.", toolCalls: [] },
+    });
+
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your search-files query found no matches in the scoped file.");
+      expect(action.feedback?.details).toContain("E_SEARCH_FILES_NO_MATCH");
+      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
+      expect(action.feedback?.instruction).toContain("read-file");
+    }
+  });
+
   test("returns done when there is no structured tool recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",
