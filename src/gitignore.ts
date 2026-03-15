@@ -31,11 +31,21 @@ function globToRegex(glob: string, anchored: boolean): string {
   // Tokenise in priority order so longer patterns win over shorter ones.
   for (const [token] of glob.matchAll(/\/\*\*\/|\/\*\*|\*\*|\*|\?|\[[^\]]*\]|\[|[^*?[/]+|\//g)) {
     switch (token) {
-      case "/**/": re += "/(.+/)?"; break; // zero or more intermediate directories
-      case "/**":  re += "/.*";     break; // slash + anything
-      case "**":   re += ".*";      break; // anything including slashes
-      case "*":    re += "[^/]*";   break; // anything within one segment
-      case "?":    re += "[^/]";    break; // exactly one non-separator character
+      case "/**/":
+        re += "/(.+/)?";
+        break; // zero or more intermediate directories
+      case "/**":
+        re += "/.*";
+        break; // slash + anything
+      case "**":
+        re += ".*";
+        break; // anything including slashes
+      case "*":
+        re += "[^/]*";
+        break; // anything within one segment
+      case "?":
+        re += "[^/]";
+        break; // exactly one non-separator character
       default:
         // Complete character class [a-z] — pass through; bare [ or literal run — escape.
         re += token.startsWith("[") && token.endsWith("]") ? token : escapeRegex(token);
