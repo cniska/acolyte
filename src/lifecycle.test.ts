@@ -1,11 +1,14 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
-import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import type { LifecycleDeps } from "./lifecycle";
+import { runLifecycleWith, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { createSessionContext } from "./tool-guards";
+import type { Toolset } from "./tool-registry";
 
 const phasePrepare = mock(() => ({
   session: createSessionContext(),
-  tools: {},
+  tools: {} as unknown as Toolset,
   baseAgentInput: "BASE_INPUT",
   promptUsage: {
     inputTokens: 0,
@@ -49,55 +52,34 @@ const createModeAgent = mock(() => ({
   },
 }));
 
-beforeAll(() => {
-  mock.module("./lifecycle-prepare", () => ({
-    phasePrepare,
-  }));
-
-  mock.module("./lifecycle-generate", () => ({
-    createModeAgent,
-    phaseGenerate,
-    shouldYieldNow: () => false,
-  }));
-
-  mock.module("./lifecycle-evaluate", () => ({
-    phaseEvaluate,
-  }));
-
-  mock.module("./lifecycle-finalize", () => ({
-    phaseFinalize,
-  }));
-
-  mock.module("./lifecycle-resolve", () => ({
-    resolveInitialMode: () => ({ mode: "work", model: "gpt-5-mini" }),
-  }));
-
-  mock.module("./lifecycle-policy", () => ({
-    resolveLifecyclePolicy: () => ({
-      initialMaxSteps: 3,
-      stepTimeoutMs: 1000,
-      totalMaxSteps: 12,
-      toolTimeoutMs: 5000,
-      consecutiveGuardBlockLimit: 5,
-      maxNudgesPerGeneration: 1,
-    }),
-  }));
-});
-
-afterAll(() => {
-  mock.restore();
-});
-
 describe("runLifecycle", () => {
   test("orchestrates prepare, generate, evaluate, and finalize", async () => {
-    const { runLifecycle } = await import("./lifecycle");
+    const deps: LifecycleDeps = {
+      resolveInitialMode: () => ({ mode: "work", model: "gpt-5-mini" }),
+      resolveLifecyclePolicy: () => ({
+        ...defaultLifecyclePolicy,
+        initialMaxSteps: 3,
+        stepTimeoutMs: 1000,
+        totalMaxSteps: 12,
+        maxNudgesPerGeneration: 1,
+      }),
+      phasePrepare,
+      createModeAgent,
+      phaseGenerate,
+      shouldYieldNow: () => false,
+      phaseEvaluate,
+      phaseFinalize,
+    };
 
-    const response = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
-      soulPrompt: "SOUL",
-      workspace: "/tmp/workspace",
-      taskId: "task_test",
-    });
+    const response = await runLifecycleWith(
+      {
+        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
+        soulPrompt: "SOUL",
+        workspace: "/tmp/workspace",
+        taskId: "task_test",
+      },
+      deps,
+    );
 
     expect(phasePrepare).toHaveBeenCalledTimes(1);
     expect(createModeAgent).toHaveBeenCalledTimes(1);
