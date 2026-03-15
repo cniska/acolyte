@@ -836,4 +836,62 @@ describe("scanCode", () => {
     expect(result.patterns[0]?.matches[0]?.captures.$NAME).toBe("hello");
     expect(result.patterns[1]?.matches[0]?.captures.$ARG).toBe('"test"');
   });
+
+  test("includes enclosingSymbol for match inside a function", async () => {
+    const filePath = `/tmp/acolyte-test-scan-enclosing-fn-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ["function processItems() {", "  console.log('processing');", "}", ""].join("\n"),
+      "utf8",
+    );
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
+    expect(result.patterns[0]?.matches[0]?.enclosingSymbol).toBe("processItems");
+  });
+
+  test("includes enclosingSymbol for match inside a class", async () => {
+    const filePath = `/tmp/acolyte-test-scan-enclosing-class-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ["class MyService {", "  run() {", "    console.log('run');", "  }", "}", ""].join("\n"),
+      "utf8",
+    );
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
+    const match = result.patterns[0]?.matches[0];
+    expect(match?.enclosingSymbol).toBe("run");
+  });
+
+  test("enclosingSymbol is undefined at top-level", async () => {
+    const filePath = `/tmp/acolyte-test-scan-enclosing-top-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, "console.log('top-level');\n", "utf8");
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
+    expect(result.patterns[0]?.matches[0]?.enclosingSymbol).toBeUndefined();
+  });
+
+  test("includes enclosingSymbol for match inside a TypeScript type alias", async () => {
+    const filePath = `/tmp/acolyte-test-scan-enclosing-type-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(filePath, 'type Status = "active" | "inactive";\n', "utf8");
+    const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: '"active"' });
+    expect(result.patterns[0]?.matches[0]?.enclosingSymbol).toBe("Status");
+  });
+
+  test("withinSymbol scopes scan to TypeScript enum", async () => {
+    const filePath = `/tmp/acolyte-test-scan-within-enum-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ["enum Color {", "  Red = 1,", "  Green = 2,", "}", "enum Size {", "  Small = 1,", "}", ""].join("\n"),
+      "utf8",
+    );
+    const result = await scanCode({
+      workspace: WORKSPACE,
+      paths: [filePath],
+      pattern: "1",
+      withinSymbol: "Color",
+    });
+    expect(result.matches).toBe(1);
+  });
 });
