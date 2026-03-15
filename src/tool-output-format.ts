@@ -351,7 +351,7 @@ export function emitSearchSummary(
     });
 }
 
-function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
+function unifiedDiffLines(rawResult: string, maxLines: number | "all" = 120): string[] {
   const marker = "\ndiff --git ";
   const index = rawResult.indexOf(marker);
   const start = index >= 0 ? index + 1 : rawResult.indexOf("diff --git ");
@@ -360,12 +360,13 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
     .slice(start)
     .split("\n")
     .map((line) => line.trimEnd());
-  if (lines.length > maxLines) return lines.slice(0, maxLines);
+  if (maxLines !== "all" && lines.length > maxLines) return lines.slice(0, maxLines);
   return lines;
 }
 
-export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): ToolOutput[] {
-  const lines = unifiedDiffLines(rawResult, Math.max(maxLines * 2, 240));
+export function numberedUnifiedDiffLines(rawResult: string, maxLines: number | "all" = 160): ToolOutput[] {
+  const lineBudget = maxLines === "all" ? "all" : Math.max(maxLines * 2, 240);
+  const lines = unifiedDiffLines(rawResult, lineBudget);
   if (lines.length === 0) return [];
   const rendered: ToolOutput[] = [];
   let oldLine = 0;
@@ -443,7 +444,7 @@ export function numberedUnifiedDiffLines(rawResult: string, maxLines = 160): Too
     }
   }
   if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-  if (filteredOutput.length > maxLines) {
+  if (maxLines !== "all" && filteredOutput.length > maxLines) {
     const omitted = filteredOutput.length - maxLines;
     return [...filteredOutput.slice(0, maxLines), { kind: "truncated", count: omitted, unit: "lines" }];
   }

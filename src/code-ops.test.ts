@@ -560,9 +560,10 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
-    expect(result).toContain("scanned=1");
-    expect(result).toContain("matches=2");
-    expect(result).toContain('$ARG="hello"');
+    expect(result.scanned).toBe(1);
+    expect(result.matches).toBe(2);
+    expect(result.patterns).toHaveLength(1);
+    expect(result.patterns[0]?.matches[0]?.captures.$ARG).toBe('"hello"');
   });
 
   test("returns no matches when pattern is absent", async () => {
@@ -570,8 +571,9 @@ describe("scanCode", () => {
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
-    expect(result).toContain("matches=0");
-    expect(result).toContain("No matches.");
+    expect(result.scanned).toBe(1);
+    expect(result.matches).toBe(0);
+    expect(result.patterns[0]?.matches).toEqual([]);
   });
 
   test("scans a directory recursively", async () => {
@@ -581,8 +583,8 @@ describe("scanCode", () => {
     await writeFile(join(dirPath, "a.ts"), 'console.log("a");\n', "utf8");
     await writeFile(join(dirPath, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [dirPath], pattern: "console.log($ARG)" });
-    expect(result).toContain("scanned=2");
-    expect(result).toContain("matches=2");
+    expect(result.scanned).toBe(2);
+    expect(result.matches).toBe(2);
   });
 
   test("respects maxResults limit", async () => {
@@ -596,7 +598,7 @@ describe("scanCode", () => {
       pattern: "console.log($ARG)",
       maxResults: 3,
     });
-    expect(result).toContain("matches=3");
+    expect(result.matches).toBe(3);
   });
 
   test("batches multiple patterns", async () => {
@@ -608,8 +610,9 @@ describe("scanCode", () => {
       paths: [filePath],
       pattern: ["export function $NAME() {}", "console.log($ARG)"],
     });
-    expect(result).toContain("matches=2");
-    expect(result).toContain("$NAME=hello");
-    expect(result).toContain('$ARG="test"');
+    expect(result.matches).toBe(2);
+    expect(result.patterns).toHaveLength(2);
+    expect(result.patterns[0]?.matches[0]?.captures.$NAME).toBe("hello");
+    expect(result.patterns[1]?.matches[0]?.captures.$ARG).toBe('"test"');
   });
 });

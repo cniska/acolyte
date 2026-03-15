@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as napi from "@ast-grep/napi";
 import { invariant } from "./assert";
@@ -283,6 +283,24 @@ export type EditCodeResult = {
   output: string;
 };
 
+export type ScanCodeMatch = {
+  relPath: string;
+  line: number;
+  text: string;
+  captures: Record<string, string>;
+};
+
+export type ScanCodePatternResult = {
+  pattern: string;
+  matches: ScanCodeMatch[];
+};
+
+export type ScanCodeResult = {
+  scanned: number;
+  matches: number;
+  patterns: ScanCodePatternResult[];
+};
+
 export async function editCode(input: {
   workspace: string;
   path: string;
@@ -392,15 +410,13 @@ export async function scanCode(input: {
   pattern: string | string[];
   language?: string;
   maxResults?: number;
-}): Promise<string> {
+}): Promise<ScanCodeResult> {
   const maxResults = input.maxResults ?? 50;
   const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
 
   await ensureDynamicLanguages();
 
-  type Match = { relPath: string; line: number; text: string; captures: Record<string, string> };
-  type PatternResult = { pattern: string; matches: Match[] };
-  const results: PatternResult[] = patterns.map((pattern) => ({ pattern, matches: [] }));
+  const results: ScanCodePatternResult[] = patterns.map((pattern) => ({ pattern, matches: [] }));
 
   const totalMatches = () => results.reduce((sum, result) => sum + result.matches.length, 0);
 
@@ -457,7 +473,6 @@ export async function scanCode(input: {
       throw new Error(`Path is not a file or directory: ${absPath}`);
     }
 
-    const { readdir } = await import("node:fs/promises");
     const stack: string[] = [absPath];
     const maxFiles = 500;
     while (stack.length > 0 && scanned < maxFiles && totalMatches() < maxResults) {
@@ -499,22 +514,9 @@ export async function scanCode(input: {
   }
 
   const total = totalMatches();
-  const lines: string[] = [`scanned=${scanned} matches=${total}`];
-  const multi = patterns.length > 1;
-  for (const result of results) {
-    if (multi) lines.push(`--- pattern: ${result.pattern} ---`);
-    for (const match of result.matches) {
-      const truncated = match.text.length > 80 ? `${match.text.slice(0, 77)}...` : match.text;
-      const captureStr =
-        Object.keys(match.captures).length > 0
-          ? `  {${Object.entries(match.captures)
-              .map(([key, value]) => `${key}=${value}`)
-              .join(", ")}}`
-          : "";
-      lines.push(`${match.relPath}:${match.line}: ${truncated}${captureStr}`);
-    }
-    if (multi && result.matches.length === 0) lines.push("No matches.");
-  }
-  if (!multi && total === 0) lines.push("No matches.");
-  return lines.join("\n");
+  return {
+    scanned,
+    matches: total,
+    patterns: results,
+  };
 }

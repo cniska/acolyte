@@ -2,14 +2,12 @@ import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { appConfig } from "./app-config";
 import { editCodeEditSchema } from "./code-contract";
-import { editCode, scanCode } from "./code-ops";
+import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { numberedUnifiedDiffLines } from "./tool-output-format";
-
-const WRITE_TOOL_PREVIEW_MAX_LINES = Number.POSITIVE_INFINITY;
 
 function diffTotals(rawResult: string): { files: number; added: number; removed: number } {
   let files = 0;
@@ -61,6 +59,27 @@ function toDisplayPath(path: string, workspace?: string): string {
   return rel || trimmed;
 }
 
+function formatScanCodeResult(result: ScanCodeResult): string {
+  const lines: string[] = [`scanned=${result.scanned} matches=${result.matches}`];
+  const multi = result.patterns.length > 1;
+  for (const patternResult of result.patterns) {
+    if (multi) lines.push(`--- pattern: ${patternResult.pattern} ---`);
+    for (const match of patternResult.matches) {
+      const truncated = match.text.length > 80 ? `${match.text.slice(0, 77)}...` : match.text;
+      const captureStr =
+        Object.keys(match.captures).length > 0
+          ? `  {${Object.entries(match.captures)
+              .map(([key, value]) => `${key}=${value}`)
+              .join(", ")}}`
+          : "";
+      lines.push(`${match.relPath}:${match.line}: ${truncated}${captureStr}`);
+    }
+    if (multi && patternResult.matches.length === 0) lines.push("No matches.");
+  }
+  if (!multi && result.matches === 0) lines.push("No matches.");
+  return lines.join("\n");
+}
+
 function createScanCodeTool(input: ToolkitInput) {
   const { workspace, session, onOutput } = input;
   return createTool({
@@ -109,16 +128,14 @@ function createScanCodeTool(input: ToolkitInput) {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
         };
-        const result = compactToolOutput(
-          await scanCode({
-            workspace,
-            paths,
-            pattern: toolInput.patterns,
-            language: toolInput.language,
-            maxResults: toolInput.maxResults ?? 50,
-          }),
-          budget,
-        );
+        const rawScan = await scanCode({
+          workspace,
+          paths,
+          pattern: toolInput.patterns,
+          language: toolInput.language,
+          maxResults: toolInput.maxResults ?? 50,
+        });
+        const result = compactToolOutput(formatScanCodeResult(rawScan), budget);
         return { kind: "scan-code", paths, patterns: toolInput.patterns, output: result };
       });
     },
@@ -166,7 +183,7 @@ function createEditCodeTool(input: ToolkitInput) {
           onOutput,
           toolCallId,
         );
-        for (const content of numberedUnifiedDiffLines(editResult.output, WRITE_TOOL_PREVIEW_MAX_LINES))
+        for (const content of numberedUnifiedDiffLines(editResult.output, "all"))
           onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = diffTotals(editResult.output);
         const result = compactToolOutput(editResult.output, appConfig.agent.toolOutputBudget.astEdit);
