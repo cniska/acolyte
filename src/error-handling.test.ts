@@ -114,6 +114,29 @@ describe("error handling helpers", () => {
     });
   });
 
+  test("parseError preserves ambiguous edit-code rename recovery metadata", () => {
+    const parsed = parseError(
+      createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "Scoped rename target is ambiguous", undefined, {
+        tool: "edit-code",
+        kind: "clarify-rename-target",
+        summary: "This scoped rename matches both local and member symbols.",
+        instruction: 'Retry the rename with target: "local" or target: "member".',
+        nextTool: "edit-code",
+        targetPaths: ["src/provider-config.ts"],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.recovery).toEqual({
+      tool: "edit-code",
+      kind: "clarify-rename-target",
+      summary: "This scoped rename matches both local and member symbols.",
+      instruction: 'Retry the rename with target: "local" or target: "member".',
+      nextTool: "edit-code",
+      targetPaths: ["src/provider-config.ts"],
+    });
+  });
+
   test("serializeToolError preserves structured edit-code recovery metadata", () => {
     expect(
       serializeToolError(
