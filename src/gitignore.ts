@@ -112,11 +112,7 @@ export function compileGitignorePatterns(lines: string[]): CompiledPattern[] {
   return out;
 }
 
-export function isIgnoredByPatterns(
-  contexts: GitignoreContext[],
-  absPath: string,
-  isDir: boolean,
-): boolean {
+export function isIgnoredByPatterns(contexts: GitignoreContext[], absPath: string, isDir: boolean): boolean {
   let ignored = false;
 
   for (const ctx of contexts) {
