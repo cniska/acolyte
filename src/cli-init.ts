@@ -66,6 +66,13 @@ async function promptHidden(question: string): Promise<string | undefined> {
 
   return new Promise((resolve) => {
     let value = "";
+
+    const cleanup = (): void => {
+      process.stdin.off("data", onData);
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    };
+
     const onData = (chunk: Buffer): void => {
       const text = chunk.toString("utf8");
       for (const char of text) {
@@ -78,6 +85,11 @@ async function promptHidden(question: string): Promise<string | undefined> {
         }
         if (char === "\r" || char === "\n") {
           process.stdout.write("\n");
+          if (value.trim().length === 0) {
+            value = "";
+            process.stdout.write(question);
+            return;
+          }
           cleanup();
           resolve(value.trim());
           return;
@@ -88,12 +100,6 @@ async function promptHidden(question: string): Promise<string | undefined> {
         }
         value += char;
       }
-    };
-
-    const cleanup = (): void => {
-      process.stdin.off("data", onData);
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
     };
 
     process.stdout.write(question);
