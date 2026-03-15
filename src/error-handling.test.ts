@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
+  createAppError,
   createErrorStats,
   createStreamError,
   errorCodeFromCategory,
@@ -10,10 +12,16 @@ import {
   recoveryActionForError,
   serializeToolError,
 } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { createToolError } from "./tool-error";
 
 describe("error handling helpers", () => {
+  test("createAppError returns a coded runtime error with meta", () => {
+    const error = createAppError("E_TEST", "boom", { source: "unit" });
+    expect(error).toBeInstanceOf(Error);
+    expect(error.code).toBe("E_TEST");
+    expect(error.meta).toEqual({ source: "unit" });
+  });
+
   test("parseError extracts code from coded string", () => {
     const parsed = parseError(`[E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations`);
     expect(parsed.ok).toBe(true);

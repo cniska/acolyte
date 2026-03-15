@@ -10,7 +10,7 @@ import type {
   EditCodeRule,
   EditCodeRuleObject,
 } from "./code-contract";
-import { TOOL_ERROR_CODES } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-contract";
 import { createToolError } from "./tool-error";
 import type { EditCodeRecoveryKind, ToolRecovery } from "./tool-recovery";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";

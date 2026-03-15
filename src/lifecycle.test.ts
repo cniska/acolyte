@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-primitives";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { recoveryActionForError } from "./lifecycle-evaluate";

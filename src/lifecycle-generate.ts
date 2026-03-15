@@ -4,6 +4,7 @@ import { createInstructions } from "./agent-instructions";
 import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -13,7 +14,6 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
 import type {
   GenerateOptions,
   GenerateResult,

@@ -1,6 +1,6 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { TOOL_ERROR_CODES } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-contract";
 import { createToolError } from "./tool-error";
 import type { EditFileRecoveryKind, ToolRecovery } from "./tool-recovery";
 

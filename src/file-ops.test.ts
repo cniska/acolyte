@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { TOOL_ERROR_CODES } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-contract";
 import { deleteTextFile, editFile, findFiles, readSnippet, searchFiles, writeTextFile } from "./file-ops";
 import { testUuid } from "./test-utils";
 

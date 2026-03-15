@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { editCode, scanCode } from "./code-ops";
-import { TOOL_ERROR_CODES } from "./error-primitives";
+import { TOOL_ERROR_CODES } from "./error-contract";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());

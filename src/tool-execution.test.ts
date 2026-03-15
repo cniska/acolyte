@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { guardedExecute, withToolError } from "./tool-execution";
 import { createSessionContext } from "./tool-guards";
 

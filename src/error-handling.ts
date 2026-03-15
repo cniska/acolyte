@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import { unreachable } from "./assert";
-import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { CodedError } from "./coded-error";
+import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
 import { extractToolErrorCode } from "./tool-error";
@@ -8,7 +9,7 @@ import { parseToolRecovery, type ToolRecovery } from "./tool-recovery";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
-export type AppError<TCode extends string = string, TMeta = unknown> = Error & { code: TCode; meta?: TMeta };
+export type AppError<TCode extends string = string, TMeta = unknown> = CodedError<TCode, TMeta>;
 export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
@@ -29,10 +30,7 @@ export function createAppError<TCode extends string, TMeta = unknown>(
   message: string,
   meta?: TMeta,
 ): AppError<TCode, TMeta> {
-  const error = new Error(message) as AppError<TCode, TMeta>;
-  error.code = code;
-  if (meta !== undefined) error.meta = meta;
-  return error;
+  return new CodedError(code, message, meta !== undefined ? { meta } : undefined);
 }
 
 export function createErrorStats(initialValue = 0): Record<ErrorCategory, number> {

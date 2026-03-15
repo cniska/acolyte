@@ -1,5 +1,5 @@
 import { type ChatRow, createRow } from "./chat-contract";
-import { LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
 import { createToolOutputState, type ToolOutput } from "./tool-output-content";

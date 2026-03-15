@@ -1,8 +1,8 @@
 import type { Agent, AgentMode } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
 import type { StreamEvent } from "./client-contract";
+import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
-import type { ErrorCode } from "./error-primitives";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { SessionContext } from "./tool-guards";

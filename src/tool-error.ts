@@ -1,16 +1,13 @@
-import type { ErrorKind } from "./error-primitives";
+import { CodedError } from "./coded-error";
+import type { ErrorKind } from "./error-contract";
 import type { ToolRecovery } from "./tool-recovery";
 
-export class ToolError extends Error {
-  code: string;
-  kind?: ErrorKind;
+export class ToolError extends CodedError<string, never, ErrorKind> {
   recovery?: ToolRecovery;
 
   constructor(code: string, message: string, kind?: ErrorKind, recovery?: ToolRecovery) {
-    super(message);
+    super(code, message, kind ? { kind } : undefined);
     this.name = "ToolError";
-    this.code = code;
-    this.kind = kind;
     this.recovery = recovery;
   }
 }

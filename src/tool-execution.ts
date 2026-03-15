@@ -1,5 +1,5 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-primitives";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createId } from "./short-id";
 import { ToolError } from "./tool-error";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
