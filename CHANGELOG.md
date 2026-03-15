@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 (2026-03-15)
+
+- **edit-file:** harden bounded edit recovery (#9) (`02c1709`)
+- **agents:** tighten rules and add invariants section (`2089fa3`)
+- **readme:** add status badges (`fda6506`)
+- **code-toolkit:** add structured AST operations (#11) (`93f5c3a`)
+- refresh release documentation (`41e3e4b`)
+- **release:** detect bumps from latest tag (`0429276`)
+
+
 ## 0.4.0 (2026-03-14)
 
 - **chat:** replace /tokens with /usage and add prompt breakdown (#10) (`beabe48`)

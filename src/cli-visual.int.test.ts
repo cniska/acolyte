@@ -96,7 +96,7 @@ describe("cli visual regression", () => {
     const out = await runCliPlain(["--help"]);
     expect(out).toBe(
       dedent(`
-      Acolyte v0.4.0
+      Acolyte v0.5.0
 
       Usage
         acolyte
