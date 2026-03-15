@@ -3,7 +3,7 @@ name: docs-audit
 description: Audit canonical docs for drift, missing glossary updates, duplicated concepts, and contract changes not reflected in docs. Use when reviewing documentation quality, terminology changes, or doc updates for shipped behavior.
 ---
 
-# Docs Audit
+# Documentation Audit
 
 Use this skill when asked to review documentation quality, canonical doc coverage, terminology drift, or whether code changes were reflected in docs.
 
@@ -23,6 +23,16 @@ Canonical docs to prefer:
 - `README.md` for project entrypoint and high-level usage
 - `docs/architecture.md` for system shape and boundaries
 - `docs/lifecycle.md` for lifecycle contracts and mode flow
+- `docs/modes.md` for mode definitions and transitions
+- `docs/memory.md` for memory tiers and distillation behavior
+- `docs/sessions-tasks.md` for session and task state contracts
+- `docs/protocol.md` for RPC protocol and client contracts
+- `docs/configuration.md` for config schema and defaults
+- `docs/cli.md` for CLI commands and user-facing behavior
+- `docs/tui.md` for TUI behavior and terminal interaction
+- `docs/tooling.md` for tool definitions and contracts
+- `docs/soul.md` for product direction and behavioral principles
+- `docs/why-acolyte.md` for product positioning
 - `docs/glossary.md` for shared terminology
 - `docs/features.md` for shipped feature inventory
 - `docs/roadmap.md` for near-term direction, not shipped behavior
