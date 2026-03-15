@@ -16,19 +16,14 @@ function escapeRegex(char: string): string {
   return char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
-// Convert a normalised gitignore glob (no leading/trailing slash, no ! prefix)
-// to a regex string. `anchored` is true when the pattern must match from the
-// root of the gitignore directory (i.e. it originally contained a slash).
 function globToRegex(glob: string, anchored: boolean): string {
   let re = anchored ? "^" : "(^|/)";
 
-  // Leading **/ is only special at position 0 — handle it before tokenising.
   if (glob.startsWith("**/")) {
-    re += "(.+/)?";
+    re += "(.+/)?"; // leading **/ — any number of leading directories
     glob = glob.slice(3);
   }
 
-  // Tokenise in priority order so longer patterns win over shorter ones.
   for (const [token] of glob.matchAll(/\/\*\*\/|\/\*\*|\*\*|\*|\?|\[[^\]]*\]|\[|[^*?[/]+|\//g)) {
     switch (token) {
       case "/**/":
@@ -47,7 +42,6 @@ function globToRegex(glob: string, anchored: boolean): string {
         re += "[^/]";
         break; // exactly one non-separator character
       default:
-        // Complete character class [a-z] — pass through; bare [ or literal run — escape.
         re += token.startsWith("[") && token.endsWith("]") ? token : escapeRegex(token);
     }
   }
@@ -63,8 +57,6 @@ type ParsedPattern = {
   anchored: boolean;
 };
 
-// Parse a raw gitignore line into its component parts, or return null if the
-// line should be skipped (blank, comment, or empty after stripping modifiers).
 function parseGitignorePattern(raw: string): ParsedPattern | null {
   let p = raw.trim();
 
@@ -78,8 +70,6 @@ function parseGitignorePattern(raw: string): ParsedPattern | null {
   const dirOnly = p.endsWith("/");
   if (dirOnly) p = p.slice(0, -1);
 
-  // A pattern is anchored when it contains a slash anywhere other than the
-  // trailing slash already stripped above — or when it starts with a slash.
   const hasLeadingSlash = p.startsWith("/");
   if (hasLeadingSlash) p = p.slice(1);
   const anchored = hasLeadingSlash || p.includes("/");
