@@ -36,9 +36,7 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         tool: "edit-file",
         kind,
         summary: "Your edit-file snippet matched multiple locations.",
-        instruction:
-          `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. ` +
-          "If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.",
+        instruction: `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.`,
         nextTool: "read-file",
         targetPaths: [path],
       };
@@ -47,9 +45,7 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         tool: "edit-file",
         kind,
         summary: "Your edit-file find snippet no longer matches the file.",
-        instruction:
-          `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. ` +
-          "Do not retry the same stale find text.",
+        instruction: `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. Do not retry the same stale find text.`,
         nextTool: "read-file",
         targetPaths: [path],
       };
@@ -58,9 +54,7 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
         tool: "edit-file",
         kind,
         summary: "Your edit-file request was too large for a bounded edit.",
-        instruction:
-          `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. ` +
-          "Do not pass large file blocks as find or replacement text.",
+        instruction: `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. Do not pass large file blocks as find or replacement text.`,
         nextTool: "read-file",
         targetPaths: [path],
       };
@@ -264,11 +258,7 @@ export async function editFile(input: {
         );
       }
       if (count > 1) {
-        const message =
-          `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). ` +
-          "Provide a longer, more unique snippet to match exactly one location. " +
-          "For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. " +
-          "Use edit-code only for structural code changes.";
+        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location. For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. Use edit-code only for structural code changes.`;
         throw createToolError(
           TOOL_ERROR_CODES.editFileMultiMatch,
           message,
