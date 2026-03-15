@@ -12,8 +12,8 @@ export type GitignoreContext = {
   dir: string;
 };
 
-function escapeRegex(char: string): string {
-  return char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+function escapeRegex(s: string): string {
+  return s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
 function globToRegex(glob: string, anchored: boolean): string {
@@ -97,6 +97,7 @@ export function compileGitignorePatterns(lines: string[]): CompiledPattern[] {
   return out;
 }
 
+// contexts must be ordered outermost-first (root before nested subdirectories).
 export function isIgnoredByPatterns(contexts: GitignoreContext[], absPath: string, isDir: boolean): boolean {
   let ignored = false;
 

@@ -49,6 +49,7 @@ This reduces redundant I/O and avoids re-sending identical tool results to the m
 
 ## Key files
 
+- `src/gitignore.ts`
 - `src/file-toolkit.ts`
 - `src/code-toolkit.ts`
 - `src/git-toolkit.ts`
