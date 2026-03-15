@@ -26,7 +26,7 @@ type LegacySessionTokenUsageEntry = {
     promptTruncated?: unknown;
   };
   promptBreakdown?: unknown;
-  warning?: unknown;
+
   modelCalls?: unknown;
 };
 

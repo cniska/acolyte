@@ -96,7 +96,8 @@ describe("createAgentInput", () => {
     };
 
     const { input } = createAgentInput(req);
-    expect(input.length).toBeLessThanOrEqual(35_000);
+    // 100 messages × ~1000 chars each = ~100k chars; budget allows ~100k tokens so all fit
+    expect(input.length).toBeLessThanOrEqual(120_000);
     expect(input).toContain("USER: review");
   });
 

@@ -91,7 +91,6 @@ export const EN_MESSAGES = {
   "chat.usage.label.session": "Session",
   "chat.usage.label.share": "Share",
   "chat.usage.label.tokens": "Tokens",
-  "chat.usage.label.warning": "Warning",
   "chat.usage.metric.input": "Input",
   "chat.usage.metric.messages": "Messages",
   "chat.usage.metric.memory": "Memory",
@@ -170,8 +169,6 @@ export const EN_MESSAGES = {
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
   "error.prompt.write_blocked": "Write action blocked in read mode. Run /permissions write and retry.",
-  "lifecycle.budget.near": "context near budget ({used}/{budget} tokens)",
-  "lifecycle.budget.trimmed": "context trimmed ({included} of {total})",
   "lifecycle.stopped_unknown_errors":
     "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
   "memory.content_empty": "Memory content cannot be empty",

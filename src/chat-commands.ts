@@ -123,10 +123,6 @@ export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: Sess
       ),
     );
   }
-  const latestWarning = [...all].reverse().find((entry) => Boolean(entry.warning))?.warning;
-  if (latestWarning) {
-    output.push("", `${t("chat.usage.label.warning")}: ${latestWarning}`);
-  }
   return output.join("\n");
 }
 

@@ -115,7 +115,7 @@ function resolveMessageTokenCap(
 
 export function createAgentInput(
   req: ChatRequest,
-  options?: { systemPromptTokens?: number },
+  options?: { systemPromptTokens?: number; toolTokens?: number },
 ): {
   input: string;
   usage: {
@@ -134,13 +134,14 @@ export function createAgentInput(
 } {
   const maxContextTokens = appConfig.agent.contextMaxTokens;
   const systemPromptTokens = options?.systemPromptTokens ?? 0;
+  const toolTokens = options?.toolTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
   const budget = appConfig.agent.inputBudget;
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
-  let remaining = Math.max(0, maxContextTokens - userTokens - systemPromptTokens);
+  let remaining = Math.max(0, maxContextTokens - userTokens - systemPromptTokens - toolTokens);
 
   const pinnedSystem = req.history.filter(
     (message) => message.role === "system" && isPinnedSystemContext(message.content),

@@ -29,18 +29,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const promptInputTokens = totalPromptBreakdownTokens(promptBreakdown);
   const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
-  let budgetWarning: string | undefined;
-  if (ctx.promptUsage.inputTruncated) {
-    budgetWarning = t("lifecycle.budget.trimmed", {
-      included: t("unit.history_message", { count: ctx.promptUsage.includedHistoryMessages }),
-      total: ctx.promptUsage.totalHistoryMessages,
-    });
-  } else if (inputTokens >= Math.floor(ctx.promptUsage.inputBudgetTokens * 0.9)) {
-    budgetWarning = t("lifecycle.budget.near", {
-      used: inputTokens,
-      budget: ctx.promptUsage.inputBudgetTokens,
-    });
-  }
 
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   const guardStats = guardStatsFromSession(ctx.session);
@@ -64,7 +52,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     tools: Array.from(ctx.observedTools).join(","),
     has_error: Boolean(ctx.currentError),
     output_chars: output.length,
-    budget_warning: budgetWarning ?? null,
+
     read_calls: readCalls,
     search_calls: searchCalls,
     write_calls: writeCalls,
@@ -105,6 +93,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       memoryTokens: promptBreakdown.memoryTokens,
       messageTokens: promptBreakdown.messageTokens,
     },
-    budgetWarning,
+
   };
 }

@@ -56,7 +56,7 @@ describe("chat-commands", () => {
     expect(output).toContain("Share");
   });
 
-  test("formatUsageOutput includes latest warning when present", () => {
+  test("formatUsageOutput does not include budget warning", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
@@ -69,8 +69,8 @@ describe("chat-commands", () => {
       warning: "context trimmed (8/42 history messages)",
     };
     const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Warning:");
-    expect(output).toContain("context trimmed (8/42 history messages)");
+    expect(output).not.toContain("Warning:");
+    expect(output).not.toContain("context trimmed");
   });
 
   test("formatUsageOutput shares use prompt breakdown total", () => {
@@ -136,28 +136,6 @@ describe("chat-commands", () => {
     expect(rendered).toBe("No usage data yet. Send a prompt first.");
   });
 
-  test("formatUsageOutput shows latest session warning even when last turn has none", () => {
-    const warned: SessionTokenUsageEntry = {
-      id: "row_warned",
-      usage: {
-        inputTokens: 950,
-        outputTokens: 30,
-        totalTokens: 980,
-      },
-      warning: "context near budget (950/1000 tokens)",
-    };
-    const clean: SessionTokenUsageEntry = {
-      id: "row_clean",
-      usage: {
-        inputTokens: 200,
-        outputTokens: 20,
-        totalTokens: 220,
-      },
-    };
-    const output = formatUsageOutput(clean, [warned, clean]);
-    expect(output).toContain("Warning:");
-    expect(output).toContain("context near budget (950/1000 tokens)");
-  });
 
   test("dispatchSlashCommand handles /usage", async () => {
     const tokenUsage: SessionTokenUsageEntry[] = [

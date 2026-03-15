@@ -120,13 +120,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
     promptBreakdown: reply.promptBreakdown,
-    warning: reply.budgetWarning,
+
     modelCalls: reply.modelCalls,
   };
-  if (reply.budgetWarning?.trim().length) {
-    rows.push(createRow("system", reply.budgetWarning.trim(), { dim: true }));
-  }
-
   const durationMs = Date.now() - params.thinkingStartedAt;
   if (durationMs >= 300) {
     const duration = formatThoughtDuration(durationMs);

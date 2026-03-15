@@ -30,7 +30,7 @@ export const sessionTokenUsageEntrySchema = z.object({
   id: messageIdSchema,
   usage: tokenUsageSchema,
   promptBreakdown: promptBreakdownSchema.optional(),
-  warning: z.string().optional(),
+
   modelCalls: z.number().optional(),
 });
 
@@ -58,7 +58,7 @@ export interface SessionTokenUsageEntry {
   readonly id: MessageId;
   readonly usage: TokenUsage;
   readonly promptBreakdown?: z.infer<typeof promptBreakdownSchema>;
-  readonly warning?: string;
+
   readonly modelCalls?: number;
 }
 

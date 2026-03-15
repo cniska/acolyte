@@ -35,7 +35,7 @@ export interface ChatResponse {
   model: string;
   usage?: TokenUsage;
   promptBreakdown?: PromptBreakdown;
-  budgetWarning?: string;
+
   toolCalls?: string[];
   modelCalls?: number;
   error?: string;

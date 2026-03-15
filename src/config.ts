@@ -29,7 +29,7 @@ function createDefaultConfig() {
     distillMaxOutputTokens: 1_000,
     memoryBudgetTokens: 1_200,
     memorySources: ["stored", "distill_project", "distill_user", "distill_session"] as const,
-    contextMaxTokens: 8_000,
+    contextMaxTokens: 100_000,
     maxHistoryMessages: 40,
     maxMessageTokens: 600,
     maxAttachmentMessageTokens: 3_000,
