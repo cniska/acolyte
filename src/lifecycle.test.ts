@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import { createSessionContext } from "./tool-guards";
@@ -82,6 +82,10 @@ beforeAll(() => {
       maxNudgesPerGeneration: 1,
     }),
   }));
+});
+
+afterAll(() => {
+  mock.restore();
 });
 
 describe("runLifecycle", () => {
