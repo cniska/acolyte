@@ -302,6 +302,19 @@ describe("editFile", () => {
   });
 });
 
+describe("searchFiles", () => {
+  test("returns structured recovery when scoped paths resolve to no files", async () => {
+    await expect(searchFiles(WORKSPACE, ["alias"], 20, ["src/does-not-exist"])).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.searchFilesEmptyScope,
+      recovery: {
+        tool: "search-files",
+        kind: "broaden-scope",
+        nextTool: "find-files",
+      },
+    });
+  });
+});
+
 describe("writeTextFile", () => {
   test("creates /tmp files", async () => {
     const filePath = `/tmp/acolyte-test-write-${testUuid()}.txt`;

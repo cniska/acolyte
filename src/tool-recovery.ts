@@ -1,4 +1,11 @@
-export const TOOL_RECOVERY_NEXT_TOOLS = ["read-file", "search-files", "edit-file", "scan-code", "edit-code"] as const;
+export const TOOL_RECOVERY_NEXT_TOOLS = [
+  "read-file",
+  "find-files",
+  "search-files",
+  "edit-file",
+  "scan-code",
+  "edit-code",
+] as const;
 export type ToolRecoveryNextTool = (typeof TOOL_RECOVERY_NEXT_TOOLS)[number];
 export type ToolRecoveryHints = {
   nextTool?: ToolRecoveryNextTool;
@@ -40,7 +47,16 @@ export type ScanCodeRecovery = {
   instruction: string;
 } & ToolRecoveryHints;
 
-export type ToolRecovery = EditFileRecovery | EditCodeRecovery | ScanCodeRecovery;
+export type SearchFilesRecoveryKind = "broaden-scope";
+export const SEARCH_FILES_RECOVERY_KINDS: readonly SearchFilesRecoveryKind[] = ["broaden-scope"];
+export type SearchFilesRecovery = {
+  tool: "search-files";
+  kind: SearchFilesRecoveryKind;
+  summary: string;
+  instruction: string;
+} & ToolRecoveryHints;
+
+export type ToolRecovery = EditFileRecovery | EditCodeRecovery | ScanCodeRecovery | SearchFilesRecovery;
 
 export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -74,6 +90,14 @@ export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
     return {
       tool: rec.tool,
       kind: rec.kind as ScanCodeRecoveryKind,
+      summary: rec.summary,
+      instruction: rec.instruction,
+      ...hints,
+    };
+  if (rec.tool === "search-files" && SEARCH_FILES_RECOVERY_KINDS.includes(rec.kind as SearchFilesRecoveryKind))
+    return {
+      tool: rec.tool,
+      kind: rec.kind as SearchFilesRecoveryKind,
       summary: rec.summary,
       instruction: rec.instruction,
       ...hints,

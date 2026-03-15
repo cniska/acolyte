@@ -1,5 +1,883 @@
 import { describe, expect, test } from "bun:test";
 import { scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import type { RunContext } from "./lifecycle-contract";
+import { recoveryActionForError } from "./lifecycle-evaluate";
+import {
+  guardRecoveryEvaluator,
+  repeatedFailureEvaluator,
+  toolRecoveryEvaluator,
+  verifyCycle,
+} from "./lifecycle-evaluators";
+import { phaseFinalize } from "./lifecycle-finalize";
+import {
+  consumeLifecycleFeedback,
+  createGenerationInput,
+  createLifecycleFeedbackText,
+  phaseGenerate,
+} from "./lifecycle-generate";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import { phasePrepare } from "./lifecycle-prepare";
+import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
+import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
+import { createSessionContext, recordCall } from "./tool-guards";
+    baseAgentInput: "test prompt",
+    policy: defaultLifecyclePolicy,
+    promptUsage: {
+      inputTokens: 0,
+      systemPromptTokens: 0,
+      toolTokens: 0,
+      memoryTokens: 0,
+      messageTokens: 0,
+      inputBudgetTokens: 8000,
+      inputTruncated: false,
+      includedHistoryMessages: 0,
+      totalHistoryMessages: 0,
+    },
+    lifecycleState: { feedback: [], verifyOutcome: undefined, repeatedFailure: undefined },
+    observedTools: new Set(),
+    modelCallCount: 1,
+    inputTokensAccum: 0,
+    outputTokensAccum: 0,
+    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
+    streamingChars: 0,
+    lastUsageEmitChars: 0,
+    generationAttempt: 0,
+    regenerationCount: 0,
+    regenerationLimitHit: false,
+    errorStats: createErrorStats(),
+    nativeIdQueue: new Map(),
+    toolCallStartedAt: new Map(),
+    toolOutputHandler: null,
+    ...overrides,
+  };
+}
+
+describe("verifyCycle", () => {
+  test("returns regenerate when write tools used without verify", () => {
+    const session = createSessionContext("task_new");
+    session.callLog = [
+      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new", status: "succeeded" },
+      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new", status: "succeeded" },
+      {
+        toolName: "scan-code",
+        args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] },
+        taskId: "task_new",
+        status: "succeeded",
+      },
+      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new", status: "succeeded" },
+      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new", status: "succeeded" },
+    ];
+    const ctx = createMockContext({
+      initialMode: "work",
+      taskId: "task_new",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["read-file", "edit-file"]),
+    });
+    const action = verifyCycle.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("verify");
+      expect(action.keepResult).toBe(true);
+      expect(action.feedback?.details).toContain("Task boundary:");
+      expect(action.feedback?.details).toContain("- src/a.ts");
+      expect(action.feedback?.details).toContain("- src/b.ts");
+      expect(action.feedback?.details).toContain("Allowed supporting reads");
+      expect(action.feedback?.details).toContain("- src/c.ts");
+      expect(action.feedback?.details).toContain("- src/d.ts");
+      expect(action.feedback?.details).not.toContain("- src/old.ts");
+    }
+  });
+
+  test("uses base verify prompt when no write paths are available", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    const action = verifyCycle.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
+  });
+
+  test("uses global verify prompt when request explicitly opts into global scope", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    const action = verifyCycle.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
+  });
+
+  test("returns done when request disables verification", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "none" },
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when verify already ran", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when no write tools used", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["read-file", "search-files"]),
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when no result", () => {
+    const ctx = createMockContext({ result: undefined });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns regenerate to work mode when verify reports issues", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      result: { text: "Done.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: {
+          text: "Error: missing export updatePost in post-store.ts",
+          error: { message: "verify failed: missing export updatePost in post-store.ts" },
+        },
+      },
+      observedTools: new Set(["scan-code"]),
+    });
+    const action = verifyCycle.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("work");
+      expect(action.feedback?.details).toContain("missing export updatePost");
+    }
+  });
+
+  test("returns done when in verify mode without errors", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      result: { text: "", toolCalls: [] },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("ignores restored work result when verify outcome is missing", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      currentError: undefined,
+      result: { text: "Done.", toolCalls: [] },
+      lifecycleState: { feedback: [], verifyOutcome: undefined },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done for explicit no-issue verification summaries", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    recordCall(session, "run-command", { command: "bun run verify" });
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      session,
+      result: { text: "No issues found. 0 errors.", toolCalls: [] },
+    });
+    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("phaseGenerate", () => {
+  test("does not clear an edit-file error after an unrelated successful read", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/a.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("clears an edit-file error after a later successful write recovery", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "edit-file", result: { ok: true } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("does not clear an edit-file error after a different write tool succeeds", async () => {
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "edit-file",
+                error: {
+                  message: "Find text not found",
+                  code: TOOL_ERROR_CODES.editFileFindNotFound,
+                  recovery: {
+                    tool: "edit-file" as const,
+                    kind: "refresh-snippet" as const,
+                    summary: "Refresh the snippet.",
+                    instruction: "Reread the file and rebuild the edit.",
+                  },
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "create-file", args: { path: "src/b.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "create-file", result: { ok: true } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+});
+
+describe("acceptedLifecycleSignal", () => {
+  test("accepts done when no contradiction exists", () => {
+    const ctx = createMockContext({
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+  });
+
+  test("accepts blocked when no contradiction exists", () => {
+    const ctx = createMockContext({
+      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBe("blocked");
+  });
+
+  test("rejects no_op after writes happened", () => {
+    const session = createSessionContext("task_noop");
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/a.ts" });
+    const ctx = createMockContext({
+      taskId: "task_noop",
+      session,
+      result: { text: "No changes were needed.", toolCalls: [], signal: "no_op" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("rejects any signal when a current error exists", () => {
+    const ctx = createMockContext({
+      currentError: { message: "verify failed", category: "other" },
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+
+  test("rejects done after a guard-blocked error", () => {
+    const ctx = createMockContext({
+      currentError: { message: "duplicate tool call blocked", category: "guard-blocked" },
+      result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
+    });
+    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+  });
+});
+
+describe("phaseFinalize", () => {
+  test("uses estimated prompt tokens when stream usage is unavailable", () => {
+    const ctx = createMockContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(80);
+    expect(response.usage?.totalTokens).toBe(81);
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
+  test("includes promptBreakdown when currentError is set", () => {
+    const ctx = createMockContext({
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 0,
+      outputTokensAccum: 0,
+      currentError: { message: "tool failed", category: "other" },
+      result: { text: "", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.error).toBe("tool failed");
+    expect(response.promptBreakdown).toBeDefined();
+    expect(response.promptBreakdown?.usedTokens).toBe(80);
+  });
+
+  test("uses accumulated prompt breakdown totals across multiple model calls", () => {
+    const ctx = createMockContext({
+      baseAgentInput: "USER: first prompt",
+      promptUsage: {
+        inputTokens: 12,
+        systemPromptTokens: 48,
+        toolTokens: 20,
+        memoryTokens: 8,
+        messageTokens: 12,
+        inputBudgetTokens: 100,
+        inputTruncated: false,
+        includedHistoryMessages: 3,
+        totalHistoryMessages: 6,
+      },
+      inputTokensAccum: 120,
+      promptBreakdownTotals: {
+        systemTokens: 80,
+        toolTokens: 40,
+        memoryTokens: 16,
+        messageTokens: 34,
+      },
+      result: { text: "done", toolCalls: [] },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.usage?.inputTokens).toBe(170);
+    expect(response.promptBreakdown).toEqual({
+      budgetTokens: 100,
+      usedTokens: 170,
+      systemTokens: 80,
+      toolTokens: 40,
+      memoryTokens: 16,
+      messageTokens: 34,
+    });
+  });
+});
+
+describe("guardRecoveryEvaluator", () => {
+  test("returns regenerate when guard-blocked error has pending guard feedback", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [
+          {
+            source: "guard",
+            mode: "work",
+            summary: "The previous read-file call already used these arguments.",
+            instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
+          },
+        ],
+        verifyOutcome: undefined,
+      },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate" });
+  });
+
+  test("returns done when no pending guard feedback exists", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+    });
+
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+});
+
+describe("repeatedFailureEvaluator", () => {
+  test("returns regenerate when the same non-guard failure repeats", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 2,
+          status: "pending",
+        },
+      },
+    });
+
+    const action = repeatedFailureEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.summary).toBe("The same runtime failure has repeated.");
+      expect(action.feedback?.details).toContain("command exited with code 1");
+      expect(action.feedback?.instruction).toContain("Change approach");
+    }
+    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
+  });
+
+  test("returns done for repeated guard-blocked failures", () => {
+    const ctx = createMockContext({
+      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      result: { text: "Attempted read.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
+          count: 2,
+          status: "pending",
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("returns done after the repeated failure streak was already surfaced", () => {
+    const ctx = createMockContext({
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+      result: { text: "Attempted fix.", toolCalls: [] },
+      lifecycleState: {
+        feedback: [],
+        verifyOutcome: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          count: 3,
+          status: "surfaced",
+        },
+      },
+    });
+
+    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("tracks different run-command failures as different repeated-failure streaks", () => {
+    const session = createSessionContext("task_repeat");
+    recordCall(session, "run-command", { command: "bun test src/a.test.ts" });
+
+    const ctx = createMockContext({
+      taskId: "task_repeat",
+      session,
+      currentError: {
+        message: "run-command failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "run-command",
+        source: "tool-error",
+      },
+    });
+
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+
+    recordCall(session, "run-command", { command: "bun test src/b.test.ts" });
+    updateRepeatedFailureState(ctx);
+    expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
+    expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");
+  });
+});
+
+describe("toolRecoveryEvaluator", () => {
+  test("returns regenerate when edit-file exposes structured recovery", () => {
+    const session = createSessionContext();
+    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      initialMode: "work",
+      session,
+      observedTools: new Set(["read-file", "edit-file"]),
+      currentError: {
+        code: "E_EDIT_FILE_MULTI_MATCH",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+        tool: "edit-file",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Keep the change in 'src/priority.ts' and make one bounded edit with a more unique snippet.",
+        },
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
+      expect(action.feedback?.details).toContain("Find text matched 3 locations");
+      expect(action.feedback?.instruction).toContain("src/priority.ts");
+    }
+  });
+
+  test("returns regenerate when edit-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.editCodeNoMatch,
+        tool: "edit-code",
+        message: "edit-code failed: [E_EDIT_CODE_NO_MATCH] No AST matches found for pattern: return $VALUE",
+        recovery: {
+          tool: "edit-code",
+          kind: "refine-pattern",
+          summary: "Your AST pattern did not match the current file.",
+          instruction: "Refine the pattern against the latest file syntax.",
+          nextTool: "read-file",
+          targetPaths: ["src/code-ops.ts"],
+        },
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
+      expect(action.feedback?.details).toContain("No AST matches found");
+      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
+      expect(action.feedback?.instruction).toContain("Refine the pattern");
+    }
+  });
+
+  test("returns regenerate when scan-code exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
+        },
+      },
+      result: { text: "Attempted scan.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
+      expect(action.feedback?.details).toContain("notes.yaml");
+      expect(action.feedback?.details).toContain("Suggested next tool: search-files");
+      expect(action.feedback?.details).toContain("Suggested paths: notes.yaml");
+      expect(action.feedback?.instruction).toContain("search-files");
+    }
+  });
+
+  test("returns done for structured recovery while active mode is verify", () => {
+    const ctx = createMockContext({
+      mode: "verify",
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
+        tool: "scan-code",
+        message:
+          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+        recovery: {
+          tool: "scan-code",
+          kind: "use-supported-file",
+          summary: "scan-code only works on supported code files.",
+          instruction: "Use search-files for plain-text lookup.",
+          nextTool: "search-files",
+          targetPaths: ["notes.yaml"],
+        },
+      },
+      result: { text: "Attempted verify scan.", toolCalls: [] },
+    });
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns regenerate when search-files exposes structured recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.searchFilesEmptyScope,
+        tool: "search-files",
+        message: "search-files failed: [E_SEARCH_FILES_EMPTY_SCOPE] search-files scope resolved to no files: src/missing",
+        recovery: {
+          tool: "search-files",
+          kind: "broaden-scope",
+          summary: "Your search-files scope resolved to no searchable files.",
+          instruction: "Broaden the scope or use find-files to locate the target file before searching again.",
+          nextTool: "find-files",
+        },
+      },
+      result: { text: "Attempted search.", toolCalls: [] },
+    });
+    const action = toolRecoveryEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.source).toBe("tool-recovery");
+      expect(action.feedback?.summary).toBe("Your search-files scope resolved to no searchable files.");
+      expect(action.feedback?.details).toContain("E_SEARCH_FILES_EMPTY_SCOPE");
+      expect(action.feedback?.details).toContain("Suggested next tool: find-files");
+      expect(action.feedback?.instruction).toContain("find-files");
+    }
+  });
+
+  test("returns done when there is no structured tool recovery", () => {
+    const ctx = createMockContext({
+      initialMode: "work",
+      currentError: {
+        code: TOOL_ERROR_CODES.editFileFindTooLarge,
+        tool: "edit-file",
+        message: "edit-file failed: find must be a short unique snippet",
+      },
+      result: { text: "Attempted edit.", toolCalls: [] },
+    });
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done after a later successful write for disambiguate-match recovery", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file", "edit-code"]);
+    session.callLog = [
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" },
+      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "succeeded" },
+    ];
+    const ctx = createMockContext({
+      request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
+      initialMode: "work",
+      session,
+      currentError: {
+        tool: "edit-file",
+        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations.",
+        recovery: {
+          tool: "edit-file",
+          kind: "disambiguate-match",
+          summary: "Your edit-file snippet matched multiple locations.",
+          instruction: "Use a more unique snippet.",
+        },
+      },
+      result: { text: "Applied the change.", toolCalls: [] },
+    });
+    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  });
+});
+
+describe("recoveryActionForError", () => {
+  test("returns none for timeout code (handled by evaluator)", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 })).toBe("none");
+  });
+
+  test("returns stop-unknown-budget for repeated unknown errors", () => {
+    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 })).toBe(
+      "stop-unknown-budget",
+    );
+  });
+
+  test("returns none for tool-specific multi-match errors", () => {
+    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 })).toBe(
+      "none",
+    );
+  });
+});
 
 describe("shouldCommitMemory", () => {
   test("returns false when request disables memory", () => {
