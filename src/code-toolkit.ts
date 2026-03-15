@@ -37,7 +37,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
               .join(", ")}}`
           : "";
       const symbolStr = match.enclosingSymbol ? ` [${match.enclosingSymbol}]` : "";
-      lines.push(`${match.relPath}:${match.line}:${symbolStr} ${truncated}${captureStr}`);
+      lines.push(`${match.path}:${match.line}:${symbolStr} ${truncated}${captureStr}`);
     }
     if (multi && patternResult.matches.length === 0) lines.push("No matches.");
   }

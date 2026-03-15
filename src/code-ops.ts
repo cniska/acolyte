@@ -397,7 +397,7 @@ export type EditCodeResult = {
 };
 
 export type ScanCodeMatch = {
-  relPath: string;
+  path: string;
   line: number;
   text: string;
   captures: Record<string, string>;
@@ -569,7 +569,7 @@ export async function scanCode(input: {
 
   const totalMatches = () => results.reduce((sum, result) => sum + result.matches.length, 0);
 
-  const scanFile = (relPath: string, content: string, lang: string): void => {
+  const scanFile = (path: string, content: string, lang: string): void => {
     const langEnum = napi.Lang[lang as keyof typeof napi.Lang];
     let tree: ReturnType<typeof napi.parse>;
     try {
@@ -592,7 +592,7 @@ export async function scanCode(input: {
           if (captured) captures[metavar] = captured.text();
         }
         const enclosingSymbol = findEnclosingSymbol(match) ?? undefined;
-        result.matches.push({ relPath, line: range.start.line + 1, text, captures, enclosingSymbol });
+        result.matches.push({ path, line: range.start.line + 1, text, captures, enclosingSymbol });
       }
     }
   };
