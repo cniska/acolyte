@@ -40,8 +40,8 @@ export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
   return { files, added, removed };
 }
 
-export function createDiffSummaryEmitter(input: {
-  toolName: string;
+export function createDiffSummaryEmitter<TToolName extends string>(input: {
+  toolName: TToolName;
   label: string;
   onOutput: ToolOutputListener;
 }): (path: string, rawResult: string, toolCallId: string) => void {
