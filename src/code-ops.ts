@@ -296,7 +296,13 @@ function classifyRenameDeclaration(node: napi.SgNode): RenameMode | null {
     }
   }
   if (node.kind() === "property_identifier") {
-    if (parent.kind() === "field_definition" || parent.kind() === "method_definition") return "member";
+    if (
+      parent.kind() === "field_definition" ||
+      parent.kind() === "public_field_definition" ||
+      parent.kind() === "method_definition"
+    ) {
+      return "member";
+    }
   }
   if (node.kind() === "shorthand_property_identifier_pattern") return "local";
   return null;
@@ -314,6 +320,12 @@ function resolveRenameMode(matches: napi.SgNode[]): RenameMode {
     if (mode !== classified) return "text";
   }
   return mode ?? "text";
+}
+
+function requestedRenameMode(edit: EditCodeRenameEdit): RenameMode | null {
+  if (edit.target === "local") return "local";
+  if (edit.target === "member") return "member";
+  return null;
 }
 
 function isThisMemberReference(node: napi.SgNode): boolean {
@@ -425,7 +437,7 @@ export async function editCode(input: {
         editCodeRecovery(input.path, "refine-pattern"),
       );
     }
-    const renameMode = isRenameEdit(edit) ? resolveRenameMode(matches) : null;
+    const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
     if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
     if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
     totalMatches += matches.length;

@@ -253,6 +253,65 @@ describe("editCode", () => {
     expect(content).not.toContain("config.displayLabel");
   });
 
+  test("ambiguous scoped rename can target the member explicitly", async () => {
+    const filePath = `/tmp/acolyte-test-ast-ambiguous-member-rename-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "x";',
+        "  method() {",
+        "    const alias = this.alias;",
+        "    return { alias, member: this.alias, other: config.alias };",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig", target: "member" }],
+    });
+    expect(result.matches).toBe(3);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain('defaultAlias = "x";');
+    expect(content).toContain("const alias = this.defaultAlias;");
+    expect(content).toContain("return { alias, member: this.defaultAlias, other: config.alias };");
+    expect(content).not.toContain("const defaultAlias = this.defaultAlias;");
+  });
+
+  test("ambiguous scoped rename can target the local symbol explicitly", async () => {
+    const filePath = `/tmp/acolyte-test-ast-ambiguous-local-rename-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "class ProviderConfig {",
+        '  alias = "x";',
+        "  method() {",
+        "    const alias = this.alias;",
+        "    return { alias, member: this.alias, other: config.alias };",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "alias", to: "localAlias", withinSymbol: "ProviderConfig", target: "local" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("const localAlias = this.alias;");
+    expect(content).toContain("return { alias: localAlias, member: this.alias, other: config.alias };");
+    expect(content).toContain('  alias = "x";');
+  });
+
   test("scoped local rename rewrites shorthand destructuring bindings", async () => {
     const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
     tempFiles.push(filePath);

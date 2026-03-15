@@ -38,6 +38,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "For rename/refactor tasks or repeated structural code updates, prefer `scan-code` + `edit-code` over `edit-file`.",
       "For a bounded structural change inside one named helper, declaration, or block, prefer `edit-code` with `withinSymbol` naming that enclosing symbol over a file-wide AST rewrite.",
       "For scoped structural renames, treat `withinSymbol` as symbol-aware within that scope: update local/shorthand references for local renames, and keep member renames on the declared member plus `this.member` references.",
+      'If a scoped rename is ambiguous because the same name exists as both a local and a member, pass `target: "local"` or `target: "member"` in the rename edit.',
       "If the user already names the enclosing helper or declaration for a scoped AST edit, do not search for that symbol first; read the file once and make one `edit-code` call with `withinSymbol`.",
       "If the task is a repeated plain-text rewrite inside one known file, prefer one consolidated `edit-file` call over `edit-code`.",
       "Batch multiple edits to the same file into one `edit-file` or `edit-code` call.",
