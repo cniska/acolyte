@@ -68,6 +68,7 @@ These must always hold. Break them and the system breaks.
 
 - Before closing a fix: ask "could this regress silently?" If yes, add a test.
 - Before adding a test: ask "does this cover behavior that could realistically break?" If not, skip it.
+- For unit tests, keep a module's unit coverage in its canonical `<module>.test.ts` file. Split into separate test files only for distinct subsystems or intentionally separate surfaces.
 - When a test and runtime disagree: fix the test unless a real runtime bug is proven.
 - Never add test-only branches, flags, mocks, or behavior changes to runtime code.
 
