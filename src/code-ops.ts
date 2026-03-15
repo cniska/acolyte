@@ -273,8 +273,75 @@ function renameRule(from: string): Record<string, unknown> {
     any: [
       { all: [{ kind: "identifier" }, { regex: `^${escapeRegex(from)}$` }] },
       { all: [{ kind: "property_identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+      { all: [{ kind: "shorthand_property_identifier" }, { regex: `^${escapeRegex(from)}$` }] },
+      { all: [{ kind: "shorthand_property_identifier_pattern" }, { regex: `^${escapeRegex(from)}$` }] },
     ],
   };
+}
+
+type RenameMode = "local" | "member" | "text";
+
+function classifyRenameDeclaration(node: napi.SgNode): RenameMode | null {
+  const parent = node.parent();
+  if (!parent) return null;
+  if (node.kind() === "identifier") {
+    if (parent.kind() === "variable_declarator") return "local";
+    if (
+      parent.kind() === "required_parameter" ||
+      parent.kind() === "optional_parameter" ||
+      parent.kind() === "rest_pattern" ||
+      parent.kind() === "function_declaration"
+    ) {
+      return "local";
+    }
+  }
+  if (node.kind() === "property_identifier") {
+    if (parent.kind() === "field_definition" || parent.kind() === "method_definition") return "member";
+  }
+  if (node.kind() === "shorthand_property_identifier_pattern") return "local";
+  return null;
+}
+
+function resolveRenameMode(matches: napi.SgNode[]): RenameMode {
+  let mode: RenameMode | null = null;
+  for (const match of matches) {
+    const classified = classifyRenameDeclaration(match);
+    if (!classified) continue;
+    if (!mode) {
+      mode = classified;
+      continue;
+    }
+    if (mode !== classified) return "text";
+  }
+  return mode ?? "text";
+}
+
+function isThisMemberReference(node: napi.SgNode): boolean {
+  if (node.kind() !== "property_identifier") return false;
+  const parent = node.parent();
+  if (!parent || parent.kind() !== "member_expression") return false;
+  const objectNode = parent.child(0);
+  return objectNode?.kind() === "this" || objectNode?.kind() === "super";
+}
+
+function isLocalRenameTarget(node: napi.SgNode): boolean {
+  if (node.kind() === "identifier") return true;
+  if (node.kind() === "shorthand_property_identifier") return true;
+  if (node.kind() === "shorthand_property_identifier_pattern") return true;
+  return false;
+}
+
+function isMemberRenameTarget(node: napi.SgNode): boolean {
+  const declarationKind = classifyRenameDeclaration(node);
+  if (declarationKind === "member") return true;
+  return isThisMemberReference(node);
+}
+
+function renameReplacement(node: napi.SgNode, from: string, to: string): string {
+  if (node.kind() === "shorthand_property_identifier" || node.kind() === "shorthand_property_identifier_pattern") {
+    return `${from}: ${to}`;
+  }
+  return to;
 }
 
 export type EditCodeResult = {
@@ -358,6 +425,9 @@ export async function editCode(input: {
         editCodeRecovery(input.path, "refine-pattern"),
       );
     }
+    const renameMode = isRenameEdit(edit) ? resolveRenameMode(matches) : null;
+    if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
+    if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
     totalMatches += matches.length;
 
     const patternMetavars = isRenameEdit(edit)
@@ -382,7 +452,11 @@ export async function editCode(input: {
         replaced = replaced.replaceAll(metavar, resolveReplacementMetavariable(match, metavar, current));
       }
       const range = match.range();
-      replacements.push({ start: range.start.index, end: range.end.index, replacement: replaced });
+      replacements.push({
+        start: range.start.index,
+        end: range.end.index,
+        replacement: isRenameEdit(edit) ? renameReplacement(match, edit.from, edit.to) : replaced,
+      });
     }
 
     replacements.sort((a, b) => b.start - a.start);

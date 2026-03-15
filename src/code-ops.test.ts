@@ -155,6 +155,36 @@ describe("editCode", () => {
     expect(content).toContain("results.reduce((sum, result) => sum + result.length, 0);");
   });
 
+  test("scoped local rename rewrites shorthand references without renaming object properties", async () => {
+    const filePath = `/tmp/acolyte-test-ast-local-rename-scope-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      [
+        "const scanFile = (items: string[]) => {",
+        "  const result = items[0] ?? '';",
+        "  const { result: alias, other = result } = source;",
+        "  return { result, nested: { result }, value: result, other: config.result, alias, other };",
+        "};",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }],
+    });
+    expect(result.matches).toBe(5);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("const patternResult = items[0] ?? '';");
+    expect(content).toContain("const { result: alias, other = patternResult } = source;");
+    expect(content).toContain(
+      "return { result: patternResult, nested: { result: patternResult }, value: patternResult, other: config.result, alias, other };",
+    );
+    expect(content).not.toContain("config.patternResult");
+  });
+
   test("supports structured rename edits within a class declaration", async () => {
     const filePath = `/tmp/acolyte-test-ast-class-rename-${testUuid()}.js`;
     tempFiles.push(filePath);
@@ -164,7 +194,7 @@ describe("editCode", () => {
         "class ProviderConfig {",
         '  alias = "acolyte-mini";',
         "  label() {",
-        "    return this.alias;",
+        "    return this.alias + config.alias;",
         "  }",
         "}",
         "",
@@ -188,8 +218,27 @@ describe("editCode", () => {
     expect(result.matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('defaultAlias = "acolyte-mini";');
-    expect(content).toContain("return this.defaultAlias;");
+    expect(content).toContain("return this.defaultAlias + config.alias;");
     expect(content).toContain('const alias = "outside";');
+  });
+
+  test("scoped local rename rewrites shorthand destructuring bindings", async () => {
+    const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
+    tempFiles.push(filePath);
+    await writeFile(
+      filePath,
+      ["const scanFile = ({ result }: { result: string }) => {", "  return result.toUpperCase();", "};", ""].join("\n"),
+      "utf8",
+    );
+    const result = await editCode({
+      workspace: WORKSPACE,
+      path: filePath,
+      edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }],
+    });
+    expect(result.matches).toBe(2);
+    const content = await readFile(filePath, "utf8");
+    expect(content).toContain("const scanFile = ({ result: patternResult }: { result: string }) => {");
+    expect(content).toContain("return patternResult.toUpperCase();");
   });
 
   test("rename matches exact identifiers only", async () => {
