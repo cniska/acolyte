@@ -48,7 +48,7 @@ These must always hold. Break them and the system breaks.
 - When a function mixes concerns (e.g. persistence + display): split it.
 - Before finalizing a fix: ask "root cause or symptom?" If symptom, keep digging.
 - Before committing non-trivial changes: ask "is there a more elegant solution?"
-- No transitional architecture: if the proper fix belongs in a different boundary or contract, move it there instead of landing an interim workaround at the current layer.
+- No transitional architecture at shared seams: if the proper fix belongs in a different boundary or contract, move it there. Do not stop at a "good enough for this slice" shape; land the canonical owner, normalized contract, and single source of truth before committing.
 - If you must leave tech debt: get explicit agreement and mark it `TODO(username):`.
 - When choosing between a prompt/tool-contract fix and host-side classification logic: prefer the contract fix.
 - Before committing chat-feature changes: UX intent is clear, regression test exists, smoke run passes.
