@@ -20,52 +20,25 @@ function escapeRegex(char: string): string {
 // to a regex string. `anchored` is true when the pattern must match from the
 // root of the gitignore directory (i.e. it originally contained a slash).
 function globToRegex(glob: string, anchored: boolean): string {
-  // Anchored patterns match from the root; unanchored match at any path segment.
   let re = anchored ? "^" : "(^|/)";
-  let i = 0;
 
-  while (i < glob.length) {
-    const ch = glob[i];
+  // Leading **/ is only special at position 0 — handle it before tokenising.
+  if (glob.startsWith("**/")) {
+    re += "(.+/)?";
+    glob = glob.slice(3);
+  }
 
-    // Detect /**/ and /** at the slash so the slash is consumed as part of the
-    // double-star token rather than emitted as a literal separator.
-    if (ch === "/" && glob[i + 1] === "*" && glob[i + 2] === "*") {
-      if (glob[i + 3] === "/") {
-        re += "/(.+/)?"; // /**/ — zero or more intermediate directories
-        i += 4;
-      } else {
-        re += "/.*"; // /** — slash followed by anything
-        i += 3;
-      }
-      continue;
-    }
-
-    if (ch === "*" && glob[i + 1] === "*") {
-      if (i === 0 && glob[i + 2] === "/") {
-        re += "(.+/)?"; // leading **/ — any number of leading directories
-        i += 3;
-      } else {
-        re += ".*"; // bare ** — match everything including slashes
-        i += 2;
-      }
-    } else if (ch === "*") {
-      re += "[^/]*"; // single * — anything within one path segment
-      i += 1;
-    } else if (ch === "?") {
-      re += "[^/]"; // ? — exactly one non-separator character
-      i += 1;
-    } else if (ch === "[") {
-      const close = glob.indexOf("]", i + 1);
-      if (close === -1) {
-        re += escapeRegex(ch); // unclosed bracket — treat as literal
-        i += 1;
-      } else {
-        re += glob.slice(i, close + 1); // character class — pass through verbatim
-        i = close + 1;
-      }
-    } else {
-      re += escapeRegex(ch);
-      i += 1;
+  // Tokenise in priority order so longer patterns win over shorter ones.
+  for (const [token] of glob.matchAll(/\/\*\*\/|\/\*\*|\*\*|\*|\?|\[[^\]]*\]|\[|[^*?[/]+|\//g)) {
+    switch (token) {
+      case "/**/": re += "/(.+/)?"; break; // zero or more intermediate directories
+      case "/**":  re += "/.*";     break; // slash + anything
+      case "**":   re += ".*";      break; // anything including slashes
+      case "*":    re += "[^/]*";   break; // anything within one segment
+      case "?":    re += "[^/]";    break; // exactly one non-separator character
+      default:
+        // Complete character class [a-z] — pass through; bare [ or literal run — escape.
+        re += token.startsWith("[") && token.endsWith("]") ? token : escapeRegex(token);
     }
   }
 
