@@ -157,9 +157,7 @@ function ensureAgentForMode(ctx: RunContext): void {
 }
 
 export function createLifecycleFeedbackText(feedback: LifecycleFeedback): string {
-  const sourceLabel =
-    feedback.source === "tool-recovery" && feedback.tool ? `${feedback.source}:${feedback.tool}` : feedback.source;
-  const lines = [`SYSTEM: Lifecycle feedback (${sourceLabel}):`, feedback.summary];
+  const lines = [`SYSTEM: Lifecycle feedback (${feedback.source}):`, feedback.summary];
   if (feedback.details) lines.push("", feedback.details);
   if (feedback.instruction) lines.push("", feedback.instruction);
   return lines.join("\n");

@@ -258,7 +258,6 @@ export const toolRecoveryEvaluator: Evaluator = {
       type: "regenerate",
       feedback: {
         source: "tool-recovery",
-        tool: recovery.tool,
         mode: "work",
         summary: recovery.summary,
         details: formatToolRecovery(currentError.message, recovery),

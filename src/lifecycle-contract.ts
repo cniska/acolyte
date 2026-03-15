@@ -114,7 +114,6 @@ export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "re
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
-  tool?: string;
   mode: AgentMode;
   summary: string;
   details?: string;

@@ -721,7 +721,6 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.tool).toBe("edit-file");
       expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
       expect(action.feedback?.details).toContain("Find text matched 3 locations");
       expect(action.feedback?.instruction).toContain("src/priority.ts");
@@ -750,7 +749,6 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.tool).toBe("edit-code");
       expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
       expect(action.feedback?.details).toContain("No AST matches found");
       expect(action.feedback?.details).toContain("Suggested next tool: read-file");
@@ -782,7 +780,6 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.tool).toBe("scan-code");
       expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
       expect(action.feedback?.details).toContain("notes.yaml");
       expect(action.feedback?.details).toContain("Suggested next tool: search-files");
@@ -1049,14 +1046,14 @@ describe("createGenerationInput", () => {
         feedback: [
           { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
           { source: "lint", mode: "work", summary: "Lint errors detected" },
-          { source: "tool-recovery", tool: "edit-file", mode: "work", summary: "Use a bounded edit next" },
+          { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
         ],
       },
     });
     expect(input).toContain("USER: fix it");
     expect(input).toContain("Lifecycle feedback (lint)");
     expect(input).toContain("Lint errors detected");
-    expect(input).toContain("Lifecycle feedback (tool-recovery:edit-file)");
+    expect(input).toContain("Lifecycle feedback (tool-recovery)");
     expect(input).toContain("Use a bounded edit next");
     expect(input).not.toContain("Task boundary:\n- src/a.ts");
   });
@@ -1092,7 +1089,6 @@ describe("consumeLifecycleFeedback", () => {
         { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
         {
           source: "tool-recovery" as const,
-          tool: "edit-file",
           mode: "work" as const,
           summary: "Use a bounded edit next",
         },
@@ -1103,7 +1099,7 @@ describe("consumeLifecycleFeedback", () => {
 
     expect(consumed).toEqual([
       { source: "lint", mode: "work", summary: "Lint errors detected" },
-      { source: "tool-recovery", tool: "edit-file", mode: "work", summary: "Use a bounded edit next" },
+      { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
     ]);
     expect(state.feedback).toEqual([
       { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
