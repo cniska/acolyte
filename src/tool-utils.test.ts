@@ -34,18 +34,6 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
     expect(files).toContain(".gitignore");
   });
 
-  test("respects .acolyteignore patterns", async () => {
-    const root = await createWorkspace({
-      ".acolyteignore": "scratch/\n",
-      "src/index.ts": "",
-      "scratch/notes.md": "",
-    });
-
-    const files = await collectWorkspaceFiles(root);
-    expect(files).toContain("src/index.ts");
-    expect(files).not.toContain("scratch/notes.md");
-  });
-
   test("respects nested .gitignore files", async () => {
     const root = await createWorkspace({
       "src/.gitignore": "*.generated.ts\n",

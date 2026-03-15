@@ -135,13 +135,11 @@ export function isIgnoredByPatterns(
 export async function loadGitignoreContext(dir: string): Promise<GitignoreContext | null> {
   const lines: string[] = [];
 
-  for (const filename of [".gitignore", ".acolyteignore"]) {
-    try {
-      const content = await readFile(join(dir, filename), "utf8");
-      lines.push(...content.split("\n"));
-    } catch {
-      // File does not exist — skip
-    }
+  try {
+    const content = await readFile(join(dir, ".gitignore"), "utf8");
+    lines.push(...content.split("\n"));
+  } catch {
+    // File does not exist — skip
   }
 
   const patterns = compileGitignorePatterns(lines);

@@ -41,7 +41,7 @@ Shipped, user-visible capabilities.
 - Git status/diff.
 - Shell command execution.
 - Web search/fetch.
-- File discovery respects `.gitignore` and nested `.gitignore` files. Use `.acolyteignore` for project-specific exclusions that should not go in `.gitignore`.
+- File discovery respects `.gitignore` and nested `.gitignore` files.
 
 ## Memory
 
