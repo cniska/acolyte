@@ -4,7 +4,7 @@ Shipped, user-visible capabilities.
 
 ## CLI
 
-- Interactive chat mode.
+- Interactive chat.
 - One-shot run mode with `--model` and `--file` flags.
 - One-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag.
 - Session resume and session listing.

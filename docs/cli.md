@@ -24,7 +24,7 @@ See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 
 ## Chat commands
 
-These are available inside interactive chat mode:
+These are available in interactive chat:
 
 - `/exit`: exit chat
 - `/new`: start new session
