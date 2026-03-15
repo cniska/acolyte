@@ -326,7 +326,7 @@ describe("searchFiles", () => {
         kind: "switch-to-read",
         nextTool: "read-file",
         targetPaths: [filePath],
-        resolvesOn: [{ tool: "read-file" }],
+        resolvesOn: [{ tool: "read-file", targetPaths: [filePath] }],
       },
     });
   });

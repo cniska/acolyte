@@ -69,7 +69,7 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
   }
 }
 
-function searchFilesRecovery(kind: SearchFilesRecoveryKind): ToolRecovery {
+function searchFilesRecovery(kind: SearchFilesRecoveryKind, targetPaths?: string[]): ToolRecovery {
   switch (kind) {
     case "broaden-scope":
       return {
@@ -89,7 +89,13 @@ function searchFilesRecovery(kind: SearchFilesRecoveryKind): ToolRecovery {
         instruction:
           "If the file is still the right target, switch to read-file and inspect the current text directly before deciding the next edit or search.",
         nextTool: "read-file",
-        resolvesOn: [{ tool: "read-file" }],
+        ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
+        resolvesOn: [
+          {
+            tool: "read-file",
+            ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
+          },
+        ],
       };
     default:
       return kind satisfies never;
@@ -185,7 +191,7 @@ export async function searchFiles(
       TOOL_ERROR_CODES.searchFilesNoMatch,
       `search-files found no matches in scoped file: ${singleScopedFile}`,
       undefined,
-      { ...searchFilesRecovery("switch-to-read"), targetPaths: [singleScopedFile] },
+      searchFilesRecovery("switch-to-read", [singleScopedFile]),
     );
   }
   return "No matches.";

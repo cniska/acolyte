@@ -27,6 +27,7 @@ import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdown
 import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
+import { extractToolTargetPaths } from "./tool-arg-paths";
 import { extractToolErrorCode } from "./tool-error";
 import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
@@ -336,29 +337,12 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
-function toolCallTargets(started: { toolName: string; args?: Record<string, unknown> }): string[] {
-  if (started.toolName === "read-file") {
-    const entries = started.args?.paths;
-    if (!Array.isArray(entries)) return [];
-    return entries.flatMap((entry) => {
-      if (!entry || typeof entry !== "object") return [];
-      const path = (entry as Record<string, unknown>).path;
-      return typeof path === "string" && path.trim().length > 0 ? [path] : [];
-    });
-  }
-  const path = started.args?.path;
-  if (typeof path === "string" && path.trim().length > 0) return [path];
-  const paths = started.args?.paths;
-  if (!Array.isArray(paths)) return [];
-  return paths.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-}
-
 function didResolveToolRecovery(
   recovery: NonNullable<RunContext["currentError"]>["recovery"],
   started: { toolName: string; args?: Record<string, unknown> },
 ): boolean {
   if (!recovery?.resolvesOn || recovery.resolvesOn.length === 0) return false;
-  const targets = toolCallTargets(started);
+  const targets = extractToolTargetPaths(started.args ?? {}, started.toolName);
   return recovery.resolvesOn.some((resolution) => {
     if (resolution.tool !== started.toolName) return false;
     if (!resolution.targetPaths || resolution.targetPaths.length === 0) return true;

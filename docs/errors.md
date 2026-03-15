@@ -15,6 +15,7 @@ Error handling in Acolyte is split by boundary, not bundled into one module.
 - Error codes and kinds are generic contracts shared across tools, lifecycle, and transport-facing parsing.
 - `ToolRecovery` is a separate contract for stable, tool-owned recovery guidance.
 - Recovery is optional and only used when a tool can state a concrete next step without host-side guessing.
+- Recovery may also declare which successful follow-up tool result resolves the failure.
 
 ## Runtime model
 

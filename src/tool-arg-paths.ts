@@ -18,6 +18,15 @@ export function extractReadPaths(args: Record<string, unknown>, opts?: { normali
   return out;
 }
 
+export function extractToolTargetPaths(args: Record<string, unknown>, toolName: string): string[] {
+  if (toolName === "read-file") return extractReadPaths(args);
+  const path = args.path;
+  if (typeof path === "string" && path.trim().length > 0) return [path.trim()];
+  const paths = args.paths;
+  if (!Array.isArray(paths)) return [];
+  return paths.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
 export function extractSearchPatterns(args: Record<string, unknown>): string[] {
   const normalize = (value: string): string => {
     const trimmed = value.trim().toLowerCase();

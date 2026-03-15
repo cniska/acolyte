@@ -197,7 +197,7 @@ describe("error handling helpers", () => {
         instruction: "Switch to read-file and inspect the file directly.",
         nextTool: "read-file",
         targetPaths: ["src/provider-config.ts"],
-        resolvesOn: [{ tool: "read-file" }],
+        resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
       }),
     );
     expect(parsed.ok).toBe(true);
@@ -209,7 +209,7 @@ describe("error handling helpers", () => {
       instruction: "Switch to read-file and inspect the file directly.",
       nextTool: "read-file",
       targetPaths: ["src/provider-config.ts"],
-      resolvesOn: [{ tool: "read-file" }],
+      resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
     });
   });
 
