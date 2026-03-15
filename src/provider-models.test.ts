@@ -115,4 +115,71 @@ describe("getAvailableModels", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("fetches anthropic models with correct headers", async () => {
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
+    (appConfig.anthropic as { apiKey: string | undefined }).apiKey = "sk-ant-test";
+    let capturedHeaders: Record<string, string> = {};
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
+      capturedHeaders = Object.fromEntries(new Headers(init?.headers).entries());
+      return new Response(
+        JSON.stringify({ data: [{ id: "claude-sonnet-4-6" }, { id: "claude-haiku-4-5-20251001" }] }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+
+    try {
+      const models = await getAvailableModels();
+      expect(models).toContain("claude-sonnet-4-6");
+      expect(models).toContain("claude-haiku-4-5-20251001");
+      expect(capturedHeaders["x-api-key"]).toBe("sk-ant-test");
+      expect(capturedHeaders["anthropic-version"]).toBe("2023-06-01");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("fetches google models with api key as query param and strips models/ prefix", async () => {
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
+    (appConfig.google as { apiKey: string | undefined }).apiKey = "goog-test-key";
+    let capturedUrl = "";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      return new Response(
+        JSON.stringify({ models: [{ name: "models/gemini-2.5-pro" }, { name: "models/gemini-2.0-flash" }] }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+
+    try {
+      const models = await getAvailableModels();
+      expect(models).toContain("gemini-2.5-pro");
+      expect(models).toContain("gemini-2.0-flash");
+      expect(capturedUrl).toContain("key=goog-test-key");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("deduplicates models across providers", async () => {
+    (appConfig.anthropic as { apiKey: string | undefined }).apiKey = "sk-ant-test";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes("anthropic")) {
+        return new Response(JSON.stringify({ data: [{ id: "shared-model" }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ data: [{ id: "shared-model" }, { id: "gpt-5-mini" }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const models = await getAvailableModels();
+      const sharedCount = models.filter((m) => m === "shared-model").length;
+      expect(sharedCount).toBe(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
