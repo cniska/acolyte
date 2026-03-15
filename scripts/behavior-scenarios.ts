@@ -13,6 +13,7 @@ const behaviorScenarioIdSchema = z.enum([
   "scan-code-yaml-recovery",
   "search-files-no-match-recovery",
   "scoped-edit-code-rename",
+  "scoped-edit-code-rename-shorthand",
   "class-field-edit-code-rename",
   "structured-edit-code-replace",
 ]);
@@ -612,6 +613,42 @@ async function validateScopedEditCodeRenameWorkspace(workspace: string): Promise
   return issues;
 }
 
+async function createScopedEditCodeRenameShorthandWorkspace(workspace: string): Promise<void> {
+  await writeWorkspaceFile(
+    workspace,
+    "src/code-ops.ts",
+    [
+      "export function scanCode(results: string[]): string {",
+      "  const scanFile = (items: string[]): string => {",
+      "    const result = items[0] ?? '';",
+      "    return JSON.stringify({ result, nested: { result }, value: result, other: config.result });",
+      "  };",
+      "  return scanFile(results);",
+      "}",
+      "",
+    ].join("\n"),
+  );
+}
+
+async function validateScopedEditCodeRenameShorthandWorkspace(workspace: string): Promise<string[]> {
+  const issues: string[] = [];
+  const content = await readWorkspaceFile(workspace, "src/code-ops.ts");
+  if (!content.includes("const patternResult = items[0] ?? '';")) {
+    issues.push("scanFile local variable should be renamed to patternResult");
+  }
+  if (
+    !content.includes(
+      "return JSON.stringify({ result: patternResult, nested: { result: patternResult }, value: patternResult, other: config.result });",
+    )
+  ) {
+    issues.push("scanFile shorthand and value references should be updated to patternResult");
+  }
+  if (content.includes("config.patternResult")) {
+    issues.push("member access on config.result should remain unchanged");
+  }
+  return issues;
+}
+
 async function createClassFieldEditCodeRenameWorkspace(workspace: string): Promise<void> {
   await writeWorkspaceFile(
     workspace,
@@ -744,6 +781,26 @@ function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
   return issues;
 }
 
+function validateScopedEditCodeRenameShorthandTrace(traceLines: string[]): string[] {
+  const issues: string[] = [];
+  const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const firstTool = toolCallLines[0];
+  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/code-ops.ts")) {
+    issues.push("first tool call should be read-file on src/code-ops.ts");
+  }
+  const editCodeCalls = toolCallLines.filter(
+    (line) => line.includes("tool=edit-code") && line.includes("path=src/code-ops.ts"),
+  ).length;
+  if (editCodeCalls === 0) issues.push("scoped shorthand rename scenario should use edit-code on src/code-ops.ts");
+  if (editCodeCalls > 2) {
+    issues.push(`scoped shorthand rename scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+  }
+  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/code-ops.ts"))) {
+    issues.push("scoped shorthand rename scenario should not fall back to edit-file on src/code-ops.ts");
+  }
+  return issues;
+}
+
 export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
   {
     id: "docs-link-fix",
@@ -839,6 +896,16 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     setup: createScopedEditCodeRenameWorkspace,
     validate: validateScopedEditCodeRenameWorkspace,
     validateTrace: validateScopedEditCodeRenameTrace,
+  },
+  {
+    id: "scoped-edit-code-rename-shorthand",
+    description: "Scoped helper-only rename updates shorthand object references safely.",
+    prompt:
+      'In src/code-ops.ts, rename the local variable `result` to `patternResult` inside the `scanFile` helper only. Use `edit-code` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update shorthand object references like `{ result }` inside that helper too, but do not rename `config.result`. Update only that file, then stop.',
+    expectedChanges: ["src/code-ops.ts"],
+    setup: createScopedEditCodeRenameShorthandWorkspace,
+    validate: validateScopedEditCodeRenameShorthandWorkspace,
+    validateTrace: validateScopedEditCodeRenameShorthandTrace,
   },
   {
     id: "class-field-edit-code-rename",
