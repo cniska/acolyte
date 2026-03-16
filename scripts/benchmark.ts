@@ -381,19 +381,25 @@ for (const p of PROJECTS) {
     const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
     const comments = src.lines.filter((l) => l.trimStart().startsWith("//")).length;
     const safeParse = countMatches(src.lines, /\.safeParse\(/g);
+    const parseCalls = countMatches(src.lines, /\.parse\(/g);
+    const validateCalls = countMatches(src.lines, /\.validate\(/g);
+    const schemaValidations = safeParse + parseCalls + validateCalls;
+    const externalImports = countMatches(src.lines, /from\s+["'](?!\.|\/)[^"']+["']/g);
     const tryBlocks = countMatches(src.lines, /try \{/g);
     const catchCalls = countMatches(src.lines, /\.catch\(/g);
 
-    console.log(`  as any /1k:       ${per1k(asAny, src.lineCount)}  (${asAny} total)`);
-    console.log(`  : any /1k:        ${per1k(colonAny, src.lineCount)}  (${colonAny} total)`);
-    console.log(`  @ts-ignore /1k:   ${per1k(tsIgnore, src.lineCount)}  (${tsIgnore} total)`);
-    console.log(`  lint ignores /1k: ${per1k(lintIgnore, src.lineCount)}  (${lintIgnore} total)`);
-    console.log(`  : unknown /1k:    ${per1k(unknown, src.lineCount)}  (${unknown} total)`);
-    console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
-    console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
-    console.log(`  .safeParse /1k:   ${per1k(safeParse, src.lineCount)}  (${safeParse} total)`);
-    console.log(`  try {} /1k:       ${per1k(tryBlocks, src.lineCount)}  (${tryBlocks} total)`);
-    console.log(`  .catch() /1k:     ${per1k(catchCalls, src.lineCount)}  (${catchCalls} total)`);
+    console.log(`  as any /1k:           ${per1k(asAny, src.lineCount)}  (${asAny} total)`);
+    console.log(`  : any /1k:            ${per1k(colonAny, src.lineCount)}  (${colonAny} total)`);
+    console.log(`  @ts-ignore /1k:       ${per1k(tsIgnore, src.lineCount)}  (${tsIgnore} total)`);
+    console.log(`  lint ignores /1k:     ${per1k(lintIgnore, src.lineCount)}  (${lintIgnore} total)`);
+    console.log(`  : unknown /1k:        ${per1k(unknown, src.lineCount)}  (${unknown} total)`);
+    console.log(`  TODO|FIXME /1k:       ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  Comments /1k:         ${per1k(comments, src.lineCount)}  (${comments} total)`);
+    console.log(`  .safeParse /1k:       ${per1k(safeParse, src.lineCount)}  (${safeParse} total)`);
+    console.log(`  schema validations /1k: ${per1k(schemaValidations, src.lineCount)}  (${schemaValidations} total)`);
+    console.log(`  external imports /1k: ${per1k(externalImports, src.lineCount)}  (${externalImports} total)`);
+    console.log(`  try {} /1k:           ${per1k(tryBlocks, src.lineCount)}  (${tryBlocks} total)`);
+    console.log(`  .catch() /1k:         ${per1k(catchCalls, src.lineCount)}  (${catchCalls} total)`);
   } else if (p.lang === "python") {
     const typeIgnore = countMatches(src.lines, /type: ignore/g);
     const anyType = countMatches(src.lines, /Any/g);
