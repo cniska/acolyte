@@ -61,6 +61,8 @@ External imports include package imports that resolve **outside the repository**
 
 Lower values indicate a more self-contained codebase with fewer external dependencies.
 
+Acolyte has the second-lowest external import density (6.2/1k), behind only OpenClaw (4.5/1k), and the fewest runtime dependencies by a wide margin.
+
 ---
 
 # Input Validation Coverage
@@ -79,6 +81,8 @@ Includes schema validation calls such as:
 | `.safeParse()` calls | 1.1 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
 
 Higher values indicate stronger runtime validation of model outputs, RPC payloads, and configuration data.
+
+Acolyte validates at 2.4/1k — roughly 2–5× the rate of every other project in the benchmark.
 
 ---
 
