@@ -56,7 +56,7 @@ External imports include package imports that resolve **outside the repository**
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
-| External imports / 1k LOC | TBD | TBD | TBD | TBD | TBD | TBD |
+| External imports / 1k LOC | 6.2 | 16.7 | 9.1 | 22.3 | 10.0 | 4.5 |
 | Runtime dependencies | 12 | 173 | 50 | 155 | 186 | 109 |
 
 Lower values indicate a more self-contained codebase with fewer external dependencies.
@@ -75,7 +75,7 @@ Includes schema validation calls such as:
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
-| Schema validations / 1k LOC | TBD | TBD | TBD | TBD | TBD | TBD |
+| Schema validations / 1k LOC | 2.4 | 0.7 | 0.7 | 1.2 | 0.9 | 0.5 |
 | `.safeParse()` calls | 1.1 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
 
 Higher values indicate stronger runtime validation of model outputs, RPC payloads, and configuration data.
