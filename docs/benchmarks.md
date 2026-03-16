@@ -13,7 +13,7 @@ All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Ru
 - Metrics normalized **per 1k source lines** where applicable
 - Dependencies shown as **runtime + development** dependencies
 
-## Closed Systems Context
+## Closed systems context
 
 Several widely used coding agents are closed-source and cannot be analyzed with the same methodology.
 
@@ -25,9 +25,7 @@ Several widely used coding agents are closed-source and cannot be analyzed with 
 
 These systems are included for context but excluded from code analysis benchmarks.
 
----
-
-# Projects Compared
+## Projects compared
 
 | Project | Language | Description | Source Lines | Files | Dependencies |
 |---|---|---|---|---|---|
@@ -46,9 +44,7 @@ Acolyte ships with 12 runtime dependencies because the daemon owns the stack —
 
 The AI SDK handles model calls, Zod handles validation, the custom React reconciler owns the TUI, and tiktoken handles token counting. Everything else is owned code.
 
----
-
-# Dependency Surface Area
+## Dependency surface area
 
 Measures how much of a codebase depends on external packages.
 
@@ -63,17 +59,11 @@ Lower values indicate a more self-contained codebase with fewer external depende
 
 Acolyte has the second-lowest external import density (6.2/1k), behind only OpenClaw (4.5/1k), and the fewest runtime dependencies by a wide margin.
 
----
-
-# Input Validation Coverage
+## Input validation coverage
 
 Measures how frequently data entering the system is validated.
 
-Includes schema validation calls such as:
-
-- `safeParse`
-- `parse`
-- `validate`
+Includes schema validation calls such as `safeParse`, `parse`, and `validate`.
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
@@ -84,11 +74,9 @@ Higher values indicate stronger runtime validation of model outputs, RPC payload
 
 Acolyte validates at 2.4/1k — roughly 2–5× the rate of every other project in the benchmark.
 
----
+## Type safety — TypeScript
 
-# Type Safety
-
-TypeScript projects, per 1k source lines.
+Per 1k source lines.
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
@@ -100,11 +88,9 @@ TypeScript projects, per 1k source lines.
 
 Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high rates — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system.
 
----
+## Type safety — Python, Rust, Go
 
-# Type Safety
-
-Python / Rust / Go projects, per 1k source lines.
+Per 1k source lines.
 
 | Metric | Aider | OpenHands | Goose | Plandex |
 |---|---|---|---|---|
@@ -120,9 +106,9 @@ Python / Rust / Go projects, per 1k source lines.
 
 Aider shows minimal type escape hatches. Goose has relatively high `.unwrap()` density — potential panic sites.
 
----
+## Tech debt
 
-# Tech Debt (per 1k source lines)
+Per 1k source lines.
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -133,9 +119,9 @@ Near-zero tech debt markers (2 total).
 
 Low inline comment density reflects smaller modules and strict typing, with architectural explanations maintained in external documentation.
 
----
+## Test quality
 
-# Test Quality
+Measures test lines relative to source lines across all projects.
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -152,9 +138,9 @@ Test types include:
 - TUI visual regression (`*.tui.test.ts`)
 - performance (`*.perf.test.ts`)
 
----
+## Module cohesion
 
-# Module Cohesion
+Measures average file size, size distribution, and barrel file density.
 
 | Metric | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -167,9 +153,7 @@ Acolyte maintains the smallest average module size and fewest large files.
 
 The flat `src/` layout keeps modules shallow with minimal re-exports and no circular dependencies.
 
----
-
-# Error Handling
+## Error handling
 
 TypeScript projects, per 1k source lines.
 
@@ -183,24 +167,22 @@ Acolyte validates boundaries with Zod `.safeParse()` at over **10× the rate** o
 
 RPC payloads, model responses, and configuration files are validated before entering the system.
 
----
-
-# Key Takeaways
+## Key takeaways
 
 Across the benchmarked projects, Acolyte demonstrates:
 
-- extremely low `any` usage and strong TypeScript safety
-- the smallest modules and lowest large-file density
-- the lightest dependency footprint
-- near-zero tech debt markers
-- high automated test coverage
-- clear lifecycle boundaries across independently testable modules
+- Extremely low `any` usage and strong TypeScript safety
+- The smallest modules and lowest large-file density
+- The lightest dependency footprint
+- Near-zero tech debt markers
+- High automated test coverage
+- Clear lifecycle boundaries across independently testable modules
 
 These characteristics reflect a deliberately small, strongly typed architecture — built so that lifecycle phases, guards, and tools behave predictably and can be independently verified.
 
----
+## Summary
 
-# Summary
+Consolidated comparison across all measured dimensions.
 
 | Dimension | Acolyte | Aider | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -212,7 +194,5 @@ These characteristics reflect a deliberately small, strongly typed architecture 
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
 Acolyte leads on type safety, module size, dependency count, and tech debt markers while remaining the smallest codebase in the benchmark.
-
----
 
 Updated 16 March 2026.

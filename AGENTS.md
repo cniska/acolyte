@@ -15,9 +15,9 @@ These must always hold. Break them and the system breaks.
 
 1. All tools go through `runTool` in `tool-execution.ts` — never call a tool function directly.
 2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
-3. `@signal` can appear anywhere in model output, not just at the start — strip it wherever it appears.
+3. `@signal` is a suffix — model output must end with exactly one `@signal` line. Strip the signal line and everything after it.
 4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
-5. `bun run verify` passes before every commit.
+5. Run `bun run verify` before every commit.
 
 ## Workflow
 
@@ -60,7 +60,7 @@ These must always hold. Break them and the system breaks.
 
 1. Never call a task done without proving it works. Run tests, check output, demonstrate correctness.
 2. While iterating, run the narrowest check: `bun run typecheck`, `bun run lint`, or `bun test <file>`.
-3. `bun run verify` is the final gate before committing.
+3. Run `bun run verify` as the final gate before committing.
 4. Never commit on red. If the baseline is already red: restore green first, then continue.
 5. Manual testing only at milestone checkpoints. Document any validation that couldn't run and why.
 

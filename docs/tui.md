@@ -48,7 +48,7 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 ## Testing
 
 - **`renderToString`** (`render-to-string.ts`) — renders a React tree to a plain string without terminal side effects.
-- **`renderPlain`** (`tui-test-utils.ts`) — wraps `renderToString` with configurable terminal width for test convenience.
+- **`renderPlain`** (`src/tui-test-utils.ts`) — wraps `renderToString` with configurable terminal width for test convenience.
 - **`serialize.test.tsx`** — layout and serialization tests against the DOM tree directly.
 
 ## Extension seams
@@ -70,3 +70,7 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `src/tui/host-config.ts` — React reconciler host config
 - `src/tui/styles.ts` — ANSI escape sequences, color mapping
 - `src/tui/reconciler.ts` — React reconciler instance
+
+---
+
+For the story behind the TUI design, read [No More Ink](https://crisu.me/blog/no-more-ink).

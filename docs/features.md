@@ -22,7 +22,7 @@ Shipped, user-visible capabilities.
 - HTTP and RPC transport support.
 - Custom terminal renderer with React reconciler, static/active split, and structured output.
 
-## Agent Execution
+## Agent execution
 
 - Lifecycle-driven execution with work/verify behavior.
 - Explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed.
@@ -51,7 +51,7 @@ Shipped, user-visible capabilities.
 - Context distillation with automatic observation and reflection.
 - Session-scoped distill memory.
 
-## Safety and Control
+## Safety and control
 
 - Read/write permission modes.
 - Workspace and temp-root path guardrails.

@@ -3,8 +3,8 @@
 Configuration is loaded from user scope and project scope, with project values overriding user values.
 
 Paths:
-- user: `~/.acolyte/config.toml`
-- project: `<cwd>/.acolyte/config.toml`
+- User: `~/.acolyte/config.toml`
+- Project: `<cwd>/.acolyte/config.toml`
 
 ## Common commands
 

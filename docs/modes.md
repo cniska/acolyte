@@ -1,9 +1,9 @@
 # Modes
 
-Acolyte uses explicit operating modes to shape behavior:
+Acolyte uses two explicit operating modes to shape behavior:
 
-- `work`
-- `verify`
+- Work
+- Verify
 
 ## Purpose
 

@@ -33,7 +33,7 @@ CLI → client → server → lifecycle → model + tools
 React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
-- custom React reconciler for terminal rendering.
+- Custom React reconciler for terminal rendering.
 - **details:** see [TUI](./tui.md).
 
 ## Daemon flow
@@ -93,10 +93,10 @@ resolve → prepare → generate → evaluate → finalize
 
 ## Modes
 
-- explicit operating behaviors are modeled as `work` and `verify`.
+- Explicit operating behaviors are modeled as `work` and `verify`.
 - **details:** see [Modes](./modes.md).
 
-## Memory Engine
+## Memory engine
 
 ```text
 Memory Engine

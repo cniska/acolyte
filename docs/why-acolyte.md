@@ -53,4 +53,8 @@ The CLI ships a custom React-based TUI: fuzzy search and autocomplete with sugge
 
 ---
 
-For a detailed comparison with other open-source agents, see [Comparison](./comparison.md). For measured code quality metrics, see [Benchmarks](./benchmarks.md).
+For a detailed comparison with other open-source agents, see [Comparison](./comparison.md).
+
+Measured code quality metrics are available in [Benchmarks](./benchmarks.md).
+
+The background on why Acolyte was built is covered in [Meet Acolyte](https://crisu.me/blog/meet-acolyte).

@@ -30,11 +30,11 @@ Default source order is `stored, distill_project, distill_user, distill_session`
 ## Controls
 
 - Request-level off switch: `useMemory=false`
-  - disables memory injection for that request
-  - skips memory commit for that request
+  - Disables memory injection for that request
+  - Skips memory commit for that request
 - Config-level off switch: `memoryBudgetTokens=0`
-  - disables memory injection globally
-  - source strategy config is still retained
+  - Disables memory injection globally
+  - Source strategy config is still retained
 
 ## Inspiration
 
@@ -57,11 +57,11 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
   - Untagged fact lines are dropped (strict tagged promotion, no fallback).
   - Malformed bracket tags (for example `[proj]`) reject the entire session observation batch.
 - Load strategy:
-  - latest reflection first
-  - then post-reflection observations (fresh delta, newest first)
+  - Latest reflection first
+  - Then post-reflection observations (fresh delta, newest first)
 - Continuation state:
-  - preserve `Current task` and `Next step` when available
-  - continuation is sourced from typed fields (`currentTask`/`nextStep`)
+  - Preserve `Current task` and `Next step` when available
+  - Continuation is sourced from typed fields (`currentTask`/`nextStep`)
 
 ## Runtime guarantees
 

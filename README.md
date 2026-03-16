@@ -10,7 +10,7 @@ A terminal-first AI coding agent: reliable by default, observable, and open sour
 
 ![Acolyte CLI](docs/assets/cli.png)
 
-## Quick Start
+## Quick start
 
 ```bash
 bun install

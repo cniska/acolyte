@@ -33,3 +33,7 @@ accepted → queued → running → completed|failed|cancelled
 - `src/task-registry.ts`
 - `src/rpc-queue.ts`
 - `src/server-rpc.ts`
+
+---
+
+For a deeper look at the daemon architecture and task flow, read [How It Works](https://crisu.me/blog/how-it-works).

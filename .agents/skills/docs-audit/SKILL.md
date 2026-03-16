@@ -46,7 +46,7 @@ Read first:
 
 Then inspect the changed code and changed docs together.
 
-## Audit Workflow
+## Audit workflow
 
 1. Identify the behavior, contract, terminology, or config changes in the diff.
 2. Determine which canonical doc should describe each change.
@@ -65,7 +65,7 @@ Then inspect the changed code and changed docs together.
    - what drifted or is missing
    - minimal fix direction
 
-## Output Format
+## Output format
 
 - Findings first, ordered by severity.
 - For each finding include:
@@ -76,7 +76,18 @@ Then inspect the changed code and changed docs together.
   - canonical doc updates needed
   - optional cleanup
 
-## Anti-Patterns
+## Style conventions
+
+Enforce these across all docs:
+
+- Each document has exactly one H1, used as the page title.
+- Headings follow semantic order — do not skip levels (e.g. H1 → H3 without an H2).
+- H1 headings use title case (every major word capitalized).
+- H2 and below use sentence case (first word only).
+- Bullet points that contain a word or phrase start with a capital letter.
+- Avoid unnecessary fenced code blocks for content that reads naturally as prose or inline code.
+
+## Anti-patterns
 
 - Turning docs review into generic prose polishing.
 - Recommending duplicate explanations across multiple docs.

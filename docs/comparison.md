@@ -8,16 +8,14 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 
 | Capability | Acolyte | Aider | OpenCode | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|
-Lifecycle pipeline | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
-Behavioral guards | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial | ✗ |
-Auto verification | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
-Task state machine | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
-Observable execution | ✓ | partial | partial | partial | partial | ✗ | ✗ | ✗ | ✗ |
-Daemon architecture | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ |
+| Lifecycle pipeline | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
+| Behavioral guards | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial | ✗ |
+| Auto verification | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
+| Task state machine | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
+| Observable execution | ✓ | partial | partial | partial | partial | ✗ | ✗ | ✗ | ✗ |
+| Daemon architecture | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ |
 
----
-
-# Architecture
+## Architecture
 
 | Project | Architecture | Deployment model |
 |---|---|---|
@@ -36,9 +34,7 @@ Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-par
 
 The optional TUI is a custom React terminal renderer built on `react-reconciler` and provides an interactive CLI experience.
 
----
-
-# Lifecycle pipeline
+## Lifecycle pipeline
 
 Acolyte separates the agent lifecycle into explicit phases with strict contracts between them.
 
@@ -60,16 +56,14 @@ Most other agents use flat tool loops or implicit state machines.
 
 Goose comes closest with `prepare → generate → categorize → execute`, but the phases are orchestrated inside a single streaming loop.
 
----
-
-# Tool guards
+## Tool guards
 
 Autonomous coding agents frequently enter degenerate loops:
 
-- repeated edits
-- redundant file reads
-- repeated searches
-- verification cycles with no changes
+- Repeated edits
+- Redundant file reads
+- Repeated searches
+- Verification cycles with no changes
 
 Acolyte uses behavioral guards that run before every tool call.
 
@@ -86,15 +80,13 @@ Only OpenClaw and OpenHands ship comparable runtime safeguards.
 
 Others rely primarily on prompt instructions or user confirmation.
 
----
-
-# Auto-verification
+## Auto-verification
 
 After generation, evaluators inspect the result and may trigger:
 
-- regeneration with a different tool strategy
-- mode transitions (work → verify)
-- verify cycles that automatically run project checks
+- Regeneration with a different tool strategy
+- Mode transitions (work → verify)
+- Verify cycles that automatically run project checks
 
 Goose has a `RetryManager` that checks shell command success.
 
@@ -102,9 +94,7 @@ OpenHands has a **Critic** that scores outcomes but does not automatically retry
 
 Most other agents rely on prompt instructions such as "please run the tests".
 
----
-
-# Developer experience
+## Developer experience
 
 The CLI ships a custom React terminal renderer built on `react-reconciler` with a full TUI:
 
@@ -121,19 +111,16 @@ Most competing CLIs use `prompt-toolkit` (Aider) or custom TUI frameworks (OpenC
 
 IDE-based agents such as Cline and Continue primarily operate through extensions.
 
----
-
-# Observability
+## Observability
 
 Every lifecycle event emits structured debug logs describing:
 
-- tool calls
-- guard decisions
-- evaluator actions
-- task state transitions
+- Tool calls
+- Guard decisions
+- Evaluator actions
+- Task state transitions
 
 A dedicated trace tool (`scripts/lifecycle-trace.ts`) converts daemon logs into timelines:
-
 
 ```
 task_id=task_abc123
@@ -148,28 +135,24 @@ These traces allow developers to debug agent behavior step-by-step.
 
 Most other agents expose only console logs or partial traces.
 
----
-
-# Code quality
+## Code quality
 
 Across the benchmarked projects, Acolyte leads on:
 
-- type safety
-- dependency footprint
-- module size
-- tech-debt markers
+- Type safety
+- Dependency footprint
+- Module size
+- Tech-debt markers
 
 These characteristics reflect architectural choices:
 
-- few dependencies because the daemon owns the stack
-- small modules because lifecycle phases and tools are isolated
-- high test density because modules are independently testable
+- Few dependencies because the daemon owns the stack
+- Small modules because lifecycle phases and tools are isolated
+- High test density because modules are independently testable
 
 See [Benchmarks](./benchmarks.md) for full measured comparisons.
 
----
-
-# Task architecture
+## Task architecture
 
 Every chat request becomes a **task** with a state machine:
 
@@ -185,9 +168,7 @@ The RPC protocol exposes task transitions so clients can show real-time progress
 
 Most other agents run requests inline or use implicit controller state.
 
----
-
-# Skills and extensibility
+## Skills and extensibility
 
 Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions.
 
@@ -199,24 +180,22 @@ Goose instead uses MCP-based extensions.
 
 Other agents have limited or no plugin systems.
 
----
-
-# Extension seams
+## Extension seams
 
 Core systems expose minimal, well-defined extension points:
 
-- lifecycle policies
-- tool registration
-- guard hooks
-- memory strategies
-- skill metadata
-- configuration layers
+- Lifecycle policies
+- Tool registration
+- Guard hooks
+- Memory strategies
+- Skill metadata
+- Configuration layers
 
 Extensions implement typed contracts. The surface is intentionally narrow — Acolyte is an opinionated product, not a general-purpose agent framework.
 
----
+## Memory
 
-# Memory
+How each agent retains knowledge across sessions.
 
 | Project | Approach |
 |---|---|
@@ -246,9 +225,9 @@ Memory tiers:
 - **Project**
 - **User**
 
----
+## Context budgeting
 
-# Context budgeting
+How each agent manages the token window when context grows large.
 
 | Project | Token budgeting |
 |---|---|
@@ -263,18 +242,11 @@ Memory tiers:
 | Continue | Retrieval parameters |
 | Plandex | Conversation summarization on token limit |
 
-Acolyte budgets context **before assembly** using `tiktoken`.
+Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken).
 
 Key behaviors:
 
-- system prompt reservation
-- priority-based context allocation
-- age-based tool compaction
-- visible truncation notices
-
----
-
-# Further reading
-
-- [How to Write Better AGENTS.md?](https://arxiv.org/abs/2602.11988)
-- [Benchmarks](./benchmarks.md)
+- System prompt reservation
+- Priority-based context allocation
+- Age-based tool compaction
+- Visible truncation notices

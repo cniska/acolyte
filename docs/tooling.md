@@ -16,9 +16,9 @@ lifecycle → guard → cache → toolkit → registry
 
 All tool calls run through guarded execution paths to ensure:
 
-- policy enforcement
-- consistent error shaping
-- call recording for evaluators/debug
+- Policy enforcement
+- Consistent error shaping
+- Call recording for evaluators/debug
 
 ## File discovery
 
