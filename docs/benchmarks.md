@@ -195,4 +195,6 @@ Consolidated comparison across all measured dimensions.
 
 Acolyte leads on type safety, module size, dependency count, and tech debt markers while remaining the smallest codebase in the benchmark.
 
+---
+
 Updated 16 March 2026.

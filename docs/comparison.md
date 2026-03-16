@@ -6,6 +6,8 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 
 ## Feature overview
 
+High-level capability comparison across nine open-source coding agents.
+
 | Capability | Acolyte | Aider | OpenCode | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
 |---|---|---|---|---|---|---|---|---|---|
 | Lifecycle pipeline | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
@@ -16,6 +18,8 @@ Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https:
 | Daemon architecture | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ |
 
 ## Architecture
+
+How each project structures its runtime and where it runs.
 
 | Project | Architecture | Deployment model |
 |---|---|---|
