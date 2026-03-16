@@ -124,12 +124,7 @@ export function createAgentStream(
         if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
-          if (
-            nudgeCount < maxNudges &&
-            allToolCalls.length > 0 &&
-            !lifecycleSignal &&
-            stepText.trim().length > 0
-          ) {
+          if (nudgeCount < maxNudges && allToolCalls.length > 0 && !lifecycleSignal && stepText.trim().length > 0) {
             nudgeCount++;
             log.debug("agent-stream.nudge", {
               reason: "no_tool_calls",

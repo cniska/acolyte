@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { appendLifecycleTextDelta, createLifecycleTextStreamState, extractLifecycleSignal, finalizeLifecycleText } from "./lifecycle-signal";
+import {
+  appendLifecycleTextDelta,
+  createLifecycleTextStreamState,
+  extractLifecycleSignal,
+  finalizeLifecycleText,
+} from "./lifecycle-signal";
 
 describe("extractLifecycleSignal", () => {
   test("strips a trailing signal and returns text before it", () => {
