@@ -1,10 +1,10 @@
-# Code Quality Benchmarks
+# Benchmarks
 
 Measured comparisons of Acolyte against prominent open-source AI coding agents.
 
 All metrics are derived from **static source analysis** — no subjective scoring.
 
-All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts).
+All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts). Run `/benchmark` to refresh this file with the latest numbers.
 
 ## Methodology
 
@@ -19,9 +19,9 @@ Several widely used coding agents are closed-source and cannot be analyzed with 
 
 | System | Open Source | Self-hostable | Observable Execution | Multi-model |
 |---|---|---|---|---|
-| Claude Code | ❌ | ❌ | ❌ | ❌ |
-| Codex CLI | ❌ | ❌ | ❌ | ❌ |
-| Acolyte | ✅ | ✅ | ✅ | ✅ |
+| Claude Code | ✗ | ✗ | ✗ | ✗ |
+| Codex CLI | ✗ | ✗ | ✗ | ✗ |
+| Acolyte | ✓ | ✓ | ✓ | ✓ |
 
 These systems are included for context but excluded from code analysis benchmarks.
 
@@ -82,7 +82,9 @@ Higher values indicate stronger runtime validation of model outputs, RPC payload
 
 ---
 
-# Type Safety (TypeScript projects, per 1k source lines)
+# Type Safety
+
+TypeScript projects, per 1k source lines.
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
@@ -96,25 +98,21 @@ Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high
 
 ---
 
-# Type Safety (Python / Rust / Go projects, per 1k source lines)
+# Type Safety
 
-| Metric | Aider | OpenHands |
-|---|---|---|
-| `type: ignore` | 0.0 | 1.7 |
-| `Any` usage | 0.1 | 3.5 |
-| `cast()` calls | 0.0 | 0.3 |
+Python / Rust / Go projects, per 1k source lines.
 
-| Metric | Goose |
-|---|---|
-| `unsafe` | 0.0 |
-| `.unwrap()` | 11.8 |
-| `.expect()` | 1.4 |
-
-| Metric | Plandex |
-|---|---|
-| `any` / `interface{}` | 4.4 |
-| `panic()` | 0.3 |
-| `nolint` | 0.0 |
+| Metric | Aider | OpenHands | Goose | Plandex |
+|---|---|---|---|---|
+| `type: ignore` (Python) | 0.0 | 1.7 | — | — |
+| `Any` usage (Python) | 0.1 | 3.5 | — | — |
+| `cast()` calls (Python) | 0.0 | 0.3 | — | — |
+| `unsafe` (Rust) | — | — | 0.0 | — |
+| `.unwrap()` (Rust) | — | — | 11.8 | — |
+| `.expect()` (Rust) | — | — | 1.4 | — |
+| `any` / `interface{}` (Go) | — | — | — | 4.4 |
+| `panic()` (Go) | — | — | — | 0.3 |
+| `nolint` (Go) | — | — | — | 0.0 |
 
 Aider shows minimal type escape hatches. Goose has relatively high `.unwrap()` density — potential panic sites.
 
@@ -167,7 +165,9 @@ The flat `src/` layout keeps modules shallow with minimal re-exports and no circ
 
 ---
 
-# Error Handling (TypeScript projects, per 1k source lines)
+# Error Handling
+
+TypeScript projects, per 1k source lines.
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
@@ -211,5 +211,4 @@ Acolyte leads on type safety, module size, dependency count, and tech debt marke
 
 ---
 
-Last updated: March 2026.  
-All metrics refreshed from current repository state.
+Updated 16 March 2026.
