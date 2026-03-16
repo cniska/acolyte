@@ -127,7 +127,7 @@ export function createAgentStream(
           if (
             nudgeCount < maxNudges &&
             allToolCalls.length > 0 &&
-            !finalizedStep.signal &&
+            !lifecycleSignal &&
             stepText.trim().length > 0
           ) {
             nudgeCount++;

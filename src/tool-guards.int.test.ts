@@ -134,7 +134,7 @@ describe("guard regression integration", () => {
           ]);
         }
 
-        return createMessagePayload(model, responseCounter, "@signal done\nDone.");
+        return createMessagePayload(model, responseCounter, "Done.\n@signal done");
       },
     );
 
