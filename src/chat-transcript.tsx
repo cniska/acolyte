@@ -6,7 +6,6 @@ import { ShimmerText } from "./chat-shimmer";
 import { palette } from "./palette";
 import { Box, Text } from "./tui";
 
-export { parseStatusLine } from "./chat-row";
 
 type ChatTranscriptProps = {
   rows: ChatRow[];

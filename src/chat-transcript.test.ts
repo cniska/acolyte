@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseStatusLine } from "./chat-transcript";
+import { parseStatusLine } from "./chat-row";
 
 describe("chat transcript helpers", () => {
   test("parseStatusLine parses key-value lines with optional indentation", () => {

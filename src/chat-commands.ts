@@ -55,18 +55,18 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function presentSessionsOutput(store: SessionState, limit = 10): string {
-  const recent = formatSessionList(store, limit);
-  return [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n");
+export function sessionsRows(store: SessionState, limit = 10): ChatRow[] {
+  const list = formatSessionList(store, limit);
+  return [{ ...createRow("system", ""), commandOutput: { header: t("chat.sessions.header", { count: store.sessions.length }), sections: [], list } }];
 }
 
-export function presentStatusOutput(status: StatusFields): ChatRow[] {
+export function statusRows(status: StatusFields): ChatRow[] {
   const output = createStatusOutput(status);
-  if (!output) return [createRow("system", t("chat.status.empty"))];
+  if (!output) return [];
   return [{ ...createRow("system", ""), commandOutput: output }];
 }
 
-export function presentUsageOutput(last: SessionTokenUsageEntry | null, _all: SessionTokenUsageEntry[]): ChatRow[] {
+export function usageRows(last: SessionTokenUsageEntry | null): ChatRow[] {
   if (!last) return [createRow("system", t("chat.usage.none"))];
   const summary: [string, string][] = [
     [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
@@ -218,16 +218,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/sessions") {
-    const rendered = presentSessionsOutput(ctx.store, 10);
-    ctx.setRows((current) => [...current, createRow("system", rendered)]);
+    ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
     return { stop: true, userText: text };
   }
 
   if (resolvedText === "/status") {
     try {
       const status = await ctx.client.status();
-      const rendered = presentStatusOutput(status);
-      ctx.setRows((current) => [...current, ...rendered]);
+      ctx.setRows((current) => [...current, ...statusRows(status)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -369,8 +367,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/usage") {
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    const rendered = presentUsageOutput(last, ctx.tokenUsage);
-    ctx.setRows((current) => [...current, ...rendered]);
+    ctx.setRows((current) => [...current, ...usageRows(last)]);
     return { stop: true, userText: text };
   }
 

@@ -21,37 +21,6 @@ function createLineKey(seen: Map<string, number>, base: string): string {
   return `${base}:${next}`;
 }
 
-function renderSessionsListContent(content: string): React.ReactNode {
-  const [header, ...restLines] = content.split("\n");
-  const match = header?.match(/^(Sessions\s+)(\d+)$/);
-  if (!match) return null;
-  const seenLineKeys = new Map<string, number>();
-  return (
-    <Text>
-      <Text>{match[1] ?? "Sessions "}</Text>
-      <Text dimColor>{match[2] ?? "0"}</Text>
-      {restLines.length > 0
-        ? restLines.map((line) => {
-            const sessionMatch = line.match(/^(. )(sess_\S+)(\s.*)$/);
-            if (!sessionMatch) {
-              return (
-                <Text key={createLineKey(seenLineKeys, `sessions:plain:${line}`)} dimColor>
-                  {`\n${line}`}
-                </Text>
-              );
-            }
-            return (
-              <React.Fragment key={createLineKey(seenLineKeys, `sessions:${sessionMatch[2]}`)}>
-                <Text dimColor>{`\n${sessionMatch[1]}`}</Text>
-                <Text>{sessionMatch[2]}</Text>
-                <Text dimColor>{sessionMatch[3]}</Text>
-              </React.Fragment>
-            );
-          })
-        : null}
-    </Text>
-  );
-}
 
 export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
   const match = line.match(/^(\s*)([a-zA-Z0-9_.-]+:\s*)(.*)$/);
@@ -93,7 +62,9 @@ function renderKeyValueContent(content: string): React.ReactNode {
 
 function renderCommandOutput(output: CommandOutput): React.ReactNode {
   const allRows = output.sections.flat();
-  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
+  const colWidth = allRows.length > 0
+    ? Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1))
+    : COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
   return (
     <>
       <Text>{output.header}</Text>
@@ -109,12 +80,23 @@ function renderCommandOutput(output: CommandOutput): React.ReactNode {
           ))}
         </React.Fragment>
       ))}
+      {output.list && output.list.length > 0 && (
+        <>
+          {"\n\n"}
+          {output.list.map((line, i) => (
+            <React.Fragment key={line}>
+              {i > 0 ? "\n" : null}
+              <Text>{line}</Text>
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </>
   );
 }
 
 function renderSystemContent(content: string): React.ReactNode {
-  return renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
+  return renderKeyValueContent(content) ?? content;
 }
 
 function renderToolLine(

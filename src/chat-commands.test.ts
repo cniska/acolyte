@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { dispatchSlashCommand, presentSessionsOutput, presentStatusOutput, presentUsageOutput } from "./chat-commands";
+import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
 import type { ConfigScope } from "./config-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
@@ -13,7 +13,7 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 }
 
 describe("chat-commands", () => {
-  test("presentUsageOutput includes expected metric keys", () => {
+  test("usageRows includes expected metric keys", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: {
@@ -32,7 +32,7 @@ describe("chat-commands", () => {
         messageTokens: 10,
       },
     };
-    const [row] = presentUsageOutput(usage, [usage]);
+    const [row] = usageRows(usage);
     const allPairs = row?.commandOutput?.sections.flat() ?? [];
     const keys = allPairs.map(([k]) => k);
     expect(keys).toContain("Input");
@@ -42,7 +42,7 @@ describe("chat-commands", () => {
     expect(keys).toContain("Messages");
   });
 
-  test("presentUsageOutput does not include budget warning", () => {
+  test("usageRows does not include budget warning", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
@@ -53,13 +53,13 @@ describe("chat-commands", () => {
         inputTruncated: true,
       },
     };
-    const [row] = presentUsageOutput(usage, [usage]);
+    const [row] = usageRows(usage);
     const allPairs = row?.commandOutput?.sections.flat() ?? [];
     expect(allPairs.every(([k]) => !k.toLowerCase().includes("warning"))).toBe(true);
     expect(allPairs.every(([, v]) => !v.includes("context trimmed"))).toBe(true);
   });
 
-  test("presentUsageOutput uses prompt breakdown total for percentages", () => {
+  test("usageRows uses prompt breakdown total for percentages", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: { inputTokens: 50, outputTokens: 2, totalTokens: 52 },
@@ -72,7 +72,7 @@ describe("chat-commands", () => {
         messageTokens: 40,
       },
     };
-    const [row] = presentUsageOutput(usage, [usage]);
+    const [row] = usageRows(usage);
     const allPairs = row?.commandOutput?.sections.flat() ?? [];
     const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
     expect(find("System")).toContain("20%");
@@ -81,8 +81,8 @@ describe("chat-commands", () => {
     expect(find("Messages")).toContain("40%");
   });
 
-  test("presentStatusOutput returns commandOutput with labeled fields", () => {
-    const [row] = presentStatusOutput({
+  test("statusRows returns commandOutput with labeled fields", () => {
+    const [row] = statusRows({
       providers: ["openai"],
       model: "gpt-5-mini",
       permissions: "write",
@@ -94,24 +94,23 @@ describe("chat-commands", () => {
     expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
-  test("presentStatusOutput shows fallback when payload has no visible fields", () => {
-    const [row] = presentStatusOutput({});
-    expect(row?.content).toBe("Status response was empty.");
-    expect(row?.commandOutput).toBeUndefined();
+  test("statusRows returns empty array when payload has no visible fields", () => {
+    expect(statusRows({})).toHaveLength(0);
   });
 
-  test("presentSessionsOutput renders command presentation block", () => {
+  test("sessionsRows returns commandOutput with header and list", () => {
     const store = createStore({
       activeSessionId: "sess_aaaa1111",
       sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
     });
-    const rendered = presentSessionsOutput(store, 10);
-    expect(rendered).toContain("Sessions 1");
-    expect(rendered).toContain("● sess_aaaa1111  First");
+    const [row] = sessionsRows(store, 10);
+    expect(row?.commandOutput?.header).toBe("Sessions 1");
+    expect(row?.commandOutput?.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
+    expect(row?.commandOutput?.list?.some((line) => line.includes("First"))).toBe(true);
   });
 
-  test("presentUsageOutput returns fallback row when no usage data", () => {
-    const [row] = presentUsageOutput(null, []);
+  test("usageRows returns fallback row when no usage data", () => {
+    const [row] = usageRows(null);
     expect(row?.content).toBe("No usage data yet. Send a prompt first.");
     expect(row?.commandOutput).toBeUndefined();
   });
@@ -180,10 +179,10 @@ describe("chat-commands", () => {
     });
     const { rows, stop } = await runCommand("/sessions", { store });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("● sess_aaaa1111  First");
-    expect(system?.content).toContain("  sess_bbbb2222  Second");
+    const row = rows.find((r) => r.commandOutput?.header === "Sessions 2");
+    expect(row).toBeDefined();
+    expect(row?.commandOutput?.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
+    expect(row?.commandOutput?.list?.some((line) => line.includes("sess_bbbb2222"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory with empty store", async () => {

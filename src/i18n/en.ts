@@ -78,7 +78,6 @@ export const EN_MESSAGES = {
   "chat.slash.help.status": "show server status",
   "chat.slash.help.usage": "show token usage",
   "chat.status.check_failed": "Status check failed.",
-  "chat.status.empty": "Status response was empty.",
   "chat.status.header": "Status",
   "chat.status.label.active_skill": "Active skill",
   "chat.status.label.capabilities": "Capabilities",

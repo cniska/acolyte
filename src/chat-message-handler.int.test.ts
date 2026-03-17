@@ -118,7 +118,7 @@ describe("chat message handler guards", () => {
     expect(userRow?.role).toBe("user");
     expect(userRow?.content).toBe("/sessions");
     expect(systemRow?.role).toBe("system");
-    expect(systemRow?.content).toContain("Sessions 1");
+    expect(systemRow?.commandOutput?.header).toBe("Sessions 1");
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {

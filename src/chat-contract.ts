@@ -37,6 +37,7 @@ export type ChatRowId = z.infer<typeof chatRowIdSchema>;
 export const commandOutputSchema = z.object({
   header: z.string(),
   sections: z.array(z.array(z.tuple([z.string(), z.string()]))),
+  list: z.array(z.string()).optional(),
 });
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
