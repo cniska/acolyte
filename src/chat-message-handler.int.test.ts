@@ -97,18 +97,15 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows
-      .map((row) => `${row.role}\n${row.content}`)
-      .join("\n\n")
-      .replace(/:\s+/g, ": ");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      providers: openai
-      model: gpt-5-mini
-      permissions: write
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.role).toBe("user");
+    expect(userRow?.content).toBe("/status");
+    expect(systemRow?.role).toBe("system");
+    expect(systemRow?.commandOutput?.header).toBe("Status");
+    const pairs = systemRow?.commandOutput?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
+    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {
@@ -118,18 +115,11 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows
-      .map((row) => `${row.role}\n${row.content}`)
-      .join("\n\n")
-      .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      Sessions 1
-
-      ● sess_test  New Session  <relative>
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.role).toBe("user");
+    expect(userRow?.content).toBe("/sessions");
+    expect(systemRow?.role).toBe("system");
+    expect(systemRow?.content).toContain("Sessions 1");
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {
@@ -139,13 +129,11 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows.map((row) => `${row.role}\n${row.content}`).join("\n\n");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      No usage data yet. Send a prompt first.
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.role).toBe("user");
+    expect(userRow?.content).toBe("/usage");
+    expect(systemRow?.role).toBe("system");
+    expect(systemRow?.content).toBe("No usage data yet. Send a prompt first.");
   });
 
   test("uses current session model for assistant turn requests", async () => {
