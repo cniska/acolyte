@@ -10,18 +10,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 level="${1:-}"
-if [[ -z "$level" ]]; then
-  # Auto-detect from the latest release tag, not the working package version.
-  prev_tag_for_detect="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
-  if [[ -n "$prev_tag_for_detect" ]] && git log "${prev_tag_for_detect}..HEAD" --format=%s | grep -qE '^feat(\(|:)'; then
-    level="minor"
-    echo "info: feat commit detected since ${prev_tag_for_detect}, defaulting to minor bump"
-  else
-    level="patch"
-  fi
-fi
-if [[ "$level" != "patch" && "$level" != "minor" && "$level" != "major" ]]; then
-  echo "Usage: $0 [patch|minor|major]" >&2; exit 1
+if [[ -z "$level" || ("$level" != "patch" && "$level" != "minor" && "$level" != "major") ]]; then
+  echo "Usage: $0 <patch|minor|major>" >&2; exit 1
 fi
 
 old=$(node -p "require('./package.json').version")
