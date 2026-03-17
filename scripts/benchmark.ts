@@ -24,6 +24,7 @@ const PROJECTS: Project[] = [
   { name: "cline", url: "https://github.com/cline/cline.git", lang: "typescript" },
   { name: "openclaw", url: "https://github.com/openclaw/openclaw.git", lang: "typescript" },
   { name: "plandex", url: "https://github.com/plandex-ai/plandex.git", lang: "go" },
+  { name: "codex", url: "https://github.com/openai/codex.git", lang: "rust" },
 ];
 
 // --- file collection ---
@@ -378,7 +379,7 @@ for (const p of PROJECTS) {
     const tsIgnore = countMatches(src.lines, /@ts-ignore|@ts-expect-error/g);
     const lintIgnore = countMatches(src.lines, /eslint-disable|biome-ignore/g);
     const unknown = countMatches(src.lines, /: unknown/g);
-    const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
+    const fixme = countMatches(src.lines, /FIXME|HACK/g);
     const comments = src.lines.filter((l) => l.trimStart().startsWith("//")).length;
     const safeParse = countMatches(src.lines, /\.safeParse\(/g);
     const parseCalls = countMatches(src.lines, /\.parse\(/g);
@@ -393,7 +394,7 @@ for (const p of PROJECTS) {
     console.log(`  @ts-ignore /1k:       ${per1k(tsIgnore, src.lineCount)}  (${tsIgnore} total)`);
     console.log(`  lint ignores /1k:     ${per1k(lintIgnore, src.lineCount)}  (${lintIgnore} total)`);
     console.log(`  : unknown /1k:        ${per1k(unknown, src.lineCount)}  (${unknown} total)`);
-    console.log(`  TODO|FIXME /1k:       ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  FIXME|HACK /1k:       ${per1k(fixme, src.lineCount)}  (${fixme} total)`);
     console.log(`  Comments /1k:         ${per1k(comments, src.lineCount)}  (${comments} total)`);
     console.log(`  .safeParse /1k:       ${per1k(safeParse, src.lineCount)}  (${safeParse} total)`);
     console.log(`  schema validations /1k: ${per1k(schemaValidations, src.lineCount)}  (${schemaValidations} total)`);
@@ -404,37 +405,37 @@ for (const p of PROJECTS) {
     const typeIgnore = countMatches(src.lines, /type: ignore/g);
     const anyType = countMatches(src.lines, /Any/g);
     const castCalls = countMatches(src.lines, /cast\(/g);
-    const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
+    const fixme = countMatches(src.lines, /FIXME|HACK/g);
     const comments = src.lines.filter((l) => l.trimStart().startsWith("#")).length;
 
     console.log(`  type: ignore /1k: ${per1k(typeIgnore, src.lineCount)}  (${typeIgnore} total)`);
     console.log(`  Any type /1k:     ${per1k(anyType, src.lineCount)}  (${anyType} total)`);
     console.log(`  cast() /1k:       ${per1k(castCalls, src.lineCount)}  (${castCalls} total)`);
-    console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  FIXME|HACK /1k:   ${per1k(fixme, src.lineCount)}  (${fixme} total)`);
     console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
   } else if (p.lang === "rust") {
     const unsafeCount = countMatches(src.lines, /unsafe/g);
     const unwrap = countMatches(src.lines, /\.unwrap\(\)/g);
     const expectCalls = countMatches(src.lines, /\.expect\(/g);
-    const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
+    const fixme = countMatches(src.lines, /FIXME|HACK/g);
     const comments = src.lines.filter((l) => l.trimStart().startsWith("//")).length;
 
     console.log(`  unsafe /1k:       ${per1k(unsafeCount, src.lineCount)}  (${unsafeCount} total)`);
     console.log(`  .unwrap() /1k:    ${per1k(unwrap, src.lineCount)}  (${unwrap} total)`);
     console.log(`  .expect() /1k:    ${per1k(expectCalls, src.lineCount)}  (${expectCalls} total)`);
-    console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  FIXME|HACK /1k:   ${per1k(fixme, src.lineCount)}  (${fixme} total)`);
     console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
   } else if (p.lang === "go") {
     const anyInterface = countMatches(src.lines, /\bany\b|interface\{\}/g);
     const panicCalls = countMatches(src.lines, /\bpanic\(/g);
     const nolint = countMatches(src.lines, /\/\/nolint|\/\/ nolint/g);
-    const todo = countMatches(src.lines, /TODO|FIXME|HACK/g);
+    const fixme = countMatches(src.lines, /FIXME|HACK/g);
     const comments = src.lines.filter((l) => l.trimStart().startsWith("//")).length;
 
     console.log(`  any/interface{} /1k: ${per1k(anyInterface, src.lineCount)}  (${anyInterface} total)`);
     console.log(`  panic() /1k:      ${per1k(panicCalls, src.lineCount)}  (${panicCalls} total)`);
     console.log(`  nolint /1k:       ${per1k(nolint, src.lineCount)}  (${nolint} total)`);
-    console.log(`  TODO|FIXME /1k:   ${per1k(todo, src.lineCount)}  (${todo} total)`);
+    console.log(`  FIXME|HACK /1k:   ${per1k(fixme, src.lineCount)}  (${fixme} total)`);
     console.log(`  Comments /1k:     ${per1k(comments, src.lineCount)}  (${comments} total)`);
   }
 

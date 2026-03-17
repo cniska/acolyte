@@ -1,21 +1,38 @@
 # Comparison
 
-Detailed feature comparison between Acolyte and other open-source AI coding agents. See [Why Acolyte](./why-acolyte.md) for a summary.
+Detailed feature comparison between Acolyte and other open-source AI agents. See [Why Acolyte](./why-acolyte.md) for a summary.
 
-Projects compared: [Aider](https://github.com/Aider-AI/aider), [OpenCode](https://github.com/anomalyco/opencode), [Pi](https://github.com/badlogic/pi-mono), [Goose](https://github.com/block/goose), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Continue](https://github.com/continuedev/continue), [Cline](https://github.com/cline/cline), [OpenClaw](https://github.com/openclaw/openclaw), [Plandex](https://github.com/plandex-ai/plandex).
+Projects compared: [Codex](https://github.com/openai/codex), [Aider](https://github.com/Aider-AI/aider), [Plandex](https://github.com/plandex-ai/plandex), [OpenCode](https://github.com/anomalyco/opencode), [Pi](https://github.com/badlogic/pi-mono), [Continue](https://github.com/continuedev/continue), [Cline](https://github.com/cline/cline), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Goose](https://github.com/block/goose), [OpenClaw](https://github.com/openclaw/openclaw).
+
+The comparison spans different categories — not all projects are pure coding agents.
+
+| Project | Category |
+|---|---|
+| Acolyte | Terminal coding agent |
+| Codex | Terminal coding agent |
+| Aider | Terminal coding agent |
+| Plandex | Terminal coding agent |
+| OpenCode | Coding agent (TUI/web/desktop) |
+| Pi | Agent SDK harness |
+| Continue | IDE extension |
+| Cline | IDE extension |
+| OpenHands | Agent platform |
+| Goose | Developer productivity agent |
+| OpenClaw | Personal AI assistant |
 
 ## Feature overview
 
-High-level capability comparison across nine open-source coding agents.
+High-level capability comparison across all projects.
 
-| Capability | Acolyte | Aider | OpenCode | Goose | OpenHands | Continue | Cline | OpenClaw | Plandex |
-|---|---|---|---|---|---|---|---|---|---|
-| Lifecycle pipeline | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
-| Behavioral guards | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial | ✗ |
-| Auto verification | ✓ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ |
-| Task state machine | ✓ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
-| Observable execution | ✓ | partial | partial | partial | partial | ✗ | ✗ | ✗ | ✗ |
-| Daemon architecture | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ |
+| Capability | Acolyte | Codex | Aider | Plandex | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Multi-provider | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Lifecycle pipeline | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
+| Behavioral guards | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial |
+| Auto verification | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
+| Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
+| Observable execution | ✓ | partial | partial | ✗ | partial | ✗ | partial | partial | ✗ | ✗ | ✗ |
+| Daemon architecture | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ |
 
 ## Architecture
 
@@ -24,15 +41,16 @@ How each project structures its runtime and where it runs.
 | Project | Architecture | Deployment model |
 |---|---|---|
 | **Acolyte** | Headless daemon + typed RPC clients | daemon |
+| Codex | Rust CLI with optional Node.js wrapper | single-process |
 | Aider | Pure CLI process | single-process |
+| Plandex | Go CLI agent with long-running planner | single-process |
 | OpenCode | HTTP/WebSocket server + TUI/desktop clients | server |
 | Pi | SDK with RPC as one mode | embedded |
-| Goose | Single-process with MCP extensions | single-process |
 | Continue | VS Code / JetBrains extension + CLI | extension |
 | Cline | VS Code extension + CLI | extension |
 | OpenHands | Web platform with Docker sandboxing | platform |
+| Goose | Single-process with MCP extensions | single-process |
 | OpenClaw | Node.js gateway + WebSocket control plane | server |
-| Plandex | Go CLI agent with long-running planner | single-process |
 
 Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol.
 
@@ -73,12 +91,16 @@ Acolyte uses behavioral guards that run before every tool call.
 
 | Guard id | Purpose |
 |---|---|
-| `duplicate-call` | Prevent duplicate tool calls within the same turn |
+| `circuit-breaker` | Stop execution after too many consecutive blocked calls |
+| `step-budget` | Enforce per-cycle and total step budgets |
+| `duplicate-call` | Block near-duplicate tool calls with no state change in between |
+| `ping-pong` | Block alternating tool call patterns indicating the model is stuck |
+| `stale-result` | Block calls that repeatedly return the same result |
 | `file-churn` | Detect read/edit loops against the same file |
 | `redundant-find` | Block narrower file discovery after broader calls |
 | `redundant-search` | Block redundant search-files calls |
 | `redundant-verify` | Prevent verify when no write tools ran |
-| `step-budget` | Enforce per-cycle and total step budgets |
+| `post-edit-redundancy` | Block redundant follow-up edits without fresh file evidence |
 
 Only OpenClaw and OpenHands ship comparable runtime safeguards.
 
@@ -146,12 +168,12 @@ Across the benchmarked projects, Acolyte leads on:
 - Type safety
 - Dependency footprint
 - Module size
-- Tech-debt markers
+
 
 These characteristics reflect architectural choices:
 
-- Few dependencies because the daemon owns the stack
-- Small modules because lifecycle phases and tools are isolated
+- Few dependencies because external packages are only added when strictly necessary
+- Small modules because clear boundaries and contracts keep each one focused
 - High test density because modules are independently testable
 
 See [Benchmarks](./benchmarks.md) for full measured comparisons.
@@ -210,8 +232,8 @@ How each agent retains knowledge across sessions.
 | Continue | Codebase embeddings (deprecated) |
 | Aider | Repository map + chat restore |
 | Cline | Task history persistence |
-| OpenCode, Pi | No cross-session memory |
 | Plandex | Session-based planning memory |
+| Codex, OpenCode, Pi | No cross-session memory |
 
 Most agents manage context through **compaction** (summarization or truncation).
 
@@ -244,6 +266,7 @@ How each agent manages the token window when context grows large.
 | Cline | Window truncation |
 | Pi | Branch summarization |
 | Continue | Retrieval parameters |
+| Codex | Conversation truncation |
 | Plandex | Conversation summarization on token limit |
 
 Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken).
