@@ -1,12 +1,13 @@
 import React from "react";
 import { renderAssistantContent } from "./chat-content-render";
-import type { ChatLine, CommandOutput } from "./chat-contract";
+import type { ChatEntry, CommandOutput } from "./chat-contract";
+import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH } from "./chat-format";
 import { palette } from "./palette";
-import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
+import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
 
-const MARKERS: Record<ChatLine["role"], string> = {
+const MARKERS: Record<ChatEntry["kind"], string> = {
   user: "❯ ",
   assistant: "• ",
   tool: "• ",
@@ -56,7 +57,7 @@ function renderSystemContent(content: string): React.ReactNode {
 }
 
 function renderToolLine(
-  item: ToolOutput,
+  item: ToolOutputPart,
   index: number,
   lineNumWidth: number,
   toolContentWidth: number,
@@ -102,7 +103,7 @@ function renderToolLine(
       </Text>
     );
   }
-  if (item.kind === "command-output") {
+  if (item.kind === "shell-output") {
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
@@ -129,7 +130,7 @@ function renderToolLine(
   );
 }
 
-function renderHeaderDetail(item: ToolOutput, detail: string): React.ReactNode {
+function renderHeaderDetail(item: ToolOutputPart, detail: string): React.ReactNode {
   if (item.kind === "edit-header") {
     const match = detail.match(/^(.*)\((\+\d+) (-\d+)\)$/);
     if (match) {
@@ -147,7 +148,7 @@ function renderHeaderDetail(item: ToolOutput, detail: string): React.ReactNode {
   return <Text dimColor>{detail}</Text>;
 }
 
-function renderToolBlock(items: ToolOutput[], toolContentWidth: number): React.ReactNode {
+function renderToolOutput(items: ToolOutputPart[], toolContentWidth: number): React.ReactNode {
   if (items.length === 0) return null;
   const first = items[0];
   if (!first) return null;
@@ -173,30 +174,30 @@ function renderToolBlock(items: ToolOutput[], toolContentWidth: number): React.R
 }
 
 type ChatRowProps = {
-  row: ChatLine;
+  row: ChatEntry;
   contentWidth: number;
   toolContentWidth: number;
 };
 
 export function ChatRow({ row, contentWidth, toolContentWidth }: ChatRowProps): React.ReactNode {
-  const marker = MARKERS[row.role];
-  const markerColor = row.style?.marker ?? (row.role === "assistant" ? palette.brand : undefined);
-  const textColor = row.style?.text ?? (row.role === "assistant" && !row.style?.dim ? palette.brand : undefined);
+  const marker = MARKERS[row.kind];
+  const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.brand : undefined);
+  const textColor = row.style?.text ?? (row.kind === "assistant" && !row.style?.dim ? palette.brand : undefined);
   const dim = row.style?.dim ?? false;
   return (
     <Box>
       <Box width={2}>
         <Text color={markerColor}>{marker}</Text>
       </Box>
-      <Box width={row.role === "tool" ? toolContentWidth : contentWidth}>
-        {row.role === "tool" && row.toolOutput ? (
-          <Text>{renderToolBlock(row.toolOutput, toolContentWidth)}</Text>
-        ) : row.role === "assistant" ? (
+      <Box width={row.kind === "tool" ? toolContentWidth : contentWidth}>
+        {isToolOutput(row.content) ? (
+          <Text>{renderToolOutput(row.content.parts, toolContentWidth)}</Text>
+        ) : isCommandOutput(row.content) ? (
+          <Text>{renderCommandOutput(row.content)}</Text>
+        ) : row.kind === "assistant" ? (
           <Text dimColor={dim} color={textColor}>
             {renderAssistantContent(row.content, contentWidth)}
           </Text>
-        ) : row.commandOutput ? (
-          <Text>{renderCommandOutput(row.commandOutput)}</Text>
         ) : (
           <Text dimColor={dim} color={textColor}>
             {renderSystemContent(row.content)}

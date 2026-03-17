@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { isToolOutput } from "./chat-contract";
 import type { StreamEvent } from "./client-contract";
 import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
 
@@ -30,9 +31,11 @@ describe("chat message handler stream behavior", () => {
 
     expect(calls.progressTexts[0]).toBe("Thinking…");
     expect(calls.progressTexts.at(-1)).toBeNull();
-    expect(rows.some((row) => row.role === "tool")).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Thinking…"))).toBe(false);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
+    expect(rows.some((row) => row.kind === "tool")).toBe(true);
+    expect(
+      rows.some((row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Thinking…")),
+    ).toBe(false);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("does not add generic tool rows when progress stream is empty", async () => {
@@ -49,8 +52,8 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(rows.some((row) => row.role === "tool")).toBe(false);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
+    expect(rows.some((row) => row.kind === "tool")).toBe(false);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("suppresses empty discovery/read tool rows when no body output arrives", async () => {
@@ -77,8 +80,8 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("search for needle");
 
-    expect(rows.some((row) => row.role === "tool")).toBe(false);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "No matches found.")).toBe(true);
+    expect(rows.some((row) => row.kind === "tool")).toBe(false);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "No matches found.")).toBe(true);
   });
 
   test("maps quota errors to user-facing message handler error", async () => {
@@ -93,7 +96,12 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Provider quota exceeded"))).toBe(true);
+    expect(
+      rows.some(
+        (row) =>
+          row.kind === "system" && typeof row.content === "string" && row.content.includes("Provider quota exceeded"),
+      ),
+    ).toBe(true);
   });
 
   test("maps timeout errors to user-facing message handler error", async () => {
@@ -108,7 +116,12 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
+    expect(
+      rows.some(
+        (row) =>
+          row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
+      ),
+    ).toBe(true);
   });
 
   test("recovers cleanly after timeout and allows next message", async () => {
@@ -133,8 +146,13 @@ describe("chat message handler stream behavior", () => {
 
     expect(calls).toBe(2);
     expect(spies.thinkingTransitions).toEqual([true, false, true, false]);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+    expect(
+      rows.some(
+        (row) =>
+          row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
+      ),
+    ).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
   });
 
   test("keeps thinking indicator active while remote task is still running", async () => {
@@ -189,7 +207,12 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("/new");
 
     expect(replyCalls).toBe(1);
-    expect(allRows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
+    expect(
+      allRows.some(
+        (row) =>
+          row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
+      ),
+    ).toBe(true);
     expect(calls.setCurrentSessionIds.length).toBe(1);
     expect(store.activeSessionId).toBe(calls.setCurrentSessionIds[0]);
   });
@@ -212,17 +235,22 @@ describe("chat message handler stream behavior", () => {
       }),
       session,
       store,
-      toRows: (messages) => messages.map((msg) => ({ id: msg.id, role: msg.role, content: msg.content })),
+      toRows: (messages) => messages.map((msg) => ({ id: msg.id, kind: msg.role, content: msg.content })),
     });
 
     await handleMessage("first");
     await handleMessage(`/resume ${target.id.slice(0, 12)}`);
 
     expect(replyCalls).toBe(1);
-    expect(allRows.some((row) => row.role === "system" && row.content.includes("Server request timed out"))).toBe(true);
+    expect(
+      allRows.some(
+        (row) =>
+          row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
+      ),
+    ).toBe(true);
     expect(calls.setCurrentSessionIds).toEqual([target.id]);
     expect(store.activeSessionId).toBe(target.id);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "resumed")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "resumed")).toBe(true);
   });
 
   test("uses final reply output as authoritative content", async () => {
@@ -271,7 +299,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const toolRows = rows.filter((row) => row.role === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(0);
   });
 
@@ -312,10 +340,15 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const toolRows = rows.filter((row) => row.role === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(1);
-    expect(toolRows[0]?.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit")).toBe(true);
-    expect(rows.some((row) => row.toolOutput?.some((item) => item.kind === "file-header"))).toBe(false);
+    expect(
+      isToolOutput(toolRows[0]?.content) &&
+        toolRows[0]?.content.parts.some((item) => item.kind === "tool-header" && item.label === "Edit"),
+    ).toBe(true);
+    expect(
+      rows.some((row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header")),
+    ).toBe(false);
   });
 
   test("does not merge tool rows across separate user turns", async () => {
@@ -375,7 +408,9 @@ describe("chat message handler stream behavior", () => {
 
     const editedRows = rows.filter(
       (row) =>
-        row.role === "tool" && row.toolOutput?.some((item) => item.kind === "tool-header" && item.label === "Edit"),
+        row.kind === "tool" &&
+        isToolOutput(row.content) &&
+        row.content.parts.some((item) => item.kind === "tool-header" && item.label === "Edit"),
     );
     expect(editedRows).toHaveLength(2);
   });

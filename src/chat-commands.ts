@@ -16,7 +16,7 @@ import { findSkillByName } from "./skills";
 
 type MemoryContextScope = "all" | "user" | "project";
 
-import { type ChatLine, createLine } from "./chat-contract";
+import { type ChatEntry, createLine } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
 import { createStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -55,23 +55,20 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function sessionsRows(store: SessionState, limit = 10): ChatLine[] {
+export function sessionsRows(store: SessionState, limit = 10): ChatEntry[] {
   const list = formatSessionList(store, limit);
   return [
-    {
-      ...createLine("system", ""),
-      commandOutput: { header: t("chat.sessions.header", { count: store.sessions.length }), sections: [], list },
-    },
+    createLine("system", { header: t("chat.sessions.header", { count: store.sessions.length }), sections: [], list }),
   ];
 }
 
-export function statusRows(status: StatusFields): ChatLine[] {
+export function statusRows(status: StatusFields): ChatEntry[] {
   const output = createStatusOutput(status);
   if (!output) return [];
-  return [{ ...createLine("system", ""), commandOutput: output }];
+  return [createLine("system", output)];
 }
 
-export function usageRows(last: SessionTokenUsageEntry | null): ChatLine[] {
+export function usageRows(last: SessionTokenUsageEntry | null): ChatEntry[] {
   if (!last) return [createLine("system", t("chat.usage.none"))];
   const summary: [string, string][] = [
     [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
@@ -93,7 +90,7 @@ export function usageRows(last: SessionTokenUsageEntry | null): ChatLine[] {
   }
   const sections: [string, string][][] = [summary];
   if (breakdown.length > 0) sections.push(breakdown);
-  return [{ ...createLine("system", ""), commandOutput: { header: t("chat.usage.header"), sections } }];
+  return [createLine("system", { header: t("chat.usage.header"), sections })];
 }
 
 type CommandResult = {
@@ -109,8 +106,8 @@ export type CommandContext = {
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
-  toRows: (messages: Session["messages"]) => ChatLine[];
-  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
+  toRows: (messages: Session["messages"]) => ChatEntry[];
+  setRows: (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
   setShowHelp: (updater: (current: boolean) => boolean) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
@@ -366,10 +363,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       scope === "all"
         ? t("chat.memory.header.all", { count: memories.length })
         : t("chat.memory.header.scope", { scope: scopeLabel(scope), count: memories.length });
-    ctx.setRows((current) => [
-      ...current,
-      { ...createLine("system", ""), commandOutput: { header, sections: [], list } },
-    ]);
+    ctx.setRows((current) => [...current, createLine("system", { header, sections: [], list })]);
     return { stop: true, userText: text };
   }
 

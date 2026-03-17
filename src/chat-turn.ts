@@ -1,7 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
-import { type ChatLine, createLine } from "./chat-contract";
+import { type ChatEntry, createLine } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
@@ -41,7 +41,7 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
   return { contexts, unresolvedPaths };
 }
 
-export function unresolvedPathRows(unresolvedPaths: string[]): ChatLine[] {
+export function unresolvedPathRows(unresolvedPaths: string[]): ChatEntry[] {
   return unresolvedPaths.map((pathInput) => createLine("system", t("chat.unresolved_path", { path: pathInput })));
 }
 
@@ -68,11 +68,11 @@ type ApplyUserTurnParams = {
   displayText: string;
 };
 
-export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatLine } {
+export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatEntry } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
-  return { row: { id: `row_${createId()}`, role: "user", content: params.displayText } };
+  return { row: { id: `row_${createId()}`, kind: "user", content: params.displayText } };
 }
 
 type RunAssistantTurnParams = {
@@ -92,7 +92,7 @@ type RunAssistantTurnParams = {
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{
   assistantMessage: ChatMessage;
   tokenEntry: SessionTokenUsageEntry;
-  rows: ChatLine[];
+  rows: ChatEntry[];
 }> {
   const reply = await params.client.replyStream(
     {
@@ -110,7 +110,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
   const assistantMessage: ChatMessage =
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
-  const rows: ChatLine[] = [];
+  const rows: ChatEntry[] = [];
   if (reply.error) {
     rows.push(createLine("system", reply.error, { text: palette.error }));
   } else if (reply.output.trim().length > 0) {

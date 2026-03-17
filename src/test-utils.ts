@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
-import type { ChatLine, ChatMessage } from "./chat-contract";
+import type { ChatEntry, ChatMessage } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, StreamEvent } from "./client-contract";
@@ -248,9 +248,9 @@ export function createClient(overrides?: {
 
 export type MessageHandlerHarness = {
   handleMessage: (raw: string) => Promise<void>;
-  rows: ChatLine[];
+  rows: ChatEntry[];
   /** Every row that was ever present, even after clearTranscript. */
-  allRows: ChatLine[];
+  allRows: ChatEntry[];
   session: Session;
   store: SessionState;
   calls: {
@@ -274,10 +274,10 @@ export function createMessageHandlerHarness(overrides?: {
   session?: Session;
   store?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
-  toRows?: (messages: ChatMessage[]) => ChatLine[];
+  toRows?: (messages: ChatMessage[]) => ChatEntry[];
 }): MessageHandlerHarness {
-  const rows: ChatLine[] = [];
-  const allRows: ChatLine[] = [];
+  const rows: ChatEntry[] = [];
+  const allRows: ChatEntry[] = [];
   const interrupt = { registered: false, fire: () => {} };
   const calls = {
     setInputHistory: 0,
@@ -349,10 +349,10 @@ export function createMessageHandlerHarness(overrides?: {
 }
 
 export type PickerHandlerSpies = {
-  rows: ChatLine[];
+  rows: ChatEntry[];
   pickerValues: unknown[];
   currentSessions: Session[];
-  rowsDirectSets: ChatLine[][];
+  rowsDirectSets: ChatEntry[][];
   assistantTurnTexts: string[];
 };
 
@@ -400,7 +400,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
 }
 
 export type CommandContextSpies = {
-  rows: ChatLine[];
+  rows: ChatEntry[];
   openedModel: boolean;
   openedModelMode?: AgentMode;
   currentSessionIds: string[];
@@ -476,7 +476,7 @@ export function createCommandContext(
     setTokenUsage: (updater) => {
       spies.tokenUsageSets.push(updater([]));
     },
-    toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+    toRows: (messages) => messages.map((m) => ({ id: m.id, kind: m.role, content: m.content })),
     setRows: (updater) => {
       spies.rows = updater(spies.rows);
     },

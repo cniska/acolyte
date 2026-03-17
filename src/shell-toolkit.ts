@@ -99,7 +99,7 @@ function createRunCommandTool(input: ToolkitInput) {
           const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
             onOutput({
               toolName: "run-command",
-              content: { kind: "command-output", stream: entry.stream, text: entry.text },
+              content: { kind: "shell-output", stream: entry.stream, text: entry.text },
               toolCallId,
             });
           };

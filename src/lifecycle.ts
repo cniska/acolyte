@@ -11,7 +11,7 @@ import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
-import { renderToolOutput } from "./tool-output-content";
+import { renderToolOutputPart } from "./tool-output-content";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
@@ -148,7 +148,7 @@ function createRunContext(
 
 function attachToolOutputHandler(ctx: RunContext) {
   ctx.toolOutputHandler = (event) => {
-    const rendered = renderToolOutput(event.content);
+    const rendered = renderToolOutputPart(event.content);
     if (!rendered.trim()) return;
     const toolName = event.toolName;
     const queue = ctx.nativeIdQueue.get(toolName);

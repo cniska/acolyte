@@ -6,7 +6,7 @@ import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { SessionContext } from "./tool-guards";
-import type { ToolOutput } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-content";
 import type { ToolRecovery } from "./tool-recovery";
 import type { Toolset } from "./tool-registry";
 
@@ -45,7 +45,7 @@ export type LifecycleSignal = "done" | "no_op" | "blocked";
 
 export type ToolOutputEvent = {
   toolName: string;
-  content: ToolOutput;
+  content: ToolOutputPart;
   toolCallId?: string;
 };
 

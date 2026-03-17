@@ -1,5 +1,5 @@
 import React from "react";
-import type { ChatLine } from "./chat-contract";
+import type { ChatEntry } from "./chat-contract";
 import { formatTokenCount } from "./chat-format";
 import { ChatRow } from "./chat-row";
 import { ShimmerText } from "./chat-shimmer";
@@ -7,7 +7,7 @@ import { palette } from "./palette";
 import { Box, Text } from "./tui";
 
 type ChatTranscriptProps = {
-  rows: ChatLine[];
+  rows: ChatEntry[];
   isWorking: boolean;
   progressText?: string | null;
   thinkingFrame: number;

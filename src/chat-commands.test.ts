@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
+import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
@@ -33,7 +34,8 @@ describe("chat-commands", () => {
       },
     };
     const [row] = usageRows(usage);
-    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
     const keys = allPairs.map(([k]) => k);
     expect(keys).toContain("Input");
     expect(keys).toContain("Output");
@@ -54,7 +56,8 @@ describe("chat-commands", () => {
       },
     };
     const [row] = usageRows(usage);
-    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
     expect(allPairs.every(([k]) => !k.toLowerCase().includes("warning"))).toBe(true);
     expect(allPairs.every(([, v]) => !v.includes("context trimmed"))).toBe(true);
   });
@@ -73,7 +76,8 @@ describe("chat-commands", () => {
       },
     };
     const [row] = usageRows(usage);
-    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
     const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
     expect(find("System")).toContain("20%");
     expect(find("Tools")).toContain("30%");
@@ -87,8 +91,9 @@ describe("chat-commands", () => {
       model: "gpt-5-mini",
       permissions: "write",
     });
-    expect(row?.commandOutput?.header).toBe("Status");
-    const pairs = row?.commandOutput?.sections[0] ?? [];
+    const content = row?.content;
+    expect(isCommandOutput(content) && content.header).toBe("Status");
+    const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
     expect(pairs).toContainEqual(["Providers", "openai"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
     expect(pairs).toContainEqual(["Permissions", "write"]);
@@ -104,15 +109,15 @@ describe("chat-commands", () => {
       sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
     });
     const [row] = sessionsRows(store, 10);
-    expect(row?.commandOutput?.header).toBe("Sessions 1");
-    expect(row?.commandOutput?.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
-    expect(row?.commandOutput?.list?.some((line) => line.includes("First"))).toBe(true);
+    const content = row?.content;
+    expect(isCommandOutput(content) && content.header).toBe("Sessions 1");
+    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
+    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("First"))).toBe(true);
   });
 
   test("usageRows returns fallback row when no usage data", () => {
     const [row] = usageRows(null);
     expect(row?.content).toBe("No usage data yet. Send a prompt first.");
-    expect(row?.commandOutput).toBeUndefined();
   });
 
   test("dispatchSlashCommand handles /usage", async () => {
@@ -153,7 +158,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.commandOutput?.header === "Usage")).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Usage")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /usage with empty usage", async () => {
@@ -166,7 +171,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.commandOutput?.header === "Status")).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Status")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact system output", async () => {
@@ -179,10 +184,14 @@ describe("chat-commands", () => {
     });
     const { rows, stop } = await runCommand("/sessions", { store });
     expect(stop).toBe(true);
-    const row = rows.find((r) => r.commandOutput?.header === "Sessions 2");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Sessions 2");
     expect(row).toBeDefined();
-    expect(row?.commandOutput?.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
-    expect(row?.commandOutput?.list?.some((line) => line.includes("sess_bbbb2222"))).toBe(true);
+    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(
+      true,
+    );
+    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("sess_bbbb2222"))).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand handles /memory with empty store", async () => {
@@ -197,7 +206,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content === "No memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
@@ -217,7 +226,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
-    expect(rows.some((row) => row.role === "system" && row.content === "No user memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.kind === "system" && row.content === "No user memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory with entries", async () => {
@@ -245,10 +254,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
-    const row = rows.find((r) => r.commandOutput?.header === "Memory 2");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
     expect(row).toBeDefined();
-    expect(row?.commandOutput?.list).toContain("user:mem_1 prefer concise output");
-    expect(row?.commandOutput?.list).toContain("project:mem_2 use bun scripts");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("user:mem_1 prefer concise output");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
@@ -276,10 +285,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory all", { memoryApi });
     expect(stop).toBe(true);
-    const row = rows.find((r) => r.commandOutput?.header === "Memory 2");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
     expect(row).toBeDefined();
-    expect(row?.commandOutput?.list).toContain("user:mem_1 prefer concise output");
-    expect(row?.commandOutput?.list).toContain("project:mem_2 use bun scripts");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("user:mem_1 prefer concise output");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles /memory rm success", async () => {
@@ -303,7 +312,11 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory rm mem_dead", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Removed project memory mem_deadbeef."))).toBe(true);
+    expect(
+      rows.some(
+        (row) => typeof row.content === "string" && row.content.includes("Removed project memory mem_deadbeef."),
+      ),
+    ).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory rm not_found", async () => {
@@ -366,7 +379,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.commandOutput?.header === "User memory 1")).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "User memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand renders project-scoped /memory header", async () => {
@@ -388,7 +401,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory project", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.commandOutput?.header === "Project memory 1")).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Project memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand validates /memory scope usage", async () => {
@@ -424,7 +437,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");
     expect(savedScope).toBe("project");
-    expect(rows.some((row) => row.role === "system" && row.content === "Saved project memory: use bun verify")).toBe(
+    expect(rows.some((row) => row.kind === "system" && row.content === "Saved project memory: use bun verify")).toBe(
       true,
     );
   });
@@ -523,7 +536,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand /resume opens picker flow", async () => {
     const { rows, stop } = await runCommand("/resume");
     expect(stop).toBe(true);
-    expect(rows.every((row) => row.role !== "user")).toBe(true);
+    expect(rows.every((row) => row.kind !== "user")).toBe(true);
   });
 
   test("dispatchSlashCommand /resume with missing prefix reports not found", async () => {
@@ -601,7 +614,7 @@ describe("chat-commands", () => {
       resetSkillCache();
       const { rows, stop } = await runCommand("/xyz");
       expect(stop).toBe(true);
-      expect(rows.some((r) => r.content.includes("Unknown command"))).toBe(true);
+      expect(rows.some((r) => typeof r.content === "string" && r.content.includes("Unknown command"))).toBe(true);
     });
   });
 });

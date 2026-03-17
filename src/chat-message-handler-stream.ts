@@ -1,12 +1,12 @@
-import { type ChatLine, createLine } from "./chat-contract";
+import { type ChatEntry, createLine } from "./chat-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
-import { createToolOutputState, type ToolOutput } from "./tool-output-content";
+import { createToolOutputState, type ToolOutputPart } from "./tool-output-content";
 
 export type MessageStreamState = {
   onAssistantDelta: (delta: string) => void;
-  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutput }) => void;
+  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
   onToolResult: (entry: {
     toolCallId: string;
     toolName: string;
@@ -24,7 +24,7 @@ export type MessageStreamState = {
 const STREAM_FLUSH_MS = 50;
 
 export function createMessageStreamState(input: {
-  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
+  setRows: (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
 }): MessageStreamState {
   // --- assistant streaming state ---
   let activeRowId: string | null = null;
@@ -51,7 +51,7 @@ export function createMessageStreamState(input: {
       if (!activeRowId) {
         activeRowId = `row_${createId()}`;
         assistantRowIds.push(activeRowId);
-        return [...current, { id: activeRowId, role: "assistant", content: activeContent }];
+        return [...current, { id: activeRowId, kind: "assistant", content: activeContent }];
       }
       return current.map((row) => (row.id === activeRowId ? { ...row, content: activeContent } : row));
     });
@@ -84,7 +84,7 @@ export function createMessageStreamState(input: {
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         input.setRows((current) => [
           ...current,
-          { id: rowId, role: "tool" as const, content: "", toolOutput: update.items },
+          { id: rowId, kind: "tool" as const, content: { parts: update.items } },
         ]);
         return;
       }
@@ -95,7 +95,7 @@ export function createMessageStreamState(input: {
         const existing = current[idx];
         if (!existing) return current;
         const next = [...current];
-        next[idx] = { ...existing, toolOutput: update.items };
+        next[idx] = { ...existing, content: { parts: update.items } };
         return next;
       });
     },

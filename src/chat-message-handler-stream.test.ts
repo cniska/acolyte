@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatLine } from "./chat-contract";
+import type { ChatEntry } from "./chat-contract";
+import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 
 function createRowsHarness(): {
-  rows: ChatLine[];
-  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
+  rows: ChatEntry[];
+  setRows: (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
 } {
-  const rows: ChatLine[] = [];
-  const setRows = (updater: (current: ChatLine[]) => ChatLine[]): void => {
+  const rows: ChatEntry[] = [];
+  const setRows = (updater: (current: ChatEntry[]) => ChatEntry[]): void => {
     rows.splice(0, rows.length, ...updater(rows));
   };
   return { rows, setRows };
@@ -48,16 +49,19 @@ describe("chat-message-handler-stream", () => {
       content: { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 2 },
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.role).toBe("tool");
-    expect(rows[0]?.toolOutput).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("tool");
+    expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(1);
 
     state.onOutput({
       toolCallId: "call_1",
       toolName: "search-files",
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
-    expect(rows[0]?.toolOutput).toHaveLength(2);
-    expect(rows[0]?.toolOutput?.[1]).toEqual({ kind: "text", text: "a.ts [needle@1]" });
+    expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(2);
+    expect(isToolOutput(rows[0]?.content) && rows[0].content.parts[1]).toEqual({
+      kind: "text",
+      text: "a.ts [needle@1]",
+    });
     state.dispose();
   });
 
@@ -73,7 +77,7 @@ describe("chat-message-handler-stream", () => {
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.toolOutput).toHaveLength(2);
+    expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(2);
     state.dispose();
   });
 

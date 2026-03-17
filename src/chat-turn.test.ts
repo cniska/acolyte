@@ -36,7 +36,7 @@ describe("chat turn helpers", () => {
     });
 
     expect(session.title).toBe("hello there");
-    expect(result.row.role).toBe("user");
+    expect(result.row.kind).toBe("user");
     expect(result.row.content).toBe("hello there");
   });
 
@@ -63,9 +63,9 @@ describe("chat turn helpers", () => {
       }),
     });
 
-    const toolRows = turn.rows.filter((row) => row.role === "tool");
+    const toolRows = turn.rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(0);
-    expect(turn.rows.some((row) => row.role === "assistant" && row.content === "done")).toBe(true);
+    expect(turn.rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("runAssistantTurn marks assistant message as tool_payload when tools were used", async () => {

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ChatLine } from "./chat-contract";
+import type { ChatEntry } from "./chat-contract";
+import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
@@ -97,11 +98,12 @@ describe("chat message handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const [userRow, systemRow] = rows;
-    expect(userRow?.role).toBe("user");
+    expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/status");
-    expect(systemRow?.role).toBe("system");
-    expect(systemRow?.commandOutput?.header).toBe("Status");
-    const pairs = systemRow?.commandOutput?.sections[0] ?? [];
+    expect(systemRow?.kind).toBe("system");
+    const statusContent = systemRow?.content as { header: string; sections: [string, string][][] };
+    expect(statusContent?.header).toBe("Status");
+    const pairs = statusContent?.sections[0] ?? [];
     expect(pairs).toContainEqual(["Providers", "openai"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
     expect(pairs).toContainEqual(["Permissions", "write"]);
@@ -115,10 +117,10 @@ describe("chat message handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const [userRow, systemRow] = rows;
-    expect(userRow?.role).toBe("user");
+    expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/sessions");
-    expect(systemRow?.role).toBe("system");
-    expect(systemRow?.commandOutput?.header).toBe("Sessions 1");
+    expect(systemRow?.kind).toBe("system");
+    expect(isCommandOutput(systemRow?.content) && systemRow?.content.header).toBe("Sessions 1");
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {
@@ -129,9 +131,9 @@ describe("chat message handler guards", () => {
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
     const [userRow, systemRow] = rows;
-    expect(userRow?.role).toBe("user");
+    expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/usage");
-    expect(systemRow?.role).toBe("system");
+    expect(systemRow?.kind).toBe("system");
     expect(systemRow?.content).toBe("No usage data yet. Send a prompt first.");
   });
 
@@ -222,16 +224,28 @@ describe("chat message handler guards", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.role === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(3);
-    expect(toolRows[0]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
-    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
-    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "diff" && i.text === "let sum = a + b + c;")).toBe(true);
-    expect(toolRows[2]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Delete")).toBe(true);
+    expect(
+      isToolOutput(toolRows[0]?.content) &&
+        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Edit"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[1]?.content) &&
+        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Edit"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[1]?.content) &&
+        toolRows[1]?.content.parts.some((i) => i.kind === "diff" && i.text === "let sum = a + b + c;"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[2]?.content) &&
+        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Delete"),
+    ).toBe(true);
     // Assistant text rows are kept as-is (no redundancy filtering).
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("toggles shortcuts on ? input", async () => {
@@ -244,7 +258,7 @@ describe("chat message handler guards", () => {
   });
 
   test("records interrupted row when active turn is aborted", async () => {
-    const rows: ChatLine[] = [];
+    const rows: ChatEntry[] = [];
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
 
@@ -310,14 +324,14 @@ describe("chat message handler guards", () => {
     await pending;
 
     const last = rows[rows.length - 1];
-    expect(last?.role).toBe("task");
+    expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
     expect(last?.style?.marker).toBe(palette.cancelled);
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {
-    const rows: ChatLine[] = [];
+    const rows: ChatEntry[] = [];
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
     let callCount = 0;
@@ -389,7 +403,7 @@ describe("chat message handler guards", () => {
     await firstPending;
     await handleSubmit("Second question");
 
-    expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
+    expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
       "user:First question",
       "task:Interrupted",
       "user:Second question",
@@ -398,7 +412,7 @@ describe("chat message handler guards", () => {
   });
 
   test("stops before server call when all @references are unresolved", async () => {
-    const rows: ChatLine[] = [];
+    const rows: ChatEntry[] = [];
     let replyCalls = 0;
 
     const session = createSession({ id: "sess_test" });
@@ -445,11 +459,13 @@ describe("chat message handler guards", () => {
     await handleSubmit("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(0);
-    expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
+    expect(rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found"))).toBe(
+      true,
+    );
   });
 
   test("continues with resolved @references even when some are unresolved", async () => {
-    const rows: ChatLine[] = [];
+    const rows: ChatEntry[] = [];
     let replyCalls = 0;
     const fixture = `tmp-chat-handleMessage-${testUuid()}.txt`;
     const fixturePath = join(process.cwd(), fixture);
@@ -500,8 +516,10 @@ describe("chat message handler guards", () => {
       await handleSubmit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
 
       expect(replyCalls).toBe(1);
-      expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
-      expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+      expect(
+        rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+      ).toBe(true);
+      expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
     } finally {
       await rm(fixturePath, { force: true });
     }

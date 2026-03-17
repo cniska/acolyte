@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatLine } from "./chat-contract";
+import type { ChatEntry } from "./chat-contract";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import type { HeaderLine } from "./chat-header";
@@ -41,12 +41,12 @@ interface ChatAppProps {
   useMemory?: boolean;
 }
 
-export function initialTranscriptRows(session: Session): ChatLine[] {
+export function initialTranscriptRows(session: Session): ChatEntry[] {
   return toRows(session.messages);
 }
 
 type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
-type GraduatedItem = ChatLine | HeaderItem;
+type GraduatedItem = ChatEntry | HeaderItem;
 
 export function appendGraduatedItems(current: GraduatedItem[], next: readonly GraduatedItem[]): GraduatedItem[] {
   if (next.length === 0) return current;
@@ -62,9 +62,9 @@ export function appendGraduatedItems(current: GraduatedItem[], next: readonly Gr
 
 export function applyGraduation(
   graduated: GraduatedItem[],
-  toGraduate: ChatLine[],
-  live: ChatLine[],
-): { nextGraduated: GraduatedItem[]; nextLive: ChatLine[] } {
+  toGraduate: ChatEntry[],
+  live: ChatEntry[],
+): { nextGraduated: GraduatedItem[]; nextLive: ChatEntry[] } {
   const graduatedIds = new Set(toGraduate.map((row) => row.id));
   return {
     nextGraduated: appendGraduatedItems(graduated, toGraduate),
@@ -92,7 +92,7 @@ function ChatApp(props: ChatAppProps) {
   const { client, session, store, persist, useMemory } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
-  const [rows, setRows] = useState<ChatLine[]>([]);
+  const [rows, setRows] = useState<ChatEntry[]>([]);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const [value, setValue] = useState("");
