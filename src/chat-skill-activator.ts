@@ -26,10 +26,7 @@ export function createSkillActivator(
       const msg = input.createMessage("system", `Active skill (${skill.name}):\n${compactedInstructions}`);
       input.currentSession.messages.push(msg);
       input.currentSession.updatedAt = input.nowIso();
-      const label = args
-        ? t("chat.skill.activated.with_args", { skill: skill.name })
-        : t("chat.skill.activated", { skill: skill.name });
-      input.setRows((current) => [...current, createRow("system", label, { dim: true })]);
+      input.setRows((current) => [...current, createRow("system", t("chat.skill.activated"), { dim: true })]);
       await input.persist();
       return true;
     } catch {
