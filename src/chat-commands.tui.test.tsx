@@ -73,16 +73,14 @@ describe("chat slash command visual regression", () => {
       dedent(`
         Usage
 
-                        Last turn     Session
-        Input           15.9k         42.0k
-        Output          2.7k          6.6k
-        Total           18.6k         48.6k
+        Input:              15.9k
+        Output:             2.7k
+        Total:              18.6k
 
-                        Tokens        Share
-        System          6.2k          39%
-        Tools           8.9k          56%
-        Memory          500           3%
-        Messages        300           2%
+        System:             6.2k (39%)
+        Tools:              8.9k (56%)
+        Memory:             500 (3%)
+        Messages:           300 (2%)
     `),
     );
   });

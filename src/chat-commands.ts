@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import { formatColumns, formatCompactNumber, formatRelativeTime } from "./chat-format";
+import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatCompactNumber, formatRelativeTime } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -46,19 +46,6 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
   return formatColumns(rows);
 }
 
-function formatTable(rows: string[][], minWidths: number[] = []): string[] {
-  if (rows.length === 0) return [];
-  const colCount = rows[0]?.length ?? 0;
-  const widths = Array.from({ length: colCount }, (_, index) =>
-    rows.reduce((max, row) => Math.max(max, row[index]?.length ?? 0, minWidths[index] ?? 0), 0),
-  );
-  return rows.map((row) =>
-    row
-      .slice(0, colCount)
-      .map((cell, index) => (index === colCount - 1 ? cell : cell.padEnd(widths[index] ?? cell.length)))
-      .join("  "),
-  );
-}
 
 function formatUsageValue(value: number): string {
   return formatCompactNumber(value);
@@ -71,59 +58,33 @@ function formatShare(tokens: number, total: number): string {
 
 export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
   if (!last) return t("chat.usage.none");
-  const breakdownTotal = Math.max(last.promptBreakdown?.usedTokens ?? 0, last.usage.inputTokens);
-  const totals = all.reduce(
-    (acc, entry) => {
-      acc.input += entry.usage.inputTokens;
-      acc.output += entry.usage.outputTokens;
-      acc.total += entry.usage.totalTokens;
-      return acc;
-    },
-    { input: 0, output: 0, total: 0 },
-  );
-  const rows = formatTable(
-    [
-      ["", t("chat.usage.label.last_turn"), t("chat.usage.label.session")],
-      [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)],
-      [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)],
-      [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)],
-    ],
-    [14, 12, 12],
-  );
-  const output = ["Usage", "", ...rows];
+
+  const summary: [string, string][] = [
+    [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
+    [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens)],
+    [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens)],
+  ];
+
+  const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
-    const breakdown = last.promptBreakdown;
-    output.push(
-      "",
-      ...formatTable(
-        [
-          ["", t("chat.usage.label.tokens"), t("chat.usage.label.share")],
-          [
-            t("chat.usage.metric.system"),
-            formatUsageValue(breakdown.systemTokens),
-            formatShare(breakdown.systemTokens, breakdownTotal),
-          ],
-          [
-            t("chat.usage.metric.tools"),
-            formatUsageValue(breakdown.toolTokens),
-            formatShare(breakdown.toolTokens, breakdownTotal),
-          ],
-          [
-            t("chat.usage.metric.memory"),
-            formatUsageValue(breakdown.memoryTokens),
-            formatShare(breakdown.memoryTokens, breakdownTotal),
-          ],
-          [
-            t("chat.usage.metric.messages"),
-            formatUsageValue(breakdown.messageTokens),
-            formatShare(breakdown.messageTokens, breakdownTotal),
-          ],
-        ],
-        [14, 12, 12],
-      ),
-    );
+    const bd = last.promptBreakdown;
+    const total = Math.max(bd.usedTokens, last.usage.inputTokens);
+    for (const [label, tokens] of [
+      [t("chat.usage.metric.system"), bd.systemTokens],
+      [t("chat.usage.metric.tools"), bd.toolTokens],
+      [t("chat.usage.metric.memory"), bd.memoryTokens],
+      [t("chat.usage.metric.messages"), bd.messageTokens],
+    ] as [string, number][]) {
+      if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens)} (${formatShare(tokens, total)})`]);
+    }
   }
-  return output.join("\n");
+
+  const allRows = [...summary, ...breakdown];
+  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
+  const fmt = ([key, value]: [string, string]) => `${`${key}:`.padEnd(colWidth)}${value}`;
+  const sections = [summary.map(fmt).join("\n")];
+  if (breakdown.length > 0) sections.push(breakdown.map(fmt).join("\n"));
+  return `${t("chat.usage.header")}\n\n${sections.join("\n\n")}`;
 }
 
 export function presentSessionsOutput(store: SessionState, limit = 10): string {
@@ -136,8 +97,8 @@ export function presentStatusOutput(status: StatusFields): string {
   return content.length > 0 ? content : t("chat.status.empty");
 }
 
-export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
-  return formatUsageOutput(last, all);
+export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): ChatRow[] {
+  return [createRow("system", formatUsageOutput(last, all))];
 }
 
 type CommandResult = {
@@ -419,7 +380,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (resolvedText === "/usage") {
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     const rendered = presentUsageOutput(last, ctx.tokenUsage);
-    ctx.setRows((current) => [...current, createRow("system", rendered)]);
+    ctx.setRows((current) => [...current, ...rendered]);
     return { stop: true, userText: text };
   }
 

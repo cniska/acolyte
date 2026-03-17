@@ -98,48 +98,24 @@ function renderUsageContent(content: string): React.ReactNode {
     <>
       {lines.map((line, index) => {
         if (index === 0) {
-          return (
-            <React.Fragment key={createLineKey(seenLineKeys, `usage-header:${line}`)}>
-              <Text dimColor>{line}</Text>
-            </React.Fragment>
-          );
+          return <Text key={createLineKey(seenLineKeys, "usage-title")}>{line}</Text>;
         }
         if (line.length === 0) {
-          return (
-            <React.Fragment key={createLineKey(seenLineKeys, "usage-empty")}>{index > 0 ? "\n" : null}</React.Fragment>
-          );
+          return <React.Fragment key={createLineKey(seenLineKeys, "usage-empty")}>{"\n"}</React.Fragment>;
         }
-
-        const headerMatch = line.match(/^(\s+)([^\s].*?)(\s{2,})([^\s].*)$/);
-        if (headerMatch && !line.includes(":")) {
+        const parsed = parseStatusLine(line);
+        if (parsed) {
           return (
-            <React.Fragment key={createLineKey(seenLineKeys, `usage-header:${line}`)}>
-              {index > 0 ? "\n" : null}
-              <Text>{headerMatch[1] ?? ""}</Text>
-              <Text dimColor>{headerMatch[2] ?? ""}</Text>
-              <Text>{headerMatch[3] ?? ""}</Text>
-              <Text dimColor>{headerMatch[4] ?? ""}</Text>
+            <React.Fragment key={createLineKey(seenLineKeys, `usage-kv:${line}`)}>
+              {"\n"}
+              <Text dimColor>{parsed.key}</Text>
+              <Text>{parsed.value}</Text>
             </React.Fragment>
           );
         }
-
-        const labelMatch = line.match(/^(\S.*?)(\s{2,})(\S.*?)(\s{2,})(\S.*)$/);
-        if (labelMatch) {
-          return (
-            <React.Fragment key={createLineKey(seenLineKeys, `usage-row:${line}`)}>
-              {index > 0 ? "\n" : null}
-              <Text dimColor>{labelMatch[1] ?? ""}</Text>
-              <Text>{labelMatch[2] ?? ""}</Text>
-              <Text>{labelMatch[3] ?? ""}</Text>
-              <Text>{labelMatch[4] ?? ""}</Text>
-              <Text>{labelMatch[5] ?? ""}</Text>
-            </React.Fragment>
-          );
-        }
-
         return (
-          <React.Fragment key={createLineKey(seenLineKeys, `usage-fallback:${line}`)}>
-            {index > 0 ? "\n" : null}
+          <React.Fragment key={createLineKey(seenLineKeys, `usage-line:${line}`)}>
+            {"\n"}
             <Text>{line}</Text>
           </React.Fragment>
         );

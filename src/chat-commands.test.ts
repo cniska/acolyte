@@ -47,13 +47,11 @@ describe("chat-commands", () => {
       },
     };
     const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Usage");
-    expect(output).toContain("Input");
-    expect(output).toContain("Output");
-    expect(output).toContain("System");
-    expect(output).toContain("Last turn");
-    expect(output).toContain("Session");
-    expect(output).toContain("Share");
+    expect(output).toContain("Input:");
+    expect(output).toContain("Output:");
+    expect(output).toContain("System:");
+    expect(output).toContain("Tools:");
+    expect(output).toContain("Messages:");
   });
 
   test("formatUsageOutput does not include budget warning", () => {
@@ -133,7 +131,8 @@ describe("chat-commands", () => {
 
   test("presentUsageOutput renders empty-state command presentation block", () => {
     const rendered = presentUsageOutput(null, []);
-    expect(rendered).toBe("No usage data yet. Send a prompt first.");
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0].content).toBe("No usage data yet. Send a prompt first.");
   });
 
 
@@ -175,8 +174,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Usage"))).toBe(true);
-    expect(rows.some((row) => row.content.includes("Tokens") && row.content.includes("Share"))).toBe(true);
+    expect(rows.some((row) => row.role === "system" && row.content.includes("Input:"))).toBe(true);
   });
 
   test("dispatchSlashCommand handles /usage with empty usage", async () => {

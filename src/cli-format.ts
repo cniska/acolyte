@@ -156,7 +156,7 @@ export function formatRunSummary(
   );
   if (totals.total === 0) return null;
   const durationSec = (durationMs / 1000).toFixed(1);
-  return `${label}: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (input ${formatCompactNumber(totals.input)}, output ${formatCompactNumber(totals.output)}), ${totals.modelCalls} model calls`;
+  return `${label}: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (input ${formatCompactNumber(totals.input)}, output ${formatCompactNumber(totals.output)}), ${t("unit.call", { count: totals.modelCalls })}`;
 }
 
 export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {

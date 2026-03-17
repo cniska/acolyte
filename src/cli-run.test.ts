@@ -79,7 +79,7 @@ describe("cli-run", () => {
     expect(tokenLine).toContain("430 tokens");
     expect(tokenLine).toContain("input 300");
     expect(tokenLine).toContain("output 130");
-    expect(tokenLine).toContain("3 model calls");
+    expect(tokenLine).toContain("3 calls");
   });
 
   test("runMode disables verifier for single-shot runs", async () => {
