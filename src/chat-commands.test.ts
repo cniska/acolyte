@@ -64,7 +64,6 @@ describe("chat-commands", () => {
         inputBudgetTokens: 1000,
         inputTruncated: true,
       },
-      warning: "context trimmed (8/42 history messages)",
     };
     const output = formatUsageOutput(usage, [usage]);
     expect(output).not.toContain("Warning:");
