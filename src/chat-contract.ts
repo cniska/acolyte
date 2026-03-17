@@ -21,18 +21,18 @@ export const messageSchema = z.object({
 
 export type ChatMessage = z.input<typeof messageSchema>;
 
-export const chatRowRoleSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
+export const chatLineRoleSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
 
-export const chatRowStyleSchema = z.object({
+export const chatLineStyleSchema = z.object({
   marker: z.string().optional(),
   text: z.string().optional(),
   dim: z.boolean().optional(),
 });
 
-export type ChatRowStyle = z.infer<typeof chatRowStyleSchema>;
+export type ChatLineStyle = z.infer<typeof chatLineStyleSchema>;
 
-export const chatRowIdSchema = domainIdSchema("row");
-export type ChatRowId = z.infer<typeof chatRowIdSchema>;
+export const chatLineIdSchema = domainIdSchema("row");
+export type ChatLineId = z.infer<typeof chatLineIdSchema>;
 
 export const commandOutputSchema = z.object({
   header: z.string(),
@@ -42,17 +42,17 @@ export const commandOutputSchema = z.object({
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
 
-export const chatRowSchema = z.object({
-  id: chatRowIdSchema,
-  role: chatRowRoleSchema,
+export const chatLineSchema = z.object({
+  id: chatLineIdSchema,
+  role: chatLineRoleSchema,
   content: z.string(),
-  style: chatRowStyleSchema.optional(),
+  style: chatLineStyleSchema.optional(),
   toolOutput: z.array(toolOutputSchema).optional(),
   commandOutput: commandOutputSchema.optional(),
 });
 
-export type ChatRow = z.infer<typeof chatRowSchema>;
+export type ChatLine = z.infer<typeof chatLineSchema>;
 
-export function createRow(role: ChatRow["role"], content: string, style?: ChatRowStyle): ChatRow {
+export function createLine(role: ChatLine["role"], content: string, style?: ChatLineStyle): ChatLine {
   return { id: `row_${createId()}`, role, content, style: style ?? undefined };
 }

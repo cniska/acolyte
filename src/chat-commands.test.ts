@@ -245,10 +245,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("user:mem_1 prefer concise output");
-    expect(system?.content).toContain("project:mem_2 use bun scripts");
+    const row = rows.find((r) => r.commandOutput?.header === "Memory 2");
+    expect(row).toBeDefined();
+    expect(row?.commandOutput?.list).toContain("user:mem_1 prefer concise output");
+    expect(row?.commandOutput?.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
@@ -276,10 +276,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory all", { memoryApi });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("user:mem_1 prefer concise output");
-    expect(system?.content).toContain("project:mem_2 use bun scripts");
+    const row = rows.find((r) => r.commandOutput?.header === "Memory 2");
+    expect(row).toBeDefined();
+    expect(row?.commandOutput?.list).toContain("user:mem_1 prefer concise output");
+    expect(row?.commandOutput?.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles /memory rm success", async () => {
@@ -366,7 +366,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("User memory 1"))).toBe(true);
+    expect(rows.some((row) => row.commandOutput?.header === "User memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand renders project-scoped /memory header", async () => {
@@ -388,7 +388,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory project", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory 1"))).toBe(true);
+    expect(rows.some((row) => row.commandOutput?.header === "Project memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand validates /memory scope usage", async () => {

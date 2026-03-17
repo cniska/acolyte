@@ -1,12 +1,12 @@
 import React from "react";
 import { renderAssistantContent } from "./chat-content-render";
-import type { ChatRow, CommandOutput } from "./chat-contract";
+import type { ChatLine, CommandOutput } from "./chat-contract";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH } from "./chat-format";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 import { Box, Text } from "./tui";
 
-const MARKERS: Record<ChatRow["role"], string> = {
+const MARKERS: Record<ChatLine["role"], string> = {
   user: "❯ ",
   assistant: "• ",
   tool: "• ",
@@ -15,56 +15,12 @@ const MARKERS: Record<ChatRow["role"], string> = {
   system: "  ",
 };
 
-function createLineKey(seen: Map<string, number>, base: string): string {
-  const next = (seen.get(base) ?? 0) + 1;
-  seen.set(base, next);
-  return `${base}:${next}`;
-}
-
-
-export function parseStatusLine(line: string): { indent: string; key: string; value: string } | null {
-  const match = line.match(/^(\s*)([a-zA-Z0-9_.-]+:\s*)(.*)$/);
-  if (!match) return null;
-  return {
-    indent: match[1] ?? "",
-    key: match[2] ?? "",
-    value: match[3] ?? "",
-  };
-}
-
-function renderKeyValueContent(content: string): React.ReactNode {
-  const lines = content.split("\n");
-  const hasKeyValue = lines.some((line) => parseStatusLine(line) !== null);
-  if (!hasKeyValue) return null;
-  const seenLineKeys = new Map<string, number>();
-  return (
-    <>
-      {lines.map((line, index) => {
-        const parsed = parseStatusLine(line);
-        return (
-          <React.Fragment key={createLineKey(seenLineKeys, `kv:${line}`)}>
-            {index > 0 ? "\n" : null}
-            {parsed ? (
-              <>
-                <Text>{parsed.indent}</Text>
-                <Text dimColor>{parsed.key}</Text>
-                <Text>{parsed.value}</Text>
-              </>
-            ) : (
-              <Text>{line}</Text>
-            )}
-          </React.Fragment>
-        );
-      })}
-    </>
-  );
-}
-
 function renderCommandOutput(output: CommandOutput): React.ReactNode {
   const allRows = output.sections.flat();
-  const colWidth = allRows.length > 0
-    ? Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1))
-    : COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
+  const colWidth =
+    allRows.length > 0
+      ? Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1))
+      : COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
   return (
     <>
       <Text>{output.header}</Text>
@@ -96,7 +52,7 @@ function renderCommandOutput(output: CommandOutput): React.ReactNode {
 }
 
 function renderSystemContent(content: string): React.ReactNode {
-  return renderKeyValueContent(content) ?? content;
+  return content;
 }
 
 function renderToolLine(
@@ -216,13 +172,13 @@ function renderToolBlock(items: ToolOutput[], toolContentWidth: number): React.R
   );
 }
 
-type ChatRowViewProps = {
-  row: ChatRow;
+type ChatRowProps = {
+  row: ChatLine;
   contentWidth: number;
   toolContentWidth: number;
 };
 
-export function ChatRowView({ row, contentWidth, toolContentWidth }: ChatRowViewProps): React.ReactNode {
+export function ChatRow({ row, contentWidth, toolContentWidth }: ChatRowProps): React.ReactNode {
   const marker = MARKERS[row.role];
   const markerColor = row.style?.marker ?? (row.role === "assistant" ? palette.brand : undefined);
   const textColor = row.style?.text ?? (row.role === "assistant" && !row.style?.dim ? palette.brand : undefined);
