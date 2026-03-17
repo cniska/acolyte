@@ -1,23 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import {
-  dispatchSlashCommand,
-  presentSessionsOutput,
-  presentStatusOutput,
-  presentUsageOutput,
-} from "./chat-commands";
+import { dispatchSlashCommand, presentSessionsOutput, presentStatusOutput, presentUsageOutput } from "./chat-commands";
 import type { ConfigScope } from "./config-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
-import {
-  createCommandContext,
-  createMessage,
-  createSession,
-  createStore,
-  dedent,
-  tempDir,
-  writeSkill,
-} from "./test-utils";
+import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);

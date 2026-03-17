@@ -12,7 +12,6 @@ import {
   createMessageHandlerHarness,
   createSession,
   createStore,
-  dedent,
   testUuid,
 } from "./test-utils";
 

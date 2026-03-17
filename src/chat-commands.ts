@@ -66,7 +66,7 @@ export function presentStatusOutput(status: StatusFields): ChatRow[] {
   return [{ ...createRow("system", ""), commandOutput: output }];
 }
 
-export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): ChatRow[] {
+export function presentUsageOutput(last: SessionTokenUsageEntry | null, _all: SessionTokenUsageEntry[]): ChatRow[] {
   if (!last) return [createRow("system", t("chat.usage.none"))];
   const summary: [string, string][] = [
     [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],

@@ -97,11 +97,11 @@ function renderCommandOutput(output: CommandOutput): React.ReactNode {
   return (
     <>
       <Text>{output.header}</Text>
-      {output.sections.map((section, si) => (
-        <React.Fragment key={`s${si}`}>
+      {output.sections.map((section) => (
+        <React.Fragment key={section.map(([k]) => k).join(",")}>
           {"\n\n"}
           {section.map(([key, value], ri) => (
-            <React.Fragment key={`s${si}r${ri}`}>
+            <React.Fragment key={key}>
               {ri > 0 ? "\n" : null}
               <Text dimColor>{`${key}:`.padEnd(colWidth)}</Text>
               <Text>{value}</Text>
