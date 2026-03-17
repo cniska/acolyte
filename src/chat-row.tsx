@@ -1,6 +1,7 @@
 import React from "react";
 import { renderAssistantContent } from "./chat-content-render";
-import type { ChatRow } from "./chat-contract";
+import type { ChatRow, CommandOutput } from "./chat-contract";
+import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH } from "./chat-format";
 import { palette } from "./palette";
 import { renderToolOutput as renderToolOutputText, type ToolOutput } from "./tool-output-content";
 import { Box, Text } from "./tui";
@@ -90,42 +91,30 @@ function renderKeyValueContent(content: string): React.ReactNode {
   );
 }
 
-function renderUsageContent(content: string): React.ReactNode {
-  const lines = content.split("\n");
-  if (lines[0] !== "Usage") return null;
-  const seenLineKeys = new Map<string, number>();
+function renderCommandOutput(output: CommandOutput): React.ReactNode {
+  const allRows = output.sections.flat();
+  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
   return (
     <>
-      {lines.map((line, index) => {
-        if (index === 0) {
-          return <Text key={createLineKey(seenLineKeys, "usage-title")}>{line}</Text>;
-        }
-        if (line.length === 0) {
-          return <React.Fragment key={createLineKey(seenLineKeys, "usage-empty")}>{"\n"}</React.Fragment>;
-        }
-        const parsed = parseStatusLine(line);
-        if (parsed) {
-          return (
-            <React.Fragment key={createLineKey(seenLineKeys, `usage-kv:${line}`)}>
-              {"\n"}
-              <Text dimColor>{parsed.key}</Text>
-              <Text>{parsed.value}</Text>
+      <Text>{output.header}</Text>
+      {output.sections.map((section, si) => (
+        <React.Fragment key={`s${si}`}>
+          {"\n\n"}
+          {section.map(([key, value], ri) => (
+            <React.Fragment key={`s${si}r${ri}`}>
+              {ri > 0 ? "\n" : null}
+              <Text dimColor>{`${key}:`.padEnd(colWidth)}</Text>
+              <Text>{value}</Text>
             </React.Fragment>
-          );
-        }
-        return (
-          <React.Fragment key={createLineKey(seenLineKeys, `usage-line:${line}`)}>
-            {"\n"}
-            <Text>{line}</Text>
-          </React.Fragment>
-        );
-      })}
+          ))}
+        </React.Fragment>
+      ))}
     </>
   );
 }
 
 function renderSystemContent(content: string): React.ReactNode {
-  return renderUsageContent(content) ?? renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
+  return renderSessionsListContent(content) ?? renderKeyValueContent(content) ?? content;
 }
 
 function renderToolLine(
@@ -268,6 +257,8 @@ export function ChatRowView({ row, contentWidth, toolContentWidth }: ChatRowView
           <Text dimColor={dim} color={textColor}>
             {renderAssistantContent(row.content, contentWidth)}
           </Text>
+        ) : row.commandOutput ? (
+          <Text>{renderCommandOutput(row.commandOutput)}</Text>
         ) : (
           <Text dimColor={dim} color={textColor}>
             {renderSystemContent(row.content)}

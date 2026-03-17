@@ -37,6 +37,15 @@ export function formatRelativeTime(iso: string, now?: number): string {
   return `${days}d ago`;
 }
 
+export function formatCommandOutput(output: { sections: [string, string][][] }): string {
+  const allRows = output.sections.flat();
+  if (allRows.length === 0) return "";
+  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
+  return output.sections
+    .map((section) => section.map(([key, value]) => `${`${key}:`.padEnd(colWidth)}${value}`).join("\n"))
+    .join("\n\n");
+}
+
 export function formatColumns(rows: string[][]): string[] {
   if (rows.length === 0) return [];
   const colCount = rows[0].length;

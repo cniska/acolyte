@@ -1,18 +1,41 @@
-import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH } from "./chat-format";
+import type { CommandOutput } from "./chat-contract";
+import { formatCommandOutput } from "./chat-format";
+import { t } from "./i18n";
 import type { StatusFields } from "./status-contract";
 
-export function formatStatusOutput(fields: StatusFields): string {
-  const rows = Object.entries(fields).filter(([, value]) => {
+const STATUS_KEY_LABEL_MAP: Record<string, string> = {
+  active_skill: t("chat.status.label.active_skill"),
+  capabilities: t("chat.status.label.capabilities"),
+  memory: t("chat.status.label.memory"),
+  model: t("chat.status.label.model"),
+  "model.verify": t("chat.status.label.model.verify"),
+  "model.work": t("chat.status.label.model.work"),
+  permissions: t("chat.status.label.permissions"),
+  protocol_version: t("chat.status.label.protocol_version"),
+  providers: t("chat.status.label.providers"),
+  rpc_queue_length: t("chat.status.label.rpc_queue_length"),
+  service: t("chat.status.label.service"),
+  tasks_detached: t("chat.status.label.tasks_detached"),
+  tasks_running: t("chat.status.label.tasks_running"),
+  tasks_total: t("chat.status.label.tasks_total"),
+};
+
+export function formatStatus(fields: StatusFields): string {
+  const output = createStatusOutput(fields);
+  return output ? formatCommandOutput(output) : "";
+}
+
+export function createStatusOutput(fields: StatusFields): CommandOutput | null {
+  const rows = Object.entries(fields).filter(([key, value]) => {
+    if (!(key in STATUS_KEY_LABEL_MAP)) return false;
     if (typeof value === "number") return Number.isFinite(value);
     if (Array.isArray(value)) return value.length > 0;
     return value.length > 0;
   });
-  if (rows.length === 0) return "";
-  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...rows.map(([key]) => `${key}:`.length + 1));
-  return rows
-    .map(([key, value]) => {
-      const rendered = Array.isArray(value) ? value.join(", ") : String(value);
-      return `${`${key}:`.padEnd(colWidth)}${rendered}`;
-    })
-    .join("\n");
+  if (rows.length === 0) return null;
+  const section: [string, string][] = rows.map(([key, value]) => [
+    STATUS_KEY_LABEL_MAP[key] as string,
+    Array.isArray(value) ? value.join(", ") : String(value),
+  ]);
+  return { header: t("chat.status.header"), sections: [section] };
 }

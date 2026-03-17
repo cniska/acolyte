@@ -1,12 +1,7 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import {
-  COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH,
-  formatColumns,
-  formatCompactNumber,
-  formatRelativeTime,
-} from "./chat-format";
+import { formatColumns, formatCompactNumber, formatRelativeTime } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -23,7 +18,7 @@ type MemoryContextScope = "all" | "user" | "project";
 
 import { type ChatRow, createRow } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
-import { formatStatusOutput } from "./status-format";
+import { createStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
 export type ResumeResolution =
@@ -60,15 +55,24 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function formatUsageOutput(last: SessionTokenUsageEntry | null, _all: SessionTokenUsageEntry[]): string {
-  if (!last) return t("chat.usage.none");
+export function presentSessionsOutput(store: SessionState, limit = 10): string {
+  const recent = formatSessionList(store, limit);
+  return [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n");
+}
 
+export function presentStatusOutput(status: StatusFields): ChatRow[] {
+  const output = createStatusOutput(status);
+  if (!output) return [createRow("system", t("chat.status.empty"))];
+  return [{ ...createRow("system", ""), commandOutput: output }];
+}
+
+export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): ChatRow[] {
+  if (!last) return [createRow("system", t("chat.usage.none"))];
   const summary: [string, string][] = [
     [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
     [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens)],
     [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens)],
   ];
-
   const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
     const bd = last.promptBreakdown;
@@ -82,27 +86,9 @@ export function formatUsageOutput(last: SessionTokenUsageEntry | null, _all: Ses
       if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens)} (${formatShare(tokens, total)})`]);
     }
   }
-
-  const allRows = [...summary, ...breakdown];
-  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
-  const fmt = ([key, value]: [string, string]) => `${`${key}:`.padEnd(colWidth)}${value}`;
-  const sections = [summary.map(fmt).join("\n")];
-  if (breakdown.length > 0) sections.push(breakdown.map(fmt).join("\n"));
-  return `${t("chat.usage.header")}\n\n${sections.join("\n\n")}`;
-}
-
-export function presentSessionsOutput(store: SessionState, limit = 10): string {
-  const recent = formatSessionList(store, limit);
-  return [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n");
-}
-
-export function presentStatusOutput(status: StatusFields): string {
-  const content = formatStatusOutput(status);
-  return content.length > 0 ? content : t("chat.status.empty");
-}
-
-export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): ChatRow[] {
-  return [createRow("system", formatUsageOutput(last, all))];
+  const sections: [string, string][][] = [summary];
+  if (breakdown.length > 0) sections.push(breakdown);
+  return [{ ...createRow("system", ""), commandOutput: { header: t("chat.usage.header"), sections } }];
 }
 
 type CommandResult = {
@@ -241,7 +227,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     try {
       const status = await ctx.client.status();
       const rendered = presentStatusOutput(status);
-      ctx.setRows((current) => [...current, createRow("system", rendered)]);
+      ctx.setRows((current) => [...current, ...rendered]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,

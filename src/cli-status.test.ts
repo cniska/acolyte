@@ -20,7 +20,7 @@ function createStatusDeps(): {
           memory: "off",
         }),
       }) as never,
-    formatStatusOutput: () => "status-ok",
+    formatStatus: () => "status-ok",
     hasHelpFlag: (args) => args.includes("--help"),
     hasJsonFlag: (args) => args.includes("--json"),
     isServerConnectionFailure: () => false,

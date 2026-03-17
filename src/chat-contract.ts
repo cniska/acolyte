@@ -34,12 +34,20 @@ export type ChatRowStyle = z.infer<typeof chatRowStyleSchema>;
 export const chatRowIdSchema = domainIdSchema("row");
 export type ChatRowId = z.infer<typeof chatRowIdSchema>;
 
+export const commandOutputSchema = z.object({
+  header: z.string(),
+  sections: z.array(z.array(z.tuple([z.string(), z.string()]))),
+});
+
+export type CommandOutput = z.infer<typeof commandOutputSchema>;
+
 export const chatRowSchema = z.object({
   id: chatRowIdSchema,
   role: chatRowRoleSchema,
   content: z.string(),
   style: chatRowStyleSchema.optional(),
   toolOutput: z.array(toolOutputSchema).optional(),
+  commandOutput: commandOutputSchema.optional(),
 });
 
 export type ChatRow = z.infer<typeof chatRowSchema>;

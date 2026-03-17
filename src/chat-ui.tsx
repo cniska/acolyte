@@ -12,7 +12,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { ChatRowView } from "./chat-row-view";
+import { ChatRowView } from "./chat-row";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";

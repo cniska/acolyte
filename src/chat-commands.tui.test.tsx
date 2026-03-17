@@ -23,9 +23,11 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-        providers:          openai
-        model:              gpt-5-mini
-        permissions:        write
+        Status
+
+        Providers:          openai
+        Model:              gpt-5-mini
+        Permissions:        write
     `),
     );
   });

@@ -2,7 +2,6 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import {
   dispatchSlashCommand,
-  formatUsageOutput,
   presentSessionsOutput,
   presentStatusOutput,
   presentUsageOutput,
@@ -27,7 +26,7 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 }
 
 describe("chat-commands", () => {
-  test("formatUsageOutput renders aligned rows", () => {
+  test("presentUsageOutput includes expected metric keys", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: {
@@ -46,15 +45,17 @@ describe("chat-commands", () => {
         messageTokens: 10,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Input:");
-    expect(output).toContain("Output:");
-    expect(output).toContain("System:");
-    expect(output).toContain("Tools:");
-    expect(output).toContain("Messages:");
+    const [row] = presentUsageOutput(usage, [usage]);
+    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    const keys = allPairs.map(([k]) => k);
+    expect(keys).toContain("Input");
+    expect(keys).toContain("Output");
+    expect(keys).toContain("System");
+    expect(keys).toContain("Tools");
+    expect(keys).toContain("Messages");
   });
 
-  test("formatUsageOutput does not include budget warning", () => {
+  test("presentUsageOutput does not include budget warning", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
@@ -65,19 +66,16 @@ describe("chat-commands", () => {
         inputTruncated: true,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    expect(output).not.toContain("Warning:");
-    expect(output).not.toContain("context trimmed");
+    const [row] = presentUsageOutput(usage, [usage]);
+    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    expect(allPairs.every(([k]) => !k.toLowerCase().includes("warning"))).toBe(true);
+    expect(allPairs.every(([, v]) => !v.includes("context trimmed"))).toBe(true);
   });
 
-  test("formatUsageOutput shares use prompt breakdown total", () => {
+  test("presentUsageOutput uses prompt breakdown total for percentages", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
-      usage: {
-        inputTokens: 50,
-        outputTokens: 2,
-        totalTokens: 52,
-      },
+      usage: { inputTokens: 50, outputTokens: 2, totalTokens: 52 },
       promptBreakdown: {
         budgetTokens: 1000,
         usedTokens: 100,
@@ -87,35 +85,32 @@ describe("chat-commands", () => {
         messageTokens: 40,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    const systemLine = output.split("\n").find((line) => line.includes("System"));
-    expect(systemLine).toContain("20%");
-    const toolLine = output.split("\n").find((line) => line.includes("Tools"));
-    expect(toolLine).toContain("30%");
-    const memoryLine = output.split("\n").find((line) => line.includes("Memory"));
-    expect(memoryLine).toContain("10%");
-    const messageLine = output.split("\n").find((line) => line.includes("Messages"));
-    expect(messageLine).toContain("40%");
+    const [row] = presentUsageOutput(usage, [usage]);
+    const allPairs = row?.commandOutput?.sections.flat() ?? [];
+    const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
+    expect(find("System")).toContain("20%");
+    expect(find("Tools")).toContain("30%");
+    expect(find("Memory")).toContain("10%");
+    expect(find("Messages")).toContain("40%");
   });
 
-  test("presentStatusOutput renders command presentation block", () => {
-    const rendered = presentStatusOutput({
+  test("presentStatusOutput returns commandOutput with labeled fields", () => {
+    const [row] = presentStatusOutput({
       providers: ["openai"],
       model: "gpt-5-mini",
       permissions: "write",
     });
-    expect(rendered).toBe(
-      dedent(`
-      providers:          openai
-      model:              gpt-5-mini
-      permissions:        write
-    `),
-    );
+    expect(row?.commandOutput?.header).toBe("Status");
+    const pairs = row?.commandOutput?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
+    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("presentStatusOutput shows fallback when payload has no visible fields", () => {
-    const rendered = presentStatusOutput({});
-    expect(rendered).toBe("Status response was empty.");
+    const [row] = presentStatusOutput({});
+    expect(row?.content).toBe("Status response was empty.");
+    expect(row?.commandOutput).toBeUndefined();
   });
 
   test("presentSessionsOutput renders command presentation block", () => {
@@ -128,10 +123,10 @@ describe("chat-commands", () => {
     expect(rendered).toContain("● sess_aaaa1111  First");
   });
 
-  test("presentUsageOutput renders empty-state command presentation block", () => {
-    const rendered = presentUsageOutput(null, []);
-    expect(rendered).toHaveLength(1);
-    expect(rendered[0].content).toBe("No usage data yet. Send a prompt first.");
+  test("presentUsageOutput returns fallback row when no usage data", () => {
+    const [row] = presentUsageOutput(null, []);
+    expect(row?.content).toBe("No usage data yet. Send a prompt first.");
+    expect(row?.commandOutput).toBeUndefined();
   });
 
   test("dispatchSlashCommand handles /usage", async () => {
@@ -172,7 +167,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Input:"))).toBe(true);
+    expect(rows.some((row) => row.commandOutput?.header === "Usage")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /usage with empty usage", async () => {
@@ -185,7 +180,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("providers:"))).toBe(true);
+    expect(rows.some((row) => row.commandOutput?.header === "Status")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact system output", async () => {
