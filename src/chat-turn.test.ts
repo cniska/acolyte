@@ -94,5 +94,4 @@ describe("chat turn helpers", () => {
 
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
-
 });

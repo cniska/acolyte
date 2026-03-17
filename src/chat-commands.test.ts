@@ -135,7 +135,6 @@ describe("chat-commands", () => {
     expect(rendered[0].content).toBe("No usage data yet. Send a prompt first.");
   });
 
-
   test("dispatchSlashCommand handles /usage", async () => {
     const tokenUsage: SessionTokenUsageEntry[] = [
       {

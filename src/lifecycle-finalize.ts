@@ -93,6 +93,5 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       memoryTokens: promptBreakdown.memoryTokens,
       messageTokens: promptBreakdown.messageTokens,
     },
-
   };
 }

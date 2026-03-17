@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatColumns, formatCompactNumber, formatRelativeTime } from "./chat-format";
+import {
+  COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH,
+  formatColumns,
+  formatCompactNumber,
+  formatRelativeTime,
+} from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -46,7 +51,6 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
   return formatColumns(rows);
 }
 
-
 function formatUsageValue(value: number): string {
   return formatCompactNumber(value);
 }
@@ -56,7 +60,7 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function formatUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): string {
+export function formatUsageOutput(last: SessionTokenUsageEntry | null, _all: SessionTokenUsageEntry[]): string {
   if (!last) return t("chat.usage.none");
 
   const summary: [string, string][] = [
