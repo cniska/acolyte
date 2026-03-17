@@ -258,6 +258,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       }
       return;
     }
+    if (text.startsWith("/")) {
+      input.setRows((current) => [...current, createRow("user", text)]);
+    }
     let userText = text;
     const commandResult = await dispatchSlashCommand({
       text,
