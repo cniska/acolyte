@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
-import type { ChatMessage, ChatRow } from "./chat-contract";
+import type { ChatLine, ChatMessage } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, StreamEvent } from "./client-contract";
@@ -248,9 +248,9 @@ export function createClient(overrides?: {
 
 export type MessageHandlerHarness = {
   handleMessage: (raw: string) => Promise<void>;
-  rows: ChatRow[];
+  rows: ChatLine[];
   /** Every row that was ever present, even after clearTranscript. */
-  allRows: ChatRow[];
+  allRows: ChatLine[];
   session: Session;
   store: SessionState;
   calls: {
@@ -274,10 +274,10 @@ export function createMessageHandlerHarness(overrides?: {
   session?: Session;
   store?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
-  toRows?: (messages: ChatMessage[]) => ChatRow[];
+  toRows?: (messages: ChatMessage[]) => ChatLine[];
 }): MessageHandlerHarness {
-  const rows: ChatRow[] = [];
-  const allRows: ChatRow[] = [];
+  const rows: ChatLine[] = [];
+  const allRows: ChatLine[] = [];
   const interrupt = { registered: false, fire: () => {} };
   const calls = {
     setInputHistory: 0,
@@ -349,10 +349,10 @@ export function createMessageHandlerHarness(overrides?: {
 }
 
 export type PickerHandlerSpies = {
-  rows: ChatRow[];
+  rows: ChatLine[];
   pickerValues: unknown[];
   currentSessions: Session[];
-  rowsDirectSets: ChatRow[][];
+  rowsDirectSets: ChatLine[][];
   assistantTurnTexts: string[];
 };
 
@@ -400,7 +400,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
 }
 
 export type CommandContextSpies = {
-  rows: ChatRow[];
+  rows: ChatLine[];
   openedModel: boolean;
   openedModelMode?: AgentMode;
   currentSessionIds: string[];

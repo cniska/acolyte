@@ -1,4 +1,4 @@
-import { type ChatRow, createRow } from "./chat-contract";
+import { type ChatLine, createLine } from "./chat-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
@@ -24,7 +24,7 @@ export type MessageStreamState = {
 const STREAM_FLUSH_MS = 50;
 
 export function createMessageStreamState(input: {
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
 }): MessageStreamState {
   // --- assistant streaming state ---
   let activeRowId: string | null = null;
@@ -124,7 +124,7 @@ export function createMessageStreamState(input: {
       input.setRows((current) => {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
-        return [...current, createRow("system", error, { dim: true, text: palette.error })];
+        return [...current, createLine("system", error, { dim: true, text: palette.error })];
       });
     },
 

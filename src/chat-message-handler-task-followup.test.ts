@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-contract";
+import type { ChatLine } from "./chat-contract";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 
 describe("chat-message-handler-task-followup", () => {
   test("returns false when task status is unavailable", async () => {
-    const rows: ChatRow[] = [];
+    const rows: ChatLine[] = [];
     const started = await startRemoteTaskFollowup({
       client: {
         replyStream: async () => {

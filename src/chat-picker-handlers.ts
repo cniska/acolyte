@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { setDefaultModel, setModeModel } from "./app-config";
 import { unreachable } from "./assert";
 import type { ChatMessage } from "./chat-contract";
-import { type ChatRow, createRow } from "./chat-contract";
+import { type ChatLine, createLine } from "./chat-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
@@ -16,13 +16,13 @@ export type CreatePickerHandlersInput = {
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setRowsDirect: (next: ChatRow[]) => void;
+  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
+  setRowsDirect: (next: ChatLine[]) => void;
   setPicker: (next: PickerState | null) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
-  toRows: (messages: ChatMessage[]) => ChatRow[];
+  toRows: (messages: ChatMessage[]) => ChatLine[];
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
@@ -39,7 +39,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.skills.none"))]);
+      input.setRows((current) => [...current, createLine("system", t("chat.picker.skills.none"))]);
       return;
     }
     input.setPicker(
@@ -55,7 +55,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.store);
     if (!nextPicker) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.sessions.none"))]);
+      input.setRows((current) => [...current, createLine("system", t("chat.picker.sessions.none"))]);
       return;
     }
     input.setPicker(nextPicker);
@@ -89,7 +89,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           if (!ok) {
             input.setRows((current) => [
               ...current,
-              createRow("system", t("chat.skill.failed", { skill: selected.name })),
+              createLine("system", t("chat.skill.failed", { skill: selected.name })),
             ]);
           } else {
             input.setPicker(null);
@@ -111,7 +111,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             setModeModel(targetMode, nextModel);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: formatModel(nextModel) })),
+              createLine("system", t("chat.model.changed.mode", { mode: targetMode, model: formatModel(nextModel) })),
             ]);
           } else {
             await writeConfig("model", nextModel, "project");
@@ -120,13 +120,13 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             input.setCurrentSession(nextSession);
             input.setRows((current) => [
               ...current,
-              createRow("system", t("chat.model.changed.default", { model: formatModel(nextModel) })),
+              createLine("system", t("chat.model.changed.default", { model: formatModel(nextModel) })),
             ]);
           }
         } catch (error) {
           input.setRows((current) => [
             ...current,
-            createRow("system", error instanceof Error ? error.message : t("chat.model.failed")),
+            createLine("system", error instanceof Error ? error.message : t("chat.model.failed")),
           ]);
         }
         input.setPicker(null);

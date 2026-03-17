@@ -1,7 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
-import { type ChatRow, createRow } from "./chat-contract";
+import { type ChatLine, createLine } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatThoughtDuration, formatTokenCount } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
@@ -41,8 +41,8 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
   return { contexts, unresolvedPaths };
 }
 
-export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {
-  return unresolvedPaths.map((pathInput) => createRow("system", t("chat.unresolved_path", { path: pathInput })));
+export function unresolvedPathRows(unresolvedPaths: string[]): ChatLine[] {
+  return unresolvedPaths.map((pathInput) => createLine("system", t("chat.unresolved_path", { path: pathInput })));
 }
 
 export function appendInputHistory(history: string[], value: string, maxEntries = 200): string[] {
@@ -68,7 +68,7 @@ type ApplyUserTurnParams = {
   displayText: string;
 };
 
-export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
+export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatLine } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
@@ -92,7 +92,7 @@ type RunAssistantTurnParams = {
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{
   assistantMessage: ChatMessage;
   tokenEntry: SessionTokenUsageEntry;
-  rows: ChatRow[];
+  rows: ChatLine[];
 }> {
   const reply = await params.client.replyStream(
     {
@@ -110,11 +110,11 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
   const assistantMessage: ChatMessage =
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
-  const rows: ChatRow[] = [];
+  const rows: ChatLine[] = [];
   if (reply.error) {
-    rows.push(createRow("system", reply.error, { text: palette.error }));
+    rows.push(createLine("system", reply.error, { text: palette.error }));
   } else if (reply.output.trim().length > 0) {
-    rows.push(createRow("assistant", reply.output));
+    rows.push(createLine("assistant", reply.output));
   }
   const tokenEntry: SessionTokenUsageEntry = {
     id: assistantMessage.id,
@@ -132,7 +132,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
     if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
+    rows.push(createLine("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
   }
 
   return {

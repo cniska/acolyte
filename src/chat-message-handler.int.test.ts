@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ChatRow } from "./chat-contract";
+import type { ChatLine } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
@@ -244,7 +244,7 @@ describe("chat message handler guards", () => {
   });
 
   test("records interrupted row when active turn is aborted", async () => {
-    const rows: ChatRow[] = [];
+    const rows: ChatLine[] = [];
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
 
@@ -317,7 +317,7 @@ describe("chat message handler guards", () => {
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {
-    const rows: ChatRow[] = [];
+    const rows: ChatLine[] = [];
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
     let callCount = 0;
@@ -398,7 +398,7 @@ describe("chat message handler guards", () => {
   });
 
   test("stops before server call when all @references are unresolved", async () => {
-    const rows: ChatRow[] = [];
+    const rows: ChatLine[] = [];
     let replyCalls = 0;
 
     const session = createSession({ id: "sess_test" });
@@ -449,7 +449,7 @@ describe("chat message handler guards", () => {
   });
 
   test("continues with resolved @references even when some are unresolved", async () => {
-    const rows: ChatRow[] = [];
+    const rows: ChatLine[] = [];
     let replyCalls = 0;
     const fixture = `tmp-chat-handleMessage-${testUuid()}.txt`;
     const fixturePath = join(process.cwd(), fixture);

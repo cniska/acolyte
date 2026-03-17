@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-contract";
+import type { ChatLine } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
 import { formatToolOutput, type ToolOutput } from "./tool-output-content";
 import { renderPlain } from "./tui-test-utils";
@@ -25,7 +25,7 @@ function dedent(value: string): string {
 }
 
 function renderChat(toolOutput: ToolOutput[]): string {
-  const row: ChatRow = { id: "r1", role: "tool", content: "", toolOutput };
+  const row: ChatLine = { id: "r1", role: "tool", content: "", toolOutput };
   return renderPlain(<ChatTranscript rows={[row]} isWorking={false} thinkingFrame={0} />, 96);
 }
 

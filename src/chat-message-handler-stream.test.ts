@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-contract";
+import type { ChatLine } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 
 function createRowsHarness(): {
-  rows: ChatRow[];
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  rows: ChatLine[];
+  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
 } {
-  const rows: ChatRow[] = [];
-  const setRows = (updater: (current: ChatRow[]) => ChatRow[]): void => {
+  const rows: ChatLine[] = [];
+  const setRows = (updater: (current: ChatLine[]) => ChatLine[]): void => {
     rows.splice(0, rows.length, ...updater(rows));
   };
   return { rows, setRows };

@@ -1,12 +1,12 @@
 import { appConfig } from "./app-config";
-import type { ChatMessage, ChatRow } from "./chat-contract";
+import type { ChatLine, ChatMessage } from "./chat-contract";
 import { compactText } from "./compact-text";
 import type { Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions } from "./skills";
 
 type CreateSkillActivatorInput = {
   currentSession: Session;
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  setRows: (updater: (current: ChatLine[]) => ChatLine[]) => void;
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
   nowIso: () => string;
   persist: () => Promise<void>;
