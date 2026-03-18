@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
+import { useAsyncEffect, useInterval } from "./tui/effects";
 
 const THINKING_ANIMATION_INTERVAL_MS = 60;
 
@@ -16,35 +16,21 @@ export function useAtSuggestionsEffect(
   setAtSuggestions: (next: string[]) => void,
   setAtSuggestionIndex: (next: number | ((current: number) => number)) => void,
 ): void {
-  useEffect(() => {
-    let cancelled = false;
-    if (atQuery === null) {
-      setAtSuggestions([]);
-      setAtSuggestionIndex(0);
-      return () => {
-        cancelled = true;
-      };
-    }
-    void (async () => {
+  useAsyncEffect(
+    async (cancelled) => {
+      if (atQuery === null) {
+        setAtSuggestions([]);
+        setAtSuggestionIndex(0);
+        return;
+      }
       const candidates = await getCachedRepoPathCandidates();
-      if (cancelled) return;
+      if (cancelled()) return;
       const next = rankAtReferenceSuggestions(candidates, atQuery);
       setAtSuggestions(next);
       setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [atQuery, setAtSuggestionIndex, setAtSuggestions]);
-}
-
-export function useSlashSuggestionsEffect(
-  slashSuggestions: string[],
-  setSlashSuggestionIndex: (next: number | ((current: number) => number)) => void,
-): void {
-  useEffect(() => {
-    setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
-  }, [setSlashSuggestionIndex, slashSuggestions]);
+    },
+    [atQuery, setAtSuggestionIndex, setAtSuggestions],
+  );
 }
 
 export function useThinkingAnimationEffect(
@@ -52,16 +38,8 @@ export function useThinkingAnimationEffect(
   frameCount: number,
   setThinkingFrame: (next: number | ((current: number) => number)) => void,
 ): void {
-  useEffect(() => {
-    if (!isPending) {
-      setThinkingFrame(0);
-      return;
-    }
-    const id = setInterval(() => {
-      setThinkingFrame((current) => nextThinkingFrame(current, frameCount));
-    }, THINKING_ANIMATION_INTERVAL_MS);
-    return () => {
-      clearInterval(id);
-    };
-  }, [frameCount, isPending, setThinkingFrame]);
+  useInterval(
+    () => setThinkingFrame((current) => nextThinkingFrame(current, frameCount)),
+    isPending ? THINKING_ANIMATION_INTERVAL_MS : null,
+  );
 }

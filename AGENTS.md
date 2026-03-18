@@ -56,6 +56,7 @@ These must always hold. Break them and the system breaks.
 - When adding a subsystem boundary: define the interface first, implement second.
 - When defining a string union or shared type: define it as a Zod schema first and infer the TS type from it.
 - No banner or separator comments. Import from the canonical source module directly — no re-export layers.
+- No direct `useEffect` in chat-layer code. Use `useMountEffect` (mount-only), `useInterval` (timers), or `useAsyncEffect` (async deps) from `src/tui/`. Prefer derived state, event handlers, or render-time state adjustments.
 
 ## Validation
 
