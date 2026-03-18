@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import { clampSuggestionIndex, useAtSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
-import { appendGraduatedItems, createHeaderItem, type GraduatedItem } from "./chat-graduation";
+import { appendGraduatedItems, createHeaderItem, type GraduatedItem, initialTranscriptRows } from "./chat-graduation";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
@@ -15,14 +15,13 @@ import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { createInputHistory } from "./chat-turn";
-import { initialTranscriptRows } from "./chat-ui";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
-import { useMountEffect } from "./tui/effects";
+import { useAsyncEffect, useMountEffect } from "./tui/effects";
 import { clearScreen } from "./ui";
 
 const THINKING_PULSE_FRAMES = 16;
@@ -38,16 +37,13 @@ export interface ChatAppProps {
 }
 
 export interface ChatStateResult {
-  // Graduated rows for Static rendering
   graduatedRows: GraduatedItem[];
-  // Live rows
   rows: ChatRow[];
   pendingState: PendingState | null;
   thinkingFrame: number;
   thinkingStartedAt: number | null;
   queuedMessages: string[];
   runningUsage: { inputTokens: number; outputTokens: number } | null;
-  // Input panel
   picker: PickerState | null;
   value: string;
   inputRevision: number;
@@ -58,10 +54,8 @@ export interface ChatStateResult {
   slashSuggestionIndex: number;
   showHelp: boolean;
   ctrlCPending: boolean;
-  // Footer
   activeSessionId: string | undefined;
   footerContext: string;
-  // Actions
   handleInputChange: (next: string) => void;
   handleInputSubmit: (next: string) => void;
   handlePickerQueryChange: (query: string) => void;
@@ -71,13 +65,11 @@ export interface ChatStateResult {
 export function useChatState(props: ChatAppProps, exit: () => void): ChatStateResult {
   const { client, session, store, persist, useMemory } = props;
 
-  // --- Core conversation state ---
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>([]);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
-  // --- Input state ---
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
@@ -85,7 +77,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const applyingHistoryRef = useRef(false);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
 
-  // --- Render-time state adjustment: rebuild inputHistory when messages change ---
   const prevMessagesRef = useRef(currentSession.messages);
   if (currentSession.messages !== prevMessagesRef.current) {
     prevMessagesRef.current = currentSession.messages;
@@ -94,7 +85,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setInputHistoryDraft("");
   }
 
-  // --- Pending/loading state ---
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
   const isPending = pendingState !== null;
   const [thinkingFrame, setThinkingFrame] = useState(0);
@@ -102,7 +92,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [ctrlCPending, setCtrlCPending] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
-  // --- Render-time state adjustment: thinkingStartedAt tracks isPending transitions ---
   const prevIsPendingRef = useRef(false);
   if (isPending !== prevIsPendingRef.current) {
     prevIsPendingRef.current = isPending;
@@ -110,27 +99,22 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       setThinkingStartedAt((current) => current ?? Date.now());
     } else {
       setThinkingStartedAt(null);
-      setThinkingFrame(0);
     }
   }
 
-  // --- Token usage ---
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
 
-  // --- Render-time state adjustment: sync tokenUsage when session changes ---
   const prevSessionRef = useRef(currentSession);
   if (currentSession !== prevSessionRef.current) {
     prevSessionRef.current = currentSession;
     setTokenUsage(currentSession.tokenUsage ?? []);
   }
 
-  // --- Suggestion/autocomplete ---
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
 
-  // --- Render-time state adjustment: clamp slash suggestion index (replaces useSlashSuggestionsEffect) ---
   const prevSlashSuggestionsRef = useRef(slashSuggestions);
   if (slashSuggestions !== prevSlashSuggestionsRef.current) {
     prevSlashSuggestionsRef.current = slashSuggestions;
@@ -139,25 +123,20 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
 
-  // --- UI state ---
   const [showHelp, setShowHelp] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
 
-  // --- Graduated rows ---
   const [graduatedRows, setGraduatedRows] = useState<GraduatedItem[]>(() => [
     createHeaderItem(props.version, session.id),
     ...initialTranscriptRows(session),
   ]);
 
-  // --- Interrupt ref ---
   const interruptRef = useRef<(() => void) | null>(null);
 
-  // --- Derived values ---
   const workspace = shownCwd();
   const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`;
 
-  // --- Graduate callback ---
   const graduate = useCallback(() => {
     const current = rowsRef.current;
     log.debug("chat.graduate.trigger", { rows: current.length });
@@ -180,30 +159,22 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     [props.version, currentSession.id],
   );
 
-  // --- Mount effects ---
   useMountEffect(() => {
     loadSkills().catch(() => {});
   });
 
-  useMountEffect(() => {
-    let cancelled = false;
-    shownBranch()
-      .then((value) => {
-        if (!cancelled) setBranch(value);
-      })
-      .catch(() => {
-        if (!cancelled) setBranch(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  });
+  useAsyncEffect(async (cancelled) => {
+    try {
+      const value = await shownBranch();
+      if (!cancelled()) setBranch(value);
+    } catch {
+      if (!cancelled()) setBranch(null);
+    }
+  }, []);
 
-  // --- External sync hooks ---
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useThinkingAnimationEffect(isPending, THINKING_PULSE_FRAMES, setThinkingFrame);
 
-  // --- Factory wiring ---
   const activateSkill = createSkillActivator(
     {},
     {
@@ -257,9 +228,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     onStopPending: () => {
       setPendingState(null);
       setRunningUsage(null);
-      // Graduate completed rows when work ends (replaces effect #6)
       graduate();
-      // Drain queued messages (replaces effect #7)
       setQueuedMessages((current) => {
         if (current.length === 0) return current;
         const [next, ...rest] = current;
@@ -280,7 +249,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     clearTranscript,
   });
 
-  // --- Keybindings ---
   useChatKeybindings({
     persist,
     exit,
@@ -314,7 +282,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setCtrlCPending,
   });
 
-  // --- Named actions for input panel ---
   const handlePickerQueryChange = useCallback((query: string) => {
     setPicker((current) => {
       if (!current || current.kind !== "model") return current;

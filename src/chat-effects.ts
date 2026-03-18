@@ -42,4 +42,5 @@ export function useThinkingAnimationEffect(
     () => setThinkingFrame((current) => nextThinkingFrame(current, frameCount)),
     isPending ? THINKING_ANIMATION_INTERVAL_MS : null,
   );
+  if (!isPending) setThinkingFrame(0);
 }

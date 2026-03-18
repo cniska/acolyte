@@ -7,8 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendGraduatedItems, applyGraduation } from "./chat-graduation";
-import { initialTranscriptRows } from "./chat-ui";
+import { appendGraduatedItems, applyGraduation, initialTranscriptRows } from "./chat-graduation";
 import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
