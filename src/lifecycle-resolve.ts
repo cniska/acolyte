@@ -9,9 +9,10 @@ export function resolveModeModel(
   mode: AgentMode,
   requestModel: string,
   modeModels?: ChatRequest["modeModels"],
+  configuredModels?: Partial<Record<AgentMode, string>>,
 ): ModeResolution {
   const requestModeModel = modeModels?.[mode]?.trim();
-  const configuredModeModel = appConfig.models[mode]?.trim();
+  const configuredModeModel = (configuredModels ?? appConfig.models)[mode]?.trim();
   const trimmedRequestModel = requestModel.trim();
   let requestedModel = "";
   if (requestModeModel && requestModeModel.length > 0) {

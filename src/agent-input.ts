@@ -113,9 +113,16 @@ function resolveMessageTokenCap(
   return Math.min(maxPerMessageTokens, 200);
 }
 
+export type InputBudget = {
+  maxHistoryMessages: number;
+  maxMessageTokens: number;
+  maxAttachmentMessageTokens: number;
+  maxPinnedMessageTokens: number;
+};
+
 export function createAgentInput(
   req: ChatRequest,
-  options?: { systemPromptTokens?: number; toolTokens?: number },
+  options?: { systemPromptTokens?: number; toolTokens?: number; budget?: InputBudget },
 ): {
   input: string;
   usage: {
@@ -137,7 +144,7 @@ export function createAgentInput(
   const toolTokens = options?.toolTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
-  const budget = appConfig.agent.inputBudget;
+  const budget = options?.budget ?? appConfig.agent.inputBudget;
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
