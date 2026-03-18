@@ -16,7 +16,11 @@ export type DistillConfig = {
   maxOutputTokens: number;
 };
 
-const store: DistillStore = createFileDistillStore();
+let defaultStore: DistillStore | null = null;
+function getDefaultStore(): DistillStore {
+  if (!defaultStore) defaultStore = createFileDistillStore();
+  return defaultStore;
+}
 const REFLECTION_RETRY_LIMIT = 2;
 
 type DistillScope = "session" | "project" | "user";
@@ -306,7 +310,7 @@ export function createDistillMemorySource(
   runner: DistillRunner = runDistillLLM,
   options: DistillSourceOptions = {},
 ): MemorySource {
-  const ds = injectedStore ?? store;
+  const ds = injectedStore ?? getDefaultStore();
   const config = options.config ?? defaultDistillConfig();
   const id = options.id ?? "distill_session";
   const loadScope = options.loadScope ?? "session";
