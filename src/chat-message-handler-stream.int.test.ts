@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
+import { createMessageHandler } from "./chat-message-handler";
 import type { StreamEvent } from "./client-contract";
 import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
 
@@ -439,5 +441,95 @@ describe("chat message handler stream behavior", () => {
     expect(session.tokenUsage[0]?.modelCalls).toBe(3);
     expect(calls.tokenUsageSnapshots.length).toBe(1);
     expect(calls.tokenUsageSnapshots[0]).toEqual(session.tokenUsage);
+  });
+
+  test("streams text-delta events after resuming a different session", async () => {
+    const sessionA = createSession({ id: "sess_A" });
+    const sessionB = createSession({
+      id: "sess_resume_B",
+      messages: [createMessage("assistant", "old reply")],
+    });
+    const store = createStore({ activeSessionId: sessionA.id, sessions: [sessionA, sessionB] });
+    const rows: ChatRow[] = [];
+    const allRows: ChatRow[] = [];
+    let replyCount = 0;
+
+    const client = createClient({
+      status: async () => ({}),
+      replyStream: async (_input, options) => {
+        replyCount += 1;
+        options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+        options.onEvent({ type: "text-delta", text: `delta-${replyCount}` });
+        return { model: "gpt-5-mini", output: `reply-${replyCount}` };
+      },
+    });
+
+    const setRows = (updater: (current: ChatRow[]) => ChatRow[]) => {
+      const next = updater(rows);
+      rows.splice(0, rows.length, ...next);
+      for (const row of next) {
+        if (!allRows.includes(row)) allRows.push(row);
+      }
+    };
+
+    let currentSession = sessionA;
+
+    // Simulate React behavior: create handler with current session
+    const makeHandler = () =>
+      createMessageHandler({
+        client,
+        store,
+        currentSession,
+        setCurrentSession: (next) => {
+          currentSession = next;
+        },
+        toRows: (messages) => messages.map((msg) => ({ id: msg.id, kind: msg.role, content: msg.content })),
+        setRows,
+        setShowHelp: () => {},
+        setValue: () => {},
+        persist: async () => {},
+        exit: () => {},
+        openSkillsPanel: async () => {},
+        activateSkill: async () => true,
+        openResumePanel: () => {},
+        openModelPanel: () => {},
+        tokenUsage: [],
+        isPending: false,
+        setInputHistory: () => {},
+        setInputHistoryIndex: () => {},
+        setInputHistoryDraft: () => {},
+        setPendingState: () => {},
+        setRunningUsage: () => {},
+        setTokenUsage: () => {},
+        createMessage,
+        nowIso: () => "2026-02-20T00:00:00.000Z",
+        setInterrupt: () => {},
+        clearTranscript: () => {
+          rows.splice(0, rows.length);
+        },
+      });
+
+    // Turn 1: send message in session A — streaming works
+    let handler = makeHandler();
+    await handler.handleSubmit("hello from A");
+    expect(replyCount).toBe(1);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "reply-1")).toBe(true);
+
+    // Resume to session B (simulates /resume + React re-render)
+    currentSession = sessionB;
+    store.activeSessionId = sessionB.id;
+    rows.splice(0, rows.length);
+
+    // Recreate handler with new session (simulates React re-render)
+    handler = makeHandler();
+
+    // Turn 2: send message in resumed session B — streaming should work
+    await handler.handleSubmit("hello from B");
+    expect(replyCount).toBe(2);
+
+    // The key assertion: the reply from session B appears in rows
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "reply-2")).toBe(true);
+    // Session B's history should include the new user message
+    expect(currentSession.messages.some((msg) => msg.role === "user" && msg.content === "hello from B")).toBe(true);
   });
 });

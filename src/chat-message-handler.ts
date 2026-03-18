@@ -163,13 +163,14 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         }
       }
       const partialContent = streamState.streamedAssistantText().trim();
-      if (partialContent.length > 0 && !isAbortError(error)) {
+      if (partialContent.length > 0) {
         const partialMessage = input.createMessage("assistant", partialContent);
         input.currentSession.messages.push(partialMessage);
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
       }
       if (isAbortError(error)) {
+        streamState.finalize();
         input.setRows((current) => [
           ...current,
           createRow("task", t("chat.submit.interrupted"), {
@@ -178,13 +179,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           }),
         ]);
       } else {
+        streamState.dispose();
         input.setRows((current) => [
           ...current,
           createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
       }
     } finally {
-      streamState.dispose();
       input.setInterrupt(null);
       if (!keepThinkingForRemoteTask) {
         stopPending();
