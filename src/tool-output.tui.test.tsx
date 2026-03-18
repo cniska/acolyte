@@ -26,7 +26,7 @@ function dedent(value: string): string {
 
 function renderChat(toolOutput: ToolOutputPart[]): string {
   const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
-  return renderPlain(<ChatTranscript rows={[row]} isWorking={false} thinkingFrame={0} />, 96);
+  return renderPlain(<ChatTranscript rows={[row]} thinkingFrame={0} />, 96);
 }
 
 describe("tool output TUI — CLI (formatToolOutput)", () => {

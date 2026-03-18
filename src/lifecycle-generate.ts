@@ -1,7 +1,6 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
-import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -128,7 +127,7 @@ export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: str
   ctx.mode = mode;
   ctx.session.mode = mode;
   ctx.debug("lifecycle.mode.changed", { from, to: mode, trigger: trigger ?? null });
-  ctx.emit({ type: "status", message: `${agentModes[mode].statusText} (${formatModel(ctx.model)})` });
+  ctx.emit({ type: "status", state: { kind: "running", mode, model: formatModel(ctx.model) } });
 }
 
 function ensureAgentForMode(ctx: RunContext): void {
@@ -194,7 +193,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
-  ctx.emit({ type: "status", message: `${agentModes[ctx.mode].statusText} (${formatModel(ctx.model)})` });
+  ctx.emit({ type: "status", state: { kind: "running", mode: ctx.mode, model: formatModel(ctx.model) } });
   ctx.emit({
     type: "usage",
     inputTokens: emitInputTokens(ctx),

@@ -1,12 +1,20 @@
 import React from "react";
+import type { AgentMode } from "./agent-contract";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatTokenCount } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
+import type { PendingState } from "./client-contract";
+import { t } from "./i18n";
 import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
+
+const MODE_PENDING_TEXT: Record<AgentMode, string> = {
+  work: t("agent.status.working"),
+  verify: t("agent.status.verifying"),
+};
 
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: "❯ ",
@@ -200,8 +208,7 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
 
 type ChatTranscriptProps = {
   rows: ChatRow[];
-  isWorking: boolean;
-  progressText?: string | null;
+  pendingState?: PendingState | null;
   thinkingFrame: number;
   queuedMessages?: string[];
   thinkingStartedAt?: number | null;
@@ -211,33 +218,40 @@ type ChatTranscriptProps = {
 const MAX_TRANSCRIPT_WIDTH = 120;
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, isWorking, progressText, thinkingFrame, thinkingStartedAt, runningUsage } = props;
+  const { rows, pendingState, thinkingFrame, thinkingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
-  const hasContent = rows.length > 0 || isWorking;
+  const hasContent = rows.length > 0 || pendingState !== null && pendingState !== undefined;
+  const isQueued = pendingState?.kind === "queued";
+  const isAccepted = pendingState?.kind === "accepted";
+  const isRunning = pendingState?.kind === "running";
+  const isWorking = pendingState !== null && pendingState !== undefined;
   const elapsedSec =
-    isWorking && typeof thinkingStartedAt === "number"
+    isRunning && typeof thinkingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
       : 0;
-  const trimmedProgressText = progressText?.trim() ?? "";
-  const stageMatch = trimmedProgressText.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-  const normalizedProgress = trimmedProgressText.toLowerCase();
-  const isQueued = normalizedProgress.startsWith("queued");
-  const isAccepted = normalizedProgress.startsWith("accepted");
-  const isRunning = isWorking && !isQueued && !isAccepted;
   const runningBlinkOn = Math.abs(thinkingFrame) % pulsePeriod < pulsePeriod / 2;
   const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
   const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
   const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
   const thinkingText = (() => {
+    if (!pendingState) return "";
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
-    if (stageMatch) {
-      const stage = stageMatch[1]?.trim() ?? "";
-      const model = stageMatch[2]?.trim() || "";
+    if (pendingState.kind === "running") {
+      const stage = pendingState.skill
+        ? `${t("chat.skill.label")}: ${pendingState.skill}`
+        : MODE_PENDING_TEXT[pendingState.mode];
+      const model = pendingState.model ?? "";
       const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
-    const parts = [trimmedProgressText, timeText, tokenText].filter((part) => part.length > 0);
-    return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(" · ")})` : (parts[0] ?? "");
+    if (pendingState.kind === "queued") {
+      const pos = pendingState.position;
+      return typeof pos === "number" ? t("rpc.status.queued", { position: pos }) : t("rpc.status.queued.unknown");
+    }
+    if (pendingState.kind === "accepted") {
+      return t("rpc.status.accepted");
+    }
+    return "";
   })();
   const columns = process.stdout.columns ?? 120;
   const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));

@@ -15,7 +15,7 @@ import {
   runAssistantTurn,
   unresolvedPathRows,
 } from "./chat-turn";
-import type { Client } from "./client-contract";
+import type { Client, PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { log } from "./log";
 import { addMemory } from "./memory";
@@ -45,7 +45,7 @@ type CreateMessageHandlerInput = {
   startWorking?: () => void;
   stopWorking?: () => void;
   setIsWorking?: (next: boolean) => void;
-  setProgressText: (next: string | null) => void;
+  setPendingState: (next: PendingState | null) => void;
   setRunningUsage: (next: { inputTokens: number; outputTokens: number } | null) => void;
   setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
@@ -96,7 +96,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       await input.persist();
       return;
     }
-    input.setProgressText(t("chat.progress.thinking"));
+    input.setPendingState({ kind: "running", mode: "work" });
     const controller = new AbortController();
     input.setInterrupt(() => controller.abort());
     const thinkingStartedAt = Date.now();
@@ -120,7 +120,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         onEvent: (event) => {
           switch (event.type) {
             case "status":
-              input.setProgressText(event.message);
+              input.setPendingState(event.state);
               break;
             case "usage":
               input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
@@ -160,7 +160,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           client: input.client,
           remoteTaskId,
           setRows: input.setRows,
-          setProgressText: input.setProgressText,
+          setPendingState: input.setPendingState,
           persist: input.persist,
           stopWorking,
         });
@@ -195,7 +195,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.setInterrupt(null);
       if (!keepThinkingForRemoteTask) {
         stopWorking();
-        input.setProgressText(null);
+        input.setPendingState(null);
       }
     }
   };
@@ -230,7 +230,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       });
       input.setRows((current) => [...current, userRow]);
       startWorking();
-      input.setProgressText(t("chat.progress.thinking"));
+      input.setPendingState({ kind: "running", mode: "work" });
       try {
         const distilled = naturalRememberDirective.content
           .trim()
@@ -254,7 +254,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         ]);
       } finally {
         stopWorking();
-        input.setProgressText(null);
+        input.setPendingState(null);
       }
       return;
     }

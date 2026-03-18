@@ -8,7 +8,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", message: "Thinking…" });
+          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
@@ -29,11 +29,11 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(calls.progressTexts[0]).toBe("Thinking…");
-    expect(calls.progressTexts.at(-1)).toBeNull();
+    expect(calls.pendingStates[0]).toEqual({ kind: "running", mode: "work" });
+    expect(calls.pendingStates.at(-1)).toBeNull();
     expect(rows.some((row) => row.kind === "tool")).toBe(true);
     expect(
-      rows.some((row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Thinking…")),
+      rows.some((row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Working")),
     ).toBe(false);
     expect(rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
   });
@@ -186,7 +186,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("first");
     expect(calls.thinkingTransitions).toEqual([true]);
-    expect(calls.progressTexts).toContain("Still running on server…");
+    expect(calls.pendingStates).toContainEqual({ kind: "running", mode: "work" });
     await Bun.sleep(800);
     expect(calls.thinkingTransitions).toEqual([true, false]);
   });

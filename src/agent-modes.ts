@@ -1,5 +1,4 @@
 import type { AgentMode } from "./agent-contract";
-import { t } from "./i18n";
 import type { ToolPermission } from "./tool-contract";
 import { toolIdsForGrants } from "./tool-registry";
 
@@ -7,7 +6,6 @@ export type AgentModeDefinition = {
   grants: readonly ToolPermission[];
   tools: string[];
   preamble: string[];
-  statusText: string;
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
@@ -47,7 +45,6 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "When a target file does not exist, say so instead of silently creating it.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
     ],
-    statusText: t("agent.status.working"),
   },
   verify: {
     grants: ["read", "execute"],
@@ -59,6 +56,5 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Report any issues found. Do not fix them — work mode will handle fixes.",
       "Do not narrate — only respond if you found issues.",
     ],
-    statusText: t("agent.status.verifying"),
   },
 };

@@ -19,7 +19,7 @@ import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { ChatTranscript } from "./chat-transcript";
 import { createInputHistory } from "./chat-turn";
-import type { Client } from "./client-contract";
+import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import { log } from "./log";
 import { palette } from "./palette";
@@ -98,7 +98,7 @@ function ChatApp(props: ChatAppProps) {
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
   const [isWorking, setIsWorking] = useState(false);
-  const [progressText, setProgressText] = useState<string | null>(null);
+  const [pendingState, setPendingState] = useState<PendingState | null>(null);
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -246,7 +246,7 @@ function ChatApp(props: ChatAppProps) {
       setIsWorking(false);
       setRunningUsage(null);
     },
-    setProgressText,
+    setPendingState,
     setRunningUsage,
     setTokenUsage,
     createMessage,
@@ -328,8 +328,7 @@ function ChatApp(props: ChatAppProps) {
       </Static>
       <ChatTranscript
         rows={rows}
-        isWorking={isWorking}
-        progressText={progressText}
+        pendingState={pendingState}
         thinkingFrame={thinkingFrame}
         thinkingStartedAt={thinkingStartedAt}
         queuedMessages={queuedMessages}

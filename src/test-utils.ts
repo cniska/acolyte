@@ -8,7 +8,7 @@ import type { CommandContext } from "./chat-commands";
 import type { ChatRow, ChatMessage } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
-import type { Client, StreamEvent } from "./client-contract";
+import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import type { RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
@@ -257,7 +257,7 @@ export type MessageHandlerHarness = {
     setInputHistory: number;
     setValue: string[];
     setShowHelp: Array<boolean | ((current: boolean) => boolean)>;
-    progressTexts: Array<string | null>;
+    pendingStates: Array<PendingState | null>;
     thinkingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
@@ -283,7 +283,7 @@ export function createMessageHandlerHarness(overrides?: {
     setInputHistory: 0,
     setValue: [] as string[],
     setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
-    progressTexts: [] as Array<string | null>,
+    pendingStates: [] as Array<PendingState | null>,
     thinkingTransitions: [] as boolean[],
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
@@ -328,8 +328,8 @@ export function createMessageHandlerHarness(overrides?: {
     setIsWorking: (next) => {
       calls.thinkingTransitions.push(next);
     },
-    setProgressText: (next) => {
-      calls.progressTexts.push(next);
+    setPendingState: (next) => {
+      calls.pendingStates.push(next);
     },
     setRunningUsage: () => {},
     setTokenUsage: (updater) => {

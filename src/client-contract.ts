@@ -1,11 +1,19 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
+import { agentModeSchema } from "./agent-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
 import { toolOutputPartSchema } from "./tool-output-content";
+
+export const pendingStateSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("queued"), position: z.number().int().nonnegative().optional() }),
+  z.object({ kind: z.literal("accepted") }),
+  z.object({ kind: z.literal("running"), mode: agentModeSchema, model: z.string().optional(), skill: z.string().optional() }),
+]);
+export type PendingState = z.infer<typeof pendingStateSchema>;
 
 type UsageLikePayload = {
   inputTokens?: unknown;
@@ -74,7 +82,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
     error: streamErrorSchema.optional(),
   }),
   streamUsageEventSchema,
-  z.object({ type: z.literal("status"), message: z.string() }),
+  z.object({ type: z.literal("status"), state: pendingStateSchema }),
   z.object({
     type: z.literal("error"),
     errorMessage: z.string(),
@@ -102,7 +110,7 @@ type ToolResultEvent = {
   error?: z.infer<typeof streamErrorSchema>;
 };
 type UsageEvent = { type: "usage"; inputTokens: number; outputTokens: number };
-type StatusEvent = { type: "status"; message: string };
+type StatusEvent = { type: "status"; state: PendingState };
 type ErrorEvent = {
   type: "error";
   errorMessage: string;

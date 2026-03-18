@@ -1,5 +1,5 @@
 import { type ChatRow, createLine } from "./chat-contract";
-import type { Client } from "./client-contract";
+import type { Client, PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
 
@@ -9,7 +9,7 @@ type StartRemoteTaskFollowupInput = {
   client: Client;
   remoteTaskId: string;
   setRows: SetRows;
-  setProgressText: (next: string | null) => void;
+  setPendingState: (next: PendingState | null) => void;
   persist: () => Promise<void>;
   stopWorking: () => void;
 };
@@ -25,7 +25,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
     return false;
   }
 
-  input.setProgressText(t("chat.task.followup.still_running"));
+  input.setPendingState({ kind: "running", mode: "work" });
   void (async () => {
     try {
       for (let pollCount = 0; pollCount < MAX_POLL_ITERATIONS; pollCount += 1) {
@@ -57,7 +57,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
       ]);
     } finally {
       input.stopWorking();
-      input.setProgressText(null);
+      input.setPendingState(null);
       await input.persist().catch(() => {});
     }
   })();
