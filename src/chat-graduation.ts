@@ -1,7 +1,5 @@
 import type { ChatRow } from "./chat-contract";
 import type { HeaderLine } from "./chat-header";
-import { toRows } from "./chat-session";
-import type { Session } from "./session-contract";
 
 export type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
 export type GraduatedItem = ChatRow | HeaderItem;
@@ -32,10 +30,6 @@ export function applyGraduation(
 
 export function isHeaderItem(item: GraduatedItem): item is HeaderItem {
   return "kind" in item && item.kind === "header";
-}
-
-export function initialTranscriptRows(session: Session): ChatRow[] {
-  return toRows(session.messages);
 }
 
 export function createHeaderItem(version: string, sessionId: string): HeaderItem {

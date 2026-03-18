@@ -7,7 +7,8 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendGraduatedItems, applyGraduation, initialTranscriptRows } from "./chat-graduation";
+import { appendGraduatedItems, applyGraduation } from "./chat-graduation";
+import { toRows } from "./chat-session";
 import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
@@ -95,7 +96,7 @@ describe("chat-ui helpers", () => {
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
   });
 
-  test("initialTranscriptRows hydrates transcript from resumed session messages", () => {
+  test("toRows hydrates transcript from resumed session messages", () => {
     const session = createSession({
       id: "sess_resume1",
       messages: [
@@ -104,7 +105,7 @@ describe("chat-ui helpers", () => {
         { id: "msg_3", role: "assistant", content: "hi", timestamp: "2026-02-23T00:00:02.000Z" },
       ],
     });
-    const rows = initialTranscriptRows(session);
+    const rows = toRows(session.messages);
     expect(rows).toEqual([
       { id: "row_2", kind: "user", content: "hello" },
       { id: "row_3", kind: "assistant", content: "hi" },

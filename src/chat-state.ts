@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import { clampSuggestionIndex, useAtSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
-import { appendGraduatedItems, createHeaderItem, type GraduatedItem, initialTranscriptRows } from "./chat-graduation";
+import { appendGraduatedItems, createHeaderItem, type GraduatedItem } from "./chat-graduation";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
@@ -122,7 +122,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const [graduatedRows, setGraduatedRows] = useState<GraduatedItem[]>(() => [
     createHeaderItem(props.version, session.id),
-    ...initialTranscriptRows(session),
+    ...toRows(session.messages),
   ]);
 
   const interruptRef = useRef<(() => void) | null>(null);
