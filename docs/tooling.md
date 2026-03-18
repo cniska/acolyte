@@ -68,10 +68,14 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 
 ## Key files
 
-- `src/gitignore.ts`
-- `src/file-toolkit.ts`
-- `src/code-toolkit.ts`
-- `src/git-toolkit.ts`
-- `src/tool-registry.ts`
-- `src/tool-guards.ts`
-- `src/tool-cache.ts`
+- `src/gitignore.ts` — Gitignore pattern compilation and evaluation.
+- `src/file-toolkit.ts` — File operations (read, write, find, search, edit).
+- `src/code-toolkit.ts` — Code manipulation for scanning and editing source files.
+- `src/git-toolkit.ts` — Git operations (status, diff, log, show, add, commit).
+- `src/tool-registry.ts` — Tool registration, permission filtering, and agent-facing surface.
+- `src/tool-guards.ts` — Pre-execution guards including limits and path validation.
+- `src/tool-cache.ts` — Per-task result caching with stable key generation.
+
+## Further reading
+
+[Edit the Tree](https://crisu.me/blog/edit-the-tree) — AST-based code editing and scanning.

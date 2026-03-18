@@ -42,17 +42,27 @@ resolve → prepare → generate → evaluate → finalize
 - Memory commit is scheduled as best-effort background work at finalize.
 - Commit failures are logged via lifecycle debug events and do not fail the user response.
 
-## Key files
-
-- `src/lifecycle.ts`
-- `src/lifecycle-*.ts`
-- `src/lifecycle-evaluators.ts` — post-generation evaluators including tool recovery
-- `src/lifecycle-guard-feedback.ts` — guard-event-to-feedback translation
-- `src/tool-recovery.ts` — `ToolRecovery` contract carried from tool errors into evaluators
-
 ## Tool recovery
 
 - `ToolRecovery` is a tool-owned contract for stable failure recovery.
 - Lifecycle consumes it generically; it does not hardcode tool-specific retry policy.
 - Recovery may include optional next-step hints like a suggested next tool or target paths when the tool can state them concretely.
 - Recovery may also declare which successful follow-up tool result resolves the failure, so lifecycle can clear it without tool-specific heuristics.
+
+## Key files
+
+- `src/lifecycle.ts` — Main orchestrator that coordinates all phases.
+- `src/lifecycle-constants.ts` — Configuration constants for step limits, timeouts, and thresholds.
+- `src/lifecycle-contract.ts` — Type definitions for lifecycle events, inputs, and runtime contexts.
+- `src/lifecycle-evaluate.ts` — Evaluation phase logic with recovery and verification.
+- `src/lifecycle-evaluators.ts` — Post-generation evaluators including tool recovery.
+- `src/lifecycle-finalize.ts` — Finalization phase including token accounting and tool statistics.
+- `src/lifecycle-generate.ts` — Generation phase with agent creation and yield detection.
+- `src/lifecycle-guard-feedback.ts` — Guard-event-to-feedback translation.
+- `src/lifecycle-policy.ts` — Lifecycle policy configuration and constraints.
+- `src/lifecycle-prepare.ts` — Preparation phase including input validation and token estimation.
+- `src/lifecycle-resolve.ts` — Initial mode and model selection for the request.
+- `src/lifecycle-signal.ts` — Extraction and parsing of agent signals from output.
+- `src/lifecycle-state.ts` — State validation and transitions through the lifecycle.
+- `src/lifecycle-usage.ts` — Token usage tracking and prompt breakdown totals.
+- `src/tool-recovery.ts` — Tool recovery contract carried from tool errors into evaluators.

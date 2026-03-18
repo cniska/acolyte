@@ -29,11 +29,11 @@ accepted → queued → running → completed|failed|cancelled
 
 ## Key files
 
-- `src/task-contract.ts`
-- `src/task-registry.ts`
-- `src/rpc-queue.ts`
-- `src/server-rpc.ts`
+- `src/task-contract.ts` — Task state schema and transition validation.
+- `src/task-registry.ts` — Task state transitions and persistence.
+- `src/rpc-queue.ts` — Request queuing with abort and position tracking.
+- `src/server-rpc.ts` — RPC server for chat requests and task state management.
 
----
+## Further reading
 
-For a deeper look at the daemon architecture and task flow, read [How It Works](https://crisu.me/blog/how-it-works).
+[How It Works](https://crisu.me/blog/how-it-works) — Daemon architecture and task flow.
