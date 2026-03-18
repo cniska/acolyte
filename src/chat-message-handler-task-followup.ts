@@ -1,4 +1,4 @@
-import { type ChatRow, createLine } from "./chat-contract";
+import { type ChatRow, createRow } from "./chat-contract";
 import type { Client, PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
@@ -35,12 +35,12 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         if (next.state === "failed") {
           input.setRows((current) => [
             ...current,
-            createLine("task", t("chat.task.followup.failed"), { dim: true, marker: palette.error }),
+            createRow("task", t("chat.task.followup.failed"), { dim: true, marker: palette.error }),
           ]);
         } else if (next.state === "cancelled") {
           input.setRows((current) => [
             ...current,
-            createLine("task", t("chat.task.followup.cancelled"), { dim: true, marker: palette.cancelled }),
+            createRow("task", t("chat.task.followup.cancelled"), { dim: true, marker: palette.cancelled }),
           ]);
         }
         await input.persist();
@@ -48,12 +48,12 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
       }
       input.setRows((current) => [
         ...current,
-        createLine("system", t("chat.task.followup.running_hint"), { dim: true }),
+        createRow("system", t("chat.task.followup.running_hint"), { dim: true }),
       ]);
     } catch {
       input.setRows((current) => [
         ...current,
-        createLine("system", t("chat.task.followup.lost_tracking"), { dim: true, text: palette.error }),
+        createRow("system", t("chat.task.followup.lost_tracking"), { dim: true, text: palette.error }),
       ]);
     } finally {
       input.stopWorking();

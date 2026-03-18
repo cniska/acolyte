@@ -1,4 +1,4 @@
-import { type ChatRow, createLine } from "./chat-contract";
+import { type ChatRow, createRow } from "./chat-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
@@ -124,7 +124,7 @@ export function createMessageStreamState(input: {
       input.setRows((current) => {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
-        return [...current, createLine("system", error, { dim: true, text: palette.error })];
+        return [...current, createRow("system", error, { dim: true, text: palette.error })];
       });
     },
 

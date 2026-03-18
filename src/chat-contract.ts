@@ -61,7 +61,7 @@ export const chatRowSchema = z.object({
 
 export type ChatRow = z.infer<typeof chatRowSchema>;
 
-export function createLine(kind: ChatRow["kind"], content: ChatRowContent, style?: ChatRowStyle): ChatRow {
+export function createRow(kind: ChatRow["kind"], content: ChatRowContent, style?: ChatRowStyle): ChatRow {
   return { id: `row_${createId()}`, kind, content, style: style ?? undefined };
 }
 

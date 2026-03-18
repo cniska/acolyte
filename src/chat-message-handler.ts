@@ -2,7 +2,7 @@ import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import type { ChatMessage } from "./chat-contract";
-import { type ChatRow, createLine } from "./chat-contract";
+import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
@@ -179,7 +179,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       if (isAbortError(error)) {
         input.setRows((current) => [
           ...current,
-          createLine("task", t("chat.submit.interrupted"), {
+          createRow("task", t("chat.submit.interrupted"), {
             dim: true,
             marker: palette.cancelled,
           }),
@@ -187,7 +187,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       } else {
         input.setRows((current) => [
           ...current,
-          createLine("system", formatSubmitError(error), { text: palette.error }),
+          createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
       }
     } finally {
@@ -207,7 +207,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
       if (corrections.length === 1) return handler(corrections[0]);
-      input.setRows((current) => [...current, createLine("system", t("chat.command.unknown", { command: text }))]);
+      input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
       return;
     }
     const naturalRememberDirective = resolveNaturalRememberDirective(text);
@@ -245,12 +245,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         const assistant = input.createMessage("assistant", confirmation);
         input.currentSession.messages.push(assistant);
         input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, createLine("system", confirmation, { dim: true })]);
+        input.setRows((current) => [...current, createRow("system", confirmation, { dim: true })]);
         await input.persist();
       } catch (error) {
         input.setRows((current) => [
           ...current,
-          createLine("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
+          createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
         ]);
       } finally {
         stopWorking();
@@ -259,7 +259,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       return;
     }
     if (text.startsWith("/")) {
-      input.setRows((current) => [...current, createLine("user", text)]);
+      input.setRows((current) => [...current, createRow("user", text)]);
     }
     let userText = text;
     const commandResult = await dispatchSlashCommand({
