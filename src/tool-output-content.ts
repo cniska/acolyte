@@ -4,7 +4,7 @@ import { t } from "./i18n";
 
 export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
 
-export const toolOutputSchema = z.discriminatedUnion("kind", [
+export const toolOutputPartSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("tool-header"),
     label: z.string().trim().min(1),
@@ -40,7 +40,7 @@ export const toolOutputSchema = z.discriminatedUnion("kind", [
     text: z.string(),
   }),
   z.object({
-    kind: z.literal("command-output"),
+    kind: z.literal("shell-output"),
     stream: z.enum(["stdout", "stderr"]),
     text: z.string(),
   }),
@@ -52,9 +52,9 @@ export const toolOutputSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export type ToolOutput = z.infer<typeof toolOutputSchema>;
+export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
 
-export function renderToolOutput(content: ToolOutput): string {
+export function renderToolOutputPart(content: ToolOutputPart): string {
   switch (content.kind) {
     case "tool-header":
       return content.detail ? `${content.label} ${content.detail}` : content.label;
@@ -77,7 +77,7 @@ export function renderToolOutput(content: ToolOutput): string {
       const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
       return `${content.lineNumber} ${prefix}${content.text}`;
     }
-    case "command-output": {
+    case "shell-output": {
       const label = content.stream === "stdout" ? "out" : "err";
       return `${label} | ${content.text}`;
     }
@@ -99,17 +99,17 @@ export function renderToolOutput(content: ToolOutput): string {
   }
 }
 
-function renderDiffLine(item: Extract<ToolOutput, { kind: "diff" }>, numWidth: number): string {
+function renderDiffLine(item: Extract<ToolOutputPart, { kind: "diff" }>, numWidth: number): string {
   const num = String(item.lineNumber).padStart(numWidth);
   const prefix = item.marker === "add" ? "+" : item.marker === "remove" ? "-" : " ";
   return `${num} ${prefix}${item.text}`;
 }
 
-export function formatToolOutput(items: ToolOutput[]): string {
+export function formatToolOutput(items: ToolOutputPart[]): string {
   if (items.length === 0) return "";
   const first = items[0];
   if (!first) return "";
-  const header = renderToolOutput(first);
+  const header = renderToolOutputPart(first);
   const body = items.slice(1);
   if (body.length === 0) return header;
   const numWidth = body.reduce(
@@ -119,28 +119,28 @@ export function formatToolOutput(items: ToolOutput[]): string {
   const lines = body.map((item) => {
     if (item.kind === "diff") return renderDiffLine(item, numWidth);
     if (item.kind === "truncated" && numWidth > 0)
-      return `${"…".padStart(numWidth)} ${renderToolOutput(item).slice(2)}`;
-    return renderToolOutput(item);
+      return `${"…".padStart(numWidth)} ${renderToolOutputPart(item).slice(2)}`;
+    return renderToolOutputPart(item);
   });
   return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;
 }
 
 export type ToolOutputUpdate = {
   label?: string;
-  items: ToolOutput[];
+  items: ToolOutputPart[];
 };
 
 export function createToolOutputState(): {
-  push: (entry: { toolCallId: string; content: ToolOutput }) => ToolOutputUpdate | null;
+  push: (entry: { toolCallId: string; content: ToolOutputPart }) => ToolOutputUpdate | null;
   delete: (toolCallId: string) => void;
 } {
-  const contentByCallId = new Map<string, ToolOutput[]>();
+  const contentByCallId = new Map<string, ToolOutputPart[]>();
   const lastRenderedByCallId = new Map<string, string>();
 
   return {
     push(entry) {
       const items = contentByCallId.get(entry.toolCallId) ?? [];
-      const incoming = renderToolOutput(entry.content);
+      const incoming = renderToolOutputPart(entry.content);
       if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
       lastRenderedByCallId.set(entry.toolCallId, incoming);
       items.push(entry.content);

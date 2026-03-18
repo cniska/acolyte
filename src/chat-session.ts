@@ -19,7 +19,7 @@ export function toRows(messages: ChatMessage[]): ChatRow[] {
     if (message.role === "user" || message.role === "assistant") {
       rows.push({
         id: remapDomainId(message.id, "row"),
-        role: message.role,
+        kind: message.role,
         content: message.content,
       });
     }

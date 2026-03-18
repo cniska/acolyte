@@ -4,7 +4,7 @@ import { createClient, createMessageHandlerHarness, createSession, createStore, 
 import { renderPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
-  return dedent(renderPlain(<ChatTranscript rows={rows} isWorking={false} thinkingFrame={0} />, columns));
+  return dedent(renderPlain(<ChatTranscript rows={rows} thinkingFrame={0} />, columns));
 }
 
 describe("chat slash command visual regression", () => {
@@ -23,9 +23,13 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-        providers:          openai
-        model:              gpt-5-mini
-        permissions:        write
+        ❯ /status
+
+          Status
+
+          Providers:          openai
+          Model:              gpt-5-mini
+          Permissions:        write
     `),
     );
   });
@@ -71,16 +75,18 @@ describe("chat slash command visual regression", () => {
 
     expect(renderTranscript(rows)).toBe(
       dedent(`
-        Usage
+        ❯ /usage
 
-        Input:              15.9k
-        Output:             2.7k
-        Total:              18.6k
+          Usage
 
-        System:             6.2k (39%)
-        Tools:              8.9k (56%)
-        Memory:             500 (3%)
-        Messages:           300 (2%)
+          Input:              15.9k  42.0k
+          Output:             2.7k   6.6k
+          Total:              18.6k  48.6k
+
+          System:             6.2k  39%
+          Tools:              8.9k  56%
+          Memory:             500   3%
+          Messages:           300   2%
     `),
     );
   });
@@ -102,10 +108,12 @@ describe("chat slash command visual regression", () => {
 
       expect(renderTranscript(rows)).toBe(
         dedent(`
-          Sessions 2
+          ❯ /sessions
 
-          ● sess_active  Current Session   just now
-            sess_prev    Previous Session  just now
+            Sessions 2
+
+            ● sess_active  Current Session   just now
+              sess_prev    Previous Session  just now
       `),
       );
     } finally {

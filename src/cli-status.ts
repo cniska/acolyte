@@ -2,12 +2,12 @@ import type { appConfig as appConfigType } from "./app-config";
 import type { createClient as createClientType } from "./client-factory";
 import { t } from "./i18n";
 import type { apiUrlForPort as apiUrlForPortType, localServerStatus as localServerStatusType } from "./server-daemon";
-import type { formatStatusOutput as formatStatusOutputType } from "./status-format";
+import type { formatStatus as formatStatusType } from "./status-format";
 
 type StatusModeDeps = {
   apiUrlForPort: typeof apiUrlForPortType;
   createClient: typeof createClientType;
-  formatStatusOutput: typeof formatStatusOutputType;
+  formatStatus: typeof formatStatusType;
   hasHelpFlag: (args: string[]) => boolean;
   hasJsonFlag: (args: string[]) => boolean;
   isServerConnectionFailure: (error: unknown) => boolean;
@@ -28,7 +28,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
   const {
     apiUrlForPort,
     createClient,
-    formatStatusOutput,
+    formatStatus,
     hasHelpFlag,
     hasJsonFlag,
     isServerConnectionFailure,
@@ -57,7 +57,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     if (json) {
       printDim(`${JSON.stringify(status)}\n`);
     } else {
-      printDim(formatStatusOutput(status));
+      printDim(formatStatus(status));
     }
   } catch (error) {
     if (isServerConnectionFailure(error)) {

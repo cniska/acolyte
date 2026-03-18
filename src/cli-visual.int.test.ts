@@ -273,17 +273,17 @@ describe("cli visual regression", () => {
         const out = await run(["status"]);
         expect(out).toBe(
           dedent(`
-          providers:          openai
-          model:              gpt-5-mini
-          protocol_version:   2
-          capabilities:       stream.sse, error.structured
-          permissions:        write
-          service:            http://localhost:6767
-          memory:             file
-          tasks_total:        0
-          tasks_running:      0
-          tasks_detached:     0
-          rpc_queue_length:   0
+          Providers:          openai
+          Model:              gpt-5-mini
+          Protocol version:   2
+          Capabilities:       stream.sse, error.structured
+          Permissions:        write
+          Service:            http://localhost:6767
+          Memory:             file
+          Tasks total:        0
+          Tasks running:      0
+          Tasks detached:     0
+          Queue length:       0
         `),
         );
       });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ToolOutput } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-content";
 import {
   emitHeadTailLines,
   emitResultChunks,
@@ -10,7 +10,7 @@ import {
 } from "./tool-output-format";
 
 function collect() {
-  const events: Array<{ toolName: string; content: ToolOutput }> = [];
+  const events: Array<{ toolName: string; content: ToolOutputPart }> = [];
   const listener: ToolOutputListener = (e) => events.push({ toolName: e.toolName, content: e.content });
   return { events, listener };
 }

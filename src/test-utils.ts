@@ -8,7 +8,7 @@ import type { CommandContext } from "./chat-commands";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
-import type { Client, StreamEvent } from "./client-contract";
+import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import type { RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
@@ -257,7 +257,7 @@ export type MessageHandlerHarness = {
     setInputHistory: number;
     setValue: string[];
     setShowHelp: Array<boolean | ((current: boolean) => boolean)>;
-    progressTexts: Array<string | null>;
+    pendingStates: Array<PendingState | null>;
     thinkingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
@@ -269,7 +269,7 @@ export type MessageHandlerHarness = {
 };
 
 export function createMessageHandlerHarness(overrides?: {
-  isWorking?: boolean;
+  isPending?: boolean;
   client?: Client;
   session?: Session;
   store?: SessionState;
@@ -283,7 +283,7 @@ export function createMessageHandlerHarness(overrides?: {
     setInputHistory: 0,
     setValue: [] as string[],
     setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
-    progressTexts: [] as Array<string | null>,
+    pendingStates: [] as Array<PendingState | null>,
     thinkingTransitions: [] as boolean[],
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
@@ -319,17 +319,20 @@ export function createMessageHandlerHarness(overrides?: {
     openResumePanel: () => {},
     openModelPanel: () => {},
     tokenUsage,
-    isWorking: overrides?.isWorking ?? false,
+    isPending: overrides?.isPending ?? false,
     setInputHistory: () => {
       calls.setInputHistory += 1;
     },
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
-    setIsWorking: (next) => {
-      calls.thinkingTransitions.push(next);
+    onStartPending: () => {
+      calls.thinkingTransitions.push(true);
     },
-    setProgressText: (next) => {
-      calls.progressTexts.push(next);
+    onStopPending: () => {
+      calls.thinkingTransitions.push(false);
+    },
+    setPendingState: (next) => {
+      calls.pendingStates.push(next);
     },
     setRunningUsage: () => {},
     setTokenUsage: (updater) => {
@@ -476,7 +479,7 @@ export function createCommandContext(
     setTokenUsage: (updater) => {
       spies.tokenUsageSets.push(updater([]));
     },
-    toRows: (messages) => messages.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+    toRows: (messages) => messages.map((m) => ({ id: m.id, kind: m.role, content: m.content })),
     setRows: (updater) => {
       spies.rows = updater(spies.rows);
     },

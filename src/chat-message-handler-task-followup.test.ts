@@ -17,9 +17,9 @@ describe("chat-message-handler-task-followup", () => {
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
-      setProgressText: () => {},
+      setPendingState: () => {},
       persist: async () => {},
-      stopWorking: () => {},
+      onStopPending: () => {},
     });
     expect(started).toBe(false);
   });

@@ -106,38 +106,38 @@ describe("chat-ui helpers", () => {
     });
     const rows = initialTranscriptRows(session);
     expect(rows).toEqual([
-      { id: "row_2", role: "user", content: "hello" },
-      { id: "row_3", role: "assistant", content: "hi" },
+      { id: "row_2", kind: "user", content: "hello" },
+      { id: "row_3", kind: "assistant", content: "hi" },
     ]);
   });
 
   test("applyGraduation removes captured rows and preserves concurrently added rows", () => {
     const graduated: never[] = [];
     const captured = [
-      { id: "row_1", role: "user" as const, content: "hello" },
-      { id: "row_2", role: "assistant" as const, content: "hi" },
+      { id: "row_1", kind: "user" as const, content: "hello" },
+      { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
     // Simulate concurrent addition: live state has captured rows + a new one added during graduation
-    const live = [...captured, { id: "row_3", role: "system" as const, content: "/usage output" }];
+    const live = [...captured, { id: "row_3", kind: "system" as const, content: "/usage output" }];
     const { nextGraduated, nextLive } = applyGraduation(graduated, captured, live);
     expect(nextGraduated).toEqual(captured);
-    expect(nextLive).toEqual([{ id: "row_3", role: "system", content: "/usage output" }]);
+    expect(nextLive).toEqual([{ id: "row_3", kind: "system", content: "/usage output" }]);
   });
 
   test("appendGraduatedItems ignores duplicate row ids", () => {
     const initial = [
       { id: "header_sess_demo", kind: "header" as const, lines: [] },
-      { id: "row_1", role: "user" as const, content: "hello" },
+      { id: "row_1", kind: "user" as const, content: "hello" },
     ];
     const next = [
-      { id: "row_1", role: "user" as const, content: "hello" },
-      { id: "row_2", role: "assistant" as const, content: "hi" },
+      { id: "row_1", kind: "user" as const, content: "hello" },
+      { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
 
     expect(appendGraduatedItems(initial, next)).toEqual([
       { id: "header_sess_demo", kind: "header", lines: [] },
-      { id: "row_1", role: "user", content: "hello" },
-      { id: "row_2", role: "assistant", content: "hi" },
+      { id: "row_1", kind: "user", content: "hello" },
+      { id: "row_2", kind: "assistant", content: "hi" },
     ]);
   });
 });

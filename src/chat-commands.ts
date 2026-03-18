@@ -1,12 +1,7 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import {
-  COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH,
-  formatColumns,
-  formatCompactNumber,
-  formatRelativeTime,
-} from "./chat-format";
+import { alignCols, formatCompactNumber, formatRelativeTime } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -23,7 +18,7 @@ type MemoryContextScope = "all" | "user" | "project";
 
 import { type ChatRow, createRow } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
-import { formatStatusOutput } from "./status-format";
+import { createStatusOutput } from "./status-format";
 import { createSession } from "./storage";
 
 export type ResumeResolution =
@@ -48,7 +43,7 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
     const title = item.title || t("chat.session.default_title");
     return [`${active} ${item.id}`, title, formatRelativeTime(item.updatedAt)];
   });
-  return formatColumns(rows);
+  return alignCols(rows);
 }
 
 function formatUsageValue(value: number): string {
@@ -60,49 +55,70 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function formatUsageOutput(last: SessionTokenUsageEntry | null, _all: SessionTokenUsageEntry[]): string {
-  if (!last) return t("chat.usage.none");
-
-  const summary: [string, string][] = [
-    [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
-    [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens)],
-    [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens)],
+export function sessionsRows(store: SessionState, limit = 10): ChatRow[] {
+  const list = formatSessionList(store, limit);
+  return [
+    createRow("system", { header: t("chat.sessions.header", { count: store.sessions.length }), sections: [], list }),
   ];
+}
 
+export function statusRows(status: StatusFields): ChatRow[] {
+  const output = createStatusOutput(status);
+  if (!output) return [];
+  return [createRow("system", output)];
+}
+
+export function usageRows(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[] = []): ChatRow[] {
+  if (!last) return [createRow("system", t("chat.usage.none"))];
+  const totals = all.reduce(
+    (acc, entry) => {
+      acc.input += entry.usage.inputTokens;
+      acc.output += entry.usage.outputTokens;
+      acc.total += entry.usage.totalTokens;
+      return acc;
+    },
+    { input: 0, output: 0, total: 0 },
+  );
+  const hasSession = all.length > 1;
+  const summaryGrid: string[][] = [
+    hasSession
+      ? [formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)]
+      : [formatUsageValue(last.usage.inputTokens)],
+    hasSession
+      ? [formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)]
+      : [formatUsageValue(last.usage.outputTokens)],
+    hasSession
+      ? [formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)]
+      : [formatUsageValue(last.usage.totalTokens)],
+  ];
+  const summaryLabels = [t("chat.usage.metric.input"), t("chat.usage.metric.output"), t("chat.usage.metric.total")];
+  const summaryAligned = alignCols(summaryGrid);
+  const summary: [string, string][] = summaryLabels.map((label, i) => [label, summaryAligned[i]]);
   const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
     const bd = last.promptBreakdown;
     const total = Math.max(bd.usedTokens, last.usage.inputTokens);
+    const breakdownGrid: string[][] = [];
+    const breakdownLabels: string[] = [];
     for (const [label, tokens] of [
       [t("chat.usage.metric.system"), bd.systemTokens],
       [t("chat.usage.metric.tools"), bd.toolTokens],
       [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
-      if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens)} (${formatShare(tokens, total)})`]);
+      if (tokens > 0) {
+        breakdownLabels.push(label);
+        breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
+      }
+    }
+    const breakdownAligned = alignCols(breakdownGrid);
+    for (let i = 0; i < breakdownLabels.length; i++) {
+      breakdown.push([breakdownLabels[i], breakdownAligned[i]]);
     }
   }
-
-  const allRows = [...summary, ...breakdown];
-  const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
-  const fmt = ([key, value]: [string, string]) => `${`${key}:`.padEnd(colWidth)}${value}`;
-  const sections = [summary.map(fmt).join("\n")];
-  if (breakdown.length > 0) sections.push(breakdown.map(fmt).join("\n"));
-  return `${t("chat.usage.header")}\n\n${sections.join("\n\n")}`;
-}
-
-export function presentSessionsOutput(store: SessionState, limit = 10): string {
-  const recent = formatSessionList(store, limit);
-  return [t("chat.sessions.header", { count: store.sessions.length }), "", ...recent].join("\n");
-}
-
-export function presentStatusOutput(status: StatusFields): string {
-  const content = formatStatusOutput(status);
-  return content.length > 0 ? content : t("chat.status.empty");
-}
-
-export function presentUsageOutput(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[]): ChatRow[] {
-  return [createRow("system", formatUsageOutput(last, all))];
+  const sections: [string, string][][] = [summary];
+  if (breakdown.length > 0) sections.push(breakdown);
+  return [createRow("system", { header: t("chat.usage.header"), sections })];
 }
 
 type CommandResult = {
@@ -232,16 +248,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText === "/sessions") {
-    const rendered = presentSessionsOutput(ctx.store, 10);
-    ctx.setRows((current) => [...current, createRow("system", rendered)]);
+    ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
     return { stop: true, userText: text };
   }
 
   if (resolvedText === "/status") {
     try {
       const status = await ctx.client.status();
-      const rendered = presentStatusOutput(status);
-      ctx.setRows((current) => [...current, createRow("system", rendered)]);
+      ctx.setRows((current) => [...current, ...statusRows(status)]);
     } catch (error) {
       ctx.setRows((current) => [
         ...current,
@@ -372,19 +386,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);
       return { stop: true, userText: text };
     }
-    const lines = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id} ${entry.content}`);
+    const list = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id} ${entry.content}`);
     const header =
       scope === "all"
         ? t("chat.memory.header.all", { count: memories.length })
         : t("chat.memory.header.scope", { scope: scopeLabel(scope), count: memories.length });
-    ctx.setRows((current) => [...current, createRow("system", `${header}\n\n${lines.join("\n")}`)]);
+    ctx.setRows((current) => [...current, createRow("system", { header, sections: [], list })]);
     return { stop: true, userText: text };
   }
 
   if (resolvedText === "/usage") {
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    const rendered = presentUsageOutput(last, ctx.tokenUsage);
-    ctx.setRows((current) => [...current, ...rendered]);
+    ctx.setRows((current) => [...current, ...usageRows(last, ctx.tokenUsage)]);
     return { stop: true, userText: text };
   }
 

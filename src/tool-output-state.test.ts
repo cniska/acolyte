@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { createToolOutputState, formatToolOutput, type ToolOutput } from "./tool-output-content";
+import { createToolOutputState, formatToolOutput, type ToolOutputPart } from "./tool-output-content";
 
 function setup() {
   const state = createToolOutputState();
-  const push = (content: ToolOutput, toolCallId = "tc_1") => state.push({ toolCallId, content });
+  const push = (content: ToolOutputPart, toolCallId = "tc_1") => state.push({ toolCallId, content });
   return { state, push };
 }
 

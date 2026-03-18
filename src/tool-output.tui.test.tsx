@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
-import { formatToolOutput, type ToolOutput } from "./tool-output-content";
+import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
 import { renderPlain } from "./tui-test-utils";
 
 function dedent(value: string): string {
@@ -24,9 +24,9 @@ function dedent(value: string): string {
     .join("\n");
 }
 
-function renderChat(toolOutput: ToolOutput[]): string {
-  const row: ChatRow = { id: "r1", role: "tool", content: "", toolOutput };
-  return renderPlain(<ChatTranscript rows={[row]} isWorking={false} thinkingFrame={0} />, 96);
+function renderChat(toolOutput: ToolOutputPart[]): string {
+  const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
+  return renderPlain(<ChatTranscript rows={[row]} thinkingFrame={0} />, 96);
 }
 
 describe("tool output TUI — CLI (formatToolOutput)", () => {
@@ -43,19 +43,19 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("file-header renders label and targets", () => {
-    const items: ToolOutput[] = [{ kind: "file-header", label: "Read", count: 2, targets: ["a.ts", "b.ts"] }];
+    const items: ToolOutputPart[] = [{ kind: "file-header", label: "Read", count: 2, targets: ["a.ts", "b.ts"] }];
     expect(formatToolOutput(items)).toBe("Read a.ts, b.ts");
   });
 
   test("file-header with omitted targets", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "file-header", label: "Read", count: 4, targets: ["a.ts", "b.ts", "c.ts"], omitted: 1 },
     ];
     expect(formatToolOutput(items)).toBe("Read a.ts, b.ts, c.ts, +1");
   });
 
   test("scope-header with hit rows", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 3 },
       { kind: "text", text: "a.ts [needle@1]" },
       { kind: "text", text: "b.ts [needle@2, needle@5]" },
@@ -70,7 +70,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("scope-header with non-workspace scope", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "scope-header", label: "Search", scope: "src/", patterns: ["needle"], matches: 1 },
       { kind: "text", text: "a.ts [needle@1]" },
     ];
@@ -83,7 +83,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("scope-header for find-files", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "scope-header", label: "Find", scope: "workspace", patterns: ["*.ts"], matches: 2 },
       { kind: "text", text: "a.ts" },
       { kind: "text", text: "b.ts" },
@@ -98,7 +98,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("edit-header with diff lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "edit-header", label: "Edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
@@ -115,10 +115,10 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("run-command with text body", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Run", detail: "echo hello" },
-      { kind: "command-output", stream: "stdout", text: "hello" },
-      { kind: "command-output", stream: "stdout", text: "world" },
+      { kind: "shell-output", stream: "stdout", text: "hello" },
+      { kind: "shell-output", stream: "stdout", text: "world" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
@@ -130,12 +130,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("run-command with truncated output", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Run", detail: "cmd" },
-      { kind: "command-output", stream: "stdout", text: "line1" },
-      { kind: "command-output", stream: "stdout", text: "line2" },
+      { kind: "shell-output", stream: "stdout", text: "line1" },
+      { kind: "shell-output", stream: "stdout", text: "line2" },
       { kind: "truncated", count: 3, unit: "lines" },
-      { kind: "command-output", stream: "stdout", text: "line6" },
+      { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
@@ -149,7 +149,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("no-output marker", () => {
-    const items: ToolOutput[] = [{ kind: "tool-header", label: "Run", detail: "cmd" }, { kind: "no-output" }];
+    const items: ToolOutputPart[] = [{ kind: "tool-header", label: "Run", detail: "cmd" }, { kind: "no-output" }];
     expect(formatToolOutput(items)).toBe(
       dedent(`
         Run cmd
@@ -159,7 +159,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-status with changes", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Status" },
       { kind: "text", text: "M src/cli.ts" },
       { kind: "text", text: "?? src/new.ts" },
@@ -174,7 +174,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-diff with text body", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Diff", detail: "src/agent.ts" },
       { kind: "text", text: "diff --git a/src/agent.ts b/src/agent.ts" },
       { kind: "text", text: "+const x = 1;" },
@@ -189,7 +189,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-diff with truncated output", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Diff" },
       { kind: "text", text: "+line1" },
       { kind: "text", text: "-line2" },
@@ -208,7 +208,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-log with commit lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Log", detail: "src/cli.ts" },
       { kind: "text", text: "abc1234 feat: add feature" },
       { kind: "text", text: "def5678 fix: resolve bug" },
@@ -223,7 +223,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-log with truncated output", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Log" },
       { kind: "text", text: "abc1234 first" },
       { kind: "text", text: "def5678 second" },
@@ -242,7 +242,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-show with ref detail", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Show", detail: "abc1234" },
       { kind: "text", text: "feat: add feature" },
       { kind: "text", text: "+const x = 1;" },
@@ -257,7 +257,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-add with file paths", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Add", detail: "3 files" },
       { kind: "text", text: "src/a.ts" },
       { kind: "text", text: "src/b.ts" },
@@ -274,7 +274,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-add with truncated file list", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Add", detail: "8 files" },
       { kind: "text", text: "src/a.ts" },
       { kind: "text", text: "src/b.ts" },
@@ -291,17 +291,19 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-add all", () => {
-    const items: ToolOutput[] = [{ kind: "tool-header", label: "Git Add", detail: "all" }];
+    const items: ToolOutputPart[] = [{ kind: "tool-header", label: "Git Add", detail: "all" }];
     expect(formatToolOutput(items)).toBe("Git Add all");
   });
 
   test("git-commit with hash", () => {
-    const items: ToolOutput[] = [{ kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" }];
+    const items: ToolOutputPart[] = [
+      { kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" },
+    ];
     expect(formatToolOutput(items)).toBe("Git Commit feat: add feature (abc1234)");
   });
 
   test("git-commit with body lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" },
       { kind: "text", text: "Added new auth module" },
       { kind: "text", text: "Updated config schema" },
@@ -316,7 +318,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("git-commit with truncated body", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Commit", detail: "refactor: cleanup (def5678)" },
       { kind: "text", text: "Line 1" },
       { kind: "text", text: "Line 2" },
@@ -333,7 +335,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("truncated without unit", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Find", detail: "*.ts" },
       { kind: "text", text: "a.ts" },
       { kind: "truncated", count: 5, unit: "matches" },
@@ -364,7 +366,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("scope-header with hit rows", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "scope-header", label: "Search", scope: "workspace", patterns: ["needle"], matches: 3 },
       { kind: "text", text: "a.ts [needle@1]" },
       { kind: "text", text: "b.ts [needle@2, needle@5]" },
@@ -379,7 +381,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("edit-header with diff lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "edit-header", label: "Edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
@@ -396,10 +398,10 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("run-command with stdout", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Run", detail: "echo hello" },
-      { kind: "command-output", stream: "stdout", text: "hello" },
-      { kind: "command-output", stream: "stdout", text: "world" },
+      { kind: "shell-output", stream: "stdout", text: "hello" },
+      { kind: "shell-output", stream: "stdout", text: "world" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
@@ -411,11 +413,11 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("run-command with mixed stdout and stderr", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Run", detail: "make" },
-      { kind: "command-output", stream: "stdout", text: "compiling..." },
-      { kind: "command-output", stream: "stderr", text: "warning: unused var" },
-      { kind: "command-output", stream: "stdout", text: "done" },
+      { kind: "shell-output", stream: "stdout", text: "compiling..." },
+      { kind: "shell-output", stream: "stderr", text: "warning: unused var" },
+      { kind: "shell-output", stream: "stdout", text: "done" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
@@ -428,12 +430,12 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("run-command with truncated output", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Run", detail: "cmd" },
-      { kind: "command-output", stream: "stdout", text: "line1" },
-      { kind: "command-output", stream: "stdout", text: "line2" },
+      { kind: "shell-output", stream: "stdout", text: "line1" },
+      { kind: "shell-output", stream: "stdout", text: "line2" },
       { kind: "truncated", count: 3, unit: "lines" },
-      { kind: "command-output", stream: "stdout", text: "line6" },
+      { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
@@ -447,7 +449,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("no-output marker", () => {
-    const items: ToolOutput[] = [{ kind: "tool-header", label: "Run", detail: "cmd" }, { kind: "no-output" }];
+    const items: ToolOutputPart[] = [{ kind: "tool-header", label: "Run", detail: "cmd" }, { kind: "no-output" }];
     expect(renderChat(items)).toBe(
       dedent(`
         • Run cmd
@@ -457,7 +459,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-status with changes", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Status" },
       { kind: "text", text: "M src/cli.ts" },
       { kind: "text", text: "?? src/new.ts" },
@@ -472,7 +474,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-diff with text body", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Diff", detail: "src/agent.ts" },
       { kind: "text", text: "+const x = 1;" },
       { kind: "truncated", count: 5, unit: "lines" },
@@ -489,7 +491,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-log with commit lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Log" },
       { kind: "text", text: "abc1234 feat: add feature" },
       { kind: "text", text: "def5678 fix: resolve bug" },
@@ -504,7 +506,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-show with ref detail", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Show", detail: "abc1234" },
       { kind: "text", text: "feat: add feature" },
       { kind: "text", text: "+const x = 1;" },
@@ -519,7 +521,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-add with file paths", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Add", detail: "3 files" },
       { kind: "text", text: "src/a.ts" },
       { kind: "text", text: "src/b.ts" },
@@ -536,7 +538,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-add with truncated file list", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Add", detail: "8 files" },
       { kind: "text", text: "src/a.ts" },
       { kind: "text", text: "src/b.ts" },
@@ -559,7 +561,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-commit with body lines", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Commit", detail: "feat: add feature (abc1234)" },
       { kind: "text", text: "Added new auth module" },
       { kind: "text", text: "Updated config schema" },
@@ -574,7 +576,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   });
 
   test("git-commit with truncated body", () => {
-    const items: ToolOutput[] = [
+    const items: ToolOutputPart[] = [
       { kind: "tool-header", label: "Git Commit", detail: "refactor: cleanup (def5678)" },
       { kind: "text", text: "Line 1" },
       { kind: "text", text: "Line 2" },

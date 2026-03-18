@@ -1,24 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import {
-  dispatchSlashCommand,
-  formatUsageOutput,
-  presentSessionsOutput,
-  presentStatusOutput,
-  presentUsageOutput,
-} from "./chat-commands";
+import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
+import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
-import {
-  createCommandContext,
-  createMessage,
-  createSession,
-  createStore,
-  dedent,
-  tempDir,
-  writeSkill,
-} from "./test-utils";
+import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
@@ -27,7 +14,7 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 }
 
 describe("chat-commands", () => {
-  test("formatUsageOutput renders aligned rows", () => {
+  test("usageRows includes expected metric keys", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
       usage: {
@@ -46,15 +33,18 @@ describe("chat-commands", () => {
         messageTokens: 10,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    expect(output).toContain("Input:");
-    expect(output).toContain("Output:");
-    expect(output).toContain("System:");
-    expect(output).toContain("Tools:");
-    expect(output).toContain("Messages:");
+    const [row] = usageRows(usage);
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
+    const keys = allPairs.map(([k]) => k);
+    expect(keys).toContain("Input");
+    expect(keys).toContain("Output");
+    expect(keys).toContain("System");
+    expect(keys).toContain("Tools");
+    expect(keys).toContain("Messages");
   });
 
-  test("formatUsageOutput does not include budget warning", () => {
+  test("usageRows does not include budget warning", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_warn",
       usage: {
@@ -65,19 +55,17 @@ describe("chat-commands", () => {
         inputTruncated: true,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    expect(output).not.toContain("Warning:");
-    expect(output).not.toContain("context trimmed");
+    const [row] = usageRows(usage);
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
+    expect(allPairs.every(([k]) => !k.toLowerCase().includes("warning"))).toBe(true);
+    expect(allPairs.every(([, v]) => !v.includes("context trimmed"))).toBe(true);
   });
 
-  test("formatUsageOutput shares use prompt breakdown total", () => {
+  test("usageRows uses prompt breakdown total for percentages", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_1",
-      usage: {
-        inputTokens: 50,
-        outputTokens: 2,
-        totalTokens: 52,
-      },
+      usage: { inputTokens: 50, outputTokens: 2, totalTokens: 52 },
       promptBreakdown: {
         budgetTokens: 1000,
         usedTokens: 100,
@@ -87,51 +75,49 @@ describe("chat-commands", () => {
         messageTokens: 40,
       },
     };
-    const output = formatUsageOutput(usage, [usage]);
-    const systemLine = output.split("\n").find((line) => line.includes("System"));
-    expect(systemLine).toContain("20%");
-    const toolLine = output.split("\n").find((line) => line.includes("Tools"));
-    expect(toolLine).toContain("30%");
-    const memoryLine = output.split("\n").find((line) => line.includes("Memory"));
-    expect(memoryLine).toContain("10%");
-    const messageLine = output.split("\n").find((line) => line.includes("Messages"));
-    expect(messageLine).toContain("40%");
+    const [row] = usageRows(usage);
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
+    const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
+    expect(find("System")).toContain("20%");
+    expect(find("Tools")).toContain("30%");
+    expect(find("Memory")).toContain("10%");
+    expect(find("Messages")).toContain("40%");
   });
 
-  test("presentStatusOutput renders command presentation block", () => {
-    const rendered = presentStatusOutput({
+  test("statusRows returns commandOutput with labeled fields", () => {
+    const [row] = statusRows({
       providers: ["openai"],
       model: "gpt-5-mini",
       permissions: "write",
     });
-    expect(rendered).toBe(
-      dedent(`
-      providers:          openai
-      model:              gpt-5-mini
-      permissions:        write
-    `),
-    );
+    const content = row?.content;
+    expect(isCommandOutput(content) && content.header).toBe("Status");
+    const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
+    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
+    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
-  test("presentStatusOutput shows fallback when payload has no visible fields", () => {
-    const rendered = presentStatusOutput({});
-    expect(rendered).toBe("Status response was empty.");
+  test("statusRows returns empty array when payload has no visible fields", () => {
+    expect(statusRows({})).toHaveLength(0);
   });
 
-  test("presentSessionsOutput renders command presentation block", () => {
+  test("sessionsRows returns commandOutput with header and list", () => {
     const store = createStore({
       activeSessionId: "sess_aaaa1111",
       sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
     });
-    const rendered = presentSessionsOutput(store, 10);
-    expect(rendered).toContain("Sessions 1");
-    expect(rendered).toContain("● sess_aaaa1111  First");
+    const [row] = sessionsRows(store, 10);
+    const content = row?.content;
+    expect(isCommandOutput(content) && content.header).toBe("Sessions 1");
+    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
+    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("First"))).toBe(true);
   });
 
-  test("presentUsageOutput renders empty-state command presentation block", () => {
-    const rendered = presentUsageOutput(null, []);
-    expect(rendered).toHaveLength(1);
-    expect(rendered[0].content).toBe("No usage data yet. Send a prompt first.");
+  test("usageRows returns fallback row when no usage data", () => {
+    const [row] = usageRows(null);
+    expect(row?.content).toBe("No usage data yet. Send a prompt first.");
   });
 
   test("dispatchSlashCommand handles /usage", async () => {
@@ -172,7 +158,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/usage", { tokenUsage });
 
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("Input:"))).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Usage")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /usage with empty usage", async () => {
@@ -185,7 +171,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.includes("providers:"))).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Status")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /sessions with compact system output", async () => {
@@ -198,10 +184,14 @@ describe("chat-commands", () => {
     });
     const { rows, stop } = await runCommand("/sessions", { store });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.includes("Sessions 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("● sess_aaaa1111  First");
-    expect(system?.content).toContain("  sess_bbbb2222  Second");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Sessions 2");
+    expect(row).toBeDefined();
+    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(
+      true,
+    );
+    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("sess_bbbb2222"))).toBe(
+      true,
+    );
   });
 
   test("dispatchSlashCommand handles /memory with empty store", async () => {
@@ -216,7 +206,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content === "No memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
@@ -236,7 +226,7 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
-    expect(rows.some((row) => row.role === "system" && row.content === "No user memory saved yet.")).toBe(true);
+    expect(rows.some((row) => row.kind === "system" && row.content === "No user memory saved yet.")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory with entries", async () => {
@@ -264,10 +254,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("user:mem_1 prefer concise output");
-    expect(system?.content).toContain("project:mem_2 use bun scripts");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
+    expect(row).toBeDefined();
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("user:mem_1 prefer concise output");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
@@ -295,10 +285,10 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory all", { memoryApi });
     expect(stop).toBe(true);
-    const system = rows.find((row) => row.role === "system" && row.content.startsWith("Memory 2"));
-    expect(system).toBeDefined();
-    expect(system?.content).toContain("user:mem_1 prefer concise output");
-    expect(system?.content).toContain("project:mem_2 use bun scripts");
+    const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
+    expect(row).toBeDefined();
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("user:mem_1 prefer concise output");
+    expect(isCommandOutput(row?.content) && row?.content.list).toContain("project:mem_2 use bun scripts");
   });
 
   test("dispatchSlashCommand handles /memory rm success", async () => {
@@ -322,7 +312,11 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory rm mem_dead", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content.includes("Removed project memory mem_deadbeef."))).toBe(true);
+    expect(
+      rows.some(
+        (row) => typeof row.content === "string" && row.content.includes("Removed project memory mem_deadbeef."),
+      ),
+    ).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory rm not_found", async () => {
@@ -385,7 +379,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("User memory 1"))).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "User memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand renders project-scoped /memory header", async () => {
@@ -407,7 +401,7 @@ describe("chat-commands", () => {
     };
     const { rows, stop } = await runCommand("/memory project", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.role === "system" && row.content.startsWith("Project memory 1"))).toBe(true);
+    expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Project memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand validates /memory scope usage", async () => {
@@ -443,7 +437,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");
     expect(savedScope).toBe("project");
-    expect(rows.some((row) => row.role === "system" && row.content === "Saved project memory: use bun verify")).toBe(
+    expect(rows.some((row) => row.kind === "system" && row.content === "Saved project memory: use bun verify")).toBe(
       true,
     );
   });
@@ -542,7 +536,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand /resume opens picker flow", async () => {
     const { rows, stop } = await runCommand("/resume");
     expect(stop).toBe(true);
-    expect(rows.every((row) => row.role !== "user")).toBe(true);
+    expect(rows.every((row) => row.kind !== "user")).toBe(true);
   });
 
   test("dispatchSlashCommand /resume with missing prefix reports not found", async () => {
@@ -620,7 +614,7 @@ describe("chat-commands", () => {
       resetSkillCache();
       const { rows, stop } = await runCommand("/xyz");
       expect(stop).toBe(true);
-      expect(rows.some((r) => r.content.includes("Unknown command"))).toBe(true);
+      expect(rows.some((r) => typeof r.content === "string" && r.content.includes("Unknown command"))).toBe(true);
     });
   });
 });

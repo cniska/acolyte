@@ -1,7 +1,7 @@
 import { isAbsolute, relative } from "node:path";
-import type { ToolOutput } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-content";
 
-export type ToolOutputListener = (event: { toolName: string; content: ToolOutput; toolCallId?: string }) => void;
+export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
 
 export type UnifiedDiffSummary = {
   files: number;
@@ -409,10 +409,10 @@ function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
   return lines;
 }
 
-export function numberedUnifiedDiffLines(rawResult: string): ToolOutput[] {
+export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
   const lines = unifiedDiffLines(rawResult, NUMBERED_DIFF_SOURCE_MAX_LINES);
   if (lines.length === 0) return [];
-  const rendered: ToolOutput[] = [];
+  const rendered: ToolOutputPart[] = [];
   let oldLine = 0;
   let newLine = 0;
   let inHunk = false;
@@ -476,13 +476,13 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutput[] {
       keep[j] = 1;
     }
   }
-  const filteredOutput: ToolOutput[] = [];
+  const filteredOutput: ToolOutputPart[] = [];
   let skippedCount = 0;
   for (let i = 0; i < rendered.length; i++) {
     if (keep[i]) {
       if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
       skippedCount = 0;
-      filteredOutput.push(rendered[i] as ToolOutput);
+      filteredOutput.push(rendered[i] as ToolOutputPart);
     } else {
       skippedCount += 1;
     }

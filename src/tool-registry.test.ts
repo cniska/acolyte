@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderToolOutput } from "./tool-output-content";
+import { renderToolOutputPart } from "./tool-output-content";
 import {
   hasPermissions,
   toolDefinitionsById,
@@ -102,11 +102,11 @@ describe("localization baseline", () => {
   });
 
   test("tool output content renders marker tokens", () => {
-    expect(renderToolOutput({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
-    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
-    expect(renderToolOutput({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
-    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
-    expect(renderToolOutput({ kind: "no-output" })).toBe("(No output)");
+    expect(renderToolOutputPart({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
+    expect(renderToolOutputPart({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
+    expect(renderToolOutputPart({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
+    expect(renderToolOutputPart({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
+    expect(renderToolOutputPart({ kind: "no-output" })).toBe("(No output)");
   });
 
   test("file tool instructions prefer direct reads before editing a chosen file", () => {

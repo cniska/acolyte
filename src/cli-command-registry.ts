@@ -30,7 +30,7 @@ import {
   stopLocalServer,
 } from "./server-daemon";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
-import { formatStatusOutput as formatStatusOutputShared } from "./status-format";
+import { formatStatus } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
@@ -206,7 +206,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       statusMode(args, {
         apiUrlForPort,
         createClient,
-        formatStatusOutput: formatStatusOutputShared,
+        formatStatus,
         hasHelpFlag,
         hasJsonFlag: (argv) => argv.includes("--json"),
         isServerConnectionFailure,

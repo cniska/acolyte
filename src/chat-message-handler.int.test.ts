@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ChatRow } from "./chat-contract";
+import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
@@ -12,7 +13,6 @@ import {
   createMessageHandlerHarness,
   createSession,
   createStore,
-  dedent,
   testUuid,
 } from "./test-utils";
 
@@ -62,14 +62,14 @@ describe("chat message handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
     await handleMessage("hello");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
     await handleMessage("/sessions");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -97,18 +97,16 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows
-      .map((row) => `${row.role}\n${row.content}`)
-      .join("\n\n")
-      .replace(/:\s+/g, ": ");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      providers: openai
-      model: gpt-5-mini
-      permissions: write
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.kind).toBe("user");
+    expect(userRow?.content).toBe("/status");
+    expect(systemRow?.kind).toBe("system");
+    const statusContent = systemRow?.content as { header: string; sections: [string, string][][] };
+    expect(statusContent?.header).toBe("Status");
+    const pairs = statusContent?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
+    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {
@@ -118,18 +116,11 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows
-      .map((row) => `${row.role}\n${row.content}`)
-      .join("\n\n")
-      .replace(/(\s{2})(?:in moments|\d+[smhdw] ago)$/gm, "$1<relative>");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      Sessions 1
-
-      ● sess_test  New Session  <relative>
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.kind).toBe("user");
+    expect(userRow?.content).toBe("/sessions");
+    expect(systemRow?.kind).toBe("system");
+    expect(isCommandOutput(systemRow?.content) && systemRow?.content.header).toBe("Sessions 1");
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {
@@ -139,13 +130,11 @@ describe("chat message handler guards", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const rendered = rows.map((row) => `${row.role}\n${row.content}`).join("\n\n");
-    expect(rendered).toBe(
-      dedent(`
-      system
-      No usage data yet. Send a prompt first.
-    `),
-    );
+    const [userRow, systemRow] = rows;
+    expect(userRow?.kind).toBe("user");
+    expect(userRow?.content).toBe("/usage");
+    expect(systemRow?.kind).toBe("system");
+    expect(systemRow?.content).toBe("No usage data yet. Send a prompt first.");
   });
 
   test("uses current session model for assistant turn requests", async () => {
@@ -235,16 +224,28 @@ describe("chat message handler guards", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.role === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(3);
-    expect(toolRows[0]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
-    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Edit")).toBe(true);
-    expect(toolRows[1]?.toolOutput?.some((i) => i.kind === "diff" && i.text === "let sum = a + b + c;")).toBe(true);
-    expect(toolRows[2]?.toolOutput?.some((i) => i.kind === "tool-header" && i.label === "Delete")).toBe(true);
+    expect(
+      isToolOutput(toolRows[0]?.content) &&
+        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Edit"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[1]?.content) &&
+        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Edit"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[1]?.content) &&
+        toolRows[1]?.content.parts.some((i) => i.kind === "diff" && i.text === "let sum = a + b + c;"),
+    ).toBe(true);
+    expect(
+      isToolOutput(toolRows[2]?.content) &&
+        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.label === "Delete"),
+    ).toBe(true);
     // Assistant text rows are kept as-is (no redundancy filtering).
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Created sum.rs.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.role === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("toggles shortcuts on ? input", async () => {
@@ -297,12 +298,13 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -323,7 +325,7 @@ describe("chat message handler guards", () => {
     await pending;
 
     const last = rows[rows.length - 1];
-    expect(last?.role).toBe("task");
+    expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
     expect(last?.style?.marker).toBe(palette.cancelled);
@@ -376,12 +378,13 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -402,7 +405,7 @@ describe("chat message handler guards", () => {
     await firstPending;
     await handleSubmit("Second question");
 
-    expect(rows.map((row) => `${row.role}:${row.content}`)).toEqual([
+    expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
       "user:First question",
       "task:Interrupted",
       "user:Second question",
@@ -441,12 +444,13 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
-      setProgressText: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
       createMessage,
@@ -458,7 +462,9 @@ describe("chat message handler guards", () => {
     await handleSubmit("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(0);
-    expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
+    expect(rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found"))).toBe(
+      true,
+    );
   });
 
   test("continues with resolved @references even when some are unresolved", async () => {
@@ -496,12 +502,13 @@ describe("chat message handler guards", () => {
         openResumePanel: () => {},
         openModelPanel: () => {},
         tokenUsage: [],
-        isWorking: false,
+        isPending: false,
         setInputHistory: () => {},
         setInputHistoryIndex: () => {},
         setInputHistoryDraft: () => {},
-        setIsWorking: () => {},
-        setProgressText: () => {},
+        onStartPending: () => {},
+        onStopPending: () => {},
+        setPendingState: () => {},
         setRunningUsage: () => {},
         setTokenUsage: () => {},
         createMessage,
@@ -513,8 +520,10 @@ describe("chat message handler guards", () => {
       await handleSubmit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
 
       expect(replyCalls).toBe(1);
-      expect(rows.some((row) => row.content.includes("No file or folder found"))).toBe(true);
-      expect(rows.some((row) => row.role === "assistant" && row.content === "ok")).toBe(true);
+      expect(
+        rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+      ).toBe(true);
+      expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
     } finally {
       await rm(fixturePath, { force: true });
     }

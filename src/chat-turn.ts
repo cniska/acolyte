@@ -72,7 +72,7 @@ export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
   if (params.session.title === t("chat.session.default_title"))
     params.session.title =
       params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
-  return { row: { id: `row_${createId()}`, role: "user", content: params.displayText } };
+  return { row: { id: `row_${createId()}`, kind: "user", content: params.displayText } };
 }
 
 type RunAssistantTurnParams = {
