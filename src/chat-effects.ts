@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
 
-const THINKING_ANIMATION_INTERVAL_MS = 85;
+const THINKING_ANIMATION_INTERVAL_MS = 60;
 
 export function clampSuggestionIndex(current: number, length: number): number {
   return Math.max(0, Math.min(current, Math.max(0, length - 1)));
