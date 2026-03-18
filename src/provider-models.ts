@@ -17,12 +17,19 @@ const CACHE_TTL_MS = 60_000;
 let modelsCache: {
   models: string[];
   fetchedAt: number;
+  credentialsKey: string;
 } | null = null;
 
 let inflight: Promise<string[]> | null = null;
 
 export function invalidateModelsCache(): void {
   modelsCache = null;
+}
+
+function credentialsCacheKey(credentials: ProviderCredentialsMap): string {
+  return [credentials.openai?.apiKey ?? "", credentials.anthropic?.apiKey ?? "", credentials.google?.apiKey ?? ""].join(
+    "\0",
+  );
 }
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
@@ -87,8 +94,16 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
 }
 
 function providerConfig(provider: Provider, credentials: ProviderCredentialsMap): ProviderFetchConfig {
-  const creds = credentials[provider] ?? {};
-  return { apiKey: creds.apiKey, baseUrl: creds.baseUrl ?? "" };
+  switch (provider) {
+    case "openai":
+    case "anthropic":
+    case "google": {
+      const creds = credentials[provider] ?? {};
+      return { apiKey: creds.apiKey, baseUrl: creds.baseUrl ?? "" };
+    }
+    default:
+      return unreachable(provider);
+  }
 }
 
 function availableProviders(credentials: ProviderCredentialsMap): Provider[] {
@@ -101,11 +116,12 @@ function availableProviders(credentials: ProviderCredentialsMap): Provider[] {
 
 export async function getAvailableModels(credentials?: ProviderCredentialsMap): Promise<string[]> {
   const now = Date.now();
-  if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS) return modelsCache.models;
+  const creds = credentials ?? defaultCredentials();
+  const key = credentialsCacheKey(creds);
+  if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS && modelsCache.credentialsKey === key)
+    return modelsCache.models;
 
   if (inflight) return inflight;
-
-  const creds = credentials ?? defaultCredentials();
   inflight = (async () => {
     const providers = availableProviders(creds);
     const results = await Promise.all(
@@ -126,7 +142,7 @@ export async function getAvailableModels(credentials?: ProviderCredentialsMap): 
       }
     }
     models.sort((a, b) => a.localeCompare(b));
-    modelsCache = { models, fetchedAt: now };
+    modelsCache = { models, fetchedAt: now, credentialsKey: key };
     return models;
   })();
 
