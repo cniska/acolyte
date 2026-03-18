@@ -237,9 +237,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     if (!pendingState) return "";
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
     if (pendingState.kind === "running") {
-      const stage = pendingState.skill
-        ? `${t("chat.skill.label")}: ${pendingState.skill}`
-        : MODE_PENDING_TEXT[pendingState.mode];
+      const stage = MODE_PENDING_TEXT[pendingState.mode];
       const model = pendingState.model ?? "";
       const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;

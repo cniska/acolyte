@@ -215,9 +215,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: initialMode, model });
-  if (ctx.promptUsage.activeSkillName) {
-    emit({ type: "status", state: { kind: "running", mode: "work", skill: ctx.promptUsage.activeSkillName } });
-  }
   await deps.phaseGenerate(ctx, {
     cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,

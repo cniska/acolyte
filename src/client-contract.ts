@@ -15,7 +15,6 @@ export const pendingStateSchema = z.discriminatedUnion("kind", [
     kind: z.literal("running"),
     mode: agentModeSchema,
     model: z.string().optional(),
-    skill: z.string().optional(),
   }),
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;
