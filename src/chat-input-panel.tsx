@@ -143,7 +143,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   if (picker) {
     return (
       <>
-        <Text dimColor>{borderLine()}</Text>
+        <Text color={brandColor} dimColor>
+          {borderLine()}
+        </Text>
         {picker.kind === "model" ? (
           <PromptInput
             value={picker.query}
@@ -158,14 +160,18 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         {renderPickerItems(picker, activeSessionId, brandColor)}
         <Text> </Text>
         <Text dimColor>{pickerHint(picker)}</Text>
-        <Text dimColor>{borderLine()}</Text>
+        <Text color={brandColor} dimColor>
+          {borderLine()}
+        </Text>
       </>
     );
   }
 
   return (
     <>
-      <Text dimColor>{borderLine()}</Text>
+      <Text color={brandColor} dimColor>
+        {borderLine()}
+      </Text>
       <PromptInput
         value={value}
         placeholder={t("chat.input.placeholder")}
@@ -176,7 +182,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         onSubmit={onSubmit}
         key={`chat-input-${inputRevision}`}
       />
-      <Text dimColor>{borderLine()}</Text>
+      <Text color={brandColor} dimColor>
+        {borderLine()}
+      </Text>
       {showHelp ? (
         <Box flexDirection="column">{renderShortcutGrid(termWidth)}</Box>
       ) : (
