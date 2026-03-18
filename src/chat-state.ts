@@ -21,7 +21,7 @@ import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
-import { useAsyncEffect, useMountEffect } from "./tui/effects";
+import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 import { clearScreen } from "./ui";
 
 const THINKING_PULSE_FRAMES = 16;
@@ -77,13 +77,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const applyingHistoryRef = useRef(false);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
 
-  const prevMessagesRef = useRef(currentSession.messages);
-  if (currentSession.messages !== prevMessagesRef.current) {
-    prevMessagesRef.current = currentSession.messages;
+  useSyncEffect(() => {
     setInputHistory(createInputHistory(currentSession.messages));
     setInputHistoryIndex(-1);
     setInputHistoryDraft("");
-  }
+  }, [currentSession.messages]);
 
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
   const isPending = pendingState !== null;
@@ -92,34 +90,29 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [ctrlCPending, setCtrlCPending] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
-  const prevIsPendingRef = useRef(false);
-  if (isPending !== prevIsPendingRef.current) {
-    prevIsPendingRef.current = isPending;
+  useSyncEffect(() => {
     if (isPending) {
       setThinkingStartedAt((current) => current ?? Date.now());
     } else {
       setThinkingStartedAt(null);
+      setThinkingFrame(0);
     }
-  }
+  }, [isPending]);
 
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
 
-  const prevSessionRef = useRef(currentSession);
-  if (currentSession !== prevSessionRef.current) {
-    prevSessionRef.current = currentSession;
+  useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
-  }
+  }, [currentSession]);
 
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value);
 
-  const prevSlashSuggestionsRef = useRef(slashSuggestions);
-  if (slashSuggestions !== prevSlashSuggestionsRef.current) {
-    prevSlashSuggestionsRef.current = slashSuggestions;
+  useSyncEffect(() => {
     setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
-  }
+  }, [slashSuggestions]);
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
 

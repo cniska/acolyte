@@ -30,7 +30,7 @@ Check:
 - state modeling clarity: prefer explicit status/state fields over ambiguous boolean flags when values represent lifecycle or workflow phases
 - control flow shape: prefer guard clauses and early returns over nested `if/else` chains
 - dispatch shape: prefer data-driven lookups or rule tables over long control-flow chains where behavior is mapping-like
-- effect discipline: no direct `useEffect` in chat-layer code — use `useMountEffect`, `useInterval`, or `useAsyncEffect` from `src/tui/`; prefer derived state, event handlers, or render-time state adjustments over effects
+- effect discipline: no direct `useEffect` in chat-layer code — use `useMountEffect`, `useSyncEffect`, `useInterval`, or `useAsyncEffect` from `src/tui/effects.ts`; prefer derived state and event handlers over effects
 
 ### 3. Pattern consistency
 

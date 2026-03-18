@@ -35,6 +35,21 @@ export function useInterval(callback: () => void, delayMs: number | null): void 
  * This is the sanctioned way to perform async work that depends on reactive
  * values. For mount-only async work, prefer `useMountEffect`.
  */
+/**
+ * Run a synchronous side effect when dependencies change. Use for state-sync
+ * cases where render-time setState would cause infinite loops (e.g. syncing
+ * derived arrays that produce new references each render).
+ */
+export function useSyncEffect(effect: () => void, deps: readonly unknown[]): void {
+  const effectRef = useRef(effect);
+  effectRef.current = effect;
+
+  useEffect(() => {
+    effectRef.current();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: deps are caller-managed
+  }, deps);
+}
+
 export function useAsyncEffect(effect: (cancelled: () => boolean) => Promise<void>, deps: readonly unknown[]): void {
   const effectRef = useRef(effect);
   effectRef.current = effect;
