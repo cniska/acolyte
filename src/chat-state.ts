@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
+import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
@@ -13,7 +14,6 @@ import { type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
-import { createInputHistory } from "./chat-turn";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import { log } from "./log";
@@ -67,18 +67,19 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
-  const [value, setValue] = useState("");
-  const [inputRevision, setInputRevision] = useState(0);
-  const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
-  const [inputHistoryDraft, setInputHistoryDraft] = useState("");
-  const applyingHistoryRef = useRef(false);
-  const [inputHistory, setInputHistory] = useState<string[]>([]);
-
-  useSyncEffect(() => {
-    setInputHistory(createInputHistory(currentSession.messages));
-    setInputHistoryIndex(-1);
-    setInputHistoryDraft("");
-  }, [currentSession.messages]);
+  const {
+    value,
+    setValue,
+    inputRevision,
+    setInputRevision,
+    inputHistory,
+    setInputHistory,
+    inputHistoryIndex,
+    setInputHistoryIndex,
+    inputHistoryDraft,
+    setInputHistoryDraft,
+    applyingHistoryRef,
+  } = useInputState(currentSession.messages);
 
   const {
     pendingState,
@@ -275,7 +276,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       if (ctrlCPending) setCtrlCPending(false);
       setValue(decision.nextValue);
     },
-    [value, showHelp, ctrlCPending, setCtrlCPending],
+    [value, setValue, setInputHistoryIndex, applyingHistoryRef, showHelp, ctrlCPending, setCtrlCPending],
   );
 
   const handleInputSubmit = useCallback(
@@ -313,6 +314,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       slashSuggestionIndex,
       isPending,
       setQueuedMessages,
+      setValue,
+      setInputRevision,
       handleSubmit,
     ],
   );
