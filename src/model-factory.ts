@@ -2,21 +2,11 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { appConfig } from "./app-config";
+import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
-import type { ProviderCredentials } from "./provider-config";
 import { providerFromModel } from "./provider-config";
-import type { Provider } from "./provider-contract";
 
-export type ModelCredentials = Partial<Record<Provider, ProviderCredentials>>;
-
-const defaultCredentials = (): ModelCredentials => ({
-  openai: appConfig.openai,
-  anthropic: appConfig.anthropic,
-  google: appConfig.google,
-});
-
-export function createModel(qualifiedModel: string, credentials?: ModelCredentials): LanguageModelV3 {
+export function createModel(qualifiedModel: string, credentials?: ProviderCredentialsMap): LanguageModelV3 {
   const creds = credentials ?? defaultCredentials();
   const provider = providerFromModel(qualifiedModel);
   const slash = qualifiedModel.indexOf("/");

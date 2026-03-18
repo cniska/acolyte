@@ -316,8 +316,7 @@ describe("distillMemorySource", () => {
           }
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -359,8 +358,7 @@ describe("distillMemorySource", () => {
           if (systemPrompt === REFLECTOR_PROMPT) return "compact";
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 5, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 5, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -395,8 +393,7 @@ describe("distillMemorySource", () => {
           }
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 100_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 100_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -419,8 +416,7 @@ describe("distillMemorySource", () => {
             return "[session] fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -442,8 +438,7 @@ describe("distillMemorySource", () => {
             return "[session] fact line\n- Current task: Bullet task\n* Next step: Bullet next";
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -470,8 +465,7 @@ describe("distillMemorySource", () => {
             ].join("\n");
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -501,8 +495,7 @@ describe("distillMemorySource", () => {
           if (systemPrompt === OBSERVER_PROMPT) return " [session] prefers   short answers ";
           return "";
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -521,8 +514,7 @@ describe("distillMemorySource", () => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return ["untagged fact should be dropped", "Current task: keep tagged facts only"].join("\n");
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -548,8 +540,7 @@ describe("distillMemorySource", () => {
             "[user] prefers concise replies",
           ].join("\n");
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -581,8 +572,7 @@ describe("distillMemorySource", () => {
             "[session] valid session fact",
           ].join("\n");
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       const metrics = await source.commit({
@@ -606,8 +596,10 @@ describe("distillMemorySource", () => {
       const source = createDistillMemorySource(
         store,
         async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
-        { commitScope: "project" },
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        {
+          commitScope: "project",
+          config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -638,8 +630,7 @@ describe("distillMemorySource", () => {
             "Next step: add promotion tests",
           ].join("\n");
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -679,8 +670,7 @@ describe("distillMemorySource", () => {
             "[proj] malformed tag dropped",
           ].join("\n");
         },
-        {},
-        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
       if (!source.commit) throw new Error("expected commit handler");
       const metrics = await source.commit({
@@ -759,8 +749,7 @@ describe("distillMemorySource", () => {
             if (systemPrompt !== OBSERVER_PROMPT) return "";
             return fixture.observed;
           },
-          {},
-          fixtureConfig,
+          { config: fixtureConfig },
         );
         if (!source.commit) throw new Error("expected commit handler");
         const metrics = await source.commit({

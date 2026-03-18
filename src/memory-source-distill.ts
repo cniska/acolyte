@@ -25,6 +25,7 @@ type DistillSourceOptions = {
   id?: string;
   loadScope?: DistillScope;
   commitScope?: DistillScope | "none";
+  config?: DistillConfig;
 };
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;
@@ -304,9 +305,9 @@ export function createDistillMemorySource(
   injectedStore?: DistillStore,
   runner: DistillRunner = runDistillLLM,
   options: DistillSourceOptions = {},
-  config: DistillConfig = defaultDistillConfig(),
 ): MemorySource {
   const ds = injectedStore ?? store;
+  const config = options.config ?? defaultDistillConfig();
   const id = options.id ?? "distill_session";
   const loadScope = options.loadScope ?? "session";
   const commitScope = options.commitScope ?? "session";

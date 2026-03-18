@@ -1,6 +1,6 @@
-import { appConfig } from "./app-config";
+import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
-import { isProviderAvailable, type ProviderCredentials } from "./provider-config";
+import { isProviderAvailable } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
 function normalizeBaseUrl(url: string): string {
@@ -85,14 +85,6 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
     return [];
   }
 }
-
-type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
-
-const defaultCredentials = (): ProviderCredentialsMap => ({
-  openai: appConfig.openai,
-  anthropic: appConfig.anthropic,
-  google: appConfig.google,
-});
 
 function providerConfig(provider: Provider, credentials: ProviderCredentialsMap): ProviderFetchConfig {
   const creds = credentials[provider] ?? {};

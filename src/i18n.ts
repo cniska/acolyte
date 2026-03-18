@@ -40,12 +40,5 @@ export function createTranslator(locale: TranslationLocale): Translator {
 }
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
-  const vars = (args[0] ?? undefined) as Record<string, TranslationValue> | undefined;
-  const locale: TranslationLocale = appConfig.locale;
-  const templates = TRANSLATIONS[locale] ?? TRANSLATIONS.en;
-  if (vars && "count" in vars && Number(vars.count) === 1) {
-    const oneKey = `${key}.one` as TranslationKey;
-    if (oneKey in templates) return interpolate(templates[oneKey], vars);
-  }
-  return interpolate(templates[key] ?? key, vars);
+  return createTranslator(appConfig.locale)(key, ...args);
 }
