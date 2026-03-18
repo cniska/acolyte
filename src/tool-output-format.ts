@@ -416,7 +416,19 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
   let oldLine = 0;
   let newLine = 0;
   let inHunk = false;
+  let fileCount = 0;
   for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      fileCount += 1;
+      inHunk = false;
+      if (fileCount > 1) {
+        const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
+        const path = pathMatch?.[1] ?? line.slice("diff --git ".length);
+        rendered.push({ kind: "text", text: path });
+      }
+      continue;
+    }
+    if (line.startsWith("--- ") || line.startsWith("+++ ")) continue;
     if (line.startsWith("@@")) {
       const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
       if (match) {
@@ -426,7 +438,7 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
       }
       continue;
     }
-    if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) continue;
+    if (!inHunk) continue;
     if (line.startsWith("+")) {
       rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
       newLine += 1;
