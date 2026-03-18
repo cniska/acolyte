@@ -1,5 +1,7 @@
-import { getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
-import { useAsyncEffect, useInterval } from "./tui/effects";
+import { useState } from "react";
+import { extractAtReferenceQuery, getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
+import { suggestSlashCommands } from "./chat-slash";
+import { useAsyncEffect, useInterval, useSyncEffect } from "./tui/effects";
 
 const THINKING_ANIMATION_INTERVAL_MS = 60;
 
@@ -31,6 +33,40 @@ export function useAtSuggestionsEffect(
     },
     [atQuery, setAtSuggestionIndex, setAtSuggestions],
   );
+}
+
+export type SuggestionsState = {
+  slashSuggestions: string[];
+  slashSuggestionIndex: number;
+  setSlashSuggestionIndex: (next: number | ((current: number) => number)) => void;
+  atQuery: string | null;
+  atSuggestions: string[];
+  atSuggestionIndex: number;
+  setAtSuggestionIndex: (next: number | ((current: number) => number)) => void;
+};
+
+export function useSuggestions(value: string): SuggestionsState {
+  const slashSuggestions = suggestSlashCommands(value);
+  const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
+  const atQuery = extractAtReferenceQuery(value);
+  const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
+  const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
+
+  useSyncEffect(() => {
+    setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
+  }, [slashSuggestions]);
+
+  useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
+
+  return {
+    slashSuggestions,
+    slashSuggestionIndex,
+    setSlashSuggestionIndex,
+    atQuery,
+    atSuggestions,
+    atSuggestionIndex,
+    setAtSuggestionIndex,
+  };
 }
 
 export function useThinkingAnimationEffect(

@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
-import { clampSuggestionIndex, useAtSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
-import { extractAtReferenceQuery } from "./chat-file-ref";
+import { useSuggestions, useThinkingAnimationEffect } from "./chat-effects";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
@@ -12,7 +11,6 @@ import { createPickerHandlers } from "./chat-picker-handlers";
 import { type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
-import { suggestSlashCommands } from "./chat-slash";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { createInputHistory } from "./chat-turn";
 import type { Client, PendingState } from "./client-contract";
@@ -105,15 +103,15 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setTokenUsage(currentSession.tokenUsage ?? []);
   }, [currentSession]);
 
-  const slashSuggestions = suggestSlashCommands(value);
-  const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
-  const atQuery = extractAtReferenceQuery(value);
-
-  useSyncEffect(() => {
-    setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
-  }, [slashSuggestions]);
-  const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
-  const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
+  const {
+    slashSuggestions,
+    slashSuggestionIndex,
+    setSlashSuggestionIndex,
+    atQuery,
+    atSuggestions,
+    atSuggestionIndex,
+    setAtSuggestionIndex,
+  } = useSuggestions(value);
 
   const [showHelp, setShowHelp] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -146,7 +144,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     }
   }, []);
 
-  useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useThinkingAnimationEffect(isPending, THINKING_PULSE_FRAMES, setThinkingFrame);
 
   const activateSkill = createSkillActivator(
@@ -295,7 +292,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
         slashSuggestions,
         slashSuggestionIndex,
       });
-      log.debug("chat.submit", { value: next, suggestions: slashSuggestions.join(","), resolved: resolved.kind });
+      log.debug("chat.submit", {
+        value: next,
+        suggestions: slashSuggestions.join(","),
+        resolved: resolved.kind,
+      });
       if (resolved.kind === "autocomplete") {
         setValue(resolved.value);
         setInputRevision((current) => current + 1);

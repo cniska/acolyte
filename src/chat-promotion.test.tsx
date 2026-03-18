@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { ChatRow } from "./chat-contract";
 import { appendPromotedItems, applyPromotion, usePromotion } from "./chat-promotion";
 import { createSession } from "./test-utils";
 import { renderHook, wait } from "./tui-test-utils";
@@ -64,7 +65,7 @@ describe("usePromotion hook", () => {
 
   test("promote moves live rows to promoted", async () => {
     const session = createSession({ id: "sess_p1" });
-    const liveRows = [{ id: "row_1", kind: "user" as const, content: "hello" }];
+    const liveRows: ChatRow[] = [{ id: "row_1", kind: "user", content: "hello" }];
     const rowsRef = { current: liveRows };
     let rowsState = liveRows;
 
