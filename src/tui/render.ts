@@ -112,6 +112,14 @@ export function render(node: ReactNode): RenderInstance {
     return visible === 0 ? 1 : Math.ceil(visible / cols);
   }
 
+  function syncWrite(data: string) {
+    if (stdout.isTTY) {
+      stdout.write(`${ansi.syncStart}${data}${ansi.syncEnd}`);
+    } else {
+      stdout.write(data);
+    }
+  }
+
   function commitRender() {
     if (exited) return;
     const { staticItems, active } = serializeSplit(root);
@@ -132,7 +140,7 @@ export function render(node: ReactNode): RenderInstance {
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenOverflowText = "";
-      stdout.write(buf + active);
+      syncWrite(buf + active);
       lastActive = active;
       lastActiveLineCount = Math.min(countRows(active), maxLiveRows);
       return;
@@ -143,7 +151,7 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If content shrank (e.g. graduation removed rows), reset frozen state.
+    // If content shrank (e.g. promotion removed rows), reset frozen state.
     if (allLines.length < frozenLineCount) {
       frozenLineCount = 0;
       frozenOverflowText = "";
@@ -165,8 +173,7 @@ export function render(node: ReactNode): RenderInstance {
     }
 
     if (splitIdx === 0) {
-      // Everything fits on screen — normal erase + rewrite.
-      stdout.write(eraseSequence() + liveLines.join("\n"));
+      syncWrite(eraseSequence() + liveLines.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     } else {
       // Overflow: flush top lines to scrollback (they are stable during
@@ -177,7 +184,7 @@ export function render(node: ReactNode): RenderInstance {
       frozenLineCount += splitIdx;
       const overflowText = overflow.join("\n");
       frozenOverflowText += `${overflowText}\n`;
-      stdout.write(`${eraseSequence()}${overflowText}\n${onScreen.join("\n")}`);
+      syncWrite(`${eraseSequence()}${overflowText}\n${onScreen.join("\n")}`);
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 

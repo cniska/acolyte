@@ -20,9 +20,9 @@ describe("chat tui visual regression: header", () => {
     const out = renderPlain(
       <ChatHeader
         lines={[
-          { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
-          { id: "session", text: "version 0.1.0", dim: false, brand: false },
-          { id: "context", text: "session sess_demo1234", dim: true, brand: false },
+          { id: "title", text: "Acolyte" },
+          { id: "session", text: "version 0.1.0" },
+          { id: "context", text: "session sess_demo1234" },
         ]}
         brandColor={palette.brand}
         mascot={palette.mascot}

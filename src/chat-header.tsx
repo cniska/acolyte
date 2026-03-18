@@ -5,8 +5,6 @@ export type HeaderLine = {
   id: string;
   text: string;
   suffix?: string;
-  dim: boolean;
-  brand: boolean;
 };
 
 type ChatHeaderProps = {
@@ -24,12 +22,12 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const logoColumnWidth = 11;
   const renderMetaLine = (text: string | undefined): React.ReactNode => {
     if (!text) return <Text dimColor />;
-    const match = text.match(/^(\S+\s+)(.*)$/);
-    if (!match) return <Text color="white">{text}</Text>;
+    const [key, ...rest] = text.split(" ");
+    if (rest.length === 0) return <Text color="white">{text}</Text>;
     return (
       <>
-        <Text dimColor>{match[1] ?? ""}</Text>
-        <Text color="white">{match[2] ?? ""}</Text>
+        <Text dimColor>{key} </Text>
+        <Text color="white">{rest.join(" ")}</Text>
       </>
     );
   };

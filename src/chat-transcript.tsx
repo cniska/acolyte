@@ -191,16 +191,16 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
 type ChatTranscriptProps = {
   rows: ChatRow[];
   pendingState?: PendingState | null;
-  thinkingFrame: number;
+  pendingFrame: number;
   queuedMessages?: string[];
-  thinkingStartedAt?: number | null;
+  pendingStartedAt?: number | null;
   runningUsage?: { inputTokens: number; outputTokens: number } | null;
 };
 
 const MAX_TRANSCRIPT_WIDTH = 120;
 
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
-  const { rows, pendingState, thinkingFrame, thinkingStartedAt, runningUsage } = props;
+  const { rows, pendingState, pendingFrame, pendingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
   const hasContent = rows.length > 0 || (pendingState !== null && pendingState !== undefined);
   const isQueued = pendingState?.kind === "queued";
@@ -208,14 +208,14 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const isRunning = pendingState?.kind === "running";
   const isPending = pendingState !== null && pendingState !== undefined;
   const elapsedSec =
-    isRunning && typeof thinkingStartedAt === "number"
-      ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
+    isRunning && typeof pendingStartedAt === "number"
+      ? Math.max(0, Math.floor((Date.now() - pendingStartedAt) / 1000))
       : 0;
-  const runningBlinkOn = Math.abs(thinkingFrame) % pulsePeriod < pulsePeriod / 2;
+  const runningBlinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
   const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
   const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
   const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
-  const thinkingText = (() => {
+  const pendingText = (() => {
     if (!pendingState) return "";
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
     if (pendingState.kind === "running") {
@@ -254,9 +254,9 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
             </Box>
             <Box width={contentWidth}>
               {isRunning ? (
-                <ShimmerText text={thinkingText} frame={thinkingFrame} totalFrames={16} />
+                <ShimmerText text={pendingText} frame={pendingFrame} totalFrames={16} />
               ) : (
-                <Text dimColor>{thinkingText}</Text>
+                <Text dimColor>{pendingText}</Text>
               )}
             </Box>
           </Box>

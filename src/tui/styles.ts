@@ -32,6 +32,8 @@ export const ansi = {
   },
   cursorSavePosition: "\x1b7",
   cursorRestorePosition: "\x1b8",
+  syncStart: `${ESC}?2026h`,
+  syncEnd: `${ESC}?2026l`,
 } as const;
 
 export const kitty = {

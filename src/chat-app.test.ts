@@ -7,7 +7,8 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendGraduatedItems, applyGraduation, initialTranscriptRows } from "./chat-ui";
+import { appendPromotedItems, applyPromotion } from "./chat-promotion";
+import { toRows } from "./chat-session";
 import { createSession, createStore } from "./test-utils";
 
 function createUiStore() {
@@ -95,7 +96,7 @@ describe("chat-ui helpers", () => {
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
   });
 
-  test("initialTranscriptRows hydrates transcript from resumed session messages", () => {
+  test("toRows hydrates transcript from resumed session messages", () => {
     const session = createSession({
       id: "sess_resume1",
       messages: [
@@ -104,27 +105,27 @@ describe("chat-ui helpers", () => {
         { id: "msg_3", role: "assistant", content: "hi", timestamp: "2026-02-23T00:00:02.000Z" },
       ],
     });
-    const rows = initialTranscriptRows(session);
+    const rows = toRows(session.messages);
     expect(rows).toEqual([
       { id: "row_2", kind: "user", content: "hello" },
       { id: "row_3", kind: "assistant", content: "hi" },
     ]);
   });
 
-  test("applyGraduation removes captured rows and preserves concurrently added rows", () => {
-    const graduated: never[] = [];
+  test("applyPromotion removes captured rows and preserves concurrently added rows", () => {
+    const promoted: never[] = [];
     const captured = [
       { id: "row_1", kind: "user" as const, content: "hello" },
       { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
-    // Simulate concurrent addition: live state has captured rows + a new one added during graduation
+    // Simulate concurrent addition: live state has captured rows + a new one added during promotion
     const live = [...captured, { id: "row_3", kind: "system" as const, content: "/usage output" }];
-    const { nextGraduated, nextLive } = applyGraduation(graduated, captured, live);
-    expect(nextGraduated).toEqual(captured);
+    const { nextPromoted, nextLive } = applyPromotion(promoted, captured, live);
+    expect(nextPromoted).toEqual(captured);
     expect(nextLive).toEqual([{ id: "row_3", kind: "system", content: "/usage output" }]);
   });
 
-  test("appendGraduatedItems ignores duplicate row ids", () => {
+  test("appendPromotedItems ignores duplicate row ids", () => {
     const initial = [
       { id: "header_sess_demo", kind: "header" as const, lines: [] },
       { id: "row_1", kind: "user" as const, content: "hello" },
@@ -134,7 +135,7 @@ describe("chat-ui helpers", () => {
       { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
 
-    expect(appendGraduatedItems(initial, next)).toEqual([
+    expect(appendPromotedItems(initial, next)).toEqual([
       { id: "header_sess_demo", kind: "header", lines: [] },
       { id: "row_1", kind: "user", content: "hello" },
       { id: "row_2", kind: "assistant", content: "hi" },

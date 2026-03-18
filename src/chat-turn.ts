@@ -85,7 +85,7 @@ type RunAssistantTurnParams = {
   useMemory?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
-  thinkingStartedAt: number;
+  pendingStartedAt: number;
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
 };
 
@@ -123,7 +123,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
     modelCalls: reply.modelCalls,
   };
-  const durationMs = Date.now() - params.thinkingStartedAt;
+  const durationMs = Date.now() - params.pendingStartedAt;
   if (durationMs >= 300) {
     const duration = formatThoughtDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;

@@ -258,7 +258,7 @@ export type MessageHandlerHarness = {
     setValue: string[];
     setShowHelp: Array<boolean | ((current: boolean) => boolean)>;
     pendingStates: Array<PendingState | null>;
-    thinkingTransitions: boolean[];
+    pendingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
   };
@@ -284,7 +284,7 @@ export function createMessageHandlerHarness(overrides?: {
     setValue: [] as string[],
     setShowHelp: [] as Array<boolean | ((current: boolean) => boolean)>,
     pendingStates: [] as Array<PendingState | null>,
-    thinkingTransitions: [] as boolean[],
+    pendingTransitions: [] as boolean[],
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
   };
@@ -326,10 +326,10 @@ export function createMessageHandlerHarness(overrides?: {
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
     onStartPending: () => {
-      calls.thinkingTransitions.push(true);
+      calls.pendingTransitions.push(true);
     },
     onStopPending: () => {
-      calls.thinkingTransitions.push(false);
+      calls.pendingTransitions.push(false);
     },
     setPendingState: (next) => {
       calls.pendingStates.push(next);

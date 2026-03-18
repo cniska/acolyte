@@ -54,7 +54,7 @@ describe("chat turn helpers", () => {
       history: [],
       model: "gpt-5-mini",
       sessionId: "sess_test",
-      thinkingStartedAt: Date.now(),
+      pendingStartedAt: Date.now(),
       createMessage: (role, content) => ({
         id: "msg_assistant",
         role,
@@ -83,7 +83,7 @@ describe("chat turn helpers", () => {
       history: [],
       model: "gpt-5-mini",
       sessionId: "sess_test",
-      thinkingStartedAt: Date.now(),
+      pendingStartedAt: Date.now(),
       createMessage: (role, content) => ({
         id: "msg_assistant",
         role,

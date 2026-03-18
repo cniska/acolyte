@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
+import { runChat } from "./chat-app";
 import { createMessage } from "./chat-session";
-import { runChat } from "./chat-ui";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";

@@ -53,7 +53,7 @@ type CreateMessageHandlerInput = {
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
   modeModels?: ChatRequest["modeModels"];
-  graduate?: () => void;
+  promote?: () => void;
   clearTranscript: (sessionId?: string) => void;
 };
 
@@ -92,13 +92,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     input.setPendingState({ kind: "running", mode: "work" });
     const controller = new AbortController();
     input.setInterrupt(() => controller.abort());
-    const thinkingStartedAt = Date.now();
+    const pendingStartedAt = Date.now();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
     });
 
     await input.persist();
-    let keepThinkingForRemoteTask = false;
+    let keepPendingForRemoteTask = false;
 
     try {
       const turn = await runAssistantTurn({
@@ -132,7 +132,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               break;
           }
         },
-        thinkingStartedAt,
+        pendingStartedAt,
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
@@ -158,7 +158,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           onStopPending: stopPending,
         });
         if (startedFollowup) {
-          keepThinkingForRemoteTask = true;
+          keepPendingForRemoteTask = true;
           return;
         }
       }
@@ -187,7 +187,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       }
     } finally {
       input.setInterrupt(null);
-      if (!keepThinkingForRemoteTask) {
+      if (!keepPendingForRemoteTask) {
         stopPending();
         input.setPendingState(null);
       }
@@ -280,7 +280,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {
-      input.graduate?.();
+      input.promote?.();
       return;
     }
     userText = commandResult.userText;
