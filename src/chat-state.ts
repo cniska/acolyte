@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import { clampSuggestionIndex, useAtSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
-import { appendGraduatedItems, createHeaderItem, type GraduatedItem } from "./chat-graduation";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
@@ -10,6 +9,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
+import { appendPromotedItems, createHeaderItem, type PromotedItem } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";
@@ -37,7 +37,7 @@ export interface ChatAppProps {
 }
 
 export interface ChatStateResult {
-  graduatedRows: GraduatedItem[];
+  promotedRows: PromotedItem[];
   rows: ChatRow[];
   pendingState: PendingState | null;
   thinkingFrame: number;
@@ -120,25 +120,26 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
 
-  const [graduatedRows, setGraduatedRows] = useState<GraduatedItem[]>(() => [
+  const [promotedRows, setPromotedRows] = useState<PromotedItem[]>(() => [
     createHeaderItem(props.version, session.id),
     ...toRows(session.messages),
   ]);
 
   const interruptRef = useRef<(() => void) | null>(null);
+  const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
   const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`;
 
-  const graduate = useCallback(() => {
+  const promote = useCallback(() => {
     const current = rowsRef.current;
-    log.debug("chat.graduate.trigger", { rows: current.length });
+    log.debug("chat.promote.trigger", { rows: current.length });
     if (current.length === 0) return;
-    const graduatedIds = new Set(current.map((row) => row.id));
-    setGraduatedRows((prev) => appendGraduatedItems(prev, current));
+    const promotedIds = new Set(current.map((row) => row.id));
+    setPromotedRows((prev) => appendPromotedItems(prev, current));
     setRows((live) => {
-      const surviving = live.filter((row) => !graduatedIds.has(row.id));
-      log.debug("chat.graduate.done", { graduated: graduatedIds.size, surviving: surviving.length });
+      const surviving = live.filter((row) => !promotedIds.has(row.id));
+      log.debug("chat.promote.done", { promoted: promotedIds.size, surviving: surviving.length });
       return surviving;
     });
   }, []);
@@ -146,7 +147,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const clearTranscript = useCallback(
     (sessionId?: string) => {
       clearScreen();
-      setGraduatedRows((prev) => [...prev, createHeaderItem(props.version, sessionId ?? currentSession.id)]);
+      setPromotedRows((prev) => [...prev, createHeaderItem(props.version, sessionId ?? currentSession.id)]);
       setRows([]);
     },
     [props.version, currentSession.id],
@@ -158,8 +159,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   useAsyncEffect(async (cancelled) => {
     try {
-      const value = await shownBranch();
-      if (!cancelled()) setBranch(value);
+      const result = await shownBranch();
+      if (!cancelled()) setBranch(result);
     } catch {
       if (!cancelled()) setBranch(null);
     }
@@ -186,7 +187,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setTokenUsage,
     setRows,
     setRowsDirect: setRows,
-    setPicker: (next) => setPicker(next),
+    setPicker,
     setShowHelp,
     setValue,
     persist,
@@ -221,11 +222,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     onStopPending: () => {
       setPendingState(null);
       setRunningUsage(null);
-      graduate();
+      promote();
       setQueuedMessages((current) => {
         if (current.length === 0) return current;
         const [next, ...rest] = current;
-        if (next) queueMicrotask(() => void handleSubmit(next));
+        if (next) queueMicrotask(() => void handleSubmitRef.current?.(next));
         return rest;
       });
     },
@@ -238,9 +239,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       interruptRef.current = handler;
     },
     useMemory,
-    graduate,
+    promote,
     clearTranscript,
   });
+  handleSubmitRef.current = handleSubmit;
 
   useChatKeybindings({
     persist,
@@ -332,7 +334,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   );
 
   return {
-    graduatedRows,
+    promotedRows,
     rows,
     pendingState,
     thinkingFrame,

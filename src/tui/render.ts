@@ -151,7 +151,7 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If content shrank (e.g. graduation removed rows), reset frozen state.
+    // If content shrank (e.g. promotion removed rows), reset frozen state.
     if (allLines.length < frozenLineCount) {
       frozenLineCount = 0;
       frozenOverflowText = "";

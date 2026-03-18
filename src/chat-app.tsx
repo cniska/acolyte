@@ -1,6 +1,6 @@
-import { isHeaderItem } from "./chat-graduation";
 import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
+import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
 import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
 import { palette } from "./palette";
@@ -12,7 +12,7 @@ function ChatApp(props: ChatAppProps) {
 
   return (
     <Box flexDirection="column">
-      <Static items={state.graduatedRows}>
+      <Static items={state.promotedRows}>
         {(item) => {
           if (isHeaderItem(item)) {
             return (

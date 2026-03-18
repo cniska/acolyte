@@ -2,12 +2,12 @@ import type { ChatRow } from "./chat-contract";
 import type { HeaderLine } from "./chat-header";
 
 export type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
-export type GraduatedItem = ChatRow | HeaderItem;
+export type PromotedItem = ChatRow | HeaderItem;
 
-export function appendGraduatedItems(current: GraduatedItem[], next: readonly GraduatedItem[]): GraduatedItem[] {
+export function appendPromotedItems(current: PromotedItem[], next: readonly PromotedItem[]): PromotedItem[] {
   if (next.length === 0) return current;
   const seen = new Set(current.map((item) => item.id));
-  const appended: GraduatedItem[] = [];
+  const appended: PromotedItem[] = [];
   for (const item of next) {
     if (seen.has(item.id)) continue;
     seen.add(item.id);
@@ -16,19 +16,19 @@ export function appendGraduatedItems(current: GraduatedItem[], next: readonly Gr
   return appended.length > 0 ? [...current, ...appended] : current;
 }
 
-export function applyGraduation(
-  graduated: GraduatedItem[],
-  toGraduate: ChatRow[],
+export function applyPromotion(
+  promoted: PromotedItem[],
+  toPromote: ChatRow[],
   live: ChatRow[],
-): { nextGraduated: GraduatedItem[]; nextLive: ChatRow[] } {
-  const graduatedIds = new Set(toGraduate.map((row) => row.id));
+): { nextPromoted: PromotedItem[]; nextLive: ChatRow[] } {
+  const promotedIds = new Set(toPromote.map((row) => row.id));
   return {
-    nextGraduated: appendGraduatedItems(graduated, toGraduate),
-    nextLive: live.filter((row) => !graduatedIds.has(row.id)),
+    nextPromoted: appendPromotedItems(promoted, toPromote),
+    nextLive: live.filter((row) => !promotedIds.has(row.id)),
   };
 }
 
-export function isHeaderItem(item: GraduatedItem): item is HeaderItem {
+export function isHeaderItem(item: PromotedItem): item is HeaderItem {
   return "kind" in item && item.kind === "header";
 }
 

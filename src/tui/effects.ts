@@ -28,14 +28,6 @@ export function useInterval(callback: () => void, delayMs: number | null): void 
 }
 
 /**
- * Run an async effect with automatic cancellation. The `cancelled` flag is
- * set when the effect is cleaned up — the caller should check it after every
- * `await` and bail if true.
- *
- * This is the sanctioned way to perform async work that depends on reactive
- * values. For mount-only async work, prefer `useMountEffect`.
- */
-/**
  * Run a synchronous side effect when dependencies change. Use for state-sync
  * cases where render-time setState would cause infinite loops (e.g. syncing
  * derived arrays that produce new references each render).
@@ -49,6 +41,14 @@ export function useSyncEffect(effect: () => void, deps: readonly unknown[]): voi
   useEffect(effect, deps);
 }
 
+/**
+ * Run an async effect with automatic cancellation. The `cancelled` flag is
+ * set when the effect is cleaned up — the caller should check it after every
+ * `await` and bail if true.
+ *
+ * This is the sanctioned way to perform async work that depends on reactive
+ * values. For mount-only async work, prefer `useMountEffect`.
+ */
 export function useAsyncEffect(effect: (cancelled: () => boolean) => Promise<void>, deps: readonly unknown[]): void {
   const effectRef = useRef(effect);
   effectRef.current = effect;

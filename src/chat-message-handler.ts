@@ -53,7 +53,7 @@ type CreateMessageHandlerInput = {
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
   modeModels?: ChatRequest["modeModels"];
-  graduate?: () => void;
+  promote?: () => void;
   clearTranscript: (sessionId?: string) => void;
 };
 
@@ -280,7 +280,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {
-      input.graduate?.();
+      input.promote?.();
       return;
     }
     userText = commandResult.userText;

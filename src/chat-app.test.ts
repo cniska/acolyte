@@ -7,7 +7,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendGraduatedItems, applyGraduation } from "./chat-graduation";
+import { appendPromotedItems, applyPromotion } from "./chat-promotion";
 import { toRows } from "./chat-session";
 import { createSession, createStore } from "./test-utils";
 
@@ -112,20 +112,20 @@ describe("chat-ui helpers", () => {
     ]);
   });
 
-  test("applyGraduation removes captured rows and preserves concurrently added rows", () => {
-    const graduated: never[] = [];
+  test("applyPromotion removes captured rows and preserves concurrently added rows", () => {
+    const promoted: never[] = [];
     const captured = [
       { id: "row_1", kind: "user" as const, content: "hello" },
       { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
-    // Simulate concurrent addition: live state has captured rows + a new one added during graduation
+    // Simulate concurrent addition: live state has captured rows + a new one added during promotion
     const live = [...captured, { id: "row_3", kind: "system" as const, content: "/usage output" }];
-    const { nextGraduated, nextLive } = applyGraduation(graduated, captured, live);
-    expect(nextGraduated).toEqual(captured);
+    const { nextPromoted, nextLive } = applyPromotion(promoted, captured, live);
+    expect(nextPromoted).toEqual(captured);
     expect(nextLive).toEqual([{ id: "row_3", kind: "system", content: "/usage output" }]);
   });
 
-  test("appendGraduatedItems ignores duplicate row ids", () => {
+  test("appendPromotedItems ignores duplicate row ids", () => {
     const initial = [
       { id: "header_sess_demo", kind: "header" as const, lines: [] },
       { id: "row_1", kind: "user" as const, content: "hello" },
@@ -135,7 +135,7 @@ describe("chat-ui helpers", () => {
       { id: "row_2", kind: "assistant" as const, content: "hi" },
     ];
 
-    expect(appendGraduatedItems(initial, next)).toEqual([
+    expect(appendPromotedItems(initial, next)).toEqual([
       { id: "header_sess_demo", kind: "header", lines: [] },
       { id: "row_1", kind: "user", content: "hello" },
       { id: "row_2", kind: "assistant", content: "hi" },
