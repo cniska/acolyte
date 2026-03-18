@@ -1,5 +1,10 @@
+import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
 import type { HeaderLine } from "./chat-header";
+import { toRows } from "./chat-session";
+import { log } from "./log";
+import type { Session } from "./session-contract";
+import { clearScreen } from "./ui";
 
 export type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
 export type PromotedItem = ChatRow | HeaderItem;
@@ -42,4 +47,53 @@ export function createHeaderItem(version: string, sessionId: string): HeaderItem
       { id: "context", text: `session ${sessionId}` },
     ],
   };
+}
+
+type UsePromotionInput = {
+  version: string;
+  session: Session;
+  currentSessionId: string;
+  rowsRef: { current: ChatRow[] };
+  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+};
+
+type UsePromotionResult = {
+  promotedRows: PromotedItem[];
+  promote: () => void;
+  clearTranscript: (sessionId?: string) => void;
+  setPromotedRows: (updater: (prev: PromotedItem[]) => PromotedItem[]) => void;
+};
+
+export function usePromotion(input: UsePromotionInput): UsePromotionResult {
+  const [promotedRows, setPromotedRows] = useState<PromotedItem[]>(() => [
+    createHeaderItem(input.version, input.session.id),
+    ...toRows(input.session.messages),
+  ]);
+
+  const promote = useCallback(() => {
+    const current = input.rowsRef.current;
+    log.debug("chat.promote.trigger", { rows: current.length });
+    if (current.length === 0) return;
+    const promotedIds = new Set(current.map((row) => row.id));
+    setPromotedRows((prev) => appendPromotedItems(prev, current));
+    input.setRows((live) => {
+      const surviving = live.filter((row) => !promotedIds.has(row.id));
+      log.debug("chat.promote.done", { promoted: promotedIds.size, surviving: surviving.length });
+      return surviving;
+    });
+  }, [input.rowsRef, input.setRows]);
+
+  const currentSessionIdRef = useRef(input.currentSessionId);
+  currentSessionIdRef.current = input.currentSessionId;
+
+  const clearTranscript = useCallback(
+    (sessionId?: string) => {
+      clearScreen();
+      setPromotedRows((prev) => [...prev, createHeaderItem(input.version, sessionId ?? currentSessionIdRef.current)]);
+      input.setRows(() => []);
+    },
+    [input.version, input.setRows],
+  );
+
+  return { promotedRows, promote, clearTranscript, setPromotedRows };
 }

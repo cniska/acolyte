@@ -9,7 +9,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { appendPromotedItems, createHeaderItem, type PromotedItem } from "./chat-promotion";
+import { type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";
@@ -22,7 +22,6 @@ import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skills";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
-import { clearScreen } from "./ui";
 
 const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
@@ -120,38 +119,19 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
 
-  const [promotedRows, setPromotedRows] = useState<PromotedItem[]>(() => [
-    createHeaderItem(props.version, session.id),
-    ...toRows(session.messages),
-  ]);
+  const { promotedRows, promote, clearTranscript } = usePromotion({
+    version: props.version,
+    session,
+    currentSessionId: currentSession.id,
+    rowsRef,
+    setRows,
+  });
 
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
   const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`;
-
-  const promote = useCallback(() => {
-    const current = rowsRef.current;
-    log.debug("chat.promote.trigger", { rows: current.length });
-    if (current.length === 0) return;
-    const promotedIds = new Set(current.map((row) => row.id));
-    setPromotedRows((prev) => appendPromotedItems(prev, current));
-    setRows((live) => {
-      const surviving = live.filter((row) => !promotedIds.has(row.id));
-      log.debug("chat.promote.done", { promoted: promotedIds.size, surviving: surviving.length });
-      return surviving;
-    });
-  }, []);
-
-  const clearTranscript = useCallback(
-    (sessionId?: string) => {
-      clearScreen();
-      setPromotedRows((prev) => [...prev, createHeaderItem(props.version, sessionId ?? currentSession.id)]);
-      setRows([]);
-    },
-    [props.version, currentSession.id],
-  );
 
   useMountEffect(() => {
     loadSkills().catch(() => {});
