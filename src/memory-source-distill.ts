@@ -9,6 +9,13 @@ import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
+export type DistillConfig = {
+  model: string;
+  messageThreshold: number;
+  reflectionThresholdTokens: number;
+  maxOutputTokens: number;
+};
+
 const store: DistillStore = createFileDistillStore();
 const REFLECTION_RETRY_LIMIT = 2;
 
@@ -37,9 +44,9 @@ function clampToTokenEstimate(content: string, maxTokens: number): string {
   return clamped;
 }
 
-function needsReflectionRetry(reflected: string, sourceTokenEstimate: number): boolean {
+function needsReflectionRetry(reflected: string, sourceTokenEstimate: number, config: DistillConfig): boolean {
   const reflectedTokens = estimateTokens(reflected);
-  return reflectedTokens >= sourceTokenEstimate || reflectedTokens > appConfig.distill.reflectionThresholdTokens;
+  return reflectedTokens >= sourceTokenEstimate || reflectedTokens > config.reflectionThresholdTokens;
 }
 
 function parseContinuationState(text: string): { currentTask?: string; nextStep?: string } {
@@ -155,6 +162,8 @@ function splitScopedObservation(observed: string): {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
+const defaultDistillConfig = (): DistillConfig => appConfig.distill;
+
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
   const model = createModel(normalizeModel(appConfig.distill.model));
   const result = await model.doGenerate({
@@ -234,6 +243,7 @@ async function commitDistillForKey(
   key: string,
   observed: string,
   runner: DistillRunner,
+  config: DistillConfig,
 ): Promise<void> {
   const existingEntries = await ds.list(key);
   const latestObservation = existingEntries.filter((e) => e.tier === "observation").slice(-1)[0];
@@ -258,7 +268,7 @@ async function commitDistillForKey(
     ? observations.filter((e) => e.createdAt > latestReflection.createdAt)
     : observations;
   const totalTokens = pendingObservations.reduce((sum, e) => sum + e.tokenEstimate, 0);
-  if (totalTokens < appConfig.distill.reflectionThresholdTokens) return;
+  if (totalTokens < config.reflectionThresholdTokens) return;
 
   const allObservations = pendingObservations.map((o) => o.content).join("\n\n---\n\n");
   let reflected = "";
@@ -268,11 +278,11 @@ async function commitDistillForKey(
         ? ""
         : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
     const reflectedRaw = await runner(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
-    reflected = clampToTokenEstimate(reflectedRaw, appConfig.distill.maxOutputTokens);
+    reflected = clampToTokenEstimate(reflectedRaw, config.maxOutputTokens);
     if (!reflected.trim()) return;
-    if (!needsReflectionRetry(reflected, totalTokens)) break;
+    if (!needsReflectionRetry(reflected, totalTokens, config)) break;
   }
-  if (needsReflectionRetry(reflected, totalTokens)) return;
+  if (needsReflectionRetry(reflected, totalTokens, config)) return;
 
   const reflection: DistillRecord = {
     id: `dst_${createId()}`,
@@ -294,6 +304,7 @@ export function createDistillMemorySource(
   injectedStore?: DistillStore,
   runner: DistillRunner = runDistillLLM,
   options: DistillSourceOptions = {},
+  config: DistillConfig = defaultDistillConfig(),
 ): MemorySource {
   const ds = injectedStore ?? store;
   const id = options.id ?? "distill_session";
@@ -312,17 +323,17 @@ export function createDistillMemorySource(
       if (commitScope === "none") return;
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
-      if (ctx.messages.length < appConfig.distill.messageThreshold) return;
+      if (ctx.messages.length < config.messageThreshold) return;
 
       const recentMessages = ctx.messages.slice(-DISTILL_CONTEXT_MESSAGE_WINDOW);
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");
       const observedRaw = await runner(OBSERVER_PROMPT, distillInput);
-      const observed = clampToTokenEstimate(observedRaw, appConfig.distill.maxOutputTokens);
+      const observed = clampToTokenEstimate(observedRaw, config.maxOutputTokens);
       if (!observed.trim()) return;
       if (commitScope !== "session") {
-        await commitDistillForKey(ds, key, observed, runner);
+        await commitDistillForKey(ds, key, observed, runner, config);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
         return {
           projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
@@ -334,16 +345,16 @@ export function createDistillMemorySource(
 
       const scoped = splitScopedObservation(observed);
       if (scoped.session) {
-        await commitDistillForKey(ds, key, scoped.session, runner);
+        await commitDistillForKey(ds, key, scoped.session, runner, config);
       }
 
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner);
+        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner, config);
       }
       if (scoped.user) {
         const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner);
+        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner, config);
       }
       return {
         projectPromotedFacts: scoped.projectCount,
