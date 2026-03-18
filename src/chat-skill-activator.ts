@@ -1,11 +1,11 @@
 import { appConfig } from "./app-config";
 import type { ChatMessage, ChatRow } from "./chat-contract";
-import { compactText } from "./compact-text";
+import { type CompactBudget, compactText } from "./compact-text";
 import type { Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions } from "./skills";
 
 type CreateSkillActivatorDeps = {
-  skillBudget?: { maxChars?: number; maxLines?: number };
+  skillBudget?: CompactBudget;
 };
 
 type CreateSkillActivatorInput = {

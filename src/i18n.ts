@@ -27,18 +27,23 @@ function interpolate(template: string, vars?: Record<string, TranslationValue>):
   });
 }
 
+function translate(templates: Record<string, string>, key: string, vars?: Record<string, TranslationValue>): string {
+  if (vars && "count" in vars && Number(vars.count) === 1) {
+    const oneKey = `${key}.one`;
+    if (oneKey in templates) return interpolate(templates[oneKey], vars);
+  }
+  return interpolate(templates[key] ?? key, vars);
+}
+
 export function createTranslator(locale: TranslationLocale): Translator {
-  return <K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string => {
-    const vars = (args[0] ?? undefined) as Record<string, TranslationValue> | undefined;
-    const templates = TRANSLATIONS[locale] ?? TRANSLATIONS.en;
-    if (vars && "count" in vars && Number(vars.count) === 1) {
-      const oneKey = `${key}.one` as TranslationKey;
-      if (oneKey in templates) return interpolate(templates[oneKey], vars);
-    }
-    return interpolate(templates[key] ?? key, vars);
-  };
+  const templates = TRANSLATIONS[locale] ?? TRANSLATIONS.en;
+  return (key, ...args) => translate(templates, key, args[0] as Record<string, TranslationValue> | undefined);
 }
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
-  return createTranslator(appConfig.locale)(key, ...args);
+  return translate(
+    TRANSLATIONS[appConfig.locale] ?? TRANSLATIONS.en,
+    key,
+    args[0] as Record<string, TranslationValue> | undefined,
+  );
 }
