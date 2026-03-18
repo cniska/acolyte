@@ -23,10 +23,10 @@ These must always hold. Break them and the system breaks.
 
 1. Start from latest `main`.
 2. Read relevant files before editing. Use errors, logs, tests, and source as evidence — never guess.
-3. Keep changes scoped. Do not touch out-of-scope files or carry unrelated changes without approval.
-4. Before creating a new file: check whether an existing one is the right place.
-5. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
-6. Fix the requested problem only — no opportunistic refactors or cleanup.
+3. Keep changes scoped to the task. Defer out-of-scope work to issues.
+4. Clean up code you touch — but don't chase cleanup into unrelated files.
+5. Before creating a new file: check whether an existing one is the right place.
+6. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
 7. Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
 8. When unexpected diffs or artifacts appear: stop and confirm before continuing.
 9. Ask when intent is unclear. Lead with outcomes, changed files, and next steps — not process.

@@ -240,7 +240,7 @@ function ChatApp(props: ChatAppProps) {
     setInputHistory,
     setInputHistoryIndex,
     setInputHistoryDraft,
-    onStartPending: () => setPendingState({ kind: "queued" }),
+    onStartPending: () => setPendingState({ kind: "accepted" }),
     onStopPending: () => {
       setPendingState(null);
       setRunningUsage(null);
