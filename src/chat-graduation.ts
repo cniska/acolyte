@@ -43,9 +43,9 @@ export function createHeaderItem(version: string, sessionId: string): HeaderItem
     id: `header_${sessionId}`,
     kind: "header",
     lines: [
-      { id: "title", text: "Acolyte", suffix: "", dim: false, brand: true },
-      { id: "session", text: `version ${version}`, dim: false, brand: false },
-      { id: "context", text: `session ${sessionId}`, dim: true, brand: false },
+      { id: "title", text: "Acolyte" },
+      { id: "session", text: `version ${version}` },
+      { id: "context", text: `session ${sessionId}` },
     ],
   };
 }

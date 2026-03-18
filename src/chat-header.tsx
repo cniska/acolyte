@@ -5,8 +5,6 @@ export type HeaderLine = {
   id: string;
   text: string;
   suffix?: string;
-  dim: boolean;
-  brand: boolean;
 };
 
 type ChatHeaderProps = {
