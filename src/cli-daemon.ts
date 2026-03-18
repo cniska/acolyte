@@ -1,3 +1,4 @@
+import { alignCols } from "./chat-format";
 import type { requestLocalServerShutdown } from "./cli-server";
 import { t } from "./i18n";
 import type {
@@ -100,8 +101,7 @@ export async function psMode(args: string[], deps: DaemonModeDeps): Promise<void
     deps.printDim(t("cli.server.no_servers_running"));
     return;
   }
-  deps.printDim("PORT   PID      UPTIME");
-  for (const d of daemons) {
-    deps.printDim(`${String(d.port).padEnd(7)}${String(d.pid).padEnd(9)}${formatUptime(d.startedAt)}`);
-  }
+  const rows: string[][] = [[t("cli.server.col.port"), t("cli.server.col.pid"), t("cli.server.col.uptime")]];
+  for (const d of daemons) rows.push([String(d.port), String(d.pid), formatUptime(d.startedAt)]);
+  for (const line of alignCols(rows)) deps.printDim(line);
 }

@@ -123,8 +123,8 @@ describe("cli-daemon", () => {
     await psMode([], deps);
     expect(output()).toBe(
       dedent(`
-        PORT   PID      UPTIME
-        6767   1234     1h
+        Port  PID   Uptime
+        6767  1234  1h
       `),
     );
   });

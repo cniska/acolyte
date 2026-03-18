@@ -1,3 +1,4 @@
+import { alignCols } from "./chat-format";
 import type { CliCommandHelp } from "./cli-contract";
 import { t } from "./i18n";
 
@@ -48,13 +49,17 @@ export function printUsage(
 ): void {
   const commands = createUsageCommandRows(docs);
   const options = createUsageOptionRows();
-  const sharedPad =
-    Math.max(
-      commands.reduce((max, row) => Math.max(max, row.command.length), 0),
-      options.reduce((max, row) => Math.max(max, row.option.length), 0),
-    ) + 2;
   const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
   const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
+
+  // Align commands and options together so columns share the same width
+  const allRows: string[][] = [
+    ...commands.map((r) => [r.command, dim(r.description)]),
+    ...options.map((r) => [r.option, dim(r.description)]),
+  ];
+  const aligned = alignCols(allRows);
+  const commandLines = aligned.slice(0, commands.length);
+  const optionLines = aligned.slice(commands.length);
 
   printLineBreak(printOutput);
   printOutput(formatCliTitle(version));
@@ -65,14 +70,10 @@ export function printUsage(
   printLineBreak(printOutput);
 
   printOutput(whiteBold(t("cli.help.section.commands")));
-  for (const row of commands) {
-    printOutput(`  ${row.command.padEnd(sharedPad)}${dim(row.description)}`);
-  }
+  for (const line of commandLines) printOutput(`  ${line}`);
   printLineBreak(printOutput);
 
   printOutput(whiteBold(t("cli.help.section.options")));
-  for (const row of options) {
-    printOutput(`  ${row.option.padEnd(sharedPad)}${dim(row.description)}`);
-  }
+  for (const line of optionLines) printOutput(`  ${line}`);
   printLineBreak(printOutput);
 }

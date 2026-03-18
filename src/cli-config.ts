@@ -1,3 +1,4 @@
+import { alignCols } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type {
   readConfigForScope as readConfigForScopeType,
@@ -7,8 +8,6 @@ import type {
 } from "./config";
 import { CONFIG_SET_SCHEMAS } from "./config-contract";
 import { t } from "./i18n";
-
-const CONFIG_LIST_KEY_COLUMN_WIDTH = 16;
 
 type ConfigModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -76,20 +75,22 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const scope = parsed.scope;
       const config = scope ? await readConfigForScope(scope) : await readConfig();
-      if (scope) printDim(`${`${t("cli.config.scope")}`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${scope}`);
+      const rows: string[][] = [];
+      if (scope) rows.push([t("cli.config.scope"), scope]);
       for (const name of VALID_CONFIG_KEYS) {
         const value = (config as Record<string, unknown>)[name];
         if (value === undefined || value === "") continue;
         if (Array.isArray(value)) {
-          printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${value.join(", ")}`);
+          rows.push([`${name}:`, value.join(", ")]);
         } else if (typeof value === "object" && value !== null) {
           for (const [k, v] of Object.entries(value)) {
-            printDim(`${`${name}.${k}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(v)}`);
+            rows.push([`${name}.${k}:`, String(v)]);
           }
         } else {
-          printDim(`${`${name}:`.padEnd(CONFIG_LIST_KEY_COLUMN_WIDTH)} ${String(value)}`);
+          rows.push([`${name}:`, String(value)]);
         }
       }
+      for (const line of alignCols(rows)) printDim(line);
       return;
     }
     case "set": {

@@ -31,7 +31,7 @@ describe("cli config", () => {
       readConfig: async () => ({ locale: "en" }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("locale:          en");
+    expect(dimLines).toContain("locale:  en");
   });
 
   test("list renders memorySources array on one row", async () => {
@@ -39,7 +39,7 @@ describe("cli config", () => {
       readConfig: async () => ({ memorySources: ["distill_session", "stored"] }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("memorySources:   distill_session, stored");
+    expect(dimLines).toContain("memorySources:  distill_session, stored");
   });
 
   test("list still renders object maps as dotted rows", async () => {
@@ -47,7 +47,7 @@ describe("cli config", () => {
       readConfig: async () => ({ models: { work: "gpt-5-mini" } }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("models.work:     gpt-5-mini");
+    expect(dimLines).toContain("models.work:  gpt-5-mini");
   });
 
   test("unset forwards dotted keys", async () => {

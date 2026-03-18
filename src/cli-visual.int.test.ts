@@ -244,7 +244,7 @@ describe("cli visual regression", () => {
       const listed = await run(["config", "list"]);
       expect(listed).toBe(
         dedent(`
-        model:           gpt-5-mini
+        model:  gpt-5-mini
       `),
       );
 
@@ -258,8 +258,8 @@ describe("cli visual regression", () => {
       const listedProject = await run(["config", "list", "--project"]);
       expect(listedProject).toBe(
         dedent(`
-        scope:           project
-        transportMode:   rpc
+        scope:          project
+        transportMode:  rpc
       `),
       );
     });

@@ -2,11 +2,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { reserveFreePort } from "../scripts/port-utils";
 
 const tmpHomes: string[] = [];
 const tmpProjects: string[] = [];
 const repoRoot = process.cwd();
-const TEST_PORT = 26767;
 
 afterEach(async () => {
   while (tmpHomes.length > 0) {
@@ -44,44 +44,45 @@ function runCli(
   };
 }
 
-async function createTestEnv(): Promise<{ home: string; project: string }> {
+async function createTestEnv(): Promise<{ home: string; project: string; port: number }> {
   const home = await mkdtemp(join(tmpdir(), "acolyte-cli-daemon-home-"));
   const project = await mkdtemp(join(tmpdir(), "acolyte-cli-daemon-project-"));
   tmpHomes.push(home);
   tmpProjects.push(project);
   const acolyteDir = join(home, ".acolyte");
   await mkdir(acolyteDir, { recursive: true });
-  await writeFile(join(acolyteDir, "config.toml"), `port = ${TEST_PORT}\n`, "utf8");
-  return { home, project };
+  const port = reserveFreePort();
+  await writeFile(join(acolyteDir, "config.toml"), `port = ${port}\n`, "utf8");
+  return { home, project, port };
 }
 
 describe("cli daemon lifecycle", () => {
   test("start/stop/restart produce expected output", async () => {
-    const { home, project } = await createTestEnv();
+    const { home, project, port } = await createTestEnv();
     const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
 
     const startResult = runCli(home, project, "start");
     expect(startResult.exitCode).toBe(0);
-    expect(out(startResult)).toContain(`server on port ${TEST_PORT}`);
+    expect(out(startResult)).toContain(`server on port ${port}`);
 
     const restartResult = runCli(home, project, "restart");
     expect(restartResult.exitCode).toBe(0);
-    expect(out(restartResult)).toContain(`server on port ${TEST_PORT}`);
+    expect(out(restartResult)).toContain(`server on port ${port}`);
 
     const stopResult = runCli(home, project, "stop");
     expect(stopResult.exitCode).toBe(0);
-    expect(out(stopResult)).toContain(`server on port ${TEST_PORT}`);
+    expect(out(stopResult)).toContain(`server on port ${port}`);
   });
 
   test("ps lists running daemons", async () => {
-    const { home, project } = await createTestEnv();
+    const { home, project, port } = await createTestEnv();
     const out = (r: { stdout: string; stderr: string }) => `${r.stdout}\n${r.stderr}`;
 
     runCli(home, project, "start");
     const psResult = runCli(home, project, "ps");
     expect(psResult.exitCode).toBe(0);
-    expect(out(psResult)).toContain("PORT");
-    expect(out(psResult)).toContain(String(TEST_PORT));
+    expect(out(psResult)).toContain("Port");
+    expect(out(psResult)).toContain(String(port));
     runCli(home, project, "stop");
   });
 });
