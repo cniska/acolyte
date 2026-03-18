@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
-import type { ChatRow, ChatMessage } from "./chat-contract";
+import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, PendingState, StreamEvent } from "./client-contract";

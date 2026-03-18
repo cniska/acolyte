@@ -1,7 +1,7 @@
 import { z } from "zod";
+import { agentModeSchema } from "./agent-contract";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
-import { agentModeSchema } from "./agent-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
@@ -11,7 +11,12 @@ import { toolOutputPartSchema } from "./tool-output-content";
 export const pendingStateSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("queued"), position: z.number().int().nonnegative().optional() }),
   z.object({ kind: z.literal("accepted") }),
-  z.object({ kind: z.literal("running"), mode: agentModeSchema, model: z.string().optional(), skill: z.string().optional() }),
+  z.object({
+    kind: z.literal("running"),
+    mode: agentModeSchema,
+    model: z.string().optional(),
+    skill: z.string().optional(),
+  }),
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;
 

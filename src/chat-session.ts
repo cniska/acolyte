@@ -1,4 +1,4 @@
-import type { ChatRow, ChatMessage } from "./chat-contract";
+import type { ChatMessage, ChatRow } from "./chat-contract";
 import { nowIso } from "./datetime";
 import { remapDomainId } from "./id-contract";
 import { createId } from "./short-id";

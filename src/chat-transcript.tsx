@@ -220,7 +220,7 @@ const MAX_TRANSCRIPT_WIDTH = 120;
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, pendingState, thinkingFrame, thinkingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
-  const hasContent = rows.length > 0 || pendingState !== null && pendingState !== undefined;
+  const hasContent = rows.length > 0 || (pendingState !== null && pendingState !== undefined);
   const isQueued = pendingState?.kind === "queued";
   const isAccepted = pendingState?.kind === "accepted";
   const isRunning = pendingState?.kind === "running";

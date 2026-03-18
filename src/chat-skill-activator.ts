@@ -1,5 +1,5 @@
 import { appConfig } from "./app-config";
-import type { ChatRow, ChatMessage } from "./chat-contract";
+import type { ChatMessage, ChatRow } from "./chat-contract";
 import { compactText } from "./compact-text";
 import type { Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions } from "./skills";
