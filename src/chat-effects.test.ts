@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clampSuggestionIndex, nextThinkingFrame } from "./chat-effects";
+import { clampSuggestionIndex, nextPendingFrame } from "./chat-effects";
 
 describe("chat effects helpers", () => {
   test("clampSuggestionIndex stays within available suggestion range", () => {
@@ -8,8 +8,8 @@ describe("chat effects helpers", () => {
     expect(clampSuggestionIndex(0, 0)).toBe(0);
   });
 
-  test("nextThinkingFrame wraps around frame count", () => {
-    expect(nextThinkingFrame(0, 10)).toBe(1);
-    expect(nextThinkingFrame(9, 10)).toBe(0);
+  test("nextPendingFrame wraps around frame count", () => {
+    expect(nextPendingFrame(0, 10)).toBe(1);
+    expect(nextPendingFrame(9, 10)).toBe(0);
   });
 });

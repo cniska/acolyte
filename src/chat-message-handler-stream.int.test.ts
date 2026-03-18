@@ -147,7 +147,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("second");
 
     expect(calls).toBe(2);
-    expect(spies.thinkingTransitions).toEqual([true, false, true, false]);
+    expect(spies.pendingTransitions).toEqual([true, false, true, false]);
     expect(
       rows.some(
         (row) =>
@@ -187,10 +187,10 @@ describe("chat message handler stream behavior", () => {
     });
 
     await handleMessage("first");
-    expect(calls.thinkingTransitions).toEqual([true]);
+    expect(calls.pendingTransitions).toEqual([true]);
     expect(calls.pendingStates).toContainEqual({ kind: "running", mode: "work" });
     await Bun.sleep(800);
-    expect(calls.thinkingTransitions).toEqual([true, false]);
+    expect(calls.pendingTransitions).toEqual([true, false]);
   });
 
   test("allows /new recovery after a timed-out turn", async () => {

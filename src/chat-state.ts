@@ -37,8 +37,8 @@ export interface ChatStateResult {
   promotedRows: PromotedItem[];
   rows: ChatRow[];
   pendingState: PendingState | null;
-  thinkingFrame: number;
-  thinkingStartedAt: number | null;
+  pendingFrame: number;
+  pendingStartedAt: number | null;
   queuedMessages: string[];
   runningUsage: { inputTokens: number; outputTokens: number } | null;
   picker: PickerState | null;
@@ -85,8 +85,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     pendingState,
     setPendingState,
     isPending,
-    thinkingFrame,
-    thinkingStartedAt,
+    pendingFrame,
+    pendingStartedAt,
     ctrlCPending,
     setCtrlCPending,
     queuedMessages,
@@ -324,8 +324,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     promotedRows,
     rows,
     pendingState,
-    thinkingFrame,
-    thinkingStartedAt,
+    pendingFrame,
+    pendingStartedAt,
     queuedMessages,
     runningUsage,
     picker,

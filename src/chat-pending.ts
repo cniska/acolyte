@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { useThinkingAnimationEffect } from "./chat-effects";
+import { usePendingAnimationEffect } from "./chat-effects";
 import type { PendingState } from "./client-contract";
 import { useSyncEffect } from "./tui/effects";
 
-const THINKING_PULSE_FRAMES = 16;
+const PENDING_PULSE_FRAMES = 16;
 
 export type PendingStateResult = {
   pendingState: PendingState | null;
   setPendingState: (next: PendingState | null) => void;
   isPending: boolean;
-  thinkingFrame: number;
-  thinkingStartedAt: number | null;
+  pendingFrame: number;
+  pendingStartedAt: number | null;
   ctrlCPending: boolean;
   setCtrlCPending: (next: boolean) => void;
   queuedMessages: string[];
@@ -22,8 +22,8 @@ export type PendingStateResult = {
 export function usePendingState(): PendingStateResult {
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
   const isPending = pendingState !== null;
-  const [thinkingFrame, setThinkingFrame] = useState(0);
-  const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
+  const [pendingFrame, setThinkingFrame] = useState(0);
+  const [pendingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [ctrlCPending, setCtrlCPending] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
@@ -37,14 +37,14 @@ export function usePendingState(): PendingStateResult {
     }
   }, [isPending]);
 
-  useThinkingAnimationEffect(isPending, THINKING_PULSE_FRAMES, setThinkingFrame);
+  usePendingAnimationEffect(isPending, PENDING_PULSE_FRAMES, setThinkingFrame);
 
   return {
     pendingState,
     setPendingState,
     isPending,
-    thinkingFrame,
-    thinkingStartedAt,
+    pendingFrame,
+    pendingStartedAt,
     ctrlCPending,
     setCtrlCPending,
     queuedMessages,

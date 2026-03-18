@@ -92,7 +92,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     input.setPendingState({ kind: "running", mode: "work" });
     const controller = new AbortController();
     input.setInterrupt(() => controller.abort());
-    const thinkingStartedAt = Date.now();
+    const pendingStartedAt = Date.now();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
     });
@@ -132,7 +132,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               break;
           }
         },
-        thinkingStartedAt,
+        pendingStartedAt,
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;

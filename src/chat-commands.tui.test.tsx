@@ -4,7 +4,7 @@ import { createClient, createMessageHandlerHarness, createSession, createStore, 
 import { renderPlain } from "./tui-test-utils";
 
 function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
-  return dedent(renderPlain(<ChatTranscript rows={rows} thinkingFrame={0} />, columns));
+  return dedent(renderPlain(<ChatTranscript rows={rows} pendingFrame={0} />, columns));
 }
 
 describe("chat slash command visual regression", () => {

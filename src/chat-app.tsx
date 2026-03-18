@@ -41,8 +41,8 @@ function ChatApp(props: ChatAppProps) {
       <ChatTranscript
         rows={state.rows}
         pendingState={state.pendingState}
-        thinkingFrame={state.thinkingFrame}
-        thinkingStartedAt={state.thinkingStartedAt}
+        pendingFrame={state.pendingFrame}
+        pendingStartedAt={state.pendingStartedAt}
         queuedMessages={state.queuedMessages}
         runningUsage={state.runningUsage}
       />
