@@ -111,6 +111,13 @@ Memory Engine
 - **integration:** memory context is injected during request setup; commit is best-effort background work at finalize.
 - **details:** see [Memory](./memory.md).
 
+## Dependency injection
+
+- **No container, no decorators** — dependencies are passed as typed parameters with defaults from `appConfig`.
+- **Deps vs input** — factory functions that need both configuration and runtime data take two arguments: a `*Deps` object for config that is fixed for the process lifetime, and an `*Input` object for per-request runtime data (e.g. `createFileToolkit(deps: ToolkitDeps, input: ToolkitInput)`).
+- **Defaults at the edge** — library modules accept injected params; composition roots (`cli-command-registry`, `server-chat-runtime`, `cli-chat`) read `appConfig` and pass values down.
+- **Tests inject directly** — tests pass config through the new params instead of mutating `appConfig`.
+
 ## Contracts
 
 - **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy.

@@ -51,10 +51,8 @@ The system prompt is measured and reserved before history allocation begins. Rem
 
 The CLI ships a custom React-based TUI: fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills. A model picker queries provider APIs for available models. Tool output is structured with typed rendering. AST-based editing and scanning run through [ast-grep](https://ast-grep.github.io/).
 
----
+## Next steps
 
-For a detailed comparison with other open-source agents, see [Comparison](./comparison.md).
-
-Measured code quality metrics are available in [Benchmarks](./benchmarks.md).
-
-The background on why Acolyte was built is covered in [Meet Acolyte](https://crisu.me/blog/meet-acolyte).
+- [Architecture](./architecture.md) — How the system is built.
+- [Comparison](./comparison.md) — How Acolyte compares to other open-source agents.
+- [Benchmarks](./benchmarks.md) — Measured code quality metrics.

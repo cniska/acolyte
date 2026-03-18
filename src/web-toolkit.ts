@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
-import { createTool, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitResultChunks } from "./tool-output-format";
@@ -57,8 +56,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
   return out.join("\n");
 }
 
-function createWebSearchTool(input: ToolkitInput) {
-  const { session, onOutput } = input;
+function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-search",
     label: t("tool.label.web_search"),
@@ -77,8 +75,8 @@ function createWebSearchTool(input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "web-search", toolInput, async (toolCallId) => {
-        onOutput({
+      return runTool(input.session, "web-search", toolInput, async (toolCallId) => {
+        input.onOutput({
           toolName: "web-search",
           content: {
             kind: "tool-header",
@@ -89,17 +87,16 @@ function createWebSearchTool(input: ToolkitInput) {
         });
         const result = compactToolOutput(
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
-          appConfig.agent.toolOutputBudget.webSearch,
+          deps.outputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), onOutput, 80, toolCallId);
+        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, toolCallId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },
   });
 }
 
-function createWebFetchTool(input: ToolkitInput) {
-  const { session, onOutput } = input;
+function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-fetch",
     label: t("tool.label.web_fetch"),
@@ -118,15 +115,15 @@ function createWebFetchTool(input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "web-fetch", toolInput, async (toolCallId) => {
-        onOutput({
+      return runTool(input.session, "web-fetch", toolInput, async (toolCallId) => {
+        input.onOutput({
           toolName: "web-fetch",
           content: { kind: "tool-header", label: t("tool.label.web_fetch"), detail: toolInput.url },
           toolCallId,
         });
         const result = compactToolOutput(
           await fetchWeb(toolInput.url, toolInput.maxChars ?? 5000),
-          appConfig.agent.toolOutputBudget.webFetch,
+          deps.outputBudget.webFetch,
         );
         return { kind: "web-fetch", url: toolInput.url, output: result };
       });
@@ -134,9 +131,9 @@ function createWebFetchTool(input: ToolkitInput) {
   });
 }
 
-export function createWebToolkit(input: ToolkitInput) {
+export function createWebToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   return {
-    webSearch: createWebSearchTool(input),
-    webFetch: createWebFetchTool(input),
+    webSearch: createWebSearchTool(deps, input),
+    webFetch: createWebFetchTool(deps, input),
   };
 }

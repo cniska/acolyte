@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createId } from "./short-id";
 import { createSoulPrompt, formatMemoryResumeBlock, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
@@ -53,9 +54,12 @@ describe("soul prompt loading", () => {
   });
 
   test("createSoulPrompt emits load_empty debug event when no memory is available", async () => {
+    const dir = createDir("acolyte-empty-memory-");
     const events: string[] = [];
     await createSoulPrompt({
-      sessionId: "sess_test0001",
+      sessionId: `sess_${createId()}`,
+      resourceId: `user_${createId()}`,
+      workspace: dir,
       onDebug: (event) => {
         events.push(event);
       },

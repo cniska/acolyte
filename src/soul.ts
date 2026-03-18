@@ -47,6 +47,7 @@ type CreateSoulPromptOptions = {
   resourceId?: ResourceId;
   workspace?: string;
   useMemory?: boolean;
+  memoryBudgetTokens?: number;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
 };
 
@@ -63,21 +64,22 @@ export function formatMemoryResumeBlock(continuation: { currentTask?: string; ne
 export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): Promise<SoulPromptResult> {
   const cwd = options.cwd ?? process.cwd();
   const base = loadSystemPrompt(cwd);
+  const budgetTokens = options.memoryBudgetTokens ?? appConfig.memory.budgetTokens;
   const debugBaseFields = {
-    budgetTokens: appConfig.memory.budgetTokens,
+    budgetTokens,
     sourceStrategy: appConfig.memory.sources.join(","),
   };
   if (options.useMemory === false) {
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "request_disabled" });
     return { prompt: base, memoryTokens: 0 };
   }
-  if (appConfig.memory.budgetTokens <= 0) {
+  if (budgetTokens <= 0) {
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "budget_disabled" });
     return { prompt: base, memoryTokens: 0 };
   }
   const memoryContext = await loadMemoryContext(
     { sessionId: options.sessionId, resourceId: options.resourceId, workspace: options.workspace },
-    appConfig.memory.budgetTokens,
+    budgetTokens,
   );
   const memoryPrompt = memoryContext.prompt;
   if (!memoryPrompt) {

@@ -56,6 +56,10 @@ export function resolveMemorySources(ids: readonly MemorySourceId[]): readonly M
   return resolved.length > 0 ? resolved : DEFAULT_MEMORY_SOURCE_IDS.map((id) => AVAILABLE_MEMORY_SOURCES[id]);
 }
 
+export type MemoryConfig = {
+  sources: readonly MemorySourceId[];
+};
+
 export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySources(appConfig.memory.sources);
 
 export function createMemoryRegistry(

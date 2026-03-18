@@ -1,3 +1,5 @@
+export type CompactBudget = { maxChars?: number; maxLines?: number };
+
 export const DEFAULT_MAX_CHARS = 4000;
 export const DEFAULT_MAX_LINES = 120;
 
@@ -20,7 +22,7 @@ export function truncateMiddle(text: string, maxChars: number): string {
   return `${text.slice(0, headChars)}…${text.slice(text.length - tailChars)}`;
 }
 
-export function compactText(raw: string, options: { maxChars?: number; maxLines?: number } = {}): string {
+export function compactText(raw: string, options: CompactBudget = {}): string {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
   const maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
   const source = raw.trim();

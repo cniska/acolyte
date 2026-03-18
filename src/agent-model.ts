@@ -4,7 +4,7 @@ import type { Provider } from "./provider-contract";
 
 export type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
 
-const defaultCredentials = (): ProviderCredentialsMap => ({
+export const defaultCredentials = (): ProviderCredentialsMap => ({
   openai: appConfig.openai,
   anthropic: appConfig.anthropic,
   google: appConfig.google,

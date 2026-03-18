@@ -17,6 +17,7 @@ Flag layers that add little or no architectural value:
 - pass-through facade modules that only rename or re-export behavior
 - alias or wrapper layers without independent policy, invariants, or boundary value
 - dependency-injection bags that exceed practical seam or testing needs
+- singleton imports in library modules that should accept injected params (see DI section in `docs/architecture.md`)
 - thin wrappers that only forward calls without adding policy (for example `runX -> runY`)
 - facade-for-facade chains where each layer only forwards the call
 
@@ -45,6 +46,7 @@ Check that implementation matches intended architecture:
 - guard and evaluator extensibility without test-only production hacks
 - error contracts and typed error model consistency
 - assert patterns and exhaustiveness (`invariant`, `unreachable`, exhaustive `switch`)
+- DI convention: `*Deps` for config, `*Input` for runtime, defaults from `appConfig` at composition roots
 - design-pattern consistency for extension seams (policy tables, strategy maps, adapters)
 
 ### 4. Cohesion and responsibility

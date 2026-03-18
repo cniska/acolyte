@@ -1,6 +1,6 @@
-import { compactText, DEFAULT_MAX_CHARS, DEFAULT_MAX_LINES } from "./compact-text";
+import { type CompactBudget, compactText, DEFAULT_MAX_CHARS, DEFAULT_MAX_LINES } from "./compact-text";
 
-export function compactToolOutput(raw: string, options: { maxChars?: number; maxLines?: number } = {}): string {
+export function compactToolOutput(raw: string, options: CompactBudget = {}): string {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
   const maxLines = options.maxLines ?? DEFAULT_MAX_LINES;
   const source = raw.trim();

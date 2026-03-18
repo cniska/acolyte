@@ -1,16 +1,13 @@
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
 import { runShellCommand } from "./shell-ops";
-import { createTool, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
-function createRunCommandTool(input: ToolkitInput) {
-  const { workspace, session, onOutput } = input;
-
+function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   const parseExitCode = (result: string): number | undefined => {
     const match = result.match(/^exit_code=(\d+)$/m);
     if (!match?.[1]) return undefined;
@@ -39,11 +36,11 @@ function createRunCommandTool(input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(
-        session,
+        input.session,
         "run-command",
         toolInput,
         async (toolCallId) => {
-          onOutput({
+          input.onOutput({
             toolName: "run-command",
             content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
             toolCallId,
@@ -73,7 +70,7 @@ function createRunCommandTool(input: ToolkitInput) {
             }
           };
           const rawResult = await runShellCommand(
-            workspace,
+            input.workspace,
             toolInput.command,
             toolInput.timeoutMs ?? 60_000,
             ({ stream, text }) => {
@@ -97,7 +94,7 @@ function createRunCommandTool(input: ToolkitInput) {
           flushRemainder("stdout");
           flushRemainder("stderr");
           const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
-            onOutput({
+            input.onOutput({
               toolName: "run-command",
               content: { kind: "shell-output", stream: entry.stream, text: entry.text },
               toolCallId,
@@ -106,18 +103,18 @@ function createRunCommandTool(input: ToolkitInput) {
           if (streamed.length > headRows + tailRows) {
             const omitted = streamed.length - (headRows + tailRows);
             for (const line of streamed.slice(0, headRows)) emitLine(line);
-            onOutput({
+            input.onOutput({
               toolName: "run-command",
               content: { kind: "truncated", count: omitted, unit: "lines" },
               toolCallId,
             });
             for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
           } else if (streamed.length === 0) {
-            onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
+            input.onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
           } else {
             for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
           }
-          const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.run);
+          const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
             kind: "run-command",
             command: toolInput.command,
@@ -131,8 +128,8 @@ function createRunCommandTool(input: ToolkitInput) {
   });
 }
 
-export function createShellToolkit(input: ToolkitInput) {
+export function createShellToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   return {
-    runCommand: createRunCommandTool(input),
+    runCommand: createRunCommandTool(deps, input),
   };
 }

@@ -185,6 +185,7 @@ export type RunContext = {
   nativeIdQueue: Map<string, string[]>;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
+  temperatures?: Partial<Record<AgentMode, number>>;
 };
 
 type GuardStats = { blocked: number; flagSet: number };

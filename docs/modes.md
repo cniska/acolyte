@@ -25,6 +25,6 @@ Acolyte uses two explicit operating modes to shape behavior: `work` and `verify`
 
 ## Key files
 
-- `src/agent-modes.ts`
-- `src/lifecycle-resolve.ts`
-- `src/lifecycle-evaluators.ts`
+- `src/agent-modes.ts` — Mode configurations with tool grants and preambles.
+- `src/lifecycle-resolve.ts` — Mode and model selection during task execution.
+- `src/lifecycle-evaluators.ts` — Mode-aware post-generation evaluators.

@@ -1,4 +1,4 @@
-import { appConfig } from "./app-config";
+import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
 import { isProviderAvailable } from "./provider-config";
 import type { Provider } from "./provider-contract";
@@ -17,12 +17,19 @@ const CACHE_TTL_MS = 60_000;
 let modelsCache: {
   models: string[];
   fetchedAt: number;
+  credentialsKey: string;
 } | null = null;
 
 let inflight: Promise<string[]> | null = null;
 
 export function invalidateModelsCache(): void {
   modelsCache = null;
+}
+
+function credentialsCacheKey(credentials: ProviderCredentialsMap): string {
+  return [credentials.openai?.apiKey ?? "", credentials.anthropic?.apiKey ?? "", credentials.google?.apiKey ?? ""].join(
+    "\0",
+  );
 }
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
@@ -86,38 +93,40 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
   }
 }
 
-function providerConfig(provider: Provider): ProviderFetchConfig {
+function providerConfig(provider: Provider, credentials: ProviderCredentialsMap): ProviderFetchConfig {
   switch (provider) {
     case "openai":
-      return { apiKey: appConfig.openai.apiKey, baseUrl: appConfig.openai.baseUrl };
     case "anthropic":
-      return { apiKey: appConfig.anthropic.apiKey, baseUrl: appConfig.anthropic.baseUrl };
-    case "google":
-      return { apiKey: appConfig.google.apiKey, baseUrl: appConfig.google.baseUrl };
+    case "google": {
+      const creds = credentials[provider] ?? {};
+      return { apiKey: creds.apiKey, baseUrl: creds.baseUrl ?? "" };
+    }
     default:
       return unreachable(provider);
   }
 }
 
-function availableProviders(): Provider[] {
+function availableProviders(credentials: ProviderCredentialsMap): Provider[] {
   const providers: Provider[] = [];
-  if (isProviderAvailable("openai", appConfig.openai)) providers.push("openai");
-  if (isProviderAvailable("anthropic", appConfig.anthropic)) providers.push("anthropic");
-  if (isProviderAvailable("google", appConfig.google)) providers.push("google");
+  if (isProviderAvailable("openai", credentials.openai ?? {})) providers.push("openai");
+  if (isProviderAvailable("anthropic", credentials.anthropic ?? {})) providers.push("anthropic");
+  if (isProviderAvailable("google", credentials.google ?? {})) providers.push("google");
   return providers;
 }
 
-export async function getAvailableModels(): Promise<string[]> {
+export async function getAvailableModels(credentials?: ProviderCredentialsMap): Promise<string[]> {
   const now = Date.now();
-  if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS) return modelsCache.models;
+  const creds = credentials ?? defaultCredentials();
+  const key = credentialsCacheKey(creds);
+  if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS && modelsCache.credentialsKey === key)
+    return modelsCache.models;
 
   if (inflight) return inflight;
-
   inflight = (async () => {
-    const providers = availableProviders();
+    const providers = availableProviders(creds);
     const results = await Promise.all(
       providers.map(async (provider) => {
-        const config = providerConfig(provider);
+        const config = providerConfig(provider, creds);
         const models = await fetchProviderModels(provider, config);
         return models.map((id) => normalizeDiscoveredModel(provider, id, config));
       }),
@@ -133,7 +142,7 @@ export async function getAvailableModels(): Promise<string[]> {
       }
     }
     models.sort((a, b) => a.localeCompare(b));
-    modelsCache = { models, fetchedAt: now };
+    modelsCache = { models, fetchedAt: now, credentialsKey: key };
     return models;
   })();
 

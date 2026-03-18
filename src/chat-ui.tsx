@@ -194,13 +194,16 @@ function ChatApp(props: ChatAppProps) {
     };
   }, []);
 
-  const activateSkill = createSkillActivator({
-    currentSession,
-    setRows,
-    createMessage,
-    nowIso,
-    persist,
-  });
+  const activateSkill = createSkillActivator(
+    {},
+    {
+      currentSession,
+      setRows,
+      createMessage,
+      nowIso,
+      persist,
+    },
+  );
 
   const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     store,

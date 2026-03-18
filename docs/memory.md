@@ -92,3 +92,15 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
   - `MemoryNormalizeStrategy`
   - `MemorySelectionStrategy`
 - Keep lifecycle contract stable while swapping strategies/storage behind sources.
+
+## Key files
+
+- `src/memory.ts` — Top-level memory operations (list, add, remove).
+- `src/memory-contract.ts` — Type definitions for entries, scopes, and distill records.
+- `src/memory-pipeline.ts` — Staged pipeline (ingest, normalize, select, inject, commit).
+- `src/memory-registry.ts` — Source composition, strategy injection, and pipeline orchestration.
+- `src/memory-source-distill.ts` — Distill memory source with observer and reflector agents.
+- `src/memory-source-stored.ts` — Stored markdown memory source.
+- `src/memory-distill-prompts.ts` — Observer and reflector prompt templates.
+- `src/memory-distill-store.ts` — Atomic file-based distill record persistence.
+- `src/memory-store.ts` — Memory store interface for list, add, and remove.

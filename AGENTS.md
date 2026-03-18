@@ -40,6 +40,7 @@ These must always hold. Break them and the system breaks.
 5. Cut releases only for user-facing features or meaningful bug fixes — not for internal refactors or tooling cleanup alone.
 6. PR titles follow the same Conventional Commit format. Summaries: short bullets, no prose.
 7. When creating or updating a pull request, read and follow the local PR template if the repo provides one.
+8. Branch names use hyphens, no slashes (e.g. `di-pattern`, not `refactor/di-pattern`).
 
 ## Code
 

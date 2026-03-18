@@ -4,6 +4,7 @@ import type { attachFileToSession as attachFileToSessionType } from "./cli-chat"
 import { formatRunSummary } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
+import type { CompactBudget } from "./compact-text";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 import { t } from "./i18n";
 import { userResourceIdFor } from "./resource-id";
@@ -17,7 +18,7 @@ type SkillModeDeps = {
   apiUrlForPort: typeof apiUrlForPortType;
   appModel: typeof appConfigType.model;
   attachFileToSession: typeof attachFileToSessionType;
-  compactText: (text: string, budget: { maxChars?: number; maxLines?: number }) => string;
+  compactText: (text: string, budget: CompactBudget) => string;
   createClient: typeof createClientType;
   createMessage: typeof createMessageType;
   createSession: typeof createSessionType;
@@ -33,7 +34,7 @@ type SkillModeDeps = {
   serverApiKey: typeof appConfigType.server.apiKey;
   serverEntry: string;
   serverPort: typeof appConfigType.server.port;
-  skillBudget: { maxChars?: number; maxLines?: number };
+  skillBudget: CompactBudget;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };

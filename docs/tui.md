@@ -59,18 +59,18 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 
 ## Key files
 
-- `src/tui/index.ts` — public API surface
-- `src/tui/components.tsx` — `Box`, `Text`, `Static` primitives
-- `src/tui/dom.ts` — TUI DOM node types
-- `src/tui/serialize.ts` — tree-to-string serialization with static/active split
-- `src/tui/render.ts` — terminal render loop, raw mode, cursor management
-- `src/tui/input.ts` — raw stdin dispatcher
-- `src/tui/context.ts` — `AppContext`, `InputContext`, `KeyEvent`
-- `src/tui/hooks.ts` — `useApp`, `useInput`
-- `src/tui/host-config.ts` — React reconciler host config
-- `src/tui/styles.ts` — ANSI escape sequences, color mapping
-- `src/tui/reconciler.ts` — React reconciler instance
+- `src/tui/index.ts` — Public API surface.
+- `src/tui/components.tsx` — `Box`, `Text`, `Static` primitives.
+- `src/tui/dom.ts` — TUI DOM node types.
+- `src/tui/serialize.ts` — Tree-to-string serialization with static/active split.
+- `src/tui/render.ts` — Terminal render loop, raw mode, cursor management.
+- `src/tui/input.ts` — Raw stdin dispatcher.
+- `src/tui/context.ts` — `AppContext`, `InputContext`, `KeyEvent`.
+- `src/tui/hooks.ts` — `useApp`, `useInput`.
+- `src/tui/host-config.ts` — React reconciler host config.
+- `src/tui/styles.ts` — ANSI escape sequences, color mapping.
+- `src/tui/reconciler.ts` — React reconciler instance.
 
----
+## Further reading
 
-For the story behind the TUI design, read [No More Ink](https://crisu.me/blog/no-more-ink).
+[No More Ink](https://crisu.me/blog/no-more-ink) — The story behind the TUI design.
