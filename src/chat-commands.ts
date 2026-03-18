@@ -68,12 +68,24 @@ export function statusRows(status: StatusFields): ChatRow[] {
   return [createRow("system", output)];
 }
 
-export function usageRows(last: SessionTokenUsageEntry | null): ChatRow[] {
+export function usageRows(last: SessionTokenUsageEntry | null, all: SessionTokenUsageEntry[] = []): ChatRow[] {
   if (!last) return [createRow("system", t("chat.usage.none"))];
+  const totals = all.reduce(
+    (acc, entry) => {
+      acc.input += entry.usage.inputTokens;
+      acc.output += entry.usage.outputTokens;
+      acc.total += entry.usage.totalTokens;
+      return acc;
+    },
+    { input: 0, output: 0, total: 0 },
+  );
+  const hasSession = all.length > 1;
+  const pad = 8;
+  const col = (left: string, right: string) => (hasSession ? `${left.padEnd(pad)}${right}` : left);
   const summary: [string, string][] = [
-    [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
-    [t("chat.usage.metric.output"), formatUsageValue(last.usage.outputTokens)],
-    [t("chat.usage.metric.total"), formatUsageValue(last.usage.totalTokens)],
+    [t("chat.usage.metric.input"), col(formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input))],
+    [t("chat.usage.metric.output"), col(formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output))],
+    [t("chat.usage.metric.total"), col(formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total))],
   ];
   const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
@@ -85,7 +97,7 @@ export function usageRows(last: SessionTokenUsageEntry | null): ChatRow[] {
       [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
-      if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens)} (${formatShare(tokens, total)})`]);
+      if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens).padEnd(pad)}${formatShare(tokens, total)}`]);
     }
   }
   const sections: [string, string][][] = [summary];
@@ -369,7 +381,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/usage") {
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
-    ctx.setRows((current) => [...current, ...usageRows(last)]);
+    ctx.setRows((current) => [...current, ...usageRows(last, ctx.tokenUsage)]);
     return { stop: true, userText: text };
   }
 

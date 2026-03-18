@@ -269,7 +269,7 @@ export type MessageHandlerHarness = {
 };
 
 export function createMessageHandlerHarness(overrides?: {
-  isWorking?: boolean;
+  isPending?: boolean;
   client?: Client;
   session?: Session;
   store?: SessionState;
@@ -319,14 +319,17 @@ export function createMessageHandlerHarness(overrides?: {
     openResumePanel: () => {},
     openModelPanel: () => {},
     tokenUsage,
-    isWorking: overrides?.isWorking ?? false,
+    isPending: overrides?.isPending ?? false,
     setInputHistory: () => {
       calls.setInputHistory += 1;
     },
     setInputHistoryIndex: () => {},
     setInputHistoryDraft: () => {},
-    setIsWorking: (next) => {
-      calls.thinkingTransitions.push(next);
+    onStartPending: () => {
+      calls.thinkingTransitions.push(true);
+    },
+    onStopPending: () => {
+      calls.thinkingTransitions.push(false);
     },
     setPendingState: (next) => {
       calls.pendingStates.push(next);

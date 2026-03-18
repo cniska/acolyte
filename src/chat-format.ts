@@ -45,9 +45,8 @@ export function commandOutputColWidth(sections: [string, string][][]): number {
 
 export function formatCommandOutput(output: { sections: [string, string][][]; list?: string[] }): string {
   const parts: string[] = [];
-  const allRows = output.sections.flat();
-  if (allRows.length > 0) {
-    const colWidth = commandOutputColWidth(output.sections);
+  const colWidth = commandOutputColWidth(output.sections);
+  if (output.sections.some((s) => s.length > 0)) {
     parts.push(
       output.sections
         .map((section) => section.map(([key, value]) => `${`${key}:`.padEnd(colWidth)}${value}`).join("\n"))

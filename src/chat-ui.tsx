@@ -96,8 +96,8 @@ function ChatApp(props: ChatAppProps) {
   rowsRef.current = rows;
   const [value, setValue] = useState("");
   const [inputRevision, setInputRevision] = useState(0);
-  const [isWorking, setIsWorking] = useState(false);
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
+  const isPending = pendingState !== null;
   const [thinkingFrame, setThinkingFrame] = useState(0);
   const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -120,14 +120,14 @@ function ChatApp(props: ChatAppProps) {
   const workspace = shownCwd();
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
   useSlashSuggestionsEffect(slashSuggestions, setSlashSuggestionIndex);
-  useThinkingAnimationEffect(isWorking, THINKING_PULSE_FRAMES, setThinkingFrame);
+  useThinkingAnimationEffect(isPending, THINKING_PULSE_FRAMES, setThinkingFrame);
   useEffect(() => {
-    if (isWorking) {
+    if (isPending) {
       setThinkingStartedAt((current) => current ?? Date.now());
       return;
     }
     setThinkingStartedAt(null);
-  }, [isWorking]);
+  }, [isPending]);
 
   useEffect(() => {
     setInputHistory(createInputHistory(currentSession.messages));
@@ -173,12 +173,12 @@ function ChatApp(props: ChatAppProps) {
   // Graduate completed rows when working state ends.
   const prevWorkingRef = useRef(false);
   useEffect(() => {
-    if (prevWorkingRef.current && !isWorking) {
+    if (prevWorkingRef.current && !isPending) {
       log.debug("chat.graduate.working_end");
       graduate();
     }
-    prevWorkingRef.current = isWorking;
-  }, [isWorking, graduate]);
+    prevWorkingRef.current = isPending;
+  }, [isPending, graduate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -236,13 +236,13 @@ function ChatApp(props: ChatAppProps) {
     openResumePanel,
     openModelPanel,
     tokenUsage,
-    isWorking,
+    isPending,
     setInputHistory,
     setInputHistoryIndex,
     setInputHistoryDraft,
-    startWorking: () => setIsWorking(true),
-    stopWorking: () => {
-      setIsWorking(false);
+    onStartPending: () => setPendingState({ kind: "queued" }),
+    onStopPending: () => {
+      setPendingState(null);
       setRunningUsage(null);
     },
     setPendingState,
@@ -258,11 +258,11 @@ function ChatApp(props: ChatAppProps) {
     clearTranscript,
   });
   useEffect(() => {
-    if (isWorking || queuedMessages.length === 0) return;
+    if (isPending || queuedMessages.length === 0) return;
     const [next, ...rest] = queuedMessages;
     setQueuedMessages(rest);
     if (next) void handleSubmit(next);
-  }, [handleSubmit, isWorking, queuedMessages]);
+  }, [handleSubmit, isPending, queuedMessages]);
 
   useChatKeybindings({
     persist,
@@ -277,7 +277,7 @@ function ChatApp(props: ChatAppProps) {
     setValue,
     setInputRevision,
     applyingHistoryRef,
-    isWorking,
+    isPending,
     atQuery,
     atSuggestions,
     atSuggestionIndex,
@@ -379,9 +379,9 @@ function ChatApp(props: ChatAppProps) {
             setInputRevision((current) => current + 1);
             return;
           }
-          const queueDecision = resolveQueueSubmit({ value: resolved.value, isWorking });
+          const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending });
           if (queueDecision.kind === "ignore") return;
-          if (isWorking) {
+          if (isPending) {
             setQueuedMessages((current) => enqueueQueuedMessage(current, queueDecision.value, QUEUE_DELIVERY_POLICY));
             setValue("");
             return;

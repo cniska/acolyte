@@ -11,7 +11,7 @@ type StartRemoteTaskFollowupInput = {
   setRows: SetRows;
   setPendingState: (next: PendingState | null) => void;
   persist: () => Promise<void>;
-  stopWorking: () => void;
+  onStopPending: () => void;
 };
 
 const MAX_POLL_ITERATIONS = 300;
@@ -56,7 +56,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         createRow("system", t("chat.task.followup.lost_tracking"), { dim: true, text: palette.error }),
       ]);
     } finally {
-      input.stopWorking();
+      input.onStopPending();
       input.setPendingState(null);
       await input.persist().catch(() => {});
     }

@@ -75,8 +75,8 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
   return null;
 }
 
-export function resolveEscapeAction(input: { isWorking: boolean; showHelp: boolean }): "interrupt" | "hide" | null {
-  if (input.isWorking) return "interrupt";
+export function resolveEscapeAction(input: { isPending: boolean; showHelp: boolean }): "interrupt" | "hide" | null {
+  if (input.isPending) return "interrupt";
   if (input.showHelp) return "hide";
   return null;
 }
@@ -98,7 +98,7 @@ type UseChatKeybindingsInput = {
   setValue: (next: string) => void;
   setInputRevision: (next: number | ((current: number) => number)) => void;
   applyingHistoryRef: { current: boolean };
-  isWorking: boolean;
+  isPending: boolean;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -239,7 +239,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
       }
-      if (!input.isWorking && keyInput === "$" && input.value.length === 0) {
+      if (!input.isPending && keyInput === "$" && input.value.length === 0) {
         void input.openSkillsPanel();
         return;
       }
@@ -248,7 +248,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         return;
       }
       if (key.escape) {
-        const action = resolveEscapeAction({ isWorking: input.isWorking, showHelp: input.showHelp });
+        const action = resolveEscapeAction({ isPending: input.isPending, showHelp: input.showHelp });
         if (action === "interrupt") {
           input.interruptCurrentTurn();
           return;

@@ -38,13 +38,12 @@ type CreateMessageHandlerInput = {
   openResumePanel: () => void;
   openModelPanel: (mode?: AgentMode) => void | Promise<void>;
   tokenUsage: SessionTokenUsageEntry[];
-  isWorking: boolean;
+  isPending: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
   setInputHistoryIndex: (next: number) => void;
   setInputHistoryDraft: (next: string) => void;
-  startWorking?: () => void;
-  stopWorking?: () => void;
-  setIsWorking?: (next: boolean) => void;
+  onStartPending?: () => void;
+  onStopPending?: () => void;
   setPendingState: (next: PendingState | null) => void;
   setRunningUsage: (next: { inputTokens: number; outputTokens: number } | null) => void;
   setTokenUsage: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
@@ -66,25 +65,17 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
   handleSubmit: (raw: string) => Promise<void>;
   startAssistantTurn: (userText: string) => Promise<void>;
 } {
-  const startWorking = (): void => {
-    if (input.startWorking) {
-      input.startWorking();
-      return;
-    }
-    input.setIsWorking?.(true);
+  const startPending = (): void => {
+    input.onStartPending?.();
   };
 
-  const stopWorking = (): void => {
-    if (input.stopWorking) {
-      input.stopWorking();
-      return;
-    }
-    input.setIsWorking?.(false);
+  const stopPending = (): void => {
+    input.onStopPending?.();
   };
 
   const startAssistantTurn = async (userText: string): Promise<void> => {
     log.debug("chat.turn.start", { userText });
-    startWorking();
+    startPending();
     const userMessage = input.createMessage("user", userText);
     input.currentSession.messages.push(userMessage);
     input.currentSession.updatedAt = input.nowIso();
@@ -92,7 +83,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const fileContextMessages: ChatMessage[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
-      stopWorking();
+      stopPending();
       await input.persist();
       return;
     }
@@ -162,7 +153,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           setRows: input.setRows,
           setPendingState: input.setPendingState,
           persist: input.persist,
-          stopWorking,
+          onStopPending: stopPending,
         });
         if (startedFollowup) {
           keepThinkingForRemoteTask = true;
@@ -194,7 +185,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       streamState.dispose();
       input.setInterrupt(null);
       if (!keepThinkingForRemoteTask) {
-        stopWorking();
+        stopPending();
         input.setPendingState(null);
       }
     }
@@ -202,8 +193,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
 
   const handler = async (raw: string): Promise<void> => {
     const text = raw.trim();
-    log.debug("chat.handler", { text, isWorking: input.isWorking });
-    if (!text || (input.isWorking && !text.startsWith("/"))) return;
+    log.debug("chat.handler", { text, isPending: input.isPending });
+    if (!text || (input.isPending && !text.startsWith("/"))) return;
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
       if (corrections.length === 1) return handler(corrections[0]);
@@ -229,7 +220,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         displayText: text,
       });
       input.setRows((current) => [...current, userRow]);
-      startWorking();
+      startPending();
       input.setPendingState({ kind: "running", mode: "work" });
       try {
         const distilled = naturalRememberDirective.content
@@ -253,7 +244,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
         ]);
       } finally {
-        stopWorking();
+        stopPending();
         input.setPendingState(null);
       }
       return;

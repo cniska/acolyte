@@ -19,7 +19,7 @@ describe("chat-message-handler-task-followup", () => {
       },
       setPendingState: () => {},
       persist: async () => {},
-      stopWorking: () => {},
+      onStopPending: () => {},
     });
     expect(started).toBe(false);
   });

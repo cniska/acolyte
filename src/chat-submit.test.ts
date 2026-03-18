@@ -36,25 +36,25 @@ describe("chat submit helpers", () => {
   });
 
   test("resolveQueueSubmit ignores empty input", () => {
-    expect(resolveQueueSubmit({ value: "   ", isWorking: true })).toEqual({ kind: "ignore" });
+    expect(resolveQueueSubmit({ value: "   ", isPending: true })).toEqual({ kind: "ignore" });
   });
 
   test("resolveQueueSubmit submits while thinking", () => {
-    expect(resolveQueueSubmit({ value: "hello", isWorking: true })).toEqual({
+    expect(resolveQueueSubmit({ value: "hello", isPending: true })).toEqual({
       kind: "submit",
       value: "hello",
     });
   });
 
   test("resolveQueueSubmit submits slash commands while thinking", () => {
-    expect(resolveQueueSubmit({ value: "/status", isWorking: true })).toEqual({
+    expect(resolveQueueSubmit({ value: "/status", isPending: true })).toEqual({
       kind: "submit",
       value: "/status",
     });
   });
 
   test("resolveQueueSubmit submits immediately when idle", () => {
-    expect(resolveQueueSubmit({ value: "hello", isWorking: false })).toEqual({
+    expect(resolveQueueSubmit({ value: "hello", isPending: false })).toEqual({
       kind: "submit",
       value: "hello",
     });

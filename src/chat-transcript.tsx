@@ -206,7 +206,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const isQueued = pendingState?.kind === "queued";
   const isAccepted = pendingState?.kind === "accepted";
   const isRunning = pendingState?.kind === "running";
-  const isWorking = pendingState !== null && pendingState !== undefined;
+  const isPending = pendingState !== null && pendingState !== undefined;
   const elapsedSec =
     isRunning && typeof thinkingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - thinkingStartedAt) / 1000))
@@ -245,7 +245,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           <ChatTranscriptRow row={row} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
         </React.Fragment>
       ))}
-      {isWorking ? (
+      {isPending ? (
         <>
           {rows.length > 0 ? <Text> </Text> : null}
           <Box>

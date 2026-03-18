@@ -48,12 +48,12 @@ export function useSlashSuggestionsEffect(
 }
 
 export function useThinkingAnimationEffect(
-  isWorking: boolean,
+  isPending: boolean,
   frameCount: number,
   setThinkingFrame: (next: number | ((current: number) => number)) => void,
 ): void {
   useEffect(() => {
-    if (!isWorking) {
+    if (!isPending) {
       setThinkingFrame(0);
       return;
     }
@@ -63,5 +63,5 @@ export function useThinkingAnimationEffect(
     return () => {
       clearInterval(id);
     };
-  }, [frameCount, isWorking, setThinkingFrame]);
+  }, [frameCount, isPending, setThinkingFrame]);
 }

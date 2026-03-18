@@ -52,9 +52,9 @@ describe("chat keybindings helpers", () => {
   });
 
   test("resolveEscapeAction prefers interrupt while thinking", () => {
-    expect(resolveEscapeAction({ isWorking: true, showHelp: true })).toBe("interrupt");
-    expect(resolveEscapeAction({ isWorking: false, showHelp: true })).toBe("hide");
-    expect(resolveEscapeAction({ isWorking: false, showHelp: false })).toBeNull();
+    expect(resolveEscapeAction({ isPending: true, showHelp: true })).toBe("interrupt");
+    expect(resolveEscapeAction({ isPending: false, showHelp: true })).toBe("hide");
+    expect(resolveEscapeAction({ isPending: false, showHelp: false })).toBeNull();
   });
 
   test("shouldCycleInputHistory allows browsing from any index", () => {

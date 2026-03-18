@@ -62,14 +62,14 @@ describe("chat message handler guards", () => {
   });
 
   test("ignores input while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
     await handleMessage("hello");
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
   });
 
   test("handles slash command while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isWorking: true });
+    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
     await handleMessage("/sessions");
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
@@ -298,11 +298,12 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
       setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
@@ -377,11 +378,12 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
       setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
@@ -442,11 +444,12 @@ describe("chat message handler guards", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isWorking: false,
+      isPending: false,
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
-      setIsWorking: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
       setPendingState: () => {},
       setRunningUsage: () => {},
       setTokenUsage: () => {},
@@ -499,11 +502,12 @@ describe("chat message handler guards", () => {
         openResumePanel: () => {},
         openModelPanel: () => {},
         tokenUsage: [],
-        isWorking: false,
+        isPending: false,
         setInputHistory: () => {},
         setInputHistoryIndex: () => {},
         setInputHistoryDraft: () => {},
-        setIsWorking: () => {},
+        onStartPending: () => {},
+        onStopPending: () => {},
         setPendingState: () => {},
         setRunningUsage: () => {},
         setTokenUsage: () => {},
