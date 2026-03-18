@@ -1,6 +1,6 @@
 import { appConfig } from "./app-config";
 import { unreachable } from "./assert";
-import { isProviderAvailable } from "./provider-config";
+import { isProviderAvailable, type ProviderCredentials } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
 function normalizeBaseUrl(url: string): string {
@@ -86,38 +86,39 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
   }
 }
 
-function providerConfig(provider: Provider): ProviderFetchConfig {
-  switch (provider) {
-    case "openai":
-      return { apiKey: appConfig.openai.apiKey, baseUrl: appConfig.openai.baseUrl };
-    case "anthropic":
-      return { apiKey: appConfig.anthropic.apiKey, baseUrl: appConfig.anthropic.baseUrl };
-    case "google":
-      return { apiKey: appConfig.google.apiKey, baseUrl: appConfig.google.baseUrl };
-    default:
-      return unreachable(provider);
-  }
+type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
+
+const defaultCredentials = (): ProviderCredentialsMap => ({
+  openai: appConfig.openai,
+  anthropic: appConfig.anthropic,
+  google: appConfig.google,
+});
+
+function providerConfig(provider: Provider, credentials: ProviderCredentialsMap): ProviderFetchConfig {
+  const creds = credentials[provider] ?? {};
+  return { apiKey: creds.apiKey, baseUrl: creds.baseUrl ?? "" };
 }
 
-function availableProviders(): Provider[] {
+function availableProviders(credentials: ProviderCredentialsMap): Provider[] {
   const providers: Provider[] = [];
-  if (isProviderAvailable("openai", appConfig.openai)) providers.push("openai");
-  if (isProviderAvailable("anthropic", appConfig.anthropic)) providers.push("anthropic");
-  if (isProviderAvailable("google", appConfig.google)) providers.push("google");
+  if (isProviderAvailable("openai", credentials.openai ?? {})) providers.push("openai");
+  if (isProviderAvailable("anthropic", credentials.anthropic ?? {})) providers.push("anthropic");
+  if (isProviderAvailable("google", credentials.google ?? {})) providers.push("google");
   return providers;
 }
 
-export async function getAvailableModels(): Promise<string[]> {
+export async function getAvailableModels(credentials?: ProviderCredentialsMap): Promise<string[]> {
   const now = Date.now();
   if (modelsCache && now - modelsCache.fetchedAt < CACHE_TTL_MS) return modelsCache.models;
 
   if (inflight) return inflight;
 
+  const creds = credentials ?? defaultCredentials();
   inflight = (async () => {
-    const providers = availableProviders();
+    const providers = availableProviders(creds);
     const results = await Promise.all(
       providers.map(async (provider) => {
-        const config = providerConfig(provider);
+        const config = providerConfig(provider, creds);
         const models = await fetchProviderModels(provider, config);
         return models.map((id) => normalizeDiscoveredModel(provider, id, config));
       }),
