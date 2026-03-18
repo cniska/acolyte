@@ -3,7 +3,7 @@ import type { AgentMode } from "./agent-contract";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
-import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatTokenCount } from "./chat-format";
+import { commandOutputColWidth, formatTokenCount } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
 import { t } from "./i18n";
@@ -26,11 +26,7 @@ const MARKERS: Record<ChatRow["kind"], string> = {
 };
 
 function renderCommandOutput(output: CommandOutput): React.ReactNode {
-  const allRows = output.sections.flat();
-  const colWidth =
-    allRows.length > 0
-      ? Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1))
-      : COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
+  const colWidth = commandOutputColWidth(output.sections);
   return (
     <>
       <Text>{output.header}</Text>
@@ -61,10 +57,6 @@ function renderCommandOutput(output: CommandOutput): React.ReactNode {
   );
 }
 
-function renderSystemContent(content: string): React.ReactNode {
-  return content;
-}
-
 function renderToolPart(
   part: ToolOutputPart,
   index: number,
@@ -78,12 +70,14 @@ function renderToolPart(
     const content = `${part.text}`;
     const padWidth = Math.max(0, toolContentWidth - 2 - prefix.length - 1 - content.length);
     const padded = content + " ".repeat(padWidth);
-    if (part.marker === "add")
+    if (part.marker === "add" || part.marker === "remove") {
+      const bg = part.marker === "add" ? palette.diffAdd : palette.diffRemove;
+      const fg = part.marker === "add" ? palette.diffAddText : palette.diffRemoveText;
       return (
         <Text key={`tool-${index}`}>
           {"\n  "}
-          <Text backgroundColor={palette.diffAdd}>
-            <Text color={palette.diffAddText}>
+          <Text backgroundColor={bg}>
+            <Text color={fg}>
               {prefix}
               {marker}
             </Text>
@@ -91,19 +85,7 @@ function renderToolPart(
           </Text>
         </Text>
       );
-    if (part.marker === "remove")
-      return (
-        <Text key={`tool-${index}`}>
-          {"\n  "}
-          <Text backgroundColor={palette.diffRemove}>
-            <Text color={palette.diffRemoveText}>
-              {prefix}
-              {marker}
-            </Text>
-            <Text color="white">{padded}</Text>
-          </Text>
-        </Text>
-      );
+    }
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
@@ -198,7 +180,7 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
           </Text>
         ) : (
           <Text dimColor={dim} color={textColor}>
-            {renderSystemContent(row.content)}
+            {row.content}
           </Text>
         )}
       </Box>

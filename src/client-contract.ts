@@ -6,6 +6,7 @@ import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
+import type { ToolOutputPart } from "./tool-output-content";
 import { toolOutputPartSchema } from "./tool-output-content";
 
 export const pendingStateSchema = z.discriminatedUnion("kind", [
@@ -103,7 +104,7 @@ type ToolOutputEvent = {
   type: "tool-output";
   toolCallId: string;
   toolName: string;
-  content: z.infer<typeof toolOutputPartSchema>;
+  content: ToolOutputPart;
 };
 type ToolResultEvent = {
   type: "tool-result";

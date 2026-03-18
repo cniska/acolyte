@@ -30,18 +30,24 @@ export function formatRelativeTime(iso: string, now?: number): string {
   const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
   if (seconds < 60) return t("chat.relative_time.just_now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("chat.relative_time.minutes_ago", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("chat.relative_time.hours_ago", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("chat.relative_time.days_ago", { count: days });
+}
+
+export function commandOutputColWidth(sections: [string, string][][]): number {
+  const allRows = sections.flat();
+  if (allRows.length === 0) return COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
+  return Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
 }
 
 export function formatCommandOutput(output: { sections: [string, string][][]; list?: string[] }): string {
   const parts: string[] = [];
   const allRows = output.sections.flat();
   if (allRows.length > 0) {
-    const colWidth = Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1));
+    const colWidth = commandOutputColWidth(output.sections);
     parts.push(
       output.sections
         .map((section) => section.map(([key, value]) => `${`${key}:`.padEnd(colWidth)}${value}`).join("\n"))
