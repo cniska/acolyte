@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
 import { t } from "./i18n";
-import type { ToolkitInput } from "./tool-contract";
+import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -88,7 +87,8 @@ function stripGitShowMetadataForPreview(rawText: string): string {
     .join("\n");
 }
 
-function createGitStatusTool(git: GitOps, input: ToolkitInput) {
+function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-status",
@@ -112,14 +112,15 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
         });
         const rawStatus = await git.statusShort();
         emitHeadTailLines("git-status", rawStatus, onOutput, toolCallId);
-        const result = compactToolOutput(rawStatus, appConfig.agent.toolOutputBudget.gitStatus);
+        const result = compactToolOutput(rawStatus, outputBudget.gitStatus);
         return { kind: "git-status", output: result };
       });
     },
   });
 }
 
-function createGitDiffTool(git: GitOps, input: ToolkitInput) {
+function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-diff",
@@ -148,14 +149,15 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
         });
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
         emitHeadTailLines("git-diff", rawDiff, onOutput, toolCallId, { headRows: 2, tailRows: 2 });
-        const result = compactToolOutput(rawDiff, appConfig.agent.toolOutputBudget.gitDiff);
+        const result = compactToolOutput(rawDiff, outputBudget.gitDiff);
         return { kind: "git-diff", path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: result };
       });
     },
   });
 }
 
-function createGitLogTool(git: GitOps, input: ToolkitInput) {
+function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-log",
@@ -184,14 +186,15 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
         emitResultChunks("git-log", rawLog, onOutput, 4, toolCallId);
-        const result = compactToolOutput(rawLog, appConfig.agent.toolOutputBudget.gitDiff);
+        const result = compactToolOutput(rawLog, outputBudget.gitDiff);
         return { kind: "git-log", path: toolInput.path, limit: toolInput.limit, output: result };
       });
     },
   });
 }
 
-function createGitShowTool(git: GitOps, input: ToolkitInput) {
+function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-show",
@@ -226,7 +229,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
           contextLines: toolInput.contextLines ?? 3,
         });
         emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), onOutput, toolCallId);
-        const result = compactToolOutput(rawShow, appConfig.agent.toolOutputBudget.gitDiff);
+        const result = compactToolOutput(rawShow, outputBudget.gitDiff);
         return {
           kind: "git-show",
           ref: toolInput.ref,
@@ -239,7 +242,8 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
   });
 }
 
-function createGitAddTool(git: GitOps, input: ToolkitInput) {
+function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-add",
@@ -281,14 +285,15 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
             });
           }
         }
-        const result = compactToolOutput(rawAdd, appConfig.agent.toolOutputBudget.gitStatus);
+        const result = compactToolOutput(rawAdd, outputBudget.gitStatus);
         return { kind: "git-add", all: toolInput.all, paths: toolInput.paths, output: result };
       });
     },
   });
 }
 
-function createGitCommitTool(git: GitOps, input: ToolkitInput) {
+function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "git-commit",
@@ -332,21 +337,21 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
             });
           }
         }
-        const result = compactToolOutput(rawCommit, appConfig.agent.toolOutputBudget.gitDiff);
+        const result = compactToolOutput(rawCommit, outputBudget.gitDiff);
         return { kind: "git-commit", message: toolInput.message, body: toolInput.body, output: result };
       });
     },
   });
 }
 
-export function createGitToolkit(input: ToolkitInput) {
+export function createGitToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   const git = createGitOps(input.workspace);
   return {
-    gitStatus: createGitStatusTool(git, input),
-    gitDiff: createGitDiffTool(git, input),
-    gitLog: createGitLogTool(git, input),
-    gitShow: createGitShowTool(git, input),
-    gitAdd: createGitAddTool(git, input),
-    gitCommit: createGitCommitTool(git, input),
+    gitStatus: createGitStatusTool(git, deps, input),
+    gitDiff: createGitDiffTool(git, deps, input),
+    gitLog: createGitLogTool(git, deps, input),
+    gitShow: createGitShowTool(git, deps, input),
+    gitAdd: createGitAddTool(git, deps, input),
+    gitCommit: createGitCommitTool(git, deps, input),
   };
 }

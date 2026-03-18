@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
-import { createTool, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitResultChunks } from "./tool-output-format";
@@ -57,7 +56,8 @@ export function webSearchStreamRows(result: string, query?: string): string {
   return out.join("\n");
 }
 
-function createWebSearchTool(input: ToolkitInput) {
+function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "web-search",
@@ -89,7 +89,7 @@ function createWebSearchTool(input: ToolkitInput) {
         });
         const result = compactToolOutput(
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
-          appConfig.agent.toolOutputBudget.webSearch,
+          outputBudget.webSearch,
         );
         emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), onOutput, 80, toolCallId);
         return { kind: "web-search", query: toolInput.query, output: result };
@@ -98,7 +98,8 @@ function createWebSearchTool(input: ToolkitInput) {
   });
 }
 
-function createWebFetchTool(input: ToolkitInput) {
+function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { session, onOutput } = input;
   return createTool({
     id: "web-fetch",
@@ -126,7 +127,7 @@ function createWebFetchTool(input: ToolkitInput) {
         });
         const result = compactToolOutput(
           await fetchWeb(toolInput.url, toolInput.maxChars ?? 5000),
-          appConfig.agent.toolOutputBudget.webFetch,
+          outputBudget.webFetch,
         );
         return { kind: "web-fetch", url: toolInput.url, output: result };
       });
@@ -134,9 +135,9 @@ function createWebFetchTool(input: ToolkitInput) {
   });
 }
 
-export function createWebToolkit(input: ToolkitInput) {
+export function createWebToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   return {
-    webSearch: createWebSearchTool(input),
-    webFetch: createWebFetchTool(input),
+    webSearch: createWebSearchTool(deps, input),
+    webFetch: createWebFetchTool(deps, input),
   };
 }

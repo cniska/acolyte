@@ -1,10 +1,9 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { editCodeEditSchema } from "./code-contract";
 import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
 import { t } from "./i18n";
-import { createTool, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { createDiffSummaryEmitter, numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
@@ -47,7 +46,8 @@ function formatScanCodeResult(result: ScanCodeResult): string {
   return lines.join("\n");
 }
 
-function createScanCodeTool(input: ToolkitInput) {
+function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   return createTool({
     id: "scan-code",
@@ -95,7 +95,7 @@ function createScanCodeTool(input: ToolkitInput) {
             toolCallId,
           });
         }
-        const baseBudget = appConfig.agent.toolOutputBudget.scanCode;
+        const baseBudget = outputBudget.scanCode;
         const count = paths.length * toolInput.patterns.length;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
@@ -115,7 +115,8 @@ function createScanCodeTool(input: ToolkitInput) {
   });
 }
 
-function createEditCodeTool(input: ToolkitInput) {
+function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-code",
@@ -175,7 +176,7 @@ function createEditCodeTool(input: ToolkitInput) {
         for (const content of numberedUnifiedDiffLines(editResult.output))
           onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = summarizeUnifiedDiff(editResult.output);
-        const result = compactToolOutput(editResult.output, appConfig.agent.toolOutputBudget.astEdit);
+        const result = compactToolOutput(editResult.output, outputBudget.astEdit);
         return {
           kind: "edit-code",
           path: toolInput.path,
@@ -192,9 +193,9 @@ function createEditCodeTool(input: ToolkitInput) {
   });
 }
 
-export function createCodeToolkit(input: ToolkitInput) {
+export function createCodeToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   return {
-    scanCode: createScanCodeTool(input),
-    editCode: createEditCodeTool(input),
+    scanCode: createScanCodeTool(deps, input),
+    editCode: createEditCodeTool(deps, input),
   };
 }

@@ -1,9 +1,8 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { deleteTextFile, editFile, findFiles, readSnippets, searchFiles, writeTextFile } from "./file-ops";
 import { t } from "./i18n";
-import { createTool, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import {
@@ -55,7 +54,8 @@ function normalizeReadEntries(paths: ReadPathInput[]): NormalizedReadEntry[] {
   return Array.from(deduped.values());
 }
 
-function createFindFilesTool(input: ToolkitInput) {
+function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   return createTool({
     id: "find-files",
@@ -82,7 +82,7 @@ function createFindFilesTool(input: ToolkitInput) {
       return runTool(session, "find-files", toolInput, async (toolCallId) => {
         const maxResults = toolInput.maxResults ?? 40;
         const count = toolInput.patterns.length;
-        const baseBudget = appConfig.agent.toolOutputBudget.findFiles;
+        const baseBudget = outputBudget.findFiles;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
@@ -111,7 +111,8 @@ function createFindFilesTool(input: ToolkitInput) {
   });
 }
 
-function createSearchFilesTool(input: ToolkitInput) {
+function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   return createTool({
     id: "search-files",
@@ -159,7 +160,7 @@ function createSearchFilesTool(input: ToolkitInput) {
               : [];
         const result = compactToolOutput(
           await searchFiles(workspace, patterns, maxResults, toolInput.paths),
-          appConfig.agent.toolOutputBudget.searchFiles,
+          outputBudget.searchFiles,
         );
         const summaryEntries = searchResultSummaryEntries(result, patterns);
         emitSearchSummary(
@@ -185,7 +186,8 @@ function createSearchFilesTool(input: ToolkitInput) {
   });
 }
 
-function createReadFileTool(input: ToolkitInput) {
+function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   return createTool({
     id: "read-file",
@@ -241,7 +243,7 @@ function createReadFileTool(input: ToolkitInput) {
             toolCallId,
           });
         }
-        const baseBudget = appConfig.agent.toolOutputBudget.read;
+        const baseBudget = outputBudget.read;
         const count = entries.length;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
@@ -254,7 +256,8 @@ function createReadFileTool(input: ToolkitInput) {
   });
 }
 
-function createEditFileTool(input: ToolkitInput) {
+function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-file",
@@ -314,7 +317,7 @@ function createEditFileTool(input: ToolkitInput) {
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "edit-file", content, toolCallId });
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
+        const result = compactToolOutput(rawResult, outputBudget.edit);
         return {
           kind: "edit-file",
           path: toolInput.path,
@@ -328,7 +331,8 @@ function createEditFileTool(input: ToolkitInput) {
   });
 }
 
-function createCreateFileTool(input: ToolkitInput) {
+function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "create-file",
@@ -367,7 +371,7 @@ function createCreateFileTool(input: ToolkitInput) {
         for (const content of numberedUnifiedDiffLines(rawResult))
           onOutput({ toolName: "create-file", content, toolCallId });
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.create);
+        const result = compactToolOutput(rawResult, outputBudget.create);
         return {
           kind: "create-file",
           path: toolInput.path,
@@ -381,7 +385,8 @@ function createCreateFileTool(input: ToolkitInput) {
   });
 }
 
-function createDeleteFileTool(input: ToolkitInput) {
+function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+  const { outputBudget } = deps;
   const { workspace, session, onOutput } = input;
   return createTool({
     id: "delete-file",
@@ -415,20 +420,20 @@ function createDeleteFileTool(input: ToolkitInput) {
           resultParts.push(rawResult);
         }
         const rawResult = resultParts.join("\n\n");
-        const result = compactToolOutput(rawResult, appConfig.agent.toolOutputBudget.edit);
+        const result = compactToolOutput(rawResult, outputBudget.edit);
         return { kind: "delete-file", paths, deleted: paths.length, output: result };
       });
     },
   });
 }
 
-export function createFileToolkit(input: ToolkitInput) {
+export function createFileToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   return {
-    findFiles: createFindFilesTool(input),
-    searchFiles: createSearchFilesTool(input),
-    readFile: createReadFileTool(input),
-    editFile: createEditFileTool(input),
-    createFile: createCreateFileTool(input),
-    deleteFile: createDeleteFileTool(input),
+    findFiles: createFindFilesTool(deps, input),
+    searchFiles: createSearchFilesTool(deps, input),
+    readFile: createReadFileTool(deps, input),
+    editFile: createEditFileTool(deps, input),
+    createFile: createCreateFileTool(deps, input),
+    deleteFile: createDeleteFileTool(deps, input),
   };
 }

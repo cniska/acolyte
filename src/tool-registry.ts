@@ -1,11 +1,12 @@
 import { resolve } from "node:path";
+import { appConfig } from "./app-config";
 import { invariant } from "./assert";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createToolCache } from "./tool-cache";
-import type { ToolCategory, ToolDefinition, ToolkitInput, ToolPermission } from "./tool-contract";
+import type { ToolCategory, ToolDefinition, ToolkitDeps, ToolkitInput, ToolPermission } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createWebToolkit } from "./web-toolkit";
@@ -27,36 +28,45 @@ type AnyToolDefinition = ToolDefinition<unknown>;
 
 export const TOOLKIT_REGISTRY: {
   id: string;
-  createToolkit: (input: ToolkitInput) => ToolMap;
+  createToolkit: (deps: ToolkitDeps, input: ToolkitInput) => ToolMap;
 }[] = [
   {
     id: "file",
-    createToolkit: (input) => createFileToolkit(input),
+    createToolkit: (deps, input) => createFileToolkit(deps, input),
   },
   {
     id: "code",
-    createToolkit: (input) => createCodeToolkit(input),
+    createToolkit: (deps, input) => createCodeToolkit(deps, input),
   },
   {
     id: "web",
-    createToolkit: (input) => createWebToolkit(input),
+    createToolkit: (deps, input) => createWebToolkit(deps, input),
   },
   {
     id: "shell",
-    createToolkit: (input) => createShellToolkit(input),
+    createToolkit: (deps, input) => createShellToolkit(deps, input),
   },
   {
     id: "git",
-    createToolkit: (input) => createGitToolkit(input),
+    createToolkit: (deps, input) => createGitToolkit(deps, input),
   },
 ];
 
 const noopOutput: ToolOutputListener = () => {};
 
-function collectTools(workspace: string, session: SessionContext, onOutput: ToolOutputListener = noopOutput): ToolMap {
+const defaultToolkitDeps = (): ToolkitDeps => ({
+  outputBudget: appConfig.agent.toolOutputBudget,
+});
+
+function collectTools(
+  workspace: string,
+  session: SessionContext,
+  onOutput: ToolOutputListener = noopOutput,
+  deps: ToolkitDeps = defaultToolkitDeps(),
+): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
-    Object.assign(combined, toolkit.createToolkit({ workspace, session, onOutput }));
+    Object.assign(combined, toolkit.createToolkit(deps, { workspace, session, onOutput }));
   }
   return combined;
 }
