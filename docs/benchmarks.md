@@ -29,17 +29,17 @@ Claude Code, Cursor, and Copilot are included for context but excluded from code
 
 | Project | Language | Description | Source lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, evaluators, and AST code tools | 22,463 | 174 | 12 + 6 |
-| **Codex** | Rust | Terminal AI coding agent from OpenAI with multi-platform support | 517,261 | 1,109 | 226 + 55 |
-| **Aider** | Python | AI pair programming in your terminal | 25,938 | 105 | 35 + 17 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, evaluators, and AST code tools | 22,673 | 174 | 12 + 6 |
+| **Codex** | Rust | Terminal AI coding agent from OpenAI with multi-platform support | 521,971 | 1,120 | 227 + 57 |
+| **Aider** | Python | AI pair programming in your terminal | 25,943 | 105 | 35 + 17 |
 | **Plandex** | Go | AI coding agent for large multi-file tasks in the terminal | 74,573 | 333 | 54 + 0 |
-| **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 216,717 | 1,061 | 173 + 79 |
-| **Pi** | TypeScript | Terminal coding agent harness with extensions | 100,511 | 395 | 50 + 19 |
+| **OpenCode** | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 217,519 | 1,068 | 174 + 79 |
+| **Pi** | TypeScript | Terminal coding agent harness with extensions | 101,560 | 399 | 50 + 19 |
 | **Continue** | TypeScript | AI code assistant for VS Code and JetBrains | 231,361 | 1,461 | 186 + 164 |
-| **Cline** | TypeScript | Autonomous AI coding agent for VS Code | 202,584 | 1,230 | 155 + 70 |
-| **OpenHands** | Python | AI-driven software development platform | 122,398 | 704 | 83 + 7 |
-| **Goose** | Rust | Extensible AI agent from Block with MCP integration | 122,329 | 327 | 139 + 15 |
-| **OpenClaw** | TypeScript | Personal AI assistant with coding agent skill | 688,512 | 3,798 | 109 + 47 |
+| **Cline** | TypeScript | Autonomous AI coding agent for VS Code | 203,064 | 1,231 | 155 + 70 |
+| **OpenHands** | Python | AI-driven software development platform | 124,062 | 712 | 83 + 7 |
+| **Goose** | Rust | Extensible AI agent from Block with MCP integration | 124,893 | 332 | 141 + 16 |
+| **OpenClaw** | TypeScript | Personal AI assistant with coding agent skill | 735,336 | 4,342 | 108 + 48 |
 
 Each runtime dependency has a specific job — the AI SDK for model calls, Zod for validation, a custom React reconciler for the TUI, and tiktoken for token counting.
 
@@ -51,14 +51,14 @@ External imports include package imports that resolve **outside the repository**
 
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
-| External imports / 1k LOC | 6.2 | 16.7 | 9.1 | 22.3 | 10.0 | 4.5 |
-| Runtime dependencies | 12 | 173 | 50 | 155 | 186 | 109 |
+| External imports / 1k LOC | 6.1 | 16.8 | 9.0 | 22.3 | 10.0 | 6.3 |
+| Runtime dependencies | 12 | 174 | 50 | 155 | 186 | 108 |
 
 _TypeScript projects only._
 
 Lower values indicate a more self-contained codebase with fewer external dependencies.
 
-Acolyte has the second-lowest external import density (6.2/1k), behind only OpenClaw (4.5/1k), and the fewest runtime dependencies by a wide margin.
+Acolyte has the lowest external import density (6.1/1k) among TypeScript projects and the fewest runtime dependencies by a wide margin.
 
 ## Input validation coverage
 
@@ -87,7 +87,7 @@ Per 1k source lines.
 | `: any` annotations | 0.0 | 1.0 | 1.3 | 2.3 | 4.4 | 0.2 |
 | `@ts-ignore` / `@ts-expect-error` | 0.0 | 0.2 | 0.0 | 0.1 | 0.4 | 0.0 |
 | Lint ignores | 0.1 | 0.0 | 0.0 | 0.1 | 0.2 | 0.1 |
-| `: unknown` usage | 5.2 | 1.5 | 1.1 | 0.4 | 0.3 | 5.6 |
+| `: unknown` usage | 5.1 | 1.5 | 1.1 | 0.4 | 0.3 | 5.7 |
 
 Acolyte has **2 total `any`**. It uses `unknown` with explicit narrowing at high rates — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system.
 
@@ -97,11 +97,11 @@ Per 1k source lines.
 
 | Metric | Aider | OpenHands | Goose | Codex | Plandex |
 |---|---|---|---|---|---|
-| `type: ignore` (Python) | 0.0 | 1.7 | — | — | — |
-| `Any` usage (Python) | 0.1 | 3.5 | — | — | — |
-| `cast()` calls (Python) | 0.0 | 0.3 | — | — | — |
+| `type: ignore` (Python) | 0.0 | 1.6 | — | — | — |
+| `Any` usage (Python) | 0.1 | 3.4 | — | — | — |
+| `cast()` calls (Python) | 0.0 | 0.4 | — | — | — |
 | `unsafe` (Rust) | — | — | 0.0 | 0.9 | — |
-| `.unwrap()` (Rust) | — | — | 11.8 | 2.7 | — |
+| `.unwrap()` (Rust) | — | — | 11.7 | 2.7 | — |
 | `.expect()` (Rust) | — | — | 1.4 | 8.6 | — |
 | `any` / `interface{}` (Go) | — | — | — | — | 4.4 |
 | `panic()` (Go) | — | — | — | — | 0.3 |
@@ -116,9 +116,9 @@ Measures test lines relative to source lines across all projects.
 
 | Metric | Acolyte | Codex | Aider | Plandex | OpenCode | Pi | Continue | Cline | OpenHands | Goose | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Test files | 135 | 250 | 42 | 6 | 212 | 114 | 331 | 190 | 354 | 19 | 2,470 |
-| Test lines | 18,054 | 102,934 | 12,410 | 2,517 | 42,289 | 36,120 | 82,506 | 48,170 | 143,114 | 5,579 | 526,910 |
-| Test / source ratio | **0.80** | 0.20 | 0.48 | 0.03 | 0.20 | 0.36 | 0.36 | 0.24 | **1.17** | 0.05 | 0.77 |
+| Test files | 136 | 250 | 42 | 6 | 212 | 120 | 331 | 193 | 359 | 20 | 2,626 |
+| Test lines | 18,664 | 103,809 | 12,427 | 2,517 | 42,975 | 37,218 | 82,506 | 48,684 | 145,208 | 6,866 | 569,941 |
+| Test / source ratio | **0.82** | 0.20 | 0.48 | 0.03 | 0.20 | 0.37 | 0.36 | 0.24 | **1.17** | 0.05 | 0.78 |
 
 Acolyte maintains a high test ratio because lifecycle phases, guards, and tools are independent modules with clean interfaces.
 
@@ -135,10 +135,10 @@ Measures average file size, size distribution, and barrel file density.
 
 | Metric | Acolyte | Codex | Aider | Plandex | OpenCode | Pi | Continue | Cline | OpenHands | Goose | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Avg lines / file | 129 | 466 | 247 | 224 | 204 | 254 | 158 | 165 | 174 | 374 | 181 |
-| Files > 500 lines | 4 (2%) | 255 (23%) | 14 (13%) | 36 (11%) | 105 (10%) | 51 (13%) | 87 (6%) | 69 (6%) | 55 (8%) | 79 (24%) | 326 (9%) |
-| Largest file | 721 | 9,835 | 2,486 | 2,455 | 4,964 | 4,443 | 3,229 | 4,758 | 1,715 | 2,506 | 2,875 |
-| Barrel / index files | 1 | 59 | 5 | 0 | 50 | 26 | 73 | 47 | 85 | 44 | 79 |
+| Avg lines / file | 130 | 466 | 247 | 224 | 204 | 255 | 158 | 165 | 174 | 376 | 169 |
+| Files > 500 lines | 3 (2%) | 257 (23%) | 14 (13%) | 36 (11%) | 105 (10%) | 51 (13%) | 87 (6%) | 69 (6%) | 55 (8%) | 81 (24%) | 335 (8%) |
+| Largest file | 721 | 9,835 | 2,486 | 2,455 | 4,967 | 4,503 | 3,229 | 4,809 | 2,048 | 2,518 | 2,937 |
+| Barrel / index files | 1 | 59 | 5 | 0 | 50 | 26 | 73 | 47 | 86 | 45 | 105 |
 
 Acolyte maintains the smallest average module size and fewest large files.
 
@@ -151,8 +151,8 @@ Per 1k source lines.
 | Metric | Acolyte | OpenCode | Pi | Cline | Continue | OpenClaw |
 |---|---|---|---|---|---|---|
 | `.safeParse()` calls | 1.1 | 0.1 | 0.0 | 0.0 | 0.1 | 0.0 |
-| `try { ... }` blocks | 5.2 | 1.3 | 4.2 | 6.1 | 3.8 | 4.8 |
-| `.catch()` calls | 0.6 | 2.2 | 0.3 | 1.1 | 0.3 | 1.0 |
+| `try { ... }` blocks | 5.2 | 1.3 | 4.2 | 6.1 | 3.8 | 4.6 |
+| `.catch()` calls | 0.6 | 2.2 | 0.4 | 1.1 | 0.3 | 0.9 |
 
 _TypeScript projects only._
 
@@ -179,11 +179,11 @@ Consolidated comparison across all measured dimensions.
 | Dimension | Acolyte | Codex | Aider | Plandex | OpenCode | Pi | Continue | Cline | OpenHands | Goose | OpenClaw |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Type safety | High | Medium | High | Medium | Medium | Medium | Lower | Medium | Ignore-heavy | Panic-heavy | High |
-| Test density | High (0.80) | Low (0.20) | Medium (0.48) | Low (0.03) | Low (0.20) | Medium (0.36) | Medium (0.36) | Low (0.24) | Highest (1.17) | Lowest (0.05) | High (0.77) |
-| Module size | Smallest (129) | Large (466) | Medium (247) | Medium (224) | Medium (204) | Medium (254) | Medium (158) | Medium (165) | Medium (174) | Largest (374) | Medium (181) |
-| Dependencies | Lightest (18) | Heavy (281) | Light (52) | Light (54) | Heavy (252) | Light (69) | Heavy (350) | Heavy (225) | Medium (90) | Heavy (154) | Heavy (156) |
+| Test density | High (0.82) | Low (0.20) | Medium (0.48) | Low (0.03) | Low (0.20) | Medium (0.37) | Medium (0.36) | Low (0.24) | Highest (1.17) | Lowest (0.05) | High (0.78) |
+| Module size | Smallest (130) | Large (466) | Medium (247) | Medium (224) | Medium (204) | Medium (255) | Medium (158) | Medium (165) | Medium (174) | Largest (376) | Medium (169) |
+| Dependencies | Lightest (18) | Heavy (284) | Light (52) | Light (54) | Heavy (253) | Light (69) | Heavy (350) | Heavy (225) | Medium (90) | Heavy (157) | Heavy (156) |
 | Maturity | New | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped | Shipped |
 
 Acolyte leads on type safety, module size, and dependency count while remaining the smallest codebase in the benchmark.
 
-Updated 17 March 2026.
+Updated 18 March 2026.
