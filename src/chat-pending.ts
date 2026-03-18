@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { usePendingAnimationEffect } from "./chat-effects";
 import type { PendingState } from "./client-contract";
-import { useSyncEffect } from "./tui/effects";
+import { useInterval, useSyncEffect } from "./tui/effects";
 
 const PENDING_PULSE_FRAMES = 16;
+const PENDING_ANIMATION_INTERVAL_MS = 60;
+
+function nextPendingFrame(current: number, frameCount: number): number {
+  return (current + 1) % frameCount;
+}
 
 export type PendingStateResult = {
   pendingState: PendingState | null;
@@ -22,22 +26,25 @@ export type PendingStateResult = {
 export function usePendingState(): PendingStateResult {
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
   const isPending = pendingState !== null;
-  const [pendingFrame, setThinkingFrame] = useState(0);
-  const [pendingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
+  const [pendingFrame, setPendingFrame] = useState(0);
+  const [pendingStartedAt, setPendingStartedAt] = useState<number | null>(null);
   const [ctrlCPending, setCtrlCPending] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
 
   useSyncEffect(() => {
     if (isPending) {
-      setThinkingStartedAt((current) => current ?? Date.now());
+      setPendingStartedAt((current) => current ?? Date.now());
     } else {
-      setThinkingStartedAt(null);
-      setThinkingFrame(0);
+      setPendingStartedAt(null);
+      setPendingFrame(0);
     }
   }, [isPending]);
 
-  usePendingAnimationEffect(isPending, PENDING_PULSE_FRAMES, setThinkingFrame);
+  useInterval(
+    () => setPendingFrame((current) => nextPendingFrame(current, PENDING_PULSE_FRAMES)),
+    isPending ? PENDING_ANIMATION_INTERVAL_MS : null,
+  );
 
   return {
     pendingState,

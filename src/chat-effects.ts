@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { extractAtReferenceQuery, getCachedRepoPathCandidates, rankAtReferenceSuggestions } from "./chat-file-ref";
 import { suggestSlashCommands } from "./chat-slash";
-import { useAsyncEffect, useInterval, useSyncEffect } from "./tui/effects";
-
-const PENDING_ANIMATION_INTERVAL_MS = 60;
+import { useAsyncEffect, useSyncEffect } from "./tui/effects";
 
 export function clampSuggestionIndex(current: number, length: number): number {
   return Math.max(0, Math.min(current, Math.max(0, length - 1)));
-}
-
-export function nextPendingFrame(current: number, frameCount: number): number {
-  return (current + 1) % frameCount;
 }
 
 export function useAtSuggestionsEffect(
@@ -67,15 +61,4 @@ export function useSuggestions(value: string): SuggestionsState {
     atSuggestionIndex,
     setAtSuggestionIndex,
   };
-}
-
-export function usePendingAnimationEffect(
-  isPending: boolean,
-  frameCount: number,
-  setThinkingFrame: (next: number | ((current: number) => number)) => void,
-): void {
-  useInterval(
-    () => setThinkingFrame((current) => nextPendingFrame(current, frameCount)),
-    isPending ? PENDING_ANIMATION_INTERVAL_MS : null,
-  );
 }

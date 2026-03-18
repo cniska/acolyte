@@ -98,7 +98,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
 
     await input.persist();
-    let keepThinkingForRemoteTask = false;
+    let keepPendingForRemoteTask = false;
 
     try {
       const turn = await runAssistantTurn({
@@ -158,7 +158,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           onStopPending: stopPending,
         });
         if (startedFollowup) {
-          keepThinkingForRemoteTask = true;
+          keepPendingForRemoteTask = true;
           return;
         }
       }
@@ -187,7 +187,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       }
     } finally {
       input.setInterrupt(null);
-      if (!keepThinkingForRemoteTask) {
+      if (!keepPendingForRemoteTask) {
         stopPending();
         input.setPendingState(null);
       }
