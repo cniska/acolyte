@@ -1,7 +1,7 @@
 import type React from "react";
 import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
-import { formatColumns, formatRelativeTime } from "./chat-format";
+import { alignCols, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
@@ -133,7 +133,7 @@ export function renderPickerItems(
         truncateText(item.title || t("chat.session.default_title"), 40),
         formatRelativeTime(item.updatedAt),
       ]);
-      const formattedRows = formatColumns(rows);
+      const formattedRows = alignCols(rows);
       const visible = formattedRows.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       const visibleItems = picker.items.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
       return visible.map((line, index) => {

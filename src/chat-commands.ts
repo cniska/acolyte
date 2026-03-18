@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import { formatColumns, formatCompactNumber, formatRelativeTime } from "./chat-format";
+import { alignCols, formatCompactNumber, formatRelativeTime } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
@@ -43,7 +43,7 @@ export function formatSessionList(store: SessionState, limit = 10): string[] {
     const title = item.title || t("chat.session.default_title");
     return [`${active} ${item.id}`, title, formatRelativeTime(item.updatedAt)];
   });
-  return formatColumns(rows);
+  return alignCols(rows);
 }
 
 function formatUsageValue(value: number): string {
@@ -80,24 +80,40 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
     { input: 0, output: 0, total: 0 },
   );
   const hasSession = all.length > 1;
-  const pad = 8;
-  const col = (left: string, right: string) => (hasSession ? `${left.padEnd(pad)}${right}` : left);
-  const summary: [string, string][] = [
-    [t("chat.usage.metric.input"), col(formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input))],
-    [t("chat.usage.metric.output"), col(formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output))],
-    [t("chat.usage.metric.total"), col(formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total))],
+  const summaryGrid: string[][] = [
+    hasSession
+      ? [formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)]
+      : [formatUsageValue(last.usage.inputTokens)],
+    hasSession
+      ? [formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)]
+      : [formatUsageValue(last.usage.outputTokens)],
+    hasSession
+      ? [formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)]
+      : [formatUsageValue(last.usage.totalTokens)],
   ];
+  const summaryLabels = [t("chat.usage.metric.input"), t("chat.usage.metric.output"), t("chat.usage.metric.total")];
+  const summaryAligned = alignCols(summaryGrid);
+  const summary: [string, string][] = summaryLabels.map((label, i) => [label, summaryAligned[i]]);
   const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
     const bd = last.promptBreakdown;
     const total = Math.max(bd.usedTokens, last.usage.inputTokens);
+    const breakdownGrid: string[][] = [];
+    const breakdownLabels: string[] = [];
     for (const [label, tokens] of [
       [t("chat.usage.metric.system"), bd.systemTokens],
       [t("chat.usage.metric.tools"), bd.toolTokens],
       [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
-      if (tokens > 0) breakdown.push([label, `${formatUsageValue(tokens).padEnd(pad)}${formatShare(tokens, total)}`]);
+      if (tokens > 0) {
+        breakdownLabels.push(label);
+        breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
+      }
+    }
+    const breakdownAligned = alignCols(breakdownGrid);
+    for (let i = 0; i < breakdownLabels.length; i++) {
+      breakdown.push([breakdownLabels[i], breakdownAligned[i]]);
     }
   }
   const sections: [string, string][][] = [summary];

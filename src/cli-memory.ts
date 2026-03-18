@@ -1,4 +1,4 @@
-import { formatColumns, formatRelativeTime } from "./chat-format";
+import { alignCols, formatRelativeTime } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
@@ -22,7 +22,7 @@ function printMemoryRows(rows: readonly MemoryEntry[], printDim: (message: strin
   const formatted = rows
     .slice(0, 50)
     .map((row) => [row.id, truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
-  for (const line of formatColumns(formatted)) {
+  for (const line of alignCols(formatted)) {
     printDim(line);
   }
 }

@@ -1,4 +1,4 @@
-import { formatColumns, formatRelativeTime } from "./chat-format";
+import { alignCols, formatRelativeTime } from "./chat-format";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
 import type { readStore as readStoreType } from "./storage";
@@ -20,7 +20,7 @@ function listSessions(store: Awaited<ReturnType<typeof readStoreType>>, printDim
   const rows = store.sessions
     .slice(0, 20)
     .map((session) => [session.id, truncateText(session.title, 60), formatRelativeTime(session.updatedAt)]);
-  for (const line of formatColumns(rows)) {
+  for (const line of alignCols(rows)) {
     printDim(line);
   }
 }

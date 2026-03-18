@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatColumns, formatCompactNumber, formatRelativeTime, formatThoughtDuration } from "./chat-format";
+import { alignCols, formatCompactNumber, formatRelativeTime, formatThoughtDuration } from "./chat-format";
 
 describe("formatCompactNumber", () => {
   test("returns raw number below 1000", () => {
@@ -28,8 +28,8 @@ describe("chat-formatters helpers", () => {
     expect(formatThoughtDuration(81_900)).toBe("1m 22s");
   });
 
-  test("formatColumns aligns columns with padding", () => {
-    const out = formatColumns([
+  test("alignCols aligns columns with padding", () => {
+    const out = alignCols([
       ["sess_123", "hello world", "2m ago"],
       ["sess_456789", "test", "1h ago"],
     ]);

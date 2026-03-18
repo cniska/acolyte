@@ -57,12 +57,12 @@ export function formatCommandOutput(output: { sections: [string, string][][]; li
   return parts.join("\n\n");
 }
 
-export function formatColumns(rows: string[][]): string[] {
+export function alignCols(rows: string[][], gap = 2): string[] {
   if (rows.length === 0) return [];
-  const colCount = rows[0].length;
+  const colCount = Math.max(...rows.map((r) => r.length));
   const widths: number[] = [];
   for (let c = 0; c < colCount - 1; c++) {
     widths.push(rows.reduce((max, row) => Math.max(max, (row[c] ?? "").length), 0));
   }
-  return rows.map((row) => row.map((cell, i) => (i < widths.length ? cell.padEnd(widths[i] + 2) : cell)).join(""));
+  return rows.map((row) => row.map((cell, i) => (i < widths.length ? cell.padEnd(widths[i] + gap) : cell)).join(""));
 }
