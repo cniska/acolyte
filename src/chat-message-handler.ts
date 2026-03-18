@@ -1,4 +1,5 @@
 import type { AgentMode } from "./agent-contract";
+import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import type { ChatMessage } from "./chat-contract";
@@ -51,6 +52,7 @@ type CreateMessageHandlerInput = {
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
+  modeModels?: ChatRequest["modeModels"];
   graduate?: () => void;
   clearTranscript: (sessionId?: string) => void;
 };
@@ -104,7 +106,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: input.currentSession.model,
-        modeModels: appConfig.models,
+        modeModels: input.modeModels ?? appConfig.models,
         sessionId: input.currentSession.id,
         useMemory: input.useMemory,
         signal: controller.signal,
