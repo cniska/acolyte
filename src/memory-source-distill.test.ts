@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
 import type { DistillRecord } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import type { DistillStore } from "./memory-distill-store";
-import { createDistillMemorySource } from "./memory-source-distill";
+import { createDistillMemorySource, type DistillConfig } from "./memory-source-distill";
+
+const testDistillConfig: DistillConfig = {
+  model: "test-model",
+  messageThreshold: 1,
+  reflectionThresholdTokens: 50,
+  maxOutputTokens: 200,
+};
 
 function createMockStore(
   records: DistillRecord[] = [],
@@ -281,216 +287,180 @@ describe("distillMemorySource", () => {
     });
 
     test("reflects only observations created since latest reflection", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 1,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore([
-          {
-            id: "dst_obs_old",
-            sessionId: "sess_test0001",
-            tier: "observation",
-            content: "old observation",
-            createdAt: "2026-03-04T10:00:00.000Z",
-            tokenEstimate: 3,
-          },
-          {
-            id: "dst_ref_old",
-            sessionId: "sess_test0001",
-            tier: "reflection",
-            content: "old reflection",
-            createdAt: "2026-03-04T10:30:00.000Z",
-            tokenEstimate: 3,
-          },
-        ]);
-        const reflectorInputs: string[] = [];
-        const source = createDistillMemorySource(store, async (systemPrompt, input) => {
+      const store = createMockStore([
+        {
+          id: "dst_obs_old",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "old observation",
+          createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 3,
+        },
+        {
+          id: "dst_ref_old",
+          sessionId: "sess_test0001",
+          tier: "reflection",
+          content: "old reflection",
+          createdAt: "2026-03-04T10:30:00.000Z",
+          tokenEstimate: 3,
+        },
+      ]);
+      const reflectorInputs: string[] = [];
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt, input) => {
           if (systemPrompt === OBSERVER_PROMPT) return "[session] new observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectorInputs.push(input);
             return "new reflection";
           }
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
 
-        expect(reflectorInputs.length).toBeGreaterThan(0);
-        const latestReflectorInput = reflectorInputs[reflectorInputs.length - 1];
-        expect(latestReflectorInput).toContain("new observation");
-        expect(latestReflectorInput).not.toContain("old observation");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+      expect(reflectorInputs.length).toBeGreaterThan(0);
+      const latestReflectorInput = reflectorInputs[reflectorInputs.length - 1];
+      expect(latestReflectorInput).toContain("new observation");
+      expect(latestReflectorInput).not.toContain("old observation");
     });
 
     test("removes consolidated observations and old reflections after writing new reflection", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 5,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore([
-          {
-            id: "dst_obs_old",
-            sessionId: "sess_test0001",
-            tier: "observation",
-            content: "old observation that was before the reflection",
-            createdAt: "2026-03-04T10:00:00.000Z",
-            tokenEstimate: 10,
-          },
-          {
-            id: "dst_ref_old",
-            sessionId: "sess_test0001",
-            tier: "reflection",
-            content: "old reflection",
-            createdAt: "2026-03-04T10:30:00.000Z",
-            tokenEstimate: 4,
-          },
-        ]);
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore([
+        {
+          id: "dst_obs_old",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "old observation that was before the reflection",
+          createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 10,
+        },
+        {
+          id: "dst_ref_old",
+          sessionId: "sess_test0001",
+          tier: "reflection",
+          content: "old reflection",
+          createdAt: "2026-03-04T10:30:00.000Z",
+          tokenEstimate: 4,
+        },
+      ]);
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
             return "[session] a new observation with enough tokens to exceed the reflection threshold for this test";
           if (systemPrompt === REFLECTOR_PROMPT) return "compact";
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 5, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
 
-        // New observation and reflection were written
-        expect(store.written.filter((e) => e.tier === "observation")).toHaveLength(1);
-        expect(store.written.filter((e) => e.tier === "reflection")).toHaveLength(1);
-        // Old observation (pre-reflection) and old reflection were GC'd
-        // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
-        expect(store.removed).toContain("dst_ref_old");
-        expect(store.removed.some((id) => id !== "dst_ref_old")).toBe(true);
-        // Only the new reflection remains in the store
-        const remaining = await store.list("sess_test0001");
-        expect(remaining).toHaveLength(1);
-        expect(remaining[0]?.tier).toBe("reflection");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+      // New observation and reflection were written
+      expect(store.written.filter((e) => e.tier === "observation")).toHaveLength(1);
+      expect(store.written.filter((e) => e.tier === "reflection")).toHaveLength(1);
+      // Old observation (pre-reflection) and old reflection were GC'd
+      // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
+      expect(store.removed).toContain("dst_ref_old");
+      expect(store.removed.some((id) => id !== "dst_ref_old")).toBe(true);
+      // Only the new reflection remains in the store
+      const remaining = await store.list("sess_test0001");
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0]?.tier).toBe("reflection");
     });
 
     test("skips writing reflection when retry compression cannot reduce size", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 1,
-        maxOutputTokens: 100_000,
-      };
-      try {
-        const store = createMockStore();
-        let reflectionCalls = 0;
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      let reflectionCalls = 0;
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT) return "[session] tiny observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectionCalls += 1;
             return "x".repeat(2_000);
           }
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 100_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
 
-        expect(reflectionCalls).toBe(3);
-        expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
-        expect(store.written.filter((entry) => entry.tier === "reflection")).toHaveLength(0);
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+      expect(reflectionCalls).toBe(3);
+      expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
+      expect(store.written.filter((entry) => entry.tier === "reflection")).toHaveLength(0);
     });
 
     test("stores parsed continuation fields from observation output", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
             return "[session] fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
-        expect(writtenObservation?.currentTask).toBe("Implement rolling context");
-        expect(writtenObservation?.nextStep).toBe("Add continuation fields");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      expect(writtenObservation?.currentTask).toBe("Implement rolling context");
+      expect(writtenObservation?.nextStep).toBe("Add continuation fields");
     });
 
     test("stores parsed continuation fields from bullet observation output", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
             return "[session] fact line\n- Current task: Bullet task\n* Next step: Bullet next";
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
-        expect(writtenObservation?.currentTask).toBe("Bullet task");
-        expect(writtenObservation?.nextStep).toBe("Bullet next");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      expect(writtenObservation?.currentTask).toBe("Bullet task");
+      expect(writtenObservation?.nextStep).toBe("Bullet next");
     });
 
     test("stores last continuation fields when multiple lines are present", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
             return [
               "Current task: Old task",
@@ -499,95 +469,77 @@ describe("distillMemorySource", () => {
               "Next step: New step",
             ].join("\n");
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        const writtenObservation = store.written.find((entry) => entry.tier === "observation");
-        expect(writtenObservation?.currentTask).toBe("New task");
-        expect(writtenObservation?.nextStep).toBe("New step");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      expect(writtenObservation?.currentTask).toBe("New task");
+      expect(writtenObservation?.nextStep).toBe("New step");
     });
 
     test("skips consecutive duplicate observations", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore([
-          {
-            id: "dst_obs_prev",
-            sessionId: "sess_test0001",
-            tier: "observation",
-            content: "prefers short answers",
-            createdAt: "2026-03-04T10:00:00.000Z",
-            tokenEstimate: 6,
-          },
-        ]);
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore([
+        {
+          id: "dst_obs_prev",
+          sessionId: "sess_test0001",
+          tier: "observation",
+          content: "prefers short answers",
+          createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 6,
+        },
+      ]);
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT) return " [session] prefers   short answers ";
           return "";
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        expect(store.written).toHaveLength(0);
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      expect(store.written).toHaveLength(0);
     });
 
     test("drops untagged fact lines during session commit", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return ["untagged fact should be dropped", "Current task: keep tagged facts only"].join("\n");
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        const sessionEntry = store.written.find((entry) => entry.sessionId === "sess_test0001");
-        expect(sessionEntry?.content).toContain("Current task: keep tagged facts only");
-        expect(sessionEntry?.content).not.toContain("untagged fact should be dropped");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const sessionEntry = store.written.find((entry) => entry.sessionId === "sess_test0001");
+      expect(sessionEntry?.content).toContain("Current task: keep tagged facts only");
+      expect(sessionEntry?.content).not.toContain("untagged fact should be dropped");
     });
 
     test("keeps continuation lines in session scope even if tagged as project/user", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
             "[project] Current task: should stay session scoped",
@@ -595,37 +547,31 @@ describe("distillMemorySource", () => {
             "[project] repo uses Bun",
             "[user] prefers concise replies",
           ].join("\n");
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          resourceId: "proj_abc123",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
-        expect(byScope.get("sess_test0001")).toContain("Current task: should stay session scoped");
-        expect(byScope.get("sess_test0001")).toContain("Next step: should stay session scoped");
-        expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
-        const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
-        expect(userScopeKey).toBeDefined();
-        expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers concise replies");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+      expect(byScope.get("sess_test0001")).toContain("Current task: should stay session scoped");
+      expect(byScope.get("sess_test0001")).toContain("Next step: should stay session scoped");
+      expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
+      const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
+      expect(userScopeKey).toBeDefined();
+      expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers concise replies");
     });
 
     test("silently drops malformed scope tags and commits valid facts", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
             "[project] valid project fact",
@@ -634,71 +580,55 @@ describe("distillMemorySource", () => {
             "[usr] malformed tag dropped",
             "[session] valid session fact",
           ].join("\n");
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        const metrics = await source.commit({
-          sessionId: "sess_test0001",
-          resourceId: "proj_abc123",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
-        // Malformed tags are silently dropped; valid facts are committed.
-        expect(store.written.length).toBeGreaterThan(0);
-        expect(metrics).toEqual({
-          projectPromotedFacts: 1,
-          userPromotedFacts: 1,
-          sessionScopedFacts: 1,
-          droppedUntaggedFacts: 0,
-        });
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      const metrics = await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      // Malformed tags are silently dropped; valid facts are committed.
+      expect(store.written.length).toBeGreaterThan(0);
+      expect(metrics).toEqual({
+        projectPromotedFacts: 1,
+        userPromotedFacts: 1,
+        sessionScopedFacts: 1,
+        droppedUntaggedFacts: 0,
+      });
     });
 
     test("commitScope writes only the targeted scope", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(
-          store,
-          async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
-          { commitScope: "project" },
-        );
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          workspace: "/tmp/acolyte-project",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
+        { commitScope: "project" },
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        workspace: "/tmp/acolyte-project",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
 
-        expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
-        const keys = store.written.map((entry) => entry.sessionId);
-        expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
-        expect(keys.some((key) => key === "sess_test0001")).toBe(false);
-        expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+      expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
+      const keys = store.written.map((entry) => entry.sessionId);
+      expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
+      expect(keys.some((key) => key === "sess_test0001")).toBe(false);
+      expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
     });
 
     test("session commit promotes [project] and [user] lines to scoped stores", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
             "[project] repo uses Bun",
@@ -707,42 +637,36 @@ describe("distillMemorySource", () => {
             "Current task: stabilize memory",
             "Next step: add promotion tests",
           ].join("\n");
-        });
-        if (!source.commit) throw new Error("expected commit handler");
-        await source.commit({
-          sessionId: "sess_test0001",
-          resourceId: "proj_abc123",
-          messages: [{ role: "user", content: "hello" }],
-          output: "done",
-        });
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
 
-        const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
-        expect(byScope.get("sess_test0001")).toContain("fix failing tests");
-        expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
-        expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");
-        expect(byScope.get("sess_test0001")).not.toContain("[project]");
-        expect(byScope.get("sess_test0001")).not.toContain("repo uses Bun");
-        expect(byScope.get("sess_test0001")).not.toContain("prefers short answers");
-        expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
-        const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
-        expect(userScopeKey).toBeDefined();
-        expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers short answers");
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
+      const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+      expect(byScope.get("sess_test0001")).toContain("fix failing tests");
+      expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
+      expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");
+      expect(byScope.get("sess_test0001")).not.toContain("[project]");
+      expect(byScope.get("sess_test0001")).not.toContain("repo uses Bun");
+      expect(byScope.get("sess_test0001")).not.toContain("prefers short answers");
+      expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
+      const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
+      expect(userScopeKey).toBeDefined();
+      expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers short answers");
     });
 
     test("returns scoped promotion and drop metrics for mixed observations", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const store = createMockStore();
-        const source = createDistillMemorySource(store, async (systemPrompt) => {
+      const store = createMockStore();
+      const source = createDistillMemorySource(
+        store,
+        async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
             "[project] project fact one",
@@ -754,7 +678,90 @@ describe("distillMemorySource", () => {
             "untagged dropped fact",
             "[proj] malformed tag dropped",
           ].join("\n");
-        });
+        },
+        {},
+        { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
+      );
+      if (!source.commit) throw new Error("expected commit handler");
+      const metrics = await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      // Malformed tag is silently dropped; valid facts are committed.
+      expect(metrics).toEqual({
+        projectPromotedFacts: 2,
+        userPromotedFacts: 1,
+        sessionScopedFacts: 3,
+        droppedUntaggedFacts: 1,
+      });
+      expect(store.written.length).toBeGreaterThan(0);
+    });
+
+    test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
+      const fixtureConfig: DistillConfig = {
+        ...testDistillConfig,
+        reflectionThresholdTokens: 999_999,
+        maxOutputTokens: 10_000,
+      };
+      const fixtures = [
+        {
+          name: "good_scoped_output",
+          observed: [
+            "[project] uses bun test",
+            "[user] prefers concise responses",
+            "[session] fixing failing memory tests",
+            "Current task: stabilize memory quality",
+            "Next step: add regression coverage",
+          ].join("\n"),
+          expectedMetrics: {
+            projectPromotedFacts: 1,
+            userPromotedFacts: 1,
+            sessionScopedFacts: 3,
+            droppedUntaggedFacts: 0,
+          },
+          expectedWriteCount: 3,
+        },
+        {
+          name: "mixed_output_with_untagged_fact",
+          observed: ["[project] uses bun test", "untagged fact", "Current task: stabilize memory quality"].join("\n"),
+          expectedMetrics: {
+            projectPromotedFacts: 1,
+            userPromotedFacts: 0,
+            sessionScopedFacts: 1,
+            droppedUntaggedFacts: 1,
+          },
+          expectedWriteCount: 2,
+        },
+        {
+          name: "malformed_tag_silently_dropped",
+          observed: [
+            "[project] uses bun test",
+            "[proj] malformed tag silently dropped",
+            "Current task: stabilize memory quality",
+          ].join("\n"),
+          expectedMetrics: {
+            projectPromotedFacts: 1,
+            userPromotedFacts: 0,
+            sessionScopedFacts: 1,
+            droppedUntaggedFacts: 0,
+          },
+          expectedWriteCount: 2,
+        },
+      ] as const;
+
+      for (const fixture of fixtures) {
+        const store = createMockStore();
+        const source = createDistillMemorySource(
+          store,
+          async (systemPrompt) => {
+            if (systemPrompt !== OBSERVER_PROMPT) return "";
+            return fixture.observed;
+          },
+          {},
+          fixtureConfig,
+        );
         if (!source.commit) throw new Error("expected commit handler");
         const metrics = await source.commit({
           sessionId: "sess_test0001",
@@ -762,92 +769,8 @@ describe("distillMemorySource", () => {
           messages: [{ role: "user", content: "hello" }],
           output: "done",
         });
-        // Malformed tag is silently dropped; valid facts are committed.
-        expect(metrics).toEqual({
-          projectPromotedFacts: 2,
-          userPromotedFacts: 1,
-          sessionScopedFacts: 3,
-          droppedUntaggedFacts: 1,
-        });
-        expect(store.written.length).toBeGreaterThan(0);
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
-      }
-    });
-
-    test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
-      const originalDistillConfig = { ...appConfig.distill };
-      (appConfig as { distill: typeof appConfig.distill }).distill = {
-        ...appConfig.distill,
-        messageThreshold: 1,
-        reflectionThresholdTokens: 999_999,
-        maxOutputTokens: 10_000,
-      };
-      try {
-        const fixtures = [
-          {
-            name: "good_scoped_output",
-            observed: [
-              "[project] uses bun test",
-              "[user] prefers concise responses",
-              "[session] fixing failing memory tests",
-              "Current task: stabilize memory quality",
-              "Next step: add regression coverage",
-            ].join("\n"),
-            expectedMetrics: {
-              projectPromotedFacts: 1,
-              userPromotedFacts: 1,
-              sessionScopedFacts: 3,
-              droppedUntaggedFacts: 0,
-            },
-            expectedWriteCount: 3,
-          },
-          {
-            name: "mixed_output_with_untagged_fact",
-            observed: ["[project] uses bun test", "untagged fact", "Current task: stabilize memory quality"].join("\n"),
-            expectedMetrics: {
-              projectPromotedFacts: 1,
-              userPromotedFacts: 0,
-              sessionScopedFacts: 1,
-              droppedUntaggedFacts: 1,
-            },
-            expectedWriteCount: 2,
-          },
-          {
-            name: "malformed_tag_silently_dropped",
-            observed: [
-              "[project] uses bun test",
-              "[proj] malformed tag silently dropped",
-              "Current task: stabilize memory quality",
-            ].join("\n"),
-            expectedMetrics: {
-              projectPromotedFacts: 1,
-              userPromotedFacts: 0,
-              sessionScopedFacts: 1,
-              droppedUntaggedFacts: 0,
-            },
-            expectedWriteCount: 2,
-          },
-        ] as const;
-
-        for (const fixture of fixtures) {
-          const store = createMockStore();
-          const source = createDistillMemorySource(store, async (systemPrompt) => {
-            if (systemPrompt !== OBSERVER_PROMPT) return "";
-            return fixture.observed;
-          });
-          if (!source.commit) throw new Error("expected commit handler");
-          const metrics = await source.commit({
-            sessionId: "sess_test0001",
-            resourceId: "proj_abc123",
-            messages: [{ role: "user", content: "hello" }],
-            output: "done",
-          });
-          expect(metrics, fixture.name).toEqual(fixture.expectedMetrics);
-          expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
-        }
-      } finally {
-        (appConfig as { distill: typeof appConfig.distill }).distill = originalDistillConfig;
+        expect(metrics, fixture.name).toEqual(fixture.expectedMetrics);
+        expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
       }
     });
   });

@@ -1,27 +1,15 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { appConfig } from "./app-config";
 import { getAvailableModels, invalidateModelsCache } from "./provider-models";
 
-let savedApiKey: string | undefined;
-let savedBaseUrl: string | undefined;
-let savedAnthropicApiKey: string | undefined;
-let savedGoogleApiKey: string | undefined;
+const OPENAI_BASE_URL = "https://api.openai.com/v1";
+const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1";
+const GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com";
 
 beforeEach(() => {
-  savedApiKey = appConfig.openai.apiKey;
-  savedBaseUrl = appConfig.openai.baseUrl;
-  savedAnthropicApiKey = appConfig.anthropic.apiKey;
-  savedGoogleApiKey = appConfig.google.apiKey;
-  (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
-  (appConfig.anthropic as { apiKey: string | undefined }).apiKey = undefined;
-  (appConfig.google as { apiKey: string | undefined }).apiKey = undefined;
+  invalidateModelsCache();
 });
 
 afterEach(() => {
-  (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
-  (appConfig.openai as { baseUrl: string | undefined }).baseUrl = savedBaseUrl;
-  (appConfig.anthropic as { apiKey: string | undefined }).apiKey = savedAnthropicApiKey;
-  (appConfig.google as { apiKey: string | undefined }).apiKey = savedGoogleApiKey;
   invalidateModelsCache();
   mock.restore();
 });
@@ -38,7 +26,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({ openai: { apiKey: "test-key", baseUrl: OPENAI_BASE_URL } });
       expect(models).toContain("gpt-5-mini");
       expect(models).toContain("gpt-5.2");
       expect(models).toEqual([...models].sort());
@@ -56,9 +44,10 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      await getAvailableModels();
+      const creds = { openai: { apiKey: "test-key", baseUrl: OPENAI_BASE_URL } };
+      await getAvailableModels(creds);
       const first = fetchCount;
-      await getAvailableModels();
+      await getAvailableModels(creds);
       expect(fetchCount).toBe(first);
     } finally {
       globalThis.fetch = originalFetch;
@@ -72,7 +61,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({ openai: { apiKey: "test-key", baseUrl: OPENAI_BASE_URL } });
       expect(models).toEqual([]);
     } finally {
       globalThis.fetch = originalFetch;
@@ -80,8 +69,6 @@ describe("getAvailableModels", () => {
   });
 
   test("prefixes models from local OpenAI-compatible endpoints", async () => {
-    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
-    (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
     let authHeader: string | null = null;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -90,7 +77,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({ openai: { baseUrl: "http://localhost:11434/v1" } });
       expect(models).toEqual(["openai-compatible/qwen2.5-coder:3b"]);
       expect(authHeader).toBeNull();
     } finally {
@@ -99,8 +86,6 @@ describe("getAvailableModels", () => {
   });
 
   test("sends configured api key for openai-compatible model discovery", async () => {
-    (appConfig.openai as { apiKey: string | undefined }).apiKey = "test-key";
-    (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
     let authHeader: string | null = null;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -109,7 +94,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      await getAvailableModels();
+      await getAvailableModels({ openai: { apiKey: "test-key", baseUrl: "http://localhost:11434/v1" } });
       expect(authHeader ?? "").toBe("Bearer test-key");
     } finally {
       globalThis.fetch = originalFetch;
@@ -117,8 +102,6 @@ describe("getAvailableModels", () => {
   });
 
   test("fetches anthropic models with correct headers", async () => {
-    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
-    (appConfig.anthropic as { apiKey: string | undefined }).apiKey = "sk-ant-test";
     let capturedHeaders: Record<string, string> = {};
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -130,7 +113,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({ anthropic: { apiKey: "sk-ant-test", baseUrl: ANTHROPIC_BASE_URL } });
       expect(models).toContain("claude-sonnet-4-6");
       expect(models).toContain("claude-haiku-4-5-20251001");
       expect(capturedHeaders["x-api-key"]).toBe("sk-ant-test");
@@ -141,8 +124,6 @@ describe("getAvailableModels", () => {
   });
 
   test("fetches google models with api key as query param and strips models/ prefix", async () => {
-    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
-    (appConfig.google as { apiKey: string | undefined }).apiKey = "goog-test-key";
     let capturedUrl = "";
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (url: string | URL | Request) => {
@@ -154,7 +135,7 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({ google: { apiKey: "goog-test-key", baseUrl: GOOGLE_BASE_URL } });
       expect(models).toContain("gemini-2.5-pro");
       expect(models).toContain("gemini-2.0-flash");
       expect(capturedUrl).toContain("key=goog-test-key");
@@ -164,7 +145,6 @@ describe("getAvailableModels", () => {
   });
 
   test("deduplicates models across providers", async () => {
-    (appConfig.anthropic as { apiKey: string | undefined }).apiKey = "sk-ant-test";
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (url: string | URL | Request) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
@@ -175,7 +155,10 @@ describe("getAvailableModels", () => {
     }) as unknown as typeof fetch;
 
     try {
-      const models = await getAvailableModels();
+      const models = await getAvailableModels({
+        openai: { apiKey: "test-key", baseUrl: OPENAI_BASE_URL },
+        anthropic: { apiKey: "sk-ant-test", baseUrl: ANTHROPIC_BASE_URL },
+      });
       const sharedCount = models.filter((m) => m === "shared-model").length;
       expect(sharedCount).toBe(1);
     } finally {
