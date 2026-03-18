@@ -10,7 +10,8 @@ while read -r local_ref local_oid remote_ref remote_oid; do
     continue
   fi
   if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
-    range="$local_oid"
+    # New ref — only check commits not already on the remote
+    range="$local_oid --not --remotes=$remote"
   else
     range="$remote_oid..$local_oid"
   fi
