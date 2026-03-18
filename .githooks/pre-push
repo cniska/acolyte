@@ -1,3 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
-exec bun run verify
+
+# Reject commits that don't follow project conventions
+root=$(git rev-parse --show-toplevel)
+remote="$1"
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  if [ "$local_oid" = "0000000000000000000000000000000000000000" ]; then
+    continue
+  fi
+  if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
+    range="$local_oid"
+  else
+    range="$remote_oid..$local_oid"
+  fi
+  while IFS= read -r oid; do
+    subject=$(git log -1 --format='%s' "$oid")
+    body=$(git log -1 --format='%b' "$oid")
+    bash "$root/scripts/check-commit-message.sh" "$subject" "$body" || {
+      echo "  commit: $oid" >&2
+      exit 1
+    }
+  done < <(git rev-list "$range" 2>/dev/null)
+done
+
+bun run verify

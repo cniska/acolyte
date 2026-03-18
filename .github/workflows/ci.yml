@@ -11,6 +11,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-title:
+    name: PR title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate PR title
+        run: bash scripts/check-commit-message.sh "${{ github.event.pull_request.title }}"
+
   verify:
     name: Verify
     runs-on: ubuntu-latest
