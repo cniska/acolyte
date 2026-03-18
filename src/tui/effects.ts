@@ -39,15 +39,14 @@ export function useInterval(callback: () => void, delayMs: number | null): void 
  * Run a synchronous side effect when dependencies change. Use for state-sync
  * cases where render-time setState would cause infinite loops (e.g. syncing
  * derived arrays that produce new references each render).
+ *
+ * Unlike other wrappers in this file, this does NOT use ref indirection —
+ * the effect closure must capture its own values so React can correctly
+ * batch and schedule updates during streaming.
  */
 export function useSyncEffect(effect: () => void, deps: readonly unknown[]): void {
-  const effectRef = useRef(effect);
-  effectRef.current = effect;
-
-  useEffect(() => {
-    effectRef.current();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: deps are caller-managed
-  }, deps);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are caller-managed
+  useEffect(effect, deps);
 }
 
 export function useAsyncEffect(effect: (cancelled: () => boolean) => Promise<void>, deps: readonly unknown[]): void {
