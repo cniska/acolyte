@@ -30,6 +30,7 @@ Check the entire project. This is a release gate, not a diff review.
    - commits exist since the last tag
    - `docs/features.md` covers capabilities introduced by commits since last tag (cross-reference `feat` commit subjects)
    - new features in `docs/roadmap.md` are accounted for (moved to shipped sections where applicable)
+   - run the `/benchmark` skill to refresh `docs/benchmarks.md`
 3. Determine version bump from commits since last tag:
    - run `git describe --tags --abbrev=0 --match 'v[0-9]*'` to find the previous tag
    - run `git log <prev_tag>..HEAD --oneline --no-merges` to list commits
@@ -38,7 +39,7 @@ Check the entire project. This is a release gate, not a diff review.
    - `patch` — everything else
 4. Report findings using the output format below.
 5. Ask for confirmation before proceeding.
-6. Run `bash scripts/release.sh <level>`. This runs verify, benchmarks, generates the changelog entry, and creates the commit and tag.
+6. Run `bash scripts/release.sh <level>`. This runs verify, generates the changelog entry, and creates the commit and tag.
 7. Show the push commands from the release script output. Do not push.
 
 ## Output format

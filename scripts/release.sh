@@ -54,7 +54,6 @@ echo "$old → $new"
 
 # Verify everything passes with new version
 bun run verify
-bun run scripts/benchmark.ts
 
 # Commit and tag
 git add -A
