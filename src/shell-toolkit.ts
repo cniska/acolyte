@@ -8,9 +8,6 @@ import { compactToolOutput } from "./tool-output";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
 function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const { outputBudget } = deps;
-  const { workspace, session, onOutput } = input;
-
   const parseExitCode = (result: string): number | undefined => {
     const match = result.match(/^exit_code=(\d+)$/m);
     if (!match?.[1]) return undefined;
@@ -39,11 +36,11 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
     }),
     execute: async (toolInput) => {
       return runTool(
-        session,
+        input.session,
         "run-command",
         toolInput,
         async (toolCallId) => {
-          onOutput({
+          input.onOutput({
             toolName: "run-command",
             content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
             toolCallId,
@@ -73,7 +70,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
             }
           };
           const rawResult = await runShellCommand(
-            workspace,
+            input.workspace,
             toolInput.command,
             toolInput.timeoutMs ?? 60_000,
             ({ stream, text }) => {
@@ -97,7 +94,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           flushRemainder("stdout");
           flushRemainder("stderr");
           const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
-            onOutput({
+            input.onOutput({
               toolName: "run-command",
               content: { kind: "shell-output", stream: entry.stream, text: entry.text },
               toolCallId,
@@ -106,18 +103,18 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           if (streamed.length > headRows + tailRows) {
             const omitted = streamed.length - (headRows + tailRows);
             for (const line of streamed.slice(0, headRows)) emitLine(line);
-            onOutput({
+            input.onOutput({
               toolName: "run-command",
               content: { kind: "truncated", count: omitted, unit: "lines" },
               toolCallId,
             });
             for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
           } else if (streamed.length === 0) {
-            onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
+            input.onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
           } else {
             for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
           }
-          const result = compactToolOutput(rawResult, outputBudget.run);
+          const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
             kind: "run-command",
             command: toolInput.command,

@@ -47,8 +47,6 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 }
 
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const { outputBudget } = deps;
-  const { workspace, session, onOutput } = input;
   return createTool({
     id: "scan-code",
     label: t("tool.label.review"),
@@ -77,13 +75,13 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "scan-code", toolInput, async (toolCallId) => {
+      return runTool(input.session, "scan-code", toolInput, async (toolCallId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
-        const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, workspace))));
+        const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
         if (unique.length > 0) {
           const shown = unique.slice(0, 4);
           const remaining = unique.length - shown.length;
-          onOutput({
+          input.onOutput({
             toolName: "scan-code",
             content: {
               kind: "file-header",
@@ -95,14 +93,14 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolCallId,
           });
         }
-        const baseBudget = outputBudget.scanCode;
+        const baseBudget = deps.outputBudget.scanCode;
         const count = paths.length * toolInput.patterns.length;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
         };
         const rawScan = await scanCode({
-          workspace,
+          workspace: input.workspace,
           paths,
           pattern: toolInput.patterns,
           language: toolInput.language,
@@ -116,12 +114,10 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
 }
 
 function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const { outputBudget } = deps;
-  const { workspace, session, onOutput } = input;
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-code",
     label: t("tool.label.edit"),
-    onOutput,
+    onOutput: input.onOutput,
   });
   const outputSchema = z.object({
     kind: z.literal("edit-code"),
@@ -166,17 +162,17 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     }),
     outputSchema,
     execute: async (toolInput) => {
-      return runTool(session, "edit-code", toolInput, async (toolCallId) => {
+      return runTool(input.session, "edit-code", toolInput, async (toolCallId) => {
         const editResult = await editCode({
-          workspace,
+          workspace: input.workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
         emitDiffSummaryHeader(toolInput.path, editResult.output, toolCallId);
         for (const content of numberedUnifiedDiffLines(editResult.output))
-          onOutput({ toolName: "edit-code", content, toolCallId });
+          input.onOutput({ toolName: "edit-code", content, toolCallId });
         const totals = summarizeUnifiedDiff(editResult.output);
-        const result = compactToolOutput(editResult.output, outputBudget.astEdit);
+        const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {
           kind: "edit-code",
           path: toolInput.path,

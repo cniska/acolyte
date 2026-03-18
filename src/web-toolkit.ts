@@ -57,8 +57,6 @@ export function webSearchStreamRows(result: string, query?: string): string {
 }
 
 function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const { outputBudget } = deps;
-  const { session, onOutput } = input;
   return createTool({
     id: "web-search",
     label: t("tool.label.web_search"),
@@ -77,8 +75,8 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "web-search", toolInput, async (toolCallId) => {
-        onOutput({
+      return runTool(input.session, "web-search", toolInput, async (toolCallId) => {
+        input.onOutput({
           toolName: "web-search",
           content: {
             kind: "tool-header",
@@ -89,9 +87,9 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
         });
         const result = compactToolOutput(
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
-          outputBudget.webSearch,
+          deps.outputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), onOutput, 80, toolCallId);
+        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, toolCallId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },
@@ -99,8 +97,6 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
 }
 
 function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const { outputBudget } = deps;
-  const { session, onOutput } = input;
   return createTool({
     id: "web-fetch",
     label: t("tool.label.web_fetch"),
@@ -119,15 +115,15 @@ function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput) => {
-      return runTool(session, "web-fetch", toolInput, async (toolCallId) => {
-        onOutput({
+      return runTool(input.session, "web-fetch", toolInput, async (toolCallId) => {
+        input.onOutput({
           toolName: "web-fetch",
           content: { kind: "tool-header", label: t("tool.label.web_fetch"), detail: toolInput.url },
           toolCallId,
         });
         const result = compactToolOutput(
           await fetchWeb(toolInput.url, toolInput.maxChars ?? 5000),
-          outputBudget.webFetch,
+          deps.outputBudget.webFetch,
         );
         return { kind: "web-fetch", url: toolInput.url, output: result };
       });
