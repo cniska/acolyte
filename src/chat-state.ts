@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import type { ChatRow } from "./chat-contract";
-import { useSuggestions, useThinkingAnimationEffect } from "./chat-effects";
+import { useSuggestions } from "./chat-effects";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useChatKeybindings } from "./chat-keybindings";
 import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
+import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { type PromotedItem, usePromotion } from "./chat-promotion";
@@ -21,7 +22,6 @@ import type { Session, SessionState, SessionTokenUsageEntry } from "./session-co
 import { loadSkills } from "./skills";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 
-const THINKING_PULSE_FRAMES = 16;
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 
 export interface ChatAppProps {
@@ -80,24 +80,21 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setInputHistoryDraft("");
   }, [currentSession.messages]);
 
-  const [pendingState, setPendingState] = useState<PendingState | null>(null);
-  const isPending = pendingState !== null;
-  const [thinkingFrame, setThinkingFrame] = useState(0);
-  const [thinkingStartedAt, setThinkingStartedAt] = useState<number | null>(null);
-  const [ctrlCPending, setCtrlCPending] = useState(false);
-  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
-
-  useSyncEffect(() => {
-    if (isPending) {
-      setThinkingStartedAt((current) => current ?? Date.now());
-    } else {
-      setThinkingStartedAt(null);
-      setThinkingFrame(0);
-    }
-  }, [isPending]);
+  const {
+    pendingState,
+    setPendingState,
+    isPending,
+    thinkingFrame,
+    thinkingStartedAt,
+    ctrlCPending,
+    setCtrlCPending,
+    queuedMessages,
+    setQueuedMessages,
+    runningUsage,
+    setRunningUsage,
+  } = usePendingState();
 
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
-  const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
 
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
@@ -143,8 +140,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       if (!cancelled()) setBranch(null);
     }
   }, []);
-
-  useThinkingAnimationEffect(isPending, THINKING_PULSE_FRAMES, setThinkingFrame);
 
   const activateSkill = createSkillActivator(
     {},
@@ -280,7 +275,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       if (ctrlCPending) setCtrlCPending(false);
       setValue(decision.nextValue);
     },
-    [value, showHelp, ctrlCPending],
+    [value, showHelp, ctrlCPending, setCtrlCPending],
   );
 
   const handleInputSubmit = useCallback(
@@ -311,7 +306,15 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       }
       void handleSubmit(queueDecision.value);
     },
-    [atSuggestions, atSuggestionIndex, slashSuggestions, slashSuggestionIndex, isPending, handleSubmit],
+    [
+      atSuggestions,
+      atSuggestionIndex,
+      slashSuggestions,
+      slashSuggestionIndex,
+      isPending,
+      setQueuedMessages,
+      handleSubmit,
+    ],
   );
 
   return {
