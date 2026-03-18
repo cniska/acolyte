@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatEntry } from "./chat-contract";
+import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 
 function createRowsHarness(): {
-  rows: ChatEntry[];
-  setRows: (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
+  rows: ChatRow[];
+  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 } {
-  const rows: ChatEntry[] = [];
-  const setRows = (updater: (current: ChatEntry[]) => ChatEntry[]): void => {
+  const rows: ChatRow[] = [];
+  const setRows = (updater: (current: ChatRow[]) => ChatRow[]): void => {
     rows.splice(0, rows.length, ...updater(rows));
   };
   return { rows, setRows };

@@ -1,13 +1,205 @@
 import React from "react";
-import type { ChatEntry } from "./chat-contract";
-import { formatTokenCount } from "./chat-format";
-import { ChatRow } from "./chat-row";
+import { renderAssistantContent } from "./chat-content-render";
+import type { ChatRow, CommandOutput } from "./chat-contract";
+import { isCommandOutput, isToolOutput } from "./chat-contract";
+import { COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, formatTokenCount } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
 import { palette } from "./palette";
+import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
 
+const MARKERS: Record<ChatRow["kind"], string> = {
+  user: "❯ ",
+  assistant: "• ",
+  tool: "• ",
+  status: "• ",
+  task: "• ",
+  system: "  ",
+};
+
+function renderCommandOutput(output: CommandOutput): React.ReactNode {
+  const allRows = output.sections.flat();
+  const colWidth =
+    allRows.length > 0
+      ? Math.max(COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH, ...allRows.map(([key]) => `${key}:`.length + 1))
+      : COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
+  return (
+    <>
+      <Text>{output.header}</Text>
+      {output.sections.map((section) => (
+        <React.Fragment key={section.map(([k]) => k).join(",")}>
+          {"\n\n"}
+          {section.map(([key, value], ri) => (
+            <React.Fragment key={key}>
+              {ri > 0 ? "\n" : null}
+              <Text dimColor>{`${key}:`.padEnd(colWidth)}</Text>
+              <Text>{value}</Text>
+            </React.Fragment>
+          ))}
+        </React.Fragment>
+      ))}
+      {output.list && output.list.length > 0 && (
+        <>
+          {"\n\n"}
+          {output.list.map((line, i) => (
+            <React.Fragment key={line}>
+              {i > 0 ? "\n" : null}
+              <Text>{line}</Text>
+            </React.Fragment>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+function renderSystemContent(content: string): React.ReactNode {
+  return content;
+}
+
+function renderToolPart(
+  part: ToolOutputPart,
+  index: number,
+  lineNumWidth: number,
+  toolContentWidth: number,
+): React.ReactNode {
+  if (part.kind === "diff") {
+    const num = String(part.lineNumber).padStart(lineNumWidth);
+    const prefix = ` ${num} `;
+    const marker = part.marker === "add" ? "+" : part.marker === "remove" ? "-" : " ";
+    const content = `${part.text}`;
+    const padWidth = Math.max(0, toolContentWidth - 2 - prefix.length - 1 - content.length);
+    const padded = content + " ".repeat(padWidth);
+    if (part.marker === "add")
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text backgroundColor={palette.diffAdd}>
+            <Text color={palette.diffAddText}>
+              {prefix}
+              {marker}
+            </Text>
+            <Text color="white">{padded}</Text>
+          </Text>
+        </Text>
+      );
+    if (part.marker === "remove")
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text backgroundColor={palette.diffRemove}>
+            <Text color={palette.diffRemoveText}>
+              {prefix}
+              {marker}
+            </Text>
+            <Text color="white">{padded}</Text>
+          </Text>
+        </Text>
+      );
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor>{prefix} </Text>
+        <Text color="white">{content}</Text>
+      </Text>
+    );
+  }
+  if (part.kind === "shell-output") {
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor color={part.stream === "stderr" ? palette.red : undefined}>
+          {part.text}
+        </Text>
+      </Text>
+    );
+  }
+  const text = renderToolOutputText(part);
+  if (part.kind === "truncated" && lineNumWidth > 0) {
+    return (
+      <Text key={`tool-${index}`}>
+        {"\n  "}
+        <Text dimColor>{` ${"…".padStart(lineNumWidth)}  ${text.slice(2)}`}</Text>
+      </Text>
+    );
+  }
+  return (
+    <Text key={`tool-${index}`}>
+      {"\n  "}
+      <Text dimColor>{text}</Text>
+    </Text>
+  );
+}
+
+function renderHeader(part: ToolOutputPart): React.ReactNode {
+  if (part.kind === "edit-header") {
+    return (
+      <>
+        <Text bold>{part.label} </Text>
+        <Text dimColor>{part.path} (</Text>
+        <Text color={palette.diffAddText}>{`+${part.added}`}</Text>
+        <Text dimColor> </Text>
+        <Text color={palette.diffRemoveText}>{`-${part.removed}`}</Text>
+        <Text dimColor>)</Text>
+      </>
+    );
+  }
+  const text = renderToolOutputText(part);
+  return <Text dimColor>{text}</Text>;
+}
+
+function renderToolOutput(parts: ToolOutputPart[], toolContentWidth: number): React.ReactNode {
+  const [first, ...rest] = parts;
+  if (!first) return null;
+  const lineNumWidth = parts.reduce(
+    (max, part) => (part.kind === "diff" ? Math.max(max, String(part.lineNumber).length) : max),
+    0,
+  );
+  return (
+    <>
+      {renderHeader(first)}
+      {rest.map((part, i) => renderToolPart(part, i, lineNumWidth, toolContentWidth))}
+    </>
+  );
+}
+
+type ChatTranscriptRowProps = {
+  row: ChatRow;
+  contentWidth: number;
+  toolContentWidth: number;
+};
+
+export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatTranscriptRowProps): React.ReactNode {
+  const marker = MARKERS[row.kind];
+  const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.brand : undefined);
+  const textColor = row.style?.text ?? (row.kind === "assistant" && !row.style?.dim ? palette.brand : undefined);
+  const dim = row.style?.dim ?? false;
+  return (
+    <Box>
+      <Box width={2}>
+        <Text color={markerColor}>{marker}</Text>
+      </Box>
+      <Box width={row.kind === "tool" ? toolContentWidth : contentWidth}>
+        {isToolOutput(row.content) ? (
+          <Text>{renderToolOutput(row.content.parts, toolContentWidth)}</Text>
+        ) : isCommandOutput(row.content) ? (
+          <Text>{renderCommandOutput(row.content)}</Text>
+        ) : row.kind === "assistant" ? (
+          <Text dimColor={dim} color={textColor}>
+            {renderAssistantContent(row.content, contentWidth)}
+          </Text>
+        ) : (
+          <Text dimColor={dim} color={textColor}>
+            {renderSystemContent(row.content)}
+          </Text>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 type ChatTranscriptProps = {
-  rows: ChatEntry[];
+  rows: ChatRow[];
   isWorking: boolean;
   progressText?: string | null;
   thinkingFrame: number;
@@ -56,7 +248,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       {rows.map((row, index) => (
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}
-          <ChatRow row={row} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
+          <ChatTranscriptRow row={row} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
         </React.Fragment>
       ))}
       {isWorking ? (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatEntry } from "./chat-contract";
+import type { ChatRow } from "./chat-contract";
 import { useAtSuggestionsEffect, useSlashSuggestionsEffect, useThinkingAnimationEffect } from "./chat-effects";
 import { extractAtReferenceQuery } from "./chat-file-ref";
 import type { HeaderLine } from "./chat-header";
@@ -12,7 +12,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { ChatRow } from "./chat-row";
+import { ChatTranscriptRow } from "./chat-transcript";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { suggestSlashCommands } from "./chat-slash";
@@ -41,12 +41,12 @@ interface ChatAppProps {
   useMemory?: boolean;
 }
 
-export function initialTranscriptRows(session: Session): ChatEntry[] {
+export function initialTranscriptRows(session: Session): ChatRow[] {
   return toRows(session.messages);
 }
 
 type HeaderItem = { id: string; kind: "header"; lines: HeaderLine[] };
-type GraduatedItem = ChatEntry | HeaderItem;
+type GraduatedItem = ChatRow | HeaderItem;
 
 export function appendGraduatedItems(current: GraduatedItem[], next: readonly GraduatedItem[]): GraduatedItem[] {
   if (next.length === 0) return current;
@@ -62,9 +62,9 @@ export function appendGraduatedItems(current: GraduatedItem[], next: readonly Gr
 
 export function applyGraduation(
   graduated: GraduatedItem[],
-  toGraduate: ChatEntry[],
-  live: ChatEntry[],
-): { nextGraduated: GraduatedItem[]; nextLive: ChatEntry[] } {
+  toGraduate: ChatRow[],
+  live: ChatRow[],
+): { nextGraduated: GraduatedItem[]; nextLive: ChatRow[] } {
   const graduatedIds = new Set(toGraduate.map((row) => row.id));
   return {
     nextGraduated: appendGraduatedItems(graduated, toGraduate),
@@ -92,7 +92,7 @@ function ChatApp(props: ChatAppProps) {
   const { client, session, store, persist, useMemory } = props;
   const { exit } = useApp();
   const [currentSession, setCurrentSession] = useState<Session>(session);
-  const [rows, setRows] = useState<ChatEntry[]>([]);
+  const [rows, setRows] = useState<ChatRow[]>([]);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const [value, setValue] = useState("");
@@ -321,7 +321,7 @@ function ChatApp(props: ChatAppProps) {
           return (
             <Box key={item.id} flexDirection="column">
               <Text> </Text>
-              <ChatRow row={item} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
+              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
             </Box>
           );
         }}

@@ -1,9 +1,9 @@
-import { type ChatEntry, createLine } from "./chat-contract";
+import { type ChatRow, createLine } from "./chat-contract";
 import type { Client } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
 
-type SetRows = (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
+type SetRows = (updater: (current: ChatRow[]) => ChatRow[]) => void;
 
 type StartRemoteTaskFollowupInput = {
   client: Client;

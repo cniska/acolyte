@@ -21,18 +21,18 @@ export const messageSchema = z.object({
 
 export type ChatMessage = z.input<typeof messageSchema>;
 
-export const chatEntryKindSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
+export const chatRowKindSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
 
-export const chatEntryStyleSchema = z.object({
+export const chatRowStyleSchema = z.object({
   marker: z.string().optional(),
   text: z.string().optional(),
   dim: z.boolean().optional(),
 });
 
-export type ChatEntryStyle = z.infer<typeof chatEntryStyleSchema>;
+export type ChatRowStyle = z.infer<typeof chatRowStyleSchema>;
 
-export const chatEntryIdSchema = domainIdSchema("row");
-export type ChatEntryId = z.infer<typeof chatEntryIdSchema>;
+export const chatRowIdSchema = domainIdSchema("row");
+export type ChatRowId = z.infer<typeof chatRowIdSchema>;
 
 export const toolOutputSchema = z.object({
   parts: z.array(toolOutputPartSchema),
@@ -48,27 +48,27 @@ export const commandOutputSchema = z.object({
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
 
-const chatEntryContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema]);
+const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema]);
 
-export type ChatEntryContent = z.infer<typeof chatEntryContentSchema>;
+export type ChatRowContent = z.infer<typeof chatRowContentSchema>;
 
-export const chatEntrySchema = z.object({
-  id: chatEntryIdSchema,
-  kind: chatEntryKindSchema,
-  content: chatEntryContentSchema,
-  style: chatEntryStyleSchema.optional(),
+export const chatRowSchema = z.object({
+  id: chatRowIdSchema,
+  kind: chatRowKindSchema,
+  content: chatRowContentSchema,
+  style: chatRowStyleSchema.optional(),
 });
 
-export type ChatEntry = z.infer<typeof chatEntrySchema>;
+export type ChatRow = z.infer<typeof chatRowSchema>;
 
-export function createLine(kind: ChatEntry["kind"], content: ChatEntryContent, style?: ChatEntryStyle): ChatEntry {
+export function createLine(kind: ChatRow["kind"], content: ChatRowContent, style?: ChatRowStyle): ChatRow {
   return { id: `row_${createId()}`, kind, content, style: style ?? undefined };
 }
 
-export function isToolOutput(content: ChatEntryContent | undefined): content is ToolOutput {
+export function isToolOutput(content: ChatRowContent | undefined): content is ToolOutput {
   return typeof content === "object" && "parts" in content;
 }
 
-export function isCommandOutput(content: ChatEntryContent | undefined): content is CommandOutput {
+export function isCommandOutput(content: ChatRowContent | undefined): content is CommandOutput {
   return typeof content === "object" && "header" in content;
 }

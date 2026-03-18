@@ -16,7 +16,7 @@ import { findSkillByName } from "./skills";
 
 type MemoryContextScope = "all" | "user" | "project";
 
-import { type ChatEntry, createLine } from "./chat-contract";
+import { type ChatRow, createLine } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
 import { createStatusOutput } from "./status-format";
 import { createSession } from "./storage";
@@ -55,20 +55,20 @@ function formatShare(tokens: number, total: number): string {
   return `${Math.round((tokens / total) * 100)}%`;
 }
 
-export function sessionsRows(store: SessionState, limit = 10): ChatEntry[] {
+export function sessionsRows(store: SessionState, limit = 10): ChatRow[] {
   const list = formatSessionList(store, limit);
   return [
     createLine("system", { header: t("chat.sessions.header", { count: store.sessions.length }), sections: [], list }),
   ];
 }
 
-export function statusRows(status: StatusFields): ChatEntry[] {
+export function statusRows(status: StatusFields): ChatRow[] {
   const output = createStatusOutput(status);
   if (!output) return [];
   return [createLine("system", output)];
 }
 
-export function usageRows(last: SessionTokenUsageEntry | null): ChatEntry[] {
+export function usageRows(last: SessionTokenUsageEntry | null): ChatRow[] {
   if (!last) return [createLine("system", t("chat.usage.none"))];
   const summary: [string, string][] = [
     [t("chat.usage.metric.input"), formatUsageValue(last.usage.inputTokens)],
@@ -106,8 +106,8 @@ export type CommandContext = {
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
-  toRows: (messages: Session["messages"]) => ChatEntry[];
-  setRows: (updater: (current: ChatEntry[]) => ChatEntry[]) => void;
+  toRows: (messages: Session["messages"]) => ChatRow[];
+  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowHelp: (updater: (current: boolean) => boolean) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
