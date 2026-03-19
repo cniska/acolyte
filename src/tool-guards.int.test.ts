@@ -86,7 +86,7 @@ async function runGuardIntegrationScenario(
       });
       serverProcs.push(serverProc);
 
-      await waitForServer(`http://127.0.0.1:${port}/v1/status`, 10_000);
+      await waitForServer(`http://127.0.0.1:${port}/healthz`, 15_000);
 
       const client = createClient({ apiUrl: `http://127.0.0.1:${port}` });
       return client.replyStream(
