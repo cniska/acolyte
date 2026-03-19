@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { field, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
+import { field, findLastErrRequestId, findLastTaskId, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
 
 describe("parseLog", () => {
   test("parses timestamp from first token", () => {
@@ -75,5 +75,35 @@ describe("matchesRequestId", () => {
   test("does not match prefix", () => {
     const [entry] = parseLog("2026-03-19T10:00:00Z request_id=req_abc123");
     expect(matchesRequestId(entry, "req_abc")).toBe(false);
+  });
+});
+
+describe("findLastTaskId", () => {
+  test("finds last task_id in lines", () => {
+    const lines = parseLog(["2026-01-01T00:00:00Z task_id=task_a", "2026-01-01T00:00:01Z task_id=task_b"].join("\n"));
+    expect(findLastTaskId(lines)).toBe("task_b");
+  });
+
+  test("returns undefined when no task_id", () => {
+    const lines = parseLog("2026-01-01T00:00:00Z level=info");
+    expect(findLastTaskId(lines)).toBeUndefined();
+  });
+});
+
+describe("findLastErrRequestId", () => {
+  test("finds last err_ request_id", () => {
+    const lines = parseLog(
+      [
+        "2026-01-01T00:00:00Z request_id=req_ok",
+        "2026-01-01T00:00:01Z request_id=err_fail",
+        "2026-01-01T00:00:02Z request_id=req_ok2",
+      ].join("\n"),
+    );
+    expect(findLastErrRequestId(lines)).toBe("err_fail");
+  });
+
+  test("returns undefined when no err_ request", () => {
+    const lines = parseLog("2026-01-01T00:00:00Z request_id=req_ok");
+    expect(findLastErrRequestId(lines)).toBeUndefined();
   });
 });

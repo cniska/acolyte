@@ -1,7 +1,15 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { t } from "./i18n";
-import { field, type LogLine, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
+import {
+  field,
+  findLastErrRequestId,
+  findLastTaskId,
+  type LogLine,
+  matchesRequestId,
+  matchesTaskId,
+  parseLog,
+} from "./log-parser";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -234,32 +242,19 @@ function parseTaskIdsArg(value: string | undefined): string[] {
   );
 }
 
-function findLastTaskId(lines: LogLine[]): string | undefined {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].taskId) return lines[i].taskId;
-  }
-  return undefined;
-}
-
-function findLastErrRequestId(lines: LogLine[]): string | undefined {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const id = lines[i].requestId;
-    if (id?.startsWith("err_")) return id;
-  }
-  return undefined;
-}
-
 type FormatLine = (line: LogLine) => string;
-
-function formatCompact(line: LogLine): string {
-  return compactLine(line);
-}
 
 function formatJson(line: LogLine): string {
   return JSON.stringify({ timestamp: line.timestamp, ...line.fields });
 }
 
-function traceByTask(lines: LogLine[], taskIds: string[], print: (msg: string) => void, fmt: FormatLine): void {
+function traceByTask(
+  lines: LogLine[],
+  taskIds: string[],
+  print: (msg: string) => void,
+  fmt: FormatLine,
+  json: boolean,
+): void {
   for (let i = 0; i < taskIds.length; i += 1) {
     const taskId = taskIds[i];
     const selected = lines.filter((line) => matchesTaskId(line, taskId));
@@ -268,24 +263,36 @@ function traceByTask(lines: LogLine[], taskIds: string[], print: (msg: string) =
       continue;
     }
     if (i > 0) print("");
-    if (fmt === formatCompact) print(`task_id=${taskId}`);
+    if (!json) print(`task_id=${taskId}`);
     for (const line of selected) print(fmt(line));
   }
 }
 
-function traceByRequest(lines: LogLine[], requestId: string, print: (msg: string) => void, fmt: FormatLine): void {
+function traceByRequest(
+  lines: LogLine[],
+  requestId: string,
+  print: (msg: string) => void,
+  fmt: FormatLine,
+  json: boolean,
+): void {
   const selected = lines.filter((line) => matchesRequestId(line, requestId));
   if (selected.length === 0) {
     print(t("cli.trace.no_lines_for_request", { requestId }));
     return;
   }
-  if (fmt === formatCompact) print(`request_id=${requestId}`);
+  if (!json) print(`request_id=${requestId}`);
   for (const line of selected) print(fmt(line));
 }
 
-function traceTail(lines: LogLine[], count: number, print: (msg: string) => void, fmt: FormatLine): void {
+function traceTail(
+  lines: LogLine[],
+  count: number,
+  print: (msg: string) => void,
+  fmt: FormatLine,
+  json: boolean,
+): void {
   const tail = lines.slice(-count);
-  if (fmt === formatCompact) print(t("cli.trace.showing_latest", { count: String(tail.length) }));
+  if (!json) print(t("cli.trace.showing_latest", { count: String(tail.length) }));
   for (const line of tail) print(fmt(line));
 }
 
@@ -300,7 +307,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const logPathOverride = parseFlag(args, "--log") ?? logPath;
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const jsonOutput = args.includes("--json");
-  const fmt = jsonOutput ? formatJson : formatCompact;
+  const fmt: FormatLine = jsonOutput ? formatJson : compactLine;
 
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -331,7 +338,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       commandError("trace", t("cli.trace.missing_task_id"));
       return;
     }
-    traceByTask(lines, taskIds, printDim, fmt);
+    traceByTask(lines, taskIds, printDim, fmt, jsonOutput);
     return;
   }
 
@@ -340,7 +347,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       commandError("trace", t("cli.trace.missing_request_id"));
       return;
     }
-    traceByRequest(lines, subcommandArg, printDim, fmt);
+    traceByRequest(lines, subcommandArg, printDim, fmt, jsonOutput);
     return;
   }
 
@@ -351,15 +358,15 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const latestTaskId = findLastTaskId(lines);
   if (latestTaskId) {
-    traceByTask(lines, [latestTaskId], printDim, fmt);
+    traceByTask(lines, [latestTaskId], printDim, fmt, jsonOutput);
     return;
   }
 
   const latestErrRequest = findLastErrRequestId(lines);
   if (latestErrRequest) {
-    traceByRequest(lines, latestErrRequest, printDim, fmt);
+    traceByRequest(lines, latestErrRequest, printDim, fmt, jsonOutput);
     return;
   }
 
-  traceTail(lines, tailCount, printDim, fmt);
+  traceTail(lines, tailCount, printDim, fmt, jsonOutput);
 }

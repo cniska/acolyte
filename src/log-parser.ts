@@ -46,3 +46,18 @@ export function matchesRequestId(line: LogLine, requestId: string): boolean {
 export function field(line: LogLine, key: string): string | undefined {
   return line.fields[key];
 }
+
+export function findLastTaskId(lines: LogLine[]): string | undefined {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].taskId) return lines[i].taskId;
+  }
+  return undefined;
+}
+
+export function findLastErrRequestId(lines: LogLine[]): string | undefined {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const id = lines[i].requestId;
+    if (id?.startsWith("err_")) return id;
+  }
+  return undefined;
+}
