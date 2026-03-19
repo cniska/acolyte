@@ -516,7 +516,7 @@ describe("cli visual regression", () => {
         dedent(`
           task_id=task_latest
           2026-03-19T10:00:00Z task_id=task_latest lifecycle.start mode=work model=gpt-5-mini
-          2026-03-19T10:00:01Z task_id=task_latest lifecycle.generate.done model=gpt-5-mini tool_calls=2
+          2026-03-19T10:00:01Z task_id=task_latest lifecycle.generate.done model=gpt-5-mini tool_calls=2 text_chars=?
         `),
       );
     });

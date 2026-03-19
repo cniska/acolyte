@@ -7,8 +7,10 @@ function createDeps(overrides?: Partial<TraceDeps>): { deps: TraceDeps; output: 
   const lines: string[] = [];
   const deps: TraceDeps = {
     hasHelpFlag: () => false,
+    logPath: "/dev/null",
     printDim: (message) => lines.push(message),
     printError: (message) => lines.push(`ERROR: ${message}`),
+    readFile: async () => "",
     commandError: () => {},
     commandHelp: () => {},
     ...overrides,
@@ -87,6 +89,14 @@ describe("compactLine", () => {
     );
   });
 
+  test("formats lifecycle.generate.done with text_chars", () => {
+    const line =
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.generate.done task_id=task_1 model=gpt-5-mini tool_calls=2 text_chars=150";
+    expect(compactLine(line)).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.generate.done model=gpt-5-mini tool_calls=2 text_chars=150",
+    );
+  });
+
   test("formats lifecycle.generate.error", () => {
     const line =
       '2026-03-19T10:00:00Z level=debug event=lifecycle.generate.error task_id=task_1 model=gpt-5-mini error="timeout"';
@@ -135,6 +145,40 @@ describe("compactLine", () => {
     );
   });
 
+  test("formats lifecycle.eval.decision", () => {
+    const line =
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.decision task_id=task_1 evaluator=verify action=regenerate regeneration_count=1";
+    expect(compactLine(line)).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.decision evaluator=verify action=regenerate regeneration_count=1",
+    );
+  });
+
+  test("formats lifecycle.eval.lint without evaluator field", () => {
+    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.lint task_id=task_1 files=3";
+    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.lint files=3");
+  });
+
+  test("formats lifecycle.eval.verify_failure", () => {
+    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.verify_failure task_id=task_1 text_chars=500";
+    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.verify_failure text_chars=500");
+  });
+
+  test("formats lifecycle.eval.tool_recovery", () => {
+    const line =
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.tool_recovery task_id=task_1 recovery_tool=edit-file recovery_kind=disambiguate-match";
+    expect(compactLine(line)).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.tool_recovery recovery_tool=edit-file recovery_kind=disambiguate-match",
+    );
+  });
+
+  test("formats lifecycle.eval.repeated_failure", () => {
+    const line =
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.repeated_failure task_id=task_1 signature=abc count=3 code=E_TIMEOUT category=timeout";
+    expect(compactLine(line)).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.repeated_failure signature=abc count=3 code=E_TIMEOUT category=timeout",
+    );
+  });
+
   test("formats unknown lifecycle event with just event name", () => {
     const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.unknown.future task_id=task_1";
     expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.unknown.future");
@@ -167,7 +211,7 @@ describe("traceMode", () => {
         errorMsg = msg ?? "";
       },
     });
-    await traceMode(["bogus", "--log", "/dev/null"], deps);
+    await traceMode(["bogus"], deps);
     expect(errorMsg).toContain("Unknown subcommand");
   });
 
@@ -179,7 +223,7 @@ describe("traceMode", () => {
         expect(msg).toContain("Missing task ID");
       },
     });
-    await traceMode(["task", "--log", "/dev/null"], deps);
+    await traceMode(["task"], deps);
     expect(called).toBe(true);
   });
 
@@ -191,13 +235,54 @@ describe("traceMode", () => {
         expect(msg).toContain("Missing request ID");
       },
     });
-    await traceMode(["request", "--log", "/dev/null"], deps);
+    await traceMode(["request"], deps);
     expect(called).toBe(true);
   });
 
   test("missing log file prints error", async () => {
-    const { deps, output } = createDeps();
-    await traceMode(["--log", "/tmp/nonexistent-acolyte-test-log.log"], deps);
+    const { deps, output } = createDeps({
+      readFile: async () => {
+        throw new Error("ENOENT");
+      },
+    });
+    await traceMode([], deps);
     expect(output()).toContain("Cannot read log file");
+  });
+
+  test("task subcommand filters by exact id", async () => {
+    const logContent = [
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=m",
+      "2026-03-19T10:00:01Z level=debug event=lifecycle.start task_id=task_12 mode=work model=m",
+    ].join("\n");
+    const { deps, output } = createDeps({
+      readFile: async () => logContent,
+    });
+    await traceMode(["task", "task_1"], deps);
+    expect(output()).toContain("task_id=task_1");
+    expect(output()).not.toContain("task_id=task_12");
+  });
+
+  test("request subcommand filters lines", async () => {
+    const logContent = [
+      "2026-03-19T10:00:00Z level=debug request_id=req_abc task_id=task_1 msg=hello",
+      "2026-03-19T10:00:01Z level=debug request_id=req_other task_id=task_2 msg=world",
+    ].join("\n");
+    const { deps, output } = createDeps({
+      readFile: async () => logContent,
+    });
+    await traceMode(["request", "req_abc"], deps);
+    expect(output()).toContain("request_id=req_abc");
+    expect(output()).not.toContain("req_other");
+  });
+
+  test("--lines flag controls tail count", async () => {
+    const logContent = Array.from({ length: 100 }, (_, i) => `line${i} level=info`).join("\n");
+    const { deps, output } = createDeps({
+      readFile: async () => logContent,
+    });
+    await traceMode(["--lines", "5"], deps);
+    const lines = output().split("\n");
+    // 1 header line + 5 content lines
+    expect(lines.length).toBe(6);
   });
 });

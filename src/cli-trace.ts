@@ -1,20 +1,22 @@
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-
-const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
+import { t } from "./i18n";
 
 // ---------------------------------------------------------------------------
 // Deps
 // ---------------------------------------------------------------------------
 
-export type TraceModeDeps = {
+type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
+  logPath: string;
   printDim: (message: string) => void;
   printError: (message: string) => void;
+  readFile: (path: string, encoding: "utf8") => Promise<string>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
+
+export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
 
 // ---------------------------------------------------------------------------
 // Log-line parsing
@@ -45,6 +47,18 @@ export function parseTaskId(line: string): string | undefined {
   const value = line.match(/\btask_id=([^\s]+)/)?.[1];
   if (!value || value === "null") return undefined;
   return value;
+}
+
+// ---------------------------------------------------------------------------
+// ID matching (word-boundary safe)
+// ---------------------------------------------------------------------------
+
+function matchesTaskId(line: string, taskId: string): boolean {
+  return new RegExp(`\\btask_id=${escapeRegex(taskId)}(?:\\s|$)`).test(line);
+}
+
+function matchesRequestId(line: string, requestId: string): boolean {
+  return new RegExp(`\\brequest_id=${escapeRegex(requestId)}(?:\\s|$)`).test(line);
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +170,8 @@ export function compactLine(line: string): string {
   if (event === "lifecycle.generate.done") {
     const model = parseField(line, "model") ?? "?";
     const toolCalls = parseField(line, "tool_calls") ?? "?";
-    return `${ts}${taskPrefix} ${event} model=${model} tool_calls=${toolCalls}`;
+    const textChars = parseField(line, "text_chars") ?? "?";
+    return `${ts}${taskPrefix} ${event} model=${model} tool_calls=${toolCalls} text_chars=${textChars}`;
   }
 
   if (event === "lifecycle.generate.error") {
@@ -235,13 +250,55 @@ export function compactLine(line: string): string {
     return `${ts}${taskPrefix} ${event} skill_name=${skillName} instruction_chars=${chars}`;
   }
 
-  if (event.startsWith("lifecycle.eval.")) {
+  // --- eval sub-events (specific before catch-all) ---
+
+  if (event === "lifecycle.eval.decision") {
     const evaluator = parseField(line, "evaluator") ?? "?";
     const action = parseField(line, "action") ?? "?";
-    const targetPath = parseField(line, "target_path");
     const regen = parseField(line, "regeneration_count");
-    return `${ts}${taskPrefix} ${event} evaluator=${evaluator} action=${action}${targetPath ? ` target_path=${targetPath}` : ""}${regen ? ` regeneration_count=${regen}` : ""}`;
+    return `${ts}${taskPrefix} ${event} evaluator=${evaluator} action=${action}${regen ? ` regeneration_count=${regen}` : ""}`;
   }
+
+  if (event === "lifecycle.eval.skipped") {
+    const evaluator = parseField(line, "evaluator");
+    const reason = parseField(line, "reason") ?? "?";
+    return `${ts}${taskPrefix} ${event}${evaluator ? ` evaluator=${evaluator}` : ""} reason=${reason}`;
+  }
+
+  if (event === "lifecycle.eval.lint") {
+    const files = parseField(line, "files") ?? "?";
+    return `${ts}${taskPrefix} ${event} files=${files}`;
+  }
+
+  if (event === "lifecycle.eval.guard_recovery") {
+    const mode = parseField(line, "mode") ?? "?";
+    return `${ts}${taskPrefix} ${event} mode=${mode}`;
+  }
+
+  if (event === "lifecycle.eval.repeated_failure") {
+    const signature = parseField(line, "signature") ?? "?";
+    const count = parseField(line, "count") ?? "?";
+    const code = parseField(line, "code");
+    const category = parseField(line, "category");
+    return `${ts}${taskPrefix} ${event} signature=${signature} count=${count}${code ? ` code=${code}` : ""}${category ? ` category=${category}` : ""}`;
+  }
+
+  if (event === "lifecycle.eval.verify_failure") {
+    const textChars = parseField(line, "text_chars") ?? "?";
+    return `${ts}${taskPrefix} ${event} text_chars=${textChars}`;
+  }
+
+  if (event === "lifecycle.eval.tool_recovery") {
+    const recoveryTool = parseField(line, "recovery_tool") ?? "?";
+    const recoveryKind = parseField(line, "recovery_kind") ?? "?";
+    return `${ts}${taskPrefix} ${event} recovery_tool=${recoveryTool} recovery_kind=${recoveryKind}`;
+  }
+
+  if (event.startsWith("lifecycle.eval.")) {
+    return `${ts}${taskPrefix} ${event}`;
+  }
+
+  // --- memory events ---
 
   if (event.startsWith("lifecycle.memory.")) {
     const reason = parseField(line, "reason");
@@ -278,6 +335,12 @@ function parseFlag(args: string[], flag: string | string[]): string | undefined 
   return undefined;
 }
 
+function parseTailCount(raw: string | undefined): number {
+  if (raw === undefined) return 40;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.max(1, parsed) : 40;
+}
+
 function parseTaskIdsArg(value: string | undefined): string[] {
   if (!value) return [];
   return Array.from(
@@ -291,15 +354,35 @@ function parseTaskIdsArg(value: string | undefined): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Reverse search helpers (avoid copying entire array)
+// ---------------------------------------------------------------------------
+
+function findLastTaskId(lines: string[]): string | undefined {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const id = parseTaskId(lines[i]);
+    if (id) return id;
+  }
+  return undefined;
+}
+
+function findLastErrRequestId(lines: string[]): string | undefined {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const id = parseRequestId(lines[i]);
+    if (id?.startsWith("err_")) return id;
+  }
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // Subcommands
 // ---------------------------------------------------------------------------
 
 function traceByTask(lines: string[], taskIds: string[], printDim: (msg: string) => void): void {
   for (let i = 0; i < taskIds.length; i += 1) {
     const taskId = taskIds[i];
-    const selected = lines.filter((line) => line.includes(`task_id=${taskId}`));
+    const selected = lines.filter((line) => matchesTaskId(line, taskId));
     if (selected.length === 0) {
-      printDim(`No lines found for task_id=${taskId}`);
+      printDim(t("cli.trace.no_lines_for_task", { taskId }));
       continue;
     }
     if (i > 0) printDim("");
@@ -309,9 +392,9 @@ function traceByTask(lines: string[], taskIds: string[], printDim: (msg: string)
 }
 
 function traceByRequest(lines: string[], requestId: string, printDim: (msg: string) => void): void {
-  const selected = lines.filter((line) => line.includes(`request_id=${requestId}`));
+  const selected = lines.filter((line) => matchesRequestId(line, requestId));
   if (selected.length === 0) {
-    printDim(`No lines found for request_id=${requestId}`);
+    printDim(t("cli.trace.no_lines_for_request", { requestId }));
     return;
   }
   printDim(`request_id=${requestId}`);
@@ -320,7 +403,7 @@ function traceByRequest(lines: string[], requestId: string, printDim: (msg: stri
 
 function traceTail(lines: string[], count: number, printDim: (msg: string) => void): void {
   const tail = lines.slice(-count);
-  printDim(`Showing latest ${tail.length} lines`);
+  printDim(t("cli.trace.showing_latest", { count: String(tail.length) }));
   for (const line of tail) printDim(compactLine(line));
 }
 
@@ -329,16 +412,15 @@ function traceTail(lines: string[], count: number, printDim: (msg: string) => vo
 // ---------------------------------------------------------------------------
 
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
-  const { hasHelpFlag, printDim, printError, commandHelp, commandError } = deps;
+  const { hasHelpFlag, logPath, printDim, printError, readFile, commandHelp, commandError } = deps;
 
   if (hasHelpFlag(args)) {
     commandHelp("trace");
     return;
   }
 
-  const logPath = parseFlag(args, "--log") ?? DEFAULT_LOG_PATH;
-  const tailCountRaw = parseFlag(args, ["--lines", "-n"]);
-  const tailCount = tailCountRaw ? Math.max(1, Number.parseInt(tailCountRaw, 10) || 40) : 40;
+  const logPathOverride = parseFlag(args, "--log") ?? logPath;
+  const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
 
   // Strip flags from args to get positional arguments
   const positional: string[] = [];
@@ -356,9 +438,9 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   let raw: string;
   try {
-    raw = await readFile(logPath, "utf8");
+    raw = await readFile(logPathOverride, "utf8");
   } catch {
-    printError(`Cannot read log file: ${logPath}`);
+    printError(t("cli.trace.cannot_read", { path: logPathOverride }));
     return;
   }
 
@@ -367,7 +449,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   if (subcommand === "task") {
     const taskIds = parseTaskIdsArg(subcommandArg);
     if (taskIds.length === 0) {
-      commandError("trace", "Missing task ID. Usage: acolyte trace task <id>[,<id>]");
+      commandError("trace", t("cli.trace.missing_task_id"));
       return;
     }
     traceByTask(lines, taskIds, printDim);
@@ -376,7 +458,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   if (subcommand === "request") {
     if (!subcommandArg) {
-      commandError("trace", "Missing request ID. Usage: acolyte trace request <id>");
+      commandError("trace", t("cli.trace.missing_request_id"));
       return;
     }
     traceByRequest(lines, subcommandArg, printDim);
@@ -384,25 +466,19 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   }
 
   if (subcommand) {
-    commandError("trace", `Unknown subcommand: ${subcommand}`);
+    commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
     return;
   }
 
   // Default: find latest task_id → fallback to latest err_ request → tail N lines
-  const latestTaskId = [...lines]
-    .reverse()
-    .map((line) => parseTaskId(line))
-    .find((value) => value && value.length > 0);
+  const latestTaskId = findLastTaskId(lines);
 
   if (latestTaskId) {
     traceByTask(lines, [latestTaskId], printDim);
     return;
   }
 
-  const latestErrRequest = [...lines]
-    .reverse()
-    .map((line) => parseRequestId(line))
-    .find((value) => value?.startsWith("err_"));
+  const latestErrRequest = findLastErrRequestId(lines);
 
   if (latestErrRequest) {
     traceByRequest(lines, latestErrRequest, printDim);
