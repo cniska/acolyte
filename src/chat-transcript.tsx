@@ -241,8 +241,6 @@ type ChatTranscriptProps = {
   runningUsage?: { inputTokens: number; outputTokens: number } | null;
 };
 
-const MAX_TRANSCRIPT_WIDTH = 120;
-
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, pendingState, pendingFrame, pendingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
@@ -278,8 +276,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     return "";
   })();
   const columns = process.stdout.columns ?? 120;
-  const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
-  const toolContentWidth = Math.max(24, columns - 2);
+  const contentWidth = Math.max(24, columns - 2);
+  const toolContentWidth = contentWidth;
   return (
     <>
       {hasContent ? <Text> </Text> : null}
