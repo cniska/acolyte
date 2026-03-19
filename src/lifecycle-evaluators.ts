@@ -198,10 +198,10 @@ export const verifyEvaluator: Evaluator = {
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
       const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
-      ctx.debug("lifecycle.eval.verify-cycle", {
-        usedWriteTools,
+      ctx.debug("lifecycle.eval.verify_cycle", {
+        used_write_tools: usedWriteTools,
         verified,
-        verifyScope: ctx.request.verifyScope ?? null,
+        verify_scope: ctx.request.verifyScope ?? null,
       });
       if (ctx.initialMode === "work" && usedWriteTools && !verified) {
         return {
