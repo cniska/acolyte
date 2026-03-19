@@ -15,6 +15,7 @@ import { requestLocalServerShutdown } from "./cli-server";
 import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
+import { traceMode } from "./cli-trace";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
@@ -295,7 +296,33 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       description: t("cli.help.desc.tool"),
       examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
     },
-    handler: toolMode,
+    handler: (args) =>
+      toolMode(args, {
+        hasHelpFlag,
+        printError,
+        commandHelp,
+      }),
+  },
+  trace: {
+    help: {
+      command: "trace [task|request] [id]",
+      usage: "acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>]",
+      description: t("cli.help.desc.trace"),
+      examples: [
+        "acolyte trace",
+        "acolyte trace task task_abc123",
+        "acolyte trace request req_abc123",
+        "acolyte trace --lines 100",
+      ],
+    },
+    handler: (args) =>
+      traceMode(args, {
+        hasHelpFlag,
+        printDim,
+        printError,
+        commandError,
+        commandHelp,
+      }),
   },
 };
 

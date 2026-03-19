@@ -136,6 +136,7 @@ export const EN_MESSAGES = {
   "cli.help.desc.status": "show server status",
   "cli.help.desc.stop": "stop all servers",
   "cli.help.desc.tool": "run a tool directly",
+  "cli.help.desc.trace": "inspect server lifecycle traces",
   "cli.help.examples": "Examples:",
   "cli.help.label.description": "Description: {description}",
   "cli.help.label.usage": "Usage: {usage}",
