@@ -45,7 +45,6 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/sessions`: show sessions
 - `/model [id]`: change model
 - `/model work|verify <id>`: change mode-specific model
-- `/permissions [read|write]`: change permission mode
 - `/status`: show server status
 - `/usage`: show token usage
 - `/memory [all|user|project]`: show memory notes
