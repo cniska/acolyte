@@ -306,7 +306,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   trace: {
     help: {
       command: "trace [task|request] [id]",
-      usage: "acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>]",
+      usage: "acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>] [--json]",
       description: t("cli.help.desc.trace"),
       examples: [
         "acolyte trace",

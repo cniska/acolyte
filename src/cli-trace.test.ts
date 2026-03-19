@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { compactLine, parseField, parseRequestId, parseTaskId, parseTimestamp, traceMode } from "./cli-trace";
+import {
+  compactLine,
+  parseAllFields,
+  parseField,
+  parseRequestId,
+  parseTaskId,
+  parseTimestamp,
+  traceMode,
+} from "./cli-trace";
 
 type TraceDeps = Parameters<typeof traceMode>[1];
 
@@ -64,6 +72,26 @@ describe("parseTaskId", () => {
 
   test("returns undefined when missing", () => {
     expect(parseTaskId("no task id here")).toBeUndefined();
+  });
+});
+
+describe("parseAllFields", () => {
+  test("extracts all key=value pairs", () => {
+    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini";
+    const fields = parseAllFields(line);
+    expect(fields.timestamp).toBe("2026-03-19T10:00:00Z");
+    expect(fields.level).toBe("debug");
+    expect(fields.event).toBe("lifecycle.start");
+    expect(fields.task_id).toBe("task_1");
+    expect(fields.mode).toBe("work");
+    expect(fields.model).toBe("gpt-5-mini");
+  });
+
+  test("extracts quoted values", () => {
+    const line = '2026-03-19T10:00:00Z level=debug msg="hello world" tool=read-file';
+    const fields = parseAllFields(line);
+    expect(fields.msg).toBe("hello world");
+    expect(fields.tool).toBe("read-file");
   });
 });
 
@@ -284,5 +312,36 @@ describe("traceMode", () => {
     const lines = output().split("\n");
     // 1 header line + 5 content lines
     expect(lines.length).toBe(6);
+  });
+
+  test("--json outputs JSON lines for task subcommand", async () => {
+    const logContent = [
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini",
+      "2026-03-19T10:00:01Z level=debug event=lifecycle.tool.call task_id=task_1 tool=read-file path=src/cli.ts",
+    ].join("\n");
+    const { deps, output } = createDeps({
+      readFile: async () => logContent,
+    });
+    await traceMode(["task", "task_1", "--json"], deps);
+    const lines = output().split("\n");
+    expect(lines.length).toBe(2);
+    const first = JSON.parse(lines[0]) as Record<string, string>;
+    expect(first.timestamp).toBe("2026-03-19T10:00:00Z");
+    expect(first.event).toBe("lifecycle.start");
+    expect(first.task_id).toBe("task_1");
+    expect(first.mode).toBe("work");
+  });
+
+  test("--json omits header lines", async () => {
+    const logContent = "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=m";
+    const { deps, output } = createDeps({
+      readFile: async () => logContent,
+    });
+    await traceMode(["--json"], deps);
+    const lines = output().split("\n");
+    // No "task_id=..." header, just JSON
+    for (const line of lines) {
+      expect(() => JSON.parse(line)).not.toThrow();
+    }
   });
 });

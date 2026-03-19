@@ -457,7 +457,7 @@ describe("cli visual regression", () => {
     {
       args: ["trace", "help"],
       output: dedent(`
-        Usage: acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>]
+        Usage: acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>] [--json]
 
         Description: inspect server lifecycle traces
 

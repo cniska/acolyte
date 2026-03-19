@@ -50,6 +50,21 @@ export function parseTaskId(line: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// JSON output
+// ---------------------------------------------------------------------------
+
+const FIELD_RE = /(?:^|\s)([a-z_][a-z0-9_]*)=(?:"((?:[^"\\]|\\.)*)"|([^\s]+))/g;
+
+export function parseAllFields(line: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  fields.timestamp = parseTimestamp(line);
+  for (const match of line.matchAll(FIELD_RE)) {
+    fields[match[1]] = match[2] ?? match[3];
+  }
+  return fields;
+}
+
+// ---------------------------------------------------------------------------
 // ID matching (word-boundary safe)
 // ---------------------------------------------------------------------------
 
@@ -377,34 +392,44 @@ function findLastErrRequestId(lines: string[]): string | undefined {
 // Subcommands
 // ---------------------------------------------------------------------------
 
-function traceByTask(lines: string[], taskIds: string[], printDim: (msg: string) => void): void {
+type FormatLine = (line: string) => string;
+
+function formatCompact(line: string): string {
+  return compactLine(line);
+}
+
+function formatJson(line: string): string {
+  return JSON.stringify(parseAllFields(line));
+}
+
+function traceByTask(lines: string[], taskIds: string[], print: (msg: string) => void, fmt: FormatLine): void {
   for (let i = 0; i < taskIds.length; i += 1) {
     const taskId = taskIds[i];
     const selected = lines.filter((line) => matchesTaskId(line, taskId));
     if (selected.length === 0) {
-      printDim(t("cli.trace.no_lines_for_task", { taskId }));
+      print(t("cli.trace.no_lines_for_task", { taskId }));
       continue;
     }
-    if (i > 0) printDim("");
-    printDim(`task_id=${taskId}`);
-    for (const line of selected) printDim(compactLine(line));
+    if (i > 0) print("");
+    if (fmt === formatCompact) print(`task_id=${taskId}`);
+    for (const line of selected) print(fmt(line));
   }
 }
 
-function traceByRequest(lines: string[], requestId: string, printDim: (msg: string) => void): void {
+function traceByRequest(lines: string[], requestId: string, print: (msg: string) => void, fmt: FormatLine): void {
   const selected = lines.filter((line) => matchesRequestId(line, requestId));
   if (selected.length === 0) {
-    printDim(t("cli.trace.no_lines_for_request", { requestId }));
+    print(t("cli.trace.no_lines_for_request", { requestId }));
     return;
   }
-  printDim(`request_id=${requestId}`);
-  for (const line of selected) printDim(compactLine(line));
+  if (fmt === formatCompact) print(`request_id=${requestId}`);
+  for (const line of selected) print(fmt(line));
 }
 
-function traceTail(lines: string[], count: number, printDim: (msg: string) => void): void {
+function traceTail(lines: string[], count: number, print: (msg: string) => void, fmt: FormatLine): void {
   const tail = lines.slice(-count);
-  printDim(t("cli.trace.showing_latest", { count: String(tail.length) }));
-  for (const line of tail) printDim(compactLine(line));
+  if (fmt === formatCompact) print(t("cli.trace.showing_latest", { count: String(tail.length) }));
+  for (const line of tail) print(fmt(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -421,6 +446,8 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const logPathOverride = parseFlag(args, "--log") ?? logPath;
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
+  const jsonOutput = args.includes("--json");
+  const fmt = jsonOutput ? formatJson : formatCompact;
 
   // Strip flags from args to get positional arguments
   const positional: string[] = [];
@@ -452,7 +479,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       commandError("trace", t("cli.trace.missing_task_id"));
       return;
     }
-    traceByTask(lines, taskIds, printDim);
+    traceByTask(lines, taskIds, printDim, fmt);
     return;
   }
 
@@ -461,7 +488,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       commandError("trace", t("cli.trace.missing_request_id"));
       return;
     }
-    traceByRequest(lines, subcommandArg, printDim);
+    traceByRequest(lines, subcommandArg, printDim, fmt);
     return;
   }
 
@@ -474,16 +501,16 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const latestTaskId = findLastTaskId(lines);
 
   if (latestTaskId) {
-    traceByTask(lines, [latestTaskId], printDim);
+    traceByTask(lines, [latestTaskId], printDim, fmt);
     return;
   }
 
   const latestErrRequest = findLastErrRequestId(lines);
 
   if (latestErrRequest) {
-    traceByRequest(lines, latestErrRequest, printDim);
+    traceByRequest(lines, latestErrRequest, printDim, fmt);
     return;
   }
 
-  traceTail(lines, tailCount, printDim);
+  traceTail(lines, tailCount, printDim, fmt);
 }
