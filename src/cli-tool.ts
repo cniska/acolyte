@@ -13,7 +13,7 @@ const editArgsSchema = z.object({
   dryRun: z.boolean(),
 });
 
-export type ToolModeDeps = {
+type ToolModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printError: (message: string) => void;
   commandHelp: (name: string) => void;
