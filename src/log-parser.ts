@@ -69,10 +69,12 @@ export function listTasks(lines: LogLine[]): TaskSummary[] {
         hasError: false,
       });
     }
-    const event = line.fields.event;
-    if (event === "lifecycle.summary") {
-      const entry = seen.get(line.taskId);
-      if (entry) entry.hasError = line.fields.has_error === "true";
+    const entry = seen.get(line.taskId);
+    if (entry) {
+      if (!entry.model && line.fields.model) entry.model = line.fields.model;
+      if (line.fields.event === "lifecycle.summary") {
+        entry.hasError = line.fields.has_error === "true";
+      }
     }
   }
   return Array.from(seen.values()).reverse();

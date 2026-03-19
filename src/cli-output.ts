@@ -23,7 +23,7 @@ export function createTextOutput(): CliOutput {
     addTable: (rows) => {
       if (rows.length === 0) return;
       const keys = Object.keys(rows[0]);
-      const tableRows = rows.map((row) => keys.map((k) => row[k] ?? ""));
+      const tableRows = [keys, ...rows.map((row) => keys.map((k) => row[k] ?? ""))];
       for (const line of alignCols(tableRows)) sections.push(line);
     },
     addHeader: (text) => sections.push(text),

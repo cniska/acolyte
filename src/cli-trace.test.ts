@@ -135,7 +135,7 @@ describe("traceMode", () => {
     });
     await traceMode(["--lines", "5"], deps);
     const lines = output().split("\n");
-    expect(lines.length).toBe(5);
+    expect(lines.length).toBe(6);
   });
 
   test("--json outputs JSON lines for task subcommand", async () => {
