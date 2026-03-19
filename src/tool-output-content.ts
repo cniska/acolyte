@@ -47,7 +47,7 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("no-output") }),
   z.object({
     kind: z.literal("truncated"),
-    count: z.number().int().nonnegative(),
+    count: z.number().int().nonnegative().optional(),
     unit: z.string().optional(),
   }),
 ]);
@@ -84,6 +84,7 @@ export function renderToolOutputPart(content: ToolOutputPart): string {
     case "no-output":
       return t("tool.content.no_output");
     case "truncated": {
+      if (!content.count) return "…";
       const unitKey =
         content.unit === "lines"
           ? "unit.line"
@@ -120,8 +121,10 @@ export function formatToolOutput(items: ToolOutputPart[]): string {
   const diffIndent = hasFileHeaders ? "  " : "";
   const lines = body.map((item) => {
     if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
-    if (item.kind === "truncated" && numWidth > 0)
-      return `${diffIndent}${"…".padStart(numWidth)} ${renderToolOutputPart(item).slice(2)}`;
+    if (item.kind === "truncated" && numWidth > 0) {
+      const suffix = renderToolOutputPart(item).slice(2);
+      return suffix ? `${diffIndent}${"…".padStart(numWidth)} ${suffix}` : `${diffIndent}${"…".padStart(numWidth)}`;
+    }
     return renderToolOutputPart(item);
   });
   return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;

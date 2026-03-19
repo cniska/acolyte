@@ -521,17 +521,16 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
     }
   }
   const filteredOutput: ToolOutputPart[] = [];
-  let skippedCount = 0;
+  let skipping = false;
   for (let i = 0; i < rendered.length; i++) {
     if (keep[i]) {
-      if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-      skippedCount = 0;
+      if (skipping) filteredOutput.push({ kind: "truncated" });
+      skipping = false;
       filteredOutput.push(rendered[i] as ToolOutputPart);
     } else {
-      skippedCount += 1;
+      skipping = true;
     }
   }
-  if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
   if (filteredOutput.length <= NUMBERED_DIFF_PREVIEW_MAX_LINES) return filteredOutput;
 
   // Truncate at a file boundary to avoid cutting mid-file.
