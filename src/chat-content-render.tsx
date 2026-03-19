@@ -21,13 +21,13 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
           if (token.kind === "code") {
             return (
               <Text key={tokenKey} color={palette.textCode}>
-                {token.text}
+                {token.text.slice(1, -1)}
               </Text>
             );
           }
           if (token.kind === "path") {
             return (
-              <Text key={tokenKey} underline color={palette.textPath}>
+              <Text key={tokenKey} color={palette.textCode}>
                 {token.text}
               </Text>
             );
