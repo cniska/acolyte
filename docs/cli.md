@@ -5,49 +5,23 @@ The CLI is the primary interface for working with Acolyte.
 ## Commands
 
 - `acolyte`: start interactive chat
+- `acolyte init [provider]`: initialize provider API key
+- `acolyte resume [id]`: continue a previous session
 - `acolyte run "<prompt>"`: one-shot execution
 - `acolyte run --file <path> "<prompt>"`: one-shot with file context
-- `acolyte resume [id-prefix]`: continue a previous session
 - `acolyte history`: list sessions
-- `acolyte status`: show server status
 - `acolyte start|stop|restart|ps`: manage server lifecycle
+- `acolyte status`: show server status
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
-- `acolyte tool <tool-id> [args]`: run a tool directly
-- `acolyte init [provider]`: initialize provider API key
+- `acolyte skill <name> [prompt]`: run a prompt with an active skill
+- `acolyte trace list|task <id>`: inspect server lifecycle traces
 
 Run `acolyte <command> help` for detailed usage.
 
 ## Local models
 
 See [Configuration](./configuration.md) for OpenAI-compatible model setup.
-
-## Chat commands
-
-These are available in interactive chat:
-
-- `/exit`: exit chat
-- `/new`: start new session
-- `/resume`: resume a previous session
-- `/sessions`: show sessions
-- `/status`: show server status
-- `/usage`: show token usage
-- `/model [id]`: change model
-- `/model work|verify <id>`: change mode-specific model
-- `/permissions [read|write]`: change permission mode
-- `/memory [all|user|project]`: show memory notes
-- `/remember [--user|--project] <text>`: save memory note
-- `/skill <name>`: run a skill command
-- `/skills`: show skills picker
-
-## File attachments
-
-Use `@path` in chat input to attach file or directory context:
-
-```
-@src/cli.ts refactor the help text
-@docs/ summarize the documentation
-```
 
 ## Memory commands
 
@@ -67,3 +41,14 @@ acolyte config unset <key>
 ```
 
 See [Configuration](./configuration.md) for available keys.
+
+## Trace commands
+
+```bash
+acolyte trace                    # list recent tasks
+acolyte trace list               # same as above
+acolyte trace task <id>          # inspect a task's lifecycle trace
+acolyte trace task <id> --json   # output as JSON lines
+acolyte trace --lines 100        # show last 100 tasks
+acolyte trace --log <path>       # use a custom log file
+```

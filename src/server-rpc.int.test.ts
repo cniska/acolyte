@@ -568,7 +568,7 @@ describe("server rpc websocket queue", () => {
 
         // 1 running + 25 queued hits the queue limit.
         ws.send(requestFor("rpc_queuelimitrunning"));
-        for (let i = 0; i < 25; i += 1) ws.send(requestFor(`rpc_queuelimitq${i}`));
+        for (let i = 0; i < 25; i++) ws.send(requestFor(`rpc_queuelimitq${i}`));
         ws.send(requestFor("rpc_queuelimitoverflow"));
 
         await new Promise<void>((resolve, reject) => {

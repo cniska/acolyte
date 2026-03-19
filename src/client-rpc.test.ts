@@ -133,7 +133,7 @@ describe("rpc websocket lifecycle", () => {
       { onEvent: () => {}, signal: controller.signal },
     );
 
-    for (let i = 0; i < 100 && !sent.some((msg) => msg.type === "chat.start"); i += 1) {
+    for (let i = 0; i < 100 && !sent.some((msg) => msg.type === "chat.start"); i++) {
       await Promise.resolve();
     }
     controller.abort();

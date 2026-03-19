@@ -146,7 +146,7 @@ Every lifecycle event emits structured debug logs describing:
 - Evaluator actions
 - Task state transitions
 
-A dedicated trace tool (`scripts/lifecycle-trace.ts`) converts daemon logs into timelines:
+The `acolyte trace` command converts daemon logs into timelines:
 
 ```
 task_id=task_abc123

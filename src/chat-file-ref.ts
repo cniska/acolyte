@@ -57,8 +57,8 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
   const isSubsequence = (path: string): boolean => {
     let qi = 0;
     const lower = path.toLowerCase();
-    for (let i = 0; i < lower.length && qi < q.length; i += 1) {
-      if (lower[i] === q[qi]) qi += 1;
+    for (let i = 0; i < lower.length && qi < q.length; i++) {
+      if (lower[i] === q[qi]) qi++;
     }
     return qi === q.length;
   };

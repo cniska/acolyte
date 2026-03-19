@@ -33,7 +33,7 @@ describe("step-budget guard", () => {
   test("blocks when total call log reaches total limit", () => {
     const session = createSessionContext();
     session.flags.totalStepLimit = 3;
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 3; i++) {
       recordCall(session, "read-file", {});
     }
     expect(() => runGuards({ toolName: "read-file", args: {}, session })).toThrow(/Total step budget exhausted/);
@@ -116,7 +116,7 @@ describe("file-churn guard", () => {
 
   test("blocks read-only churn even when churned path is part of batched read", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     }
 
@@ -179,7 +179,7 @@ describe("file-churn guard", () => {
   test("blocks rereading the same path before heavy read/edit churn can continue", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 6; i++) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
@@ -193,7 +193,7 @@ describe("file-churn guard", () => {
     session.mode = "verify";
     recordCall(session, "run-command", { command: "bun run verify" });
     session.mode = "work";
-    for (let i = 0; i < 8; i += 1) {
+    for (let i = 0; i < 8; i++) {
       recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
@@ -218,7 +218,7 @@ describe("file-churn guard", () => {
 
   test("does not block when churn is spread across files", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 6; i++) {
       recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
       recordCall(session, "edit-file", { path: "src/a.ts" });
       recordCall(session, "read-file", { paths: [{ path: "src/b.ts" }] });
@@ -269,7 +269,7 @@ describe("redundant-search guard", () => {
 
   test("blocks repeated search-only churn without reads/writes", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "search-files", { pattern: `query-${i}` });
     }
     expect(() => runGuards({ toolName: "search-files", args: { pattern: "query-5" }, session })).toThrow(
@@ -279,7 +279,7 @@ describe("redundant-search guard", () => {
 
   test("does not block when read-file has already been used", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "search-files", { pattern: `query-${i}` });
     }
     recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
@@ -289,7 +289,7 @@ describe("redundant-search guard", () => {
   test("does not block when a write tool has already been used", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "search-files", { pattern: `query-${i}` });
     }
     recordCall(session, "edit-file", { path: "src/a.ts" });
@@ -373,7 +373,7 @@ describe("redundant-find guard", () => {
 
   test("blocks repeated find-only churn without reads/writes", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "find-files", { patterns: [`query-${i}`] });
     }
     expect(() => runGuards({ toolName: "find-files", args: { patterns: ["query-5"] }, session })).toThrow(
@@ -383,7 +383,7 @@ describe("redundant-find guard", () => {
 
   test("does not block when read-file has already been used", () => {
     const session = createSessionContext();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "find-files", { patterns: [`query-${i}`] });
     }
     recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
@@ -393,7 +393,7 @@ describe("redundant-find guard", () => {
   test("does not block when a write tool has already been used", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 4; i++) {
       recordCall(session, "find-files", { patterns: [`query-${i}`] });
     }
     recordCall(session, "edit-file", { path: "src/a.ts" });

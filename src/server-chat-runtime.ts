@@ -168,6 +168,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   const lifecycleRequest: ChatRequest = { ...chatRequest, resourceId: canonicalResourceId };
 
   log.info("chat request started", {
+    event: "chat.request.started",
     request_id: requestId,
     task_id: handlers.taskId ?? null,
     session_id: chatRequest.sessionId ?? null,
@@ -240,6 +241,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     }
     const durationMs = Date.now() - startedAt;
     log.info("chat request completed", {
+      event: "chat.request.completed",
       request_id: requestId,
       task_id: handlers.taskId ?? null,
       session_id: chatRequest.sessionId ?? null,

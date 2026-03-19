@@ -317,7 +317,7 @@ describe("createAgentInput", () => {
         timestamp: "2026-02-20T10:00:00.000Z",
       },
     ];
-    for (let i = 1; i <= 12; i += 1) {
+    for (let i = 1; i <= 12; i++) {
       history.push({
         id: `msg_${i}`,
         role: i % 2 === 0 ? "assistant" : "user",

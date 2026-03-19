@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
+import { hasHelpFlag } from "./cli-args";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
@@ -15,10 +16,10 @@ import { requestLocalServerShutdown } from "./cli-server";
 import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
+import { traceMode } from "./cli-trace";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
-
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory";
 import {
@@ -26,6 +27,7 @@ import {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
+  serverLogPath,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
@@ -49,10 +51,6 @@ export function commandError(name: string, message?: string): void {
 export function usage(version: string): void {
   const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help);
   printUsage(version, docs, printOutput, formatCliTitle);
-}
-
-function hasHelpFlag(args: string[]): boolean {
-  return args.includes("--help") || args.includes("-h") || args.includes("help");
 }
 
 async function resumeMode(args: string[]): Promise<void> {
@@ -107,8 +105,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   },
   resume: {
     help: {
-      command: "resume [id-prefix]",
-      usage: "acolyte resume [id-prefix]",
+      command: "resume [id]",
+      usage: "acolyte resume [id]",
       description: t("cli.help.desc.resume"),
       examples: ["acolyte resume", "acolyte resume sess_abc123"],
     },
@@ -295,7 +293,30 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       description: t("cli.help.desc.tool"),
       examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
     },
-    handler: toolMode,
+    handler: (args) =>
+      toolMode(args, {
+        hasHelpFlag,
+        printError,
+        commandHelp,
+      }),
+  },
+  trace: {
+    help: {
+      command: "trace",
+      usage: "acolyte trace [list|task <id>] [--lines <n>] [--log <path>] [--json]",
+      description: t("cli.help.desc.trace"),
+      examples: ["acolyte trace", "acolyte trace task task_abc123", "acolyte trace --json"],
+    },
+    handler: (args) =>
+      traceMode(args, {
+        hasHelpFlag,
+        logPath: serverLogPath(appConfig.server.port),
+        printDim,
+        printError,
+        readFile,
+        commandError,
+        commandHelp,
+      }),
   },
 };
 

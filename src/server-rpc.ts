@@ -98,6 +98,7 @@ function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEn
 function runWorkerTask(input: WorkerRunInput, deps: RpcDeps): Promise<void> {
   deps.transitionTaskState(input.taskId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
   log.info("rpc task started", {
+    event: "rpc.task.started",
     task_id: input.taskId,
     session_id: input.request.sessionId ?? null,
   });
@@ -170,6 +171,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
 
     deps.transitionTaskState(state.taskId, { state: "accepted" }, { reason: "chat_accepted", transport: "rpc" });
     log.info("rpc task accepted", {
+      event: "rpc.task.accepted",
       task_id: state.taskId,
       session_id: request.sessionId ?? null,
       queued_task_count: ctx.wsData.queue.length,
@@ -181,6 +183,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       deps.transitionTaskState(state.taskId, { state: "queued" }, { reason: "chat_accepted", transport: "rpc" });
       rpcQueuedTaskCount += 1;
       log.info("rpc task queued", {
+        event: "rpc.task.queued",
         task_id: state.taskId,
         queue_position: startResult.position,
         running_task_id: ctx.wsData.runningChatId,
@@ -294,6 +297,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         ws.data.runningChatId = requestId;
         ws.data.activeChats.set(requestId, state);
         log.info("rpc worker task scheduled", {
+          event: "rpc.worker.scheduled",
           task_id: state.taskId,
           session_id: request.sessionId ?? null,
           queued_task_count: ws.data.queue.length,
@@ -324,7 +328,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
             log.info("rpc task reindexed", { task_id: updatedTaskId, queue_position: update.position });
           }
           if (dequeue.next) {
-            log.info("rpc task dequeued", { task_id: dequeue.next.state.taskId });
+            log.info("rpc task dequeued", { event: "rpc.task.dequeued", task_id: dequeue.next.state.taskId });
             startChat(dequeue.next.id, dequeue.next.request, dequeue.next.state);
           }
         });

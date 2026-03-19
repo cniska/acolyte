@@ -104,7 +104,7 @@ describe("cli visual regression", () => {
 
       Commands
         init [provider]        initialize provider API key
-        resume [id-prefix]     resume previous session
+        resume [id]            resume previous session
         run <prompt>           run a single prompt
         history                show recent sessions
         start                  start server
@@ -115,6 +115,7 @@ describe("cli visual regression", () => {
         memory                 manage memory
         config                 manage config
         skill <name> [prompt]  run a prompt with an active skill
+        trace                  inspect server lifecycle traces
 
       Options
         -h, --help             print help
@@ -329,7 +330,7 @@ describe("cli visual regression", () => {
     {
       args: ["resume", "help"],
       output: dedent(`
-        Usage: acolyte resume [id-prefix]
+        Usage: acolyte resume [id]
         
         Description: resume previous session
         
@@ -453,8 +454,69 @@ describe("cli visual regression", () => {
           acolyte tool run-command "bun run verify"
       `),
     },
+    {
+      args: ["trace", "help"],
+      output: dedent(`
+        Usage: acolyte trace [list|task <id>] [--lines <n>] [--log <path>] [--json]
+
+        Description: inspect server lifecycle traces
+
+        Examples:
+          acolyte trace
+          acolyte trace task task_abc123
+          acolyte trace --json
+      `),
+    },
   ])("renders subcommand help output %#", async ({ args, output }) => {
     const out = await runCliPlain(args);
     expect(out).toBe(output);
+  });
+
+  test("trace command filters by task id from log file", async () => {
+    await withCliTestEnv(async ({ run, homeDir }) => {
+      const logDir = join(homeDir, ".acolyte", "daemons");
+      await mkdir(logDir, { recursive: true });
+      await writeFile(
+        join(logDir, "server.log"),
+        [
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_abc mode=work model=gpt-5-mini",
+          "2026-03-19T10:00:01Z level=debug event=lifecycle.tool.call task_id=task_abc tool=read-file path=src/cli.ts",
+          "2026-03-19T10:00:02Z level=debug event=lifecycle.tool.call task_id=task_other tool=read-file path=README.md",
+          "2026-03-19T10:00:03Z level=debug event=lifecycle.summary task_id=task_abc model_calls=1 total_tool_calls=1 read_calls=1 search_calls=0 write_calls=0 pre_write_discovery_calls=0 regeneration_count=0 guard_blocked_count=0 guard_flag_set_count=0 has_error=false",
+        ].join("\n"),
+        "utf8",
+      );
+      const out = await run(["trace", "task", "task_abc"]);
+      expect(out).toBe(
+        dedent(`
+          task_id=task_abc
+          timestamp=2026-03-19T10:00:00Z task_id=task_abc event=lifecycle.start mode=work model=gpt-5-mini
+          timestamp=2026-03-19T10:00:01Z task_id=task_abc event=lifecycle.tool.call tool=read-file path=src/cli.ts
+          timestamp=2026-03-19T10:00:03Z task_id=task_abc event=lifecycle.summary model_calls=1 total_tool_calls=1 read=1 search=0 write=0 pre_write_discovery=0 regenerations=0 guard_blocked=0 guard_flag_set=0 has_error=false
+        `),
+      );
+    });
+  });
+
+  test("trace default lists recent tasks", async () => {
+    await withCliTestEnv(async ({ run, homeDir }) => {
+      const logDir = join(homeDir, ".acolyte", "daemons");
+      await mkdir(logDir, { recursive: true });
+      await writeFile(
+        join(logDir, "server.log"),
+        [
+          "9999-01-01T00:00:00Z level=debug event=lifecycle.start task_id=task_latest mode=work model=gpt-5-mini",
+          "9999-01-01T00:00:01Z level=debug event=lifecycle.generate.done task_id=task_latest model=gpt-5-mini tool_calls=2",
+        ].join("\n"),
+        "utf8",
+      );
+      const out = await run(["trace"]);
+      expect(out).toBe(
+        dedent(`
+          Task         Model       Status  Time
+          task_latest  gpt-5-mini  ok      just now
+        `),
+      );
+    });
   });
 });

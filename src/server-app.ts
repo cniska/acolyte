@@ -90,6 +90,7 @@ function transitionTaskState(
   }
   const next = result.task;
   log.info("task state updated", {
+    event: "task.state_updated",
     task_id: taskId,
     from_state: previous?.state ?? null,
     to_state: next.state,

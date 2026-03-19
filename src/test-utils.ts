@@ -70,7 +70,7 @@ export function dedent(
 ): string {
   if (Array.isArray(valueOrStrings)) {
     let out = valueOrStrings[0] ?? "";
-    for (let i = 1; i < valueOrStrings.length; i += 1) out += String(rest[i - 1] ?? "") + valueOrStrings[i];
+    for (let i = 1; i < valueOrStrings.length; i++) out += String(rest[i - 1] ?? "") + valueOrStrings[i];
     return dedentString(out);
   }
   if (typeof valueOrStrings !== "string") throw new Error("Invalid dedent input");
@@ -141,7 +141,7 @@ export function startTestServer(fetch: (req: Request) => Response | Promise<Resp
   stop: () => void;
 } {
   const attempts = 25;
-  for (let i = 0; i < attempts; i += 1) {
+  for (let i = 0; i < attempts; i++) {
     const port = 20000 + Math.floor(Math.random() * 30000);
     try {
       const server = Bun.serve({ port, fetch });

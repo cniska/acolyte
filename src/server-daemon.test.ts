@@ -2,9 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { serverDaemonInternals } from "./server-daemon";
 
 describe("server daemon internals", () => {
-  test("serverLogPath resolves under ~/.acolyte/daemons", () => {
+  test("serverLogPath uses server.log for default port", () => {
     const path = serverDaemonInternals.serverLogPath(6767, "/tmp/acolyte-home");
-    expect(path).toBe("/tmp/acolyte-home/.acolyte/daemons/6767.log");
+    expect(path).toBe("/tmp/acolyte-home/.acolyte/daemons/server.log");
+  });
+
+  test("serverLogPath uses port number for non-default port", () => {
+    const path = serverDaemonInternals.serverLogPath(8080, "/tmp/acolyte-home");
+    expect(path).toBe("/tmp/acolyte-home/.acolyte/daemons/8080.log");
   });
 
   test("parseServerLock accepts valid payload", () => {

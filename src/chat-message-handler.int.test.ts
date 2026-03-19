@@ -317,7 +317,7 @@ describe("chat message handler guards", () => {
     });
 
     const pending = handleSubmit("hello");
-    for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
+    for (let i = 0; i < 20 && !interruptRegistered; i++) {
       await Bun.sleep(1);
     }
     expect(interruptRegistered).toBe(true);
@@ -397,7 +397,7 @@ describe("chat message handler guards", () => {
     });
 
     const firstPending = handleSubmit("First question");
-    for (let i = 0; i < 20 && !interruptRegistered; i += 1) {
+    for (let i = 0; i < 20 && !interruptRegistered; i++) {
       await Bun.sleep(1);
     }
     expect(interruptRegistered).toBe(true);

@@ -30,7 +30,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
   const out: string[] = [];
   const entries: Array<{ rank: number; url?: string }> = [];
 
-  for (let i = 0; i < lines.length; i += 1) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
     const titleMatch = line.match(/^(\d+)\.\s+(.+)$/);
     if (!titleMatch?.[1] || !titleMatch?.[2]) continue;
@@ -40,7 +40,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
     const next = lines[i + 1]?.trim();
     if (next && /^https?:\/\//i.test(next)) {
       url = next;
-      i += 1;
+      i++;
     }
     if (!url && title.startsWith("http")) url = title;
     entries.push({ rank: Number.isFinite(rank) ? rank : entries.length + 1, url });
