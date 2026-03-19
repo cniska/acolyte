@@ -39,19 +39,20 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 
 ## Chat commands
 
-- `/exit`: exit chat
 - `/new`: start new session
+- `/clear`: clear transcript
 - `/resume`: resume a previous session
 - `/sessions`: show sessions
-- `/status`: show server status
-- `/usage`: show token usage
 - `/model [id]`: change model
 - `/model work|verify <id>`: change mode-specific model
 - `/permissions [read|write]`: change permission mode
+- `/status`: show server status
+- `/usage`: show token usage
 - `/memory [all|user|project]`: show memory notes
 - `/remember [--user|--project] <text>`: save memory note
 - `/skill <name>`: run a skill command
 - `/skills`: show skills picker
+- `/exit`: exit chat
 
 ## File attachments
 
