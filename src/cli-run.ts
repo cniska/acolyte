@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
 import type { createMessage as createMessageType } from "./chat-session";
+import { parseRepeatableFlag, parseRequiredFlag } from "./cli-args";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import { formatRunSummary } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
@@ -47,34 +48,17 @@ export function runResourceId(sessionId: string): ResourceId {
 }
 
 function parseRunArgs(args: string[]): ParsedRunArgs {
-  const files: string[] = [];
+  const files = parseRepeatableFlag(args, "--file", "--file requires a path");
+  const workspace = parseRequiredFlag(args, "--workspace", "--workspace requires a path");
+  const model = parseRequiredFlag(args, "--model", "--model requires a model id");
   const promptParts: string[] = [];
-  let workspace: string | undefined;
-  let model: string | undefined;
 
+  const flagsWithValues = new Set(["--file", "--workspace", "--model"]);
   for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--file") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--file requires a path");
-      files.push(next);
+    if (flagsWithValues.has(args[i])) {
       i += 1;
       continue;
     }
-    if (args[i] === "--workspace") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--workspace requires a path");
-      workspace = next;
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--model") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--model requires a model id");
-      model = next;
-      i += 1;
-      continue;
-    }
-
     promptParts.push(args[i]);
   }
 

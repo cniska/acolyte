@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { hasBoolFlag, parseFlag, parsePositional } from "./cli-args";
 import { t } from "./i18n";
 import {
   field,
@@ -215,15 +216,6 @@ export function compactLine(line: LogLine): string {
   return `${ts}${taskPrefix} ${event}`;
 }
 
-function parseFlag(args: string[], flag: string | string[]): string | undefined {
-  const flags = Array.isArray(flag) ? flag : [flag];
-  for (const f of flags) {
-    const index = args.indexOf(f);
-    if (index >= 0 && index + 1 < args.length) return args[index + 1];
-  }
-  return undefined;
-}
-
 function parseTailCount(raw: string | undefined): number {
   if (raw === undefined) return 40;
   const parsed = Number.parseInt(raw, 10);
@@ -306,19 +298,9 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const logPathOverride = parseFlag(args, "--log") ?? logPath;
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
-  const jsonOutput = args.includes("--json");
+  const jsonOutput = hasBoolFlag(args, "--json");
   const fmt: FormatLine = jsonOutput ? formatJson : compactLine;
-
-  const positional: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--log" || args[i] === "--lines" || args[i] === "-n") {
-      i++;
-      continue;
-    }
-    if (args[i].startsWith("-")) continue;
-    positional.push(args[i]);
-  }
-
+  const positional = parsePositional(args, ["--log", "--lines", "-n"]);
   const subcommand = positional[0];
   const subcommandArg = positional[1];
 

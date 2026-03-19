@@ -1,5 +1,6 @@
 import type { appConfig as appConfigType } from "./app-config";
 import type { createMessage as createMessageType } from "./chat-session";
+import { parseRepeatableFlag, parseRequiredFlag } from "./cli-args";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import { formatRunSummary } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
@@ -44,31 +45,15 @@ export function skillResourceId(sessionId: string) {
 }
 
 export function parseSkillArgs(args: string[]): ParsedSkillArgs {
-  const files: string[] = [];
+  const files = parseRepeatableFlag(args, "--file", "--file requires a path");
+  const workspace = parseRequiredFlag(args, "--workspace", "--workspace requires a path");
+  const model = parseRequiredFlag(args, "--model", "--model requires a model id");
   const tokens: string[] = [];
-  let workspace: string | undefined;
-  let model: string | undefined;
   let skillName: string | undefined;
 
+  const flagsWithValues = new Set(["--file", "--workspace", "--model"]);
   for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--file") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--file requires a path");
-      files.push(next);
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--workspace") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--workspace requires a path");
-      workspace = next;
-      i += 1;
-      continue;
-    }
-    if (args[i] === "--model") {
-      const next = args[i + 1];
-      if (!next) throw new Error("--model requires a model id");
-      model = next;
+    if (flagsWithValues.has(args[i])) {
       i += 1;
       continue;
     }

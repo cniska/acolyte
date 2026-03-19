@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
+import { hasHelpFlag } from "./cli-args";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
@@ -50,10 +51,6 @@ export function commandError(name: string, message?: string): void {
 export function usage(version: string): void {
   const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help);
   printUsage(version, docs, printOutput, formatCliTitle);
-}
-
-function hasHelpFlag(args: string[]): boolean {
-  return args.includes("--help") || args.includes("-h") || args.includes("help");
 }
 
 async function resumeMode(args: string[]): Promise<void> {
