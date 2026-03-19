@@ -185,7 +185,7 @@ function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg:
     tasks.map((task) => ({
       task_id: task.taskId,
       timestamp: task.timestamp,
-      model: task.model ?? "?",
+      model: task.model ?? "unknown",
       status: task.hasError ? "error" : "ok",
     })),
   );
