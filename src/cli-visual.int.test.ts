@@ -104,7 +104,7 @@ describe("cli visual regression", () => {
 
       Commands
         init [provider]        initialize provider API key
-        resume [id-prefix]     resume previous session
+        resume [id]            resume previous session
         run <prompt>           run a single prompt
         history                show recent sessions
         start                  start server
@@ -330,7 +330,7 @@ describe("cli visual regression", () => {
     {
       args: ["resume", "help"],
       output: dedent(`
-        Usage: acolyte resume [id-prefix]
+        Usage: acolyte resume [id]
         
         Description: resume previous session
         

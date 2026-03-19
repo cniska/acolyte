@@ -7,7 +7,7 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte`: start interactive chat
 - `acolyte run "<prompt>"`: one-shot execution
 - `acolyte run --file <path> "<prompt>"`: one-shot with file context
-- `acolyte resume [id-prefix]`: continue a previous session
+- `acolyte resume [id]`: continue a previous session
 - `acolyte history`: list sessions
 - `acolyte status`: show server status
 - `acolyte start|stop|restart|ps`: manage server lifecycle

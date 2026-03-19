@@ -105,8 +105,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   },
   resume: {
     help: {
-      command: "resume [id-prefix]",
-      usage: "acolyte resume [id-prefix]",
+      command: "resume [id]",
+      usage: "acolyte resume [id]",
       description: t("cli.help.desc.resume"),
       examples: ["acolyte resume", "acolyte resume sess_abc123"],
     },
