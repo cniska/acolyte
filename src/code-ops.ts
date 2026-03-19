@@ -1,5 +1,5 @@
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import * as napi from "@ast-grep/napi";
 import { invariant } from "./assert";
 import type {
@@ -412,33 +412,55 @@ export type ScanCodeResult = {
   patterns: ScanCodePatternResult[];
 };
 
-export async function editCode(input: {
-  workspace: string;
-  path: string;
-  edits: EditCodeEdit[];
-}): Promise<EditCodeResult> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
-  const pathStats = await stat(absPath);
-  if (!pathStats.isFile()) throw new Error(`edit-code requires a file path, got: ${input.path}`);
-  if (!isParseable(absPath)) {
-    throw createToolError(
-      TOOL_ERROR_CODES.editCodeUnsupportedFile,
-      `edit-code requires a supported code file, got: ${input.path}`,
-      undefined,
-      editCodeRecovery(input.path, "use-supported-file"),
-    );
+async function collectParseableFiles(dirPath: string, maxFiles = 500): Promise<string[]> {
+  const files: string[] = [];
+  const stack = [dirPath];
+  while (stack.length > 0 && files.length < maxFiles) {
+    const dir = stack.pop();
+    if (!dir) break;
+    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(abs);
+        continue;
+      }
+      if (entry.isFile() && isParseable(abs)) files.push(abs);
+      if (files.length >= maxFiles) break;
+    }
   }
-  const original = await readFile(absPath, "utf8");
-  await ensureDynamicLanguages();
+  return files;
+}
 
+type EditCodeFileResult = {
+  matches: number;
+  affectedSymbols: string[];
+  diff: string;
+} | null;
+
+async function editCodeFile(
+  absPath: string,
+  workspace: string,
+  edits: EditCodeEdit[],
+  throwOnNoMatch: boolean,
+): Promise<EditCodeFileResult> {
   const langName = languageFromPath(absPath);
-  invariant(langName, `edit-code requires a supported code file, got: ${input.path}`);
+  if (!langName) return null;
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
+  const original = await readFile(absPath, "utf8");
   let current = original;
   let totalMatches = 0;
   const affectedSymbols = new Set<string>();
 
-  for (const edit of input.edits) {
+  for (const edit of edits) {
     const tree = napi.parse(langEnum ?? langName, current);
     const pattern = isRenameEdit(edit) ? edit.from : ruleLabel(edit.rule);
     const replacement = isRenameEdit(edit) ? edit.to : edit.replacement;
@@ -461,31 +483,40 @@ export async function editCode(input: {
       matches = matches.filter((match) => matchIsWithinSymbol(match, symbol));
     }
     if (matches.length === 0) {
-      throw createToolError(
-        TOOL_ERROR_CODES.editCodeNoMatch,
-        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-        undefined,
-        editCodeRecovery(input.path, "refine-pattern"),
-      );
+      if (throwOnNoMatch) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editCodeNoMatch,
+          `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+          undefined,
+          editCodeRecovery(absPath, "refine-pattern"),
+        );
+      }
+      continue;
     }
     if (isRenameEdit(edit) && !edit.target && hasRenameModeConflict(matches)) {
-      throw createToolError(
-        TOOL_ERROR_CODES.editCodeNoMatch,
-        `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-        undefined,
-        editCodeRecovery(input.path, "clarify-rename-target"),
-      );
+      if (throwOnNoMatch) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editCodeNoMatch,
+          `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+          undefined,
+          editCodeRecovery(absPath, "clarify-rename-target"),
+        );
+      }
+      continue;
     }
     const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
     if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
     if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
     if (matches.length === 0) {
-      throw createToolError(
-        TOOL_ERROR_CODES.editCodeNoMatch,
-        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
-        undefined,
-        editCodeRecovery(input.path, "refine-pattern"),
-      );
+      if (throwOnNoMatch) {
+        throw createToolError(
+          TOOL_ERROR_CODES.editCodeNoMatch,
+          `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
+          undefined,
+          editCodeRecovery(absPath, "refine-pattern"),
+        );
+      }
+      continue;
     }
     totalMatches += matches.length;
     for (const match of matches) {
@@ -504,7 +535,7 @@ export async function editCode(input: {
           TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
           `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
           undefined,
-          editCodeRecovery(input.path, "fix-replacement"),
+          editCodeRecovery(absPath, "fix-replacement"),
         );
       }
     }
@@ -523,30 +554,92 @@ export async function editCode(input: {
     }
 
     replacements.sort((a, b) => b.start - a.start);
-    for (const replacement of replacements) {
-      current = current.slice(0, replacement.start) + replacement.replacement + current.slice(replacement.end);
+    for (const r of replacements) {
+      current = current.slice(0, r.start) + r.replacement + current.slice(r.end);
     }
   }
 
-  await mkdir(dirname(absPath), { recursive: true });
-  await writeFile(absPath, current, "utf8");
+  if (totalMatches === 0) return null;
 
-  const relativePath = displayPathForDiff(absPath, input.workspace);
-  const diff = createDiff(relativePath, original, current);
-  const affectedSymbolsList = Array.from(affectedSymbols);
-  const symbolsLine = affectedSymbolsList.length > 0 ? `symbols=${affectedSymbolsList.join(", ")}` : "";
-  const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${totalMatches}`];
-  if (symbolsLine) outputParts.push(symbolsLine);
-  outputParts.push("", diff);
-  const output = outputParts.join("\n");
+  await writeFile(absPath, current, "utf8");
+  const diff = createDiff(displayPathForDiff(absPath, workspace), original, current);
+  return { matches: totalMatches, affectedSymbols: Array.from(affectedSymbols), diff };
+}
+
+export async function editCode(input: {
+  workspace: string;
+  path: string;
+  edits: EditCodeEdit[];
+}): Promise<EditCodeResult> {
+  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
+  const pathStats = await stat(absPath);
+
+  if (pathStats.isDirectory()) {
+    return editCodeDirectory(input.workspace, absPath, input.edits);
+  }
+
+  if (!pathStats.isFile()) throw new Error(`edit-code requires a file or directory path, got: ${input.path}`);
+  if (!isParseable(absPath)) {
+    throw createToolError(
+      TOOL_ERROR_CODES.editCodeUnsupportedFile,
+      `edit-code requires a supported code file, got: ${input.path}`,
+      undefined,
+      editCodeRecovery(input.path, "use-supported-file"),
+    );
+  }
+
+  await ensureDynamicLanguages();
+  const result = await editCodeFile(absPath, input.workspace, input.edits, true);
+  if (!result) {
+    throw createToolError(
+      TOOL_ERROR_CODES.editCodeNoMatch,
+      `No AST matches found in ${input.path}`,
+      undefined,
+      editCodeRecovery(input.path, "refine-pattern"),
+    );
+  }
+
+  const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${result.matches}`];
+  if (result.affectedSymbols.length > 0) outputParts.push(`symbols=${result.affectedSymbols.join(", ")}`);
+  outputParts.push("", result.diff);
   return {
     path: absPath,
     edits: input.edits.length,
-    matches: totalMatches,
-    diff,
-    output,
-    affectedSymbols: affectedSymbolsList,
+    matches: result.matches,
+    diff: result.diff,
+    output: outputParts.join("\n"),
+    affectedSymbols: result.affectedSymbols,
   };
+}
+
+async function editCodeDirectory(workspace: string, dirPath: string, edits: EditCodeEdit[]): Promise<EditCodeResult> {
+  await ensureDynamicLanguages();
+  const files = await collectParseableFiles(dirPath);
+  const diffs: string[] = [];
+  let totalMatches = 0;
+  const allAffectedSymbols: string[] = [];
+
+  for (const absFile of files) {
+    const result = await editCodeFile(absFile, workspace, edits, false);
+    if (!result) continue;
+    totalMatches += result.matches;
+    allAffectedSymbols.push(...result.affectedSymbols);
+    diffs.push(result.diff);
+  }
+
+  if (totalMatches === 0) {
+    throw createToolError(
+      TOOL_ERROR_CODES.editCodeNoMatch,
+      `No AST matches found in directory: ${dirPath}`,
+      undefined,
+      editCodeRecovery(dirPath, "refine-pattern"),
+    );
+  }
+
+  const diff = diffs.join("\n");
+  const affectedSymbols = Array.from(new Set(allAffectedSymbols));
+  const output = [`path=${dirPath}`, `edits=${edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
+  return { path: dirPath, edits: edits.length, matches: totalMatches, diff, output, affectedSymbols };
 }
 
 export async function scanCode(input: {

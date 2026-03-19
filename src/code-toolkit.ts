@@ -136,7 +136,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     category: "write",
     permissions: ["read", "write"],
     description:
-      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` must be a specific file, not \'.\' or a directory. For non-code files use `edit-file`.',
+      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `edit-file`.',
     instruction: [
       "Use `edit-code` for AST-aware refactors or structural code rewrites.",
       "Prefer explicit operation objects.",
