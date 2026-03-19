@@ -18,41 +18,43 @@ export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
 export function compactLine(line: LogLine): string {
   const ts = line.timestamp;
   const taskPrefix = line.taskId ? ` task_id=${line.taskId}` : "";
-  const msg = field(line, "msg");
   const event = field(line, "event");
   const f = (key: string, fallback = "?"): string => field(line, key) ?? fallback;
 
-  if (msg === "task state updated") {
-    return `${ts}${taskPrefix} state from=${f("from_state", "null")} to=${f("to_state")} reason=${f("reason")} transport=${f("transport")}`;
+  if (!event) {
+    const msg = field(line, "msg");
+    return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
   }
 
-  if (msg === "rpc task accepted") {
-    return `${ts}${taskPrefix} accepted session=${f("session_id")} queued=${f("queued_task_count")} has_running=${f("has_running_task")}`;
+  if (event === "task.state_updated") {
+    return `${ts}${taskPrefix} ${event} from=${f("from_state", "null")} to=${f("to_state")} reason=${f("reason")} transport=${f("transport")}`;
   }
 
-  if (msg === "rpc task queued") {
-    return `${ts}${taskPrefix} queued position=${f("queue_position")} running_task_id=${f("running_task_id", "none")}`;
+  if (event === "rpc.task.accepted") {
+    return `${ts}${taskPrefix} ${event} session=${f("session_id")} queued=${f("queued_task_count")} has_running=${f("has_running_task")}`;
   }
 
-  if (msg === "rpc task dequeued") return `${ts}${taskPrefix} dequeued`;
-
-  if (msg === "rpc worker task scheduled") {
-    return `${ts}${taskPrefix} worker_scheduled session=${f("session_id")} queued=${f("queued_task_count")}`;
+  if (event === "rpc.task.queued") {
+    return `${ts}${taskPrefix} ${event} position=${f("queue_position")} running_task_id=${f("running_task_id", "none")}`;
   }
 
-  if (msg === "rpc task started") {
-    return `${ts}${taskPrefix} rpc_started session=${f("session_id")}`;
+  if (event === "rpc.task.dequeued") return `${ts}${taskPrefix} ${event}`;
+
+  if (event === "rpc.worker.scheduled") {
+    return `${ts}${taskPrefix} ${event} session=${f("session_id")} queued=${f("queued_task_count")}`;
   }
 
-  if (msg === "chat request started") {
-    return `${ts}${taskPrefix} start model=${f("model")} workspace_mode=${f("workspace_mode")} message_chars=${f("message_chars")}`;
+  if (event === "rpc.task.started") {
+    return `${ts}${taskPrefix} ${event} session=${f("session_id")}`;
   }
 
-  if (msg === "chat request completed") {
-    return `${ts}${taskPrefix} completed duration_ms=${f("duration_ms")} model_calls=${f("model_calls")} tool_count=${f("tool_count")}`;
+  if (event === "chat.request.started") {
+    return `${ts}${taskPrefix} ${event} model=${f("model")} workspace_mode=${f("workspace_mode")} message_chars=${f("message_chars")}`;
   }
 
-  if (!event) return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
+  if (event === "chat.request.completed") {
+    return `${ts}${taskPrefix} ${event} duration_ms=${f("duration_ms")} model_calls=${f("model_calls")} tool_count=${f("tool_count")}`;
+  }
 
   if (event === "lifecycle.start") {
     return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")}`;

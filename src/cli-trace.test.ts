@@ -24,14 +24,16 @@ function line(raw: string): LogLine {
 }
 
 describe("compactLine", () => {
-  test("formats task state updated", () => {
+  test("formats task.state_updated", () => {
     expect(
       compactLine(
         line(
-          '2026-03-19T10:00:00Z level=info msg="task state updated" task_id=task_1 from_state=pending to_state=running reason=scheduled transport=rpc',
+          '2026-03-19T10:00:00Z level=info msg="task state updated" event=task.state_updated task_id=task_1 from_state=pending to_state=running reason=scheduled transport=rpc',
         ),
       ),
-    ).toBe("2026-03-19T10:00:00Z task_id=task_1 state from=pending to=running reason=scheduled transport=rpc");
+    ).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 task.state_updated from=pending to=running reason=scheduled transport=rpc",
+    );
   });
 
   test("formats lifecycle.start", () => {
