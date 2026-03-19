@@ -1,5 +1,6 @@
-import { alignCols } from "./chat-format";
+import { hasBoolFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
+import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import type {
   readConfigForScope as readConfigForScopeType,
   readConfig as readConfigType,
@@ -61,7 +62,9 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     commandHelp("config");
     return;
   }
-  const [subcommandRaw, ...restArgs] = args;
+  const json = hasBoolFlag(args, "--json");
+  const cleanArgs = args.filter((a) => a !== "--json");
+  const [subcommandRaw, ...restArgs] = cleanArgs;
   const isImplicitList = !subcommandRaw || subcommandRaw === "--user" || subcommandRaw === "--project";
   const subcommand = isImplicitList ? "list" : subcommandRaw;
   const listArgs = isImplicitList && subcommandRaw ? [subcommandRaw, ...restArgs] : restArgs;
@@ -75,22 +78,25 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       const scope = parsed.scope;
       const config = scope ? await readConfigForScope(scope) : await readConfig();
-      const rows: string[][] = [];
-      if (scope) rows.push([t("cli.config.scope"), scope]);
+      const out: CliOutput = json ? createJsonOutput() : createTextOutput();
+      const entries: Record<string, string | undefined>[] = [];
+      if (scope) entries.push({ key: t("cli.config.scope"), value: scope });
       for (const name of VALID_CONFIG_KEYS) {
         const value = (config as Record<string, unknown>)[name];
         if (value === undefined || value === "") continue;
         if (Array.isArray(value)) {
-          rows.push([`${name}:`, value.join(", ")]);
+          entries.push({ key: `${name}:`, value: value.join(", ") });
         } else if (typeof value === "object" && value !== null) {
           for (const [k, v] of Object.entries(value)) {
-            rows.push([`${name}.${k}:`, String(v)]);
+            entries.push({ key: `${name}.${k}:`, value: String(v) });
           }
         } else {
-          rows.push([`${name}:`, String(value)]);
+          entries.push({ key: `${name}:`, value: String(value) });
         }
       }
-      for (const line of alignCols(rows)) printDim(line);
+      for (const entry of entries) out.addRow(entry);
+      const rendered = out.render();
+      if (rendered) printDim(rendered);
       return;
     }
     case "set": {
