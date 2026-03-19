@@ -135,10 +135,11 @@ function renderToolPart(
 
 function renderHeader(part: ToolOutputPart): React.ReactNode {
   if (part.kind === "edit-header") {
+    const path = part.path === "." ? "" : part.path;
     return (
       <>
-        <Text bold>{part.label} </Text>
-        <Text dimColor>{part.path} (</Text>
+        <Text bold>{part.label}</Text>
+        <Text dimColor>{path ? ` ${path}` : ""} (</Text>
         <Text color={palette.diffAddText}>{`+${part.added}`}</Text>
         <Text dimColor> </Text>
         <Text color={palette.diffRemoveText}>{`-${part.removed}`}</Text>
@@ -147,20 +148,23 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     );
   }
   if (part.kind === "tool-header") {
+    const detail = part.detail === "." ? undefined : part.detail;
     return (
       <>
         <Text bold>{part.label}</Text>
-        {part.detail ? <Text dimColor>{` ${part.detail}`}</Text> : null}
+        {detail ? <Text dimColor>{` ${detail}`}</Text> : null}
       </>
     );
   }
   if (part.kind === "file-header") {
-    const shown = part.targets.join(", ");
+    const targets = part.targets.filter((t) => t !== ".");
+    const shown = targets.join(", ");
     const omitted = part.omitted && part.omitted > 0 ? `, +${part.omitted}` : "";
+    const detail = shown ? ` ${shown}${omitted}` : omitted ? ` ${omitted.slice(2)}` : "";
     return (
       <>
         <Text bold>{part.label}</Text>
-        <Text dimColor>{` ${shown}${omitted}`}</Text>
+        {detail ? <Text dimColor>{detail}</Text> : null}
       </>
     );
   }
