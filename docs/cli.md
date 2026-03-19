@@ -14,7 +14,7 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte tool <tool-id> [args]`: run a tool directly
-- `acolyte trace list|task <id>`: inspect server lifecycle traces
+- `acolyte trace list|task`: inspect server lifecycle traces
 - `acolyte init [provider]`: initialize provider API key
 
 Run `acolyte <command> help` for detailed usage.
@@ -22,33 +22,6 @@ Run `acolyte <command> help` for detailed usage.
 ## Local models
 
 See [Configuration](./configuration.md) for OpenAI-compatible model setup.
-
-## Chat commands
-
-These are available in interactive chat:
-
-- `/exit`: exit chat
-- `/new`: start new session
-- `/resume`: resume a previous session
-- `/sessions`: show sessions
-- `/status`: show server status
-- `/usage`: show token usage
-- `/model [id]`: change model
-- `/model work|verify <id>`: change mode-specific model
-- `/permissions [read|write]`: change permission mode
-- `/memory [all|user|project]`: show memory notes
-- `/remember [--user|--project] <text>`: save memory note
-- `/skill <name>`: run a skill command
-- `/skills`: show skills picker
-
-## File attachments
-
-Use `@path` in chat input to attach file or directory context:
-
-```
-@src/cli.ts refactor the help text
-@docs/ summarize the documentation
-```
 
 ## Memory commands
 
