@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { t } from "./i18n";
 import {
@@ -24,43 +25,7 @@ type TraceModeDeps = {
 
 export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "daemons", "server.log");
 
-type TraceEvent =
-  | "task.state_updated"
-  | "rpc.task.accepted"
-  | "rpc.task.queued"
-  | "rpc.task.dequeued"
-  | "rpc.worker.scheduled"
-  | "rpc.task.started"
-  | "chat.request.started"
-  | "chat.request.completed"
-  | "lifecycle.start"
-  | "lifecycle.classify"
-  | "lifecycle.prepare"
-  | "lifecycle.mode.changed"
-  | "lifecycle.agent.reconfigured"
-  | "lifecycle.generate.start"
-  | "lifecycle.generate.done"
-  | "lifecycle.generate.error"
-  | "lifecycle.error"
-  | "lifecycle.yield"
-  | "lifecycle.tool.call"
-  | "lifecycle.tool.cache"
-  | "lifecycle.tool.result"
-  | "lifecycle.tool.error"
-  | "lifecycle.tool.output"
-  | "lifecycle.guard"
-  | "lifecycle.signal.accepted"
-  | "lifecycle.skill.context"
-  | "lifecycle.eval.decision"
-  | "lifecycle.eval.skipped"
-  | "lifecycle.eval.lint"
-  | "lifecycle.eval.guard_recovery"
-  | "lifecycle.eval.repeated_failure"
-  | "lifecycle.eval.verify_failure"
-  | "lifecycle.eval.tool_recovery"
-  | "lifecycle.summary";
-
-const KNOWN_EVENTS = new Set<string>([
+const traceEventSchema = z.enum([
   "task.state_updated",
   "rpc.task.accepted",
   "rpc.task.queued",
@@ -96,6 +61,9 @@ const KNOWN_EVENTS = new Set<string>([
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
 ]);
+
+type TraceEvent = z.infer<typeof traceEventSchema>;
+const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
 function formatKnownEvent(event: TraceEvent, line: LogLine, ts: string, taskPrefix: string): string {
   const f = (key: string, fallback = "?"): string => field(line, key) ?? fallback;
@@ -241,7 +209,7 @@ function traceByTask(
   fmt: FormatLine,
   json: boolean,
 ): void {
-  for (let i = 0; i < taskIds.length; i += 1) {
+  for (let i = 0; i < taskIds.length; i++) {
     const taskId = taskIds[i];
     const selected = lines.filter((line) => matchesTaskId(line, taskId));
     if (selected.length === 0) {

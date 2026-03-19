@@ -20,7 +20,6 @@ import { DEFAULT_LOG_PATH, traceMode } from "./cli-trace";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
-
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory";
 import {
