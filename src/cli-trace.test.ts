@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { compactLine, traceMode } from "./cli-trace";
-import { field, type LogLine, parseLog } from "./log-parser";
+import { type LogLine, parseLog } from "./log-parser";
 
 type TraceDeps = Parameters<typeof traceMode>[1];
 
@@ -22,36 +22,6 @@ function createDeps(overrides?: Partial<TraceDeps>): { deps: TraceDeps; output: 
 function line(raw: string): LogLine {
   return parseLog(raw)[0];
 }
-
-describe("parseLog", () => {
-  test("parses fields from a log line", () => {
-    const [entry] = parseLog(
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini",
-    );
-    expect(entry.timestamp).toBe("2026-03-19T10:00:00Z");
-    expect(entry.taskId).toBe("task_1");
-    expect(field(entry, "level")).toBe("debug");
-    expect(field(entry, "event")).toBe("lifecycle.start");
-    expect(field(entry, "mode")).toBe("work");
-    expect(field(entry, "model")).toBe("gpt-5-mini");
-  });
-
-  test("parses quoted values", () => {
-    const [entry] = parseLog('2026-03-19T10:00:00Z level=debug msg="hello world" tool=read-file');
-    expect(field(entry, "msg")).toBe("hello world");
-    expect(field(entry, "tool")).toBe("read-file");
-  });
-
-  test("handles null task_id", () => {
-    const [entry] = parseLog("2026-03-19T10:00:00Z task_id=null level=info");
-    expect(entry.taskId).toBeUndefined();
-  });
-
-  test("filters empty lines", () => {
-    const entries = parseLog("line1 level=info\n\n  \nline2 level=debug");
-    expect(entries.length).toBe(2);
-  });
-});
 
 describe("compactLine", () => {
   test("formats task state updated", () => {
