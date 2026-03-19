@@ -76,8 +76,8 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "find-files", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "find-files", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 40;
         const count = toolInput.patterns.length;
         const baseBudget = deps.outputBudget.findFiles;
@@ -92,7 +92,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           toolInput.patterns,
           t("tool.label.find"),
           input.onOutput,
-          toolCallId,
+          callId,
           TOOL_OUTPUT_LIMITS.files,
           input.workspace,
         );
@@ -145,8 +145,8 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       entries: z.array(z.object({ path: z.string().min(1), hits: z.array(z.string().min(1)) })),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "search-files", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "search-files", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 20;
         const patterns =
           toolInput.patterns && toolInput.patterns.length > 0
@@ -165,7 +165,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           toolInput.paths,
           t("tool.label.search"),
           input.onOutput,
-          toolCallId,
+          callId,
           TOOL_OUTPUT_LIMITS.files,
           input.workspace,
         );
@@ -217,8 +217,8 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       paths: z.array(z.object({ path: z.string().min(1), start: z.string().optional(), end: z.string().optional() })),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "read-file", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "read-file", toolCallId, toolInput, async (callId) => {
         const entries = normalizeReadEntries(toolInput.paths);
         if (entries.length === 0) throw new Error("Read requires at least one non-empty path");
         const unique = Array.from(new Set(entries.map((entry) => toDisplayPath(entry.path, input.workspace))));
@@ -234,7 +234,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
             },
-            toolCallId,
+            toolCallId: callId,
           });
         }
         const baseBudget = deps.outputBudget.read;
@@ -298,16 +298,16 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         .min(1),
     }),
     outputSchema,
-    execute: async (toolInput) => {
-      return runTool(input.session, "edit-file", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "edit-file", toolCallId, toolInput, async (callId) => {
         const rawResult = await editFile({
           workspace: input.workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(toolInput.path, rawResult, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, rawResult, callId);
         for (const content of numberedUnifiedDiffLines(rawResult))
-          input.onOutput({ toolName: "edit-file", content, toolCallId });
+          input.onOutput({ toolName: "edit-file", content, toolCallId: callId });
         const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, deps.outputBudget.edit);
         return {
@@ -349,17 +349,17 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       removed: z.number().int().nonnegative(),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "create-file", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "create-file", toolCallId, toolInput, async (callId) => {
         const rawResult = await writeTextFile({
           workspace: input.workspace,
           path: toolInput.path,
           content: toolInput.content,
           overwrite: true,
         });
-        emitDiffSummaryHeader(toolInput.path, rawResult, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, rawResult, callId);
         for (const content of numberedUnifiedDiffLines(rawResult))
-          input.onOutput({ toolName: "create-file", content, toolCallId });
+          input.onOutput({ toolName: "create-file", content, toolCallId: callId });
         const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, deps.outputBudget.create);
         return {
@@ -393,14 +393,14 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       deleted: z.number().int().nonnegative(),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "delete-file", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "delete-file", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
         const deleteDetail = paths.length > 0 ? formatDeletePaths(paths) : undefined;
         input.onOutput({
           toolName: "delete-file",
           content: { kind: "tool-header", label: t("tool.label.delete"), detail: deleteDetail },
-          toolCallId,
+          toolCallId: callId,
         });
         const resultParts: string[] = [];
         for (const path of paths) {

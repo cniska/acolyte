@@ -74,8 +74,8 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
       query: z.string().min(1),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "web-search", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "web-search", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "web-search",
           content: {
@@ -83,13 +83,13 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
             label: t("tool.label.web_search"),
             detail: `"${compactDetail(toolInput.query)}"`,
           },
-          toolCallId,
+          toolCallId: callId,
         });
         const result = compactToolOutput(
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
           deps.outputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, toolCallId);
+        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, callId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },
@@ -114,12 +114,12 @@ function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
       url: z.string().min(1),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "web-fetch", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "web-fetch", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "web-fetch",
           content: { kind: "tool-header", label: t("tool.label.web_fetch"), detail: toolInput.url },
-          toolCallId,
+          toolCallId: callId,
         });
         const result = compactToolOutput(
           await fetchWeb(toolInput.url, toolInput.maxChars ?? 5000),

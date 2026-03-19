@@ -182,7 +182,6 @@ export type RunContext = {
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
-  nativeIdQueue: Map<string, string[]>;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   temperatures?: Partial<Record<AgentMode, number>>;

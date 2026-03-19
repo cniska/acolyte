@@ -14,7 +14,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly execute: (input: TInput) => Promise<TOutput>;
+  readonly execute: (input: TInput, toolCallId: string) => Promise<TOutput>;
 };
 
 export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };
@@ -61,6 +61,6 @@ export type ToolCache = {
 export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutput>): ToolDefinition<TInput, TOutput> {
   return {
     ...config,
-    execute: async (input) => config.outputSchema.parse(await config.execute(input)),
+    execute: async (input, toolCallId) => config.outputSchema.parse(await config.execute(input, toolCallId)),
   };
 }

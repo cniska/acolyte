@@ -1,6 +1,5 @@
 import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
-import { createId } from "./short-id";
 import { ToolError } from "./tool-error";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolRecovery } from "./tool-recovery";
@@ -35,20 +34,15 @@ export function hashResultValue(value: unknown): string | undefined {
   hasher.update(str);
   return hasher.digest("hex").slice(0, 16);
 }
-export function streamCallId(toolName: string): string {
-  return `${toolName}_${createId()}`;
-}
-
 export function runTool(
   session: SessionContext,
   toolId: string,
+  toolCallId: string,
   args: object,
   execute: (toolCallId: string) => Promise<unknown>,
   options?: { timeoutMs?: number },
 ): Promise<unknown> {
-  return withToolError(toolId, () =>
-    guardedExecute(toolId, args, session, () => execute(streamCallId(toolId)), options),
-  );
+  return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(toolCallId), options));
 }
 
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {

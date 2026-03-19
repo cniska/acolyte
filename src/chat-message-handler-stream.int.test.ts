@@ -570,4 +570,56 @@ describe("chat message handler stream behavior", () => {
     expect(toolIndex).toBeGreaterThanOrEqual(0);
     expect(assistantIndex).toBeLessThan(toolIndex);
   });
+
+  test("batched tool calls each get their own tool row", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          // Two tool calls in the same batch, different toolCallIds
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_A",
+            toolName: "edit-code",
+            args: { path: "a.ts" },
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_A",
+            toolName: "edit-code",
+            content: { kind: "edit-header", label: "Edit", path: "a.ts", files: 1, added: 1, removed: 1 },
+          });
+          options.onEvent({
+            type: "tool-result",
+            toolCallId: "call_A",
+            toolName: "edit-code",
+          });
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_B",
+            toolName: "edit-code",
+            args: { path: "b.ts" },
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_B",
+            toolName: "edit-code",
+            content: { kind: "edit-header", label: "Edit", path: "b.ts", files: 1, added: 1, removed: 1 },
+          });
+          options.onEvent({
+            type: "tool-result",
+            toolCallId: "call_B",
+            toolName: "edit-code",
+          });
+          return { model: "gpt-5-mini", output: "done" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("rename across files");
+
+    const toolRows = rows.filter((row) => row.kind === "tool");
+    expect(toolRows).toHaveLength(2);
+  });
 });

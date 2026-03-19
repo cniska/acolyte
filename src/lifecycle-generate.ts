@@ -393,13 +393,6 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         });
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
-        let queue = ctx.nativeIdQueue.get(toolName);
-        if (!queue) {
-          queue = [];
-          ctx.nativeIdQueue.set(toolName, queue);
-        }
-        queue.push(p.toolCallId);
-
         ctx.emit({ type: "tool-call", toolCallId: p.toolCallId, toolName, args });
       }
       break;
@@ -409,8 +402,6 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
-        const queue = ctx.nativeIdQueue.get(toolName);
-        if (queue?.[queue.length - 1] === p.toolCallId) queue.pop();
         const resultRecord =
           typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
         const isError = Boolean(resultRecord && "error" in resultRecord);

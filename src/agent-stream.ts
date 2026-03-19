@@ -192,7 +192,7 @@ export function createAgentStream(
 
           try {
             const args = JSON.parse(tc.input);
-            const result = await tool.execute(args);
+            const result = await tool.execute(args, tc.toolCallId);
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },

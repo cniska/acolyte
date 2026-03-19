@@ -74,8 +74,8 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       patterns: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "scan-code", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "scan-code", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
         if (unique.length > 0) {
@@ -90,7 +90,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
             },
-            toolCallId,
+            toolCallId: callId,
           });
         }
         const baseBudget = deps.outputBudget.scanCode;
@@ -161,16 +161,16 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       edits: z.array(editCodeEditSchema).min(1),
     }),
     outputSchema,
-    execute: async (toolInput) => {
-      return runTool(input.session, "edit-code", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "edit-code", toolCallId, toolInput, async (callId) => {
         const editResult = await editCode({
           workspace: input.workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(toolInput.path, editResult.output, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, editResult.output, callId);
         for (const content of numberedUnifiedDiffLines(editResult.output))
-          input.onOutput({ toolName: "edit-code", content, toolCallId });
+          input.onOutput({ toolName: "edit-code", content, toolCallId: callId });
         const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {
