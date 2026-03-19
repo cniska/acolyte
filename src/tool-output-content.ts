@@ -116,10 +116,12 @@ export function formatToolOutput(items: ToolOutputPart[]): string {
     (max, item) => (item.kind === "diff" ? Math.max(max, String(item.lineNumber).length) : max),
     0,
   );
+  const hasFileHeaders = numWidth > 0 && body.some((item) => item.kind === "text");
+  const diffIndent = hasFileHeaders ? "  " : "";
   const lines = body.map((item) => {
-    if (item.kind === "diff") return renderDiffLine(item, numWidth);
+    if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
     if (item.kind === "truncated" && numWidth > 0)
-      return `${"…".padStart(numWidth)} ${renderToolOutputPart(item).slice(2)}`;
+      return `${diffIndent}${"…".padStart(numWidth)} ${renderToolOutputPart(item).slice(2)}`;
     return renderToolOutputPart(item);
   });
   return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;

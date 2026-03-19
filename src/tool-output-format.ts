@@ -1,4 +1,5 @@
 import { isAbsolute, relative } from "node:path";
+import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
@@ -49,9 +50,10 @@ export function createDiffSummaryEmitter<TToolName extends string>(input: {
   return (path, rawResult, toolCallId) => {
     const { files, added, removed } = summarizeUnifiedDiff(rawResult);
     const touchedFiles = files > 0 ? files : 1;
+    const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
     onOutput({
       toolName,
-      content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
+      content: { kind: "edit-header", label, path: displayPath, files: touchedFiles, added, removed },
       toolCallId,
     });
   };
@@ -417,15 +419,25 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
   let newLine = 0;
   let inHunk = false;
   let fileCount = 0;
+  let pendingFilePath: string | null = null;
+  let fileAdded = 0;
+  let fileRemoved = 0;
+
+  const flushFileHeader = (): void => {
+    if (!pendingFilePath) return;
+    rendered.push({ kind: "text", text: `${pendingFilePath} (+${fileAdded} -${fileRemoved})` });
+    pendingFilePath = null;
+    fileAdded = 0;
+    fileRemoved = 0;
+  };
+
   for (const line of lines) {
     if (line.startsWith("diff --git ")) {
+      flushFileHeader();
       fileCount += 1;
       inHunk = false;
-      if (fileCount > 1) {
-        const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
-        const path = pathMatch?.[1] ?? line.slice("diff --git ".length);
-        rendered.push({ kind: "text", text: path });
-      }
+      const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
+      pendingFilePath = pathMatch?.[1] ?? line.slice("diff --git ".length);
       continue;
     }
     if (line.startsWith("--- ") || line.startsWith("+++ ")) continue;
@@ -441,11 +453,13 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
     if (!inHunk) continue;
     if (line.startsWith("+")) {
       rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
+      fileAdded += 1;
       newLine += 1;
       continue;
     }
     if (line.startsWith("-")) {
       rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
+      fileRemoved += 1;
       oldLine += 1;
       continue;
     }
@@ -454,6 +468,12 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
       oldLine += 1;
       newLine += 1;
     }
+  }
+  flushFileHeader();
+  // Strip per-file text headers for single-file diffs — the caller's edit-header covers it.
+  if (fileCount <= 1) {
+    const filtered = rendered.filter((part) => part.kind !== "text");
+    rendered.splice(0, rendered.length, ...filtered);
   }
   if (rendered.length === 0) {
     oldLine = 1;
