@@ -1,15 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { t } from "./i18n";
-import {
-  matchesRequestId,
-  matchesTaskId,
-  parseAllFields,
-  parseField,
-  parseRequestId,
-  parseTaskId,
-  parseTimestamp,
-} from "./log-parser";
+import { field, type LogLine, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -23,227 +15,154 @@ type TraceModeDeps = {
 
 export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
 
-export function compactLine(line: string): string {
-  const ts = parseTimestamp(line);
-  const taskId = parseTaskId(line);
-  const taskPrefix = taskId ? ` task_id=${taskId}` : "";
-  const msg = parseField(line, "msg");
-  const event = parseField(line, "event");
+export function compactLine(line: LogLine): string {
+  const ts = line.timestamp;
+  const taskPrefix = line.taskId ? ` task_id=${line.taskId}` : "";
+  const msg = field(line, "msg");
+  const event = field(line, "event");
+  const f = (key: string, fallback = "?"): string => field(line, key) ?? fallback;
 
   if (msg === "task state updated") {
-    const from = parseField(line, "from_state") ?? "null";
-    const to = parseField(line, "to_state") ?? "?";
-    const reason = parseField(line, "reason") ?? "?";
-    const transport = parseField(line, "transport") ?? "?";
-    return `${ts}${taskPrefix} state from=${from} to=${to} reason=${reason} transport=${transport}`;
+    return `${ts}${taskPrefix} state from=${f("from_state", "null")} to=${f("to_state")} reason=${f("reason")} transport=${f("transport")}`;
   }
 
   if (msg === "rpc task accepted") {
-    const session = parseField(line, "session_id") ?? "?";
-    const queued = parseField(line, "queued_task_count") ?? "?";
-    const hasRunning = parseField(line, "has_running_task") ?? "?";
-    return `${ts}${taskPrefix} accepted session=${session} queued=${queued} has_running=${hasRunning}`;
+    return `${ts}${taskPrefix} accepted session=${f("session_id")} queued=${f("queued_task_count")} has_running=${f("has_running_task")}`;
   }
 
   if (msg === "rpc task queued") {
-    const position = parseField(line, "queue_position") ?? "?";
-    const runningTaskId = parseField(line, "running_task_id") ?? "none";
-    return `${ts}${taskPrefix} queued position=${position} running_task_id=${runningTaskId}`;
+    return `${ts}${taskPrefix} queued position=${f("queue_position")} running_task_id=${f("running_task_id", "none")}`;
   }
 
   if (msg === "rpc task dequeued") return `${ts}${taskPrefix} dequeued`;
 
   if (msg === "rpc worker task scheduled") {
-    const session = parseField(line, "session_id") ?? "?";
-    const queued = parseField(line, "queued_task_count") ?? "?";
-    return `${ts}${taskPrefix} worker_scheduled session=${session} queued=${queued}`;
+    return `${ts}${taskPrefix} worker_scheduled session=${f("session_id")} queued=${f("queued_task_count")}`;
   }
 
   if (msg === "rpc task started") {
-    const session = parseField(line, "session_id") ?? "?";
-    return `${ts}${taskPrefix} rpc_started session=${session}`;
+    return `${ts}${taskPrefix} rpc_started session=${f("session_id")}`;
   }
 
   if (msg === "chat request started") {
-    const model = parseField(line, "model") ?? "?";
-    const mode = parseField(line, "workspace_mode") ?? "?";
-    const chars = parseField(line, "message_chars") ?? "?";
-    return `${ts}${taskPrefix} start model=${model} workspace_mode=${mode} message_chars=${chars}`;
+    return `${ts}${taskPrefix} start model=${f("model")} workspace_mode=${f("workspace_mode")} message_chars=${f("message_chars")}`;
   }
 
   if (msg === "chat request completed") {
-    const duration = parseField(line, "duration_ms") ?? "?";
-    const modelCalls = parseField(line, "model_calls") ?? "?";
-    const toolCount = parseField(line, "tool_count") ?? "?";
-    return `${ts}${taskPrefix} completed duration_ms=${duration} model_calls=${modelCalls} tool_count=${toolCount}`;
+    return `${ts}${taskPrefix} completed duration_ms=${f("duration_ms")} model_calls=${f("model_calls")} tool_count=${f("tool_count")}`;
   }
 
   if (!event) return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
 
   if (event === "lifecycle.start") {
-    const mode = parseField(line, "mode") ?? "?";
-    const model = parseField(line, "model") ?? "?";
-    return `${ts}${taskPrefix} ${event} mode=${mode} model=${model}`;
+    return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")}`;
   }
 
   if (event === "lifecycle.classify") {
-    const mode = parseField(line, "mode") ?? "?";
-    const model = parseField(line, "model") ?? "?";
-    const provider = parseField(line, "provider") ?? "?";
-    return `${ts}${taskPrefix} ${event} mode=${mode} model=${model} provider=${provider}`;
+    return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")} provider=${f("provider")}`;
   }
 
   if (event === "lifecycle.prepare") {
-    const model = parseField(line, "model") ?? "?";
-    const mode = parseField(line, "mode") ?? "?";
-    const historyMessages = parseField(line, "history_messages") ?? "?";
-    return `${ts}${taskPrefix} ${event} mode=${mode} model=${model} history_messages=${historyMessages}`;
+    return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")} history_messages=${f("history_messages")}`;
   }
 
   if (event === "lifecycle.mode.changed") {
-    const from = parseField(line, "from") ?? "?";
-    const to = parseField(line, "to") ?? "?";
-    const trigger = parseField(line, "trigger");
-    return `${ts}${taskPrefix} ${event} from=${from} to=${to}${trigger ? ` trigger=${trigger}` : ""}`;
+    const trigger = field(line, "trigger");
+    return `${ts}${taskPrefix} ${event} from=${f("from")} to=${f("to")}${trigger ? ` trigger=${trigger}` : ""}`;
   }
 
   if (event === "lifecycle.agent.reconfigured") {
-    const fromMode = parseField(line, "from_mode") ?? "?";
-    const toMode = parseField(line, "to_mode") ?? "?";
-    const fromModel = parseField(line, "from_model") ?? "?";
-    const toModel = parseField(line, "to_model") ?? "?";
-    return `${ts}${taskPrefix} ${event} from_mode=${fromMode} to_mode=${toMode} from_model=${fromModel} to_model=${toModel}`;
+    return `${ts}${taskPrefix} ${event} from_mode=${f("from_mode")} to_mode=${f("to_mode")} from_model=${f("from_model")} to_model=${f("to_model")}`;
   }
 
   if (event === "lifecycle.generate.start") {
-    const model = parseField(line, "model") ?? "?";
-    const mode = parseField(line, "mode") ?? "?";
-    return `${ts}${taskPrefix} ${event} model=${model} mode=${mode}`;
+    return `${ts}${taskPrefix} ${event} model=${f("model")} mode=${f("mode")}`;
   }
 
   if (event === "lifecycle.generate.done") {
-    const model = parseField(line, "model") ?? "?";
-    const toolCalls = parseField(line, "tool_calls") ?? "?";
-    const textChars = parseField(line, "text_chars") ?? "?";
-    return `${ts}${taskPrefix} ${event} model=${model} tool_calls=${toolCalls} text_chars=${textChars}`;
+    return `${ts}${taskPrefix} ${event} model=${f("model")} tool_calls=${f("tool_calls")} text_chars=${f("text_chars")}`;
   }
 
   if (event === "lifecycle.generate.error") {
-    const model = parseField(line, "model") ?? "?";
-    const error = parseField(line, "error") ?? "unknown";
-    return `${ts}${taskPrefix} ${event} model=${model} error="${error}"`;
+    return `${ts}${taskPrefix} ${event} model=${f("model")} error="${f("error", "unknown")}"`;
   }
 
   if (event === "lifecycle.error") {
-    const source = parseField(line, "source") ?? "?";
-    const kind = parseField(line, "kind") ?? "?";
-    const code = parseField(line, "code") ?? "?";
-    const category = parseField(line, "category") ?? "?";
-    const tool = parseField(line, "tool");
-    return `${ts}${taskPrefix} ${event} source=${source} kind=${kind} code=${code} category=${category}${tool ? ` tool=${tool}` : ""}`;
+    const tool = field(line, "tool");
+    return `${ts}${taskPrefix} ${event} source=${f("source")} kind=${f("kind")} code=${f("code")} category=${f("category")}${tool ? ` tool=${tool}` : ""}`;
   }
 
   if (event === "lifecycle.yield") {
-    const attempt = parseField(line, "generation_attempt") ?? "?";
-    return `${ts}${taskPrefix} ${event} generation_attempt=${attempt}`;
+    return `${ts}${taskPrefix} ${event} generation_attempt=${f("generation_attempt")}`;
   }
 
   if (event === "lifecycle.tool.call") {
-    const tool = parseField(line, "tool") ?? "?";
-    const path = parseField(line, "path");
-    const paths = parseField(line, "paths");
-    const pattern = parseField(line, "pattern");
-    const command = parseField(line, "command");
-    return `${ts}${taskPrefix} ${event} tool=${tool}${path ? ` path=${path}` : ""}${paths ? ` paths=${paths}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
+    const path = field(line, "path");
+    const paths = field(line, "paths");
+    const pattern = field(line, "pattern");
+    const command = field(line, "command");
+    return `${ts}${taskPrefix} ${event} tool=${f("tool")}${path ? ` path=${path}` : ""}${paths ? ` paths=${paths}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
   }
 
   if (event === "lifecycle.tool.cache") {
-    const tool = parseField(line, "tool") ?? "?";
-    const hit = parseField(line, "hit") ?? "?";
-    const hits = parseField(line, "hits") ?? "?";
-    const misses = parseField(line, "misses") ?? "?";
-    const size = parseField(line, "size") ?? "?";
-    return `${ts}${taskPrefix} ${event} tool=${tool} hit=${hit} hits=${hits} misses=${misses} size=${size}`;
+    return `${ts}${taskPrefix} ${event} tool=${f("tool")} hit=${f("hit")} hits=${f("hits")} misses=${f("misses")} size=${f("size")}`;
   }
 
   if (event === "lifecycle.tool.result") {
-    const tool = parseField(line, "tool") ?? "?";
-    const duration = parseField(line, "duration_ms") ?? "?";
-    const isError = parseField(line, "is_error") ?? "?";
-    return `${ts}${taskPrefix} ${event} tool=${tool} duration_ms=${duration} is_error=${isError}`;
+    return `${ts}${taskPrefix} ${event} tool=${f("tool")} duration_ms=${f("duration_ms")} is_error=${f("is_error")}`;
   }
 
   if (event === "lifecycle.tool.error") {
-    const tool = parseField(line, "tool") ?? "?";
-    const error = parseField(line, "error") ?? "unknown";
-    return `${ts}${taskPrefix} ${event} tool=${tool} error="${error}"`;
+    return `${ts}${taskPrefix} ${event} tool=${f("tool")} error="${f("error", "unknown")}"`;
   }
 
   if (event === "lifecycle.tool.output") {
-    const tool = parseField(line, "tool") ?? "?";
-    return `${ts}${taskPrefix} ${event} tool=${tool}`;
+    return `${ts}${taskPrefix} ${event} tool=${f("tool")}`;
   }
 
   if (event === "lifecycle.guard") {
-    const guard = parseField(line, "guard") ?? "?";
-    const tool = parseField(line, "tool") ?? "?";
-    const action = parseField(line, "action") ?? "?";
-    const detail = parseField(line, "detail");
-    return `${ts}${taskPrefix} ${event} guard=${guard} tool=${tool} action=${action}${detail ? ` detail=${detail}` : ""}`;
+    const detail = field(line, "detail");
+    return `${ts}${taskPrefix} ${event} guard=${f("guard")} tool=${f("tool")} action=${f("action")}${detail ? ` detail=${detail}` : ""}`;
   }
 
   if (event === "lifecycle.signal.accepted") {
-    const signal = parseField(line, "signal") ?? "?";
-    const mode = parseField(line, "mode") ?? "?";
-    return `${ts}${taskPrefix} ${event} signal=${signal} mode=${mode}`;
+    return `${ts}${taskPrefix} ${event} signal=${f("signal")} mode=${f("mode")}`;
   }
 
   if (event === "lifecycle.skill.context") {
-    const skillName = parseField(line, "skill_name") ?? "?";
-    const chars = parseField(line, "instruction_chars") ?? "?";
-    return `${ts}${taskPrefix} ${event} skill_name=${skillName} instruction_chars=${chars}`;
+    return `${ts}${taskPrefix} ${event} skill_name=${f("skill_name")} instruction_chars=${f("instruction_chars")}`;
   }
 
   if (event === "lifecycle.eval.decision") {
-    const evaluator = parseField(line, "evaluator") ?? "?";
-    const action = parseField(line, "action") ?? "?";
-    const regen = parseField(line, "regeneration_count");
-    return `${ts}${taskPrefix} ${event} evaluator=${evaluator} action=${action}${regen ? ` regeneration_count=${regen}` : ""}`;
+    const regen = field(line, "regeneration_count");
+    return `${ts}${taskPrefix} ${event} evaluator=${f("evaluator")} action=${f("action")}${regen ? ` regeneration_count=${regen}` : ""}`;
   }
 
   if (event === "lifecycle.eval.skipped") {
-    const evaluator = parseField(line, "evaluator");
-    const reason = parseField(line, "reason") ?? "?";
-    return `${ts}${taskPrefix} ${event}${evaluator ? ` evaluator=${evaluator}` : ""} reason=${reason}`;
+    const evaluator = field(line, "evaluator");
+    return `${ts}${taskPrefix} ${event}${evaluator ? ` evaluator=${evaluator}` : ""} reason=${f("reason")}`;
   }
 
   if (event === "lifecycle.eval.lint") {
-    const files = parseField(line, "files") ?? "?";
-    return `${ts}${taskPrefix} ${event} files=${files}`;
+    return `${ts}${taskPrefix} ${event} files=${f("files")}`;
   }
 
   if (event === "lifecycle.eval.guard_recovery") {
-    const mode = parseField(line, "mode") ?? "?";
-    return `${ts}${taskPrefix} ${event} mode=${mode}`;
+    return `${ts}${taskPrefix} ${event} mode=${f("mode")}`;
   }
 
   if (event === "lifecycle.eval.repeated_failure") {
-    const signature = parseField(line, "signature") ?? "?";
-    const count = parseField(line, "count") ?? "?";
-    const code = parseField(line, "code");
-    const category = parseField(line, "category");
-    return `${ts}${taskPrefix} ${event} signature=${signature} count=${count}${code ? ` code=${code}` : ""}${category ? ` category=${category}` : ""}`;
+    const code = field(line, "code");
+    const category = field(line, "category");
+    return `${ts}${taskPrefix} ${event} signature=${f("signature")} count=${f("count")}${code ? ` code=${code}` : ""}${category ? ` category=${category}` : ""}`;
   }
 
   if (event === "lifecycle.eval.verify_failure") {
-    const textChars = parseField(line, "text_chars") ?? "?";
-    return `${ts}${taskPrefix} ${event} text_chars=${textChars}`;
+    return `${ts}${taskPrefix} ${event} text_chars=${f("text_chars")}`;
   }
 
   if (event === "lifecycle.eval.tool_recovery") {
-    const recoveryTool = parseField(line, "recovery_tool") ?? "?";
-    const recoveryKind = parseField(line, "recovery_kind") ?? "?";
-    return `${ts}${taskPrefix} ${event} recovery_tool=${recoveryTool} recovery_kind=${recoveryKind}`;
+    return `${ts}${taskPrefix} ${event} recovery_tool=${f("recovery_tool")} recovery_kind=${f("recovery_kind")}`;
   }
 
   if (event.startsWith("lifecycle.eval.")) {
@@ -251,22 +170,12 @@ export function compactLine(line: string): string {
   }
 
   if (event.startsWith("lifecycle.memory.")) {
-    const reason = parseField(line, "reason");
+    const reason = field(line, "reason");
     return `${ts}${taskPrefix} ${event}${reason ? ` reason=${reason}` : ""}`;
   }
 
   if (event === "lifecycle.summary") {
-    const modelCalls = parseField(line, "model_calls") ?? "?";
-    const totalCalls = parseField(line, "total_tool_calls") ?? "?";
-    const readCalls = parseField(line, "read_calls") ?? "?";
-    const searchCalls = parseField(line, "search_calls") ?? "?";
-    const writeCalls = parseField(line, "write_calls") ?? "?";
-    const preWriteDiscovery = parseField(line, "pre_write_discovery_calls") ?? "?";
-    const regens = parseField(line, "regeneration_count") ?? "?";
-    const guardBlocked = parseField(line, "guard_blocked_count") ?? "?";
-    const guardFlagSet = parseField(line, "guard_flag_set_count") ?? "?";
-    const hasError = parseField(line, "has_error") ?? "?";
-    return `${ts}${taskPrefix} ${event} model_calls=${modelCalls} total_tool_calls=${totalCalls} read=${readCalls} search=${searchCalls} write=${writeCalls} pre_write_discovery=${preWriteDiscovery} regenerations=${regens} guard_blocked=${guardBlocked} guard_flag_set=${guardFlagSet} has_error=${hasError}`;
+    return `${ts}${taskPrefix} ${event} model_calls=${f("model_calls")} total_tool_calls=${f("total_tool_calls")} read=${f("read_calls")} search=${f("search_calls")} write=${f("write_calls")} pre_write_discovery=${f("pre_write_discovery_calls")} regenerations=${f("regeneration_count")} guard_blocked=${f("guard_blocked_count")} guard_flag_set=${f("guard_flag_set_count")} has_error=${f("has_error")}`;
   }
 
   return `${ts}${taskPrefix} ${event}`;
@@ -299,33 +208,32 @@ function parseTaskIdsArg(value: string | undefined): string[] {
   );
 }
 
-function findLastTaskId(lines: string[]): string | undefined {
+function findLastTaskId(lines: LogLine[]): string | undefined {
   for (let i = lines.length - 1; i >= 0; i--) {
-    const id = parseTaskId(lines[i]);
-    if (id) return id;
+    if (lines[i].taskId) return lines[i].taskId;
   }
   return undefined;
 }
 
-function findLastErrRequestId(lines: string[]): string | undefined {
+function findLastErrRequestId(lines: LogLine[]): string | undefined {
   for (let i = lines.length - 1; i >= 0; i--) {
-    const id = parseRequestId(lines[i]);
+    const id = lines[i].requestId;
     if (id?.startsWith("err_")) return id;
   }
   return undefined;
 }
 
-type FormatLine = (line: string) => string;
+type FormatLine = (line: LogLine) => string;
 
-function formatCompact(line: string): string {
+function formatCompact(line: LogLine): string {
   return compactLine(line);
 }
 
-function formatJson(line: string): string {
-  return JSON.stringify(parseAllFields(line));
+function formatJson(line: LogLine): string {
+  return JSON.stringify({ timestamp: line.timestamp, ...line.fields });
 }
 
-function traceByTask(lines: string[], taskIds: string[], print: (msg: string) => void, fmt: FormatLine): void {
+function traceByTask(lines: LogLine[], taskIds: string[], print: (msg: string) => void, fmt: FormatLine): void {
   for (let i = 0; i < taskIds.length; i += 1) {
     const taskId = taskIds[i];
     const selected = lines.filter((line) => matchesTaskId(line, taskId));
@@ -339,7 +247,7 @@ function traceByTask(lines: string[], taskIds: string[], print: (msg: string) =>
   }
 }
 
-function traceByRequest(lines: string[], requestId: string, print: (msg: string) => void, fmt: FormatLine): void {
+function traceByRequest(lines: LogLine[], requestId: string, print: (msg: string) => void, fmt: FormatLine): void {
   const selected = lines.filter((line) => matchesRequestId(line, requestId));
   if (selected.length === 0) {
     print(t("cli.trace.no_lines_for_request", { requestId }));
@@ -349,7 +257,7 @@ function traceByRequest(lines: string[], requestId: string, print: (msg: string)
   for (const line of selected) print(fmt(line));
 }
 
-function traceTail(lines: string[], count: number, print: (msg: string) => void, fmt: FormatLine): void {
+function traceTail(lines: LogLine[], count: number, print: (msg: string) => void, fmt: FormatLine): void {
   const tail = lines.slice(-count);
   if (fmt === formatCompact) print(t("cli.trace.showing_latest", { count: String(tail.length) }));
   for (const line of tail) print(fmt(line));
@@ -368,11 +276,10 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const jsonOutput = args.includes("--json");
   const fmt = jsonOutput ? formatJson : formatCompact;
 
-  // Strip flags from args to get positional arguments
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--log" || args[i] === "--lines" || args[i] === "-n") {
-      i++; // skip value
+      i++;
       continue;
     }
     if (args[i].startsWith("-")) continue;
@@ -390,7 +297,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
     return;
   }
 
-  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  const lines = parseLog(raw);
 
   if (subcommand === "task") {
     const taskIds = parseTaskIdsArg(subcommandArg);
@@ -416,16 +323,13 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
     return;
   }
 
-  // Default: find latest task_id → fallback to latest err_ request → tail N lines
   const latestTaskId = findLastTaskId(lines);
-
   if (latestTaskId) {
     traceByTask(lines, [latestTaskId], printDim, fmt);
     return;
   }
 
   const latestErrRequest = findLastErrRequestId(lines);
-
   if (latestErrRequest) {
     traceByRequest(lines, latestErrRequest, printDim, fmt);
     return;

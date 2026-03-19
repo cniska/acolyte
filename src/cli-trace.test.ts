@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { compactLine, traceMode } from "./cli-trace";
-import { parseAllFields, parseField, parseRequestId, parseTaskId, parseTimestamp } from "./log-parser";
+import { field, type LogLine, parseLog } from "./log-parser";
 
 type TraceDeps = Parameters<typeof traceMode>[1];
 
@@ -19,195 +19,203 @@ function createDeps(overrides?: Partial<TraceDeps>): { deps: TraceDeps; output: 
   return { deps, output: () => lines.join("\n") };
 }
 
-describe("parseField", () => {
-  test("extracts unquoted value", () => {
-    expect(parseField("foo=bar baz=qux", "foo")).toBe("bar");
-    expect(parseField("foo=bar baz=qux", "baz")).toBe("qux");
+function line(raw: string): LogLine {
+  return parseLog(raw)[0];
+}
+
+describe("parseLog", () => {
+  test("parses fields from a log line", () => {
+    const [entry] = parseLog(
+      "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini",
+    );
+    expect(entry.timestamp).toBe("2026-03-19T10:00:00Z");
+    expect(entry.taskId).toBe("task_1");
+    expect(field(entry, "level")).toBe("debug");
+    expect(field(entry, "event")).toBe("lifecycle.start");
+    expect(field(entry, "mode")).toBe("work");
+    expect(field(entry, "model")).toBe("gpt-5-mini");
   });
 
-  test("extracts quoted value", () => {
-    expect(parseField('msg="hello world" level=info', "msg")).toBe("hello world");
+  test("parses quoted values", () => {
+    const [entry] = parseLog('2026-03-19T10:00:00Z level=debug msg="hello world" tool=read-file');
+    expect(field(entry, "msg")).toBe("hello world");
+    expect(field(entry, "tool")).toBe("read-file");
   });
 
-  test("returns undefined for missing key", () => {
-    expect(parseField("foo=bar", "missing")).toBeUndefined();
-  });
-});
-
-describe("parseTimestamp", () => {
-  test("extracts timestamp before first space", () => {
-    expect(parseTimestamp("2026-03-19T10:00:00Z level=info msg=hello")).toBe("2026-03-19T10:00:00Z");
+  test("handles null task_id", () => {
+    const [entry] = parseLog("2026-03-19T10:00:00Z task_id=null level=info");
+    expect(entry.taskId).toBeUndefined();
   });
 
-  test("returns whole line when no space", () => {
-    expect(parseTimestamp("nospace")).toBe("nospace");
-  });
-});
-
-describe("parseRequestId", () => {
-  test("extracts request_id", () => {
-    expect(parseRequestId("foo request_id=req_abc123 bar")).toBe("req_abc123");
-  });
-
-  test("returns undefined when missing", () => {
-    expect(parseRequestId("no request id here")).toBeUndefined();
-  });
-});
-
-describe("parseTaskId", () => {
-  test("extracts task_id", () => {
-    expect(parseTaskId("foo task_id=task_abc123 bar")).toBe("task_abc123");
-  });
-
-  test("returns undefined for null value", () => {
-    expect(parseTaskId("task_id=null")).toBeUndefined();
-  });
-
-  test("returns undefined when missing", () => {
-    expect(parseTaskId("no task id here")).toBeUndefined();
-  });
-});
-
-describe("parseAllFields", () => {
-  test("extracts all key=value pairs", () => {
-    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini";
-    const fields = parseAllFields(line);
-    expect(fields.timestamp).toBe("2026-03-19T10:00:00Z");
-    expect(fields.level).toBe("debug");
-    expect(fields.event).toBe("lifecycle.start");
-    expect(fields.task_id).toBe("task_1");
-    expect(fields.mode).toBe("work");
-    expect(fields.model).toBe("gpt-5-mini");
-  });
-
-  test("extracts quoted values", () => {
-    const line = '2026-03-19T10:00:00Z level=debug msg="hello world" tool=read-file';
-    const fields = parseAllFields(line);
-    expect(fields.msg).toBe("hello world");
-    expect(fields.tool).toBe("read-file");
+  test("filters empty lines", () => {
+    const entries = parseLog("line1 level=info\n\n  \nline2 level=debug");
+    expect(entries.length).toBe(2);
   });
 });
 
 describe("compactLine", () => {
   test("formats task state updated", () => {
-    const line =
-      '2026-03-19T10:00:00Z level=info msg="task state updated" task_id=task_1 from_state=pending to_state=running reason=scheduled transport=rpc';
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 state from=pending to=running reason=scheduled transport=rpc",
-    );
+    expect(
+      compactLine(
+        line(
+          '2026-03-19T10:00:00Z level=info msg="task state updated" task_id=task_1 from_state=pending to_state=running reason=scheduled transport=rpc',
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 state from=pending to=running reason=scheduled transport=rpc");
   });
 
   test("formats lifecycle.start", () => {
-    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini";
-    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.start mode=work model=gpt-5-mini");
+    expect(
+      compactLine(
+        line("2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini"),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.start mode=work model=gpt-5-mini");
   });
 
   test("formats lifecycle.tool.call", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.tool.call task_id=task_1 tool=read-file path=src/cli.ts";
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.tool.call tool=read-file path=src/cli.ts",
-    );
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.tool.call task_id=task_1 tool=read-file path=src/cli.ts",
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.tool.call tool=read-file path=src/cli.ts");
   });
 
   test("formats lifecycle.generate.done with text_chars", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.generate.done task_id=task_1 model=gpt-5-mini tool_calls=2 text_chars=150";
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.generate.done model=gpt-5-mini tool_calls=2 text_chars=150",
-    );
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.generate.done task_id=task_1 model=gpt-5-mini tool_calls=2 text_chars=150",
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.generate.done model=gpt-5-mini tool_calls=2 text_chars=150");
   });
 
   test("formats lifecycle.generate.error", () => {
-    const line =
-      '2026-03-19T10:00:00Z level=debug event=lifecycle.generate.error task_id=task_1 model=gpt-5-mini error="timeout"';
-    expect(compactLine(line)).toBe(
-      '2026-03-19T10:00:00Z task_id=task_1 lifecycle.generate.error model=gpt-5-mini error="timeout"',
-    );
+    expect(
+      compactLine(
+        line(
+          '2026-03-19T10:00:00Z level=debug event=lifecycle.generate.error task_id=task_1 model=gpt-5-mini error="timeout"',
+        ),
+      ),
+    ).toBe('2026-03-19T10:00:00Z task_id=task_1 lifecycle.generate.error model=gpt-5-mini error="timeout"');
   });
 
   test("formats lifecycle.error", () => {
-    const line =
-      '2026-03-19T10:00:00Z level=debug event=lifecycle.error task_id=task_1 source=generate kind=transient code=E_TIMEOUT category=timeout message="request timed out"';
-    expect(compactLine(line)).toBe(
+    expect(
+      compactLine(
+        line(
+          '2026-03-19T10:00:00Z level=debug event=lifecycle.error task_id=task_1 source=generate kind=transient code=E_TIMEOUT category=timeout message="request timed out"',
+        ),
+      ),
+    ).toBe(
       "2026-03-19T10:00:00Z task_id=task_1 lifecycle.error source=generate kind=transient code=E_TIMEOUT category=timeout",
     );
   });
 
   test("formats lifecycle.mode.changed", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.mode.changed task_id=task_1 from=work to=verify trigger=evaluator";
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.mode.changed from=work to=verify trigger=evaluator",
-    );
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.mode.changed task_id=task_1 from=work to=verify trigger=evaluator",
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.mode.changed from=work to=verify trigger=evaluator");
   });
 
   test("formats lifecycle.summary", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.summary task_id=task_1 model_calls=3 total_tool_calls=5 read_calls=2 search_calls=1 write_calls=1 pre_write_discovery_calls=1 regeneration_count=0 guard_blocked_count=0 guard_flag_set_count=0 has_error=false";
-    expect(compactLine(line)).toBe(
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.summary task_id=task_1 model_calls=3 total_tool_calls=5 read_calls=2 search_calls=1 write_calls=1 pre_write_discovery_calls=1 regeneration_count=0 guard_blocked_count=0 guard_flag_set_count=0 has_error=false",
+        ),
+      ),
+    ).toBe(
       "2026-03-19T10:00:00Z task_id=task_1 lifecycle.summary model_calls=3 total_tool_calls=5 read=2 search=1 write=1 pre_write_discovery=1 regenerations=0 guard_blocked=0 guard_flag_set=0 has_error=false",
     );
   });
 
   test("formats lifecycle.memory events", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.memory.load_skipped task_id=task_1 reason=request_disabled";
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.memory.load_skipped reason=request_disabled",
-    );
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.memory.load_skipped task_id=task_1 reason=request_disabled",
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.memory.load_skipped reason=request_disabled");
   });
 
   test("formats lifecycle.skill.context", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.skill.context task_id=task_1 skill_name=arch-audit instruction_chars=1500";
-    expect(compactLine(line)).toBe(
-      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.skill.context skill_name=arch-audit instruction_chars=1500",
-    );
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.skill.context task_id=task_1 skill_name=arch-audit instruction_chars=1500",
+        ),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.skill.context skill_name=arch-audit instruction_chars=1500");
   });
 
   test("formats lifecycle.eval.decision", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.decision task_id=task_1 evaluator=verify action=regenerate regeneration_count=1";
-    expect(compactLine(line)).toBe(
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.decision task_id=task_1 evaluator=verify action=regenerate regeneration_count=1",
+        ),
+      ),
+    ).toBe(
       "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.decision evaluator=verify action=regenerate regeneration_count=1",
     );
   });
 
   test("formats lifecycle.eval.lint without evaluator field", () => {
-    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.lint task_id=task_1 files=3";
-    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.lint files=3");
+    expect(compactLine(line("2026-03-19T10:00:00Z level=debug event=lifecycle.eval.lint task_id=task_1 files=3"))).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.lint files=3",
+    );
   });
 
   test("formats lifecycle.eval.verify_failure", () => {
-    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.verify_failure task_id=task_1 text_chars=500";
-    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.verify_failure text_chars=500");
+    expect(
+      compactLine(
+        line("2026-03-19T10:00:00Z level=debug event=lifecycle.eval.verify_failure task_id=task_1 text_chars=500"),
+      ),
+    ).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.verify_failure text_chars=500");
   });
 
   test("formats lifecycle.eval.tool_recovery", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.tool_recovery task_id=task_1 recovery_tool=edit-file recovery_kind=disambiguate-match";
-    expect(compactLine(line)).toBe(
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.tool_recovery task_id=task_1 recovery_tool=edit-file recovery_kind=disambiguate-match",
+        ),
+      ),
+    ).toBe(
       "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.tool_recovery recovery_tool=edit-file recovery_kind=disambiguate-match",
     );
   });
 
   test("formats lifecycle.eval.repeated_failure", () => {
-    const line =
-      "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.repeated_failure task_id=task_1 signature=abc count=3 code=E_TIMEOUT category=timeout";
-    expect(compactLine(line)).toBe(
+    expect(
+      compactLine(
+        line(
+          "2026-03-19T10:00:00Z level=debug event=lifecycle.eval.repeated_failure task_id=task_1 signature=abc count=3 code=E_TIMEOUT category=timeout",
+        ),
+      ),
+    ).toBe(
       "2026-03-19T10:00:00Z task_id=task_1 lifecycle.eval.repeated_failure signature=abc count=3 code=E_TIMEOUT category=timeout",
     );
   });
 
   test("formats unknown lifecycle event with just event name", () => {
-    const line = "2026-03-19T10:00:00Z level=debug event=lifecycle.unknown.future task_id=task_1";
-    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 lifecycle.unknown.future");
+    expect(compactLine(line("2026-03-19T10:00:00Z level=debug event=lifecycle.unknown.future task_id=task_1"))).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 lifecycle.unknown.future",
+    );
   });
 
   test("formats line without event or msg", () => {
-    const line = "2026-03-19T10:00:00Z level=info task_id=task_1";
-    expect(compactLine(line)).toBe("2026-03-19T10:00:00Z task_id=task_1 log");
+    expect(compactLine(line("2026-03-19T10:00:00Z level=info task_id=task_1"))).toBe(
+      "2026-03-19T10:00:00Z task_id=task_1 log",
+    );
   });
 });
 
@@ -303,7 +311,6 @@ describe("traceMode", () => {
     });
     await traceMode(["--lines", "5"], deps);
     const lines = output().split("\n");
-    // 1 header line + 5 content lines
     expect(lines.length).toBe(6);
   });
 
@@ -332,9 +339,8 @@ describe("traceMode", () => {
     });
     await traceMode(["--json"], deps);
     const lines = output().split("\n");
-    // No "task_id=..." header, just JSON
-    for (const line of lines) {
-      expect(() => JSON.parse(line)).not.toThrow();
+    for (const l of lines) {
+      expect(() => JSON.parse(l)).not.toThrow();
     }
   });
 });
