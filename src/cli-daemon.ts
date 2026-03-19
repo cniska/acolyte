@@ -1,4 +1,5 @@
-import { alignCols } from "./chat-format";
+import { hasBoolFlag } from "./cli-args";
+import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import type { requestLocalServerShutdown } from "./cli-server";
 import { t } from "./i18n";
 import type {
@@ -95,13 +96,27 @@ export async function psMode(args: string[], deps: DaemonModeDeps): Promise<void
     deps.commandHelp("ps");
     return;
   }
-  if (args.length > 0) return deps.commandError("ps");
+  const json = hasBoolFlag(args, "--json");
+  const nonFlagArgs = args.filter((a) => a !== "--json");
+  if (nonFlagArgs.length > 0) return deps.commandError("ps");
   const daemons = await deps.listRunningDaemons();
   if (daemons.length === 0) {
     deps.printDim(t("cli.server.no_servers_running"));
     return;
   }
-  const rows: string[][] = [[t("cli.server.col.port"), t("cli.server.col.pid"), t("cli.server.col.uptime")]];
-  for (const d of daemons) rows.push([String(d.port), String(d.pid), formatUptime(d.startedAt)]);
-  for (const line of alignCols(rows)) deps.printDim(line);
+  const out: CliOutput = json ? createJsonOutput() : createTextOutput();
+  out.addTable(
+    daemons.map((d) => ({
+      port: String(d.port),
+      pid: String(d.pid),
+      uptime: formatUptime(d.startedAt),
+    })),
+    {
+      port: t("cli.server.col.port"),
+      pid: t("cli.server.col.pid"),
+      uptime: t("cli.server.col.uptime"),
+    },
+  );
+  const rendered = out.render();
+  if (rendered) deps.printDim(rendered);
 }
