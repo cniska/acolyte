@@ -1,5 +1,3 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { t } from "./i18n";
@@ -22,8 +20,6 @@ type TraceModeDeps = {
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
-
-export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "daemons", "server.log");
 
 const traceEventSchema = z.enum([
   "task.state_updated",

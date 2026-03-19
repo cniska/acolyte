@@ -16,7 +16,7 @@ import { requestLocalServerShutdown } from "./cli-server";
 import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
-import { DEFAULT_LOG_PATH, traceMode } from "./cli-trace";
+import { traceMode } from "./cli-trace";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
@@ -27,6 +27,7 @@ import {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
+  serverLogPath,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
@@ -314,7 +315,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     handler: (args) =>
       traceMode(args, {
         hasHelpFlag,
-        logPath: DEFAULT_LOG_PATH,
+        logPath: serverLogPath(appConfig.server.port),
         printDim,
         printError,
         readFile,

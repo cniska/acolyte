@@ -71,7 +71,7 @@ function startupLockPath(port: number, homeDir = homedir()): string {
   return join(daemonsDir(homeDir), daemonFileName(port, ".start.lock"));
 }
 
-function serverLogPath(port: number, homeDir = homedir()): string {
+export function serverLogPath(port: number, homeDir = homedir()): string {
   return join(daemonsDir(homeDir), daemonFileName(port, ".log"));
 }
 
