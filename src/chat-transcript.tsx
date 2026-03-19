@@ -106,8 +106,18 @@ function renderToolPart(
   }
   const text = renderToolOutputText(part);
   if (lineNumWidth > 0) {
-    const pad = " ".repeat(lineNumWidth + 2);
-    const display = part.kind === "truncated" ? `${"…".padStart(lineNumWidth)}  ${text.slice(2)}` : `${pad}${text}`;
+    if (part.kind === "text") {
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text dimColor>{text}</Text>
+        </Text>
+      );
+    }
+    const display =
+      part.kind === "truncated"
+        ? `${"…".padStart(lineNumWidth)}  ${text.slice(2)}`
+        : `${" ".repeat(lineNumWidth + 2)}${text}`;
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
