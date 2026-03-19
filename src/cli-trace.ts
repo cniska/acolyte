@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { t } from "./i18n";
@@ -184,9 +185,9 @@ function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg:
   out.addTable(
     tasks.map((task) => ({
       task_id: task.taskId,
-      timestamp: task.timestamp,
       model: task.model ?? "unknown",
       status: task.hasError ? "error" : "ok",
+      time: formatRelativeTime(task.timestamp),
     })),
   );
 }

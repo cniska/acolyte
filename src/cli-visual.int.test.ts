@@ -506,16 +506,16 @@ describe("cli visual regression", () => {
       await writeFile(
         join(logDir, "server.log"),
         [
-          "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_latest mode=work model=gpt-5-mini",
-          "2026-03-19T10:00:01Z level=debug event=lifecycle.generate.done task_id=task_latest model=gpt-5-mini tool_calls=2",
+          "9999-01-01T00:00:00Z level=debug event=lifecycle.start task_id=task_latest mode=work model=gpt-5-mini",
+          "9999-01-01T00:00:01Z level=debug event=lifecycle.generate.done task_id=task_latest model=gpt-5-mini tool_calls=2",
         ].join("\n"),
         "utf8",
       );
       const out = await run(["trace"]);
       expect(out).toBe(
         dedent(`
-          task_id      timestamp             model       status
-          task_latest  2026-03-19T10:00:00Z  gpt-5-mini  ok
+          task_id      model       status  time
+          task_latest  gpt-5-mini  ok      just now
         `),
       );
     });
