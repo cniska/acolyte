@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { alignCols } from "./chat-format";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
+import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { t } from "./i18n";
-import { field, type LogLine, listTasks, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
+import { type LogLine, listTasks, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -52,125 +52,91 @@ const traceEventSchema = z.enum([
 ]);
 
 type TraceEvent = z.infer<typeof traceEventSchema>;
+type FieldSpec = string | { key: string; label: string };
+
+const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
+  "task.state_updated": [{ key: "from_state", label: "from" }, { key: "to_state", label: "to" }, "reason", "transport"],
+  "rpc.task.accepted": [
+    { key: "session_id", label: "session" },
+    { key: "queued_task_count", label: "queued" },
+    { key: "has_running_task", label: "has_running" },
+  ],
+  "rpc.task.queued": [{ key: "queue_position", label: "position" }, "running_task_id"],
+  "rpc.task.dequeued": [],
+  "rpc.worker.scheduled": [
+    { key: "session_id", label: "session" },
+    { key: "queued_task_count", label: "queued" },
+  ],
+  "rpc.task.started": [{ key: "session_id", label: "session" }],
+  "chat.request.started": ["model", "workspace_mode", "message_chars"],
+  "chat.request.completed": ["duration_ms", "model_calls", "tool_count"],
+  "lifecycle.start": ["mode", "model"],
+  "lifecycle.classify": ["mode", "model", "provider"],
+  "lifecycle.prepare": ["mode", "model", "history_messages"],
+  "lifecycle.mode.changed": ["from", "to", "trigger"],
+  "lifecycle.agent.reconfigured": ["from_mode", "to_mode", "from_model", "to_model"],
+  "lifecycle.generate.start": ["model", "mode"],
+  "lifecycle.generate.done": ["model", "tool_calls", "text_chars"],
+  "lifecycle.generate.error": ["model", "error"],
+  "lifecycle.error": ["source", "kind", "code", "category", "tool"],
+  "lifecycle.yield": ["generation_attempt"],
+  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "command"],
+  "lifecycle.tool.cache": ["tool", "hit", "hits", "misses", "size"],
+  "lifecycle.tool.result": ["tool", "duration_ms", "is_error"],
+  "lifecycle.tool.error": ["tool", "error"],
+  "lifecycle.tool.output": ["tool"],
+  "lifecycle.guard": ["guard", "tool", "action", "detail"],
+  "lifecycle.signal.accepted": ["signal", "mode"],
+  "lifecycle.skill.context": ["skill_name", "instruction_chars"],
+  "lifecycle.eval.decision": ["evaluator", "action", "regeneration_count"],
+  "lifecycle.eval.skipped": ["evaluator", "reason"],
+  "lifecycle.eval.lint": ["files"],
+  "lifecycle.eval.guard_recovery": ["mode"],
+  "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
+  "lifecycle.eval.verify_failure": ["text_chars"],
+  "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
+  "lifecycle.summary": [
+    "model_calls",
+    { key: "total_tool_calls", label: "total_tool_calls" },
+    { key: "read_calls", label: "read" },
+    { key: "search_calls", label: "search" },
+    { key: "write_calls", label: "write" },
+    { key: "pre_write_discovery_calls", label: "pre_write_discovery" },
+    { key: "regeneration_count", label: "regenerations" },
+    { key: "guard_blocked_count", label: "guard_blocked" },
+    { key: "guard_flag_set_count", label: "guard_flag_set" },
+    "has_error",
+  ],
+};
+
 const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
-function formatKnownEvent(event: TraceEvent, line: LogLine, ts: string, taskPrefix: string): string {
-  const f = (key: string, fallback = "?"): string => field(line, key) ?? fallback;
-
-  switch (event) {
-    case "task.state_updated":
-      return `${ts}${taskPrefix} ${event} from=${f("from_state", "null")} to=${f("to_state")} reason=${f("reason")} transport=${f("transport")}`;
-    case "rpc.task.accepted":
-      return `${ts}${taskPrefix} ${event} session=${f("session_id")} queued=${f("queued_task_count")} has_running=${f("has_running_task")}`;
-    case "rpc.task.queued":
-      return `${ts}${taskPrefix} ${event} position=${f("queue_position")} running_task_id=${f("running_task_id", "none")}`;
-    case "rpc.task.dequeued":
-      return `${ts}${taskPrefix} ${event}`;
-    case "rpc.worker.scheduled":
-      return `${ts}${taskPrefix} ${event} session=${f("session_id")} queued=${f("queued_task_count")}`;
-    case "rpc.task.started":
-      return `${ts}${taskPrefix} ${event} session=${f("session_id")}`;
-    case "chat.request.started":
-      return `${ts}${taskPrefix} ${event} model=${f("model")} workspace_mode=${f("workspace_mode")} message_chars=${f("message_chars")}`;
-    case "chat.request.completed":
-      return `${ts}${taskPrefix} ${event} duration_ms=${f("duration_ms")} model_calls=${f("model_calls")} tool_count=${f("tool_count")}`;
-    case "lifecycle.start":
-      return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")}`;
-    case "lifecycle.classify":
-      return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")} provider=${f("provider")}`;
-    case "lifecycle.prepare":
-      return `${ts}${taskPrefix} ${event} mode=${f("mode")} model=${f("model")} history_messages=${f("history_messages")}`;
-    case "lifecycle.mode.changed": {
-      const trigger = field(line, "trigger");
-      return `${ts}${taskPrefix} ${event} from=${f("from")} to=${f("to")}${trigger ? ` trigger=${trigger}` : ""}`;
-    }
-    case "lifecycle.agent.reconfigured":
-      return `${ts}${taskPrefix} ${event} from_mode=${f("from_mode")} to_mode=${f("to_mode")} from_model=${f("from_model")} to_model=${f("to_model")}`;
-    case "lifecycle.generate.start":
-      return `${ts}${taskPrefix} ${event} model=${f("model")} mode=${f("mode")}`;
-    case "lifecycle.generate.done":
-      return `${ts}${taskPrefix} ${event} model=${f("model")} tool_calls=${f("tool_calls")} text_chars=${f("text_chars")}`;
-    case "lifecycle.generate.error":
-      return `${ts}${taskPrefix} ${event} model=${f("model")} error="${f("error", "unknown")}"`;
-    case "lifecycle.error": {
-      const tool = field(line, "tool");
-      return `${ts}${taskPrefix} ${event} source=${f("source")} kind=${f("kind")} code=${f("code")} category=${f("category")}${tool ? ` tool=${tool}` : ""}`;
-    }
-    case "lifecycle.yield":
-      return `${ts}${taskPrefix} ${event} generation_attempt=${f("generation_attempt")}`;
-    case "lifecycle.tool.call": {
-      const path = field(line, "path");
-      const paths = field(line, "paths");
-      const pattern = field(line, "pattern");
-      const command = field(line, "command");
-      return `${ts}${taskPrefix} ${event} tool=${f("tool")}${path ? ` path=${path}` : ""}${paths ? ` paths=${paths}` : ""}${pattern ? ` pattern=${pattern}` : ""}${command ? ` command="${command}"` : ""}`;
-    }
-    case "lifecycle.tool.cache":
-      return `${ts}${taskPrefix} ${event} tool=${f("tool")} hit=${f("hit")} hits=${f("hits")} misses=${f("misses")} size=${f("size")}`;
-    case "lifecycle.tool.result":
-      return `${ts}${taskPrefix} ${event} tool=${f("tool")} duration_ms=${f("duration_ms")} is_error=${f("is_error")}`;
-    case "lifecycle.tool.error":
-      return `${ts}${taskPrefix} ${event} tool=${f("tool")} error="${f("error", "unknown")}"`;
-    case "lifecycle.tool.output":
-      return `${ts}${taskPrefix} ${event} tool=${f("tool")}`;
-    case "lifecycle.guard": {
-      const detail = field(line, "detail");
-      return `${ts}${taskPrefix} ${event} guard=${f("guard")} tool=${f("tool")} action=${f("action")}${detail ? ` detail=${detail}` : ""}`;
-    }
-    case "lifecycle.signal.accepted":
-      return `${ts}${taskPrefix} ${event} signal=${f("signal")} mode=${f("mode")}`;
-    case "lifecycle.skill.context":
-      return `${ts}${taskPrefix} ${event} skill_name=${f("skill_name")} instruction_chars=${f("instruction_chars")}`;
-    case "lifecycle.eval.decision": {
-      const regen = field(line, "regeneration_count");
-      return `${ts}${taskPrefix} ${event} evaluator=${f("evaluator")} action=${f("action")}${regen ? ` regeneration_count=${regen}` : ""}`;
-    }
-    case "lifecycle.eval.skipped": {
-      const evaluator = field(line, "evaluator");
-      return `${ts}${taskPrefix} ${event}${evaluator ? ` evaluator=${evaluator}` : ""} reason=${f("reason")}`;
-    }
-    case "lifecycle.eval.lint":
-      return `${ts}${taskPrefix} ${event} files=${f("files")}`;
-    case "lifecycle.eval.guard_recovery":
-      return `${ts}${taskPrefix} ${event} mode=${f("mode")}`;
-    case "lifecycle.eval.repeated_failure": {
-      const code = field(line, "code");
-      const category = field(line, "category");
-      return `${ts}${taskPrefix} ${event} signature=${f("signature")} count=${f("count")}${code ? ` code=${code}` : ""}${category ? ` category=${category}` : ""}`;
-    }
-    case "lifecycle.eval.verify_failure":
-      return `${ts}${taskPrefix} ${event} text_chars=${f("text_chars")}`;
-    case "lifecycle.eval.tool_recovery":
-      return `${ts}${taskPrefix} ${event} recovery_tool=${f("recovery_tool")} recovery_kind=${f("recovery_kind")}`;
-    case "lifecycle.summary":
-      return `${ts}${taskPrefix} ${event} model_calls=${f("model_calls")} total_tool_calls=${f("total_tool_calls")} read=${f("read_calls")} search=${f("search_calls")} write=${f("write_calls")} pre_write_discovery=${f("pre_write_discovery_calls")} regenerations=${f("regeneration_count")} guard_blocked=${f("guard_blocked_count")} guard_flag_set=${f("guard_flag_set_count")} has_error=${f("has_error")}`;
-    default: {
-      const _exhaustive: never = event;
-      return _exhaustive;
-    }
-  }
-}
-
-export function compactLine(line: LogLine): string {
-  const ts = line.timestamp;
-  const taskPrefix = line.taskId ? ` task_id=${line.taskId}` : "";
-  const event = field(line, "event");
+function traceRowData(line: LogLine): Record<string, string | undefined> {
+  const event = line.fields.event;
+  const data: Record<string, string | undefined> = {
+    timestamp: line.timestamp,
+    task_id: line.taskId,
+  };
 
   if (!event) {
-    const msg = field(line, "msg");
-    return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
+    data.msg = line.fields.msg ?? "log";
+    return data;
   }
+
+  data.event = event;
 
   if (KNOWN_EVENTS.has(event)) {
-    return formatKnownEvent(event as TraceEvent, line, ts, taskPrefix);
+    const specs = EVENT_FIELDS[event as TraceEvent];
+    for (const spec of specs) {
+      const key = typeof spec === "string" ? spec : spec.key;
+      const label = typeof spec === "string" ? spec : spec.label;
+      data[label] = line.fields[key];
+    }
+  } else if (event.startsWith("lifecycle.memory.")) {
+    data.reason = line.fields.reason;
   }
 
-  if (event.startsWith("lifecycle.memory.")) {
-    const reason = field(line, "reason");
-    return `${ts}${taskPrefix} ${event}${reason ? ` reason=${reason}` : ""}`;
-  }
-
-  return `${ts}${taskPrefix} ${event}`;
+  return data;
 }
 
 function parseTaskIdsArg(value: string | undefined): string[] {
@@ -185,42 +151,7 @@ function parseTaskIdsArg(value: string | undefined): string[] {
   );
 }
 
-type TraceOutput = {
-  header: (text: string) => void;
-  line: (entry: LogLine) => void;
-  separator: () => void;
-  list: (tasks: import("./log-parser").TaskSummary[]) => void;
-};
-
-function compactOutput(print: (msg: string) => void): TraceOutput {
-  return {
-    header: (text) => print(text),
-    line: (entry) => print(compactLine(entry)),
-    separator: () => print(""),
-    list: (tasks) => {
-      const rows = tasks.map((task) => [
-        task.taskId,
-        task.timestamp,
-        task.model ?? "?",
-        task.hasError ? "error" : "ok",
-      ]);
-      for (const row of alignCols(rows)) print(row);
-    },
-  };
-}
-
-function jsonOutput(print: (msg: string) => void): TraceOutput {
-  return {
-    header: () => {},
-    line: (entry) => print(JSON.stringify({ timestamp: entry.timestamp, ...entry.fields })),
-    separator: () => {},
-    list: (tasks) => {
-      for (const task of tasks) print(JSON.stringify(task));
-    },
-  };
-}
-
-function traceByTask(lines: LogLine[], taskIds: string[], out: TraceOutput, print: (msg: string) => void): void {
+function traceByTask(lines: LogLine[], taskIds: string[], out: CliOutput, print: (msg: string) => void): void {
   for (let i = 0; i < taskIds.length; i++) {
     const taskId = taskIds[i];
     const selected = lines.filter((line) => matchesTaskId(line, taskId));
@@ -228,29 +159,36 @@ function traceByTask(lines: LogLine[], taskIds: string[], out: TraceOutput, prin
       print(t("cli.trace.no_lines_for_task", { taskId }));
       continue;
     }
-    if (i > 0) out.separator();
-    out.header(`task_id=${taskId}`);
-    for (const line of selected) out.line(line);
+    if (i > 0) out.addSeparator();
+    out.addHeader(`task_id=${taskId}`);
+    for (const line of selected) out.addRow(traceRowData(line));
   }
 }
 
-function traceByRequest(lines: LogLine[], requestId: string, out: TraceOutput, print: (msg: string) => void): void {
+function traceByRequest(lines: LogLine[], requestId: string, out: CliOutput, print: (msg: string) => void): void {
   const selected = lines.filter((line) => matchesRequestId(line, requestId));
   if (selected.length === 0) {
     print(t("cli.trace.no_lines_for_request", { requestId }));
     return;
   }
-  out.header(`request_id=${requestId}`);
-  for (const line of selected) out.line(line);
+  out.addHeader(`request_id=${requestId}`);
+  for (const line of selected) out.addRow(traceRowData(line));
 }
 
-function traceList(lines: LogLine[], count: number, out: TraceOutput, print: (msg: string) => void): void {
+function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg: string) => void): void {
   const tasks = listTasks(lines).slice(0, count);
   if (tasks.length === 0) {
     print(t("cli.trace.no_tasks"));
     return;
   }
-  out.list(tasks);
+  out.addTable(
+    tasks.map((task) => ({
+      task_id: task.taskId,
+      timestamp: task.timestamp,
+      model: task.model ?? "?",
+      status: task.hasError ? "error" : "ok",
+    })),
+  );
 }
 
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
@@ -263,7 +201,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const logPathOverride = parseFlag(args, "--log") ?? logPath;
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
-  const out = hasBoolFlag(args, "--json") ? jsonOutput(printDim) : compactOutput(printDim);
+  const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
 
   const taskFlag = parseFlag(args, "--task");
   const requestFlag = parseFlag(args, "--request");
@@ -291,28 +229,21 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       return;
     }
     traceByTask(lines, taskIds, out, printDim);
-    return;
-  }
-
-  if (requestArg !== undefined) {
+  } else if (requestArg !== undefined) {
     traceByRequest(lines, requestArg, out, printDim);
-    return;
-  }
-
-  if (subcommand === "task") {
+  } else if (subcommand === "task") {
     commandError("trace", t("cli.trace.missing_task_id"));
     return;
-  }
-
-  if (subcommand === "request") {
+  } else if (subcommand === "request") {
     commandError("trace", t("cli.trace.missing_request_id"));
     return;
-  }
-
-  if (subcommand) {
+  } else if (subcommand) {
     commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
     return;
+  } else {
+    traceList(lines, tailCount, out, printDim);
   }
 
-  traceList(lines, tailCount, out, printDim);
+  const rendered = out.render();
+  if (rendered) printDim(rendered);
 }
