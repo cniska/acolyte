@@ -49,7 +49,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "scan-code",
-    label: t("tool.label.review"),
+    label: t("tool.label.scan"),
     category: "search",
     permissions: ["read"],
     description:
@@ -85,7 +85,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolName: "scan-code",
             content: {
               kind: "file-header",
-              label: t("tool.label.review"),
+              label: t("tool.label.scan"),
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,

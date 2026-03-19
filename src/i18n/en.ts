@@ -219,7 +219,7 @@ export const EN_MESSAGES = {
   "tool.label.git_show": "Git Show",
   "tool.label.git_status": "Git Status",
   "tool.label.read": "Read",
-  "tool.label.review": "Review",
+  "tool.label.scan": "Scan",
   "tool.label.run": "Run",
   "tool.label.search": "Search",
   "tool.label.web_fetch": "Web Fetch",
