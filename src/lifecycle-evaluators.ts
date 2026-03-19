@@ -188,7 +188,7 @@ export const repeatedFailureEvaluator: Evaluator = {
   },
 };
 
-export const verifyCycle: Evaluator = {
+export const verifyEvaluator: Evaluator = {
   id: "verify-cycle",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
