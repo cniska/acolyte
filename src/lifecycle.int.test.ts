@@ -214,4 +214,44 @@ describe("lifecycle integration", () => {
     expect(phases).toContain("work:tool-call");
     expect(phases).toContain("verify:done");
   });
+
+  test("verify mode cannot use write tools", async () => {
+    // Write a fresh file so previous test edits don't interfere.
+    await writeFile(join(workspace, "b.ts"), "export const y = 1;\n", "utf8");
+    let turnCount = 0;
+    const toolErrors: string[] = [];
+
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      // Turn 1 (work): edit a file, signal done
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "b.ts"),
+              edits: [{ find: "export const y = 1;", replace: "export const y = 6;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 2) {
+        return createMessagePayload(ctx.model, ctx.responseCounter, "Done.\n\n@signal done");
+      }
+      // Turn 3+ (verify): check that edit-file is NOT in the available tools
+      const tools = (ctx.body.tools ?? []).map((t) => t.name).filter(Boolean);
+      const hasEditFile = tools.includes("edit-file");
+      const hasEditCode = tools.includes("edit-code");
+      if (hasEditFile) toolErrors.push("edit-file available in verify mode");
+      if (hasEditCode) toolErrors.push("edit-code available in verify mode");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Verified.\n\n@signal done");
+    });
+
+    await run("update x to 6");
+
+    expect(toolErrors).toEqual([]);
+  });
 });

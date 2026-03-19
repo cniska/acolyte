@@ -1,6 +1,7 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
+import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -114,10 +115,15 @@ export function createModeAgent(input: {
   model: string;
   tools: Toolset;
 }): Agent {
+  const allowedTools = new Set(agentModes[input.mode].tools);
+  const filteredTools: Record<string, ToolDefinition> = {};
+  for (const [key, tool] of Object.entries(input.tools as Record<string, ToolDefinition>)) {
+    if (allowedTools.has(tool.id)) filteredTools[key] = tool;
+  }
   return createAgent({
     model: input.model,
     instructions: createInstructions(input.soulPrompt, input.mode, input.workspace),
-    tools: input.tools as Record<string, ToolDefinition>,
+    tools: filteredTools,
   });
 }
 
