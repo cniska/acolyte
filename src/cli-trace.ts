@@ -163,7 +163,6 @@ function traceByTask(lines: LogLine[], taskIds: string[], out: CliOutput, print:
       continue;
     }
     if (i > 0) out.addSeparator();
-    out.addHeader(`task_id=${taskId}`);
     for (const line of selected) out.addRow(traceRowData(line));
   }
 }
