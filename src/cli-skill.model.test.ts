@@ -77,7 +77,7 @@ describe("cli-skill --model flag", () => {
     process.exitCode = prevExit;
   });
 
-  test("skillMode disables verifier for single-shot skill runs", async () => {
+  test("skillMode does not disable verifier", async () => {
     const { deps } = createSkillDeps();
     let seenOptions: { resourceId?: string; workspace?: string; verifyScope?: string } | undefined;
     deps.handlePrompt = async (_prompt, _session, _client, options) => {
@@ -90,7 +90,7 @@ describe("cli-skill --model flag", () => {
 
     await skillMode(["skill-name", "do something"], deps);
 
-    expect(seenOptions?.verifyScope).toBe("none");
+    expect(seenOptions?.verifyScope).toBeUndefined();
 
     process.exitCode = prevExit;
   });

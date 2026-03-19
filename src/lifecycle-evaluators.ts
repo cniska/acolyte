@@ -197,7 +197,13 @@ export const verifyCycle: Evaluator = {
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-      if (ctx.initialMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
+      const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
+      ctx.debug("lifecycle.eval.verify-cycle", {
+        usedWriteTools,
+        verified,
+        verifyScope: ctx.request.verifyScope ?? null,
+      });
+      if (ctx.initialMode === "work" && usedWriteTools && !verified) {
         return {
           type: "regenerate",
           feedback: {
