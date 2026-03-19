@@ -25,12 +25,12 @@ export function parseRequiredFlag(args: string[], flag: string, errorMessage: st
 
 export function parseRepeatableFlag(args: string[], flag: string, errorMessage: string): string[] {
   const values: string[] = [];
-  for (let i = 0; i < args.length; i += 1) {
+  for (let i = 0; i < args.length; i++) {
     if (args[i] === flag) {
       const next = args[i + 1];
       if (!next) throw new Error(errorMessage);
       values.push(next);
-      i += 1;
+      i++;
     }
   }
   return values;

@@ -100,7 +100,7 @@ export function haveChangesBeenVerified(session: SessionContext, taskId: string 
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
+  for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false;
   }
   return true;
@@ -510,7 +510,7 @@ const redundantVerifyGuard: ToolGuard = {
     if (lastMatchingVerifyRunIndex < 0) return;
 
     let wroteAfterLastVerify = false;
-    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i += 1) {
+    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i++) {
       const tool = calls[i]?.toolName;
       if (tool && isWriteTool(session, tool)) {
         wroteAfterLastVerify = true;

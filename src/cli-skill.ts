@@ -52,9 +52,9 @@ export function parseSkillArgs(args: string[]): ParsedSkillArgs {
   let skillName: string | undefined;
 
   const flagsWithValues = new Set(["--file", "--workspace", "--model"]);
-  for (let i = 0; i < args.length; i += 1) {
+  for (let i = 0; i < args.length; i++) {
     if (flagsWithValues.has(args[i])) {
-      i += 1;
+      i++;
       continue;
     }
     if (!skillName) {

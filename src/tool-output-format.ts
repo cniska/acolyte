@@ -220,7 +220,7 @@ export function searchResultSummaryEntries(result: string, patterns: string[]): 
     const lineNumber = Number.parseInt(line.slice(firstColon + 1, secondColon), 10);
     const text = line.slice(secondColon + 1);
     const forPath = byPath.get(path) ?? new Map<string, Set<number>>();
-    for (let i = 0; i < regexes.length; i += 1) {
+    for (let i = 0; i < regexes.length; i++) {
       if (!regexes[i]?.test(text)) continue;
       const label = labels[i] ?? normalized[i] ?? "";
       if (!label) continue;

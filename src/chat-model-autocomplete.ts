@@ -7,8 +7,8 @@ export function suggestModels(query: string, models: ModelPickerItem[]): ModelPi
   const isSubsequence = (text: string): boolean => {
     let qi = 0;
     const lower = text.toLowerCase();
-    for (let i = 0; i < lower.length && qi < q.length; i += 1) {
-      if (lower[i] === q[qi]) qi += 1;
+    for (let i = 0; i < lower.length && qi < q.length; i++) {
+      if (lower[i] === q[qi]) qi++;
     }
     return qi === q.length;
   };
