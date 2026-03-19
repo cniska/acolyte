@@ -51,7 +51,6 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         mode: ctx.mode,
         tool_calls: ctx.result.toolCalls.length,
       });
-      break;
     }
     updateRepeatedFailureState(ctx);
 

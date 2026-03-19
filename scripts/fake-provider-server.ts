@@ -1,4 +1,4 @@
-type FakeProviderServer = {
+export type FakeProviderServer = {
   baseUrl: string;
   stop: () => void;
 };
