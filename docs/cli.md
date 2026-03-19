@@ -14,7 +14,8 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte tool <tool-id> [args]`: run a tool directly
-- `acolyte trace [task <id>] [--json]`: inspect server lifecycle traces
+- `acolyte trace`: list recent tasks
+- `acolyte trace task <id>`: inspect a task's lifecycle trace
 - `acolyte init [provider]`: initialize provider API key
 
 Run `acolyte <command> help` for detailed usage.
