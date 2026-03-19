@@ -412,17 +412,30 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
   let newLine = 0;
   let inHunk = false;
   let fileCount = 0;
-  const fileHeaders: Array<{ index: number; path: string }> = [];
+  let pendingFilePath: string | null = null;
+  let fileParts: ToolOutputPart[] = [];
+  let fileAdded = 0;
+  let fileRemoved = 0;
+
+  const flushFile = (): void => {
+    if (!pendingFilePath || (fileAdded === 0 && fileRemoved === 0)) {
+      fileParts = [];
+      return;
+    }
+    rendered.push({ kind: "text", text: `${pendingFilePath} (+${fileAdded} -${fileRemoved})` });
+    for (const part of fileParts) rendered.push(part);
+    fileParts = [];
+  };
 
   for (const line of lines) {
     if (line.startsWith("diff --git ")) {
+      flushFile();
       fileCount += 1;
       inHunk = false;
+      fileAdded = 0;
+      fileRemoved = 0;
       const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
-      const filePath = pathMatch?.[1] ?? line.slice("diff --git ".length);
-      fileHeaders.push({ index: rendered.length, path: filePath });
-      // Reserve a slot for the file header — filled in after parsing.
-      rendered.push({ kind: "text", text: filePath });
+      pendingFilePath = pathMatch?.[1] ?? line.slice("diff --git ".length);
       continue;
     }
     if (line.startsWith("--- ") || line.startsWith("+++ ")) continue;
@@ -437,69 +450,24 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
     }
     if (!inHunk) continue;
     if (line.startsWith("+")) {
-      rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
+      fileAdded += 1;
       newLine += 1;
       continue;
     }
     if (line.startsWith("-")) {
-      rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
+      fileRemoved += 1;
       oldLine += 1;
       continue;
     }
     if (line.startsWith(" ")) {
-      rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
       oldLine += 1;
       newLine += 1;
     }
   }
-  // Update reserved file header slots with final add/remove counts.
-  for (let i = 0; i < fileHeaders.length; i++) {
-    const header = fileHeaders[i];
-    if (!header) continue;
-    const nextHeaderIndex =
-      i + 1 < fileHeaders.length ? (fileHeaders[i + 1]?.index ?? rendered.length) : rendered.length;
-    let added = 0;
-    let removed = 0;
-    for (let j = header.index + 1; j < nextHeaderIndex; j++) {
-      const part = rendered[j];
-      if (part?.kind === "diff" && part.marker === "add") added += 1;
-      if (part?.kind === "diff" && part.marker === "remove") removed += 1;
-    }
-    rendered[header.index] =
-      added > 0 || removed > 0
-        ? { kind: "text", text: `${header.path} (+${added} -${removed})` }
-        : { kind: "text", text: "" };
-  }
-  // Strip orphan file headers (no changes) and all headers for single-file diffs.
-  {
-    const stripAll = fileCount <= 1;
-    const filtered = rendered.filter(
-      (part) => part.kind !== "text" || (!stripAll && (part as { text: string }).text.length > 0),
-    );
-    rendered.splice(0, rendered.length, ...filtered);
-  }
-  if (rendered.length === 0) {
-    oldLine = 1;
-    newLine = 1;
-    for (const line of lines) {
-      if (line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@"))
-        continue;
-      if (line.startsWith("+")) {
-        rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
-        newLine += 1;
-        continue;
-      }
-      if (line.startsWith("-")) {
-        rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
-        oldLine += 1;
-        continue;
-      }
-      if (line.startsWith(" ")) {
-        rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
-        oldLine += 1;
-        newLine += 1;
-      }
-    }
-  }
-  return rendered;
+  flushFile();
+  // Strip per-file headers for single-file diffs — the caller's edit-header covers it.
+  return fileCount <= 1 ? rendered.filter((part) => part.kind !== "text") : rendered;
 }
