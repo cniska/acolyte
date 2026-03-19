@@ -78,7 +78,6 @@ describe("cli-history", () => {
     await historyMode([], deps);
     expect(output()).toBe(
       dedent(`
-        id   title           time
         aaa  First session   just now
         bbb  Second session  just now
       `),

@@ -79,22 +79,22 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       const scope = parsed.scope;
       const config = scope ? await readConfigForScope(scope) : await readConfig();
       const out: CliOutput = json ? createJsonOutput() : createTextOutput();
-      const entries: Record<string, string | undefined>[] = [];
-      if (scope) entries.push({ key: t("cli.config.scope"), value: scope });
+      const rows: Record<string, string | undefined>[] = [];
+      if (scope) rows.push({ key: t("cli.config.scope"), value: scope });
       for (const name of VALID_CONFIG_KEYS) {
         const value = (config as Record<string, unknown>)[name];
         if (value === undefined || value === "") continue;
         if (Array.isArray(value)) {
-          entries.push({ key: `${name}:`, value: value.join(", ") });
+          rows.push({ key: `${name}:`, value: value.join(", ") });
         } else if (typeof value === "object" && value !== null) {
           for (const [k, v] of Object.entries(value)) {
-            entries.push({ key: `${name}.${k}:`, value: String(v) });
+            rows.push({ key: `${name}.${k}:`, value: String(v) });
           }
         } else {
-          entries.push({ key: `${name}:`, value: String(value) });
+          rows.push({ key: `${name}:`, value: String(value) });
         }
       }
-      for (const entry of entries) out.addRow(entry);
+      out.addTable(rows);
       const rendered = out.render();
       if (rendered) printDim(rendered);
       return;
