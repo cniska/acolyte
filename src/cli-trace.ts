@@ -217,10 +217,14 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const lines = parseLog(raw);
 
   if (subcommand === "task") {
-    const taskIds = parseTaskIdsArg(subcommandArg);
+    let taskIds = parseTaskIdsArg(subcommandArg);
     if (taskIds.length === 0) {
-      commandError("trace", t("cli.trace.missing_task_id"));
-      return;
+      const latest = listTasks(lines)[0];
+      if (!latest) {
+        printDim(t("cli.trace.no_tasks"));
+        return;
+      }
+      taskIds = [latest.taskId];
     }
     traceByTask(lines, taskIds, out, printDim);
   } else if (!subcommand || subcommand === "list") {

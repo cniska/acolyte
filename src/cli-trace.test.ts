@@ -43,16 +43,19 @@ describe("traceMode", () => {
     expect(errorMsg).toContain("Unknown subcommand");
   });
 
-  test("task subcommand without id calls commandError", async () => {
-    let called = false;
-    const { deps } = createDeps({
-      commandError: (_name, msg) => {
-        called = true;
-        expect(msg).toContain("Missing task ID");
-      },
-    });
+  test("task subcommand without id traces latest task", async () => {
+    const log = [
+      '2026-01-01T00:00:00.000Z level=info msg="agent debug" task_id=task_latest event=lifecycle.start mode=work model=gpt-5',
+    ].join("\n");
+    const { deps, output } = createDeps({ readFile: async () => log });
     await traceMode(["task"], deps);
-    expect(called).toBe(true);
+    expect(output()).toContain("task_latest");
+  });
+
+  test("task subcommand without id and empty log prints no tasks", async () => {
+    const { deps, output } = createDeps();
+    await traceMode(["task"], deps);
+    expect(output()).toContain("No tasks");
   });
 
   test("missing log file prints error", async () => {
