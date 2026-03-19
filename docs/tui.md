@@ -37,6 +37,31 @@ Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects wi
 
 Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
 
+## Chat commands
+
+- `/exit`: exit chat
+- `/new`: start new session
+- `/resume`: resume a previous session
+- `/sessions`: show sessions
+- `/status`: show server status
+- `/usage`: show token usage
+- `/model [id]`: change model
+- `/model work|verify <id>`: change mode-specific model
+- `/permissions [read|write]`: change permission mode
+- `/memory [all|user|project]`: show memory notes
+- `/remember [--user|--project] <text>`: save memory note
+- `/skill <name>`: run a skill command
+- `/skills`: show skills picker
+
+## File attachments
+
+Use `@path` in chat input to attach file or directory context:
+
+```
+@src/cli.ts refactor the help text
+@docs/ summarize the documentation
+```
+
 ## Design constraints
 
 - **Minimal primitive set.** Every new prop becomes renderer debt. Add only what's needed.
