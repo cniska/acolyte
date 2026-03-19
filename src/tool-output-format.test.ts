@@ -122,4 +122,122 @@ describe("numberedUnifiedDiffLines", () => {
     expect(numberedUnifiedDiffLines("")).toEqual([]);
     expect(numberedUnifiedDiffLines("just some text\nno diff here")).toEqual([]);
   });
+
+  test("multi-file diff emits per-file text headers with add/remove counts", () => {
+    const diff = [
+      "diff --git a/a.ts b/a.ts",
+      "--- a/a.ts",
+      "+++ b/a.ts",
+      "@@ -1,2 +1,2 @@",
+      "-old a",
+      "+new a",
+      " ctx a",
+      "diff --git a/b.ts b/b.ts",
+      "--- a/b.ts",
+      "+++ b/b.ts",
+      "@@ -1,2 +1,2 @@",
+      "-old b",
+      "+new b",
+      " ctx b",
+    ].join("\n");
+    const items = numberedUnifiedDiffLines(diff);
+    const textParts = items.filter((i) => i.kind === "text");
+    expect(textParts).toEqual([
+      { kind: "text", text: "a.ts (+1 -1)" },
+      { kind: "text", text: "b.ts (+1 -1)" },
+    ]);
+  });
+
+  test("single-file diff has no per-file text header", () => {
+    const diff = [
+      "diff --git a/a.ts b/a.ts",
+      "--- a/a.ts",
+      "+++ b/a.ts",
+      "@@ -1,2 +1,2 @@",
+      "-old",
+      "+new",
+      " ctx",
+    ].join("\n");
+    const items = numberedUnifiedDiffLines(diff);
+    expect(items.filter((i) => i.kind === "text")).toEqual([]);
+  });
+
+  test("per-file text headers are always kept during context filtering", () => {
+    // Build a multi-file diff where context filtering would normally skip lines.
+    // Each file has one change surrounded by many context lines.
+    const makeFile = (name: string, ctxCount: number): string[] => {
+      const lines = [`diff --git a/${name} b/${name}`, `--- a/${name}`, `+++ b/${name}`];
+      lines.push(`@@ -1,${ctxCount + 2} +1,${ctxCount + 2} @@`);
+      for (let i = 0; i < ctxCount; i++) lines.push(` context line ${i}`);
+      lines.push("-old line");
+      lines.push("+new line");
+      for (let i = 0; i < ctxCount; i++) lines.push(` trailing context ${i}`);
+      return lines;
+    };
+    const diff = [...makeFile("a.ts", 10), ...makeFile("b.ts", 10)].join("\n");
+    const items = numberedUnifiedDiffLines(diff);
+    const textParts = items.filter((i) => i.kind === "text");
+    expect(textParts).toHaveLength(2);
+    expect(textParts[0]).toEqual(expect.objectContaining({ kind: "text", text: expect.stringContaining("a.ts") }));
+    expect(textParts[1]).toEqual(expect.objectContaining({ kind: "text", text: expect.stringContaining("b.ts") }));
+  });
+
+  test("multi-file truncation cuts at file boundary and reports remaining files", () => {
+    // Build enough files to exceed NUMBERED_DIFF_PREVIEW_MAX_LINES (160).
+    // Each file has multiple changes to produce enough output after context filtering.
+    const makeFile = (name: string): string[] => [
+      `diff --git a/${name} b/${name}`,
+      `--- a/${name}`,
+      `+++ b/${name}`,
+      `@@ -1,30 +1,30 @@`,
+      "-import { createId } from './short-id';",
+      "+import { generateId } from './short-id';",
+      ...Array.from({ length: 10 }, (_, i) => ` middle line ${i}`),
+      `-  const id = createId();`,
+      `+  const id = generateId();`,
+      ...Array.from({ length: 10 }, (_, i) => ` trailing line ${i}`),
+      "-  return createId();",
+      "+  return generateId();",
+      ...Array.from({ length: 5 }, (_, i) => ` end line ${i}`),
+    ];
+    const files = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
+    const diff = files.flatMap((name) => makeFile(name)).join("\n");
+    const items = numberedUnifiedDiffLines(diff);
+
+    // Should not cut mid-file — last item should be a truncated marker.
+    const lastItem = items[items.length - 1];
+    expect(lastItem?.kind).toBe("truncated");
+
+    // Every file header must be followed by at least one diff line (no orphan headers).
+    for (let i = 0; i < items.length; i++) {
+      if (items[i]?.kind === "text") {
+        const next = items.slice(i + 1).find((p) => p.kind !== "truncated");
+        if (next) expect(next.kind).toBe("diff");
+      }
+    }
+  });
+
+  test("orphan file headers with no diff content are removed", () => {
+    // Two files but the second has only context lines (no changes) — its header should be removed.
+    const diff = [
+      "diff --git a/a.ts b/a.ts",
+      "--- a/a.ts",
+      "+++ b/a.ts",
+      "@@ -1,2 +1,2 @@",
+      "-old",
+      "+new",
+      " ctx",
+      "diff --git a/b.ts b/b.ts",
+      "--- a/b.ts",
+      "+++ b/b.ts",
+      "@@ -1,3 +1,3 @@",
+      " only context",
+      " more context",
+      " trailing",
+    ].join("\n");
+    const items = numberedUnifiedDiffLines(diff);
+    const textParts = items.filter((i) => i.kind === "text");
+    // b.ts has no changes so its header should not appear; a.ts keeps its header.
+    expect(textParts).toEqual([{ kind: "text", text: "a.ts (+1 -1)" }]);
+  });
 });
