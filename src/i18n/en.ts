@@ -141,6 +141,7 @@ export const EN_MESSAGES = {
   "cli.trace.missing_request_id": "Missing request ID. Usage: acolyte trace request <id>",
   "cli.trace.missing_task_id": "Missing task ID. Usage: acolyte trace task <id>[,<id>]",
   "cli.trace.no_lines_for_request": "No lines found for request_id={requestId}",
+  "cli.trace.no_tasks": "No tasks found in log.",
   "cli.trace.no_lines_for_task": "No lines found for task_id={taskId}",
   "cli.trace.showing_latest": "Showing latest {count} lines",
   "cli.trace.unknown_subcommand": "Unknown subcommand: {subcommand}",

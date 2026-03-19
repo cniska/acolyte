@@ -47,6 +47,37 @@ export function field(line: LogLine, key: string): string | undefined {
   return line.fields[key];
 }
 
+export type TaskSummary = {
+  taskId: string;
+  timestamp: string;
+  model: string | undefined;
+  event: string | undefined;
+  hasError: boolean;
+};
+
+export function listTasks(lines: LogLine[]): TaskSummary[] {
+  const seen = new Map<string, TaskSummary>();
+  for (const line of lines) {
+    if (!line.taskId) continue;
+    const existing = seen.get(line.taskId);
+    if (!existing) {
+      seen.set(line.taskId, {
+        taskId: line.taskId,
+        timestamp: line.timestamp,
+        model: line.fields.model,
+        event: line.fields.event,
+        hasError: false,
+      });
+    }
+    const event = line.fields.event;
+    if (event === "lifecycle.summary") {
+      const entry = seen.get(line.taskId);
+      if (entry) entry.hasError = line.fields.has_error === "true";
+    }
+  }
+  return Array.from(seen.values()).reverse();
+}
+
 export function findLastTaskId(lines: LogLine[]): string | undefined {
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].taskId) return lines[i].taskId;

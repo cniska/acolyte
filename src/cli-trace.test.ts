@@ -276,14 +276,17 @@ describe("traceMode", () => {
     expect(output()).not.toContain("req_other");
   });
 
-  test("--lines flag controls tail count", async () => {
-    const logContent = Array.from({ length: 100 }, (_, i) => `line${i} level=info`).join("\n");
+  test("--lines flag controls list count", async () => {
+    const logContent = Array.from(
+      { length: 100 },
+      (_, i) => `ts${i} level=info task_id=task_${i} event=lifecycle.start model=m`,
+    ).join("\n");
     const { deps, output } = createDeps({
       readFile: async () => logContent,
     });
     await traceMode(["--lines", "5"], deps);
     const lines = output().split("\n");
-    expect(lines.length).toBe(6);
+    expect(lines.length).toBe(5);
   });
 
   test("--json outputs JSON lines for task subcommand", async () => {

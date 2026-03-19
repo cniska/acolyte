@@ -457,15 +457,15 @@ describe("cli visual regression", () => {
     {
       args: ["trace", "help"],
       output: dedent(`
-        Usage: acolyte trace [task <id>[,<id>]] [request <id>] [--lines <n>] [--log <path>] [--json]
+        Usage: acolyte trace [--task <id>] [--request <id>] [--lines <n>] [--log <path>] [--json]
 
         Description: inspect server lifecycle traces
 
         Examples:
           acolyte trace
+          acolyte trace --task task_abc123
           acolyte trace task task_abc123
-          acolyte trace request req_abc123
-          acolyte trace --lines 100
+          acolyte trace --request req_abc123
       `),
     },
   ])("renders subcommand help output %#", async ({ args, output }) => {
@@ -499,7 +499,7 @@ describe("cli visual regression", () => {
     });
   });
 
-  test("trace default shows latest task", async () => {
+  test("trace default lists recent tasks", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
       const logDir = join(homeDir, ".acolyte", "daemons");
       await mkdir(logDir, { recursive: true });
@@ -514,9 +514,7 @@ describe("cli visual regression", () => {
       const out = await run(["trace"]);
       expect(out).toBe(
         dedent(`
-          task_id=task_latest
-          2026-03-19T10:00:00Z task_id=task_latest lifecycle.start mode=work model=gpt-5-mini
-          2026-03-19T10:00:01Z task_id=task_latest lifecycle.generate.done model=gpt-5-mini tool_calls=2 text_chars=?
+          task_latest  2026-03-19T10:00:00Z  gpt-5-mini  ok
         `),
       );
     });
