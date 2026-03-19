@@ -182,39 +182,26 @@ describe("numberedUnifiedDiffLines", () => {
     expect(textParts[1]).toEqual(expect.objectContaining({ kind: "text", text: expect.stringContaining("b.ts") }));
   });
 
-  test("multi-file truncation cuts at file boundary and reports remaining files", () => {
-    // Build enough files to exceed NUMBERED_DIFF_PREVIEW_MAX_LINES (160).
-    // Each file has multiple changes to produce enough output after context filtering.
+  test("multi-file diff includes all files without truncation", () => {
     const makeFile = (name: string): string[] => [
       `diff --git a/${name} b/${name}`,
       `--- a/${name}`,
       `+++ b/${name}`,
-      `@@ -1,30 +1,30 @@`,
-      "-import { createId } from './short-id';",
-      "+import { generateId } from './short-id';",
-      ...Array.from({ length: 10 }, (_, i) => ` middle line ${i}`),
-      `-  const id = createId();`,
-      `+  const id = generateId();`,
-      ...Array.from({ length: 10 }, (_, i) => ` trailing line ${i}`),
-      "-  return createId();",
-      "+  return generateId();",
-      ...Array.from({ length: 5 }, (_, i) => ` end line ${i}`),
+      `@@ -1,10 +1,10 @@`,
+      "-import { old } from './mod';",
+      "+import { new_ } from './mod';",
+      ...Array.from({ length: 5 }, (_, i) => ` line ${i}`),
+      "-  return old();",
+      "+  return new_();",
     ];
-    const files = Array.from({ length: 30 }, (_, i) => `file${i}.ts`);
+    const files = Array.from({ length: 20 }, (_, i) => `file${i}.ts`);
     const diff = files.flatMap((name) => makeFile(name)).join("\n");
     const items = numberedUnifiedDiffLines(diff);
 
-    // Should not cut mid-file — last item should be a truncated marker.
+    const fileHeaders = items.filter((i) => i.kind === "text");
+    expect(fileHeaders).toHaveLength(20);
     const lastItem = items[items.length - 1];
-    expect(lastItem?.kind).toBe("truncated");
-
-    // Every file header must be followed by at least one diff line (no orphan headers).
-    for (let i = 0; i < items.length; i++) {
-      if (items[i]?.kind === "text") {
-        const next = items.slice(i + 1).find((p) => p.kind !== "truncated");
-        if (next) expect(next.kind).toBe("diff");
-      }
-    }
+    expect(lastItem?.kind).toBe("diff");
   });
 
   test("orphan file headers with no diff content are removed", () => {

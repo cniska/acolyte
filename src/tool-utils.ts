@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { type GitignoreContext, isIgnoredByPatterns, loadGitignoreContext } from "./gitignore";
 
+const DIFF_CONTEXT_RADIUS = 2;
+
 const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 const GIT_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -344,15 +346,13 @@ function minimalUnifiedDiff(path: string, oldLines: string[], newLines: string[]
   while (oi < n) diffLines.push(`-${oldLines[oi++]}`);
   while (ni < m) diffLines.push(`+${newLines[ni++]}`);
 
-  // Group into hunks with enough context for the display filter (contextRadius = 3).
-  const contextSize = 5;
   const isChange = diffLines.map((l) => !l.startsWith(" "));
   const hunkRanges: Array<{ start: number; end: number }> = [];
   let hunkStart = -1;
   for (let i = 0; i < diffLines.length; i++) {
     if (isChange[i]) {
-      if (hunkStart === -1) hunkStart = Math.max(0, i - contextSize);
-      const hunkEnd = Math.min(diffLines.length, i + contextSize + 1);
+      if (hunkStart === -1) hunkStart = Math.max(0, i - DIFF_CONTEXT_RADIUS);
+      const hunkEnd = Math.min(diffLines.length, i + DIFF_CONTEXT_RADIUS + 1);
       if (hunkRanges.length > 0 && hunkStart <= hunkRanges[hunkRanges.length - 1].end) {
         hunkRanges[hunkRanges.length - 1].end = hunkEnd;
       } else {

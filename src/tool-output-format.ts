@@ -19,8 +19,6 @@ export const TOOL_OUTPUT_LIMITS = {
   status: 6,
 } as const;
 
-const NUMBERED_DIFF_PREVIEW_MAX_LINES = 160;
-
 export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
   let files = 0;
   let added = 0;
@@ -503,53 +501,5 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
       }
     }
   }
-  if (rendered.length === 0) return [];
-  const contextRadius = 3;
-  const keep = new Uint8Array(rendered.length);
-  for (let i = 0; i < rendered.length; i++) {
-    const part = rendered[i];
-    // Always keep file headers.
-    if (part?.kind === "text") {
-      keep[i] = 1;
-      continue;
-    }
-    // Keep change lines and their surrounding context.
-    if (part?.kind === "diff" && part.marker !== "context") {
-      for (let j = Math.max(0, i - contextRadius); j <= Math.min(rendered.length - 1, i + contextRadius); j++) {
-        keep[j] = 1;
-      }
-    }
-  }
-  const filteredOutput: ToolOutputPart[] = [];
-  let skipping = false;
-  for (let i = 0; i < rendered.length; i++) {
-    if (keep[i]) {
-      if (skipping) filteredOutput.push({ kind: "truncated" });
-      skipping = false;
-      filteredOutput.push(rendered[i] as ToolOutputPart);
-    } else {
-      skipping = true;
-    }
-  }
-  if (filteredOutput.length <= NUMBERED_DIFF_PREVIEW_MAX_LINES) return filteredOutput;
-
-  // Truncate at a file boundary to avoid cutting mid-file.
-  // Find the first file header that starts beyond the budget.
-  let cutIndex = filteredOutput.length;
-  for (let i = NUMBERED_DIFF_PREVIEW_MAX_LINES; i < filteredOutput.length; i++) {
-    if (filteredOutput[i]?.kind === "text") {
-      cutIndex = i;
-      break;
-    }
-  }
-  if (cutIndex < filteredOutput.length) {
-    const remainingFiles = filteredOutput.slice(cutIndex).filter((p) => p.kind === "text").length;
-    return [...filteredOutput.slice(0, cutIndex), { kind: "truncated", count: remainingFiles, unit: "files" }];
-  }
-  // No file boundary found after budget — single file overflow, truncate lines.
-  const omitted = filteredOutput.length - NUMBERED_DIFF_PREVIEW_MAX_LINES;
-  return [
-    ...filteredOutput.slice(0, NUMBERED_DIFF_PREVIEW_MAX_LINES),
-    { kind: "truncated", count: omitted, unit: "lines" },
-  ];
+  return rendered;
 }
