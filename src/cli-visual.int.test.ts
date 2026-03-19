@@ -514,7 +514,7 @@ describe("cli visual regression", () => {
       const out = await run(["trace"]);
       expect(out).toBe(
         dedent(`
-          task_id      model       status  time
+          Task         Model       Status  Time
           task_latest  gpt-5-mini  ok      just now
         `),
       );

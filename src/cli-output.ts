@@ -2,7 +2,7 @@ import { alignCols } from "./chat-format";
 
 export type CliOutput = {
   addRow: (data: Record<string, string | undefined>) => void;
-  addTable: (rows: Record<string, string | undefined>[]) => void;
+  addTable: (rows: Record<string, string | undefined>[], labels?: Record<string, string>) => void;
   addHeader: (text: string) => void;
   addSeparator: () => void;
   render: () => string;
@@ -20,10 +20,11 @@ export function createTextOutput(): CliOutput {
 
   return {
     addRow: (data) => sections.push(renderKvPairs(data)),
-    addTable: (rows) => {
+    addTable: (rows, labels) => {
       if (rows.length === 0) return;
       const keys = Object.keys(rows[0]);
-      const tableRows = [keys, ...rows.map((row) => keys.map((k) => row[k] ?? ""))];
+      const headerRow = labels ? keys.map((k) => labels[k] ?? k) : keys;
+      const tableRows = [headerRow, ...rows.map((row) => keys.map((k) => row[k] ?? ""))];
       for (const line of alignCols(tableRows)) sections.push(line);
     },
     addHeader: (text) => sections.push(text),

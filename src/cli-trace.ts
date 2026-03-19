@@ -189,6 +189,12 @@ function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg:
       status: task.hasError ? "error" : "ok",
       time: formatRelativeTime(task.timestamp),
     })),
+    {
+      task_id: t("cli.trace.col.task_id"),
+      model: t("cli.trace.col.model"),
+      status: t("cli.trace.col.status"),
+      time: t("cli.trace.col.time"),
+    },
   );
 }
 
