@@ -11,6 +11,7 @@ import type {
   EditCodeRuleObject,
 } from "./code-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
+import { escapeRegex } from "./string-utils";
 import { createToolError } from "./tool-error";
 import type { EditCodeRecoveryKind, ToolRecovery } from "./tool-recovery";
 import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
@@ -281,10 +282,6 @@ function collectRulePatternSources(rule: EditCodeRule | EditCodeRelationalRule):
     out.push(...collectRulePatternSources(rule.stopBy));
   }
   return out;
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renameRule(from: string): Record<string, unknown> {

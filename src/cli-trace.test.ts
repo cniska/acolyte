@@ -1,13 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  compactLine,
-  parseAllFields,
-  parseField,
-  parseRequestId,
-  parseTaskId,
-  parseTimestamp,
-  traceMode,
-} from "./cli-trace";
+import { compactLine, traceMode } from "./cli-trace";
+import { parseAllFields, parseField, parseRequestId, parseTaskId, parseTimestamp } from "./log-parser";
 
 type TraceDeps = Parameters<typeof traceMode>[1];
 

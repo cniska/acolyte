@@ -1,10 +1,15 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { t } from "./i18n";
-
-// ---------------------------------------------------------------------------
-// Deps
-// ---------------------------------------------------------------------------
+import {
+  matchesRequestId,
+  matchesTaskId,
+  parseAllFields,
+  parseField,
+  parseRequestId,
+  parseTaskId,
+  parseTimestamp,
+} from "./log-parser";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -18,76 +23,12 @@ type TraceModeDeps = {
 
 export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
 
-// ---------------------------------------------------------------------------
-// Log-line parsing
-// ---------------------------------------------------------------------------
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-export function parseField(line: string, key: string): string | undefined {
-  const escapedKey = escapeRegex(key);
-  const quoted = line.match(new RegExp(`(?:^|\\s)${escapedKey}="((?:[^"\\\\]|\\\\.)*)"`));
-  if (quoted?.[1] !== undefined) return quoted[1];
-  const plain = line.match(new RegExp(`(?:^|\\s)${escapedKey}=([^\\s]+)`));
-  return plain?.[1];
-}
-
-export function parseTimestamp(line: string): string {
-  const firstSpace = line.indexOf(" ");
-  return firstSpace > 0 ? line.slice(0, firstSpace) : line;
-}
-
-export function parseRequestId(line: string): string | undefined {
-  return line.match(/\brequest_id=([^\s]+)/)?.[1];
-}
-
-export function parseTaskId(line: string): string | undefined {
-  const value = line.match(/\btask_id=([^\s]+)/)?.[1];
-  if (!value || value === "null") return undefined;
-  return value;
-}
-
-// ---------------------------------------------------------------------------
-// JSON output
-// ---------------------------------------------------------------------------
-
-const FIELD_RE = /(?:^|\s)([a-z_][a-z0-9_]*)=(?:"((?:[^"\\]|\\.)*)"|([^\s]+))/g;
-
-export function parseAllFields(line: string): Record<string, string> {
-  const fields: Record<string, string> = {};
-  fields.timestamp = parseTimestamp(line);
-  for (const match of line.matchAll(FIELD_RE)) {
-    fields[match[1]] = match[2] ?? match[3];
-  }
-  return fields;
-}
-
-// ---------------------------------------------------------------------------
-// ID matching (word-boundary safe)
-// ---------------------------------------------------------------------------
-
-function matchesTaskId(line: string, taskId: string): boolean {
-  return new RegExp(`\\btask_id=${escapeRegex(taskId)}(?:\\s|$)`).test(line);
-}
-
-function matchesRequestId(line: string, requestId: string): boolean {
-  return new RegExp(`\\brequest_id=${escapeRegex(requestId)}(?:\\s|$)`).test(line);
-}
-
-// ---------------------------------------------------------------------------
-// Compact formatters
-// ---------------------------------------------------------------------------
-
 export function compactLine(line: string): string {
   const ts = parseTimestamp(line);
   const taskId = parseTaskId(line);
   const taskPrefix = taskId ? ` task_id=${taskId}` : "";
   const msg = parseField(line, "msg");
   const event = parseField(line, "event");
-
-  // --- msg-based lines ---
 
   if (msg === "task state updated") {
     const from = parseField(line, "from_state") ?? "null";
@@ -138,8 +79,6 @@ export function compactLine(line: string): string {
   }
 
   if (!event) return `${ts}${taskPrefix}${msg ? ` ${msg}` : " log"}`;
-
-  // --- lifecycle event lines ---
 
   if (event === "lifecycle.start") {
     const mode = parseField(line, "mode") ?? "?";
@@ -265,8 +204,6 @@ export function compactLine(line: string): string {
     return `${ts}${taskPrefix} ${event} skill_name=${skillName} instruction_chars=${chars}`;
   }
 
-  // --- eval sub-events (specific before catch-all) ---
-
   if (event === "lifecycle.eval.decision") {
     const evaluator = parseField(line, "evaluator") ?? "?";
     const action = parseField(line, "action") ?? "?";
@@ -313,8 +250,6 @@ export function compactLine(line: string): string {
     return `${ts}${taskPrefix} ${event}`;
   }
 
-  // --- memory events ---
-
   if (event.startsWith("lifecycle.memory.")) {
     const reason = parseField(line, "reason");
     return `${ts}${taskPrefix} ${event}${reason ? ` reason=${reason}` : ""}`;
@@ -336,10 +271,6 @@ export function compactLine(line: string): string {
 
   return `${ts}${taskPrefix} ${event}`;
 }
-
-// ---------------------------------------------------------------------------
-// Arg parsing
-// ---------------------------------------------------------------------------
 
 function parseFlag(args: string[], flag: string | string[]): string | undefined {
   const flags = Array.isArray(flag) ? flag : [flag];
@@ -368,10 +299,6 @@ function parseTaskIdsArg(value: string | undefined): string[] {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Reverse search helpers (avoid copying entire array)
-// ---------------------------------------------------------------------------
-
 function findLastTaskId(lines: string[]): string | undefined {
   for (let i = lines.length - 1; i >= 0; i--) {
     const id = parseTaskId(lines[i]);
@@ -387,10 +314,6 @@ function findLastErrRequestId(lines: string[]): string | undefined {
   }
   return undefined;
 }
-
-// ---------------------------------------------------------------------------
-// Subcommands
-// ---------------------------------------------------------------------------
 
 type FormatLine = (line: string) => string;
 
@@ -431,10 +354,6 @@ function traceTail(lines: string[], count: number, print: (msg: string) => void,
   if (fmt === formatCompact) print(t("cli.trace.showing_latest", { count: String(tail.length) }));
   for (const line of tail) print(fmt(line));
 }
-
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
 
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
   const { hasHelpFlag, logPath, printDim, printError, readFile, commandHelp, commandError } = deps;
