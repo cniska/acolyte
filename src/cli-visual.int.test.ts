@@ -475,7 +475,7 @@ describe("cli visual regression", () => {
 
   test("trace command filters by task id from log file", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
-      const logDir = join(homeDir, ".acolyte");
+      const logDir = join(homeDir, ".acolyte", "daemons");
       await mkdir(logDir, { recursive: true });
       await writeFile(
         join(logDir, "server.log"),
@@ -501,7 +501,7 @@ describe("cli visual regression", () => {
 
   test("trace default shows latest task", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
-      const logDir = join(homeDir, ".acolyte");
+      const logDir = join(homeDir, ".acolyte", "daemons");
       await mkdir(logDir, { recursive: true });
       await writeFile(
         join(logDir, "server.log"),

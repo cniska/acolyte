@@ -8,6 +8,11 @@ import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
 
+//  ██  ███  ██  ███
+//  ██     █ ██     █
+//  ████  ██ ████  ██
+//  ██   ███ ██   ███
+const DEFAULT_PORT = 6767;
 const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
 
@@ -56,16 +61,20 @@ function daemonsDir(homeDir = homedir()): string {
   return join(homeDir, ".acolyte", "daemons");
 }
 
+function daemonFileName(port: number, suffix: string): string {
+  return port === DEFAULT_PORT ? `server${suffix}` : `${port}${suffix}`;
+}
+
 function serverLockPath(port: number, homeDir = homedir()): string {
-  return join(daemonsDir(homeDir), `${port}.lock`);
+  return join(daemonsDir(homeDir), daemonFileName(port, ".lock"));
 }
 
 function startupLockPath(port: number, homeDir = homedir()): string {
-  return join(daemonsDir(homeDir), `${port}.start.lock`);
+  return join(daemonsDir(homeDir), daemonFileName(port, ".start.lock"));
 }
 
 function serverLogPath(port: number, homeDir = homedir()): string {
-  return join(daemonsDir(homeDir), `${port}.log`);
+  return join(daemonsDir(homeDir), daemonFileName(port, ".log"));
 }
 
 function parseServerLock(raw: string): ServerLock | null {
@@ -167,10 +176,12 @@ async function clearStaleStartupLock(path: string): Promise<boolean> {
   return true;
 }
 
-/** Remove legacy global server.lock from pre-per-port versions. */
-async function cleanupLegacyLock(homeDir = homedir()): Promise<void> {
+async function cleanupLegacyLocks(homeDir = homedir()): Promise<void> {
   await rm(join(homeDir, ".acolyte", "server.lock"), { force: true });
   await rm(join(homeDir, ".acolyte", "server.start.lock"), { force: true });
+  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.lock`), { force: true });
+  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.start.lock`), { force: true });
+  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.log`), { force: true });
 }
 
 export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<EnsureLocalServerResult> {
@@ -180,7 +191,7 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   const lockPath = serverLockPath(port, homeDir);
   const startLockPath = startupLockPath(port, homeDir);
 
-  await cleanupLegacyLock(homeDir);
+  await cleanupLegacyLocks(homeDir);
 
   const lock = await readServerLock(lockPath);
   if (lock) {
@@ -283,6 +294,14 @@ export async function stopLocalServer(input: { port: number; apiKey?: string; ho
   return { stopped: true, pid: lock.pid };
 }
 
+function portFromLockEntry(entry: string): number | undefined {
+  if (!entry.endsWith(".lock") || entry.endsWith(".start.lock")) return undefined;
+  const stem = entry.replace(".lock", "");
+  if (stem === "server") return DEFAULT_PORT;
+  const port = Number(stem);
+  return Number.isInteger(port) && port > 0 ? port : undefined;
+}
+
 export async function stopAllLocalServers(input?: {
   apiKey?: string;
   homeDir?: string;
@@ -297,9 +316,8 @@ export async function stopAllLocalServers(input?: {
 
   const stopped: Array<{ port: number; pid: number }> = [];
   for (const entry of entries) {
-    if (!entry.endsWith(".lock") || entry.endsWith(".start.lock")) continue;
-    const port = Number(entry.replace(".lock", ""));
-    if (!Number.isInteger(port) || port <= 0) continue;
+    const port = portFromLockEntry(entry);
+    if (port === undefined) continue;
     const result = await stopLocalServer({ port, apiKey: input?.apiKey, homeDir: input?.homeDir });
     if (result.stopped && result.pid !== null) {
       stopped.push({ port, pid: result.pid });
@@ -321,9 +339,8 @@ export async function listRunningDaemons(input?: {
 
   const daemons: Array<{ port: number; pid: number; startedAt: string }> = [];
   for (const entry of entries) {
-    if (!entry.endsWith(".lock") || entry.endsWith(".start.lock")) continue;
-    const port = Number(entry.replace(".lock", ""));
-    if (!Number.isInteger(port) || port <= 0) continue;
+    const port = portFromLockEntry(entry);
+    if (port === undefined) continue;
     const lockPath = serverLockPath(port, input?.homeDir);
     const lock = await readServerLock(lockPath);
     if (!lock) continue;

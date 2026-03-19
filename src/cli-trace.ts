@@ -13,7 +13,7 @@ type TraceModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "server.log");
+export const DEFAULT_LOG_PATH = join(homedir(), ".acolyte", "daemons", "server.log");
 
 type TraceEvent =
   | "task.state_updated"
