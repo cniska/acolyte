@@ -8,10 +8,8 @@ import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
 
-//  ██  ███  ██  ███
-//  ██     █ ██     █
-//  ████  ██ ████  ██
-//  ██   ███ ██   ███
+// 6        7
+// \_(ᴗ _ᴗ)_/
 const DEFAULT_PORT = 6767;
 const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
