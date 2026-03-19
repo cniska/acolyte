@@ -39,7 +39,7 @@ export function parseRepeatableFlag(args: string[], flag: string, errorMessage: 
 export function parseTailCount(raw: string | undefined, defaultCount = 40): number {
   if (raw === undefined) return defaultCount;
   const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.max(1, parsed) : defaultCount;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultCount;
 }
 
 export function parsePositional(args: string[], flagsWithValues: string[]): string[] {

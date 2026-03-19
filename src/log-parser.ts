@@ -39,10 +39,6 @@ export function matchesTaskId(line: LogLine, taskId: string): boolean {
   return line.taskId === taskId;
 }
 
-export function field(line: LogLine, key: string): string | undefined {
-  return line.fields[key];
-}
-
 export type TaskSummary = {
   taskId: string;
   timestamp: string;
@@ -74,11 +70,4 @@ export function listTasks(lines: LogLine[]): TaskSummary[] {
     }
   }
   return Array.from(seen.values()).reverse();
-}
-
-export function findLastTaskId(lines: LogLine[]): string | undefined {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].taskId) return lines[i].taskId;
-  }
-  return undefined;
 }

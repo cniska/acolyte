@@ -98,7 +98,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",
-    { key: "total_tool_calls", label: "total_tool_calls" },
+    "total_tool_calls",
     { key: "read_calls", label: "read" },
     { key: "search_calls", label: "search" },
     { key: "write_calls", label: "write" },

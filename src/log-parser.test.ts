@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { field, findLastTaskId, matchesTaskId, parseLog } from "./log-parser";
+import { matchesTaskId, parseLog } from "./log-parser";
 
 describe("parseLog", () => {
   test("parses timestamp from first token", () => {
@@ -11,16 +11,16 @@ describe("parseLog", () => {
     const [entry] = parseLog(
       "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_1 mode=work model=gpt-5-mini",
     );
-    expect(field(entry, "level")).toBe("debug");
-    expect(field(entry, "event")).toBe("lifecycle.start");
-    expect(field(entry, "mode")).toBe("work");
-    expect(field(entry, "model")).toBe("gpt-5-mini");
+    expect(entry.fields.level).toBe("debug");
+    expect(entry.fields.event).toBe("lifecycle.start");
+    expect(entry.fields.mode).toBe("work");
+    expect(entry.fields.model).toBe("gpt-5-mini");
   });
 
   test("parses quoted values", () => {
     const [entry] = parseLog('2026-03-19T10:00:00Z msg="hello world" tool=read-file');
-    expect(field(entry, "msg")).toBe("hello world");
-    expect(field(entry, "tool")).toBe("read-file");
+    expect(entry.fields.msg).toBe("hello world");
+    expect(entry.fields.tool).toBe("read-file");
   });
 
   test("extracts taskId from task_id field", () => {
@@ -45,7 +45,7 @@ describe("parseLog", () => {
 
   test("returns undefined for missing field", () => {
     const [entry] = parseLog("2026-03-19T10:00:00Z level=info");
-    expect(field(entry, "missing")).toBeUndefined();
+    expect(entry.fields.missing).toBeUndefined();
   });
 });
 
@@ -63,17 +63,5 @@ describe("matchesTaskId", () => {
   test("does not match when no task_id", () => {
     const [entry] = parseLog("2026-03-19T10:00:00Z level=info");
     expect(matchesTaskId(entry, "task_1")).toBe(false);
-  });
-});
-
-describe("findLastTaskId", () => {
-  test("finds last task_id in lines", () => {
-    const lines = parseLog(["2026-01-01T00:00:00Z task_id=task_a", "2026-01-01T00:00:01Z task_id=task_b"].join("\n"));
-    expect(findLastTaskId(lines)).toBe("task_b");
-  });
-
-  test("returns undefined when no task_id", () => {
-    const lines = parseLog("2026-01-01T00:00:00Z level=info");
-    expect(findLastTaskId(lines)).toBeUndefined();
   });
 });
