@@ -136,6 +136,34 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
       </>
     );
   }
+  if (part.kind === "tool-header") {
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        {part.detail ? <Text dimColor>{` ${part.detail}`}</Text> : null}
+      </>
+    );
+  }
+  if (part.kind === "file-header") {
+    const shown = part.targets.join(", ");
+    const omitted = part.omitted && part.omitted > 0 ? `, +${part.omitted}` : "";
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        <Text dimColor>{` ${shown}${omitted}`}</Text>
+      </>
+    );
+  }
+  if (part.kind === "scope-header") {
+    const display =
+      part.scope === "workspace" ? part.patterns.join(", ") : `${part.scope} [${part.patterns.join(", ")}]`;
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        <Text dimColor>{` ${display}`}</Text>
+      </>
+    );
+  }
   const text = renderToolOutputText(part);
   return <Text dimColor>{text}</Text>;
 }
