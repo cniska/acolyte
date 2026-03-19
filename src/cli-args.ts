@@ -36,6 +36,12 @@ export function parseRepeatableFlag(args: string[], flag: string, errorMessage: 
   return values;
 }
 
+export function parseTailCount(raw: string | undefined, defaultCount = 40): number {
+  if (raw === undefined) return defaultCount;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.max(1, parsed) : defaultCount;
+}
+
 export function parsePositional(args: string[], flagsWithValues: string[]): string[] {
   const flagSet = new Set(flagsWithValues);
   const positional: string[] = [];

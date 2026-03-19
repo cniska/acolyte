@@ -6,6 +6,7 @@ import {
   parsePositional,
   parseRepeatableFlag,
   parseRequiredFlag,
+  parseTailCount,
 } from "./cli-args";
 
 describe("hasHelpFlag", () => {
@@ -64,6 +65,14 @@ describe("parseRepeatableFlag", () => {
   test("throws when flag has no value", () => {
     expect(() => parseRepeatableFlag(["--file"], "--file", "missing file")).toThrow("missing file");
   });
+});
+
+describe("parseTailCount", () => {
+  test("returns default when undefined", () => expect(parseTailCount(undefined)).toBe(40));
+  test("parses valid number", () => expect(parseTailCount("100")).toBe(100));
+  test("clamps zero to 1", () => expect(parseTailCount("0")).toBe(1));
+  test("returns default for non-numeric", () => expect(parseTailCount("abc")).toBe(40));
+  test("accepts custom default", () => expect(parseTailCount(undefined, 20)).toBe(20));
 });
 
 describe("parsePositional", () => {

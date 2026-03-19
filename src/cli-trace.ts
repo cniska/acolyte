@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { hasBoolFlag, parseFlag, parsePositional } from "./cli-args";
+import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { t } from "./i18n";
 import {
   field,
@@ -214,12 +214,6 @@ export function compactLine(line: LogLine): string {
   }
 
   return `${ts}${taskPrefix} ${event}`;
-}
-
-function parseTailCount(raw: string | undefined): number {
-  if (raw === undefined) return 40;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.max(1, parsed) : 40;
 }
 
 function parseTaskIdsArg(value: string | undefined): string[] {
