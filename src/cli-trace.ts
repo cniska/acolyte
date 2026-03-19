@@ -3,7 +3,7 @@ import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { t } from "./i18n";
-import { type LogLine, listTasks, matchesRequestId, matchesTaskId, parseLog } from "./log-parser";
+import { type LogLine, listTasks, matchesTaskId, parseLog } from "./log-parser";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -166,16 +166,6 @@ function traceByTask(lines: LogLine[], taskIds: string[], out: CliOutput, print:
   }
 }
 
-function traceByRequest(lines: LogLine[], requestId: string, out: CliOutput, print: (msg: string) => void): void {
-  const selected = lines.filter((line) => matchesRequestId(line, requestId));
-  if (selected.length === 0) {
-    print(t("cli.trace.no_lines_for_request", { requestId }));
-    return;
-  }
-  out.addHeader(`request_id=${requestId}`);
-  for (const line of selected) out.addRow(traceRowData(line));
-}
-
 function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg: string) => void): void {
   const tasks = listTasks(lines).slice(0, count);
   if (tasks.length === 0) {
@@ -210,9 +200,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
 
-  const taskFlag = parseFlag(args, "--task");
-  const requestFlag = parseFlag(args, "--request");
-  const positional = parsePositional(args, ["--log", "--lines", "-n", "--task", "--request"]);
+  const positional = parsePositional(args, ["--log", "--lines", "-n"]);
   const subcommand = positional[0];
   const subcommandArg = positional[1];
 
@@ -226,29 +214,18 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const lines = parseLog(raw);
 
-  const taskArg = taskFlag ?? (subcommand === "task" ? subcommandArg : undefined);
-  const requestArg = requestFlag ?? (subcommand === "request" ? subcommandArg : undefined);
-
-  if (taskArg !== undefined) {
-    const taskIds = parseTaskIdsArg(taskArg);
+  if (subcommand === "task") {
+    const taskIds = parseTaskIdsArg(subcommandArg);
     if (taskIds.length === 0) {
       commandError("trace", t("cli.trace.missing_task_id"));
       return;
     }
     traceByTask(lines, taskIds, out, printDim);
-  } else if (requestArg !== undefined) {
-    traceByRequest(lines, requestArg, out, printDim);
-  } else if (subcommand === "task") {
-    commandError("trace", t("cli.trace.missing_task_id"));
-    return;
-  } else if (subcommand === "request") {
-    commandError("trace", t("cli.trace.missing_request_id"));
-    return;
-  } else if (subcommand) {
+  } else if (!subcommand || subcommand === "list") {
+    traceList(lines, tailCount, out, printDim);
+  } else {
     commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
     return;
-  } else {
-    traceList(lines, tailCount, out, printDim);
   }
 
   const rendered = out.render();

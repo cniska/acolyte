@@ -103,23 +103,23 @@ describe("cli visual regression", () => {
         acolyte <COMMAND> [ARGS]
 
       Commands
-        init [provider]            initialize provider API key
-        resume [id-prefix]         resume previous session
-        run <prompt>               run a single prompt
-        history                    show recent sessions
-        start                      start server
-        stop                       stop all servers
-        restart                    restart server
-        ps                         list running servers
-        status                     show server status
-        memory                     manage memory
-        config                     manage config
-        skill <name> [prompt]      run a prompt with an active skill
-        trace [task|request] [id]  inspect server lifecycle traces
+        init [provider]        initialize provider API key
+        resume [id-prefix]     resume previous session
+        run <prompt>           run a single prompt
+        history                show recent sessions
+        start                  start server
+        stop                   stop all servers
+        restart                restart server
+        ps                     list running servers
+        status                 show server status
+        memory                 manage memory
+        config                 manage config
+        skill <name> [prompt]  run a prompt with an active skill
+        trace                  inspect server lifecycle traces
 
       Options
-        -h, --help                 print help
-        -V, --version              print version
+        -h, --help             print help
+        -V, --version          print version
     `),
     );
   });
@@ -457,15 +457,14 @@ describe("cli visual regression", () => {
     {
       args: ["trace", "help"],
       output: dedent(`
-        Usage: acolyte trace [--task <id>] [--request <id>] [--lines <n>] [--log <path>] [--json]
+        Usage: acolyte trace [list|task <id>] [--lines <n>] [--log <path>] [--json]
 
         Description: inspect server lifecycle traces
 
         Examples:
           acolyte trace
-          acolyte trace --task task_abc123
           acolyte trace task task_abc123
-          acolyte trace --request req_abc123
+          acolyte trace --json
       `),
     },
   ])("renders subcommand help output %#", async ({ args, output }) => {

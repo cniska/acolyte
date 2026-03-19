@@ -55,18 +55,6 @@ describe("traceMode", () => {
     expect(called).toBe(true);
   });
 
-  test("request subcommand without id calls commandError", async () => {
-    let called = false;
-    const { deps } = createDeps({
-      commandError: (_name, msg) => {
-        called = true;
-        expect(msg).toContain("Missing request ID");
-      },
-    });
-    await traceMode(["request"], deps);
-    expect(called).toBe(true);
-  });
-
   test("missing log file prints error", async () => {
     const { deps, output } = createDeps({
       readFile: async () => {
@@ -88,28 +76,6 @@ describe("traceMode", () => {
     await traceMode(["task", "task_1"], deps);
     expect(output()).toContain("task_id=task_1");
     expect(output()).not.toContain("task_id=task_12");
-  });
-
-  test("--task flag filters by id", async () => {
-    const logContent = "2026-01-01T00:00:00Z event=lifecycle.start task_id=task_1 mode=work model=m";
-    const { deps, output } = createDeps({
-      readFile: async () => logContent,
-    });
-    await traceMode(["--task", "task_1"], deps);
-    expect(output()).toContain("task_id=task_1");
-  });
-
-  test("request subcommand filters lines", async () => {
-    const logContent = [
-      "2026-01-01T00:00:00Z request_id=req_abc task_id=task_1 msg=hello",
-      "2026-01-01T00:00:01Z request_id=req_other task_id=task_2 msg=world",
-    ].join("\n");
-    const { deps, output } = createDeps({
-      readFile: async () => logContent,
-    });
-    await traceMode(["request", "req_abc"], deps);
-    expect(output()).toContain("request_id=req_abc");
-    expect(output()).not.toContain("req_other");
   });
 
   test("default lists recent tasks", async () => {
@@ -160,7 +126,7 @@ describe("traceMode", () => {
     const { deps, output } = createDeps({
       readFile: async () => logContent,
     });
-    await traceMode(["--task", "task_1", "--json"], deps);
+    await traceMode(["task", "task_1", "--json"], deps);
     const lines = output().split("\n");
     for (const l of lines) {
       expect(() => JSON.parse(l)).not.toThrow();
