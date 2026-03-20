@@ -72,7 +72,7 @@ resolve → prepare → generate → evaluate → finalize
 - **evaluate**: inspect output, decide accept or regenerate
 - **finalize**: persist results and emit the response
 
-Evaluators (for example `multiMatchEditEvaluator` and `verifyCycle`) run after generation and may return a `regenerate` action. Evaluators can also change the agent mode (work ↔ verify), causing the lifecycle to re-run the generate phase under the new mode.
+Evaluators (for example `lintEvaluator` and `verifyEvaluator`) run after generation and may return a `regenerate` action. Evaluators can also change the agent mode (work ↔ verify), causing the lifecycle to re-run the generate phase under the new mode.
 
 Most other agents use flat tool loops or implicit state machines.
 
