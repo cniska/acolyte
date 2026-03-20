@@ -6,6 +6,7 @@ import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createToolCache } from "./tool-cache";
+import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type { ToolCategory, ToolDefinition, ToolkitDeps, ToolkitInput, ToolPermission } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
@@ -117,13 +118,18 @@ export const READ_TOOL_SET = new Set<string>(READ_TOOLS);
 export const SEARCH_TOOL_SET = new Set<string>(SEARCH_TOOLS);
 export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
 
-export function toolsForAgent(options?: { workspace?: string; onOutput?: ToolOutputListener; taskId?: string }): {
+export function toolsForAgent(options?: {
+  workspace?: string;
+  onOutput?: ToolOutputListener;
+  taskId?: string;
+  sessionId?: string;
+}): {
   tools: Toolset;
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
-  session.cache = createToolCache(DISCOVERY_TOOL_SET);
+  session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   return {
     tools: collectTools(workspace, session, options?.onOutput) as unknown as Toolset,
     session,
