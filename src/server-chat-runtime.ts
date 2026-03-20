@@ -185,6 +185,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       sessionId: chatRequest.sessionId,
       resourceId: canonicalResourceId,
       workspace: workspaceResolution.workspacePath,
+      query: chatRequest.message,
       useMemory: chatRequest.useMemory !== false,
       onDebug: (event, fields) => {
         log.info("agent debug", {

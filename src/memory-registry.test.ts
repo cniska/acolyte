@@ -82,7 +82,7 @@ describe("memory registry", () => {
           contents.map((entry) => ({ sourceId: sources[index].id, content: entry.content, tokenEstimate: 1 })),
         );
       },
-      (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
+      async (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
     );
     const result = await registry.load({}, 10_000);
     expect(result.prompt).toContain("second");

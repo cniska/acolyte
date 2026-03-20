@@ -8,7 +8,6 @@ import {
   normalizeMemoryEntries,
   runMemoryCommitPipeline,
   runMemoryPipeline,
-  selectMemoryEntries,
 } from "./memory-pipeline";
 import {
   distillMemorySource,
@@ -65,7 +64,7 @@ export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySour
 export function createMemoryRegistry(
   sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES,
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
-  selectEntries: MemorySelectionStrategy = selectMemoryEntries,
+  selectEntries?: MemorySelectionStrategy,
 ): MemoryRegistry {
   const extractContinuation = (
     entries: readonly {

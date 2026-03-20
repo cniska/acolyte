@@ -37,7 +37,7 @@ describe("memory pipeline", () => {
       {},
       10_000,
       normalizeMemoryEntries,
-      (entries) => ({
+      async (entries) => ({
         entries: [entries[entries.length - 1]],
         tokenEstimate: entries[entries.length - 1].tokenEstimate,
       }),
@@ -51,7 +51,7 @@ describe("memory pipeline", () => {
       {},
       10_000,
       async () => [{ sourceId: "custom", content: "normalized", tokenEstimate: 2 }],
-      selectMemoryEntries,
+      async (entries, budget) => selectMemoryEntries(entries, budget),
     );
     expect(result.entries.map((entry) => entry.content)).toEqual(["normalized"]);
     expect(result.entries.map((entry) => entry.sourceId)).toEqual(["custom"]);

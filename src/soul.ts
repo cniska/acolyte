@@ -46,6 +46,7 @@ type CreateSoulPromptOptions = {
   sessionId?: string;
   resourceId?: ResourceId;
   workspace?: string;
+  query?: string;
   useMemory?: boolean;
   memoryBudgetTokens?: number;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
@@ -78,7 +79,12 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     return { prompt: base, memoryTokens: 0 };
   }
   const memoryContext = await loadMemoryContext(
-    { sessionId: options.sessionId, resourceId: options.resourceId, workspace: options.workspace },
+    {
+      sessionId: options.sessionId,
+      resourceId: options.resourceId,
+      workspace: options.workspace,
+      query: options.query,
+    },
     budgetTokens,
   );
   const memoryPrompt = memoryContext.prompt;

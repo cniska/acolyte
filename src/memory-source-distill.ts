@@ -6,6 +6,8 @@ import { log } from "./log";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
+import { embeddingToBuffer, embedText } from "./memory-embedding";
+import { setDefaultStoreForSelection } from "./memory-pipeline";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
@@ -22,6 +24,7 @@ let defaultStore: DistillStore | null = null;
 function getDefaultStore(): DistillStore {
   if (!defaultStore) {
     defaultStore = createSqliteDistillStore();
+    setDefaultStoreForSelection(defaultStore);
     migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
       log.warn("memory.distill.migration_failed", { error: String(error) });
     });
@@ -39,6 +42,14 @@ type DistillSourceOptions = {
   commitScope?: DistillScope | "none";
   config?: DistillConfig;
 };
+
+function embedAndStore(ds: DistillStore, recordId: string, scopeKey: string, content: string): void {
+  embedText(content)
+    .then((vec) => {
+      if (vec) ds.writeEmbedding(recordId, scopeKey, embeddingToBuffer(vec));
+    })
+    .catch(() => {});
+}
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;
 const TEXT_SHRINK_RATIO = 0.9;
@@ -229,12 +240,12 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
     const mostRecent = observationsSinceReflection[0] ?? latestReflection;
     const reflectionContent = stripContinuationLines(latestReflection.content);
     return [
-      ...(reflectionContent ? [{ content: reflectionContent }] : []),
-      ...observationsSinceReflection
-        .map((e) => stripContinuationLines(e.content))
-        .filter((content) => content.length > 0)
-        .map((content) => ({ content })),
-      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+      ...(reflectionContent ? [{ content: reflectionContent, recordId: latestReflection.id }] : []),
+      ...observationsSinceReflection.flatMap((e) => {
+        const content = stripContinuationLines(e.content);
+        return content.length > 0 ? [{ content, recordId: e.id }] : [];
+      }),
+      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
     ];
   }
   const observationEntries = entries
@@ -243,11 +254,11 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
     .reverse();
   const mostRecent = observationEntries[0];
   return [
-    ...observationEntries
-      .map((e) => stripContinuationLines(e.content))
-      .filter((content) => content.length > 0)
-      .map((content) => ({ content })),
-    ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+    ...observationEntries.flatMap((e) => {
+      const content = stripContinuationLines(e.content);
+      return content.length > 0 ? [{ content, recordId: e.id }] : [];
+    }),
+    ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
   ];
 }
 
@@ -272,6 +283,7 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
+  embedAndStore(ds, observation.id, key, observed);
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
 
   const entries = [...existingEntries, observation];
@@ -308,6 +320,7 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(reflected),
   };
   await ds.write(reflection);
+  embedAndStore(ds, reflection.id, key, reflected);
   log.debug("memory.distill.reflection_written", { key, id: reflection.id, tokens: reflection.tokenEstimate });
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
