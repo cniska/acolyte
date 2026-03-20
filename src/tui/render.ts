@@ -10,7 +10,7 @@ import { setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
-import { DEFAULT_COLUMNS, ansi, kitty } from "./styles";
+import { ansi, DEFAULT_COLUMNS, kitty } from "./styles";
 
 function clientLogPath(): string {
   return join(homedir(), ".acolyte", "client.log");
