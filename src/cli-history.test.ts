@@ -83,4 +83,27 @@ describe("cli-history", () => {
       `),
     );
   });
+
+  test("--json outputs JSON lines", async () => {
+    const { deps, output } = createDeps({
+      readStore: async () => ({
+        activeSessionId: undefined,
+        sessions: [
+          {
+            id: "aaa",
+            createdAt: "9999-01-01T00:00:00.000Z",
+            updatedAt: "9999-01-01T00:00:00.000Z",
+            title: "First",
+            model: "gpt-4",
+            messages: [],
+            tokenUsage: [],
+          },
+        ],
+      }),
+    });
+    await historyMode(["--json"], deps);
+    const parsed = JSON.parse(output()) as Record<string, string>;
+    expect(parsed.id).toBe("aaa");
+    expect(parsed.title).toBe("First");
+  });
 });
