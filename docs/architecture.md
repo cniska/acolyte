@@ -126,7 +126,7 @@ Memory Engine
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors).
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups.
 - **runtime config:** loaded from user/project config.
 - **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs.
 - **task trace:** RPC emits task-state transitions with stable `task_id`:

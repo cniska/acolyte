@@ -4,15 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { LogLine, TaskSummary } from "./log-parser";
 
-const PROMOTED_COLUMNS = new Set([
-  "event",
-  "task_id",
-  "request_id",
-  "session_id",
-  "sequence",
-  "phase_attempt",
-  "event_ts",
-]);
+const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence", "phase_attempt"]);
 
 export type TraceEntry = {
   timestamp: string;
@@ -61,6 +53,13 @@ type TraceRow = {
   fields_json: string;
 };
 
+type TaskRow = {
+  task_id: string;
+  timestamp: string;
+  model: string | null;
+  has_error: number;
+};
+
 function rowToLogLine(row: TraceRow): LogLine {
   let fields: Record<string, string>;
   try {
@@ -87,12 +86,15 @@ function rowToLogLine(row: TraceRow): LogLine {
   };
 }
 
-type TaskRow = {
-  task_id: string;
-  timestamp: string;
-  model: string | null;
-  has_error: number;
-};
+function taskRowToSummary(row: TaskRow): TaskSummary {
+  return {
+    taskId: row.task_id,
+    timestamp: row.timestamp,
+    model: row.model ?? undefined,
+    event: undefined,
+    hasError: row.has_error === 1,
+  };
+}
 
 function fieldsToJson(fields: Record<string, string | number | boolean | null | undefined>): string {
   const clean: Record<string, unknown> = {};
@@ -103,6 +105,28 @@ function fieldsToJson(fields: Record<string, string | number | boolean | null | 
 }
 
 const SELECT_COLUMNS = "timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json";
+
+const LIST_BY_TASK_SQL = `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`;
+
+const LIST_TASKS_SQL = `
+  SELECT
+    e.task_id,
+    MIN(e.timestamp) AS timestamp,
+    (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
+    MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error
+  FROM trace_events e
+  WHERE e.task_id IS NOT NULL
+  GROUP BY e.task_id
+  ORDER BY MIN(e.timestamp) DESC
+  LIMIT ?
+`;
+
+function prepareReadQueries(db: Database) {
+  return {
+    listByTask: db.prepare<TraceRow, [string]>(LIST_BY_TASK_SQL),
+    listTasks: db.prepare<TaskRow, [number]>(LIST_TASKS_SQL),
+  };
+}
 
 export function createTraceStore(dbPath?: string): TraceStore {
   const resolvedPath = dbPath ?? defaultTraceDbPath();
@@ -118,23 +142,7 @@ export function createTraceStore(dbPath?: string): TraceStore {
     `INSERT INTO trace_events (timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
-
-  const listByTaskStmt = db.prepare<TraceRow, [string]>(
-    `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`,
-  );
-
-  const listTasksStmt = db.prepare<TaskRow, [number]>(`
-    SELECT
-      e.task_id,
-      MIN(e.timestamp) AS timestamp,
-      (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
-      MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error
-    FROM trace_events e
-    WHERE e.task_id IS NOT NULL
-    GROUP BY e.task_id
-    ORDER BY MIN(e.timestamp) DESC
-    LIMIT ?
-  `);
+  const queries = prepareReadQueries(db);
 
   return {
     write(entry) {
@@ -150,16 +158,10 @@ export function createTraceStore(dbPath?: string): TraceStore {
       );
     },
     listTasks(limit) {
-      return listTasksStmt.all(limit).map((row) => ({
-        taskId: row.task_id,
-        timestamp: row.timestamp,
-        model: row.model ?? undefined,
-        event: undefined,
-        hasError: row.has_error === 1,
-      }));
+      return queries.listTasks.all(limit).map(taskRowToSummary);
     },
     listByTaskId(taskId) {
-      return listByTaskStmt.all(taskId).map(rowToLogLine);
+      return queries.listByTask.all(taskId).map(rowToLogLine);
     },
     close() {
       db.close();
@@ -167,38 +169,18 @@ export function createTraceStore(dbPath?: string): TraceStore {
   };
 }
 
-function openReadOnly(dbPath: string): TraceStore | null {
+function openReadOnly(dbPath: string): TraceStore {
   const db = new Database(dbPath, { readonly: true });
-  const listByTaskStmt = db.prepare<TraceRow, [string]>(
-    `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`,
-  );
-  const listTasksStmt = db.prepare<TaskRow, [number]>(`
-    SELECT
-      e.task_id,
-      MIN(e.timestamp) AS timestamp,
-      (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
-      MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error
-    FROM trace_events e
-    WHERE e.task_id IS NOT NULL
-    GROUP BY e.task_id
-    ORDER BY MIN(e.timestamp) DESC
-    LIMIT ?
-  `);
+  const queries = prepareReadQueries(db);
   return {
     write() {
       // Read-only store — writes are silently dropped.
     },
     listTasks(limit) {
-      return listTasksStmt.all(limit).map((row) => ({
-        taskId: row.task_id,
-        timestamp: row.timestamp,
-        model: row.model ?? undefined,
-        event: undefined,
-        hasError: row.has_error === 1,
-      }));
+      return queries.listTasks.all(limit).map(taskRowToSummary);
     },
     listByTaskId(taskId) {
-      return listByTaskStmt.all(taskId).map(rowToLogLine);
+      return queries.listByTask.all(taskId).map(rowToLogLine);
     },
     close() {
       db.close();

@@ -144,7 +144,7 @@ export const EN_MESSAGES = {
   "cli.trace.col.time": "Time",
 
   "cli.trace.no_lines_for_task": "No lines found for task_id={taskId}",
-  "cli.trace.no_tasks": "No tasks found in log.",
+  "cli.trace.no_tasks": "No tasks found.",
   "cli.trace.unknown_subcommand": "Unknown subcommand: {subcommand}",
   "cli.help.examples": "Examples:",
   "cli.help.label.description": "Description: {description}",
