@@ -73,7 +73,7 @@ export function createMemoryRegistry(
     }[],
   ): { currentTask?: string; nextStep?: string } => {
     const continuationText = entries
-      .filter((entry) => entry.isContinuation === true)
+      .filter((entry) => entry.isContinuation)
       .map((entry) => entry.content)
       .join("\n");
     return {
@@ -90,7 +90,7 @@ export function createMemoryRegistry(
         prompt: formatMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
         entryCount: result.entries.length,
-        continuationSelected: result.entries.some((entry) => entry.isContinuation === true),
+        continuationSelected: result.entries.some((entry) => entry.isContinuation),
         continuation,
       };
     },

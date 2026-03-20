@@ -137,6 +137,7 @@ function splitScopedObservation(observed: string): {
   projectCount: number;
   userCount: number;
   droppedUntaggedCount: number;
+  droppedMalformedCount: number;
 } {
   const lines = observed
     .split(/\r?\n/)
@@ -146,13 +147,17 @@ function splitScopedObservation(observed: string): {
   const projectLines: string[] = [];
   const userLines: string[] = [];
   let droppedUntaggedCount = 0;
+  let droppedMalformedCount = 0;
   for (const line of lines) {
     if (isContinuationLine(line)) {
       sessionLines.push(line);
       continue;
     }
     const tagged = stripScopeTag(line);
-    if (!tagged.scope && hasBracketPrefix(line)) continue;
+    if (!tagged.scope && hasBracketPrefix(line)) {
+      droppedMalformedCount += 1;
+      continue;
+    }
     if (!tagged.content) continue;
     // Continuation state is always session-scoped, regardless of any tag prefix.
     if (isContinuationLine(tagged.content)) {
@@ -183,6 +188,7 @@ function splitScopedObservation(observed: string): {
     projectCount: projectLines.length,
     userCount: userLines.length,
     droppedUntaggedCount,
+    droppedMalformedCount,
   };
 }
 
@@ -377,6 +383,9 @@ export function createDistillMemorySource(
       const scoped = splitScopedObservation(observed);
       if (scoped.droppedUntaggedCount > 0) {
         log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
+      }
+      if (scoped.droppedMalformedCount > 0) {
+        log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
       }
       if (scoped.session) {
         await commitDistillForKey(ds, key, scoped.session, runner, config);

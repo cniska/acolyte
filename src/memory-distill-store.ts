@@ -117,6 +117,7 @@ export function createSqliteDistillStore(dbPath?: string): DistillStore {
       removeEmbStmt.run(id);
     },
     writeEmbedding(recordId, scopeKey, embedding) {
+      if (!safeDistillScopeKey(scopeKey)) return;
       writeEmbStmt.run(recordId, scopeKey, embedding);
     },
     removeEmbedding(recordId) {
