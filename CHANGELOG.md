@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 (2026-03-20)
+
+- **hooks:** scope new-ref validation to unpushed commits (`c6667298`)
+- **format:** migrate CLI commands to alignCols (#27) (`30a9a926`)
+- **arch:** standardize dependency injection pattern (#30) (`215ce224`)
+- **chat:** preserve partial content and streaming rows on interrupt (`5998788b`)
+- **tui:** increase thinking animation speed (`67214bad`)
+- **tui:** extract chat-ui state and fix render flicker (#28) (`edb7767e`)
+- **cli:** add trace command (#33) (`c24b500f`)
+- **cli:** migrate commands to CliOutput (#40) (`e9a2f439`)
+- **memory:** migrate distill storage to SQLite (#42) (`ece53a67`)
+- **tui:** output, lifecycle, and tooling fixes (#35) (`0a935ee8`)
+
+
 ## 0.6.0 (2026-03-18)
 
 - **init:** re-prompt on empty API key instead of erroring (`82790e18`)
