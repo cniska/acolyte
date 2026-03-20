@@ -1,7 +1,11 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { tempDb } from "./test-utils";
 import { createToolCache } from "./tool-cache";
+import { createToolCacheStore } from "./tool-cache-store";
 
 const CACHEABLE = new Set(["read-file", "find-files", "search-files", "scan-code"]);
+const { create: createStore, cleanup } = tempDb("acolyte-cache-l2-", createToolCacheStore);
+afterEach(cleanup);
 
 describe("tool-cache", () => {
   test("isCacheable returns true for read/search tools", () => {
@@ -206,5 +210,61 @@ describe("tool-cache", () => {
     expect(stats.hits).toBe(2);
     expect(stats.invalidations).toBe(1);
     expect(stats.size).toBe(0);
+  });
+});
+
+describe("L2 SQLite integration", () => {
+  test("L1 miss falls back to L2 hit", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("read-file", { paths: [{ path: "/a.ts" }] }, { result: "content-a" });
+
+    // New L1 cache, same L2 store — simulates a new task
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    const entry = cache2.get("read-file", { paths: [{ path: "/a.ts" }] });
+    expect(entry).toBeDefined();
+    expect(entry?.result).toBe("content-a");
+  });
+
+  test("pathless entries are not persisted to L2", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("search-files", { patterns: ["foo"] }, { result: "found" });
+
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    expect(cache2.get("search-files", { patterns: ["foo"] })).toBeUndefined();
+  });
+
+  test("write invalidation propagates to L2", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("read-file", { paths: [{ path: "/a.ts" }] }, { result: "old" });
+
+    cache1.invalidateForWrite("edit-file", { path: "/a.ts" });
+
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    expect(cache2.get("read-file", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
+  });
+
+  test("run-command clears L2", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("read-file", { paths: [{ path: "/a.ts" }] }, { result: "content" });
+
+    cache1.invalidateForWrite("run-command", {});
+
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    expect(cache2.get("read-file", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
+  });
+
+  test("clear propagates to L2", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("read-file", { paths: [{ path: "/a.ts" }] }, { result: "content" });
+
+    cache1.clear();
+
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    expect(cache2.get("read-file", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
   });
 });
