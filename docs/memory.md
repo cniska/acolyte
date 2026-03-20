@@ -73,6 +73,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
 - Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.
 - Commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`).
+- Repeated malformed-tag drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits with malformed tags.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes use SQLite with WAL mode for atomic persistence.

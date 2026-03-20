@@ -63,6 +63,7 @@ function embedAndStore(ds: DistillStore, recordId: string, scopeKey: string, con
 const CHARS_PER_TOKEN_ESTIMATE = 4;
 const TEXT_SHRINK_RATIO = 0.9;
 const DISTILL_CONTEXT_MESSAGE_WINDOW = 20;
+const MALFORMED_STREAK_WARNING_THRESHOLD = 3;
 
 function clampToTokenEstimate(content: string, maxTokens: number): string {
   const text = content.trim();
@@ -354,6 +355,7 @@ export function createDistillMemorySource(
   const id = options.id ?? "distill_session";
   const loadScope = options.loadScope ?? "session";
   const commitScope = options.commitScope ?? "session";
+  let malformedRejectStreak = 0;
   return {
     id,
 
@@ -392,7 +394,13 @@ export function createDistillMemorySource(
         log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
       }
       if (scoped.droppedMalformedCount > 0) {
+        malformedRejectStreak += 1;
         log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
+        if (malformedRejectStreak >= MALFORMED_STREAK_WARNING_THRESHOLD) {
+          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: malformedRejectStreak });
+        }
+      } else {
+        malformedRejectStreak = 0;
       }
       if (scoped.session) {
         await commitDistillForKey(ds, key, scoped.session, runner, config);
