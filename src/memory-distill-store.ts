@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { type DistillRecord, distillRecordSchema } from "./memory-contract";
 
 export interface DistillStore {
@@ -58,6 +58,7 @@ function rowToRecord(row: DistillRow): DistillRecord {
 
 export function createSqliteDistillStore(dbPath?: string): DistillStore {
   const resolvedPath = dbPath ?? join(homedir(), ".acolyte", "memory.db");
+  mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
   initSchema(db);
