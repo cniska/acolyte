@@ -5,6 +5,7 @@ import { type ChatAppProps, useChatState } from "./chat-state";
 import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
 import { palette } from "./palette";
 import { Box, render, Static, Text, useApp } from "./tui";
+import { DEFAULT_COLUMNS } from "./tui/styles";
 
 function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();
@@ -27,13 +28,12 @@ function ChatApp(props: ChatAppProps) {
               </Box>
             );
           }
-          const columns = process.stdout.columns ?? 120;
-          const contentWidth = Math.max(24, Math.min(120, columns - 2));
-          const toolContentWidth = Math.max(24, columns - 2);
+          const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
+          const contentWidth = Math.max(24, columns - 2);
           return (
             <Box key={item.id} flexDirection="column">
               <Text> </Text>
-              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
+              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={contentWidth} />
             </Box>
           );
         }}

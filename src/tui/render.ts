@@ -10,7 +10,7 @@ import { setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
-import { ansi, kitty } from "./styles";
+import { DEFAULT_COLUMNS, ansi, kitty } from "./styles";
 
 function clientLogPath(): string {
   return join(homedir(), ".acolyte", "client.log");
@@ -98,7 +98,7 @@ export function render(node: ReactNode): RenderInstance {
   }
 
   function countRows(output: string): number {
-    const cols = stdout.columns ?? 120;
+    const cols = stdout.columns ?? DEFAULT_COLUMNS;
     return physicalRowCount(output, cols);
   }
 
@@ -123,7 +123,7 @@ export function render(node: ReactNode): RenderInstance {
   function commitRender() {
     if (exited) return;
     const { staticItems, active } = serializeSplit(root);
-    const cols = stdout.columns ?? 120;
+    const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const maxLiveRows = (stdout.rows ?? 24) - 1;
 
     // Flush any new static items (write-once scrollback).

@@ -10,6 +10,7 @@ import { t } from "./i18n";
 import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
+import { DEFAULT_COLUMNS } from "./tui/styles";
 
 const MODE_PENDING_TEXT: Record<AgentMode, string> = {
   work: t("agent.status.working"),
@@ -275,7 +276,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     }
     return "";
   })();
-  const columns = process.stdout.columns ?? 120;
+  const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
   const contentWidth = Math.max(24, columns - 2);
   const toolContentWidth = contentWidth;
   return (

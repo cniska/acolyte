@@ -1,3 +1,6 @@
+/** Default column count when stdout has no TTY dimensions. */
+export const DEFAULT_COLUMNS = 120;
+
 const ESC = "\x1b[";
 
 export const ansi = {
