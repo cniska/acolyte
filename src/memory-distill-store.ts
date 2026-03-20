@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { log } from "./log";
 import { type DistillRecord, distillRecordSchema } from "./memory-contract";
 
 export interface DistillStore {
@@ -62,6 +63,7 @@ export function createSqliteDistillStore(dbPath?: string): DistillStore {
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
   initSchema(db);
+  log.debug("memory.distill.store_opened", { path: resolvedPath });
 
   const listStmt = db.prepare<DistillRow, [string]>(
     "SELECT * FROM distill_records WHERE scope_key = ? ORDER BY created_at ASC",
@@ -136,5 +138,6 @@ export async function migrateFromFilesystem(homeDir: string, store: DistillStore
     await rename(distillDir, backupPath);
   }
 
+  log.info("memory.distill.migration_done", { migrated });
   return migrated;
 }
