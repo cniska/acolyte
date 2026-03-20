@@ -29,18 +29,32 @@ describe("createTextOutput", () => {
     expect(out.render()).toBe("a=1\n\nb=2");
   });
 
-  test("renders table with header row and aligned columns", () => {
+  test("renders table without headers when no labels provided", () => {
     const out = createTextOutput();
     out.addTable([
       { id: "task_a", model: "gpt-5-mini", status: "ok" },
       { id: "task_bb", model: "gpt-5", status: "error" },
     ]);
     const lines = out.render().split("\n");
+    expect(lines.length).toBe(2);
+    expect(lines[0]).toContain("task_a");
+    expect(lines[1]).toContain("task_bb");
+  });
+
+  test("renders table with header row when labels provided", () => {
+    const out = createTextOutput();
+    out.addTable(
+      [
+        { id: "task_a", model: "gpt-5-mini" },
+        { id: "task_bb", model: "gpt-5" },
+      ],
+      { id: "Task", model: "Model" },
+    );
+    const lines = out.render().split("\n");
     expect(lines.length).toBe(3);
-    expect(lines[0]).toContain("id");
-    expect(lines[0]).toContain("model");
+    expect(lines[0]).toContain("Task");
+    expect(lines[0]).toContain("Model");
     expect(lines[1]).toContain("task_a");
-    expect(lines[2]).toContain("task_bb");
   });
 
   test("renders empty for no content", () => {

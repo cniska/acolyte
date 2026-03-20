@@ -128,4 +128,17 @@ describe("cli-daemon", () => {
       `),
     );
   });
+
+  test("ps --json outputs JSON lines", async () => {
+    const { deps, output } = createDeps({
+      listRunningDaemons: async () => [
+        { port: 6767, pid: 1234, startedAt: new Date(Date.now() - 3600_000).toISOString() },
+      ],
+    });
+    await psMode(["--json"], deps);
+    const parsed = JSON.parse(output()) as Record<string, string>;
+    expect(parsed.port).toBe("6767");
+    expect(parsed.pid).toBe("1234");
+    expect(parsed.uptime).toBe("1h");
+  });
 });

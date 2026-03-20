@@ -1,8 +1,9 @@
-import { alignCols, formatRelativeTime } from "./chat-format";
+import { formatRelativeTime } from "./chat-format";
+import { hasBoolFlag, stripFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
+import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
-import type { MemoryEntry } from "./memory-contract";
 import type { MemoryStore } from "./memory-store";
 
 type MemoryModeDeps = {
@@ -13,27 +14,14 @@ type MemoryModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-function printMemoryRows(rows: readonly MemoryEntry[], printDim: (message: string) => void): void {
-  if (rows.length === 0) {
-    printDim(t("cli.memory.none"));
-    return;
-  }
-
-  const formatted = rows
-    .slice(0, 50)
-    .map((row) => [row.id, truncateText(row.content, 80), formatRelativeTime(row.createdAt)]);
-  for (const line of alignCols(formatted)) {
-    printDim(line);
-  }
-}
-
 export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
   const { store, hasHelpFlag, printDim, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("memory");
     return;
   }
-  const [subcommand, ...rest] = args;
+  const json = hasBoolFlag(args, "--json");
+  const [subcommand, ...rest] = stripFlag(args, "--json");
   const validScopes = new Set(["all", "user", "project"]);
 
   if (subcommand === "list" || !subcommand) {
@@ -48,7 +36,20 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     const rows = await store.list(scope as "all" | "user" | "project");
-    printMemoryRows(rows, printDim);
+    if (rows.length === 0) {
+      printDim(t("cli.memory.none"));
+      return;
+    }
+    const out: CliOutput = json ? createJsonOutput() : createTextOutput();
+    out.addTable(
+      rows.slice(0, 50).map((row) => ({
+        id: row.id,
+        content: truncateText(row.content, 80),
+        time: formatRelativeTime(row.createdAt),
+      })),
+    );
+    const rendered = out.render();
+    if (rendered) printDim(rendered);
     return;
   }
 

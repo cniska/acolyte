@@ -120,7 +120,7 @@ export const EN_MESSAGES = {
   "cli.config.keys": "Keys: {keys}",
   "cli.config.removed": "Removed config {key} ({scope}).",
   "cli.config.saved": "Saved config {key} ({scope}).",
-  "cli.config.scope": "scope:",
+  "cli.config.scope": "scope",
   "cli.config.unknown_key": "Unknown config key: {key}",
   "cli.config.value_empty": "Config value cannot be empty",
   "cli.help.desc.config": "manage config",
