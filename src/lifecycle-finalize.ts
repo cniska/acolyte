@@ -1,5 +1,6 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
+import { t } from "./i18n";
 import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
 import { totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { scopedCallLog } from "./tool-guards";
@@ -17,14 +18,12 @@ function resolvePromptBreakdown(ctx: RunContext) {
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const rawOutput = ctx.result?.text.trim() ?? "";
-  const outputKey =
-    ctx.result?.outputKey ??
-    (rawOutput.length > 0
-      ? undefined
+  const output =
+    rawOutput.length > 0
+      ? rawOutput
       : ctx.observedTools.size > 0
-        ? "agent.output.no_response_after_tools"
-        : "agent.output.no_output");
-  const output = rawOutput.length > 0 ? rawOutput : (outputKey ?? "");
+        ? t("agent.output.no_response_after_tools")
+        : t("agent.output.no_output");
 
   const promptBreakdown = resolvePromptBreakdown(ctx);
   const promptInputTokens = totalPromptBreakdownTokens(promptBreakdown);
@@ -76,7 +75,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
-    ...(outputKey ? { outputKey } : {}),
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,

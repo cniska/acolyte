@@ -245,7 +245,6 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
             messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
           }
         : undefined,
-    outputKey: typeof json.outputKey === "string" ? json.outputKey : undefined,
     error: typeof json.error === "string" ? json.error : undefined,
   };
 }

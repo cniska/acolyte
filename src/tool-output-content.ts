@@ -56,7 +56,7 @@ export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
 
 export function toolLabel(labelKey: string): string {
   type NoParamKey = "tool.label.create";
-  return t(`tool.label.${labelKey}` as NoParamKey);
+  return t(labelKey as NoParamKey);
 }
 
 export function renderToolOutputPart(content: ToolOutputPart): string {

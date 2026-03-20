@@ -59,7 +59,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
 function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-search",
-    labelKey: "web_search",
+    labelKey: "tool.label.web_search",
     category: "network",
     permissions: ["network"],
     description:
@@ -80,7 +80,7 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
           toolName: "web-search",
           content: {
             kind: "tool-header",
-            labelKey: "web_search",
+            labelKey: "tool.label.web_search",
             detail: `"${compactDetail(toolInput.query)}"`,
           },
           toolCallId: callId,
@@ -99,7 +99,7 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-fetch",
-    labelKey: "web_fetch",
+    labelKey: "tool.label.web_fetch",
     category: "network",
     permissions: ["network"],
     description:
@@ -118,7 +118,7 @@ function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
       return runTool(input.session, "web-fetch", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "web-fetch",
-          content: { kind: "tool-header", labelKey: "web_fetch", detail: toolInput.url },
+          content: { kind: "tool-header", labelKey: "tool.label.web_fetch", detail: toolInput.url },
           toolCallId: callId,
         });
         const result = compactToolOutput(

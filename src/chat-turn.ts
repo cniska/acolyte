@@ -107,20 +107,18 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     { signal: params.signal, onEvent: params.onEvent ?? (() => {}) },
   );
 
-  type NoParamKey = "agent.output.no_output";
-  const displayOutput = reply.outputKey ? t(reply.outputKey as NoParamKey) : reply.output;
-  const baseAssistantMessage = params.createMessage("assistant", displayOutput);
+  const baseAssistantMessage = params.createMessage("assistant", reply.output);
   const assistantMessage: ChatMessage =
     (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.error) {
     rows.push(createRow("system", reply.error, { text: palette.error }));
-  } else if (displayOutput.trim().length > 0) {
-    rows.push(createRow("assistant", displayOutput));
+  } else if (reply.output.trim().length > 0) {
+    rows.push(createRow("assistant", reply.output));
   }
   const tokenEntry: SessionTokenUsageEntry = {
     id: assistantMessage.id,
-    usage: reply.usage ?? estimateTokenUsageFallback(params.userText, displayOutput),
+    usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
     promptBreakdown: reply.promptBreakdown,
 
     modelCalls: reply.modelCalls,

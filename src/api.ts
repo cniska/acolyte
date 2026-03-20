@@ -32,8 +32,6 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   output: string;
-  /** When set, the UI should translate this key instead of showing raw `output`. */
-  outputKey?: string;
   model: string;
   usage?: TokenUsage;
   promptBreakdown?: PromptBreakdown;
