@@ -1,20 +1,18 @@
 import { z } from "zod";
 import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
-import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
+import { createJsonOutput, createTextOutput } from "./cli-output";
 import { t } from "./i18n";
-import { type LogLine, listTasks, matchesTaskId, parseLog } from "./log-parser";
+import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
-  logPath: string;
+  traceStore: TraceStore;
   printDim: (message: string) => void;
   printError: (message: string) => void;
-  readFile: (path: string, encoding: "utf8") => Promise<string>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
-  traceStore?: TraceStore;
 };
 
 const traceEventSchema = z.enum([
@@ -156,134 +154,65 @@ function parseTaskIdsArg(value: string | undefined): string[] {
   );
 }
 
-function traceByTask(lines: LogLine[], taskIds: string[], out: CliOutput, print: (msg: string) => void): void {
-  for (let i = 0; i < taskIds.length; i++) {
-    const taskId = taskIds[i];
-    const selected = lines.filter((line) => matchesTaskId(line, taskId));
-    if (selected.length === 0) {
-      print(t("cli.trace.no_lines_for_task", { taskId }));
-      continue;
-    }
-    if (i > 0) out.addSeparator();
-    for (const line of selected) out.addRow(traceRowData(line));
-  }
-}
-
-function traceList(lines: LogLine[], count: number, out: CliOutput, print: (msg: string) => void): void {
-  const tasks = listTasks(lines).slice(0, count);
-  if (tasks.length === 0) {
-    print(t("cli.trace.no_tasks"));
-    return;
-  }
-  out.addTable(
-    tasks.map((task) => ({
-      task_id: task.taskId,
-      model: task.model ?? "unknown",
-      status: task.hasError ? "error" : "ok",
-      time: formatRelativeTime(task.timestamp),
-    })),
-    {
-      task_id: t("cli.trace.col.task_id"),
-      model: t("cli.trace.col.model"),
-      status: t("cli.trace.col.status"),
-      time: t("cli.trace.col.time"),
-    },
-  );
-}
-
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
-  const { hasHelpFlag, logPath, printDim, printError, readFile, commandHelp, commandError, traceStore } = deps;
+  const { hasHelpFlag, traceStore, printDim, commandHelp, commandError } = deps;
 
   if (hasHelpFlag(args)) {
     commandHelp("trace");
     return;
   }
 
-  const logPathOverride = parseFlag(args, "--log");
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
 
-  const positional = parsePositional(args, ["--log", "--lines", "-n"]);
+  const positional = parsePositional(args, ["--lines", "-n"]);
   const subcommand = positional[0];
   const subcommandArg = positional[1];
 
-  const useStore = traceStore && !logPathOverride;
-
-  if (useStore) {
-    if (subcommand === "task") {
-      let taskIds = parseTaskIdsArg(subcommandArg);
-      if (taskIds.length === 0) {
-        const latest = traceStore.listTasks(1)[0];
-        if (!latest) {
-          printDim(t("cli.trace.no_tasks"));
-          return;
-        }
-        taskIds = [latest.taskId];
-      }
-      for (let i = 0; i < taskIds.length; i++) {
-        const taskId = taskIds[i];
-        if (!taskId) continue;
-        const lines = traceStore.listByTaskId(taskId);
-        if (lines.length === 0) {
-          printDim(t("cli.trace.no_lines_for_task", { taskId }));
-          continue;
-        }
-        if (i > 0) out.addSeparator();
-        for (const line of lines) out.addRow(traceRowData(line));
-      }
-    } else if (!subcommand || subcommand === "list") {
-      const tasks = traceStore.listTasks(tailCount);
-      if (tasks.length === 0) {
+  if (subcommand === "task") {
+    let taskIds = parseTaskIdsArg(subcommandArg);
+    if (taskIds.length === 0) {
+      const latest = traceStore.listTasks(1)[0];
+      if (!latest) {
         printDim(t("cli.trace.no_tasks"));
-      } else {
-        out.addTable(
-          tasks.map((task) => ({
-            task_id: task.taskId,
-            model: task.model ?? "unknown",
-            status: task.hasError ? "error" : "ok",
-            time: formatRelativeTime(task.timestamp),
-          })),
-          {
-            task_id: t("cli.trace.col.task_id"),
-            model: t("cli.trace.col.model"),
-            status: t("cli.trace.col.status"),
-            time: t("cli.trace.col.time"),
-          },
-        );
+        return;
       }
+      taskIds = [latest.taskId];
+    }
+    for (let i = 0; i < taskIds.length; i++) {
+      const taskId = taskIds[i];
+      if (!taskId) continue;
+      const lines = traceStore.listByTaskId(taskId);
+      if (lines.length === 0) {
+        printDim(t("cli.trace.no_lines_for_task", { taskId }));
+        continue;
+      }
+      if (i > 0) out.addSeparator();
+      for (const line of lines) out.addRow(traceRowData(line));
+    }
+  } else if (!subcommand || subcommand === "list") {
+    const tasks = traceStore.listTasks(tailCount);
+    if (tasks.length === 0) {
+      printDim(t("cli.trace.no_tasks"));
     } else {
-      commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
-      return;
+      out.addTable(
+        tasks.map((task) => ({
+          task_id: task.taskId,
+          model: task.model ?? "unknown",
+          status: task.hasError ? "error" : "ok",
+          time: formatRelativeTime(task.timestamp),
+        })),
+        {
+          task_id: t("cli.trace.col.task_id"),
+          model: t("cli.trace.col.model"),
+          status: t("cli.trace.col.status"),
+          time: t("cli.trace.col.time"),
+        },
+      );
     }
   } else {
-    const resolvedLogPath = logPathOverride ?? logPath;
-    let raw: string;
-    try {
-      raw = await readFile(resolvedLogPath, "utf8");
-    } catch {
-      printError(t("cli.trace.cannot_read", { path: resolvedLogPath }));
-      return;
-    }
-
-    const lines = parseLog(raw);
-
-    if (subcommand === "task") {
-      let taskIds = parseTaskIdsArg(subcommandArg);
-      if (taskIds.length === 0) {
-        const latest = listTasks(lines)[0];
-        if (!latest) {
-          printDim(t("cli.trace.no_tasks"));
-          return;
-        }
-        taskIds = [latest.taskId];
-      }
-      traceByTask(lines, taskIds, out, printDim);
-    } else if (!subcommand || subcommand === "list") {
-      traceList(lines, tailCount, out, printDim);
-    } else {
-      commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
-      return;
-    }
+    commandError("trace", t("cli.trace.unknown_subcommand", { subcommand }));
+    return;
   }
 
   const rendered = out.render();

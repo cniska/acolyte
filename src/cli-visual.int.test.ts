@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { runCliPlain, withCliTestEnv } from "./int-test-utils";
 import { PROTOCOL_VERSION } from "./protocol";
 import { dedent } from "./test-utils";
+import { createTraceStore } from "./trace-store";
 
 async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
   const reply = {
@@ -457,7 +458,7 @@ describe("cli visual regression", () => {
     {
       args: ["trace", "help"],
       output: dedent(`
-        Usage: acolyte trace [list|task <id>] [--lines <n>] [--log <path>] [--json]
+        Usage: acolyte trace [list|task <id>] [--lines <n>] [--json]
 
         Description: inspect server lifecycle traces
 
@@ -472,20 +473,45 @@ describe("cli visual regression", () => {
     expect(out).toBe(output);
   });
 
-  test("trace command filters by task id from log file", async () => {
+  test("trace command filters by task id from store", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
-      const logDir = join(homeDir, ".acolyte", "daemons");
-      await mkdir(logDir, { recursive: true });
-      await writeFile(
-        join(logDir, "server.log"),
-        [
-          "2026-03-19T10:00:00Z level=debug event=lifecycle.start task_id=task_abc mode=work model=gpt-5-mini",
-          "2026-03-19T10:00:01Z level=debug event=lifecycle.tool.call task_id=task_abc tool=read-file path=src/cli.ts",
-          "2026-03-19T10:00:02Z level=debug event=lifecycle.tool.call task_id=task_other tool=read-file path=README.md",
-          "2026-03-19T10:00:03Z level=debug event=lifecycle.summary task_id=task_abc model_calls=1 total_tool_calls=1 read_calls=1 search_calls=0 write_calls=0 pre_write_discovery_calls=0 regeneration_count=0 guard_blocked_count=0 guard_flag_set_count=0 has_error=false",
-        ].join("\n"),
-        "utf8",
-      );
+      const store = createTraceStore(join(homeDir, ".acolyte", "trace.db"));
+      store.write({
+        timestamp: "2026-03-19T10:00:00Z",
+        taskId: "task_abc",
+        event: "lifecycle.start",
+        fields: { mode: "work", model: "gpt-5-mini" },
+      });
+      store.write({
+        timestamp: "2026-03-19T10:00:01Z",
+        taskId: "task_abc",
+        event: "lifecycle.tool.call",
+        fields: { tool: "read-file", path: "src/cli.ts" },
+      });
+      store.write({
+        timestamp: "2026-03-19T10:00:02Z",
+        taskId: "task_other",
+        event: "lifecycle.tool.call",
+        fields: { tool: "read-file", path: "README.md" },
+      });
+      store.write({
+        timestamp: "2026-03-19T10:00:03Z",
+        taskId: "task_abc",
+        event: "lifecycle.summary",
+        fields: {
+          model_calls: "1",
+          total_tool_calls: "1",
+          read_calls: "1",
+          search_calls: "0",
+          write_calls: "0",
+          pre_write_discovery_calls: "0",
+          regeneration_count: "0",
+          guard_blocked_count: "0",
+          guard_flag_set_count: "0",
+          has_error: "false",
+        },
+      });
+      store.close();
       const out = await run(["trace", "task", "task_abc"]);
       expect(out).toBe(
         dedent(`
@@ -499,16 +525,20 @@ describe("cli visual regression", () => {
 
   test("trace default lists recent tasks", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
-      const logDir = join(homeDir, ".acolyte", "daemons");
-      await mkdir(logDir, { recursive: true });
-      await writeFile(
-        join(logDir, "server.log"),
-        [
-          "9999-01-01T00:00:00Z level=debug event=lifecycle.start task_id=task_latest mode=work model=gpt-5-mini",
-          "9999-01-01T00:00:01Z level=debug event=lifecycle.generate.done task_id=task_latest model=gpt-5-mini tool_calls=2",
-        ].join("\n"),
-        "utf8",
-      );
+      const store = createTraceStore(join(homeDir, ".acolyte", "trace.db"));
+      store.write({
+        timestamp: "9999-01-01T00:00:00Z",
+        taskId: "task_latest",
+        event: "lifecycle.start",
+        fields: { mode: "work", model: "gpt-5-mini" },
+      });
+      store.write({
+        timestamp: "9999-01-01T00:00:01Z",
+        taskId: "task_latest",
+        event: "lifecycle.generate.done",
+        fields: { model: "gpt-5-mini", tool_calls: "2" },
+      });
+      store.close();
       const out = await run(["trace"]);
       expect(out).toBe(
         dedent(`

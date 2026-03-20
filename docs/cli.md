@@ -54,5 +54,4 @@ acolyte trace list               # same as above
 acolyte trace task <id>          # inspect a task's lifecycle trace
 acolyte trace task <id> --json   # output as JSON lines
 acolyte trace --lines 100        # show last 100 tasks
-acolyte trace --log <path>       # use a custom log file
 ```

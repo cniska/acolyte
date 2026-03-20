@@ -2,7 +2,6 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { log } from "./log";
 import type { LogLine, TaskSummary } from "./log-parser";
 
 export type TraceEntry = {
@@ -104,7 +103,6 @@ export function createTraceStore(dbPath?: string): TraceStore {
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
   initSchema(db);
-  log.debug("trace.store_opened", { path: resolvedPath });
 
   const writeStmt = db.prepare<
     void,

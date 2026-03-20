@@ -27,14 +27,13 @@ import {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
-  serverLogPath,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import { formatStatus } from "./status-format";
 import { createSession, readStore } from "./storage";
-import { openReadOnlyTraceStore } from "./trace-store";
+import { createTraceStore, openReadOnlyTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
 function helpFor(name: string): CliCommandHelp | undefined {
@@ -304,20 +303,18 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   trace: {
     help: {
       command: "trace",
-      usage: "acolyte trace [list|task <id>] [--lines <n>] [--log <path>] [--json]",
+      usage: "acolyte trace [list|task <id>] [--lines <n>] [--json]",
       description: t("cli.help.desc.trace"),
       examples: ["acolyte trace", "acolyte trace task task_abc123", "acolyte trace --json"],
     },
     handler: (args) =>
       traceMode(args, {
         hasHelpFlag,
-        logPath: serverLogPath(appConfig.server.port),
+        traceStore: openReadOnlyTraceStore() ?? createTraceStore(),
         printDim,
         printError,
-        readFile,
         commandError,
         commandHelp,
-        traceStore: openReadOnlyTraceStore() ?? undefined,
       }),
   },
 };
