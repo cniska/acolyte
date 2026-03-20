@@ -14,6 +14,7 @@ import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionSt
 import { createId } from "./short-id";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
+import { closeDefaultTraceStore } from "./trace-store";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : appConfig.server.port;
 const HOST = "127.0.0.1";
@@ -157,6 +158,7 @@ export async function startServer(): Promise<void> {
     shutdownServer: () => {
       setTimeout(() => {
         try {
+          closeDefaultTraceStore();
           server.stop(true);
         } catch {
           // Best effort shutdown.
