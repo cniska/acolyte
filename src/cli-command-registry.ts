@@ -34,6 +34,7 @@ import {
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
 import { formatStatus } from "./status-format";
 import { createSession, readStore } from "./storage";
+import { openReadOnlyTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
 function helpFor(name: string): CliCommandHelp | undefined {
@@ -316,6 +317,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         readFile,
         commandError,
         commandHelp,
+        traceStore: openReadOnlyTraceStore() ?? undefined,
       }),
   },
 };

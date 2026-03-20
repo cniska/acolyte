@@ -12,6 +12,7 @@ import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { createSoulPrompt } from "./soul";
+import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
 const OPENAI_API_KEY = appConfig.openai.apiKey;
 const OPENAI_BASE_URL = appConfig.openai.baseUrl;
@@ -53,8 +54,10 @@ export function logLifecycleDebugEntry(params: {
   eventTs: string;
   fields?: Record<string, unknown>;
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
+  traceStore?: TraceStore | null;
 }): void {
   const logInfo = params.logInfo ?? log.info;
+  const logFields = toLogFieldMap(params.fields);
   logInfo("agent debug", {
     request_id: params.requestId,
     task_id: params.taskId ?? null,
@@ -63,8 +66,27 @@ export function logLifecycleDebugEntry(params: {
     sequence: params.sequence,
     phase_attempt: params.phaseAttempt,
     event_ts: params.eventTs,
-    ...toLogFieldMap(params.fields),
+    ...logFields,
   });
+
+  const store = params.traceStore !== undefined ? params.traceStore : getDefaultTraceStore();
+  if (store) {
+    try {
+      store.write({
+        timestamp: params.eventTs,
+        taskId: params.taskId,
+        requestId: params.requestId,
+        sessionId: params.sessionId,
+        event: params.event,
+        sequence: params.sequence,
+        phaseAttempt: params.phaseAttempt,
+        eventTs: params.eventTs,
+        fields: logFields,
+      });
+    } catch {
+      // Don't let trace store failures affect the hot path.
+    }
+  }
 }
 
 function nextErrorId(): string {
