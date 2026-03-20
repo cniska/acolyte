@@ -16,6 +16,7 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 - Custom React terminal renderer with single input pipeline
 - Typed RPC protocol with task state machine
 - Lifecycle observability via `acolyte trace`
+- Structured JSON log format with configurable `logFormat`
 - Skills system with declarative SKILL.md standard
 - Multi-provider support (OpenAI, Anthropic, Google)
 
@@ -23,7 +24,6 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 
 Tracked in [GitHub Issues](https://github.com/cniska/acolyte/issues). Key priorities:
 
-- **Structured log format** — JSON log output for daemon (#34)
 - **Logs command** — CLI access to daemon logs (#32)
 - **Tool cache persistence** — SQLite-backed cross-task tool cache (#38)
 - **Trace event subscription** — real-time trace events over RPC (#45)

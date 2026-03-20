@@ -39,6 +39,26 @@ acolyte config set --project model openai-compatible/<model>
 - `locale`: active UI language (defaults to `en`).
 - Locale catalogs are loaded from `src/i18n/locales/*.json` at startup, with `en` fallback.
 
+## Logging
+
+- `logFormat`: log output format (`logfmt` | `json`, default: `logfmt`).
+
+`logfmt` emits one `key=value` line per entry:
+
+```
+2026-03-20T12:00:00.000Z level=info msg="request started" model=gpt-5-mini
+```
+
+`json` emits one JSON object per line with typed fields:
+
+```json
+{"ts":"2026-03-20T12:00:00.000Z","level":"info","msg":"request started","model":"gpt-5-mini"}
+```
+
+```bash
+acolyte config set logFormat json
+```
+
 ## Memory-related keys
 
 - `memoryBudgetTokens`: memory injection budget.
