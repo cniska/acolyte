@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
-import { t } from "./i18n";
 import { runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -17,7 +16,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
 
   return createTool({
     id: "run-command",
-    label: t("tool.label.run"),
+    labelKey: "run",
     category: "execute",
     permissions: ["execute"],
     description:
@@ -43,7 +42,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
         async (callId) => {
           input.onOutput({
             toolName: "run-command",
-            content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
+            content: { kind: "tool-header", labelKey: "run", detail: compactDetail(toolInput.command) },
             toolCallId: callId,
           });
           const headRows = 2;

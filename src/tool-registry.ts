@@ -76,7 +76,7 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
   const byId: Record<string, AnyToolDefinition> = {};
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
-    invariant(typeof tool.label === "string" && tool.label.trim().length > 0, `tool ${tool.id} missing label`);
+    invariant(typeof tool.labelKey === "string" && tool.labelKey.trim().length > 0, `tool ${tool.id} missing labelKey`);
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
     invariant(
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,

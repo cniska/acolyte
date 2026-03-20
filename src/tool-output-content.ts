@@ -7,27 +7,27 @@ export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
 export const toolOutputPartSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("tool-header"),
-    label: z.string().trim().min(1),
+    labelKey: z.string().trim().min(1),
     detail: z.string().optional(),
   }),
   z.object({ kind: z.literal("text"), text: z.string().trim().min(1) }),
   z.object({
     kind: z.literal("file-header"),
-    label: z.string().trim().min(1),
+    labelKey: z.string().trim().min(1),
     count: z.number().int().nonnegative(),
     targets: z.array(z.string().trim().min(1)),
     omitted: z.number().int().nonnegative().optional(),
   }),
   z.object({
     kind: z.literal("scope-header"),
-    label: z.string().trim().min(1),
+    labelKey: z.string().trim().min(1),
     scope: z.string().trim().min(1),
     patterns: z.array(z.string()),
     matches: z.number().int().nonnegative(),
   }),
   z.object({
     kind: z.literal("edit-header"),
-    label: z.string().trim().min(1),
+    labelKey: z.string().trim().min(1),
     path: z.string().trim().min(1),
     files: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
@@ -54,25 +54,34 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
 
 export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
 
+export function toolLabel(labelKey: string): string {
+  type NoParamKey = "tool.label.create";
+  return t(`tool.label.${labelKey}` as NoParamKey);
+}
+
 export function renderToolOutputPart(content: ToolOutputPart): string {
   switch (content.kind) {
-    case "tool-header":
-      return content.detail ? `${content.label} ${content.detail}` : content.label;
+    case "tool-header": {
+      const label = toolLabel(content.labelKey);
+      return content.detail ? `${label} ${content.detail}` : label;
+    }
     case "text":
       return content.text;
     case "file-header": {
+      const label = toolLabel(content.labelKey);
       const shown = content.targets.join(", ");
       const omitted = content.omitted && content.omitted > 0 ? `, +${content.omitted}` : "";
-      return `${content.label} ${shown}${omitted}`;
+      return `${label} ${shown}${omitted}`;
     }
     case "scope-header": {
+      const label = toolLabel(content.labelKey);
       const needsBrackets = content.scope !== "workspace";
       const patternsDisplay = needsBrackets ? `[${content.patterns.join(", ")}]` : content.patterns.join(", ");
       const scopePrefix = content.scope === "workspace" ? "" : `${content.scope} `;
-      return `${content.label} ${scopePrefix}${patternsDisplay}`;
+      return `${label} ${scopePrefix}${patternsDisplay}`;
     }
     case "edit-header":
-      return `${content.label} ${content.path} (+${content.added} -${content.removed})`;
+      return `${toolLabel(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
     case "diff": {
       const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
       return `${content.lineNumber} ${prefix}${content.text}`;
@@ -152,7 +161,9 @@ export function createToolOutputState(): {
       contentByCallId.set(entry.toolCallId, items);
       const firstItem = items[0];
       const label =
-        firstItem && "label" in firstItem && typeof firstItem.label === "string" ? firstItem.label : undefined;
+        firstItem && "labelKey" in firstItem && typeof firstItem.labelKey === "string"
+          ? toolLabel(firstItem.labelKey)
+          : undefined;
       return { label, items };
     },
     delete(toolCallId) {

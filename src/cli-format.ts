@@ -3,7 +3,7 @@ import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { t } from "./i18n";
-import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
+import { formatToolOutput, type ToolOutputPart, toolLabel } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
@@ -23,9 +23,9 @@ export function printIndentedDim(content: string): void {
 }
 
 export function printToolResult(toolId: string, raw: string, detail?: string): void {
-  const toolLabel = toolDefinitionsById[toolId]?.label ?? toolId;
+  const labelKey = toolDefinitionsById[toolId]?.labelKey ?? toolId;
   const content = formatForTool(toolId, raw);
-  const items: ToolOutputPart[] = [{ kind: "tool-header", label: toolLabel, detail }];
+  const items: ToolOutputPart[] = [{ kind: "tool-header", labelKey, detail }];
   if (content.length === 0) {
     items.push({ kind: "no-output" });
   } else {
@@ -36,7 +36,7 @@ export function printToolResult(toolId: string, raw: string, detail?: string): v
   }
   const rendered = formatToolOutput(items);
   const lines = rendered.split("\n");
-  if (lines[0]) printToolHeader(toolLabel, detail);
+  if (lines[0]) printToolHeader(toolLabel(labelKey), detail);
   for (const line of lines.slice(1)) {
     printDim(line);
   }

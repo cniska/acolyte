@@ -1,7 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { deleteTextFile, editFile, findFiles, readSnippets, searchFiles, writeTextFile } from "./file-ops";
-import { t } from "./i18n";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -57,7 +56,7 @@ function normalizeReadEntries(paths: ReadPathInput[]): NormalizedReadEntry[] {
 function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "find-files",
-    label: t("tool.label.find"),
+    labelKey: "find",
     category: "search",
     permissions: ["read"],
     description:
@@ -90,7 +89,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitFindSummary(
           paths,
           toolInput.patterns,
-          t("tool.label.find"),
+          "find",
           input.onOutput,
           callId,
           TOOL_OUTPUT_LIMITS.files,
@@ -112,7 +111,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "search-files",
-    label: t("tool.label.search"),
+    labelKey: "search",
     category: "search",
     permissions: ["read"],
     description:
@@ -163,7 +162,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           summaryEntries,
           patterns,
           toolInput.paths,
-          t("tool.label.search"),
+          "search",
           input.onOutput,
           callId,
           TOOL_OUTPUT_LIMITS.files,
@@ -185,7 +184,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "read-file",
-    label: t("tool.label.read"),
+    labelKey: "read",
     category: "read",
     permissions: ["read"],
     description:
@@ -229,7 +228,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolName: "read-file",
             content: {
               kind: "file-header",
-              label: t("tool.label.read"),
+              labelKey: "read",
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -253,7 +252,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-file",
-    label: t("tool.label.edit"),
+    labelKey: "edit",
     onOutput: input.onOutput,
   });
   const outputSchema = z.object({
@@ -266,7 +265,7 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
   return createTool({
     id: "edit-file",
-    label: t("tool.label.edit"),
+    labelKey: "edit",
     category: "write",
     permissions: ["read", "write"],
     description:
@@ -326,12 +325,12 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "create-file",
-    label: t("tool.label.create"),
+    labelKey: "create",
     onOutput: input.onOutput,
   });
   return createTool({
     id: "create-file",
-    label: t("tool.label.create"),
+    labelKey: "create",
     category: "write",
     permissions: ["write"],
     description:
@@ -378,7 +377,7 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "delete-file",
-    label: t("tool.label.delete"),
+    labelKey: "delete",
     category: "write",
     permissions: ["write"],
     description: "Delete a file from the repository.",
@@ -399,7 +398,7 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         const deleteDetail = paths.length > 0 ? formatDeletePaths(paths) : undefined;
         input.onOutput({
           toolName: "delete-file",
-          content: { kind: "tool-header", label: t("tool.label.delete"), detail: deleteDetail },
+          content: { kind: "tool-header", labelKey: "delete", detail: deleteDetail },
           toolCallId: callId,
         });
         const resultParts: string[] = [];

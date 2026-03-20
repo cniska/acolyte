@@ -38,6 +38,7 @@ export type ToolCallEntry = {
 export type GenerateResult = {
   text: string;
   toolCalls: ToolCallEntry[];
+  outputKey?: string;
   signal?: LifecycleSignal;
 };
 

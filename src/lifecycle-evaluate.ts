@@ -1,5 +1,4 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
-import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
   type Evaluator,
@@ -69,7 +68,8 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       });
       if (!ctx.result.text.trim()) {
         ctx.result = {
-          text: t("lifecycle.stopped_unknown_errors"),
+          text: "",
+          outputKey: "lifecycle.stopped_unknown_errors",
           toolCalls: [],
         };
       }
