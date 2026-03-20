@@ -172,4 +172,10 @@ describe("traceMode", () => {
     await traceMode([], deps);
     expect(output()).toContain("No tasks");
   });
+
+  test("missing store prints no trace data message", async () => {
+    const { deps, output } = createDeps({ traceStore: undefined });
+    await traceMode([], deps);
+    expect(output()).toContain("No trace data available");
+  });
 });

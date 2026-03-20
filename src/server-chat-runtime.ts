@@ -80,7 +80,6 @@ export function logLifecycleDebugEntry(params: {
         event: params.event,
         sequence: params.sequence,
         phaseAttempt: params.phaseAttempt,
-        eventTs: params.eventTs,
         fields: logFields,
       });
     } catch {

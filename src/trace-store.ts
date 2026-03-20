@@ -1,8 +1,18 @@
 import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { LogLine, TaskSummary } from "./log-parser";
+
+const PROMOTED_COLUMNS = new Set([
+  "event",
+  "task_id",
+  "request_id",
+  "session_id",
+  "sequence",
+  "phase_attempt",
+  "event_ts",
+]);
 
 export type TraceEntry = {
   timestamp: string;
@@ -12,7 +22,6 @@ export type TraceEntry = {
   event?: string;
   sequence?: number;
   phaseAttempt?: number;
-  eventTs?: string;
   fields: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -34,7 +43,6 @@ function initSchema(db: Database): void {
       event TEXT,
       sequence INTEGER,
       phase_attempt INTEGER,
-      event_ts TEXT,
       fields_json TEXT NOT NULL DEFAULT '{}'
     )
   `);
@@ -43,7 +51,6 @@ function initSchema(db: Database): void {
 }
 
 type TraceRow = {
-  id: number;
   timestamp: string;
   task_id: string | null;
   request_id: string | null;
@@ -51,7 +58,6 @@ type TraceRow = {
   event: string | null;
   sequence: number | null;
   phase_attempt: number | null;
-  event_ts: string | null;
   fields_json: string;
 };
 
@@ -72,7 +78,6 @@ function rowToLogLine(row: TraceRow): LogLine {
   if (row.session_id) fields.session_id = row.session_id;
   if (row.sequence != null) fields.sequence = String(row.sequence);
   if (row.phase_attempt != null) fields.phase_attempt = String(row.phase_attempt);
-  if (row.event_ts) fields.event_ts = row.event_ts;
   return {
     raw: "",
     timestamp: row.timestamp,
@@ -92,13 +97,15 @@ type TaskRow = {
 function fieldsToJson(fields: Record<string, string | number | boolean | null | undefined>): string {
   const clean: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
-    if (value !== undefined) clean[key] = value;
+    if (value !== undefined && !PROMOTED_COLUMNS.has(key)) clean[key] = value;
   }
   return JSON.stringify(clean);
 }
 
+const SELECT_COLUMNS = "timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json";
+
 export function createTraceStore(dbPath?: string): TraceStore {
-  const resolvedPath = dbPath ?? join(homedir(), ".acolyte", "trace.db");
+  const resolvedPath = dbPath ?? defaultTraceDbPath();
   mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
@@ -106,29 +113,21 @@ export function createTraceStore(dbPath?: string): TraceStore {
 
   const writeStmt = db.prepare<
     void,
-    [
-      string,
-      string | null,
-      string | null,
-      string | null,
-      string | null,
-      number | null,
-      number | null,
-      string | null,
-      string,
-    ]
+    [string, string | null, string | null, string | null, string | null, number | null, number | null, string]
   >(
-    `INSERT INTO trace_events (timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, event_ts, fields_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO trace_events (timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
-  const listByTaskStmt = db.prepare<TraceRow, [string]>("SELECT * FROM trace_events WHERE task_id = ? ORDER BY id ASC");
+  const listByTaskStmt = db.prepare<TraceRow, [string]>(
+    `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`,
+  );
 
   const listTasksStmt = db.prepare<TaskRow, [number]>(`
     SELECT
       e.task_id,
       MIN(e.timestamp) AS timestamp,
-      (SELECT e2.fields_json FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
+      (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
       MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error
     FROM trace_events e
     WHERE e.task_id IS NOT NULL
@@ -147,29 +146,56 @@ export function createTraceStore(dbPath?: string): TraceStore {
         entry.event ?? null,
         entry.sequence ?? null,
         entry.phaseAttempt ?? null,
-        entry.eventTs ?? null,
         fieldsToJson(entry.fields),
       );
     },
     listTasks(limit) {
-      return listTasksStmt.all(limit).map((row) => {
-        let model: string | undefined;
-        if (row.model) {
-          try {
-            const parsed = JSON.parse(row.model) as Record<string, unknown>;
-            model = parsed.model != null ? String(parsed.model) : undefined;
-          } catch {
-            // Ignore malformed JSON.
-          }
-        }
-        return {
-          taskId: row.task_id,
-          timestamp: row.timestamp,
-          model,
-          event: undefined,
-          hasError: row.has_error === 1,
-        };
-      });
+      return listTasksStmt.all(limit).map((row) => ({
+        taskId: row.task_id,
+        timestamp: row.timestamp,
+        model: row.model ?? undefined,
+        event: undefined,
+        hasError: row.has_error === 1,
+      }));
+    },
+    listByTaskId(taskId) {
+      return listByTaskStmt.all(taskId).map(rowToLogLine);
+    },
+    close() {
+      db.close();
+    },
+  };
+}
+
+function openReadOnly(dbPath: string): TraceStore | null {
+  const db = new Database(dbPath, { readonly: true });
+  const listByTaskStmt = db.prepare<TraceRow, [string]>(
+    `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`,
+  );
+  const listTasksStmt = db.prepare<TaskRow, [number]>(`
+    SELECT
+      e.task_id,
+      MIN(e.timestamp) AS timestamp,
+      (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
+      MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error
+    FROM trace_events e
+    WHERE e.task_id IS NOT NULL
+    GROUP BY e.task_id
+    ORDER BY MIN(e.timestamp) DESC
+    LIMIT ?
+  `);
+  return {
+    write() {
+      // Read-only store — writes are silently dropped.
+    },
+    listTasks(limit) {
+      return listTasksStmt.all(limit).map((row) => ({
+        taskId: row.task_id,
+        timestamp: row.timestamp,
+        model: row.model ?? undefined,
+        event: undefined,
+        hasError: row.has_error === 1,
+      }));
     },
     listByTaskId(taskId) {
       return listByTaskStmt.all(taskId).map(rowToLogLine);
@@ -200,11 +226,10 @@ export function defaultTraceDbPath(): string {
   return join(homedir(), ".acolyte", "trace.db");
 }
 
-export function openReadOnlyTraceStore(dbPath?: string): TraceStore | null {
+export function openTraceStore(dbPath?: string): TraceStore | null {
   const resolvedPath = dbPath ?? defaultTraceDbPath();
-  if (!existsSync(resolvedPath)) return null;
   try {
-    return createTraceStore(resolvedPath);
+    return openReadOnly(resolvedPath);
   } catch {
     return null;
   }

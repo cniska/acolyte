@@ -20,7 +20,6 @@ function entry(overrides: Partial<TraceEntry> = {}): TraceEntry {
     event: overrides.event ?? "lifecycle.start",
     sequence: overrides.sequence ?? 1,
     phaseAttempt: overrides.phaseAttempt ?? 0,
-    eventTs: overrides.eventTs ?? "2026-03-20T10:00:00.000Z",
     fields: overrides.fields ?? { model: "gpt-5-mini", mode: "work" },
   };
 }

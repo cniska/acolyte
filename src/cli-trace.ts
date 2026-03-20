@@ -8,7 +8,7 @@ import type { TraceStore } from "./trace-store";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
-  traceStore: TraceStore;
+  traceStore?: TraceStore;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   commandError: (name: string, message?: string) => void;
@@ -155,10 +155,15 @@ function parseTaskIdsArg(value: string | undefined): string[] {
 }
 
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
-  const { hasHelpFlag, traceStore, printDim, commandHelp, commandError } = deps;
+  const { hasHelpFlag, traceStore, printDim, printError, commandHelp, commandError } = deps;
 
   if (hasHelpFlag(args)) {
     commandHelp("trace");
+    return;
+  }
+
+  if (!traceStore) {
+    printError(t("cli.trace.no_store"));
     return;
   }
 
