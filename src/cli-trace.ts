@@ -47,6 +47,7 @@ const traceEventSchema = z.enum([
   "lifecycle.eval.lint",
   "lifecycle.eval.guard_recovery",
   "lifecycle.eval.repeated_failure",
+  "lifecycle.eval.verify_cycle",
   "lifecycle.eval.verify_failure",
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
@@ -94,6 +95,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.lint": ["files"],
   "lifecycle.eval.guard_recovery": ["mode"],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
+  "lifecycle.eval.verify_cycle": ["used_write_tools", "verified", "verify_scope"],
   "lifecycle.eval.verify_failure": ["text_chars"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
@@ -161,7 +163,6 @@ function traceByTask(lines: LogLine[], taskIds: string[], out: CliOutput, print:
       continue;
     }
     if (i > 0) out.addSeparator();
-    out.addHeader(`task_id=${taskId}`);
     for (const line of selected) out.addRow(traceRowData(line));
   }
 }
@@ -215,10 +216,14 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const lines = parseLog(raw);
 
   if (subcommand === "task") {
-    const taskIds = parseTaskIdsArg(subcommandArg);
+    let taskIds = parseTaskIdsArg(subcommandArg);
     if (taskIds.length === 0) {
-      commandError("trace", t("cli.trace.missing_task_id"));
-      return;
+      const latest = listTasks(lines)[0];
+      if (!latest) {
+        printDim(t("cli.trace.no_tasks"));
+        return;
+      }
+      taskIds = [latest.taskId];
     }
     traceByTask(lines, taskIds, out, printDim);
   } else if (!subcommand || subcommand === "list") {

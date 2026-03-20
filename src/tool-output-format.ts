@@ -1,4 +1,5 @@
 import { isAbsolute, relative } from "node:path";
+import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
@@ -17,9 +18,6 @@ export const TOOL_OUTPUT_LIMITS = {
   diff: 64,
   status: 6,
 } as const;
-
-const NUMBERED_DIFF_PREVIEW_MAX_LINES = 160;
-const NUMBERED_DIFF_SOURCE_MAX_LINES = NUMBERED_DIFF_PREVIEW_MAX_LINES * 2;
 
 export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
   let files = 0;
@@ -49,9 +47,10 @@ export function createDiffSummaryEmitter<TToolName extends string>(input: {
   return (path, rawResult, toolCallId) => {
     const { files, added, removed } = summarizeUnifiedDiff(rawResult);
     const touchedFiles = files > 0 ? files : 1;
+    const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
     onOutput({
       toolName,
-      content: { kind: "edit-header", label, path, files: touchedFiles, added, removed },
+      content: { kind: "edit-header", label, path: displayPath, files: touchedFiles, added, removed },
       toolCallId,
     });
   };
@@ -396,27 +395,50 @@ export function emitSearchSummary(
     });
 }
 
-function unifiedDiffLines(rawResult: string, maxLines = 120): string[] {
-  const marker = "\ndiff --git ";
-  const index = rawResult.indexOf(marker);
-  const start = index >= 0 ? index + 1 : rawResult.indexOf("diff --git ");
+function unifiedDiffLines(rawResult: string): string[] {
+  const start = rawResult.indexOf("diff --git ");
   if (start < 0) return [];
-  const lines = rawResult
+  return rawResult
     .slice(start)
     .split("\n")
     .map((line) => line.trimEnd());
-  if (lines.length > maxLines) return lines.slice(0, maxLines);
-  return lines;
 }
 
 export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
-  const lines = unifiedDiffLines(rawResult, NUMBERED_DIFF_SOURCE_MAX_LINES);
+  const lines = unifiedDiffLines(rawResult);
   if (lines.length === 0) return [];
   const rendered: ToolOutputPart[] = [];
   let oldLine = 0;
   let newLine = 0;
   let inHunk = false;
+  let fileCount = 0;
+  let pendingFilePath: string | null = null;
+  let fileParts: ToolOutputPart[] = [];
+  let fileAdded = 0;
+  let fileRemoved = 0;
+
+  const flushFile = (): void => {
+    if (!pendingFilePath || (fileAdded === 0 && fileRemoved === 0)) {
+      fileParts = [];
+      return;
+    }
+    rendered.push({ kind: "text", text: `${pendingFilePath} (+${fileAdded} -${fileRemoved})` });
+    for (const part of fileParts) rendered.push(part);
+    fileParts = [];
+  };
+
   for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      flushFile();
+      fileCount += 1;
+      inHunk = false;
+      fileAdded = 0;
+      fileRemoved = 0;
+      const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
+      pendingFilePath = pathMatch?.[1] ?? line.slice("diff --git ".length);
+      continue;
+    }
+    if (line.startsWith("--- ") || line.startsWith("+++ ")) continue;
     if (line.startsWith("@@")) {
       const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
       if (match) {
@@ -426,74 +448,26 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
       }
       continue;
     }
-    if (!inHunk || line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ")) continue;
+    if (!inHunk) continue;
     if (line.startsWith("+")) {
-      rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
+      fileAdded += 1;
       newLine += 1;
       continue;
     }
     if (line.startsWith("-")) {
-      rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
+      fileRemoved += 1;
       oldLine += 1;
       continue;
     }
     if (line.startsWith(" ")) {
-      rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
+      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
       oldLine += 1;
       newLine += 1;
     }
   }
-  if (rendered.length === 0) {
-    oldLine = 1;
-    newLine = 1;
-    for (const line of lines) {
-      if (line.startsWith("diff --git ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@"))
-        continue;
-      if (line.startsWith("+")) {
-        rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
-        newLine += 1;
-        continue;
-      }
-      if (line.startsWith("-")) {
-        rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
-        oldLine += 1;
-        continue;
-      }
-      if (line.startsWith(" ")) {
-        rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
-        oldLine += 1;
-        newLine += 1;
-      }
-    }
-  }
-  if (rendered.length === 0) return [];
-  const contextRadius = 3;
-  const isChange = rendered.map((line) => line.kind === "diff" && line.marker !== "context");
-  const keep = new Uint8Array(rendered.length);
-  for (let i = 0; i < rendered.length; i++) {
-    if (!isChange[i]) continue;
-    for (let j = Math.max(0, i - contextRadius); j <= Math.min(rendered.length - 1, i + contextRadius); j++) {
-      keep[j] = 1;
-    }
-  }
-  const filteredOutput: ToolOutputPart[] = [];
-  let skippedCount = 0;
-  for (let i = 0; i < rendered.length; i++) {
-    if (keep[i]) {
-      if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-      skippedCount = 0;
-      filteredOutput.push(rendered[i] as ToolOutputPart);
-    } else {
-      skippedCount += 1;
-    }
-  }
-  if (skippedCount > 0) filteredOutput.push({ kind: "truncated", count: skippedCount, unit: "lines" });
-  if (filteredOutput.length > NUMBERED_DIFF_PREVIEW_MAX_LINES) {
-    const omitted = filteredOutput.length - NUMBERED_DIFF_PREVIEW_MAX_LINES;
-    return [
-      ...filteredOutput.slice(0, NUMBERED_DIFF_PREVIEW_MAX_LINES),
-      { kind: "truncated", count: omitted, unit: "lines" },
-    ];
-  }
-  return filteredOutput;
+  flushFile();
+  // Strip per-file headers for single-file diffs — the caller's edit-header covers it.
+  return fileCount <= 1 ? rendered.filter((part) => part.kind !== "text") : rendered;
 }

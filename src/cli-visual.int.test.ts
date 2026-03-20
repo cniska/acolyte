@@ -489,7 +489,6 @@ describe("cli visual regression", () => {
       const out = await run(["trace", "task", "task_abc"]);
       expect(out).toBe(
         dedent(`
-          task_id=task_abc
           timestamp=2026-03-19T10:00:00Z task_id=task_abc event=lifecycle.start mode=work model=gpt-5-mini
           timestamp=2026-03-19T10:00:01Z task_id=task_abc event=lifecycle.tool.call tool=read-file path=src/cli.ts
           timestamp=2026-03-19T10:00:03Z task_id=task_abc event=lifecycle.summary model_calls=1 total_tool_calls=1 read=1 search=0 write=0 pre_write_discovery=0 regenerations=0 guard_blocked=0 guard_flag_set=0 has_error=false

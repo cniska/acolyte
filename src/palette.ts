@@ -5,8 +5,7 @@ export const palette = {
   mascotEyes: "#FFD84D",
 
   // Text
-  textCode: "#B7C0CC",
-  textPath: "#A8B1BC",
+  textCode: "#D4B3FF",
   textMuted: "#6B7280",
 
   // Diff

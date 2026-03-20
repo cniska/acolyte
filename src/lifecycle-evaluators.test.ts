@@ -4,13 +4,13 @@ import {
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyCycle,
+  verifyEvaluator,
 } from "./lifecycle-evaluators";
 import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
-describe("verifyCycle", () => {
+describe("verifyEvaluator", () => {
   test("returns regenerate when write tools used without verify", () => {
     const session = createSessionContext("task_new");
     session.callLog = [
@@ -33,7 +33,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "edit-file"]),
     });
-    const action = verifyCycle.evaluate(ctx);
+    const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
@@ -54,7 +54,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    const action = verifyCycle.evaluate(ctx);
+    const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
@@ -69,7 +69,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    const action = verifyCycle.evaluate(ctx);
+    const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
   });
@@ -84,7 +84,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when verify already ran", () => {
@@ -97,7 +97,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no write tools used", () => {
@@ -106,12 +106,12 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no result", () => {
     const ctx = createRunContext({ result: undefined });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns regenerate to work mode when verify reports issues", () => {
@@ -132,7 +132,7 @@ describe("verifyCycle", () => {
       },
       observedTools: new Set(["scan-code"]),
     });
-    const action = verifyCycle.evaluate(ctx);
+    const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("work");
@@ -150,7 +150,7 @@ describe("verifyCycle", () => {
       session,
       result: { text: "", toolCalls: [] },
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("ignores restored work result when verify outcome is missing", () => {
@@ -165,7 +165,7 @@ describe("verifyCycle", () => {
       result: { text: "Done.", toolCalls: [] },
       lifecycleState: { feedback: [], verifyOutcome: undefined },
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done for explicit no-issue verification summaries", () => {
@@ -178,7 +178,7 @@ describe("verifyCycle", () => {
       session,
       result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
-    expect(verifyCycle.evaluate(ctx).type).toBe("done");
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 

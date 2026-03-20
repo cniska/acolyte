@@ -450,7 +450,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     regenerationCount: 0,
     regenerationLimitHit: false,
     errorStats: createErrorStats(),
-    nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
     ...overrides,

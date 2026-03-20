@@ -1,6 +1,7 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
+import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -114,10 +115,15 @@ export function createModeAgent(input: {
   model: string;
   tools: Toolset;
 }): Agent {
+  const allowedTools = new Set(agentModes[input.mode].tools);
+  const filteredTools: Record<string, ToolDefinition> = {};
+  for (const [key, tool] of Object.entries(input.tools as Record<string, ToolDefinition>)) {
+    if (allowedTools.has(tool.id)) filteredTools[key] = tool;
+  }
   return createAgent({
     model: input.model,
     instructions: createInstructions(input.soulPrompt, input.mode, input.workspace),
-    tools: input.tools as Record<string, ToolDefinition>,
+    tools: filteredTools,
   });
 }
 
@@ -393,13 +399,6 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
         });
         ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
-        let queue = ctx.nativeIdQueue.get(toolName);
-        if (!queue) {
-          queue = [];
-          ctx.nativeIdQueue.set(toolName, queue);
-        }
-        queue.push(p.toolCallId);
-
         ctx.emit({ type: "tool-call", toolCallId: p.toolCallId, toolName, args });
       }
       break;
@@ -409,8 +408,6 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
       if (p?.toolCallId && p?.toolName) {
         const toolName = p.toolName;
         const started = ctx.toolCallStartedAt.get(p.toolCallId);
-        const queue = ctx.nativeIdQueue.get(toolName);
-        if (queue?.[queue.length - 1] === p.toolCallId) queue.pop();
         const resultRecord =
           typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
         const isError = Boolean(resultRecord && "error" in resultRecord);

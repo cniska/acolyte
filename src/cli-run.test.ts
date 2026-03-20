@@ -82,7 +82,7 @@ describe("cli-run", () => {
     expect(tokenLine).toContain("3 calls");
   });
 
-  test("runMode disables verifier for single-shot runs", async () => {
+  test("runMode does not disable verifier", async () => {
     const { deps } = createRunDeps();
     let seenOptions: { resourceId?: string; workspace?: string; verifyScope?: string } | undefined;
     deps.handlePrompt = async (_prompt, _session, _client, options) => {
@@ -92,6 +92,6 @@ describe("cli-run", () => {
 
     await runMode(["do something"], deps);
 
-    expect(seenOptions?.verifyScope).toBe("none");
+    expect(seenOptions?.verifyScope).toBeUndefined();
   });
 });

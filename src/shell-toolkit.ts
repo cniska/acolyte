@@ -34,16 +34,17 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
+    execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
         "run-command",
+        toolCallId,
         toolInput,
-        async (toolCallId) => {
+        async (callId) => {
           input.onOutput({
             toolName: "run-command",
             content: { kind: "tool-header", label: t("tool.label.run"), detail: compactDetail(toolInput.command) },
-            toolCallId,
+            toolCallId: callId,
           });
           const headRows = 2;
           const tailRows = 2;
@@ -97,7 +98,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
             input.onOutput({
               toolName: "run-command",
               content: { kind: "shell-output", stream: entry.stream, text: entry.text },
-              toolCallId,
+              toolCallId: callId,
             });
           };
           if (streamed.length > headRows + tailRows) {
@@ -106,11 +107,11 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
             input.onOutput({
               toolName: "run-command",
               content: { kind: "truncated", count: omitted, unit: "lines" },
-              toolCallId,
+              toolCallId: callId,
             });
             for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
           } else if (streamed.length === 0) {
-            input.onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId });
+            input.onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId: callId });
           } else {
             for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
           }

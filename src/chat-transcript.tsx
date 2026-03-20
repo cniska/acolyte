@@ -105,11 +105,23 @@ function renderToolPart(
     );
   }
   const text = renderToolOutputText(part);
-  if (part.kind === "truncated" && lineNumWidth > 0) {
+  if (lineNumWidth > 0) {
+    if (part.kind === "text") {
+      return (
+        <Text key={`tool-${index}`}>
+          {"\n  "}
+          <Text dimColor>{text}</Text>
+        </Text>
+      );
+    }
+    const display =
+      part.kind === "truncated"
+        ? `${"…".padStart(lineNumWidth)}  ${text.slice(2)}`
+        : `${" ".repeat(lineNumWidth + 2)}${text}`;
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{` ${"…".padStart(lineNumWidth)}  ${text.slice(2)}`}</Text>
+        <Text dimColor>{` ${display}`}</Text>
       </Text>
     );
   }
@@ -123,14 +135,46 @@ function renderToolPart(
 
 function renderHeader(part: ToolOutputPart): React.ReactNode {
   if (part.kind === "edit-header") {
+    const path = part.path === "." ? "" : part.path;
     return (
       <>
-        <Text bold>{part.label} </Text>
-        <Text dimColor>{part.path} (</Text>
+        <Text bold>{part.label}</Text>
+        <Text dimColor>{path ? ` ${path}` : ""} (</Text>
         <Text color={palette.diffAddText}>{`+${part.added}`}</Text>
         <Text dimColor> </Text>
         <Text color={palette.diffRemoveText}>{`-${part.removed}`}</Text>
         <Text dimColor>)</Text>
+      </>
+    );
+  }
+  if (part.kind === "tool-header") {
+    const detail = part.detail === "." ? undefined : part.detail;
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        {detail ? <Text dimColor>{` ${detail}`}</Text> : null}
+      </>
+    );
+  }
+  if (part.kind === "file-header") {
+    const targets = part.targets.filter((t) => t !== ".");
+    const shown = targets.join(", ");
+    const omitted = part.omitted && part.omitted > 0 ? `, +${part.omitted}` : "";
+    const detail = shown ? ` ${shown}${omitted}` : omitted ? ` ${omitted.slice(2)}` : "";
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        {detail ? <Text dimColor>{detail}</Text> : null}
+      </>
+    );
+  }
+  if (part.kind === "scope-header") {
+    const display =
+      part.scope === "workspace" ? part.patterns.join(", ") : `${part.scope} [${part.patterns.join(", ")}]`;
+    return (
+      <>
+        <Text bold>{part.label}</Text>
+        <Text dimColor>{` ${display}`}</Text>
       </>
     );
   }
@@ -197,8 +241,6 @@ type ChatTranscriptProps = {
   runningUsage?: { inputTokens: number; outputTokens: number } | null;
 };
 
-const MAX_TRANSCRIPT_WIDTH = 120;
-
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, pendingState, pendingFrame, pendingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
@@ -234,8 +276,8 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     return "";
   })();
   const columns = process.stdout.columns ?? 120;
-  const contentWidth = Math.max(24, Math.min(MAX_TRANSCRIPT_WIDTH, columns - 2));
-  const toolContentWidth = Math.max(24, columns - 2);
+  const contentWidth = Math.max(24, columns - 2);
+  const toolContentWidth = contentWidth;
   return (
     <>
       {hasContent ? <Text> </Text> : null}

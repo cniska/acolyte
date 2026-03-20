@@ -43,6 +43,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Trust type signatures; do not add impossible null/undefined guards unless the declared types allow them.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
+      "Do not run verify, test, or build commands — the lifecycle verify phase handles verification automatically after your edits.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
     ],
   },

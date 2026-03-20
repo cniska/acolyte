@@ -5,3 +5,4 @@ node_modules/
 .superset/
 coverage/
 Library/
+scripts/demo.sh

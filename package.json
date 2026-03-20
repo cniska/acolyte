@@ -26,7 +26,8 @@
     "test:tui": "bash scripts/run-test-suite.sh tui",
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
-    "verify": "bun run lint && bun run typecheck && bun test",
+    "audit": "bun audit",
+    "verify": "bun run lint && bun run typecheck && bun test && bun run audit",
     "benchmark": "bun run scripts/benchmark.ts",
     "release": "bash scripts/release.sh"
   },

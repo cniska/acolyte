@@ -7,7 +7,7 @@ import {
   lintEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyCycle,
+  verifyEvaluator,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
@@ -17,7 +17,7 @@ const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
   lintEvaluator,
-  verifyCycle,
+  verifyEvaluator,
   repeatedFailureEvaluator,
 ];
 
@@ -51,7 +51,6 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
         mode: ctx.mode,
         tool_calls: ctx.result.toolCalls.length,
       });
-      break;
     }
     updateRepeatedFailureState(ctx);
 

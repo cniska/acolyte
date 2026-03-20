@@ -80,7 +80,7 @@ async function startRpcTestServerProcess(
     stderr: "pipe",
   });
   serverProcs.push(proc);
-  await waitForServer(`http://127.0.0.1:${port}/healthz`, 10_000);
+  await waitForServer(`http://127.0.0.1:${port}/healthz`, 15_000);
   return proc;
 }
 

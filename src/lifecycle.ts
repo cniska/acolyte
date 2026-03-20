@@ -131,7 +131,6 @@ function createRunContext(
     regenerationCount: 0,
     regenerationLimitHit: false,
     errorStats: createErrorStats(),
-    nativeIdQueue: new Map(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
   };
@@ -151,12 +150,9 @@ function attachToolOutputHandler(ctx: RunContext) {
     const rendered = renderToolOutputPart(event.content);
     if (!rendered.trim()) return;
     const toolName = event.toolName;
-    const queue = ctx.nativeIdQueue.get(toolName);
-    const resolvedToolCallId = queue?.[queue.length - 1] ?? event.toolCallId ?? toolName;
+    const resolvedToolCallId = event.toolCallId ?? toolName;
     ctx.debug("lifecycle.tool.output", {
       tool: toolName,
-      stream_tool_call_id: event.toolCallId ?? null,
-      emitted_tool_call_id: resolvedToolCallId,
       preview: rendered.length > 120 ? `${rendered.slice(0, 119)}…` : rendered,
     });
     ctx.emit({

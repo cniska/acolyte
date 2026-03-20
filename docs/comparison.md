@@ -149,12 +149,11 @@ Every lifecycle event emits structured debug logs describing:
 The `acolyte trace` command converts daemon logs into timelines:
 
 ```
-task_id=task_abc123
-2026-03-10T10:00:01 lifecycle.tool.call tool=edit-file path=src/foo.ts
-2026-03-10T10:00:02 lifecycle.tool.result tool=edit-file duration_ms=45 is_error=false
-2026-03-10T10:00:02 lifecycle.guard guard=file-churn tool=read-file action=blocked
-2026-03-10T10:00:03 lifecycle.eval.decision evaluator=verifyCycle action=regenerate
-2026-03-10T10:00:05 lifecycle.summary model_calls=2 total_tool_calls=8 guard_blocked=1
+timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=edit-file path=src/foo.ts
+timestamp=... task_id=task_abc123 event=lifecycle.tool.result tool=edit-file duration_ms=45 is_error=false
+timestamp=... task_id=task_abc123 event=lifecycle.guard guard=file-churn tool=read-file action=blocked
+timestamp=... task_id=task_abc123 event=lifecycle.eval.decision evaluator=verify-cycle action=regenerate
+timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=2 read=3 search=1 write=1 guard_blocked=1
 ```
 
 These traces allow developers to debug agent behavior step-by-step.

@@ -49,7 +49,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "scan-code",
-    label: t("tool.label.review"),
+    label: t("tool.label.scan"),
     category: "search",
     permissions: ["read"],
     description:
@@ -74,8 +74,8 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       patterns: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    execute: async (toolInput) => {
-      return runTool(input.session, "scan-code", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "scan-code", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
         if (unique.length > 0) {
@@ -85,12 +85,12 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolName: "scan-code",
             content: {
               kind: "file-header",
-              label: t("tool.label.review"),
+              label: t("tool.label.scan"),
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
             },
-            toolCallId,
+            toolCallId: callId,
           });
         }
         const baseBudget = deps.outputBudget.scanCode;
@@ -136,7 +136,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     category: "write",
     permissions: ["read", "write"],
     description:
-      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` must be a specific file, not \'.\' or a directory. For non-code files use `edit-file`.',
+      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `edit-file`.',
     instruction: [
       "Use `edit-code` for AST-aware refactors or structural code rewrites.",
       "Prefer explicit operation objects.",
@@ -161,16 +161,16 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       edits: z.array(editCodeEditSchema).min(1),
     }),
     outputSchema,
-    execute: async (toolInput) => {
-      return runTool(input.session, "edit-code", toolInput, async (toolCallId) => {
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "edit-code", toolCallId, toolInput, async (callId) => {
         const editResult = await editCode({
           workspace: input.workspace,
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(toolInput.path, editResult.output, toolCallId);
+        emitDiffSummaryHeader(toolInput.path, editResult.output, callId);
         for (const content of numberedUnifiedDiffLines(editResult.output))
-          input.onOutput({ toolName: "edit-code", content, toolCallId });
+          input.onOutput({ toolName: "edit-code", content, toolCallId: callId });
         const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {

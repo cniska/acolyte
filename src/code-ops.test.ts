@@ -636,17 +636,25 @@ describe("editCode", () => {
     });
   });
 
-  test("rejects directory paths", async () => {
+  test("applies edits across directory", async () => {
     const dirPath = `/tmp/acolyte-test-ast-dir-${testUuid()}`;
     tempDirs.push(dirPath);
     await mkdir(dirPath, { recursive: true });
-    await expect(
-      editCode({
-        workspace: WORKSPACE,
-        path: dirPath,
-        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
-      }),
-    ).rejects.toThrow("edit-code requires a file path");
+    await writeFile(join(dirPath, "a.ts"), "const x = oldName();\n", "utf8");
+    await writeFile(join(dirPath, "b.ts"), "const y = oldName();\n", "utf8");
+    tempFiles.push(join(dirPath, "a.ts"), join(dirPath, "b.ts"));
+    const result = await editCode({
+      workspace: dirPath,
+      path: dirPath,
+      edits: [{ op: "rename", from: "oldName", to: "newName" }],
+    });
+    expect(result.matches).toBe(2);
+    expect(result.diff).toContain("a.ts");
+    expect(result.diff).toContain("b.ts");
+    const aContent = await readFile(join(dirPath, "a.ts"), "utf8");
+    const bContent = await readFile(join(dirPath, "b.ts"), "utf8");
+    expect(aContent).toContain("newName");
+    expect(bContent).toContain("newName");
   });
 
   test("rejects unsupported non-code files", async () => {

@@ -188,7 +188,7 @@ export const repeatedFailureEvaluator: Evaluator = {
   },
 };
 
-export const verifyCycle: Evaluator = {
+export const verifyEvaluator: Evaluator = {
   id: "verify-cycle",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
@@ -197,7 +197,13 @@ export const verifyCycle: Evaluator = {
     // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-      if (ctx.initialMode === "work" && usedWriteTools && !haveChangesBeenVerified(ctx.session, ctx.taskId)) {
+      const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
+      ctx.debug("lifecycle.eval.verify_cycle", {
+        used_write_tools: usedWriteTools,
+        verified,
+        verify_scope: ctx.request.verifyScope ?? null,
+      });
+      if (ctx.initialMode === "work" && usedWriteTools && !verified) {
         return {
           type: "regenerate",
           feedback: {

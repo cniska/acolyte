@@ -121,7 +121,10 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        if (stepText.length > 0) fullText += stepText;
+        if (stepText.length > 0) {
+          if (fullText.length > 0 && !fullText.endsWith("\n") && !fullText.endsWith(" ")) fullText += "\n";
+          fullText += stepText;
+        }
 
         if (pendingToolCalls.length === 0) {
           if (nudgeCount < maxNudges && allToolCalls.length > 0 && !lifecycleSignal && stepText.trim().length > 0) {
@@ -189,7 +192,7 @@ export function createAgentStream(
 
           try {
             const args = JSON.parse(tc.input);
-            const result = await tool.execute(args);
+            const result = await tool.execute(args, tc.toolCallId);
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
