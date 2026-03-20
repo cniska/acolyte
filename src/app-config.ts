@@ -37,6 +37,9 @@ export const appConfig = {
     budgetTokens: fileConfig.memoryBudgetTokens,
     sources: fileConfig.memorySources,
   },
+  embedding: {
+    model: fileConfig.embeddingModel,
+  },
   agent: {
     contextMaxTokens: fileConfig.contextMaxTokens,
     inputBudget: {
