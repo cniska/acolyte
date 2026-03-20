@@ -1,9 +1,11 @@
+import { homedir } from "node:os";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
+import { log } from "./log";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
-import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
+import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
@@ -18,7 +20,13 @@ export type DistillConfig = {
 
 let defaultStore: DistillStore | null = null;
 function getDefaultStore(): DistillStore {
-  if (!defaultStore) defaultStore = createFileDistillStore();
+  if (!defaultStore) {
+    defaultStore = createSqliteDistillStore();
+    migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
+      log.warn("memory.distill.migration_failed", { error: String(error) });
+    });
+    process.on("exit", () => defaultStore?.close());
+  }
   return defaultStore;
 }
 const REFLECTION_RETRY_LIMIT = 2;
@@ -264,6 +272,7 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
+  log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
 
   const entries = [...existingEntries, observation];
   const observations = entries.filter((e) => e.tier === "observation");
@@ -299,10 +308,12 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(reflected),
   };
   await ds.write(reflection);
+  log.debug("memory.distill.reflection_written", { key, id: reflection.id, tokens: reflection.tokenEstimate });
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
   const stale = [...observations, ...reflections];
   await Promise.all(stale.map((r) => ds.remove(r.id, key)));
+  log.debug("memory.distill.gc", { key, removed: stale.length });
 }
 
 export function createDistillMemorySource(
@@ -349,6 +360,9 @@ export function createDistillMemorySource(
       }
 
       const scoped = splitScopedObservation(observed);
+      if (scoped.droppedUntaggedCount > 0) {
+        log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
+      }
       if (scoped.session) {
         await commitDistillForKey(ds, key, scoped.session, runner, config);
       }
@@ -361,6 +375,13 @@ export function createDistillMemorySource(
         const userKey = resolveDistillScopeKey("user", ctx);
         if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner, config);
       }
+      log.debug("memory.distill.commit_done", {
+        key,
+        session: scoped.sessionCount,
+        project: scoped.projectCount,
+        user: scoped.userCount,
+        dropped: scoped.droppedUntaggedCount,
+      });
       return {
         projectPromotedFacts: scoped.projectCount,
         userPromotedFacts: scoped.userCount,
