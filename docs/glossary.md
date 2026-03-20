@@ -27,8 +27,10 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Lifecycle Signal**: small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted only if current runtime state does not contradict it.
 - **Lifecycle State**: internal task-scoped lifecycle runtime state used to carry feedback, verify outcomes, and repeated-failure streaks between attempts.
 - **Model Judgment**: the model’s responsibility for deciding how to complete the task; lifecycle policy supports this judgment but does not replace it with host-side task heuristics.
+- **Embedding**: provider-generated vector representation of a distill record, stored as a BLOB in SQLite and used for semantic recall.
 - **Memory Engine**: top-level memory capability that maintains continuity across turns.
 - **Memory Pipeline**: internal staged flow inside the Memory Engine (ingest → normalize → select → inject → commit).
+- **Memory Policy**: bounded operational thresholds for memory behavior (reflection retry limit, context message window, malformed tag warning threshold).
 - **Memory Source**: pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill_project`, `distill_user`, `distill_session`).
 - **Memory Source Strategy**: configured source ID set and order used by the Memory Engine (`memorySources`).
 - **Message Kind**: semantic message classification for history behavior (`text`, `tool_payload`).
@@ -38,6 +40,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Base Agent Input**: immutable prompt input created during `prepare` and used as the base for each generation attempt.
 - **Record**: persisted entity object stored by a persistence backend.
 - **Reflection**: distill record tier consolidating cross-round facts.
+- **Semantic Recall**: relevance-ranked memory selection using provider embeddings and cosine similarity, replacing recency-based ordering when a query is available.
 - **Registry**: composition layer that wires implementations into an agent-facing surface under contracts (for example, tool registry, memory registry).
 - **Resource ID**: typed cross-session identity key used by memory and execution scoping (`proj_*` for project, `user_*` for user, `run_*` for run, `skill_*` for skill).
 - **Session**: one chat session in memory (messages, model, token usage, timestamps).

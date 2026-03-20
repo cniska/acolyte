@@ -8,11 +8,11 @@
 
 Open-source agents like Acolyte exist for the cases where that's not enough:
 
-- **Provider choice**: use OpenAI, Anthropic, Google, or any OpenAI-compatible endpoint — switch models per task without switching tools
-- **Self-hosted**: run everything on your own infrastructure with no data leaving your network
-- **Customizable agent behavior**: lifecycle phases, guards, evaluators, and memory strategies are all configurable — not locked behind a closed product surface
-- **Transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
-- **No vendor lock-in**: your sessions, memory, and configuration are local files you own
+- **provider choice**: use OpenAI, Anthropic, Google, or any OpenAI-compatible endpoint — switch models per task without switching tools
+- **self-hosted**: run everything on your own infrastructure with no data leaving your network
+- **customizable agent behavior**: lifecycle phases, guards, evaluators, and memory strategies are all configurable — not locked behind a closed product surface
+- **transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
+- **no vendor lock-in**: your sessions, memory, and configuration are local files you own
 
 Acolyte is for developers who want reliable, observable agent behavior — not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
 

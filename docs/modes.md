@@ -4,8 +4,8 @@ Acolyte uses two explicit operating modes to shape behavior: `work` and `verify`
 
 ## Purpose
 
-- **work**: execute task changes directly.
-- **verify**: validate behavior and report findings.
+- **work**: execute task changes directly
+- **verify**: validate behavior and report findings
 
 ## Behavior
 
@@ -14,14 +14,14 @@ Acolyte uses two explicit operating modes to shape behavior: `work` and `verify`
 
 ## Selection
 
-- Mode classification starts from request intent.
-- Lifecycle policy and evaluator behavior are mode-aware.
-- Model overrides can be configured per mode through `models.<mode>`.
+- mode classification starts from request intent
+- lifecycle policy and evaluator behavior are mode-aware
+- model overrides can be configured per mode through `models.<mode>`
 
 ## Why modes exist
 
-- Keep intent and behavior aligned.
-- Preserve verification as a first-class, explicit phase.
+- keep intent and behavior aligned
+- preserve verification as a first-class, explicit phase
 
 ## Key files
 

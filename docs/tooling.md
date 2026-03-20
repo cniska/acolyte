@@ -8,17 +8,17 @@ lifecycle → guard → cache → toolkit → registry
 
 ## Layers
 
-- **guard**: pre-execution checks and post-execution call recording.
-- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`).
-- **registry**: permission filtering and agent-facing tool surface.
+- **guard**: pre-execution checks and post-execution call recording
+- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`)
+- **registry**: permission filtering and agent-facing tool surface
 
 ## Guarded execution
 
 All tool calls run through guarded execution paths to ensure:
 
-- Policy enforcement
-- Consistent error shaping
-- Call recording for evaluators/debug
+- policy enforcement
+- consistent error shaping
+- call recording for evaluators/debug
 
 ## File discovery
 
@@ -54,17 +54,17 @@ A scan tool and an edit tool may both use ast-grep internally, but their input m
 
 Practical implications:
 
-- Query tools get their own simpler vocabulary even if a richer one exists internally
-- Mutation tools may expose scoping constraints (e.g. `withinSymbol`, `within`) that narrow where the edit applies — these are targeting aids, not a query language
-- New capabilities in the underlying engine (e.g. new ast-grep rule types) should be evaluated **separately for query and mutation exposure**
+- query tools get their own simpler vocabulary even if a richer one exists internally
+- mutation tools may expose scoping constraints (e.g. `withinSymbol`, `within`) that narrow where the edit applies — these are targeting aids, not a query language
+- new capabilities in the underlying engine (e.g. new ast-grep rule types) should be evaluated **separately for query and mutation exposure**
 
 Internal implementations may share compilers, rule objects, or AST helpers, but these should remain implementation details.
 
 ## Extension seams
 
-- Add tools by extending toolkit modules.
-- Add guard behavior in `src/tool-guards.ts`.
-- Keep tool contracts stable and enforce with schema-first inputs.
+- add tools by extending toolkit modules
+- add guard behavior in `src/tool-guards.ts`
+- keep tool contracts stable and enforce with schema-first inputs
 
 ## Key files
 

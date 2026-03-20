@@ -8,21 +8,21 @@ Keep user-facing copy translatable while keeping protocol and tool contracts lan
 
 ## Translatable surfaces
 
-- CLI/TUI help and guidance text.
-- Human-readable status/error copy shown to users.
-- Narrative assistant framing that is not part of machine contracts.
+- CLI/TUI help and guidance text
+- human-readable status/error copy shown to users
+- narrative assistant framing that is not part of machine contracts
 
 ## Language-neutral surfaces
 
-- RPC method names and protocol message type identifiers.
-- Structured payload keys and machine-readable enums.
-- Tool ids and machine markers in raw tool output.
-- File/line/path metadata emitted for automation and parsing.
+- RPC method names and protocol message type identifiers
+- structured payload keys and machine-readable enums
+- tool ids and machine markers in raw tool output
+- file/line/path metadata emitted for automation and parsing
 
 ## Baseline policy
 
-- New protocol/tool contracts must use stable identifier-style names (not natural-language labels).
-- User-facing copy should stay in presentation layers so translation can be added without changing protocol/tool contracts.
+- new protocol/tool contracts must use stable identifier-style names (not natural-language labels)
+- user-facing copy should stay in presentation layers so translation can be added without changing protocol/tool contracts
 
 ## Current behavior
 
@@ -33,7 +33,7 @@ Keep user-facing copy translatable while keeping protocol and tool contracts lan
 
 ## Key naming
 
-- Put chat content under `chat.*` keys (slash-command responses, chat status rows, chat progress/error text).
-- Keep CLI-only command text under `cli.*` keys.
-- Reserve `tui.*` for terminal UI chrome only (panel labels, key hints, picker/footer framing), not chat content.
-- Prefer one stable key per message intent; avoid duplicate keys for the same user-visible string.
+- put chat content under `chat.*` keys (slash-command responses, chat status rows, chat progress/error text)
+- keep CLI-only command text under `cli.*` keys
+- reserve `tui.*` for terminal UI chrome only (panel labels, key hints, picker/footer framing), not chat content
+- prefer one stable key per message intent; avoid duplicate keys for the same user-visible string

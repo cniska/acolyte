@@ -25,11 +25,11 @@ Hooks:
 React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
-- **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree.
-- **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes).
-- **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions.
-- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are flushed to scrollback and only the bottom portion is re-rendered.
-- **resize:** terminal dimensions are read from `stdout.columns`/`stdout.rows` on each commit — no SIGWINCH handler needed.
+- **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree
+- **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes)
+- **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions
+- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are flushed to scrollback and only the bottom portion is re-rendered
+- **resize:** terminal dimensions are read from `stdout.columns`/`stdout.rows` on each commit — no SIGWINCH handler needed
 
 ## Input handling
 
@@ -72,15 +72,15 @@ Use `@path` in chat input to attach file or directory context:
 
 ## Testing
 
-- **`renderToString`** (`render-to-string.ts`) — renders a React tree to a plain string without terminal side effects.
-- **`renderPlain`** (`src/tui-test-utils.ts`) — wraps `renderToString` with configurable terminal width for test convenience.
-- **`serialize.test.tsx`** — layout and serialization tests against the DOM tree directly.
+- **`renderToString`** (`render-to-string.ts`) — renders a React tree to a plain string without terminal side effects
+- **`renderPlain`** (`src/tui-test-utils.ts`) — wraps `renderToString` with configurable terminal width for test convenience
+- **`serialize.test.tsx`** — layout and serialization tests against the DOM tree directly
 
 ## Extension seams
 
-- Add primitives by extending `TuiNodeType` in `dom.ts` and handling them in `serialize.ts`.
-- Add style props by extending `TuiProps` in `dom.ts` and `StyleStack` in `serialize.ts`.
-- Keep the primitive surface small — prefer composing existing primitives over adding new ones.
+- add primitives by extending `TuiNodeType` in `dom.ts` and handling them in `serialize.ts`
+- add style props by extending `TuiProps` in `dom.ts` and `StyleStack` in `serialize.ts`
+- keep the primitive surface small — prefer composing existing primitives over adding new ones
 
 ## Key files
 

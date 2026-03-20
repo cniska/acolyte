@@ -4,10 +4,10 @@ Use the smallest test type that gives strong confidence.
 
 ## Test types
 
-- Unit: pure logic and contracts (guards, parsing, evaluators, schemas).
-- Integration: real server/lifecycle/tool wiring with fake provider model calls.
-- Visual: stable TUI rendering and interaction snapshots.
-- Performance: trend detection for latency regressions, not correctness.
+- unit: pure logic and contracts (guards, parsing, evaluators, schemas)
+- integration: real server/lifecycle/tool wiring with fake provider model calls
+- visual: stable TUI rendering and interaction snapshots
+- performance: trend detection for latency regressions, not correctness
 
 ## Unit test boundary
 
@@ -28,20 +28,20 @@ Use the smallest test type that gives strong confidence.
 
 ## Behavior harness
 
-- Use `scripts/run-behavior.ts` for small real-model tuning tasks across bounded temporary workspaces.
-- Keep scenarios explicit, small, and manually inspectable; this harness is for behavioral comparison, not automatic scoring.
-- Prefer a few stable scenarios over many overlapping ones.
+- use `scripts/run-behavior.ts` for small real-model tuning tasks across bounded temporary workspaces
+- keep scenarios explicit, small, and manually inspectable; this harness is for behavioral comparison, not automatic scoring
+- prefer a few stable scenarios over many overlapping ones
 
 ## Perf policy
 
-- Keep scenarios deterministic and free (fake provider only).
-- Use multiple runs and compare median/p95 over time.
-- Fail on meaningful regressions with a median threshold.
-- Add scenarios only when they represent a real user-critical path.
+- keep scenarios deterministic and free (fake provider only)
+- use multiple runs and compare median/p95 over time
+- fail on meaningful regressions with a median threshold
+- add scenarios only when they represent a real user-critical path
 
 ## CI perf artifact
 
-- CI uploads `perf-baseline.json` as the `perf-baseline` artifact.
-- Read `scenarios.<id>.summary.medianMs` as the primary regression signal.
-- Use `p95Ms` to detect tail-latency regressions that median may hide.
-- Use `scenarios.<id>.runs` for per-run debugging and outlier checks.
+- CI uploads `perf-baseline.json` as the `perf-baseline` artifact
+- read `scenarios.<id>.summary.medianMs` as the primary regression signal
+- use `p95Ms` to detect tail-latency regressions that median may hide
+- use `scenarios.<id>.runs` for per-run debugging and outlier checks

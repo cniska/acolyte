@@ -24,8 +24,8 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 CLI → client → server → lifecycle → model + tools
 ```
 
-- **execution model:** one active task per session, with ordered queued tasks.
-- **yielding:** lifecycle only yields at safe checkpoints (never mid-step).
+- **execution model:** one active task per session, with ordered queued tasks
+- **yielding:** lifecycle only yields at safe checkpoints (never mid-step)
 
 ## TUI
 
@@ -33,8 +33,8 @@ CLI → client → server → lifecycle → model + tools
 React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
-- Custom React reconciler for terminal rendering.
-- **details:** see [TUI](./tui.md).
+- custom React reconciler for terminal rendering
+- **details:** see [TUI](./tui.md)
 
 ## Daemon flow
 
@@ -42,9 +42,9 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 client → rpc server → task queue → lifecycle worker
 ```
 
-- **rpc server:** accepts requests, exposes task/status streams, and routes to queue/lifecycle.
-- **task queue:** enforces ordering, capacity, and cancellation boundaries.
-- **lifecycle worker:** executes accepted tasks through lifecycle phases.
+- **rpc server:** accepts requests, exposes task/status streams, and routes to queue/lifecycle
+- **task queue:** enforces ordering, capacity, and cancellation boundaries
+- **lifecycle worker:** executes accepted tasks through lifecycle phases
 
 ## Task flow
 
@@ -52,11 +52,11 @@ client → rpc server → task queue → lifecycle worker
 accept → queue → run → complete|fail|cancel
 ```
 
-- **accept:** validate request and assign `task_id`.
-- **queue:** hold until runnable under queue policy.
-- **run:** execute lifecycle for active task.
-- **complete|fail|cancel:** emit terminal state and persist task outcome.
-- **details:** see [Sessions and tasks](./sessions-tasks.md).
+- **accept:** validate request and assign `task_id`
+- **queue:** hold until runnable under queue policy
+- **run:** execute lifecycle for active task
+- **complete|fail|cancel:** emit terminal state and persist task outcome
+- **details:** see [Sessions and tasks](./sessions-tasks.md)
 
 ## Tool layering
 
@@ -64,11 +64,11 @@ accept → queue → run → complete|fail|cancel
 lifecycle → guard → cache → toolkit → registry
 ```
 
-- **guard:** pre-execution safety/redundancy checks and post-execution call recording.
-- **cache:** per-task reuse layer for read-only and search tool results.
-- **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`).
-- **registry:** toolkit registration, permission filtering, and agent-facing tool surface.
-- **details:** see [Tooling](./tooling.md).
+- **guard:** pre-execution safety/redundancy checks and post-execution call recording
+- **cache:** per-task reuse layer for read-only and search tool results
+- **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`)
+- **registry:** toolkit registration, permission filtering, and agent-facing tool surface
+- **details:** see [Tooling](./tooling.md)
 
 ## Lifecycle flow
 
@@ -76,25 +76,25 @@ lifecycle → guard → cache → toolkit → registry
 resolve → prepare → generate → evaluate → finalize
 ```
 
-- **resolve:** pick mode and model (sync, not a full phase).
-- **prepare:** build inputs, context, and tools.
-- **generate:** run model + tool calls.
-- **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state.
-- **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals.
-- **finalize:** persist outputs and emit final response.
+- **resolve:** pick mode and model (sync, not a full phase)
+- **prepare:** build inputs, context, and tools
+- **generate:** run model + tool calls
+- **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state
+- **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
+- **finalize:** persist outputs and emit final response
 
-- **regeneration:** evaluators may request regeneration, bounded by caps.
-- **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory.
-- **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state.
-- **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task.
-- **scheduling:** yield checks happen between lifecycle decisions, never mid-step.
-- **task metrics:** evaluator and summary metrics are scoped by `task_id`.
-- **details:** see [Lifecycle](./lifecycle.md).
+- **regeneration:** evaluators may request regeneration, bounded by caps
+- **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory
+- **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
+- **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task
+- **scheduling:** yield checks happen between lifecycle decisions, never mid-step
+- **task metrics:** evaluator and summary metrics are scoped by `task_id`
+- **details:** see [Lifecycle](./lifecycle.md)
 
 ## Modes
 
-- Explicit operating behaviors are modeled as `work` and `verify`.
-- **details:** see [Modes](./modes.md).
+- explicit operating behaviors are modeled as `work` and `verify`
+- **details:** see [Modes](./modes.md)
 
 ## Memory engine
 
@@ -104,12 +104,12 @@ Memory Engine
   → Memory context in system prompt
 ```
 
-- Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns.
-- **source strategy:** configured source IDs and order (`memorySources`) determine source composition.
-- **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts.
-- **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget.
-- **integration:** memory context is injected during request setup; commit is best-effort background work at finalize.
-- **details:** see [Memory](./memory.md).
+- Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns
+- **source strategy:** configured source IDs and order (`memorySources`) determine source composition
+- **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts
+- **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget
+- **integration:** memory context is injected during request setup; commit is best-effort background work at finalize
+- **details:** see [Memory](./memory.md)
 
 ## Dependency injection
 
@@ -120,15 +120,15 @@ Memory Engine
 
 ## Contracts
 
-- **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy.
-- **guarding:** guards run before tool execution, can block calls, and are reported through lifecycle events.
-- **protocol:** transport contract is transport-agnostic; see `docs/protocol.md`.
+- **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy
+- **guarding:** guards run before tool execution, can block calls, and are reported through lifecycle events
+- **protocol:** transport contract is transport-agnostic; see `docs/protocol.md`
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups.
-- **runtime config:** loaded from user/project config.
-- **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs.
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
+- **runtime config:** loaded from user/project config
+- **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs
 - **task trace:** RPC emits task-state transitions with stable `task_id`:
 ```text
 accepted → queued → running → completed|failed|cancelled

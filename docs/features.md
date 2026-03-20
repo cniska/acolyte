@@ -4,68 +4,68 @@ Shipped, user-visible capabilities.
 
 ## CLI
 
-- Interactive chat.
-- One-shot run mode with `--model` and `--file` flags.
-- One-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag.
-- Session resume and session listing.
-- Configurable locale via `config set locale <tag>`.
-- Fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills.
-- Model picker that queries provider APIs for available models, with per-mode selection (`/model work|verify <id>`).
-- Automatic server startup/reuse for chat and run mode.
-- Server control commands (`start`, `stop`, `restart`, `ps`, `status`).
-- Status guidance when daemon server is not running.
-- Managed vs unmanaged server state visibility in CLI status/stop flows.
-- Managed server replacement when daemon target changes.
-- `@path` file/directory attachments.
-- Slash command support.
-- Skill invocation via slash commands.
-- HTTP and RPC transport support.
-- Custom terminal renderer with React reconciler, static/active split, and structured output.
+- interactive chat
+- one-shot run mode with `--model` and `--file` flags
+- one-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag
+- session resume and session listing
+- configurable locale via `config set locale <tag>`
+- fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills
+- model picker that queries provider APIs for available models, with per-mode selection (`/model work|verify <id>`)
+- automatic server startup/reuse for chat and run mode
+- server control commands (`start`, `stop`, `restart`, `ps`, `status`)
+- status guidance when daemon server is not running
+- managed vs unmanaged server state visibility in CLI status/stop flows
+- managed server replacement when daemon target changes
+- `@path` file/directory attachments
+- slash command support
+- skill invocation via slash commands
+- HTTP and RPC transport support
+- custom terminal renderer with React reconciler, static/active split, and structured output
 
 ## Agent execution
 
-- Lifecycle-driven execution with work/verify behavior.
-- Explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed.
-- Automatic verify pass after write operations.
-- Task-scoped verify boundaries by default, with opt-in global verify scope.
-- Tool-guarded execution for safer autonomous runs.
-- Streaming progress output for tool activity with real-time token usage.
-- Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation.
-- Two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence.
+- lifecycle-driven execution with work/verify behavior
+- explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed
+- automatic verify pass after write operations
+- task-scoped verify boundaries by default, with opt-in global verify scope
+- tool-guarded execution for safer autonomous runs
+- streaming progress output for tool activity with real-time token usage
+- proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
+- two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
 
 ## Tools
 
-- Find/search/read files.
-- Edit/create/delete files.
-- Structural code scanning and editing via dedicated `scan-code` and `edit-code` tools.
-- Git status/diff.
-- Shell command execution.
-- Web search/fetch.
-- File discovery respects `.gitignore` and nested `.gitignore` files.
+- find/search/read files
+- edit/create/delete files
+- scan/edit code via AST-based tools
+- git status/diff/log/show/add/commit
+- shell command execution
+- web search/fetch
+- file discovery respects `.gitignore` (including nested)
 
 ## Memory
 
-- User-scoped saved memory.
-- Project-scoped saved memory.
-- Memory inspect/list/remove commands.
-- Context distillation with automatic observation and reflection.
-- Session-scoped distill memory.
-- SQLite-backed persistent storage for distill records.
-- Semantic recall with provider embeddings and cosine similarity ranking.
+- user-scoped saved memory
+- project-scoped saved memory
+- memory inspect/list/remove commands
+- context distillation with automatic observation and reflection
+- session-scoped distill memory
+- SQLite-backed persistent storage for distill records
+- semantic recall with provider embeddings and cosine similarity ranking
 
 ## Safety and control
 
-- Read/write permission modes.
-- Workspace and temp-root path guardrails.
-- Write confirmation flow in read mode.
-- Cooperative interruption and queued message handling over RPC.
+- read/write permission modes
+- workspace and temp-root path guardrails
+- write confirmation flow in read mode
+- cooperative interruption and queued message handling over RPC
 
 ## Diagnostics
 
-- Status command with `--json` output.
-- Token usage reporting per turn with prompt breakdown (system, tools, memory, messages) and share percentages.
-- Lifecycle trace command with SQLite-backed indexed queries (`acolyte trace`).
-- Managed daemon log file at `~/.acolyte/daemons/server.log`.
-- Configurable log format (`logfmt` or `json`) via `logFormat` config key.
-- Scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching).
-- Status output resource diagnostics for prompt/skill/config load problems.
+- status command with `--json` output
+- token usage reporting per turn with prompt breakdown (system, tools, memory, messages) and share percentages
+- lifecycle trace command with SQLite-backed indexed queries (`acolyte trace`)
+- managed daemon log file at `~/.acolyte/daemons/server.log`
+- configurable log format (`logfmt` or `json`) via `logFormat` config key
+- scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching)
+- status output resource diagnostics for prompt/skill/config load problems

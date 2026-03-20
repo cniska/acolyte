@@ -7,23 +7,23 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 
 ## Model
 
-- **Memory Engine**: top-level continuity capability.
+- **Memory Engine**: top-level continuity capability
 - **Memory Pipeline**: staged flow:
 
 ```text
 ingest → normalize → select → inject → commit
 ```
 
-- **Memory Source**: pluggable source that provides entries and optional commit behavior.
-- **Memory Source Strategy**: configured source IDs and order (`memorySources`).
-- **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory.
+- **Memory Source**: pluggable source that provides entries and optional commit behavior
+- **Memory Source Strategy**: configured source IDs and order (`memorySources`)
+- **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory
 
 ## Sources
 
-- `stored`: explicit Markdown memory notes (`user`/`project` scope).
-- `distill_user`: cross-session user distill context.
-- `distill_project`: cross-session project distill context (workspace-keyed).
-- `distill_session`: session distill context (active session continuity).
+- `stored`: explicit Markdown memory notes (`user`/`project` scope)
+- `distill_user`: cross-session user distill context
+- `distill_project`: cross-session project distill context (workspace-keyed)
+- `distill_session`: session distill context (active session continuity)
 
 Default source order is `stored, distill_project, distill_user, distill_session`.
 
@@ -42,57 +42,57 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Distill behavior
 
-- Distill writes two record tiers:
+- distill writes two record tiers:
   - `observation`: round-level extracted facts
   - `reflection`: consolidated cross-round state
-- Commit scopes:
+- commit scopes:
   - `session` (active session continuity)
   - `project` (workspace continuity across sessions)
   - `user` (global user continuity across sessions)
-- Promotion model:
-  - `distill_session` commit is automatic.
-  - Observation lines tagged `[project]` promote to project scope.
-  - Observation lines tagged `[user]` promote to user scope.
-  - Session/continuation lines stay in session scope.
-  - Untagged fact lines are dropped (strict tagged promotion, no fallback).
-  - Malformed bracket tags (for example `[proj]`) are silently dropped and logged.
-- Load strategy:
-  - Latest reflection first
-  - Then post-reflection observations (fresh delta, newest first)
-- Continuation state:
-  - Preserve `Current task` and `Next step` when available
-  - Continuation is sourced from typed fields (`currentTask`/`nextStep`)
+- promotion model:
+  - `distill_session` commit is automatic
+  - observation lines tagged `[project]` promote to project scope
+  - observation lines tagged `[user]` promote to user scope
+  - session/continuation lines stay in session scope
+  - untagged fact lines are dropped (strict tagged promotion, no fallback)
+  - malformed bracket tags (for example `[proj]`) are silently dropped and logged
+- load strategy:
+  - latest reflection first
+  - then post-reflection observations (fresh delta, newest first)
+- continuation state:
+  - preserve `Current task` and `Next step` when available
+  - continuation is sourced from typed fields (`currentTask`/`nextStep`)
 
 ## Runtime guarantees
 
-- Commit scheduling is best-effort background work at lifecycle finalize.
-- Commits are serialized per session per process through a keyed task queue seam.
-- Selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget.
-- Soul prompt injection adds an explicit resume block from structured continuation state when available.
-- Agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget).
-- Aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics.
-- Debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels.
-- Commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`).
-- Repeated malformed-tag drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits with malformed tags.
-- Selection dedupes identical entry content to avoid wasting budget on repeats.
-- Normalization drops blank entries before selection.
-- Distill record writes use SQLite with WAL mode for atomic persistence.
-- Semantic recall: distill records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first.
+- commit scheduling is best-effort background work at lifecycle finalize
+- commits are serialized per session per process through a keyed task queue seam
+- selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget
+- soul prompt injection adds an explicit resume block from structured continuation state when available
+- agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget)
+- aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics
+- debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
+- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
+- repeated malformed-tag drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits with malformed tags
+- selection dedupes identical entry content to avoid wasting budget on repeats
+- normalization drops blank entries before selection
+- distill record writes use SQLite with WAL mode for atomic persistence
+- semantic recall: distill records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first
 
 ## Storage
 
-- Stored notes: `.acolyte/memory/{user|project}/*.md`
-- Distill records: `~/.acolyte/memory.db` (SQLite, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`).
-- Embeddings: `distill_embeddings` table in `memory.db` (BLOB vectors, keyed by `record_id`).
+- stored notes: `.acolyte/memory/{user|project}/*.md`
+- distill records: `~/.acolyte/memory.db` (SQLite, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`)
+- embeddings: `distill_embeddings` table in `memory.db` (BLOB vectors, keyed by `record_id`)
 
 ## Extension seams
 
-- Configure source order/enablement with `memorySources`.
-- Compose sources and strategies via `createMemoryRegistry(sources, normalizeEntries, selectEntries)`.
-- Pipeline stage seams:
+- configure source order/enablement with `memorySources`
+- compose sources and strategies via `createMemoryRegistry(sources, normalizeEntries, selectEntries)`
+- pipeline stage seams:
   - `MemoryNormalizeStrategy`
   - `MemorySelectionStrategy`
-- Keep lifecycle contract stable while swapping strategies/storage behind sources.
+- keep lifecycle contract stable while swapping strategies/storage behind sources
 
 ## Key files
 
