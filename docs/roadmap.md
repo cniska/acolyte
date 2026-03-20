@@ -6,38 +6,26 @@ One terminal-first AI coding agent for day-to-day development across projects an
 Opinionated for the 80% default workflow, with stable extension points for customization.
 Built for safe autonomous execution of bounded tasks with the developer in control.
 
-## What shipped at launch
+## Shipped
 
-Acolyte v0 ships with these capabilities:
-
-- **Foundations** — `bun run verify` runs lint, typecheck, and tests; CI passes on every commit
-- **Core UX** — setup, diagnostics, per-tool permissions, error recovery
-- **Execution engine** — 5-phase lifecycle (resolve → prepare → generate → evaluate → finalize) with streaming tool calls
-- **Reliability** — anti-loop guards, step budgets, actionable diagnostics, automatic verify cycles
-- **Autonomous execution** — bounded coding tasks end-to-end: edit, verify, recover
-- **Memory** — context distillation across session/project/user tiers, proactive token budgeting, rolling history pruning
-- **Product polish** — typed RPC protocol, task-centric execution, skill parity, visual regression coverage
-- **Extensibility** — interface-first boundaries for lifecycle, tools, guards, memory, and transport
-- **OSS readiness** — docs, license, CI/CD, security baseline, localization, configurable locale
+- 5-phase lifecycle with streaming tool calls, guards, and automatic verify cycles
+- Context distillation with 3-tier persistent memory (session/project/user)
+- Semantic recall with provider embeddings and cosine similarity ranking
+- SQLite-backed storage for distill records, embeddings, and lifecycle traces
+- AST-aware structural editing via ast-grep
+- Custom React terminal renderer with single input pipeline
+- Typed RPC protocol with task state machine
+- Lifecycle observability via `acolyte trace`
+- Skills system with declarative SKILL.md standard
+- Multi-provider support (OpenAI, Anthropic, Google)
 
 ## What's next
 
-Priorities for the near term, roughly ordered.
+Tracked in [GitHub Issues](https://github.com/cniska/acolyte/issues). Key priorities:
 
-1. **Memory hardening** — evals for repeated instruction failures, hallucination checks, semantic recall via vector search
-2. **Chat correctness** — end-to-end regression checks, cross-session memory continuity, edge case coverage
-3. **Codebase polish** — audit/cleanup pass, `.gitignore`-based file discovery, config-driven permissions
-4. **Early adopter feedback** — day-one value on real projects, usability fixes from first users
-5. **Cloud sync** — shared storage services (memory, sessions), auth, local-first fallback
-
-## Further out
-
-- **Memory scalability** — progressive compaction for ultra-long sessions, storage backends beyond filesystem
-- **Autonomy track** — bounded-task soak testing, failure explainability, stable protocol baseline
-- **Long-run tasks** — background task IDs, detach/attach flow, task lifecycle RPC methods
-- **Session workflows** — branching and session-tree navigation for isolated sub-tasks
-- **Safety controls** — stronger tool policy, opt-in guard/evaluator policy controls
-- **Tooling fidelity** — structured progress payloads, output truncation with on-demand full, output collapsing
-- **Extension surface** — runtime hooks, agent-authored skills, slash command extensions
-- **Embedding surface** — SDK-first local in-process API alongside CLI/RPC
-- **Plan mode** — automatic planning phase from request intent, read-only tool set, lifecycle-driven plan→work transition
+- **Structured log format** — JSON log output for daemon (#34)
+- **Logs command** — CLI access to daemon logs (#32)
+- **Tool cache persistence** — SQLite-backed cross-task tool cache (#38)
+- **Trace event subscription** — real-time trace events over RPC (#45)
+- **Plan mode** — lifecycle-driven planning phase with read-only tool set (#14)
+- **Required-input handoff** — structured model-to-user handoff for decisions (#17)
