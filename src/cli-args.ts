@@ -42,6 +42,10 @@ export function parseTailCount(raw: string | undefined, defaultCount = 40): numb
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultCount;
 }
 
+export function stripFlag(args: string[], flag: string): string[] {
+  return args.filter((a) => a !== flag);
+}
+
 export function parsePositional(args: string[], flagsWithValues: string[]): string[] {
   const flagSet = new Set(flagsWithValues);
   const positional: string[] = [];

@@ -1,5 +1,5 @@
 import { formatRelativeTime } from "./chat-format";
-import { hasBoolFlag } from "./cli-args";
+import { hasBoolFlag, stripFlag } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { truncateText } from "./compact-text";
 import { t } from "./i18n";
@@ -20,8 +20,8 @@ export async function historyMode(args: string[], deps: HistoryModeDeps): Promis
     return;
   }
   const json = hasBoolFlag(args, "--json");
-  const nonFlagArgs = args.filter((a) => a !== "--json");
-  if (nonFlagArgs.length > 0) {
+  const rest = stripFlag(args, "--json");
+  if (rest.length > 0) {
     commandError("history");
     return;
   }

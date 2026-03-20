@@ -1,4 +1,4 @@
-import { hasBoolFlag } from "./cli-args";
+import { hasBoolFlag, stripFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import type {
@@ -63,8 +63,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
     return;
   }
   const json = hasBoolFlag(args, "--json");
-  const cleanArgs = args.filter((a) => a !== "--json");
-  const [subcommandRaw, ...restArgs] = cleanArgs;
+  const [subcommandRaw, ...restArgs] = stripFlag(args, "--json");
   const isImplicitList = !subcommandRaw || subcommandRaw === "--user" || subcommandRaw === "--project";
   const subcommand = isImplicitList ? "list" : subcommandRaw;
   const listArgs = isImplicitList && subcommandRaw ? [subcommandRaw, ...restArgs] : restArgs;
@@ -79,19 +78,20 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       const scope = parsed.scope;
       const config = scope ? await readConfigForScope(scope) : await readConfig();
       const out: CliOutput = json ? createJsonOutput() : createTextOutput();
+      const suffix = json ? "" : ":";
       const rows: Record<string, string | undefined>[] = [];
-      if (scope) rows.push({ key: t("cli.config.scope"), value: scope });
+      if (scope) rows.push({ key: `${t("cli.config.scope")}${suffix}`, value: scope });
       for (const name of VALID_CONFIG_KEYS) {
         const value = (config as Record<string, unknown>)[name];
         if (value === undefined || value === "") continue;
         if (Array.isArray(value)) {
-          rows.push({ key: `${name}:`, value: value.join(", ") });
+          rows.push({ key: `${name}${suffix}`, value: value.join(", ") });
         } else if (typeof value === "object" && value !== null) {
           for (const [k, v] of Object.entries(value)) {
-            rows.push({ key: `${name}.${k}:`, value: String(v) });
+            rows.push({ key: `${name}.${k}${suffix}`, value: String(v) });
           }
         } else {
-          rows.push({ key: `${name}:`, value: String(value) });
+          rows.push({ key: `${name}${suffix}`, value: String(value) });
         }
       }
       out.addTable(rows);

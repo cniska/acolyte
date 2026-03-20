@@ -1,4 +1,4 @@
-import { hasBoolFlag } from "./cli-args";
+import { hasBoolFlag, stripFlag } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import type { requestLocalServerShutdown } from "./cli-server";
 import { t } from "./i18n";
@@ -97,8 +97,8 @@ export async function psMode(args: string[], deps: DaemonModeDeps): Promise<void
     return;
   }
   const json = hasBoolFlag(args, "--json");
-  const nonFlagArgs = args.filter((a) => a !== "--json");
-  if (nonFlagArgs.length > 0) return deps.commandError("ps");
+  const rest = stripFlag(args, "--json");
+  if (rest.length > 0) return deps.commandError("ps");
   const daemons = await deps.listRunningDaemons();
   if (daemons.length === 0) {
     deps.printDim(t("cli.server.no_servers_running"));

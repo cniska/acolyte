@@ -19,6 +19,8 @@ The CLI is the primary interface for working with Acolyte.
 
 Run `acolyte <command> help` for detailed usage.
 
+All list commands support `--json` for machine-readable output.
+
 ## Local models
 
 See [Configuration](./configuration.md) for OpenAI-compatible model setup.
@@ -27,6 +29,7 @@ See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 
 ```bash
 acolyte memory list [all|user|project]
+acolyte memory list --json
 acolyte memory add --user "<text>"
 acolyte memory add --project "<text>"
 ```
@@ -35,6 +38,7 @@ acolyte memory add --project "<text>"
 
 ```bash
 acolyte config list [--project]
+acolyte config list --json
 acolyte config set <key> <value>
 acolyte config set --project <key> <value>
 acolyte config unset <key>
