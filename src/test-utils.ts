@@ -37,6 +37,26 @@ export async function createTempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix));
 }
 
+export function tempDb<T extends { close(): void }>(
+  prefix: string,
+  factory: (dbPath: string) => T,
+): { create: () => T; cleanup: () => void } {
+  const { createDir, cleanupDirs } = tempDir();
+  const stores: T[] = [];
+  return {
+    create() {
+      const dir = createDir(prefix);
+      const store = factory(join(dir, "test.db"));
+      stores.push(store);
+      return store;
+    },
+    cleanup() {
+      for (const store of stores.splice(0, stores.length)) store.close();
+      cleanupDirs();
+    },
+  };
+}
+
 export function testUuid(): string {
   return Bun.randomUUIDv7();
 }

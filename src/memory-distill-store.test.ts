@@ -3,26 +3,24 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DistillRecord } from "./memory-contract";
 import { createSqliteDistillStore, migrateFromFilesystem } from "./memory-distill-store";
-import { tempDir } from "./test-utils";
+import { tempDb, tempDir } from "./test-utils";
 
+const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-distill-", createSqliteDistillStore);
 const { createDir, cleanupDirs } = tempDir();
-afterEach(cleanupDirs);
-
-function createStore(dir: string) {
-  return createSqliteDistillStore(join(dir, "test.db"));
-}
+afterEach(() => {
+  cleanupStores();
+  cleanupDirs();
+});
 
 describe("createSqliteDistillStore", () => {
   test("list returns empty for nonexistent session", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const records = await store.list("sess_nonexistent");
     expect(records).toEqual([]);
   });
 
   test("write + list round-trips a record", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const record: DistillRecord = {
       id: "dst_test001",
       sessionId: "sess_abc123",
@@ -38,8 +36,7 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("list returns records sorted chronologically", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const older: DistillRecord = {
       id: "dst_older001",
       sessionId: "sess_abc123",
@@ -64,8 +61,7 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("list isolates sessions", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const record1: DistillRecord = {
       id: "dst_sess1rec",
       sessionId: "sess_session1",
@@ -93,8 +89,7 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("remove deletes a record by id and scope key", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const record: DistillRecord = {
       id: "dst_rmtest01",
       sessionId: "sess_abc123",
@@ -110,15 +105,13 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("remove is a no-op for nonexistent record", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     await store.remove("dst_missing01", "sess_abc123");
     expect(await store.list("sess_abc123")).toHaveLength(0);
   });
 
   test("write replaces existing record with same id", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const record: DistillRecord = {
       id: "dst_replace1",
       sessionId: "sess_abc123",
@@ -135,8 +128,7 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("ignores unsafe session ids", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const records = await store.list("../escape");
     expect(records).toEqual([]);
 
@@ -154,8 +146,7 @@ describe("createSqliteDistillStore", () => {
   });
 
   test("supports resource-scoped distill keys", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const userRecord: DistillRecord = {
       id: "dst_user001",
       sessionId: "user_abc123",
@@ -181,8 +172,7 @@ describe("createSqliteDistillStore", () => {
 
 describe("embedding storage", () => {
   test("writeEmbedding + getEmbedding round-trips", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const embedding = Buffer.from(new Float32Array([0.1, 0.2, 0.3]).buffer);
     store.writeEmbedding("dst_emb001", "sess_abc123", embedding);
     const result = store.getEmbedding("dst_emb001");
@@ -195,14 +185,12 @@ describe("embedding storage", () => {
   });
 
   test("getEmbedding returns null for missing record", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     expect(store.getEmbedding("dst_missing")).toBeNull();
   });
 
   test("removeEmbedding deletes embedding", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const embedding = Buffer.from(new Float32Array([1, 2, 3]).buffer);
     store.writeEmbedding("dst_rm001", "sess_abc123", embedding);
     expect(store.getEmbedding("dst_rm001")).not.toBeNull();
@@ -211,8 +199,7 @@ describe("embedding storage", () => {
   });
 
   test("remove record also removes embedding", async () => {
-    const dir = createDir("acolyte-distill-");
-    const store = createStore(dir);
+    const store = createStore();
     const record: DistillRecord = {
       id: "dst_cascade1",
       sessionId: "sess_abc123",
