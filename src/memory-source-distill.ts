@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
+import { log } from "./log";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
@@ -21,7 +22,10 @@ let defaultStore: DistillStore | null = null;
 function getDefaultStore(): DistillStore {
   if (!defaultStore) {
     defaultStore = createSqliteDistillStore();
-    migrateFromFilesystem(homedir(), defaultStore).catch(() => {});
+    migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
+      log.warn("memory.distill.migration_failed", { error: String(error) });
+    });
+    process.on("exit", () => defaultStore?.close());
   }
   return defaultStore;
 }
