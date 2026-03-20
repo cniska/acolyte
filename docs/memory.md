@@ -77,12 +77,12 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - Server runtime emits a dedicated `memory quality warning` log line for `lifecycle.memory.quality_warning` events.
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
-- Distill record writes are atomic (`temp file →rename`) to avoid partial files.
+- Distill record writes use SQLite with WAL mode for atomic persistence.
 
 ## Storage
 
 - Stored notes: `.acolyte/memory/{user|project}/*.md`
-- Distill records: `~/.acolyte/distill/<scopeKey>/*.json` where `<scopeKey>` is `sess_*`, `proj_*`, or `user_*`.
+- Distill records: `~/.acolyte/memory.db` (SQLite, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`).
 
 ## Extension seams
 
@@ -102,5 +102,5 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - `src/memory-source-distill.ts` — Distill memory source with observer and reflector agents.
 - `src/memory-source-stored.ts` — Stored markdown memory source.
 - `src/memory-distill-prompts.ts` — Observer and reflector prompt templates.
-- `src/memory-distill-store.ts` — Atomic file-based distill record persistence.
+- `src/memory-distill-store.ts` — SQLite-based distill record persistence with legacy filesystem migration.
 - `src/memory-store.ts` — Memory store interface for list, add, and remove.
