@@ -48,7 +48,9 @@ function embedAndStore(ds: DistillStore, recordId: string, scopeKey: string, con
     .then((vec) => {
       if (vec) ds.writeEmbedding(recordId, scopeKey, embeddingToBuffer(vec));
     })
-    .catch(() => {});
+    .catch((error) => {
+      log.warn("memory.distill.embed_failed", { recordId, error: String(error) });
+    });
 }
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;

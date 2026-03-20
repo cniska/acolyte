@@ -13,6 +13,7 @@ export interface DistillStore {
   writeEmbedding(recordId: string, scopeKey: string, embedding: Buffer): void;
   removeEmbedding(recordId: string): void;
   getEmbedding(recordId: string): Buffer | null;
+  getEmbeddings(recordIds: string[]): Map<string, Buffer>;
   close(): void;
 }
 
@@ -124,6 +125,16 @@ export function createSqliteDistillStore(dbPath?: string): DistillStore {
     getEmbedding(recordId) {
       const row = getEmbStmt.get(recordId);
       return row ? row.embedding : null;
+    },
+    getEmbeddings(recordIds) {
+      if (recordIds.length === 0) return new Map();
+      const placeholders = recordIds.map(() => "?").join(",");
+      const rows = db
+        .prepare<{ record_id: string; embedding: Buffer }, string[]>(
+          `SELECT record_id, embedding FROM distill_embeddings WHERE record_id IN (${placeholders})`,
+        )
+        .all(...recordIds);
+      return new Map(rows.map((row) => [row.record_id, row.embedding]));
     },
     close() {
       db.close();

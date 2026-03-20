@@ -53,9 +53,19 @@ function createEmbeddingModel(qualifiedModel: string) {
   }
 }
 
-export async function embedText(text: string): Promise<Float32Array | null> {
+let cachedModelId: string | null = null;
+let cachedModel: ReturnType<typeof createEmbeddingModel> = null;
+
+function getEmbeddingModel() {
   const modelId = appConfig.embedding.model;
-  const model = createEmbeddingModel(modelId);
+  if (cachedModelId === modelId && cachedModel) return cachedModel;
+  cachedModel = createEmbeddingModel(modelId);
+  cachedModelId = modelId;
+  return cachedModel;
+}
+
+export async function embedText(text: string): Promise<Float32Array | null> {
+  const model = getEmbeddingModel();
   if (!model) return null;
   try {
     const result = await model.doEmbed({ values: [text] });
@@ -63,7 +73,7 @@ export async function embedText(text: string): Promise<Float32Array | null> {
     if (!raw) return null;
     return new Float32Array(raw);
   } catch (error) {
-    log.warn("memory.embedding.failed", { model: modelId, error: String(error) });
+    log.warn("memory.embedding.failed", { model: appConfig.embedding.model, error: String(error) });
     return null;
   }
 }

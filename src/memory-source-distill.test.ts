@@ -36,6 +36,9 @@ function createMockStore(
     getEmbedding() {
       return null;
     },
+    getEmbeddings() {
+      return new Map();
+    },
     close() {},
   };
 }

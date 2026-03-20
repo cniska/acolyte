@@ -100,22 +100,24 @@ export async function selectMemoryEntriesSemantic(
   if (!queryEmbedding) return selectMemoryEntries(entries, budgetTokens);
 
   const continuation: MemoryPipelineEntry[] = [];
-  const scorable: { entry: MemoryPipelineEntry; score: number }[] = [];
+  const nonContinuation: MemoryPipelineEntry[] = [];
 
   for (const entry of entries) {
-    if (entry.isContinuation) {
-      continuation.push(entry);
-      continue;
-    }
+    if (entry.isContinuation) continuation.push(entry);
+    else nonContinuation.push(entry);
+  }
+
+  const recordIds = nonContinuation.map((e) => e.recordId).filter((id): id is string => id !== undefined);
+  const embeddingMap = defaultStoreRef.getEmbeddings(recordIds);
+
+  const scorable = nonContinuation.map((entry) => {
     let score = 0;
     if (entry.recordId) {
-      const buf = defaultStoreRef.getEmbedding(entry.recordId);
-      if (buf) {
-        score = cosineSimilarity(queryEmbedding, bufferToEmbedding(buf));
-      }
+      const buf = embeddingMap.get(entry.recordId);
+      if (buf) score = cosineSimilarity(queryEmbedding, bufferToEmbedding(buf));
     }
-    scorable.push({ entry, score });
-  }
+    return { entry, score };
+  });
 
   scorable.sort((a, b) => b.score - a.score);
 
