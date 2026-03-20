@@ -50,6 +50,7 @@ Shipped, user-visible capabilities.
 - Memory inspect/list/remove commands.
 - Context distillation with automatic observation and reflection.
 - Session-scoped distill memory.
+- SQLite-backed persistent storage for distill records.
 
 ## Safety and control
 
