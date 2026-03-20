@@ -1,6 +1,5 @@
 import { estimateTokens } from "./agent-input";
 import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
-import type { DistillStore } from "./memory-distill-store";
 import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
 
 export type MemoryPipelineEntry = {
@@ -9,6 +8,10 @@ export type MemoryPipelineEntry = {
   tokenEstimate: number;
   isContinuation?: boolean;
   recordId?: string;
+};
+
+export type EmbeddingLookup = {
+  getEmbeddings(recordIds: string[]): Map<string, Buffer>;
 };
 
 export type MemorySelectionStrategy = (
@@ -27,12 +30,13 @@ export async function runMemoryPipeline(
   ctx: MemoryLoadContext,
   budgetTokens: number,
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
-  selectEntries: MemorySelectionStrategy = selectMemoryEntriesSemantic,
+  selectEntries?: MemorySelectionStrategy,
 ): Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }> {
   if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
 
   const entries = await normalizeEntries(sources, ctx);
-  return selectEntries(entries, budgetTokens, ctx);
+  const select = selectEntries ?? (async (e, b) => selectMemoryEntries(e, b));
+  return select(entries, budgetTokens, ctx);
 }
 
 export async function normalizeMemoryEntries(
@@ -82,70 +86,62 @@ export function selectMemoryEntries(
   return { entries: selected, tokenEstimate: used };
 }
 
-let defaultStoreRef: DistillStore | null = null;
+export function createSemanticSelection(lookup: EmbeddingLookup): MemorySelectionStrategy {
+  return async (entries, budgetTokens, ctx) => {
+    if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
+    if (!ctx?.query) return selectMemoryEntries(entries, budgetTokens);
 
-export function setDefaultStoreForSelection(store: DistillStore | null): void {
-  defaultStoreRef = store;
-}
+    const queryEmbedding = await embedText(ctx.query);
+    if (!queryEmbedding) return selectMemoryEntries(entries, budgetTokens);
 
-export async function selectMemoryEntriesSemantic(
-  entries: readonly MemoryPipelineEntry[],
-  budgetTokens: number,
-  ctx?: MemoryLoadContext,
-): Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }> {
-  if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
-  if (!ctx?.query || !defaultStoreRef) return selectMemoryEntries(entries, budgetTokens);
+    const continuation: MemoryPipelineEntry[] = [];
+    const nonContinuation: MemoryPipelineEntry[] = [];
 
-  const queryEmbedding = await embedText(ctx.query);
-  if (!queryEmbedding) return selectMemoryEntries(entries, budgetTokens);
-
-  const continuation: MemoryPipelineEntry[] = [];
-  const nonContinuation: MemoryPipelineEntry[] = [];
-
-  for (const entry of entries) {
-    if (entry.isContinuation) continuation.push(entry);
-    else nonContinuation.push(entry);
-  }
-
-  const recordIds = nonContinuation.map((e) => e.recordId).filter((id): id is string => id !== undefined);
-  const embeddingMap = defaultStoreRef.getEmbeddings(recordIds);
-
-  const scorable = nonContinuation.map((entry) => {
-    let score = 0;
-    if (entry.recordId) {
-      const buf = embeddingMap.get(entry.recordId);
-      if (buf) score = cosineSimilarity(queryEmbedding, bufferToEmbedding(buf));
+    for (const entry of entries) {
+      if (entry.isContinuation) continuation.push(entry);
+      else nonContinuation.push(entry);
     }
-    return { entry, score };
-  });
 
-  scorable.sort((a, b) => b.score - a.score);
+    const recordIds = nonContinuation.map((e) => e.recordId).filter((id): id is string => id !== undefined);
+    const embeddingMap = lookup.getEmbeddings(recordIds);
 
-  const selected: MemoryPipelineEntry[] = [];
-  const seenContentKeys = new Set<string>();
-  let used = 0;
-  let selectedContinuation = false;
+    const scorable = nonContinuation.map((entry) => {
+      let score = 0;
+      if (entry.recordId) {
+        const buf = embeddingMap.get(entry.recordId);
+        if (buf) score = cosineSimilarity(queryEmbedding, bufferToEmbedding(buf));
+      }
+      return { entry, score };
+    });
 
-  for (const entry of continuation.reverse()) {
-    if (selectedContinuation) continue;
-    if (entry.tokenEstimate > budgetTokens - used) continue;
-    selected.push(entry);
-    seenContentKeys.add(normalizeContentKey(entry.content));
-    selectedContinuation = true;
-    used += entry.tokenEstimate;
-  }
+    scorable.sort((a, b) => b.score - a.score);
 
-  for (const { entry } of scorable) {
-    if (used >= budgetTokens) break;
-    const contentKey = normalizeContentKey(entry.content);
-    if (seenContentKeys.has(contentKey)) continue;
-    if (entry.tokenEstimate > budgetTokens - used) continue;
-    selected.push(entry);
-    seenContentKeys.add(contentKey);
-    used += entry.tokenEstimate;
-  }
+    const selected: MemoryPipelineEntry[] = [];
+    const seenContentKeys = new Set<string>();
+    let used = 0;
+    let selectedContinuation = false;
 
-  return { entries: selected, tokenEstimate: used };
+    for (const entry of continuation.reverse()) {
+      if (selectedContinuation) continue;
+      if (entry.tokenEstimate > budgetTokens - used) continue;
+      selected.push(entry);
+      seenContentKeys.add(normalizeContentKey(entry.content));
+      selectedContinuation = true;
+      used += entry.tokenEstimate;
+    }
+
+    for (const { entry } of scorable) {
+      if (used >= budgetTokens) break;
+      const contentKey = normalizeContentKey(entry.content);
+      if (seenContentKeys.has(contentKey)) continue;
+      if (entry.tokenEstimate > budgetTokens - used) continue;
+      selected.push(entry);
+      seenContentKeys.add(contentKey);
+      used += entry.tokenEstimate;
+    }
+
+    return { entries: selected, tokenEstimate: used };
+  };
 }
 
 function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {

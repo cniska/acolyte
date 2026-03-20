@@ -14,6 +14,7 @@ import {
   distillProjectMemorySource,
   distillUserMemorySource,
   extractLastLineValue,
+  getDefaultSelectionStrategy,
 } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
@@ -100,7 +101,19 @@ export function createMemoryRegistry(
   };
 }
 
-const defaultMemoryRegistry = createMemoryRegistry();
+let defaultMemoryRegistry: MemoryRegistry | null = null;
 
-export const loadMemoryContext = defaultMemoryRegistry.load;
-export const commitMemorySources = defaultMemoryRegistry.commit;
+function getDefaultMemoryRegistry(): MemoryRegistry {
+  if (!defaultMemoryRegistry) {
+    defaultMemoryRegistry = createMemoryRegistry(
+      DEFAULT_MEMORY_SOURCES,
+      normalizeMemoryEntries,
+      getDefaultSelectionStrategy() ?? undefined,
+    );
+  }
+  return defaultMemoryRegistry;
+}
+
+export const loadMemoryContext: MemoryRegistry["load"] = (ctx, budgetTokens) =>
+  getDefaultMemoryRegistry().load(ctx, budgetTokens);
+export const commitMemorySources: MemoryRegistry["commit"] = (ctx) => getDefaultMemoryRegistry().commit(ctx);

@@ -7,7 +7,7 @@ import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntr
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { setDefaultStoreForSelection } from "./memory-pipeline";
+import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
@@ -21,16 +21,23 @@ export type DistillConfig = {
 };
 
 let defaultStore: DistillStore | null = null;
+let defaultSelectionStrategy: MemorySelectionStrategy | null = null;
+
 function getDefaultStore(): DistillStore {
   if (!defaultStore) {
     defaultStore = createSqliteDistillStore();
-    setDefaultStoreForSelection(defaultStore);
+    defaultSelectionStrategy = createSemanticSelection(defaultStore);
     migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
       log.warn("memory.distill.migration_failed", { error: String(error) });
     });
     process.on("exit", () => defaultStore?.close());
   }
   return defaultStore;
+}
+
+export function getDefaultSelectionStrategy(): MemorySelectionStrategy | null {
+  getDefaultStore();
+  return defaultSelectionStrategy;
 }
 const REFLECTION_RETRY_LIMIT = 2;
 
