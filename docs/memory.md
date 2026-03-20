@@ -78,11 +78,13 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - Selection dedupes identical entry content to avoid wasting budget on repeats.
 - Normalization drops blank entries before selection.
 - Distill record writes use SQLite with WAL mode for atomic persistence.
+- Semantic recall: distill records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first.
 
 ## Storage
 
 - Stored notes: `.acolyte/memory/{user|project}/*.md`
 - Distill records: `~/.acolyte/memory.db` (SQLite, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`).
+- Embeddings: `distill_embeddings` table in `memory.db` (BLOB vectors, keyed by `record_id`).
 
 ## Extension seams
 
@@ -102,5 +104,6 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - `src/memory-source-distill.ts` — Distill memory source with observer and reflector agents.
 - `src/memory-source-stored.ts` — Stored markdown memory source.
 - `src/memory-distill-prompts.ts` — Observer and reflector prompt templates.
-- `src/memory-distill-store.ts` — SQLite-based distill record persistence with legacy filesystem migration.
+- `src/memory-distill-store.ts` — SQLite-based distill record and embedding persistence.
+- `src/memory-embedding.ts` — Provider embedding API wrapper and cosine similarity.
 - `src/memory-store.ts` — Memory store interface for list, add, and remove.

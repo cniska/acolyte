@@ -179,6 +179,56 @@ describe("createSqliteDistillStore", () => {
   });
 });
 
+describe("embedding storage", () => {
+  test("writeEmbedding + getEmbedding round-trips", async () => {
+    const dir = createDir("acolyte-distill-");
+    const store = createStore(dir);
+    const embedding = Buffer.from(new Float32Array([0.1, 0.2, 0.3]).buffer);
+    store.writeEmbedding("dst_emb001", "sess_abc123", embedding);
+    const result = store.getEmbedding("dst_emb001");
+    expect(result).not.toBeNull();
+    if (!result) throw new Error("expected embedding");
+    const arr = new Float32Array(result.buffer, result.byteOffset, result.byteLength / 4);
+    expect(arr[0]).toBeCloseTo(0.1);
+    expect(arr[1]).toBeCloseTo(0.2);
+    expect(arr[2]).toBeCloseTo(0.3);
+  });
+
+  test("getEmbedding returns null for missing record", async () => {
+    const dir = createDir("acolyte-distill-");
+    const store = createStore(dir);
+    expect(store.getEmbedding("dst_missing")).toBeNull();
+  });
+
+  test("removeEmbedding deletes embedding", async () => {
+    const dir = createDir("acolyte-distill-");
+    const store = createStore(dir);
+    const embedding = Buffer.from(new Float32Array([1, 2, 3]).buffer);
+    store.writeEmbedding("dst_rm001", "sess_abc123", embedding);
+    expect(store.getEmbedding("dst_rm001")).not.toBeNull();
+    store.removeEmbedding("dst_rm001");
+    expect(store.getEmbedding("dst_rm001")).toBeNull();
+  });
+
+  test("remove record also removes embedding", async () => {
+    const dir = createDir("acolyte-distill-");
+    const store = createStore(dir);
+    const record: DistillRecord = {
+      id: "dst_cascade1",
+      sessionId: "sess_abc123",
+      tier: "observation",
+      content: "test",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 1,
+    };
+    await store.write(record);
+    store.writeEmbedding(record.id, "sess_abc123", Buffer.from(new Float32Array([1]).buffer));
+    expect(store.getEmbedding(record.id)).not.toBeNull();
+    await store.remove(record.id, "sess_abc123");
+    expect(store.getEmbedding(record.id)).toBeNull();
+  });
+});
+
 describe("migrateFromFilesystem", () => {
   test("migrates JSON files into SQLite store", async () => {
     const home = createDir("acolyte-migrate-");
