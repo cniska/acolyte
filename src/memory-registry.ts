@@ -8,13 +8,13 @@ import {
   normalizeMemoryEntries,
   runMemoryCommitPipeline,
   runMemoryPipeline,
-  selectMemoryEntries,
 } from "./memory-pipeline";
 import {
   distillMemorySource,
   distillProjectMemorySource,
   distillUserMemorySource,
   extractLastLineValue,
+  getDefaultSelectionStrategy,
 } from "./memory-source-distill";
 import { storedMemorySource } from "./memory-source-stored";
 
@@ -65,7 +65,7 @@ export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySour
 export function createMemoryRegistry(
   sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES,
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
-  selectEntries: MemorySelectionStrategy = selectMemoryEntries,
+  selectEntries?: MemorySelectionStrategy,
 ): MemoryRegistry {
   const extractContinuation = (
     entries: readonly {
@@ -74,7 +74,7 @@ export function createMemoryRegistry(
     }[],
   ): { currentTask?: string; nextStep?: string } => {
     const continuationText = entries
-      .filter((entry) => entry.isContinuation === true)
+      .filter((entry) => entry.isContinuation)
       .map((entry) => entry.content)
       .join("\n");
     return {
@@ -91,7 +91,7 @@ export function createMemoryRegistry(
         prompt: formatMemoryContextPrompt(result.entries),
         tokenEstimate: result.tokenEstimate,
         entryCount: result.entries.length,
-        continuationSelected: result.entries.some((entry) => entry.isContinuation === true),
+        continuationSelected: result.entries.some((entry) => entry.isContinuation),
         continuation,
       };
     },
@@ -101,7 +101,19 @@ export function createMemoryRegistry(
   };
 }
 
-const defaultMemoryRegistry = createMemoryRegistry();
+let defaultMemoryRegistry: MemoryRegistry | null = null;
 
-export const loadMemoryContext = defaultMemoryRegistry.load;
-export const commitMemorySources = defaultMemoryRegistry.commit;
+function getDefaultMemoryRegistry(): MemoryRegistry {
+  if (!defaultMemoryRegistry) {
+    defaultMemoryRegistry = createMemoryRegistry(
+      DEFAULT_MEMORY_SOURCES,
+      normalizeMemoryEntries,
+      getDefaultSelectionStrategy() ?? undefined,
+    );
+  }
+  return defaultMemoryRegistry;
+}
+
+export const loadMemoryContext: MemoryRegistry["load"] = (ctx, budgetTokens) =>
+  getDefaultMemoryRegistry().load(ctx, budgetTokens);
+export const commitMemorySources: MemoryRegistry["commit"] = (ctx) => getDefaultMemoryRegistry().commit(ctx);

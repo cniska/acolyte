@@ -51,6 +51,7 @@ Shipped, user-visible capabilities.
 - Context distillation with automatic observation and reflection.
 - Session-scoped distill memory.
 - SQLite-backed persistent storage for distill records.
+- Semantic recall with provider embeddings and cosine similarity ranking.
 
 ## Safety and control
 

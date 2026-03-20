@@ -6,6 +6,9 @@ import { log } from "./log";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
+import { embeddingToBuffer, embedText } from "./memory-embedding";
+import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
+import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
@@ -19,9 +22,12 @@ export type DistillConfig = {
 };
 
 let defaultStore: DistillStore | null = null;
+let defaultSelectionStrategy: MemorySelectionStrategy | null = null;
+
 function getDefaultStore(): DistillStore {
   if (!defaultStore) {
     defaultStore = createSqliteDistillStore();
+    defaultSelectionStrategy = createSemanticSelection(defaultStore);
     migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
       log.warn("memory.distill.migration_failed", { error: String(error) });
     });
@@ -29,7 +35,11 @@ function getDefaultStore(): DistillStore {
   }
   return defaultStore;
 }
-const REFLECTION_RETRY_LIMIT = 2;
+
+export function getDefaultSelectionStrategy(): MemorySelectionStrategy | null {
+  getDefaultStore();
+  return defaultSelectionStrategy;
+}
 
 type DistillScope = "session" | "project" | "user";
 
@@ -38,11 +48,21 @@ type DistillSourceOptions = {
   loadScope?: DistillScope;
   commitScope?: DistillScope | "none";
   config?: DistillConfig;
+  policy?: MemoryPolicy;
 };
+
+function embedAndStore(ds: DistillStore, recordId: string, scopeKey: string, content: string): void {
+  embedText(content)
+    .then((vec) => {
+      if (vec) ds.writeEmbedding(recordId, scopeKey, embeddingToBuffer(vec));
+    })
+    .catch((error) => {
+      log.warn("memory.distill.embed_failed", { recordId, error: String(error) });
+    });
+}
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;
 const TEXT_SHRINK_RATIO = 0.9;
-const DISTILL_CONTEXT_MESSAGE_WINDOW = 20;
 
 function clampToTokenEstimate(content: string, maxTokens: number): string {
   const text = content.trim();
@@ -124,6 +144,7 @@ function splitScopedObservation(observed: string): {
   projectCount: number;
   userCount: number;
   droppedUntaggedCount: number;
+  droppedMalformedCount: number;
 } {
   const lines = observed
     .split(/\r?\n/)
@@ -133,13 +154,17 @@ function splitScopedObservation(observed: string): {
   const projectLines: string[] = [];
   const userLines: string[] = [];
   let droppedUntaggedCount = 0;
+  let droppedMalformedCount = 0;
   for (const line of lines) {
     if (isContinuationLine(line)) {
       sessionLines.push(line);
       continue;
     }
     const tagged = stripScopeTag(line);
-    if (!tagged.scope && hasBracketPrefix(line)) continue;
+    if (!tagged.scope && hasBracketPrefix(line)) {
+      droppedMalformedCount += 1;
+      continue;
+    }
     if (!tagged.content) continue;
     // Continuation state is always session-scoped, regardless of any tag prefix.
     if (isContinuationLine(tagged.content)) {
@@ -170,6 +195,7 @@ function splitScopedObservation(observed: string): {
     projectCount: projectLines.length,
     userCount: userLines.length,
     droppedUntaggedCount,
+    droppedMalformedCount,
   };
 }
 
@@ -229,12 +255,12 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
     const mostRecent = observationsSinceReflection[0] ?? latestReflection;
     const reflectionContent = stripContinuationLines(latestReflection.content);
     return [
-      ...(reflectionContent ? [{ content: reflectionContent }] : []),
-      ...observationsSinceReflection
-        .map((e) => stripContinuationLines(e.content))
-        .filter((content) => content.length > 0)
-        .map((content) => ({ content })),
-      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+      ...(reflectionContent ? [{ content: reflectionContent, recordId: latestReflection.id }] : []),
+      ...observationsSinceReflection.flatMap((e) => {
+        const content = stripContinuationLines(e.content);
+        return content.length > 0 ? [{ content, recordId: e.id }] : [];
+      }),
+      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
     ];
   }
   const observationEntries = entries
@@ -243,11 +269,11 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
     .reverse();
   const mostRecent = observationEntries[0];
   return [
-    ...observationEntries
-      .map((e) => stripContinuationLines(e.content))
-      .filter((content) => content.length > 0)
-      .map((content) => ({ content })),
-    ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true })),
+    ...observationEntries.flatMap((e) => {
+      const content = stripContinuationLines(e.content);
+      return content.length > 0 ? [{ content, recordId: e.id }] : [];
+    }),
+    ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
   ];
 }
 
@@ -257,6 +283,7 @@ async function commitDistillForKey(
   observed: string,
   runner: DistillRunner,
   config: DistillConfig,
+  policy: MemoryPolicy,
 ): Promise<void> {
   const existingEntries = await ds.list(key);
   const latestObservation = existingEntries.filter((e) => e.tier === "observation").slice(-1)[0];
@@ -272,6 +299,7 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
+  embedAndStore(ds, observation.id, key, observed);
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
 
   const entries = [...existingEntries, observation];
@@ -286,7 +314,7 @@ async function commitDistillForKey(
 
   const allObservations = pendingObservations.map((o) => o.content).join("\n\n---\n\n");
   let reflected = "";
-  for (let attempt = 0; attempt <= REFLECTION_RETRY_LIMIT; attempt += 1) {
+  for (let attempt = 0; attempt <= policy.reflectionRetryLimit; attempt += 1) {
     const promptSuffix =
       attempt === 0
         ? ""
@@ -308,6 +336,7 @@ async function commitDistillForKey(
     tokenEstimate: estimateTokens(reflected),
   };
   await ds.write(reflection);
+  embedAndStore(ds, reflection.id, key, reflected);
   log.debug("memory.distill.reflection_written", { key, id: reflection.id, tokens: reflection.tokenEstimate });
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
@@ -323,9 +352,11 @@ export function createDistillMemorySource(
 ): MemorySource {
   const ds = injectedStore ?? getDefaultStore();
   const config = options.config ?? defaultDistillConfig();
+  const policy = options.policy ?? defaultMemoryPolicy;
   const id = options.id ?? "distill_session";
   const loadScope = options.loadScope ?? "session";
   const commitScope = options.commitScope ?? "session";
+  let malformedRejectStreak = 0;
   return {
     id,
 
@@ -341,7 +372,7 @@ export function createDistillMemorySource(
       if (!key) return;
       if (ctx.messages.length < config.messageThreshold) return;
 
-      const recentMessages = ctx.messages.slice(-DISTILL_CONTEXT_MESSAGE_WINDOW);
+      const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");
@@ -349,7 +380,7 @@ export function createDistillMemorySource(
       const observed = clampToTokenEstimate(observedRaw, config.maxOutputTokens);
       if (!observed.trim()) return;
       if (commitScope !== "session") {
-        await commitDistillForKey(ds, key, observed, runner, config);
+        await commitDistillForKey(ds, key, observed, runner, config, policy);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
         return {
           projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
@@ -363,17 +394,26 @@ export function createDistillMemorySource(
       if (scoped.droppedUntaggedCount > 0) {
         log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
       }
+      if (scoped.droppedMalformedCount > 0) {
+        malformedRejectStreak += 1;
+        log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
+        if (malformedRejectStreak >= policy.malformedStreakWarningThreshold) {
+          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: malformedRejectStreak });
+        }
+      } else {
+        malformedRejectStreak = 0;
+      }
       if (scoped.session) {
-        await commitDistillForKey(ds, key, scoped.session, runner, config);
+        await commitDistillForKey(ds, key, scoped.session, runner, config, policy);
       }
 
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner, config);
+        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner, config, policy);
       }
       if (scoped.user) {
         const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner, config);
+        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner, config, policy);
       }
       log.debug("memory.distill.commit_done", {
         key,

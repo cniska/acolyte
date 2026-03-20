@@ -224,7 +224,7 @@ How each agent retains knowledge across sessions.
 
 | Project | Approach |
 |---|---|
-| **Acolyte** | Context distillation to 3-tier persistent memory |
+| **Acolyte** | Context distillation to 3-tier persistent memory with semantic recall |
 | OpenHands | Microagent recall + condenser pipeline |
 | OpenClaw | Vector search via LanceDB |
 | Goose | Session search via MCP |
@@ -249,6 +249,8 @@ Memory tiers:
 - **Session**
 - **Project**
 - **User**
+
+At query time, entries are ranked by semantic similarity to the current task using provider embeddings and cosine similarity. Records without embeddings fall back to recency ordering.
 
 ## Context budgeting
 

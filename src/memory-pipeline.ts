@@ -1,17 +1,24 @@
 import { estimateTokens } from "./agent-input";
 import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
+import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
 
 export type MemoryPipelineEntry = {
   sourceId: string;
   content: string;
   tokenEstimate: number;
   isContinuation?: boolean;
+  recordId?: string;
+};
+
+export type EmbeddingLookup = {
+  getEmbeddings(recordIds: string[]): Map<string, Buffer>;
 };
 
 export type MemorySelectionStrategy = (
   entries: readonly MemoryPipelineEntry[],
   budgetTokens: number,
-) => { entries: MemoryPipelineEntry[]; tokenEstimate: number };
+  ctx?: MemoryLoadContext,
+) => Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }>;
 
 export type MemoryNormalizeStrategy = (
   sources: readonly MemorySource[],
@@ -23,12 +30,13 @@ export async function runMemoryPipeline(
   ctx: MemoryLoadContext,
   budgetTokens: number,
   normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
-  selectEntries: MemorySelectionStrategy = selectMemoryEntries,
+  selectEntries?: MemorySelectionStrategy,
 ): Promise<{ entries: MemoryPipelineEntry[]; tokenEstimate: number }> {
   if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
 
   const entries = await normalizeEntries(sources, ctx);
-  return selectEntries(entries, budgetTokens);
+  const select = selectEntries ?? (async (e, b) => selectMemoryEntries(e, b));
+  return select(entries, budgetTokens, ctx);
 }
 
 export async function normalizeMemoryEntries(
@@ -46,6 +54,7 @@ export async function normalizeMemoryEntries(
         content,
         tokenEstimate: estimateTokens(content),
         isContinuation: entry.isContinuation,
+        recordId: entry.recordId,
       });
     }
   }
@@ -65,16 +74,74 @@ export function selectMemoryEntries(
   let selectedContinuation = false;
   for (const entry of prioritizedEntries) {
     if (used >= budgetTokens) break;
-    if (entry.isContinuation === true && selectedContinuation) continue;
+    if (entry.isContinuation && selectedContinuation) continue;
     const contentKey = normalizeContentKey(entry.content);
     if (seenContentKeys.has(contentKey)) continue;
     if (entry.tokenEstimate > budgetTokens - used) continue;
     selected.push(entry);
     seenContentKeys.add(contentKey);
-    if (entry.isContinuation === true) selectedContinuation = true;
+    if (entry.isContinuation) selectedContinuation = true;
     used += entry.tokenEstimate;
   }
   return { entries: selected, tokenEstimate: used };
+}
+
+export function createSemanticSelection(lookup: EmbeddingLookup): MemorySelectionStrategy {
+  return async (entries, budgetTokens, ctx) => {
+    if (budgetTokens <= 0) return { entries: [], tokenEstimate: 0 };
+    if (!ctx?.query) return selectMemoryEntries(entries, budgetTokens);
+
+    const queryEmbedding = await embedText(ctx.query);
+    if (!queryEmbedding) return selectMemoryEntries(entries, budgetTokens);
+
+    const continuation: MemoryPipelineEntry[] = [];
+    const nonContinuation: MemoryPipelineEntry[] = [];
+
+    for (const entry of entries) {
+      if (entry.isContinuation) continuation.push(entry);
+      else nonContinuation.push(entry);
+    }
+
+    const recordIds = nonContinuation.map((e) => e.recordId).filter((id): id is string => id !== undefined);
+    const embeddingMap = lookup.getEmbeddings(recordIds);
+
+    const scorable = nonContinuation.map((entry) => {
+      let score = 0;
+      if (entry.recordId) {
+        const buf = embeddingMap.get(entry.recordId);
+        if (buf) score = cosineSimilarity(queryEmbedding, bufferToEmbedding(buf));
+      }
+      return { entry, score };
+    });
+
+    scorable.sort((a, b) => b.score - a.score);
+
+    const selected: MemoryPipelineEntry[] = [];
+    const seenContentKeys = new Set<string>();
+    let used = 0;
+    let selectedContinuation = false;
+
+    for (const entry of continuation.reverse()) {
+      if (selectedContinuation) continue;
+      if (entry.tokenEstimate > budgetTokens - used) continue;
+      selected.push(entry);
+      seenContentKeys.add(normalizeContentKey(entry.content));
+      selectedContinuation = true;
+      used += entry.tokenEstimate;
+    }
+
+    for (const { entry } of scorable) {
+      if (used >= budgetTokens) break;
+      const contentKey = normalizeContentKey(entry.content);
+      if (seenContentKeys.has(contentKey)) continue;
+      if (entry.tokenEstimate > budgetTokens - used) continue;
+      selected.push(entry);
+      seenContentKeys.add(contentKey);
+      used += entry.tokenEstimate;
+    }
+
+    return { entries: selected, tokenEstimate: used };
+  };
 }
 
 function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]): MemoryPipelineEntry[] {
@@ -82,7 +149,7 @@ function prioritizeContinuationEntries(entries: readonly MemoryPipelineEntry[]):
   const other: MemoryPipelineEntry[] = [];
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (entry.isContinuation === true) continuation.push(entry);
+    if (entry.isContinuation) continuation.push(entry);
     else other.push(entry);
   }
   return [...continuation, ...other.reverse()];

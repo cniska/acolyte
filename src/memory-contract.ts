@@ -24,11 +24,13 @@ export type MemoryLoadContext = {
   readonly sessionId?: string;
   readonly resourceId?: ResourceId;
   readonly workspace?: string;
+  readonly query?: string;
 };
 
 export type MemorySourceEntry = {
   readonly content: string;
   readonly isContinuation?: boolean;
+  readonly recordId?: string;
 };
 
 export type MemoryCommitContext = MemoryLoadContext & {

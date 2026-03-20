@@ -79,6 +79,7 @@ export interface Config {
   maxAttachmentMessageTokens?: number;
   maxPinnedMessageTokens?: number;
   replyTimeoutMs?: number;
+  embeddingModel?: string;
 }
 
 export interface ResolvedConfig {
@@ -104,6 +105,7 @@ export interface ResolvedConfig {
   maxAttachmentMessageTokens: number;
   maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
+  embeddingModel: string;
 }
 
 export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
@@ -129,6 +131,7 @@ export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
   maxAttachmentMessageTokens: parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
   maxPinnedMessageTokens: parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
   replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
+  embeddingModel: nonEmptyStringSchema,
 };
 
 export function toConfig(input: Record<string, unknown>): Config {
@@ -190,5 +193,6 @@ export function toConfig(input: Record<string, unknown>): Config {
       input.maxPinnedMessageTokens,
     ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
+    embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
   };
 }
