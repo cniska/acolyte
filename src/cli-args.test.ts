@@ -7,6 +7,7 @@ import {
   parseRepeatableFlag,
   parseRequiredFlag,
   parseTailCount,
+  stripFlag,
 } from "./cli-args";
 
 describe("hasHelpFlag", () => {
@@ -73,6 +74,11 @@ describe("parseTailCount", () => {
   test("allows zero", () => expect(parseTailCount("0")).toBe(0));
   test("returns default for non-numeric", () => expect(parseTailCount("abc")).toBe(40));
   test("accepts custom default", () => expect(parseTailCount(undefined, 20)).toBe(20));
+});
+
+describe("stripFlag", () => {
+  test("removes matching flag", () => expect(stripFlag(["--json", "list"], "--json")).toEqual(["list"]));
+  test("preserves args when flag absent", () => expect(stripFlag(["list"], "--json")).toEqual(["list"]));
 });
 
 describe("parsePositional", () => {
