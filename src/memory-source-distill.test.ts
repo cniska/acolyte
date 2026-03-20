@@ -31,6 +31,7 @@ function createMockStore(
       const idx = records.findIndex((r) => r.id === id);
       if (idx >= 0) records.splice(idx, 1);
     },
+    close() {},
   };
 }
 

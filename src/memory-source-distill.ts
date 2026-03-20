@@ -1,9 +1,10 @@
+import { homedir } from "node:os";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
-import { createFileDistillStore, type DistillStore } from "./memory-distill-store";
+import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
 import { createModel } from "./model-factory";
 import { normalizeModel } from "./provider-config";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
@@ -18,7 +19,10 @@ export type DistillConfig = {
 
 let defaultStore: DistillStore | null = null;
 function getDefaultStore(): DistillStore {
-  if (!defaultStore) defaultStore = createFileDistillStore();
+  if (!defaultStore) {
+    defaultStore = createSqliteDistillStore();
+    migrateFromFilesystem(homedir(), defaultStore).catch(() => {});
+  }
   return defaultStore;
 }
 const REFLECTION_RETRY_LIMIT = 2;

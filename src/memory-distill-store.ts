@@ -1,5 +1,6 @@
+import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { type DistillRecord, distillRecordSchema } from "./memory-contract";
@@ -8,56 +9,131 @@ export interface DistillStore {
   list(scopeKey: string): Promise<readonly DistillRecord[]>;
   write(record: DistillRecord): Promise<void>;
   remove(id: string, scopeKey: string): Promise<void>;
+  close(): void;
 }
 
-function safeDistillScopeKey(scopeKey: string): string | null {
+export function safeDistillScopeKey(scopeKey: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scopeKey) ? scopeKey : null;
 }
 
-function distillDir(homeDir: string, scopeKey: string): string | null {
-  const safeName = safeDistillScopeKey(scopeKey);
-  if (!safeName) return null;
-  return join(homeDir, ".acolyte", "distill", safeName);
+function initSchema(db: Database): void {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS distill_records (
+      id TEXT PRIMARY KEY,
+      scope_key TEXT NOT NULL,
+      tier TEXT NOT NULL,
+      content TEXT NOT NULL,
+      current_task TEXT,
+      next_step TEXT,
+      created_at TEXT NOT NULL,
+      token_estimate INTEGER NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_distill_scope ON distill_records(scope_key)`);
 }
 
-export function createFileDistillStore(homeDir = homedir()): DistillStore {
+type DistillRow = {
+  id: string;
+  scope_key: string;
+  tier: string;
+  content: string;
+  current_task: string | null;
+  next_step: string | null;
+  created_at: string;
+  token_estimate: number;
+};
+
+function rowToRecord(row: DistillRow): DistillRecord {
+  return {
+    id: row.id,
+    sessionId: row.scope_key,
+    tier: row.tier as DistillRecord["tier"],
+    content: row.content,
+    ...(row.current_task ? { currentTask: row.current_task } : {}),
+    ...(row.next_step ? { nextStep: row.next_step } : {}),
+    createdAt: row.created_at,
+    tokenEstimate: row.token_estimate,
+  };
+}
+
+export function createSqliteDistillStore(dbPath?: string): DistillStore {
+  const resolvedPath = dbPath ?? join(homedir(), ".acolyte", "memory.db");
+  const db = new Database(resolvedPath, { create: true });
+  db.run("PRAGMA journal_mode = WAL");
+  initSchema(db);
+
+  const listStmt = db.prepare<DistillRow, [string]>(
+    "SELECT * FROM distill_records WHERE scope_key = ? ORDER BY created_at ASC",
+  );
+  const writeStmt = db.prepare<void, [string, string, string, string, string | null, string | null, string, number]>(
+    `INSERT OR REPLACE INTO distill_records (id, scope_key, tier, content, current_task, next_step, created_at, token_estimate)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const removeStmt = db.prepare<void, [string, string]>("DELETE FROM distill_records WHERE id = ? AND scope_key = ?");
+
   return {
     async list(scopeKey) {
-      const dir = distillDir(homeDir, scopeKey);
-      if (!dir) return [];
-      if (!existsSync(dir)) return [];
-      const names = await readdir(dir);
-      const records: DistillRecord[] = [];
-      for (const name of names) {
-        if (!name.endsWith(".json")) continue;
-        try {
-          const raw = await readFile(join(dir, name), "utf8");
-          const parsed = distillRecordSchema.safeParse(JSON.parse(raw));
-          if (parsed.success) records.push(parsed.data);
-        } catch {
-          // Ignore unreadable distill files.
-        }
-      }
-      records.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-      return records;
-    },
-    async remove(id, scopeKey) {
-      const dir = distillDir(homeDir, scopeKey);
-      if (!dir) return;
-      await rm(join(dir, `${id}.json`), { force: true }).catch(() => {});
+      if (!safeDistillScopeKey(scopeKey)) return [];
+      return listStmt.all(scopeKey).map(rowToRecord);
     },
     async write(record) {
-      const dir = distillDir(homeDir, record.sessionId);
-      if (!dir) return;
-      await mkdir(dir, { recursive: true });
-      const targetPath = join(dir, `${record.id}.json`);
-      const tempPath = join(dir, `${record.id}.json.tmp-${process.pid}-${Date.now()}`);
-      try {
-        await writeFile(tempPath, JSON.stringify(record, null, 2), "utf8");
-        await rename(tempPath, targetPath);
-      } finally {
-        await rm(tempPath, { force: true }).catch(() => {});
-      }
+      if (!safeDistillScopeKey(record.sessionId)) return;
+      writeStmt.run(
+        record.id,
+        record.sessionId,
+        record.tier,
+        record.content,
+        record.currentTask ?? null,
+        record.nextStep ?? null,
+        record.createdAt,
+        record.tokenEstimate,
+      );
+    },
+    async remove(id, scopeKey) {
+      if (!safeDistillScopeKey(scopeKey)) return;
+      removeStmt.run(id, scopeKey);
+    },
+    close() {
+      db.close();
     },
   };
+}
+
+// TODO(cniska): Drop legacy distill migration at v1.0.0.
+export async function migrateFromFilesystem(homeDir: string, store: DistillStore): Promise<number> {
+  const distillDir = join(homeDir, ".acolyte", "distill");
+  if (!existsSync(distillDir)) return 0;
+
+  let migrated = 0;
+  const scopeDirs = await readdir(distillDir, { withFileTypes: true });
+  const records: DistillRecord[] = [];
+  for (const entry of scopeDirs) {
+    if (!entry.isDirectory()) continue;
+    const scopeKey = entry.name;
+    if (!safeDistillScopeKey(scopeKey)) continue;
+    const scopePath = join(distillDir, scopeKey);
+    const files = await readdir(scopePath);
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        const raw = await readFile(join(scopePath, file), "utf8");
+        const parsed = distillRecordSchema.safeParse(JSON.parse(raw));
+        if (parsed.success) records.push(parsed.data);
+      } catch {
+        // Skip unreadable files.
+      }
+    }
+  }
+
+  for (const record of records) {
+    await store.write(record);
+    migrated += 1;
+  }
+
+  const backupPath = join(homeDir, ".acolyte", "distill.bak");
+  if (!existsSync(backupPath)) {
+    await rename(distillDir, backupPath);
+  }
+
+  return migrated;
 }
