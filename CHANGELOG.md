@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0 (2026-03-21)
+
+- fix stale evaluator names in comparison (`234e36f3`)
+- **tui:** remove width cap from promoted transcript rows (`ae7cc036`)
+- **skills:** add plan skill with issue number support (`a452291c`)
+- **memory:** semantic recall (#43) (`9b81f8ef`)
+- **trace:** migrate lifecycle events to SQLite (#44) (`e1ea271f`)
+- **tools:** persist tool cache with SQLite (#46) (`dc9d0941`)
+- document logFormat config key (#34) (`6bb74a32`)
+- add logFormat to features list (`f3e0ffc8`)
+- update glossary, features, and format (`647235cc`)
+- **cli:** add logs command (#48) (`063f2836`)
+- **i18n:** move t() calls out of server-side code (#47) (`05369b1b`)
+- **config:** remove internal keys from settable config (`31f25001`)
+
+
 ## 0.7.0 (2026-03-20)
 
 - **hooks:** scope new-ref validation to unpushed commits (`c6667298`)
