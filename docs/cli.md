@@ -28,6 +28,8 @@ See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 
 ## Memory commands
 
+Manage saved memory notes scoped to user or project.
+
 ```bash
 acolyte memory list [all|user|project]
 acolyte memory list --json
@@ -36,6 +38,8 @@ acolyte memory add --project "<text>"
 ```
 
 ## Config commands
+
+Read and write runtime configuration at user or project level.
 
 ```bash
 acolyte config list [--project]
@@ -49,6 +53,8 @@ See [Configuration](./configuration.md) for available keys.
 
 ## Logs commands
 
+Tail and filter the daemon server log.
+
 ```bash
 acolyte logs                              # tail latest lines
 acolyte logs -n 100                       # tail N lines
@@ -60,6 +66,8 @@ acolyte logs --json                       # JSON-lines output
 ```
 
 ## Trace commands
+
+Inspect lifecycle execution traces stored in SQLite.
 
 ```bash
 acolyte trace                    # list recent tasks
