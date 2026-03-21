@@ -32,12 +32,12 @@ Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore
 
 ## Tool result cache
 
-Read-only and search tools (`read-file`, `find-files`, `search-files`, `scan-code`) are cached per-task. Identical calls return the cached result without re-executing.
+Read-only and search tools (`read-file`, `find-files`, `search-files`, `scan-code`) are cached. Identical calls return the cached result without re-executing.
 
 - **Key**: deterministic `toolName:stableJSON(args)` — object keys sorted for stability
 - **Invalidation**: write tools (`edit-file`, `create-file`, `delete-file`) evict entries with overlapping paths; `run-command` clears the entire cache
-- **Scope**: one cache per task, discarded when the task ends
-- **Eviction**: LRU (least recently used) with a default cap of 256 entries
+- **L1 (in-memory)**: per-task LRU with a default cap of 256 entries, discarded when the task ends
+- **L2 (SQLite)**: persists path-tracked entries (`read-file`, `scan-code`) across tasks within a session in `~/.acolyte/tool.db`, cleared on session switch
 
 This reduces redundant I/O and avoids re-sending identical tool results to the model.
 

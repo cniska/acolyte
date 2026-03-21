@@ -21,6 +21,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     workspace: input.workspace,
     onOutput: input.onOutput,
     taskId: input.taskId,
+    sessionId: input.request.sessionId,
   });
   const toolTokens = estimateToolTokens(tools);
   const requestInput = createAgentInput(input.request, { systemPromptTokens, toolTokens });

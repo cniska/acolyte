@@ -48,7 +48,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 - **Step Budget**: guard that enforces per-cycle and total limits on tool calls to prevent runaway loops.
 - **Task**: lifecycle work request flowing through accept/queue/run/terminal states.
 - **Task Queue**: runtime queue policy/mechanism that orders accepted tasks and enforces capacity/cancellation boundaries.
-- **Tool Cache**: per-task LRU cache for read-only and search tool results. Invalidated on writes; shell commands clear the entire cache.
+- **Tool Cache**: two-tier cache for read-only and search tool results. L1 is an in-memory LRU per task; L2 is SQLite-backed persistence across tasks within a session. Invalidated on writes; shell commands clear both tiers.
 - **Tool Recovery**: structured recovery payload attached to a tool failure when the tool knows the corrective action. Carries `tool`, `kind`, `summary`, and `instruction`, and may include next-step hints like `nextTool` or `targetPaths`, so lifecycle can regenerate with targeted recovery guidance instead of host-side string matching.
 - **Toolkit**: grouped domain tools exposed through adapters/composition.
 - **Verify Cycle**: post-write verification sequence that runs when verification is enabled for the request scope; the evaluator transitions to verify mode, performs the lightest sufficient scoped verification or review, and re-generates on failure.

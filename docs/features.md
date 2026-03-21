@@ -31,7 +31,7 @@ Shipped, user-visible capabilities.
 - Tool-guarded execution for safer autonomous runs.
 - Streaming progress output for tool activity with real-time token usage.
 - Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation.
-- Per-task LRU result cache for read-only and search tools.
+- Two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence.
 
 ## Tools
 

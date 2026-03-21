@@ -1,4 +1,5 @@
 import { extractReadPaths, normalizePath } from "./tool-arg-paths";
+import type { ToolCacheStore } from "./tool-cache-store";
 import type { ToolCache, ToolCacheEntry } from "./tool-contract";
 
 function stableKey(toolName: string, args: Record<string, unknown>): string {
@@ -37,7 +38,11 @@ function extractCachedPaths(toolName: string, args: Record<string, unknown>): st
 
 const DEFAULT_MAX_ENTRIES = 256;
 
-export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries = DEFAULT_MAX_ENTRIES): ToolCache {
+export function createToolCache(
+  cacheableTools: ReadonlySet<string>,
+  maxEntries = DEFAULT_MAX_ENTRIES,
+  store?: ToolCacheStore,
+): ToolCache {
   const cache = new Map<string, ToolCacheEntry>();
   const keyPaths = new Map<string, string[]>();
   let hits = 0;
@@ -54,20 +59,44 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
     }
   }
 
+  function deserialize(raw: string): ToolCacheEntry | undefined {
+    try {
+      return JSON.parse(raw) as ToolCacheEntry;
+    } catch {
+      return undefined;
+    }
+  }
+
   return {
     isCacheable: (toolName: string) => cacheableTools.has(toolName),
 
     get(toolName, args) {
       if (!cacheableTools.has(toolName)) return undefined;
       const key = stableKey(toolName, args);
+
+      // L1: in-memory
       const entry = cache.get(key);
       if (entry) {
-        // Move to end for LRU ordering
         cache.delete(key);
         cache.set(key, entry);
         hits += 1;
         return entry;
       }
+
+      // L2: SQLite store
+      if (store) {
+        const raw = store.get(key);
+        if (raw) {
+          const restored = deserialize(raw);
+          if (restored) {
+            if (cache.size >= maxEntries) evictOldest();
+            cache.set(key, restored);
+            hits += 1;
+            return restored;
+          }
+        }
+      }
+
       misses += 1;
       return undefined;
     },
@@ -84,6 +113,17 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
       cache.set(key, entry);
       const paths = extractCachedPaths(toolName, args);
       if (paths.length > 0) keyPaths.set(key, paths);
+
+      // Persist to L2 only for entries with tracked paths.
+      // Pathless entries (search/find) are L1-only since they can't be
+      // invalidated by targeted writes in L2.
+      if (store && paths.length > 0) {
+        try {
+          store.set(key, JSON.stringify(entry), paths);
+        } catch {
+          // Non-fatal — L1 cache still works.
+        }
+      }
     },
 
     populateSubEntries(toolName, args, result) {
@@ -91,10 +131,8 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
       const paths = args.paths;
       if (!Array.isArray(paths) || paths.length < 2) return;
       if (typeof result !== "string") return;
-      // readSnippets joins sections with "\n\n", each starting with "File: /abs/path"
       const sections = result.split("\n\nFile: ");
       if (sections.length < 2) return;
-      // First section already starts with "File: ", rest had it stripped by split
       const normalized = [sections[0], ...sections.slice(1).map((s) => `File: ${s}`)];
       for (let i = 0; i < normalized.length && i < paths.length; i++) {
         const entry = paths[i];
@@ -106,7 +144,6 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
         if (pathEntry.start !== undefined) subArg.start = pathEntry.start;
         if (pathEntry.end !== undefined) subArg.end = pathEntry.end;
         this.set(toolName, { paths: [subArg] }, { result: normalized[i] });
-        // Also store under rangeless key so future reads of the same file hit cache.
         if (pathEntry.start !== undefined || pathEntry.end !== undefined) {
           const rangelessKey = stableKey(toolName, { paths: [{ path: p }] });
           if (!cache.has(rangelessKey)) {
@@ -122,6 +159,7 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
         cache.clear();
         keyPaths.clear();
         invalidations += removed;
+        store?.clear();
         return;
       }
       const writtenPaths = extractWrittenPaths(toolName, args);
@@ -134,6 +172,7 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
             invalidations += 1;
           }
         }
+        store?.invalidateByPath(writtenPaths);
       }
       // Evict entries without tracked paths (search/find) since they may reference written files
       const toEvict: string[] = [];
@@ -149,6 +188,7 @@ export function createToolCache(cacheableTools: ReadonlySet<string>, maxEntries 
     clear() {
       cache.clear();
       keyPaths.clear();
+      store?.clear();
     },
 
     stats() {
