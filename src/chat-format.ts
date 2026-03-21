@@ -2,16 +2,6 @@ import { t } from "./i18n";
 
 export const COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH = 20;
 
-export function formatThoughtDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  const totalSeconds = ms / 1000;
-  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.round(totalSeconds % 60);
-  if (seconds === 60) return `${minutes + 1}m 0s`;
-  return `${minutes}m ${seconds}s`;
-}
-
 export function formatCompactNumber(n: number): string {
   if (n < 1000) return String(n);
   const k = n / 1000;
@@ -22,19 +12,6 @@ export function formatCompactNumber(n: number): string {
 
 export function formatTokenCount(tokens: number): string {
   return t("unit.token", { count: formatCompactNumber(tokens) });
-}
-
-export function formatRelativeTime(iso: string, now?: number): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
-  if (seconds < 60) return t("chat.relative_time.just_now");
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return t("chat.relative_time.minutes_ago", { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("chat.relative_time.hours_ago", { count: hours });
-  const days = Math.floor(hours / 24);
-  return t("chat.relative_time.days_ago", { count: days });
 }
 
 export function commandOutputColWidth(sections: [string, string][][]): number {

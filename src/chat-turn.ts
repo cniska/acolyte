@@ -3,8 +3,9 @@ import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
-import { formatThoughtDuration, formatTokenCount } from "./chat-format";
+import { formatTokenCount } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
+import { formatDuration } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
@@ -125,7 +126,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   };
   const durationMs = Date.now() - params.pendingStartedAt;
   if (durationMs >= 300) {
-    const duration = formatThoughtDuration(durationMs);
+    const duration = formatDuration(durationMs);
     const toolCount = reply.toolCalls?.length ?? 0;
     const totalTokens = tokenEntry.usage.totalTokens;
     const details: string[] = [];

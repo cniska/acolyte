@@ -116,6 +116,7 @@ describe("cli visual regression", () => {
         memory                 manage memory
         config                 manage config
         skill <name> [prompt]  run a prompt with an active skill
+        logs                   view server logs
         trace                  inspect server lifecycle traces
 
       Options
@@ -453,6 +454,19 @@ describe("cli visual regression", () => {
         Examples:
           acolyte tool find-files "src/**/*.ts"
           acolyte tool run-command "bun run verify"
+      `),
+    },
+    {
+      args: ["logs", "help"],
+      output: dedent(`
+        Usage: acolyte logs [-n <count>] [--level <level>] [--session <id>] [--since <duration>] [--json]
+
+        Description: view server logs
+
+        Examples:
+          acolyte logs
+          acolyte logs -n 100
+          acolyte logs --level error --since 1h
       `),
     },
     {

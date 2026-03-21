@@ -1,7 +1,7 @@
-import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { truncateText } from "./compact-text";
+import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { readStore as readStoreType } from "./storage";
 

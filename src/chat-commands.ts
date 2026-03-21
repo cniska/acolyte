@@ -1,12 +1,12 @@
 import { z } from "zod";
 import type { AgentMode } from "./agent-contract";
 import { appConfig, setDefaultModel, setModeModel } from "./app-config";
-import { alignCols, formatCompactNumber, formatRelativeTime } from "./chat-format";
+import { alignCols, formatCompactNumber } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
 import { setConfigValue } from "./config";
 import type { ConfigScope } from "./config-contract";
-import { nowIso } from "./datetime";
+import { formatRelativeTime, nowIso } from "./datetime";
 import { t } from "./i18n";
 import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import type { MemoryScope } from "./memory-contract";
