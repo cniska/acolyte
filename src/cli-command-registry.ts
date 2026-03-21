@@ -9,6 +9,7 @@ import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
+import { logsMode } from "./cli-logs";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { runMode, runResourceId } from "./cli-run";
@@ -27,6 +28,7 @@ import {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
+  serverLogPath,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
@@ -297,6 +299,24 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       toolMode(args, {
         hasHelpFlag,
         printError,
+        commandHelp,
+      }),
+  },
+  logs: {
+    help: {
+      command: "logs",
+      usage: "acolyte logs [-n <count>] [--level <level>] [--session <id>] [--since <duration>] [--json]",
+      description: t("cli.help.desc.logs"),
+      examples: ["acolyte logs", "acolyte logs -n 100", "acolyte logs --level error --since 1h"],
+    },
+    handler: (args) =>
+      logsMode(args, {
+        hasHelpFlag,
+        logPath: serverLogPath(appConfig.server.port),
+        printDim,
+        printError,
+        readFile: (path, enc) => import("node:fs/promises").then((fs) => fs.readFile(path, enc)),
+        commandError,
         commandHelp,
       }),
   },
