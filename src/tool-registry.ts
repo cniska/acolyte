@@ -4,6 +4,7 @@ import { invariant } from "./assert";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
+import { EN_MESSAGES } from "./i18n/en";
 import { createShellToolkit } from "./shell-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
@@ -77,6 +78,7 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
     invariant(typeof tool.labelKey === "string" && tool.labelKey.trim().length > 0, `tool ${tool.id} missing labelKey`);
+    invariant(tool.labelKey in EN_MESSAGES, `tool ${tool.id} has unknown labelKey "${tool.labelKey}"`);
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
     invariant(
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,
