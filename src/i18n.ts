@@ -47,3 +47,8 @@ export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>)
     args[0] as Record<string, TranslationValue> | undefined,
   );
 }
+
+/** Translate a dynamic key without compile-time key checking. Falls back to the key itself when not found. */
+export function tDynamic(key: string, vars?: Record<string, TranslationValue>): string {
+  return translate(TRANSLATIONS[appConfig.locale] ?? TRANSLATIONS.en, key, vars);
+}

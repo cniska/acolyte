@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { t } from "./i18n";
+import { t, tDynamic } from "./i18n";
 
 export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
 
@@ -55,8 +55,7 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
 export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
 
 export function toolLabel(labelKey: string): string {
-  type NoParamKey = "tool.label.create";
-  return t(labelKey as NoParamKey);
+  return tDynamic(labelKey);
 }
 
 export function renderToolOutputPart(content: ToolOutputPart): string {
