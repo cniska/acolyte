@@ -54,33 +54,29 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
 
 export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
 
-export function toolLabel(labelKey: string): string {
-  return tDynamic(labelKey);
-}
-
 export function renderToolOutputPart(content: ToolOutputPart): string {
   switch (content.kind) {
     case "tool-header": {
-      const label = toolLabel(content.labelKey);
+      const label = tDynamic(content.labelKey);
       return content.detail ? `${label} ${content.detail}` : label;
     }
     case "text":
       return content.text;
     case "file-header": {
-      const label = toolLabel(content.labelKey);
+      const label = tDynamic(content.labelKey);
       const shown = content.targets.join(", ");
       const omitted = content.omitted && content.omitted > 0 ? `, +${content.omitted}` : "";
       return `${label} ${shown}${omitted}`;
     }
     case "scope-header": {
-      const label = toolLabel(content.labelKey);
+      const label = tDynamic(content.labelKey);
       const needsBrackets = content.scope !== "workspace";
       const patternsDisplay = needsBrackets ? `[${content.patterns.join(", ")}]` : content.patterns.join(", ");
       const scopePrefix = content.scope === "workspace" ? "" : `${content.scope} `;
       return `${label} ${scopePrefix}${patternsDisplay}`;
     }
     case "edit-header":
-      return `${toolLabel(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
+      return `${tDynamic(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
     case "diff": {
       const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
       return `${content.lineNumber} ${prefix}${content.text}`;
@@ -161,7 +157,7 @@ export function createToolOutputState(): {
       const firstItem = items[0];
       const label =
         firstItem && "labelKey" in firstItem && typeof firstItem.labelKey === "string"
-          ? toolLabel(firstItem.labelKey)
+          ? tDynamic(firstItem.labelKey)
           : undefined;
       return { label, items };
     },
