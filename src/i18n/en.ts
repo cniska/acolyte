@@ -202,8 +202,6 @@ export const EN_MESSAGES = {
   "error.prompt.write_blocked": "Write action blocked in read mode. Run /permissions write and retry.",
   "lifecycle.stopped_unknown_errors":
     "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
-  "memory.content_empty": "Memory content cannot be empty",
-  "memory.prefix_empty": "Memory id prefix cannot be empty",
   "rpc.status.accepted": "Accepted by server…",
   "rpc.status.queued": "Queued (position {position})…",
   "rpc.status.queued.unknown": "Queued…",

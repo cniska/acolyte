@@ -4,7 +4,6 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
-import { t } from "./i18n";
 import { type MemoryEntry, type MemoryScope, memoryIdSchema, type RemoveMemoryResult } from "./memory-contract";
 import type { MemoryStore } from "./memory-store";
 import { createId } from "./short-id";
@@ -110,7 +109,7 @@ export async function addMemory(
   options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope } = {},
 ): Promise<MemoryEntry> {
   const trimmed = content.trim();
-  if (!trimmed) throw new Error(t("memory.content_empty"));
+  if (!trimmed) throw new Error("Memory content cannot be empty");
 
   const { scope = "user", cwd = process.cwd(), homeDir = homedir() } = options;
   const dir = scope === "project" ? getProjectMemoryDir(cwd) : getUserMemoryDir(homeDir);
@@ -132,7 +131,7 @@ export async function removeMemoryByPrefix(
   options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope | "all" } = {},
 ): Promise<RemoveMemoryResult> {
   const trimmed = prefix.trim();
-  if (!trimmed) throw new Error(t("memory.prefix_empty"));
+  if (!trimmed) throw new Error("Memory prefix cannot be empty");
   const matches = (await listMemories(options)).filter((entry) => entry.id.startsWith(trimmed));
   if (matches.length === 0) return { kind: "not_found", prefix: trimmed };
   if (matches.length > 1) return { kind: "ambiguous", prefix: trimmed, matches };

@@ -90,7 +90,7 @@ function stripGitShowMetadataForPreview(rawText: string): string {
 function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-status",
-    label: t("tool.label.git_status"),
+    labelKey: "tool.label.git_status",
     category: "search",
     permissions: ["read"],
     description: "Show working tree status (short format with branch) for the current repository.",
@@ -105,7 +105,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
       return runTool(input.session, "git-status", toolCallId, {}, async (callId) => {
         input.onOutput({
           toolName: "git-status",
-          content: { kind: "tool-header", label: t("tool.label.git_status") },
+          content: { kind: "tool-header", labelKey: "tool.label.git_status" },
           toolCallId: callId,
         });
         const rawStatus = await git.statusShort();
@@ -120,7 +120,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
 function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-diff",
-    label: t("tool.label.git_diff"),
+    labelKey: "tool.label.git_diff",
     category: "search",
     permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
@@ -140,7 +140,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
       return runTool(input.session, "git-diff", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "git-diff",
-          content: { kind: "tool-header", label: t("tool.label.git_diff"), detail: toolInput.path },
+          content: { kind: "tool-header", labelKey: "tool.label.git_diff", detail: toolInput.path },
           toolCallId: callId,
         });
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
@@ -155,7 +155,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-log",
-    label: t("tool.label.git_log"),
+    labelKey: "tool.label.git_log",
     category: "search",
     permissions: ["read"],
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
@@ -175,7 +175,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
       return runTool(input.session, "git-log", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "git-log",
-          content: { kind: "tool-header", label: t("tool.label.git_log"), detail: toolInput.path },
+          content: { kind: "tool-header", labelKey: "tool.label.git_log", detail: toolInput.path },
           toolCallId: callId,
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
@@ -190,7 +190,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-show",
-    label: t("tool.label.git_show"),
+    labelKey: "tool.label.git_show",
     category: "search",
     permissions: ["read"],
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
@@ -212,7 +212,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
       return runTool(input.session, "git-show", toolCallId, toolInput, async (callId) => {
         input.onOutput({
           toolName: "git-show",
-          content: { kind: "tool-header", label: t("tool.label.git_show"), detail: toolInput.ref ?? toolInput.path },
+          content: { kind: "tool-header", labelKey: "tool.label.git_show", detail: toolInput.ref ?? toolInput.path },
           toolCallId: callId,
         });
         const rawShow = await git.show({
@@ -237,7 +237,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-add",
-    label: t("tool.label.git_add"),
+    labelKey: "tool.label.git_add",
     category: "write",
     permissions: ["write"],
     description:
@@ -259,7 +259,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
         const addDetail = toolInput.all === true ? "all" : t("unit.file", { count: paths.length });
         input.onOutput({
           toolName: "git-add",
-          content: { kind: "tool-header", label: t("tool.label.git_add"), detail: addDetail },
+          content: { kind: "tool-header", labelKey: "tool.label.git_add", detail: addDetail },
           toolCallId: callId,
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
@@ -285,7 +285,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-commit",
-    label: t("tool.label.git_commit"),
+    labelKey: "tool.label.git_commit",
     category: "write",
     permissions: ["write"],
     description: "Create a git commit with a required subject line and optional body lines.",
@@ -309,7 +309,7 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
         const detail = shortHash ? `${toolInput.message} (${shortHash})` : toolInput.message;
         input.onOutput({
           toolName: "git-commit",
-          content: { kind: "tool-header", label: t("tool.label.git_commit"), detail },
+          content: { kind: "tool-header", labelKey: "tool.label.git_commit", detail },
           toolCallId: callId,
         });
         if (toolInput.body && toolInput.body.length > 0) {

@@ -21,7 +21,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "run-command",
-            content: { kind: "tool-header", label: "Run", detail: "echo hi" },
+            content: { kind: "tool-header", labelKey: "tool.label.run", detail: "echo hi" },
           });
           return { model: "gpt-5-mini", output: "done" };
         },
@@ -324,7 +324,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-output",
             toolCallId: "call_ok",
             toolName: "edit-file",
-            content: { kind: "tool-header", label: "Edit", detail: "b.ts" },
+            content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "b.ts" },
           },
           {
             type: "tool-output",
@@ -346,7 +346,7 @@ describe("chat message handler stream behavior", () => {
     expect(toolRows).toHaveLength(1);
     expect(
       isToolOutput(toolRows[0]?.content) &&
-        toolRows[0]?.content.parts.some((item) => item.kind === "tool-header" && item.label === "Edit"),
+        toolRows[0]?.content.parts.some((item) => item.kind === "tool-header" && item.labelKey === "tool.label.edit"),
     ).toBe(true);
     expect(
       rows.some((row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header")),
@@ -365,7 +365,7 @@ describe("chat message handler stream behavior", () => {
           type: "tool-output",
           toolCallId: "call_1",
           toolName: "edit-file",
-          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+          content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "sum.rs" },
         },
         {
           type: "tool-output",
@@ -380,7 +380,7 @@ describe("chat message handler stream behavior", () => {
           type: "tool-output",
           toolCallId: "call_2",
           toolName: "edit-file",
-          content: { kind: "tool-header", label: "Edit", detail: "sum.rs" },
+          content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "sum.rs" },
         },
         {
           type: "tool-output",
@@ -412,7 +412,7 @@ describe("chat message handler stream behavior", () => {
       (row) =>
         row.kind === "tool" &&
         isToolOutput(row.content) &&
-        row.content.parts.some((item) => item.kind === "tool-header" && item.label === "Edit"),
+        row.content.parts.some((item) => item.kind === "tool-header" && item.labelKey === "tool.label.edit"),
     );
     expect(editedRows).toHaveLength(2);
   });
@@ -549,7 +549,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "run-command",
-            content: { kind: "tool-header", label: "Run", detail: "echo hi" },
+            content: { kind: "tool-header", labelKey: "tool.label.run", detail: "echo hi" },
           });
           options.onEvent({
             type: "tool-result",
@@ -587,7 +587,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-output",
             toolCallId: "call_A",
             toolName: "edit-code",
-            content: { kind: "edit-header", label: "Edit", path: "a.ts", files: 1, added: 1, removed: 1 },
+            content: { kind: "edit-header", labelKey: "tool.label.edit", path: "a.ts", files: 1, added: 1, removed: 1 },
           });
           options.onEvent({
             type: "tool-result",
@@ -604,7 +604,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-output",
             toolCallId: "call_B",
             toolName: "edit-code",
-            content: { kind: "edit-header", label: "Edit", path: "b.ts", files: 1, added: 1, removed: 1 },
+            content: { kind: "edit-header", labelKey: "tool.label.edit", path: "b.ts", files: 1, added: 1, removed: 1 },
           });
           options.onEvent({
             type: "tool-result",

@@ -2,7 +2,6 @@ import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { editCodeEditSchema } from "./code-contract";
 import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
-import { t } from "./i18n";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -49,7 +48,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "scan-code",
-    label: t("tool.label.scan"),
+    labelKey: "tool.label.scan",
     category: "search",
     permissions: ["read"],
     description:
@@ -85,7 +84,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolName: "scan-code",
             content: {
               kind: "file-header",
-              label: t("tool.label.scan"),
+              labelKey: "tool.label.scan",
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -116,7 +115,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-code",
-    label: t("tool.label.edit"),
+    labelKey: "tool.label.edit",
     onOutput: input.onOutput,
   });
   const outputSchema = z.object({
@@ -132,7 +131,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
   return createTool({
     id: "edit-code",
-    label: t("tool.label.edit"),
+    labelKey: "tool.label.edit",
     category: "write",
     permissions: ["read", "write"],
     description:

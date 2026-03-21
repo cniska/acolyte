@@ -6,7 +6,7 @@ import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { commandOutputColWidth, formatTokenCount } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
-import { t } from "./i18n";
+import { t, tDynamic } from "./i18n";
 import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
@@ -139,7 +139,7 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     const path = part.path === "." ? "" : part.path;
     return (
       <>
-        <Text bold>{part.label}</Text>
+        <Text bold>{tDynamic(part.labelKey)}</Text>
         <Text dimColor>{path ? ` ${path}` : ""} (</Text>
         <Text color={palette.diffAddText}>{`+${part.added}`}</Text>
         <Text dimColor> </Text>
@@ -152,7 +152,7 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     const detail = part.detail === "." ? undefined : part.detail;
     return (
       <>
-        <Text bold>{part.label}</Text>
+        <Text bold>{tDynamic(part.labelKey)}</Text>
         {detail ? <Text dimColor>{` ${detail}`}</Text> : null}
       </>
     );
@@ -164,7 +164,7 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     const detail = shown ? ` ${shown}${omitted}` : omitted ? ` ${omitted.slice(2)}` : "";
     return (
       <>
-        <Text bold>{part.label}</Text>
+        <Text bold>{tDynamic(part.labelKey)}</Text>
         {detail ? <Text dimColor>{detail}</Text> : null}
       </>
     );
@@ -174,7 +174,7 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
       part.scope === "workspace" ? part.patterns.join(", ") : `${part.scope} [${part.patterns.join(", ")}]`;
     return (
       <>
-        <Text bold>{part.label}</Text>
+        <Text bold>{tDynamic(part.labelKey)}</Text>
         <Text dimColor>{` ${display}`}</Text>
       </>
     );

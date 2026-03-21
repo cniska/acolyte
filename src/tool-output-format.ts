@@ -40,17 +40,17 @@ export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
 
 export function createDiffSummaryEmitter<TToolName extends string>(input: {
   toolName: TToolName;
-  label: string;
+  labelKey: string;
   onOutput: ToolOutputListener;
 }): (path: string, rawResult: string, toolCallId: string) => void {
-  const { toolName, label, onOutput } = input;
+  const { toolName, labelKey, onOutput } = input;
   return (path, rawResult, toolCallId) => {
     const { files, added, removed } = summarizeUnifiedDiff(rawResult);
     const touchedFiles = files > 0 ? files : 1;
     const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
     onOutput({
       toolName,
-      content: { kind: "edit-header", label, path: displayPath, files: touchedFiles, added, removed },
+      content: { kind: "edit-header", labelKey, path: displayPath, files: touchedFiles, added, removed },
       toolCallId,
     });
   };
@@ -130,7 +130,7 @@ export function emitFileListSummary(
 export function emitFindSummary(
   filePaths: string[],
   patterns: string[],
-  label: string,
+  labelKey: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_LIMITS.files,
@@ -141,7 +141,7 @@ export function emitFindSummary(
   const labels = compactPatternLabels(patterns);
   onOutput({
     toolName: "find-files",
-    content: { kind: "scope-header", label, scope: "workspace", patterns: labels, matches: unique.length },
+    content: { kind: "scope-header", labelKey, scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
   });
   const displayed = unique.slice(0, maxFiles).map((path) => toDisplayPath(path, workspace));
@@ -350,7 +350,7 @@ export function emitSearchSummary(
   entries: SearchSummaryEntry[],
   patterns: string[],
   paths: string[] | undefined,
-  label: string,
+  labelKey: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
   maxFiles = TOOL_OUTPUT_LIMITS.files,
@@ -378,7 +378,7 @@ export function emitSearchSummary(
   }
   onOutput({
     toolName: "search-files",
-    content: { kind: "scope-header", label, scope, patterns: labels, matches: unique.length },
+    content: { kind: "scope-header", labelKey, scope, patterns: labels, matches: unique.length },
     toolCallId,
   });
   for (const path of unique.slice(0, maxFiles)) {
