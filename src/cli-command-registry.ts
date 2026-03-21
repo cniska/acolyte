@@ -315,7 +315,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         logPath: serverLogPath(appConfig.server.port),
         printDim,
         printError,
-        readFile: (path, enc) => import("node:fs/promises").then((fs) => fs.readFile(path, enc)),
+        readFile,
         commandError,
         commandHelp,
       }),

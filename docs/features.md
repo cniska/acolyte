@@ -65,6 +65,7 @@ Shipped, user-visible capabilities.
 - status command with `--json` output
 - token usage reporting per turn with prompt breakdown (system, tools, memory, messages) and share percentages
 - lifecycle trace command with SQLite-backed indexed queries (`acolyte trace`)
+- logs command with level, session, and time filtering (`acolyte logs`)
 - managed daemon log file at `~/.acolyte/daemons/server.log`
 - configurable log format (`logfmt` or `json`) via `logFormat` config key
 - scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching)

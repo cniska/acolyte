@@ -15,6 +15,7 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte memory list|add`: manage memory
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte skill <name> [prompt]`: run a prompt with an active skill
+- `acolyte logs`: view server logs
 - `acolyte trace list|task <id>`: inspect server lifecycle traces
 
 Run `acolyte <command> help` for detailed usage.
@@ -45,6 +46,18 @@ acolyte config unset <key>
 ```
 
 See [Configuration](./configuration.md) for available keys.
+
+## Logs commands
+
+```bash
+acolyte logs                              # tail latest lines
+acolyte logs -n 100                       # tail N lines
+acolyte logs --level warn                 # filter by level
+acolyte logs --session <id>               # filter by session
+acolyte logs --since 5m                   # lines from last N minutes
+acolyte logs --level error --since 1h     # combine filters
+acolyte logs --json                       # JSON-lines output
+```
 
 ## Trace commands
 

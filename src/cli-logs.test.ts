@@ -112,6 +112,17 @@ describe("logsMode", () => {
     expect(errorMsg).toContain("Invalid --since");
   });
 
+  test("--since filters by timestamp", async () => {
+    const now = new Date();
+    const recent = new Date(now.getTime() - 60_000).toISOString();
+    const old = "2020-01-01T00:00:00Z";
+    const log = [`${old} level=info msg="ancient"`, `${recent} level=info msg="recent"`].join("\n");
+    const { deps, output } = createDeps({ readFile: async () => log });
+    await logsMode(["--since", "5m"], deps);
+    expect(output()).toContain("recent");
+    expect(output()).not.toContain("ancient");
+  });
+
   test("--json outputs JSON lines", async () => {
     const { deps, output } = createDeps({ readFile: async () => SAMPLE_LOG });
     await logsMode(["--lines", "1", "--json"], deps);
