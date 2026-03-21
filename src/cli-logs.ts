@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
+import { parseSince } from "./datetime";
 import { t } from "./i18n";
 import { type LogLine, parseLog } from "./log-parser";
 
@@ -15,24 +16,6 @@ type LogsModeDeps = {
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
-
-function parseSince(value: string): Date | undefined {
-  const match = value.match(/^(\d+)([mhd])$/);
-  if (!match) return undefined;
-  const amount = Number.parseInt(match[1], 10);
-  const unit = match[2];
-  const now = Date.now();
-  switch (unit) {
-    case "m":
-      return new Date(now - amount * 60_000);
-    case "h":
-      return new Date(now - amount * 3_600_000);
-    case "d":
-      return new Date(now - amount * 86_400_000);
-    default:
-      return undefined;
-  }
-}
 
 function filterLines(lines: LogLine[], opts: { level?: string; session?: string; since?: Date }): LogLine[] {
   return lines.filter((line) => {

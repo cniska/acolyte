@@ -1,8 +1,8 @@
-import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { truncateText } from "./compact-text";
+import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { MemoryStore } from "./memory-store";
 

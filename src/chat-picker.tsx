@@ -1,8 +1,9 @@
 import type React from "react";
 import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
-import { alignCols, formatRelativeTime } from "./chat-format";
+import { alignCols } from "./chat-format";
 import { truncateText } from "./compact-text";
+import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skills";

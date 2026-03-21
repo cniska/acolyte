@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { formatRelativeTime } from "./chat-format";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
+import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
