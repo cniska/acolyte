@@ -1,11 +1,9 @@
-import { z } from "zod";
 import { hasBoolFlag, parseFlag, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
 import { parseSince } from "./datetime";
 import { t } from "./i18n";
+import { logLevelSchema } from "./log";
 import { type LogLine, parseLog } from "./log-parser";
-
-const logLevelSchema = z.enum(["debug", "info", "warn", "error"]);
 
 type LogsModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;

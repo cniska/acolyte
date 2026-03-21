@@ -1,6 +1,8 @@
+import { z } from "zod";
 import { readResolvedConfigSync } from "./config";
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export const logLevelSchema = z.enum(["debug", "info", "warn", "error"]);
+export type LogLevel = z.infer<typeof logLevelSchema>;
 type LogFormat = "logfmt" | "json";
 const config = readResolvedConfigSync();
 const REDACTED = "[REDACTED]";
