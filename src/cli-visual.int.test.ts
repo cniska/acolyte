@@ -251,18 +251,18 @@ describe("cli visual regression", () => {
       `),
       );
 
-      const savedProject = await run(["config", "set", "--project", "transportMode", "rpc"]);
+      const savedProject = await run(["config", "set", "--project", "logFormat", "json"]);
       expect(savedProject).toBe(
         dedent(`
-        Saved config transportMode (project).
+        Saved config logFormat (project).
       `),
       );
 
       const listedProject = await run(["config", "list", "--project"]);
       expect(listedProject).toBe(
         dedent(`
-        scope:          project
-        transportMode:  rpc
+        scope:      project
+        logFormat:  json
       `),
       );
     });
@@ -309,7 +309,6 @@ describe("cli visual regression", () => {
       await withCliTestEnv(async ({ run }) => {
         const port = new URL(baseUrl).port;
         await run(["config", "set", "port", port]);
-        await run(["config", "set", "transportMode", "rpc"]);
         const output = normalizeRunOutput(await run(["run", "hello transport parity"]));
         expect(output).toContain("Transport parity ok.");
       });

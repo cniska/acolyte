@@ -12,7 +12,7 @@ Paths:
 acolyte config list
 acolyte config set model gpt-5-mini
 acolyte config set locale en
-acolyte config set --project transportMode rpc
+acolyte config set --project logFormat json
 acolyte config unset openaiBaseUrl
 ```
 
@@ -59,18 +59,18 @@ acolyte config set --project model openai-compatible/<model>
 acolyte config set logFormat json
 ```
 
-## Memory-related keys
+## All settable keys
 
-- `memoryBudgetTokens`: memory injection budget.
-- `memorySources`: Memory Source Strategy IDs and order (see [Memory](./memory.md)).
-- `distillModel`: model used by distill source.
-- `distillMessageThreshold`: observation trigger threshold.
-- `distillReflectionThresholdTokens`: reflection trigger threshold.
-- `distillMaxOutputTokens`: output cap for distill records.
+| Key | Description |
+|---|---|
+| `port` | daemon server port (default: 6767) |
+| `locale` | UI language (default: `en`) |
+| `model` | default model |
+| `models.<mode>` | per-mode model override (e.g. `models.verify`) |
+| `temperatures.<mode>` | per-mode temperature (e.g. `temperatures.work`) |
+| `openaiBaseUrl` | OpenAI API base URL |
+| `anthropicBaseUrl` | Anthropic API base URL |
+| `googleBaseUrl` | Google AI API base URL |
+| `logFormat` | log output format (`logfmt` or `json`) |
+| `embeddingModel` | embedding model for semantic recall |
 
-## Memory controls
-
-- `memoryBudgetTokens=0` disables memory injection globally.
-- `useMemory=false` disables memory injection and commit for one request.
-
-Behavior details: see [Memory](./memory.md).

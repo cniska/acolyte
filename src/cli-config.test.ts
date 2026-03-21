@@ -34,14 +34,6 @@ describe("cli config", () => {
     expect(dimLines).toContain("locale:  en");
   });
 
-  test("list renders memorySources array on one row", async () => {
-    const { deps, dimLines } = createDeps({
-      readConfig: async () => ({ memorySources: ["distill_session", "stored"] }),
-    });
-    await configMode(["list"], deps);
-    expect(dimLines).toContain("memorySources:  distill_session, stored");
-  });
-
   test("list still renders object maps as dotted rows", async () => {
     const { deps, dimLines } = createDeps({
       readConfig: async () => ({ models: { work: "gpt-5-mini" } }),

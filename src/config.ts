@@ -245,6 +245,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
   const dotted = parseDottedKey(key);
   if (dotted) {
     const schema = CONFIG_SET_SCHEMAS[dotted.section];
+    if (!schema) throw new Error(t("cli.config.unknown_key", { key }));
     const current = await readConfigForScope(scope, options);
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const merged = { ...existing, [dotted.subKey]: value };
@@ -258,8 +259,9 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     return;
   }
   const topKey = key as keyof Config;
-  if (!(topKey in CONFIG_SET_SCHEMAS)) throw new Error(t("cli.config.unknown_key", { key }));
-  const parsed = CONFIG_SET_SCHEMAS[topKey].safeParse(value);
+  const topSchema = CONFIG_SET_SCHEMAS[topKey];
+  if (!topSchema) throw new Error(t("cli.config.unknown_key", { key }));
+  const parsed = topSchema.safeParse(value);
   if (!parsed.success)
     throw new Error(
       t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),

@@ -260,15 +260,13 @@ describe("config store", () => {
     expect(resolved.temperatures).toEqual({ work: 0.2, verify: 0.1 });
   });
 
-  test("setConfigValue supports comma-separated memorySources", async () => {
+  test("setConfigValue rejects internal config keys", async () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("memorySources", "distill_session, stored", { homeDir: home, cwd: home });
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
-    expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
+    await expect(setConfigValue("bogus", "value", { homeDir: home, cwd: home })).rejects.toThrow("Unknown config key");
   });
 
   test("setConfigValue supports locale", async () => {
@@ -280,20 +278,6 @@ describe("config store", () => {
     await setConfigValue("locale", "en", { homeDir: home, cwd: home });
     const loaded = readConfigSync({ homeDir: home, cwd: home });
     expect(loaded.locale).toBe("en");
-  });
-
-  test("setConfigValue allows memoryBudgetTokens to disable memory", async () => {
-    const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
-    mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), "", "utf8");
-
-    await setConfigValue("memoryBudgetTokens", "0", { homeDir: home, cwd: home });
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
-    expect(loaded.memoryBudgetTokens).toBe(0);
-
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
-    expect(resolved.memoryBudgetTokens).toBe(0);
   });
 
   test("project config overrides user config", async () => {
@@ -356,8 +340,8 @@ describe("config store", () => {
   test("setConfigValue validates external values with zod", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    await expect(setConfigValue("maxMessageTokens", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
-      "Invalid value for maxMessageTokens",
+    await expect(setConfigValue("port", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for port",
     );
 
     await expect(setConfigValue("temperatures.work", "3", { homeDir: home, cwd: project })).rejects.toThrow(

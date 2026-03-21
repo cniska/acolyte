@@ -108,29 +108,16 @@ export interface ResolvedConfig {
   embeddingModel: string;
 }
 
-export const CONFIG_SET_SCHEMAS: Record<keyof Config, z.ZodTypeAny> = {
+export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   port: parseIntegerSchema(1, 65535),
   locale: translationLocaleSchema,
   model: nonEmptyStringSchema,
   models: z.record(z.string(), nonEmptyStringSchema),
   temperatures: modeTemperatureMapSchema,
-  distillModel: nonEmptyStringSchema,
-  distillMessageThreshold: parseIntegerSchema(1, 200),
-  distillReflectionThresholdTokens: parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
-  distillMaxOutputTokens: parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
-  memoryBudgetTokens: parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS),
-  memorySources: parseMemorySourcesSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
   logFormat: logFormatSchema,
-  transportMode: transportModeSchema,
-  contextMaxTokens: parseIntegerSchema(1000, MAX_CONTEXT_TOKENS),
-  maxHistoryMessages: parseIntegerSchema(1, 200),
-  maxMessageTokens: parseIntegerSchema(50, MAX_MESSAGE_TOKENS),
-  maxAttachmentMessageTokens: parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
-  maxPinnedMessageTokens: parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
-  replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
   embeddingModel: nonEmptyStringSchema,
 };
 
