@@ -1,4 +1,5 @@
 import { isAbsolute, relative } from "node:path";
+import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
@@ -46,7 +47,7 @@ export function createDiffSummaryEmitter<TToolName extends string>(input: {
   return (path, rawResult, toolCallId) => {
     const { files, added, removed } = summarizeUnifiedDiff(rawResult);
     const touchedFiles = files > 0 ? files : 1;
-    const displayPath = touchedFiles > 1 ? `${touchedFiles} files` : path;
+    const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
     onOutput({
       toolName,
       content: { kind: "edit-header", labelKey, path: displayPath, files: touchedFiles, added, removed },

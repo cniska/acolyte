@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
+import { t } from "./i18n";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -255,7 +256,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-add", toolCallId, toolInput, async (callId) => {
         const paths = (toolInput.paths ?? []).filter((p) => p.trim().length > 0);
-        const addDetail = toolInput.all === true ? "all" : `${paths.length} files`;
+        const addDetail = toolInput.all === true ? "all" : t("unit.file", { count: paths.length });
         input.onOutput({
           toolName: "git-add",
           content: { kind: "tool-header", labelKey: "tool.label.git_add", detail: addDetail },
