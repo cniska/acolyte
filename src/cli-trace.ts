@@ -114,6 +114,9 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
 
 const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
+/** Events hidden from `acolyte trace task` unless --verbose is passed. */
+const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
+
 function traceRowData(line: LogLine): Record<string, string | undefined> {
   const event = line.fields.event;
   const data: Record<string, string | undefined> = {
@@ -168,6 +171,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   }
 
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
+  const verbose = hasBoolFlag(args, "--verbose");
   const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
 
   const positional = parsePositional(args, ["--lines", "-n"]);
@@ -193,7 +197,10 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         continue;
       }
       if (i > 0) out.addSeparator();
-      for (const line of lines) out.addRow(traceRowData(line));
+      for (const line of lines) {
+        if (!verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
+        out.addRow(traceRowData(line));
+      }
     }
   } else if (!subcommand || subcommand === "list") {
     const tasks = traceStore.listTasks(tailCount);

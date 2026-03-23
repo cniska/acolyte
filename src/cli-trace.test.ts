@@ -178,4 +178,74 @@ describe("traceMode", () => {
     await traceMode([], deps);
     expect(output()).toContain("No trace data available");
   });
+
+  test("task subcommand hides tool.output and tool.cache events by default", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "edit-code", path: "." },
+    });
+    for (let i = 0; i < 5; i++) {
+      store.write({
+        timestamp: `2026-01-01T00:00:00.${String(i).padStart(3, "0")}Z`,
+        taskId: "task_1",
+        event: "lifecycle.tool.output",
+        fields: { tool: "edit-code" },
+      });
+    }
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.cache",
+      fields: { tool: "edit-code", hit: "false" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.result",
+      fields: { tool: "edit-code", duration_ms: "445", is_error: "false" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).toContain("lifecycle.tool.call");
+    expect(text).toContain("lifecycle.tool.result");
+    expect(text).not.toContain("lifecycle.tool.output");
+    expect(text).not.toContain("lifecycle.tool.cache");
+  });
+
+  test("task subcommand --verbose shows tool.output and tool.cache events", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "edit-code", path: "." },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.001Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.output",
+      fields: { tool: "edit-code" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.002Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.cache",
+      fields: { tool: "edit-code", hit: "false" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.result",
+      fields: { tool: "edit-code", duration_ms: "445", is_error: "false" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1", "--verbose"], deps);
+    const text = output();
+    expect(text).toContain("lifecycle.tool.output");
+    expect(text).toContain("lifecycle.tool.cache");
+  });
 });
