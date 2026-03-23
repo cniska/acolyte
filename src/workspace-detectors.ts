@@ -26,6 +26,19 @@ export function readText(workspace: string, name: string): string | null {
   }
 }
 
+function packageRunner(pm: string): string {
+  switch (pm) {
+    case "bun":
+      return "bunx";
+    case "pnpm":
+      return "pnpx";
+    case "yarn":
+      return "yarn dlx";
+    default:
+      return "npx";
+  }
+}
+
 export type EcosystemDetector = {
   id: string;
   match: (workspace: string) => boolean;
@@ -60,8 +73,9 @@ const typescriptDetector: EcosystemDetector = {
   },
 
   detectLintCommand(workspace) {
+    const runner = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: "bunx", args: ["biome", "check"] };
+      if (readJson(workspace, name)) return { bin: runner, args: ["biome", "check"] };
     }
     for (const name of [
       "eslint.config.js",
@@ -71,7 +85,7 @@ const typescriptDetector: EcosystemDetector = {
       ".eslintrc.json",
       ".eslintrc.js",
     ]) {
-      if (fileExists(workspace, name)) return { bin: "npx", args: ["eslint"] };
+      if (fileExists(workspace, name)) return { bin: runner, args: ["eslint"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
       if (readJson(workspace, name)) return { bin: "deno", args: ["lint"] };
@@ -80,11 +94,12 @@ const typescriptDetector: EcosystemDetector = {
   },
 
   detectFormatCommand(workspace) {
+    const runner = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: "bunx", args: ["biome", "check", "--write"] };
+      if (readJson(workspace, name)) return { bin: runner, args: ["biome", "check", "--write"] };
     }
     for (const name of [".prettierrc", ".prettierrc.json"]) {
-      if (readJson(workspace, name)) return { bin: "npx", args: ["prettier", "--write"] };
+      if (readJson(workspace, name)) return { bin: runner, args: ["prettier", "--write"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
       if (readJson(workspace, name)) return { bin: "deno", args: ["fmt"] };

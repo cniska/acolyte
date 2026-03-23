@@ -34,7 +34,7 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "eslint.config.js": "", "package.json": '{"scripts":{}}' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
-    expect(profile.lintCommand?.bin).toBe("npx");
+    expect(profile.lintCommand?.bin).toBe("bunx");
     expect(profile.lintCommand?.args).toContain("eslint");
   });
 
@@ -97,6 +97,13 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"jest"}}', "bun.lock": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.packageManager).toBe("bun");
+  });
+
+  test("uses npx for biome in npm projects", () => {
+    const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}', "package-lock.json": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand?.bin).toBe("npx");
+    expect(profile.formatCommand?.bin).toBe("npx");
   });
 });
 
