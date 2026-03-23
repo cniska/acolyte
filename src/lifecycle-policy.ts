@@ -24,6 +24,8 @@ export type LifecyclePolicy = {
   toolTimeoutMs: number;
   /** Stop tool loop after this many consecutive guard blocks. */
   consecutiveGuardBlockLimit: number;
+  /** Format command to auto-fix edited files after writes. Undefined skips formatting. */
+  formatCommand?: WorkspaceCommand;
   /** Lint command to run after writes. Undefined disables lint evaluation. */
   lintCommand?: LintCommand;
   /** Verify command to run after writes. Undefined falls back to model-driven verify. */

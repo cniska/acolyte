@@ -3,7 +3,7 @@ import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import { lintFiles } from "./lint-reflection";
+import { lintFiles, runCommand, runCommandWithFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -127,6 +127,19 @@ function scopedVerifyPrompt(ctx: EvaluatorContext): string {
   ].join("\n");
 }
 
+export const formatEvaluator: Evaluator = {
+  id: "format",
+  evaluate(ctx) {
+    if (ctx.mode !== "work" || !ctx.workspace) return { type: "done" };
+    if (!ctx.policy.formatCommand) return { type: "done" };
+    const paths = writePathsForCurrentTask(ctx);
+    if (paths.length === 0) return { type: "done" };
+    runCommandWithFiles(ctx.workspace, ctx.policy.formatCommand, paths);
+    ctx.debug("lifecycle.eval.format", { files: paths.length });
+    return { type: "done" };
+  },
+};
+
 export const lintEvaluator: Evaluator = {
   id: "lint",
   evaluate(ctx) {
@@ -210,21 +223,41 @@ export const verifyEvaluator: Evaluator = {
         verified,
         verify_scope: ctx.request.verifyScope ?? null,
       });
-      if (ctx.initialMode === "work" && usedWriteTools && !verified) {
+      if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
+
+      // Run verify command directly when available
+      if (ctx.workspace && ctx.policy.verifyCommand) {
+        const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
+        ctx.debug("lifecycle.eval.verify_command", {
+          command: formatWorkspaceCommand(ctx.policy.verifyCommand),
+          has_errors: result.hasErrors,
+        });
+        if (!result.hasErrors) return { type: "done" };
         return {
           type: "regenerate",
           feedback: {
             source: "verify",
-            mode: "verify",
-            summary: "Run verification for the current task scope.",
-            details: scopedVerifyPrompt(ctx),
+            mode: "work",
+            summary: "Verification failed.",
+            details: result.output,
+            instruction: "Fix the issues above, then stop.",
           },
-          mode: "verify",
-          cycleLimit: ctx.policy.verifyMaxSteps,
-          keepResult: true,
         };
       }
-      return { type: "done" };
+
+      // Fall back to model-driven verify when no command is detected
+      return {
+        type: "regenerate",
+        feedback: {
+          source: "verify",
+          mode: "verify",
+          summary: "Run verification for the current task scope.",
+          details: scopedVerifyPrompt(ctx),
+        },
+        mode: "verify",
+        cycleLimit: ctx.policy.verifyMaxSteps,
+        keepResult: true,
+      };
     }
 
     // Verify → Work: use the verifier's structured outcome, not the restored work-mode result.

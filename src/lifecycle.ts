@@ -170,9 +170,10 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
-  if (profile.lintCommand || profile.verifyCommand) {
+  if (profile.formatCommand || profile.lintCommand || profile.verifyCommand) {
     policy = {
       ...policy,
+      ...(!policy.formatCommand && profile.formatCommand ? { formatCommand: profile.formatCommand } : {}),
       ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
       ...(!policy.verifyCommand && profile.verifyCommand ? { verifyCommand: profile.verifyCommand } : {}),
     };
