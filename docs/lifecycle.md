@@ -12,7 +12,7 @@ resolve → prepare → generate → evaluate → finalize
 - **prepare**: build base agent input, tools, session context, and policy state
 - **generate**: run model + tool loop for one attempt; the model may also emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
 - **evaluate**: accept a valid lifecycle signal or apply evaluators and choose `done` or bounded regeneration
-- **finalize**: emit final response and lifecycle summary events
+- **finalize**: emit final response and lifecycle summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`, signaling the TUI to show a waiting indicator until the user replies
 
 ## Regeneration model
 

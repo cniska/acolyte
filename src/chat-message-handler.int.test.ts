@@ -145,7 +145,7 @@ describe("chat message handler guards", () => {
       client: createClient({
         reply: async (input) => {
           requestedModel = input.model;
-          return { model: input.model, output: "ok" };
+          return { state: "done" as const, model: input.model, output: "ok" };
         },
       }),
     });
@@ -157,12 +157,13 @@ describe("chat message handler guards", () => {
 
   test("keeps create-edit-delete tool output visible across submits", async () => {
     const replies = [
-      { model: "gpt-5-mini", output: "Created sum.rs." },
+      { state: "done" as const, model: "gpt-5-mini", output: "Created sum.rs." },
       {
+        state: "done" as const,
         model: "gpt-5-mini",
         output: "Updated sum.rs for three args.",
       },
-      { model: "gpt-5-mini", output: "Removed sum.rs." },
+      { state: "done" as const, model: "gpt-5-mini", output: "Removed sum.rs." },
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
@@ -215,7 +216,7 @@ describe("chat message handler guards", () => {
           for (const event of events) {
             options.onEvent(event);
           }
-          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
+          return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
     });
@@ -358,7 +359,7 @@ describe("chat message handler guards", () => {
               options?.signal?.addEventListener("abort", abort, { once: true });
             });
           }
-          return { model: "gpt-5-mini", output: "Second answer." };
+          return { state: "done" as const, model: "gpt-5-mini", output: "Second answer." };
         },
         status: async () => ({}),
       }),
@@ -424,7 +425,7 @@ describe("chat message handler guards", () => {
       client: createClient({
         reply: async () => {
           replyCalls += 1;
-          return { model: "gpt-5-mini", output: "ok" };
+          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
         status: async () => ({}),
       }),
@@ -482,7 +483,7 @@ describe("chat message handler guards", () => {
         client: createClient({
           reply: async () => {
             replyCalls += 1;
-            return { model: "gpt-5-mini", output: "ok" };
+            return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
           },
           status: async () => ({}),
         }),

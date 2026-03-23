@@ -23,7 +23,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "run-command",
             content: { kind: "tool-header", labelKey: "tool.label.run", detail: "echo hi" },
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
       }),
@@ -44,6 +44,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         reply: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           toolCalls: ["run-command"],
@@ -75,7 +76,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "search-files",
             isError: false,
           });
-          return { model: "gpt-5-mini", output: "No matches found." };
+          return { state: "done" as const, model: "gpt-5-mini", output: "No matches found." };
         },
       }),
     });
@@ -138,7 +139,7 @@ describe("chat message handler stream behavior", () => {
         reply: async () => {
           calls += 1;
           if (calls === 1) throw new Error("Remote server stream timed out after 120000ms");
-          return { model: "gpt-5-mini", output: "ok" };
+          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
       }),
     });
@@ -264,6 +265,7 @@ describe("chat message handler stream behavior", () => {
           { type: "text-delta", text: "This is a long streamed answer that should not be truncated at finalize." },
         ],
         reply: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: finalOutput,
         }),
@@ -293,6 +295,7 @@ describe("chat message handler stream behavior", () => {
           },
         ],
         reply: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
         }),
@@ -334,6 +337,7 @@ describe("chat message handler stream behavior", () => {
           },
         ],
         reply: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
         }),
@@ -355,8 +359,8 @@ describe("chat message handler stream behavior", () => {
 
   test("does not merge tool rows across separate user turns", async () => {
     const replies = [
-      { model: "gpt-5-mini", output: "first done" },
-      { model: "gpt-5-mini", output: "second done" },
+      { state: "done" as const, model: "gpt-5-mini", output: "first done" },
+      { state: "done" as const, model: "gpt-5-mini", output: "second done" },
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
@@ -400,7 +404,7 @@ describe("chat message handler stream behavior", () => {
           for (const event of events) {
             options.onEvent(event);
           }
-          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
+          return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
     });
@@ -422,6 +426,7 @@ describe("chat message handler stream behavior", () => {
       client: createClient({
         status: async () => ({}),
         reply: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           usage: {
@@ -460,7 +465,7 @@ describe("chat message handler stream behavior", () => {
         replyCount += 1;
         options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
         options.onEvent({ type: "text-delta", text: `delta-${replyCount}` });
-        return { model: "gpt-5-mini", output: `reply-${replyCount}` };
+        return { state: "done" as const, model: "gpt-5-mini", output: `reply-${replyCount}` };
       },
     });
 
@@ -556,7 +561,7 @@ describe("chat message handler stream behavior", () => {
             toolCallId: "call_1",
             toolName: "run-command",
           });
-          return { model: "gpt-5-mini", output: "I will run the command." };
+          return { state: "done" as const, model: "gpt-5-mini", output: "I will run the command." };
         },
         status: async () => ({}),
       }),
@@ -611,7 +616,7 @@ describe("chat message handler stream behavior", () => {
             toolCallId: "call_B",
             toolName: "edit-code",
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
       }),

@@ -44,6 +44,7 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
         }),
@@ -72,6 +73,7 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
+          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           toolCalls: ["read-file"],

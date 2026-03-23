@@ -150,4 +150,21 @@ describe("phaseFinalize", () => {
       messageTokens: 34,
     });
   });
+
+  test("sets state to awaiting-input when signal is blocked", () => {
+    const ctx = createRunContext({
+      result: { text: "Which environment should I deploy to?", toolCalls: [], signal: "blocked" },
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.state).toBe("awaiting-input");
+    expect(response.output).toBe("Which environment should I deploy to?");
+  });
+
+  test("sets state to done when signal is done", () => {
+    const ctx = createRunContext({
+      result: { text: "Done.", toolCalls: [], signal: "done" },
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.state).toBe("done");
+  });
 });

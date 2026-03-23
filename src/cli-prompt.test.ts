@@ -24,7 +24,12 @@ describe("cli-prompt", () => {
       tokenUsage: [],
     };
     const client: Client = {
-      replyStream: async () => ({ output: "done", model: "gpt-5-mini", toolCalls: ["read-file"] }),
+      replyStream: async () => ({
+        state: "done" as const,
+        output: "done",
+        model: "gpt-5-mini",
+        toolCalls: ["read-file"],
+      }),
       status: async () => ({}),
       taskStatus: async () => null,
     };

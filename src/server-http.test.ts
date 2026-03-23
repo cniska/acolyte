@@ -13,7 +13,7 @@ function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHa
       return typeof candidate.message === "string";
     },
     runChatRequest: async (_chatRequest: ChatRequest, handlers: RunChatHandlers) => {
-      handlers.onDone({ output: "ok", model: "gpt-5-mini" });
+      handlers.onDone({ state: "done", output: "ok", model: "gpt-5-mini" });
     },
     serverError: (_message: string, _error: unknown, _details: Record<string, unknown>, status = 500) =>
       new Response("server error", { status }),
@@ -65,7 +65,7 @@ describe("server-http auth coverage", () => {
         hasValidAuth: () => false,
         runChatRequest: async (_chatRequest: ChatRequest, handlers: RunChatHandlers) => {
           runCalls += 1;
-          handlers.onDone({ output: "ok", model: "gpt-5-mini" });
+          handlers.onDone({ state: "done", output: "ok", model: "gpt-5-mini" });
         },
       }),
     );

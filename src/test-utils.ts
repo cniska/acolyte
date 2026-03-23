@@ -247,6 +247,7 @@ export function createClient(overrides?: {
     (async () => ({
       model: "gpt-5-mini",
       output: "ok",
+      state: "done" as const,
     }));
   const replyStream =
     overrides?.replyStream ??

@@ -73,6 +73,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   });
 
   return {
+    state: ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
     model: ctx.model,
     output,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),

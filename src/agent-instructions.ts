@@ -17,7 +17,7 @@ const BASE_INSTRUCTIONS = [
   "Never summarize, recap, or list what you did. The user can see your actions directly.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
   "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
-  "When the task is complete, already needs no changes, or you are blocked, end the final response with exactly one control line on its own line: `@signal done`, `@signal no_op`, or `@signal blocked`.",
+  "When the task is complete or needs no changes, end the final response with `@signal done` or `@signal no_op` on its own line. When you cannot proceed without information only the user can provide, use `@signal blocked` — this stops execution; the user must reply before work continues. On the next line, write a concise message stating: what is missing, why it is needed, and what you will do once you have the answer.",
 ];
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {

@@ -30,7 +30,11 @@ export interface ChatRequest {
   readonly workspace?: string;
 }
 
+export const chatResponseStateSchema = z.enum(["done", "awaiting-input"]);
+export type ChatResponseState = z.infer<typeof chatResponseStateSchema>;
+
 export interface ChatResponse {
+  state: ChatResponseState;
   output: string;
   model: string;
   usage?: TokenUsage;
