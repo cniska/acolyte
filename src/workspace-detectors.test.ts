@@ -111,6 +111,23 @@ describe("typescript detector", () => {
     expect(profile.lintCommand?.args).toContain("oxlint");
   });
 
+  test("uses yarn dlx for biome in yarn projects", () => {
+    const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}', "yarn.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand?.bin).toBe("yarn");
+    expect(profile.lintCommand?.args).toEqual(["dlx", "biome", "check"]);
+  });
+
+  test("detects biome from biome.jsonc with comments", () => {
+    const ws = makeWorkspace({
+      "biome.jsonc": '{\n  // formatting\n  "formatter": { "lineWidth": 100 }\n}',
+      "package.json": '{"scripts":{}}',
+    });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand?.args).toContain("biome");
+    expect(profile.lineWidth).toBe(100);
+  });
+
   test("uses npx for biome in npm projects", () => {
     const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}', "package-lock.json": "" });
     const profile = resolveWorkspaceProfile(ws);
