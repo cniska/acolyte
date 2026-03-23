@@ -225,23 +225,19 @@ export const verifyEvaluator: Evaluator = {
       });
       if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
 
-      // Run verify command directly when available
-      if (ctx.workspace && ctx.policy.verifyCommand) {
-        const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
-        ctx.debug("lifecycle.eval.verify_command", {
-          command: formatWorkspaceCommand(ctx.policy.verifyCommand),
-          has_errors: result.hasErrors,
-        });
-        if (!result.hasErrors) return { type: "done" };
+      if (ctx.policy.verifyCommand) {
+        // Enter verify mode with the detected command — runs during verify phase
         return {
           type: "regenerate",
           feedback: {
             source: "verify",
-            mode: "work",
-            summary: "Verification failed.",
-            details: result.output,
-            instruction: "Fix the issues above, then stop.",
+            mode: "verify",
+            summary: "Run verification for the current task scope.",
+            details: `Run: ${formatWorkspaceCommand(ctx.policy.verifyCommand)}`,
           },
+          mode: "verify",
+          cycleLimit: ctx.policy.verifyMaxSteps,
+          keepResult: true,
         };
       }
 
@@ -260,7 +256,27 @@ export const verifyEvaluator: Evaluator = {
       };
     }
 
-    // Verify → Work: use the verifier's structured outcome, not the restored work-mode result.
+    // Verify → Work: run verify command directly if available, otherwise use model outcome
+    if (ctx.workspace && ctx.policy.verifyCommand) {
+      const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
+      ctx.debug("lifecycle.eval.verify_command", {
+        command: formatWorkspaceCommand(ctx.policy.verifyCommand),
+        has_errors: result.hasErrors,
+      });
+      if (!result.hasErrors) return { type: "done" };
+      return {
+        type: "regenerate",
+        feedback: {
+          source: "verify",
+          mode: "work",
+          summary: "Verification failed.",
+          details: result.output,
+          instruction: "Fix the issues above, then stop.",
+        },
+        mode: "work",
+      };
+    }
+
     const verifyOutcome = ctx.lifecycleState.verifyOutcome;
     if (!verifyOutcome?.error) return { type: "done" };
     ctx.debug("lifecycle.eval.verify_failure", { text_chars: verifyOutcome.text.length });
