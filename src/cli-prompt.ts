@@ -137,6 +137,15 @@ export async function handlePrompt(
                   hasPrintedToolProgress = true;
                   break;
                 }
+                // Padding or formatting changed earlier lines — print only new trailing lines.
+                const currentLines = current.split("\n");
+                const previousLines = before.split("\n");
+                if (currentLines.length > previousLines.length) {
+                  printIndentedDim(currentLines.slice(previousLines.length).join("\n"));
+                  hasPrintedToolProgress = true;
+                  break;
+                }
+                break;
               }
               printDim(`• ${rendered.split("\n")[0] ?? ""}`);
               if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
