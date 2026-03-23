@@ -25,6 +25,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Continuation State | Persisted "Current task" and "Next step" cues carried into later turns |
 | Distill | Automatic memory source family that extracts and consolidates knowledge into records (project/user/session scope variants) |
 | Embedding | Provider-generated vector representation of a distill record, stored as a BLOB in SQLite and used for semantic recall |
+| Ecosystem Detector | Pluggable workspace detection rule that identifies project type and resolves available tooling |
 | Entry | Runtime/pipeline item used during processing; not necessarily persisted |
 | Evaluator | Post-generation rule that accepts or requests regeneration |
 | Guard | Pre-tool execution rule that may block calls (step budget, file churn, duplicate call, redundant search/find/verify) |
@@ -62,4 +63,3 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Verify Cycle | Post-write verification sequence; the evaluator transitions to verify mode, performs scoped verification, and re-generates on failure |
 | Workspace Command | Typed shell command descriptor (`{ bin, args }`) used for lint, format, and verify commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, lint/format/verify commands, and line width |
-| Ecosystem Detector | Pluggable workspace detection rule that identifies project type and resolves available tooling |
