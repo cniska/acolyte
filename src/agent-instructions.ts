@@ -27,7 +27,7 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
     const tool = toolDefinitionsById[toolId];
     if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }
-  if (workspace && mode === "work") {
+  if (workspace) {
     const profile = resolveWorkspaceProfile(workspace);
     for (const line of createWorkspaceInstructions(profile)) lines.push(`- ${line}`);
   }
