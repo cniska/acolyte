@@ -21,7 +21,7 @@ function createStreamingClient(events: StreamEvent[]): Client {
   return {
     replyStream: async (_input, options) => {
       for (const event of events) options.onEvent(event);
-      return { output: "done", model: "gpt-5-mini", toolCalls: ["edit-code"] };
+      return { state: "done" as const, output: "done", model: "gpt-5-mini", toolCalls: ["edit-code"] };
     },
     status: async () => ({}),
     taskStatus: async () => null,

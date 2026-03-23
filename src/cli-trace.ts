@@ -211,7 +211,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         tasks.map((task) => ({
           task_id: task.taskId,
           model: task.model ?? "unknown",
-          status: task.hasError ? "error" : "ok",
+          status: task.hasError ? "error" : task.lifecycleSignal === "blocked" ? "blocked" : "ok",
           time: formatRelativeTime(task.timestamp),
         })),
         {

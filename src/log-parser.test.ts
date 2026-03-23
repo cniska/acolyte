@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { matchesTaskId, parseLog } from "./log-parser";
+import { listTasks, matchesTaskId, parseLog } from "./log-parser";
 
 describe("parseLog", () => {
   test("parses timestamp from first token", () => {
@@ -63,5 +63,24 @@ describe("matchesTaskId", () => {
   test("does not match when no task_id", () => {
     const [entry] = parseLog("2026-03-19T10:00:00Z level=info");
     expect(matchesTaskId(entry, "task_1")).toBe(false);
+  });
+});
+
+describe("listTasks", () => {
+  test("extracts lifecycle_signal from summary event", () => {
+    const lines = parseLog(
+      [
+        "2026-03-19T10:00:00Z task_id=task_1 event=lifecycle.start model=gpt-5-mini",
+        "2026-03-19T10:00:01Z task_id=task_1 event=lifecycle.summary has_error=false lifecycle_signal=blocked",
+      ].join("\n"),
+    );
+    const tasks = listTasks(lines);
+    expect(tasks[0]?.lifecycleSignal).toBe("blocked");
+  });
+
+  test("lifecycleSignal is undefined when not in summary", () => {
+    const lines = parseLog("2026-03-19T10:00:00Z task_id=task_1 event=lifecycle.start model=gpt-5-mini");
+    const tasks = listTasks(lines);
+    expect(tasks[0]?.lifecycleSignal).toBeUndefined();
   });
 });

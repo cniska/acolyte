@@ -216,6 +216,27 @@ describe("traceMode", () => {
     expect(text).not.toContain("lifecycle.tool.cache");
   });
 
+  test("task list shows blocked status for blocked tasks", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_blocked",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "gpt-5-mini" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_blocked",
+      event: "lifecycle.summary",
+      fields: { has_error: "false", lifecycle_signal: "blocked" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode([], deps);
+    const text = output();
+    expect(text).toContain("blocked");
+    expect(text).not.toContain("ok");
+  });
+
   test("task subcommand --verbose shows tool.output and tool.cache events", async () => {
     const store = createTestStore();
     store.write({
