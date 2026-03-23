@@ -124,16 +124,20 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
     modelCalls: reply.modelCalls,
   };
-  const durationMs = Date.now() - params.pendingStartedAt;
-  if (durationMs >= 300) {
-    const duration = formatDuration(durationMs);
-    const toolCount = reply.toolCalls?.length ?? 0;
-    const totalTokens = tokenEntry.usage.totalTokens;
-    const details: string[] = [];
-    if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
-    if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
-    const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
+  if (reply.state === "awaiting-input") {
+    rows.push(createRow("status", t("chat.awaiting_input"), { marker: palette.brand, dim: true }));
+  } else {
+    const durationMs = Date.now() - params.pendingStartedAt;
+    if (durationMs >= 300) {
+      const duration = formatDuration(durationMs);
+      const toolCount = reply.toolCalls?.length ?? 0;
+      const totalTokens = tokenEntry.usage.totalTokens;
+      const details: string[] = [];
+      if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
+      if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
+      const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
+      rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
+    }
   }
 
   return {
