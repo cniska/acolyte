@@ -1,8 +1,6 @@
 import { execFileSync } from "node:child_process";
 import type { WorkspaceCommand } from "./workspace-profile";
 
-export type LintCommand = WorkspaceCommand;
-
 export type CommandResult = { hasErrors: boolean; output: string };
 
 export function runCommandWithFiles(workspace: string, command: WorkspaceCommand, filePaths: string[]): CommandResult {
@@ -32,6 +30,6 @@ export function runCommand(workspace: string, command: WorkspaceCommand): Comman
   }
 }
 
-export function lintFiles(workspace: string, filePaths: string[], command: LintCommand): CommandResult {
+export function lintFiles(workspace: string, filePaths: string[], command: WorkspaceCommand): CommandResult {
   return runCommandWithFiles(workspace, command, filePaths);
 }

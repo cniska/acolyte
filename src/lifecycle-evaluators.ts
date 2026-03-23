@@ -1,10 +1,8 @@
 import type { AgentMode } from "./agent-contract";
-import { createModeInstructions } from "./agent-instructions";
 import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { lintFiles, runCommand, runCommandWithFiles } from "./lint-reflection";
-import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 import { formatWorkspaceCommand } from "./workspace-profile";
@@ -76,55 +74,6 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
     out.add(trimmed);
   }
   return Array.from(out);
-}
-
-function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
-  const out = new Set<string>();
-  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
-    if (entry.toolName === "read-file") {
-      for (const key of extractReadPaths(entry.args)) out.add(key);
-      continue;
-    }
-    if (entry.toolName === "scan-code") {
-      const paths = entry.args?.paths;
-      if (!Array.isArray(paths)) continue;
-      for (const value of paths) {
-        if (typeof value !== "string") continue;
-        const trimmed = value.trim();
-        if (trimmed.length > 0) out.add(trimmed);
-      }
-    }
-  }
-  return Array.from(out);
-}
-
-function scopedVerifyPrompt(ctx: EvaluatorContext): string {
-  const base = createModeInstructions("verify", ctx.workspace);
-  const verifyCmd = ctx.policy.verifyCommand ? formatWorkspaceCommand(ctx.policy.verifyCommand) : undefined;
-  if (ctx.request.verifyScope === "global") {
-    return verifyCmd ? `${base}\n\nVerify command: ${verifyCmd}` : base;
-  }
-  const paths = writePathsForCurrentTask(ctx);
-  if (paths.length === 0) {
-    return verifyCmd ? `${base}\n\nVerify command: ${verifyCmd}` : base;
-  }
-  const supportingPaths = readPathsForCurrentTask(ctx).filter((path) => !paths.includes(path));
-  return [
-    base,
-    ...(verifyCmd ? ["", `Verify command: ${verifyCmd}`] : []),
-    "",
-    "Task boundary:",
-    `Primary scope (changed in this task, ${paths.length}):`,
-    ...paths.map((path) => `- ${path}`),
-    ...(supportingPaths.length > 0
-      ? [
-          "",
-          `Allowed supporting reads (already read this task, ${supportingPaths.length}):`,
-          ...supportingPaths.map((path) => `- ${path}`),
-        ]
-      : []),
-    "Do not review unrelated repository changes from earlier tasks.",
-  ].join("\n");
 }
 
 export const formatEvaluator: Evaluator = {
@@ -225,30 +174,15 @@ export const verifyEvaluator: Evaluator = {
       });
       if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
 
-      if (ctx.policy.verifyCommand) {
-        // Enter verify mode with the detected command — runs during verify phase
-        return {
-          type: "regenerate",
-          feedback: {
-            source: "verify",
-            mode: "verify",
-            summary: "Run verification for the current task scope.",
-            details: `Run: ${formatWorkspaceCommand(ctx.policy.verifyCommand)}`,
-          },
-          mode: "verify",
-          cycleLimit: ctx.policy.verifyMaxSteps,
-          keepResult: true,
-        };
-      }
+      if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
 
-      // Fall back to model-driven verify when no command is detected
       return {
         type: "regenerate",
         feedback: {
           source: "verify",
           mode: "verify",
           summary: "Run verification for the current task scope.",
-          details: scopedVerifyPrompt(ctx),
+          details: `Run: ${formatWorkspaceCommand(ctx.policy.verifyCommand)}`,
         },
         mode: "verify",
         cycleLimit: ctx.policy.verifyMaxSteps,
@@ -256,37 +190,22 @@ export const verifyEvaluator: Evaluator = {
       };
     }
 
-    // Verify → Work: run verify command directly if available, otherwise use model outcome
-    if (ctx.workspace && ctx.policy.verifyCommand) {
-      const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
-      ctx.debug("lifecycle.eval.verify_command", {
-        command: formatWorkspaceCommand(ctx.policy.verifyCommand),
-        has_errors: result.hasErrors,
-      });
-      if (!result.hasErrors) return { type: "done" };
-      return {
-        type: "regenerate",
-        feedback: {
-          source: "verify",
-          mode: "work",
-          summary: "Verification failed.",
-          details: result.output,
-          instruction: "Fix the issues above, then stop.",
-        },
-        mode: "work",
-      };
-    }
+    // Verify → Work: run verify command directly
+    if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
 
-    const verifyOutcome = ctx.lifecycleState.verifyOutcome;
-    if (!verifyOutcome?.error) return { type: "done" };
-    ctx.debug("lifecycle.eval.verify_failure", { text_chars: verifyOutcome.text.length });
+    const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
+    ctx.debug("lifecycle.eval.verify_command", {
+      command: formatWorkspaceCommand(ctx.policy.verifyCommand),
+      has_errors: result.hasErrors,
+    });
+    if (!result.hasErrors) return { type: "done" };
     return {
       type: "regenerate",
       feedback: {
         source: "verify",
         mode: "work",
-        summary: "Verification found issues.",
-        details: verifyOutcome.text,
+        summary: "Verification failed.",
+        details: result.output,
         instruction: "Fix the issues above, then stop.",
       },
       mode: "work",

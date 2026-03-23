@@ -9,7 +9,6 @@ import {
   TOTAL_MAX_STEPS,
   VERIFY_MAX_STEPS,
 } from "./lifecycle-constants";
-import type { LintCommand } from "./lint-reflection";
 import type { WorkspaceCommand } from "./workspace-profile";
 
 export type LifecyclePolicy = {
@@ -27,7 +26,7 @@ export type LifecyclePolicy = {
   /** Format command to auto-fix edited files after writes. Undefined skips formatting. */
   formatCommand?: WorkspaceCommand;
   /** Lint command to run after writes. Undefined disables lint evaluation. */
-  lintCommand?: LintCommand;
+  lintCommand?: WorkspaceCommand;
   /** Verify command to run after writes. Undefined falls back to model-driven verify. */
   verifyCommand?: WorkspaceCommand;
 };

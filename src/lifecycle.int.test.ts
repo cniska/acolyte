@@ -52,14 +52,13 @@ describe("lifecycle integration", () => {
     if (fake) fake.stop();
   });
 
-  test("@signal done with write tools triggers verify cycle", async () => {
+  test("@signal done with write tools skips verify without verify command", async () => {
     const phases: string[] = [];
 
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
 
-      // Turn 1 (work): call edit-file
       if (turnCount === 1) {
         const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
         phases.push("work:tool-call");
@@ -76,22 +75,15 @@ describe("lifecycle integration", () => {
         ]);
       }
 
-      // Turn 2 (work continued): signal done after tool result
-      if (turnCount === 2) {
-        phases.push("work:done");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
-      }
-
-      // Turn 3+ (verify): respond with done
-      phases.push("verify:done");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Verification passed.\n\n@signal done");
+      phases.push("work:done");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
     });
 
     await run("update x to 2");
 
     expect(phases).toContain("work:tool-call");
     expect(phases).toContain("work:done");
-    expect(phases).toContain("verify:done");
+    expect(phases).not.toContain("verify:done");
   });
 
   test("@signal no_op without write tools does not trigger verify", async () => {
@@ -108,7 +100,7 @@ describe("lifecycle integration", () => {
     expect(reply.output).toContain("Nothing to do.");
   });
 
-  test("@signal blocked with write tools still triggers verify", async () => {
+  test("@signal blocked with write tools skips verify without verify command", async () => {
     let turnCount = 0;
     const phases: string[] = [];
 
@@ -129,19 +121,14 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      if (turnCount === 2) {
-        phases.push("work:blocked");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Cannot proceed.\n\n@signal blocked");
-      }
-      phases.push("verify:done");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Verified.\n\n@signal done");
+      phases.push("work:blocked");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Cannot proceed.\n\n@signal blocked");
     });
 
     await run("update x to 3");
 
     expect(phases).toContain("work:tool-call");
     expect(phases).toContain("work:blocked");
-    expect(phases).toContain("verify:done");
   });
 
   test("verifyScope none skips verify even with write tools", async () => {
@@ -180,7 +167,7 @@ describe("lifecycle integration", () => {
     expect(phases).not.toContain("verify:done");
   });
 
-  test("no signal with write tools still triggers verify", async () => {
+  test("no signal with write tools skips verify without verify command", async () => {
     let turnCount = 0;
     const phases: string[] = [];
 
@@ -201,121 +188,13 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      if (turnCount === 2) {
-        phases.push("work:text");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated the file.");
-      }
-      phases.push("verify:done");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Verified.\n\n@signal done");
+      phases.push("work:text");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated the file.");
     });
 
     await run("update x to 5");
 
     expect(phases).toContain("work:tool-call");
-    expect(phases).toContain("verify:done");
-  });
-
-  test("verify mode cannot use write tools", async () => {
-    // Write a fresh file so previous test edits don't interfere.
-    await writeFile(join(workspace, "b.ts"), "export const y = 1;\n", "utf8");
-    let turnCount = 0;
-    const toolErrors: string[] = [];
-
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      // Turn 1 (work): edit a file, signal done
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "b.ts"),
-              edits: [{ find: "export const y = 1;", replace: "export const y = 6;" }],
-            }),
-          },
-        ]);
-      }
-      if (turnCount === 2) {
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Done.\n\n@signal done");
-      }
-      // Turn 3+ (verify): check that edit-file is NOT in the available tools
-      const tools = (ctx.body.tools ?? []).map((t) => t.name).filter(Boolean);
-      const hasEditFile = tools.includes("edit-file");
-      const hasEditCode = tools.includes("edit-code");
-      if (hasEditFile) toolErrors.push("edit-file available in verify mode");
-      if (hasEditCode) toolErrors.push("edit-code available in verify mode");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Verified.\n\n@signal done");
-    });
-
-    await run("update x to 6");
-
-    expect(toolErrors).toEqual([]);
-  });
-
-  test("verify tool error with @signal done does not re-enter work mode", async () => {
-    await writeFile(join(workspace, "c.ts"), "export const z = 1;\n", "utf8");
-    let turnCount = 0;
-    const phases: string[] = [];
-
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      // Turn 1 (work): edit a file
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
-        phases.push("work:tool-call");
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "c.ts"),
-              edits: [{ find: "export const z = 1;", replace: "export const z = 7;" }],
-            }),
-          },
-        ]);
-      }
-      // Turn 2 (work continued): signal done
-      if (turnCount === 2) {
-        phases.push("work:done");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated z.\n\n@signal done");
-      }
-      // Turn 3 (verify): read a nonexistent file (will produce ENOENT tool error)
-      if (turnCount === 3) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "read-file", ["read"]);
-        phases.push("verify:tool-call");
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({ paths: [{ path: join(workspace, "nonexistent.ts") }] }),
-          },
-        ]);
-      }
-      // Turn 4 (verify continued): signal done despite the tool error
-      if (turnCount === 4) {
-        phases.push("verify:done");
-        return createMessagePayload(
-          ctx.model,
-          ctx.responseCounter,
-          "File not found but scan review is sufficient.\n\n@signal done",
-        );
-      }
-      // Turn 5+ should NOT happen — if it does, verify triggered work mode re-entry
-      phases.push("work:re-entry");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Should not reach here.\n\n@signal done");
-    });
-
-    await run("update z to 7");
-
-    expect(phases).toContain("work:tool-call");
-    expect(phases).toContain("work:done");
-    expect(phases).toContain("verify:tool-call");
-    expect(phases).toContain("verify:done");
-    expect(phases).not.toContain("work:re-entry");
+    expect(phases).not.toContain("verify:done");
   });
 });

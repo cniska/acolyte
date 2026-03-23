@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { type LintCommand, lintFiles } from "./lint-reflection";
+import { lintFiles } from "./lint-reflection";
+import type { WorkspaceCommand } from "./workspace-profile";
 
-const BIOME: LintCommand = { bin: "bunx", args: ["biome", "check"] };
+const BIOME: WorkspaceCommand = { bin: "bunx", args: ["biome", "check"] };
 
 describe("lintFiles", () => {
   test("returns no errors for empty file list", () => {

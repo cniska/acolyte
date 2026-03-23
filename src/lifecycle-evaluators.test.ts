@@ -6,81 +6,46 @@ import {
   toolRecoveryEvaluator,
   verifyEvaluator,
 } from "./lifecycle-evaluators";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
+const VERIFY_CMD = { bin: "bun", args: ["run", "verify"] };
+const policyWithVerify = { ...defaultLifecyclePolicy, verifyCommand: VERIFY_CMD };
+
 describe("verifyEvaluator", () => {
-  test("returns regenerate when write tools used without verify", () => {
-    const session = createSessionContext("task_new");
-    session.callLog = [
-      { toolName: "edit-file", args: { path: "src/old.ts" }, taskId: "task_old", status: "succeeded" },
-      { toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] }, taskId: "task_new", status: "succeeded" },
-      { toolName: "read-file", args: { paths: [{ path: "src/c.ts" }] }, taskId: "task_new", status: "succeeded" },
-      {
-        toolName: "scan-code",
-        args: { paths: ["src/d.ts"], patterns: ["export function $NAME"] },
-        taskId: "task_new",
-        status: "succeeded",
-      },
-      { toolName: "edit-file", args: { path: "src/a.ts" }, taskId: "task_new", status: "succeeded" },
-      { toolName: "edit-code", args: { path: "src/b.ts" }, taskId: "task_new", status: "succeeded" },
-    ];
+  test("returns done when no verify command is configured", () => {
     const ctx = createRunContext({
       initialMode: "work",
-      taskId: "task_new",
-      session,
       result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["read-file", "edit-file"]),
+      observedTools: new Set(["edit-file"]),
+    });
+    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns regenerate to verify mode when write tools used with verify command", () => {
+    const ctx = createRunContext({
+      initialMode: "work",
+      workspace: "/tmp/test",
+      policy: policyWithVerify,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
     });
     const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
-      expect(action.feedback?.details).toContain("Task boundary:");
-      expect(action.feedback?.details).toContain("- src/a.ts");
-      expect(action.feedback?.details).toContain("- src/b.ts");
-      expect(action.feedback?.details).toContain("Allowed supporting reads");
-      expect(action.feedback?.details).toContain("- src/c.ts");
-      expect(action.feedback?.details).toContain("- src/d.ts");
-      expect(action.feedback?.details).not.toContain("- src/old.ts");
     }
   });
 
-  test("uses base verify prompt when no write paths are available", () => {
-    const ctx = createRunContext({
-      initialMode: "work",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-    });
-    const action = verifyEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
-  });
-
-  test("uses global verify prompt when request explicitly opts into global scope", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "global" },
-      initialMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-    });
-    const action = verifyEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") expect(action.feedback?.details).not.toContain("Task boundary:");
-  });
-
   test("returns done when request disables verification", () => {
-    const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/a.ts" }, status: "succeeded" }];
     const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "Implement fix", history: [], verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "fix", history: [], verifyScope: "none" },
       initialMode: "work",
-      session,
+      workspace: "/tmp/test",
+      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -94,6 +59,8 @@ describe("verifyEvaluator", () => {
     const ctx = createRunContext({
       initialMode: "work",
       session,
+      workspace: "/tmp/test",
+      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -103,6 +70,8 @@ describe("verifyEvaluator", () => {
   test("returns done when no write tools used", () => {
     const ctx = createRunContext({
       initialMode: "work",
+      workspace: "/tmp/test",
+      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
@@ -114,69 +83,11 @@ describe("verifyEvaluator", () => {
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns regenerate to work mode when verify reports issues", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
+  test("returns done in verify mode without verify command", () => {
     const ctx = createRunContext({
       mode: "verify",
       initialMode: "work",
-      session,
-      result: { text: "Done.", toolCalls: [] },
-      lifecycleState: {
-        feedback: [],
-        verifyOutcome: {
-          text: "Error: missing export updatePost in post-store.ts",
-          error: { message: "verify failed: missing export updatePost in post-store.ts" },
-        },
-      },
-      observedTools: new Set(["scan-code"]),
-    });
-    const action = verifyEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.mode).toBe("work");
-      expect(action.feedback?.details).toContain("missing export updatePost");
-    }
-  });
-
-  test("returns done when in verify mode without errors", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
-    const ctx = createRunContext({
-      mode: "verify",
-      initialMode: "work",
-      session,
       result: { text: "", toolCalls: [] },
-    });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("ignores restored work result when verify outcome is missing", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
-    const ctx = createRunContext({
-      mode: "verify",
-      initialMode: "work",
-      session,
-      currentError: undefined,
-      result: { text: "Done.", toolCalls: [] },
-      lifecycleState: { feedback: [], verifyOutcome: undefined },
-    });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done for explicit no-issue verification summaries", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
-    const ctx = createRunContext({
-      mode: "verify",
-      initialMode: "work",
-      session,
-      result: { text: "No issues found. 0 errors.", toolCalls: [] },
     });
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
