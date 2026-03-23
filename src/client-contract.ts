@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { agentModeSchema } from "./agent-contract";
-import type { ChatRequest, ChatResponse } from "./api";
+import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./api";
 import { invariant } from "./assert";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
@@ -245,7 +245,7 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
             messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
           }
         : undefined,
-    state: json.state === "awaiting-input" ? "awaiting-input" : "done",
+    state: chatResponseStateSchema.catch("done").parse(json.state),
     error: typeof json.error === "string" ? json.error : undefined,
   };
 }
