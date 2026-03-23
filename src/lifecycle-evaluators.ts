@@ -2,10 +2,9 @@ import type { AgentMode } from "./agent-contract";
 import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import { lintFiles, runCommand, runCommandWithFiles } from "./lint-reflection";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
-import { formatWorkspaceCommand } from "./workspace-profile";
+import { formatWorkspaceCommand, runCommand, runCommandWithFiles } from "./workspace-profile";
 
 export type EvalAction =
   | { type: "done" }
@@ -96,7 +95,7 @@ export const lintEvaluator: Evaluator = {
     if (!ctx.policy.lintCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
-    const result = lintFiles(ctx.workspace, paths, ctx.policy.lintCommand);
+    const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
     if (!result.hasErrors) return { type: "done" };
     ctx.debug("lifecycle.eval.lint", { files: paths.length });
     return {

@@ -26,16 +26,16 @@ export function readText(workspace: string, name: string): string | null {
   }
 }
 
-function packageRunner(pm: string): string {
+function packageRunner(pm: string): WorkspaceCommand {
   switch (pm) {
     case "bun":
-      return "bunx";
+      return { bin: "bunx", args: [] };
     case "pnpm":
-      return "pnpx";
+      return { bin: "pnpx", args: [] };
     case "yarn":
-      return "yarn dlx";
+      return { bin: "yarn", args: ["dlx"] };
     default:
-      return "npx";
+      return { bin: "npx", args: [] };
   }
 }
 
@@ -55,7 +55,6 @@ function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProf
   const formatCommand = eco.detectFormatCommand?.(workspace) ?? undefined;
   const verifyCommand = eco.detectVerifyCommand?.(workspace) ?? undefined;
   const lineWidth = eco.detectLineWidth?.(workspace) ?? undefined;
-  if (!lintCommand && !formatCommand && !verifyCommand) return null;
   return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, verifyCommand, lineWidth };
 }
 
@@ -76,11 +75,11 @@ const typescriptDetector: EcosystemDetector = {
   },
 
   detectLintCommand(workspace) {
-    const runner = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
+    const { bin, args: prefix } = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: runner, args: ["biome", "check"] };
+      if (readJson(workspace, name)) return { bin, args: [...prefix, "biome", "check"] };
     }
-    if (fileExists(workspace, "oxlintrc.json")) return { bin: runner, args: ["oxlint"] };
+    if (fileExists(workspace, "oxlintrc.json")) return { bin, args: [...prefix, "oxlint"] };
     for (const name of [
       "eslint.config.js",
       "eslint.config.mjs",
@@ -89,7 +88,7 @@ const typescriptDetector: EcosystemDetector = {
       ".eslintrc.json",
       ".eslintrc.js",
     ]) {
-      if (fileExists(workspace, name)) return { bin: runner, args: ["eslint"] };
+      if (fileExists(workspace, name)) return { bin, args: [...prefix, "eslint"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
       if (readJson(workspace, name)) return { bin: "deno", args: ["lint"] };
@@ -98,12 +97,12 @@ const typescriptDetector: EcosystemDetector = {
   },
 
   detectFormatCommand(workspace) {
-    const runner = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
+    const { bin, args: prefix } = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: runner, args: ["biome", "check", "--write"] };
+      if (readJson(workspace, name)) return { bin, args: [...prefix, "biome", "check", "--write"] };
     }
     for (const name of [".prettierrc", ".prettierrc.json"]) {
-      if (readJson(workspace, name)) return { bin: runner, args: ["prettier", "--write"] };
+      if (readJson(workspace, name)) return { bin, args: [...prefix, "prettier", "--write"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
       if (readJson(workspace, name)) return { bin: "deno", args: ["fmt"] };
