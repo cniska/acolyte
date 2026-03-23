@@ -77,6 +77,7 @@ const typescriptDetector: EcosystemDetector = {
     for (const name of ["biome.json", "biome.jsonc"]) {
       if (readJson(workspace, name)) return { bin: runner, args: ["biome", "check"] };
     }
+    if (fileExists(workspace, "oxlintrc.json")) return { bin: runner, args: ["oxlint"] };
     for (const name of [
       "eslint.config.js",
       "eslint.config.mjs",
@@ -160,15 +161,20 @@ const pythonDetector: EcosystemDetector = {
 
   detectLintCommand(workspace) {
     if (fileExists(workspace, "ruff.toml")) return { bin: "ruff", args: ["check"] };
-    const text = readText(workspace, "pyproject.toml");
-    if (text?.includes("[tool.ruff]")) return { bin: "ruff", args: ["check"] };
+    const pyproject = readText(workspace, "pyproject.toml");
+    if (pyproject?.includes("[tool.ruff]")) return { bin: "ruff", args: ["check"] };
+    if (pyproject?.includes("[tool.flake8]") || fileExists(workspace, ".flake8")) return { bin: "flake8", args: [] };
+    if (pyproject?.includes("[tool.pylint]") || fileExists(workspace, ".pylintrc"))
+      return { bin: "pylint", args: ["--recursive=y", "."] };
+    if (pyproject?.includes("[tool.mypy]") || fileExists(workspace, "mypy.ini")) return { bin: "mypy", args: ["."] };
     return null;
   },
 
   detectFormatCommand(workspace) {
     if (fileExists(workspace, "ruff.toml")) return { bin: "ruff", args: ["format"] };
-    const text = readText(workspace, "pyproject.toml");
-    if (text?.includes("[tool.ruff]")) return { bin: "ruff", args: ["format"] };
+    const pyproject = readText(workspace, "pyproject.toml");
+    if (pyproject?.includes("[tool.ruff]")) return { bin: "ruff", args: ["format"] };
+    if (pyproject?.includes("[tool.black]") || fileExists(workspace, ".black")) return { bin: "black", args: ["."] };
     return null;
   },
 
@@ -195,7 +201,11 @@ const pythonDetector: EcosystemDetector = {
 const goDetector: EcosystemDetector = {
   id: "go",
   match: (workspace) => fileExists(workspace, "go.mod"),
-  detectLintCommand: () => ({ bin: "go", args: ["vet", "./..."] }),
+  detectLintCommand(workspace) {
+    if (fileExists(workspace, ".golangci.yml") || fileExists(workspace, ".golangci.yaml"))
+      return { bin: "golangci-lint", args: ["run"] };
+    return { bin: "go", args: ["vet", "./..."] };
+  },
   detectFormatCommand: () => ({ bin: "gofmt", args: ["-w"] }),
   detectVerifyCommand: () => ({ bin: "go", args: ["test", "./..."] }),
 

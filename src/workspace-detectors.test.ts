@@ -99,6 +99,12 @@ describe("typescript detector", () => {
     expect(profile.packageManager).toBe("bun");
   });
 
+  test("detects oxlint from oxlintrc.json", () => {
+    const ws = makeWorkspace({ "oxlintrc.json": "{}", "package.json": '{"scripts":{}}' });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand?.args).toContain("oxlint");
+  });
+
   test("uses npx for biome in npm projects", () => {
     const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}', "package-lock.json": "" });
     const profile = resolveWorkspaceProfile(ws);
@@ -108,6 +114,18 @@ describe("typescript detector", () => {
 });
 
 describe("python detector", () => {
+  test("detects flake8 from .flake8", () => {
+    const ws = makeWorkspace({ ".flake8": "[flake8]\nmax-line-length = 120", "pyproject.toml": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand).toEqual({ bin: "flake8", args: [] });
+  });
+
+  test("detects black from pyproject.toml", () => {
+    const ws = makeWorkspace({ "pyproject.toml": "[tool.black]\nline-length = 88" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.formatCommand).toEqual({ bin: "black", args: ["."] });
+  });
+
   test("detects ruff lint and format from ruff.toml", () => {
     const ws = makeWorkspace({ "ruff.toml": "" });
     const profile = resolveWorkspaceProfile(ws);
@@ -131,7 +149,13 @@ describe("python detector", () => {
 });
 
 describe("go detector", () => {
-  test("detects go vet and gofmt from go.mod", () => {
+  test("detects golangci-lint when config exists", () => {
+    const ws = makeWorkspace({ "go.mod": "module example.com/foo", ".golangci.yml": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.lintCommand).toEqual({ bin: "golangci-lint", args: ["run"] });
+  });
+
+  test("falls back to go vet without golangci-lint config", () => {
     const ws = makeWorkspace({ "go.mod": "module example.com/foo" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("go");
