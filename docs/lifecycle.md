@@ -64,5 +64,7 @@ resolve → prepare → generate → evaluate → finalize
 - `src/lifecycle-resolve.ts` — Initial mode and model selection for the request.
 - `src/lifecycle-signal.ts` — Extraction and parsing of agent signals from output.
 - `src/lifecycle-state.ts` — State validation and transitions through the lifecycle.
+- `src/workspace-profile.ts` — Workspace profile types, caching, and instruction generation.
+- `src/workspace-detectors.ts` — Ecosystem detectors for TypeScript, Python, Go, Rust.
 - `src/lifecycle-usage.ts` — Token usage tracking and prompt breakdown totals.
 - `src/tool-recovery.ts` — Tool recovery contract carried from tool errors into evaluators.

@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
+import type { WorkspaceCommand } from "./workspace-profile";
 
 export type LintResult = { hasErrors: boolean; output: string };
 
-export type LintCommand = { readonly bin: string; readonly args: readonly string[] };
+export type LintCommand = WorkspaceCommand;
 
 export function lintFiles(workspace: string, filePaths: string[], command: LintCommand): LintResult {
   if (filePaths.length === 0) return { hasErrors: false, output: "" };

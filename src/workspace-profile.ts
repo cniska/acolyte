@@ -11,6 +11,10 @@ export type WorkspaceProfile = {
   lineWidth?: number;
 };
 
+export function formatWorkspaceCommand(cmd: WorkspaceCommand): string {
+  return `${cmd.bin} ${cmd.args.join(" ")}`.trim();
+}
+
 const EMPTY_PROFILE: WorkspaceProfile = {};
 const cache = new Map<string, WorkspaceProfile>();
 
@@ -38,7 +42,7 @@ export function createWorkspaceInstructions(profile: WorkspaceProfile): string[]
   const lines: string[] = [];
   if (profile.lineWidth) lines.push(`Keep lines under ${profile.lineWidth} characters.`);
   if (profile.formatCommand) {
-    const cmd = `${profile.formatCommand.bin} ${profile.formatCommand.args.join(" ")}`.trim();
+    const cmd = formatWorkspaceCommand(profile.formatCommand);
     lines.push(`Format command: \`${cmd}\`. Run this to auto-fix lint or format issues before manual repairs.`);
   }
   if (profile.packageManager) {

@@ -7,6 +7,7 @@ import { lintFiles } from "./lint-reflection";
 import { extractReadPaths } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
+import { formatWorkspaceCommand } from "./workspace-profile";
 
 export type EvalAction =
   | { type: "done" }
@@ -97,15 +98,9 @@ function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   return Array.from(out);
 }
 
-function formatVerifyCommand(ctx: EvaluatorContext): string | undefined {
-  const cmd = ctx.policy.verifyCommand;
-  if (!cmd) return undefined;
-  return `${cmd.bin} ${cmd.args.join(" ")}`.trim();
-}
-
 function scopedVerifyPrompt(ctx: EvaluatorContext): string {
   const base = createModeInstructions("verify", ctx.workspace);
-  const verifyCmd = formatVerifyCommand(ctx);
+  const verifyCmd = ctx.policy.verifyCommand ? formatWorkspaceCommand(ctx.policy.verifyCommand) : undefined;
   if (ctx.request.verifyScope === "global") {
     return verifyCmd ? `${base}\n\nVerify command: ${verifyCmd}` : base;
   }

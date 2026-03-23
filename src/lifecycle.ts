@@ -12,7 +12,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
-import { resolveWorkspaceProfile } from "./workspace-profile";
+import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
@@ -192,21 +192,12 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   };
 
   if (profile.ecosystem) {
-    const formatCmd = profile.formatCommand
-      ? `${profile.formatCommand.bin} ${profile.formatCommand.args.join(" ")}`.trim()
-      : null;
-    const lintCmd = profile.lintCommand
-      ? `${profile.lintCommand.bin} ${profile.lintCommand.args.join(" ")}`.trim()
-      : null;
-    const verifyCmd = profile.verifyCommand
-      ? `${profile.verifyCommand.bin} ${profile.verifyCommand.args.join(" ")}`.trim()
-      : null;
     debug("lifecycle.workspace.profile", {
       ecosystem: profile.ecosystem,
       package_manager: profile.packageManager ?? null,
-      lint_command: lintCmd,
-      format_command: formatCmd,
-      verify_command: verifyCmd,
+      lint_command: profile.lintCommand ? formatWorkspaceCommand(profile.lintCommand) : null,
+      format_command: profile.formatCommand ? formatWorkspaceCommand(profile.formatCommand) : null,
+      verify_command: profile.verifyCommand ? formatWorkspaceCommand(profile.verifyCommand) : null,
       line_width: profile.lineWidth ?? null,
     });
   }

@@ -60,3 +60,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Grouped domain tools exposed through adapters/composition |
 | Verify Cycle | Post-write verification sequence; the evaluator transitions to verify mode, performs scoped verification, and re-generates on failure |
+| Workspace Command | Typed shell command descriptor (`{ bin, args }`) used for lint, format, and verify commands |
+| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, lint/format/verify commands, and line width |
+| Ecosystem Detector | Pluggable workspace detection rule that identifies project type and resolves available tooling |

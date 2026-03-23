@@ -31,6 +31,7 @@ High-level capability comparison across all projects.
 | Behavioral guards | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial |
 | Auto verification | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
+| Workspace detection | ✓ | ✗ | partial | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
 | Observable execution | ✓ | partial | partial | ✗ | partial | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Daemon architecture | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ |
 
@@ -119,6 +120,19 @@ Goose has a `RetryManager` that checks shell command success.
 OpenHands has a **Critic** that scores outcomes but does not automatically retry.
 
 Most other agents rely on prompt instructions such as "please run the tests".
+
+## Workspace detection
+
+Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, verify command, and line width. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
+
+| Project | Detection approach |
+|---|---|
+| **Acolyte** | Auto-detect from config files (biome.json, ruff.toml, Cargo.toml, go.mod, etc.) |
+| Aider | User-configured per-language lint commands (`--lint-cmd`) |
+| Cline | User-written `.clinerules` prose |
+| Continue | IDE-provided workspace context |
+| Goose | Package manager detection via Rust crate |
+| Others | No workspace detection |
 
 ## Developer experience
 
