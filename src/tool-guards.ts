@@ -333,6 +333,7 @@ const fileChurnGuard: ToolGuard = {
       if (
         toolName === "read-file" &&
         editCount > 0 &&
+        session.mode !== "verify" &&
         requestedReadSignatures.some((signature) => signaturesForPath(target).has(signature))
       ) {
         report("blocked", target);

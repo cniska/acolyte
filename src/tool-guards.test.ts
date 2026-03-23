@@ -156,6 +156,17 @@ describe("file-churn guard", () => {
     );
   });
 
+  test("allows rereading an edited file in verify mode", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    session.mode = "verify";
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
+  });
+
   test("allows reading a different range of the same file after an edit", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
