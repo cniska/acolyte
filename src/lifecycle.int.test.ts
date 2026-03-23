@@ -254,4 +254,68 @@ describe("lifecycle integration", () => {
 
     expect(toolErrors).toEqual([]);
   });
+
+  test("verify tool error with @signal done does not re-enter work mode", async () => {
+    await writeFile(join(workspace, "c.ts"), "export const z = 1;\n", "utf8");
+    let turnCount = 0;
+    const phases: string[] = [];
+
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      // Turn 1 (work): edit a file
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        phases.push("work:tool-call");
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "c.ts"),
+              edits: [{ find: "export const z = 1;", replace: "export const z = 7;" }],
+            }),
+          },
+        ]);
+      }
+      // Turn 2 (work continued): signal done
+      if (turnCount === 2) {
+        phases.push("work:done");
+        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated z.\n\n@signal done");
+      }
+      // Turn 3 (verify): read a nonexistent file (will produce ENOENT tool error)
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "read-file", ["read"]);
+        phases.push("verify:tool-call");
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ paths: [{ path: join(workspace, "nonexistent.ts") }] }),
+          },
+        ]);
+      }
+      // Turn 4 (verify continued): signal done despite the tool error
+      if (turnCount === 4) {
+        phases.push("verify:done");
+        return createMessagePayload(
+          ctx.model,
+          ctx.responseCounter,
+          "File not found but scan review is sufficient.\n\n@signal done",
+        );
+      }
+      // Turn 5+ should NOT happen — if it does, verify triggered work mode re-entry
+      phases.push("work:re-entry");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Should not reach here.\n\n@signal done");
+    });
+
+    await run("update z to 7");
+
+    expect(phases).toContain("work:tool-call");
+    expect(phases).toContain("work:done");
+    expect(phases).toContain("verify:tool-call");
+    expect(phases).toContain("verify:done");
+    expect(phases).not.toContain("work:re-entry");
+  });
 });

@@ -120,9 +120,10 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
       if (shouldYieldNow(ctx, shouldYield)) break;
 
       if (saved && ctx.mode === "verify") {
+        const verifySignal = ctx.result?.signal;
         ctx.lifecycleState.verifyOutcome = {
           text: ctx.result?.text ?? "",
-          error: ctx.currentError,
+          error: verifySignal === "done" || verifySignal === "no_op" ? undefined : ctx.currentError,
         };
       }
 
