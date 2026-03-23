@@ -93,10 +93,16 @@ describe("typescript detector", () => {
     expect(profile.verifyCommand?.bin).toBe("npm");
   });
 
-  test("exposes detected package manager", () => {
+  test("exposes detected package manager from lock file", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"jest"}}', "bun.lock": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.packageManager).toBe("bun");
+  });
+
+  test("detects package manager from packageManager field", () => {
+    const ws = makeWorkspace({ "package.json": '{"packageManager":"pnpm@9.1.0","scripts":{"test":"vitest"}}' });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.packageManager).toBe("pnpm");
   });
 
   test("detects oxlint from oxlintrc.json", () => {

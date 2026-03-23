@@ -64,7 +64,10 @@ const typescriptDetector: EcosystemDetector = {
   match: (workspace) => fileExists(workspace, "package.json") || fileExists(workspace, "deno.json"),
 
   detectPackageManager(workspace) {
-    if (!fileExists(workspace, "package.json")) return null;
+    const pkg = readJson(workspace, "package.json");
+    if (!pkg) return null;
+    const declared = typeof pkg.packageManager === "string" ? pkg.packageManager.split("@")[0] : null;
+    if (declared === "bun" || declared === "pnpm" || declared === "yarn" || declared === "npm") return declared;
     if (fileExists(workspace, "bun.lock") || fileExists(workspace, "bun.lockb")) return "bun";
     if (fileExists(workspace, "pnpm-lock.yaml")) return "pnpm";
     if (fileExists(workspace, "yarn.lock")) return "yarn";
