@@ -1,7 +1,7 @@
 import type { AgentMode } from "./agent-contract";
 import { agentModes } from "./agent-modes";
 import { toolDefinitionsById } from "./tool-registry";
-import { resolveWorkspaceProfile } from "./workspace-profile";
+import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
 const BASE_INSTRUCTIONS = [
   "Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
@@ -29,7 +29,7 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
   }
   if (workspace && mode === "work") {
     const profile = resolveWorkspaceProfile(workspace);
-    if (profile.lineWidth) lines.push(`- Keep lines under ${profile.lineWidth} characters.`);
+    for (const line of createWorkspaceInstructions(profile)) lines.push(`- ${line}`);
   }
   return lines.join("\n");
 }

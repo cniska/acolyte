@@ -191,6 +191,26 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     });
   };
 
+  if (profile.ecosystem) {
+    const formatCmd = profile.formatCommand
+      ? `${profile.formatCommand.bin} ${profile.formatCommand.args.join(" ")}`.trim()
+      : null;
+    const lintCmd = profile.lintCommand
+      ? `${profile.lintCommand.bin} ${profile.lintCommand.args.join(" ")}`.trim()
+      : null;
+    const verifyCmd = profile.verifyCommand
+      ? `${profile.verifyCommand.bin} ${profile.verifyCommand.args.join(" ")}`.trim()
+      : null;
+    debug("lifecycle.workspace.profile", {
+      ecosystem: profile.ecosystem,
+      package_manager: profile.packageManager ?? null,
+      lint_command: lintCmd,
+      format_command: formatCmd,
+      verify_command: verifyCmd,
+      line_width: profile.lineWidth ?? null,
+    });
+  }
+
   const { mode: initialMode, model } = deps.resolveInitialMode(input.request, debug);
 
   const prepared = deps.phasePrepare({

@@ -33,3 +33,16 @@ export function resolveWorkspaceProfile(workspace?: string): WorkspaceProfile {
 export function clearWorkspaceProfileCache(): void {
   cache.clear();
 }
+
+export function createWorkspaceInstructions(profile: WorkspaceProfile): string[] {
+  const lines: string[] = [];
+  if (profile.lineWidth) lines.push(`Keep lines under ${profile.lineWidth} characters.`);
+  if (profile.formatCommand) {
+    const cmd = `${profile.formatCommand.bin} ${profile.formatCommand.args.join(" ")}`.trim();
+    lines.push(`Format command: \`${cmd}\`. Run this to auto-fix lint or format issues before manual repairs.`);
+  }
+  if (profile.packageManager) {
+    lines.push(`This project uses ${profile.packageManager}. Use it for install and run commands.`);
+  }
+  return lines;
+}
