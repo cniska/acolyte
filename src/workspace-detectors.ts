@@ -6,11 +6,16 @@ export function fileExists(workspace: string, name: string): boolean {
   return existsSync(join(workspace, name));
 }
 
+function stripJsonComments(text: string): string {
+  return text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 export function readJson(workspace: string, name: string): Record<string, unknown> | null {
   try {
     const path = join(workspace, name);
     if (!existsSync(path)) return null;
-    return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    const raw = readFileSync(path, "utf8");
+    return JSON.parse(name.endsWith("c") ? stripJsonComments(raw) : raw) as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -24,6 +29,13 @@ export function readText(workspace: string, name: string): string | null {
   } catch {
     return null;
   }
+}
+
+function detectLineWidthFromEditorconfig(workspace: string): number | null {
+  const text = readText(workspace, ".editorconfig");
+  if (!text) return null;
+  const match = text.match(/max_line_length\s*=\s*(\d+)/);
+  return match ? Number(match[1]) : null;
 }
 
 function packageRunner(pm: string): WorkspaceCommand {
@@ -141,11 +153,8 @@ const typescriptDetector: EcosystemDetector = {
       const width = (raw as { fmt?: { lineWidth?: unknown } }).fmt?.lineWidth;
       if (typeof width === "number" && width > 0) return width;
     }
-    const editorconfig = readText(workspace, ".editorconfig");
-    if (editorconfig) {
-      const match = editorconfig.match(/max_line_length\s*=\s*(\d+)/);
-      if (match) return Number(match[1]);
-    }
+    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
+    if (editorconfigWidth) return editorconfigWidth;
     for (const name of [".prettierrc", ".prettierrc.json"]) {
       const raw = readJson(workspace, name);
       if (!raw) continue;
@@ -191,11 +200,8 @@ const pythonDetector: EcosystemDetector = {
   },
 
   detectLineWidth(workspace) {
-    const editorconfig = readText(workspace, ".editorconfig");
-    if (editorconfig) {
-      const match = editorconfig.match(/max_line_length\s*=\s*(\d+)/);
-      if (match) return Number(match[1]);
-    }
+    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
+    if (editorconfigWidth) return editorconfigWidth;
     return null;
   },
 };
@@ -212,11 +218,8 @@ const goDetector: EcosystemDetector = {
   detectVerifyCommand: () => ({ bin: "go", args: ["test", "./..."] }),
 
   detectLineWidth(workspace) {
-    const editorconfig = readText(workspace, ".editorconfig");
-    if (editorconfig) {
-      const match = editorconfig.match(/max_line_length\s*=\s*(\d+)/);
-      if (match) return Number(match[1]);
-    }
+    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
+    if (editorconfigWidth) return editorconfigWidth;
     return null;
   },
 };
@@ -229,11 +232,8 @@ const rustDetector: EcosystemDetector = {
   detectVerifyCommand: () => ({ bin: "cargo", args: ["test"] }),
 
   detectLineWidth(workspace) {
-    const editorconfig = readText(workspace, ".editorconfig");
-    if (editorconfig) {
-      const match = editorconfig.match(/max_line_length\s*=\s*(\d+)/);
-      if (match) return Number(match[1]);
-    }
+    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
+    if (editorconfigWidth) return editorconfigWidth;
     return null;
   },
 };
