@@ -97,14 +97,26 @@ function readPathsForCurrentTask(ctx: EvaluatorContext): string[] {
   return Array.from(out);
 }
 
+function formatVerifyCommand(ctx: EvaluatorContext): string | undefined {
+  const cmd = ctx.policy.verifyCommand;
+  if (!cmd) return undefined;
+  return `${cmd.bin} ${cmd.args.join(" ")}`.trim();
+}
+
 function scopedVerifyPrompt(ctx: EvaluatorContext): string {
   const base = createModeInstructions("verify", ctx.workspace);
-  if (ctx.request.verifyScope === "global") return base;
+  const verifyCmd = formatVerifyCommand(ctx);
+  if (ctx.request.verifyScope === "global") {
+    return verifyCmd ? `${base}\n\nVerify command: ${verifyCmd}` : base;
+  }
   const paths = writePathsForCurrentTask(ctx);
-  if (paths.length === 0) return base;
+  if (paths.length === 0) {
+    return verifyCmd ? `${base}\n\nVerify command: ${verifyCmd}` : base;
+  }
   const supportingPaths = readPathsForCurrentTask(ctx).filter((path) => !paths.includes(path));
   return [
     base,
+    ...(verifyCmd ? ["", `Verify command: ${verifyCmd}`] : []),
     "",
     "Task boundary:",
     `Primary scope (changed in this task, ${paths.length}):`,

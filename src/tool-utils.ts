@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
@@ -70,49 +69,6 @@ export async function runCommand(
     stdout: stdoutText,
     stderr: stderrText,
   };
-}
-
-export function detectLineWidth(workspace: string): number | null {
-  const root = workspace;
-  try {
-    // biome.json
-    for (const name of ["biome.json", "biome.jsonc"]) {
-      const path = join(root, name);
-      if (existsSync(path)) {
-        const raw = JSON.parse(readFileSync(path, "utf8"));
-        const width = raw?.formatter?.lineWidth;
-        if (typeof width === "number" && width > 0) return width;
-      }
-    }
-    // .editorconfig (simple parse for max_line_length)
-    const editorconfig = join(root, ".editorconfig");
-    if (existsSync(editorconfig)) {
-      const text = readFileSync(editorconfig, "utf8");
-      const match = text.match(/max_line_length\s*=\s*(\d+)/);
-      if (match) return Number(match[1]);
-    }
-    // .prettierrc (JSON format)
-    for (const name of [".prettierrc", ".prettierrc.json"]) {
-      const path = join(root, name);
-      if (existsSync(path)) {
-        const raw = JSON.parse(readFileSync(path, "utf8"));
-        const width = raw?.printWidth;
-        if (typeof width === "number" && width > 0) return width;
-      }
-    }
-    // deno.json
-    for (const name of ["deno.json", "deno.jsonc"]) {
-      const path = join(root, name);
-      if (existsSync(path)) {
-        const raw = JSON.parse(readFileSync(path, "utf8"));
-        const width = raw?.fmt?.lineWidth;
-        if (typeof width === "number" && width > 0) return width;
-      }
-    }
-  } catch {
-    // Detection failed — fall back to no limit.
-  }
-  return null;
 }
 
 // Directories always excluded regardless of .gitignore — these are either internal

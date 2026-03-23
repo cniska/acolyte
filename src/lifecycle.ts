@@ -12,6 +12,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
+import { resolveWorkspaceProfile } from "./workspace-profile";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
@@ -166,7 +167,17 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  const policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+  let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+
+  const profile = resolveWorkspaceProfile(input.workspace);
+  if (profile.lintCommand || profile.verifyCommand) {
+    policy = {
+      ...policy,
+      ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
+      ...(!policy.verifyCommand && profile.verifyCommand ? { verifyCommand: profile.verifyCommand } : {}),
+    };
+  }
+
   let debugSequence = 0;
   let ctxRef: RunContext | undefined;
   const debugSink = input.onDebug ?? (() => {});

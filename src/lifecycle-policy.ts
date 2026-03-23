@@ -10,6 +10,7 @@ import {
   VERIFY_MAX_STEPS,
 } from "./lifecycle-constants";
 import type { LintCommand } from "./lint-reflection";
+import type { WorkspaceCommand } from "./workspace-profile";
 
 export type LifecyclePolicy = {
   totalMaxSteps: number;
@@ -25,6 +26,8 @@ export type LifecyclePolicy = {
   consecutiveGuardBlockLimit: number;
   /** Lint command to run after writes. Undefined disables lint evaluation. */
   lintCommand?: LintCommand;
+  /** Verify command to run after writes. Undefined falls back to model-driven verify. */
+  verifyCommand?: WorkspaceCommand;
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
