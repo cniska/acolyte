@@ -25,7 +25,7 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
-    expect(profile.lintCommand?.bin).toBe("bunx");
+    expect(profile.lintCommand?.bin).toBe("npx");
     expect(profile.lintCommand?.args).toContain("biome");
     expect(profile.formatCommand?.args).toContain("--write");
   });
@@ -34,7 +34,7 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "eslint.config.js": "", "package.json": '{"scripts":{}}' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
-    expect(profile.lintCommand?.bin).toBe("bunx");
+    expect(profile.lintCommand?.bin).toBe("npx");
     expect(profile.lintCommand?.args).toContain("eslint");
   });
 
@@ -42,19 +42,19 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"verify":"bun run lint && bun test"}}' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
-    expect(profile.verifyCommand).toEqual({ bin: "bun", args: ["run", "verify"] });
+    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "verify"] });
   });
 
   test("falls back to test script when verify is absent", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"jest"}}' });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toEqual({ bin: "bun", args: ["run", "test"] });
+    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "test"] });
   });
 
   test("falls back to check script when verify and test are absent", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"check":"tsc --noEmit"}}' });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toEqual({ bin: "bun", args: ["run", "check"] });
+    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "check"] });
   });
 
   test("detects lineWidth from biome.json", () => {

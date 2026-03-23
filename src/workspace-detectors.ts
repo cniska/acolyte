@@ -51,21 +51,24 @@ function packageRunner(pm: string): WorkspaceCommand {
   }
 }
 
+export type DetectContext = { workspace: string; packageManager?: string };
+
 export type EcosystemDetector = {
   id: string;
   match: (workspace: string) => boolean;
   detectPackageManager?: (workspace: string) => string | null;
-  detectLintCommand?: (workspace: string) => WorkspaceCommand | null;
-  detectFormatCommand?: (workspace: string) => WorkspaceCommand | null;
-  detectVerifyCommand?: (workspace: string) => WorkspaceCommand | null;
+  detectLintCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
+  detectFormatCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
+  detectVerifyCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectLineWidth?: (workspace: string) => number | null;
 };
 
 function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProfile | null {
   const packageManager = eco.detectPackageManager?.(workspace) ?? undefined;
-  const lintCommand = eco.detectLintCommand?.(workspace) ?? undefined;
-  const formatCommand = eco.detectFormatCommand?.(workspace) ?? undefined;
-  const verifyCommand = eco.detectVerifyCommand?.(workspace) ?? undefined;
+  const ctx: DetectContext = { workspace, packageManager };
+  const lintCommand = eco.detectLintCommand?.(ctx) ?? undefined;
+  const formatCommand = eco.detectFormatCommand?.(ctx) ?? undefined;
+  const verifyCommand = eco.detectVerifyCommand?.(ctx) ?? undefined;
   const lineWidth = eco.detectLineWidth?.(workspace) ?? undefined;
   return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, verifyCommand, lineWidth };
 }
@@ -83,15 +86,15 @@ const typescriptDetector: EcosystemDetector = {
     if (fileExists(workspace, "pnpm-lock.yaml")) return "pnpm";
     if (fileExists(workspace, "yarn.lock")) return "yarn";
     if (fileExists(workspace, "package-lock.json")) return "npm";
-    return "bun";
+    return "npm";
   },
 
-  detectLintCommand(workspace) {
-    const { bin, args: prefix } = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
+  detectLintCommand(ctx) {
+    const { bin, args: prefix } = packageRunner(ctx.packageManager ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin, args: [...prefix, "biome", "check"] };
+      if (readJson(ctx.workspace, name)) return { bin, args: [...prefix, "biome", "check"] };
     }
-    if (fileExists(workspace, "oxlintrc.json")) return { bin, args: [...prefix, "oxlint"] };
+    if (fileExists(ctx.workspace, "oxlintrc.json")) return { bin, args: [...prefix, "oxlint"] };
     for (const name of [
       "eslint.config.js",
       "eslint.config.mjs",
@@ -100,42 +103,42 @@ const typescriptDetector: EcosystemDetector = {
       ".eslintrc.json",
       ".eslintrc.js",
     ]) {
-      if (fileExists(workspace, name)) return { bin, args: [...prefix, "eslint"] };
+      if (fileExists(ctx.workspace, name)) return { bin, args: [...prefix, "eslint"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: "deno", args: ["lint"] };
+      if (readJson(ctx.workspace, name)) return { bin: "deno", args: ["lint"] };
     }
     return null;
   },
 
-  detectFormatCommand(workspace) {
-    const { bin, args: prefix } = packageRunner(typescriptDetector.detectPackageManager?.(workspace) ?? "npm");
+  detectFormatCommand(ctx) {
+    const { bin, args: prefix } = packageRunner(ctx.packageManager ?? "npm");
     for (const name of ["biome.json", "biome.jsonc"]) {
-      if (readJson(workspace, name)) return { bin, args: [...prefix, "biome", "check", "--write"] };
+      if (readJson(ctx.workspace, name)) return { bin, args: [...prefix, "biome", "check", "--write"] };
     }
     for (const name of [".prettierrc", ".prettierrc.json"]) {
-      if (readJson(workspace, name)) return { bin, args: [...prefix, "prettier", "--write"] };
+      if (readJson(ctx.workspace, name)) return { bin, args: [...prefix, "prettier", "--write"] };
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: "deno", args: ["fmt"] };
+      if (readJson(ctx.workspace, name)) return { bin: "deno", args: ["fmt"] };
     }
     return null;
   },
 
-  detectVerifyCommand(workspace) {
-    const pkg = readJson(workspace, "package.json");
+  detectVerifyCommand(ctx) {
+    const pkg = readJson(ctx.workspace, "package.json");
     if (pkg) {
       const scripts = (typeof pkg.scripts === "object" && pkg.scripts !== null ? pkg.scripts : {}) as Record<
         string,
         unknown
       >;
-      const pm = typescriptDetector.detectPackageManager?.(workspace) ?? "bun";
+      const pm = ctx.packageManager ?? "npm";
       for (const name of ["verify", "test", "check"]) {
         if (typeof scripts[name] === "string") return { bin: pm, args: ["run", name] };
       }
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
-      if (readJson(workspace, name)) return { bin: "deno", args: ["test"] };
+      if (readJson(ctx.workspace, name)) return { bin: "deno", args: ["test"] };
     }
     return null;
   },
@@ -170,30 +173,33 @@ const pythonDetector: EcosystemDetector = {
   match: (workspace) =>
     fileExists(workspace, "pyproject.toml") || fileExists(workspace, "setup.py") || fileExists(workspace, "ruff.toml"),
 
-  detectLintCommand(workspace) {
-    if (fileExists(workspace, "ruff.toml")) return { bin: "ruff", args: ["check"] };
-    const pyproject = readText(workspace, "pyproject.toml");
+  detectLintCommand(ctx) {
+    if (fileExists(ctx.workspace, "ruff.toml")) return { bin: "ruff", args: ["check"] };
+    const pyproject = readText(ctx.workspace, "pyproject.toml");
     if (pyproject?.includes("[tool.ruff]")) return { bin: "ruff", args: ["check"] };
-    if (pyproject?.includes("[tool.flake8]") || fileExists(workspace, ".flake8")) return { bin: "flake8", args: [] };
-    if (pyproject?.includes("[tool.pylint]") || fileExists(workspace, ".pylintrc"))
+    if (pyproject?.includes("[tool.flake8]") || fileExists(ctx.workspace, ".flake8"))
+      return { bin: "flake8", args: [] };
+    if (pyproject?.includes("[tool.pylint]") || fileExists(ctx.workspace, ".pylintrc"))
       return { bin: "pylint", args: ["--recursive=y", "."] };
-    if (pyproject?.includes("[tool.mypy]") || fileExists(workspace, "mypy.ini")) return { bin: "mypy", args: ["."] };
+    if (pyproject?.includes("[tool.mypy]") || fileExists(ctx.workspace, "mypy.ini"))
+      return { bin: "mypy", args: ["."] };
     return null;
   },
 
-  detectFormatCommand(workspace) {
-    if (fileExists(workspace, "ruff.toml")) return { bin: "ruff", args: ["format"] };
-    const pyproject = readText(workspace, "pyproject.toml");
+  detectFormatCommand(ctx) {
+    if (fileExists(ctx.workspace, "ruff.toml")) return { bin: "ruff", args: ["format"] };
+    const pyproject = readText(ctx.workspace, "pyproject.toml");
     if (pyproject?.includes("[tool.ruff]")) return { bin: "ruff", args: ["format"] };
-    if (pyproject?.includes("[tool.black]") || fileExists(workspace, ".black")) return { bin: "black", args: ["."] };
+    if (pyproject?.includes("[tool.black]") || fileExists(ctx.workspace, ".black"))
+      return { bin: "black", args: ["."] };
     return null;
   },
 
-  detectVerifyCommand(workspace) {
+  detectVerifyCommand(ctx) {
     if (
-      fileExists(workspace, "pyproject.toml") ||
-      fileExists(workspace, "setup.py") ||
-      fileExists(workspace, "setup.cfg")
+      fileExists(ctx.workspace, "pyproject.toml") ||
+      fileExists(ctx.workspace, "setup.py") ||
+      fileExists(ctx.workspace, "setup.cfg")
     )
       return { bin: "pytest", args: [] };
     return null;
@@ -209,8 +215,8 @@ const pythonDetector: EcosystemDetector = {
 const goDetector: EcosystemDetector = {
   id: "go",
   match: (workspace) => fileExists(workspace, "go.mod"),
-  detectLintCommand(workspace) {
-    if (fileExists(workspace, ".golangci.yml") || fileExists(workspace, ".golangci.yaml"))
+  detectLintCommand(ctx) {
+    if (fileExists(ctx.workspace, ".golangci.yml") || fileExists(ctx.workspace, ".golangci.yaml"))
       return { bin: "golangci-lint", args: ["run"] };
     return { bin: "go", args: ["vet", "./..."] };
   },
