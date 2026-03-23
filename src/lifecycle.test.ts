@@ -36,6 +36,7 @@ const phaseEvaluate = mock(
 
 const phaseFinalize = mock(
   (ctx: { result?: { text: string } }): ChatResponse => ({
+    state: "done",
     model: "gpt-5-mini",
     output: ctx.result?.text ?? "",
   }),
@@ -86,7 +87,7 @@ describe("runLifecycle", () => {
     expect(phaseGenerate).toHaveBeenCalledTimes(1);
     expect(phaseEvaluate).toHaveBeenCalledTimes(1);
     expect(phaseFinalize).toHaveBeenCalledTimes(1);
-    expect(response).toEqual({ model: "gpt-5-mini", output: "Generated output" });
+    expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
   });
 });
 
