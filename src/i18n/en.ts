@@ -113,6 +113,7 @@ export const EN_MESSAGES = {
   "chat.usage.metric.total": "Total",
   "chat.usage.none": "No usage data yet. Send a prompt first.",
   "chat.unresolved_path": "No file or folder found: @{path}",
+  "chat.awaiting_input": "Waiting for your reply",
   "chat.worked": "Worked {duration}{suffix}",
   "chat.write.confirm.required": "Write request needs confirmation in read mode.",
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",

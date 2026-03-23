@@ -30,7 +30,10 @@ export interface ChatRequest {
   readonly workspace?: string;
 }
 
+export type ChatResponseState = "done" | "awaiting-input";
+
 export interface ChatResponse {
+  state: ChatResponseState;
   output: string;
   model: string;
   usage?: TokenUsage;
