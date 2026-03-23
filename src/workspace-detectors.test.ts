@@ -21,12 +21,13 @@ function makeWorkspace(files: Record<string, string>): string {
 }
 
 describe("typescript detector", () => {
-  test("detects biome lint from biome.json", () => {
+  test("detects biome lint and format from biome.json", () => {
     const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
     expect(profile.lintCommand?.bin).toBe("bunx");
     expect(profile.lintCommand?.args).toContain("biome");
+    expect(profile.formatCommand?.args).toContain("--write");
   });
 
   test("detects eslint from eslint.config.js", () => {
@@ -91,14 +92,21 @@ describe("typescript detector", () => {
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.verifyCommand?.bin).toBe("npm");
   });
+
+  test("exposes detected package manager", () => {
+    const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"jest"}}', "bun.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.packageManager).toBe("bun");
+  });
 });
 
 describe("python detector", () => {
-  test("detects ruff from ruff.toml", () => {
+  test("detects ruff lint and format from ruff.toml", () => {
     const ws = makeWorkspace({ "ruff.toml": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("python");
     expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check"] });
+    expect(profile.formatCommand).toEqual({ bin: "ruff", args: ["format"] });
   });
 
   test("detects ruff from pyproject.toml with tool.ruff section", () => {
@@ -116,21 +124,23 @@ describe("python detector", () => {
 });
 
 describe("go detector", () => {
-  test("detects go vet from go.mod", () => {
+  test("detects go vet and gofmt from go.mod", () => {
     const ws = makeWorkspace({ "go.mod": "module example.com/foo" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("go");
     expect(profile.lintCommand).toEqual({ bin: "go", args: ["vet", "./..."] });
+    expect(profile.formatCommand).toEqual({ bin: "gofmt", args: ["-w"] });
     expect(profile.verifyCommand).toEqual({ bin: "go", args: ["test", "./..."] });
   });
 });
 
 describe("rust detector", () => {
-  test("detects cargo clippy from Cargo.toml", () => {
+  test("detects cargo clippy and fmt from Cargo.toml", () => {
     const ws = makeWorkspace({ "Cargo.toml": '[package]\nname = "foo"' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("rust");
     expect(profile.lintCommand).toEqual({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings"] });
+    expect(profile.formatCommand).toEqual({ bin: "cargo", args: ["fmt"] });
     expect(profile.verifyCommand).toEqual({ bin: "cargo", args: ["test"] });
   });
 });

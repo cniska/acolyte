@@ -4,7 +4,9 @@ export type WorkspaceCommand = { readonly bin: string; readonly args: readonly s
 
 export type WorkspaceProfile = {
   ecosystem?: string;
+  packageManager?: string;
   lintCommand?: WorkspaceCommand;
+  formatCommand?: WorkspaceCommand;
   verifyCommand?: WorkspaceCommand;
   lineWidth?: number;
 };
