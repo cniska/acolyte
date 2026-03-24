@@ -698,3 +698,45 @@ describe("circuit-breaker guard", () => {
     );
   });
 });
+
+describe("shell-bypass guard", () => {
+  test("blocks git commit via run-command", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "git commit -m 'test'" }, session })).toThrow(
+      /use the dedicated git-commit tool/i,
+    );
+  });
+
+  test("blocks git add via run-command", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "git add -A" }, session })).toThrow(
+      /use the dedicated git-add tool/i,
+    );
+  });
+
+  test("blocks git push via run-command", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "git push origin main" }, session })).toThrow(
+      /blocked via run-command/i,
+    );
+  });
+
+  test("blocks chained git commands via run-command", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "git add . && git commit -m 'fix'" }, session }),
+    ).toThrow(/use the dedicated/i);
+  });
+
+  test("allows non-git shell commands", () => {
+    const session = createSessionContext();
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "bun test src/foo.test.ts" }, session }),
+    ).not.toThrow();
+  });
+
+  test("allows git read commands via run-command", () => {
+    const session = createSessionContext();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "git status" }, session })).not.toThrow();
+  });
+});

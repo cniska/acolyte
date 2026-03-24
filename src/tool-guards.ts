@@ -685,6 +685,35 @@ const circuitBreakerGuard: ToolGuard = {
   },
 };
 
+const GIT_WRITE_COMMANDS: { pattern: RegExp; tool: string }[] = [
+  { pattern: /\bgit\s+add\b/, tool: "git-add" },
+  { pattern: /\bgit\s+commit\b/, tool: "git-commit" },
+  { pattern: /\bgit\s+push\b/, tool: "git push is not available" },
+  { pattern: /\bgit\s+reset\b/, tool: "git reset is not available" },
+  { pattern: /\bgit\s+rebase\b/, tool: "git rebase is not available" },
+  { pattern: /\bgit\s+merge\b/, tool: "git merge is not available" },
+  { pattern: /\bgit\s+checkout\b/, tool: "git checkout is not available" },
+  { pattern: /\bgit\s+restore\b/, tool: "git restore is not available" },
+  { pattern: /\bgit\s+clean\b/, tool: "git clean is not available" },
+  { pattern: /\bgit\s+stash\b/, tool: "git stash is not available" },
+];
+
+const shellBypassGuard: ToolGuard = {
+  id: "shell-bypass",
+  description: "Block shell commands that bypass dedicated tools.",
+  tools: ["run-command"],
+  check({ args, report }) {
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!command) return;
+    for (const { pattern, tool } of GIT_WRITE_COMMANDS) {
+      if (pattern.test(command)) {
+        report("blocked", tool);
+        throw new Error(`This git operation is blocked via run-command. Use the dedicated ${tool} tool instead.`);
+      }
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   circuitBreakerGuard,
   stepBudgetGuard,
@@ -696,6 +725,7 @@ const GUARDS: ToolGuard[] = [
   redundantSearchGuard,
   redundantVerifyGuard,
   postEditRedundancyGuard,
+  shellBypassGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {
