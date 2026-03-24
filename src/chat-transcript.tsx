@@ -2,10 +2,9 @@ import React from "react";
 import type { AgentMode } from "./agent-contract";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
-import { isChecklistOutput, isCommandOutput, isToolOutput } from "./chat-contract";
+import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { commandOutputColWidth, formatTokenCount } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
-import { type ChecklistOutput, checklistMarker, checklistProgress } from "./checklist-contract";
 import type { PendingState } from "./client-contract";
 import { t, tDynamic } from "./i18n";
 import { palette } from "./palette";
@@ -199,22 +198,6 @@ function renderToolOutput(parts: ToolOutputPart[], toolContentWidth: number): Re
   );
 }
 
-function renderChecklist(output: ChecklistOutput): React.ReactNode {
-  const sorted = [...output.items].sort((a, b) => a.order - b.order);
-  const { done, total } = checklistProgress(sorted);
-  return (
-    <>
-      <Text bold>{`${output.groupTitle} (${done}/${total})`}</Text>
-      {sorted.map((item) => (
-        <React.Fragment key={item.id}>
-          {"\n"}
-          <Text dimColor>{`  ${checklistMarker(item.status)} ${item.label}`}</Text>
-        </React.Fragment>
-      ))}
-    </>
-  );
-}
-
 type ChatTranscriptRowProps = {
   row: ChatRow;
   contentWidth: number;
@@ -232,21 +215,19 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
         <Text color={markerColor}>{marker}</Text>
       </Box>
       <Box width={row.kind === "tool" ? toolContentWidth : contentWidth}>
-        {isChecklistOutput(row.content) ? (
-          <Text>{renderChecklist(row.content)}</Text>
-        ) : isToolOutput(row.content) ? (
+        {isToolOutput(row.content) ? (
           <Text>{renderToolOutput(row.content.parts, toolContentWidth)}</Text>
         ) : isCommandOutput(row.content) ? (
           <Text>{renderCommandOutput(row.content)}</Text>
-        ) : row.kind === "assistant" ? (
+        ) : row.kind === "assistant" && typeof row.content === "string" ? (
           <Text dimColor={dim} color={textColor}>
             {renderAssistantContent(row.content, contentWidth)}
           </Text>
-        ) : (
+        ) : typeof row.content === "string" ? (
           <Text dimColor={dim} color={textColor}>
             {row.content}
           </Text>
-        )}
+        ) : null}
       </Box>
     </Box>
   );
@@ -337,33 +318,6 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           ))}
         </>
       ) : null}
-    </>
-  );
-}
-
-type ChatChecklistProps = {
-  rows: ChatRow[];
-};
-
-export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
-  if (rows.length === 0) return null;
-  const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
-  const contentWidth = Math.max(24, columns - 2);
-  return (
-    <>
-      {rows.map((row) => (
-        <React.Fragment key={row.id}>
-          <Text> </Text>
-          <Box>
-            <Box width={2}>
-              <Text color={palette.brand}>{"• "}</Text>
-            </Box>
-            <Box width={contentWidth}>
-              {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
-            </Box>
-          </Box>
-        </React.Fragment>
-      ))}
     </>
   );
 }

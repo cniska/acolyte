@@ -1,9 +1,10 @@
+import { ChatChecklist } from "./chat-checklist";
 import { isChecklistOutput } from "./chat-contract";
 import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
-import { ChatChecklist, ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
 import { palette } from "./palette";
 import { Box, render, Static, Text, useApp } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
