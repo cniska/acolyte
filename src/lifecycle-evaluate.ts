@@ -102,6 +102,7 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
 
       const saved = action.keepResult ? snapshotState(ctx) : undefined;
       if (action.mode) setMode(ctx, action.mode, evaluator.id);
+      if (action.feedback?.source === "plan-transition") ctx.regenerationCount = 0;
 
       ctx.regenerationCount += 1;
       ctx.debug("lifecycle.eval.decision", {
