@@ -15,17 +15,21 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 - AST-aware structural editing via ast-grep
 - Custom React terminal renderer with single input pipeline
 - Typed RPC protocol with task state machine
-- Lifecycle observability via `acolyte trace`
+- Lifecycle observability via `acolyte trace` with SQLite-backed indexed queries
 - Structured JSON log format with configurable `logFormat`
+- CLI access to daemon logs via `acolyte logs`
 - Skills system with declarative SKILL.md standard
 - Multi-provider support (OpenAI, Anthropic, Google)
+- SQLite-backed cross-task tool cache
+- Structured model-to-user handoff for blocked signals (`awaiting-input` state)
+- Workspace profile detection for ecosystem, lint, format, verify, package manager, and line width
+- Deterministic format → lint → verify evaluator chain from detected workspace commands
+- Pluggable ecosystem detectors for TypeScript, Python, Go, Rust
 
 ## What's next
 
 Tracked in [GitHub Issues](https://github.com/cniska/acolyte/issues). Key priorities:
 
-- **Logs command** — CLI access to daemon logs (#32)
-- **Tool cache persistence** — SQLite-backed cross-task tool cache (#38)
+- **Plan mode** — lifecycle-driven planning phase with approval workflow (#14)
+- **Inline task checklist** — real-time progress display for multi-step tasks (#49)
 - **Trace event subscription** — real-time trace events over RPC (#45)
-- **Plan mode** — lifecycle-driven planning phase with read-only tool set (#14)
-- **Required-input handoff** — structured model-to-user handoff for decisions (#17)
