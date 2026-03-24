@@ -1,96 +1,39 @@
 ---
 name: docs-audit
-description: Audit canonical docs for drift, missing glossary updates, duplicated concepts, and contract changes not reflected in docs. Use when reviewing documentation quality, terminology changes, or doc updates for shipped behavior.
+description: Audit canonical docs for drift, missing updates, and terminology changes. Use when reviewing whether code changes are reflected in docs.
 ---
 
 # Documentation Audit
 
-Use this skill when asked to review documentation quality, canonical doc coverage, terminology drift, or whether code changes were reflected in docs.
+Review doc coverage, terminology drift, and canonical doc accuracy.
 
 ## Scope
 
-Focus on:
-- canonical doc coverage for behavior, contract, or config changes
-- glossary drift when new architectural terms are introduced
+- canonical doc updates for behavior, contract, or config changes
+- glossary drift when new terms are introduced
 - duplicated concepts across `README.md` and `docs/*`
 - outdated names or contracts after refactors
 - `docs/features.md` discipline: shipped features only, one line, user-visible wording
-- docs staying conceptual and resistant to drift rather than describing implementation line-by-line
-- missing updates to the right canonical doc when behavior changes
-- user-facing wording accuracy for modes, lifecycle behavior, tools, memory, RPC, and config
+- docs staying conceptual rather than describing implementation line-by-line
 
-Canonical docs to prefer:
-- `README.md` for project entrypoint and high-level usage
-- `docs/architecture.md` for system shape and boundaries
-- `docs/lifecycle.md` for lifecycle contracts and mode flow
-- `docs/modes.md` for mode definitions and transitions
-- `docs/memory.md` for memory tiers and distillation behavior
-- `docs/sessions-tasks.md` for session and task state contracts
-- `docs/protocol.md` for RPC protocol and client contracts
-- `docs/configuration.md` for config schema and defaults
-- `docs/cli.md` for CLI commands and user-facing behavior
-- `docs/tui.md` for TUI behavior and terminal interaction
-- `docs/tooling.md` for tool definitions and contracts
-- `docs/soul.md` for product direction and behavioral principles
-- `docs/why-acolyte.md` for product positioning
-- `docs/glossary.md` for shared terminology
-- `docs/features.md` for shipped feature inventory
-- `docs/roadmap.md` for near-term direction, not shipped behavior
-
-## References
-
-Read first:
-- `AGENTS.md`
-- `README.md`
-- relevant canonical docs under `docs/`
-
-Then inspect the changed code and changed docs together.
-
-## Audit workflow
-
-1. Identify the behavior, contract, terminology, or config changes in the diff.
-2. Determine which canonical doc should describe each change.
-3. Check for:
-   - missing doc updates
-   - stale terminology
-   - duplicated or conflicting explanations
-   - implementation-heavy wording that should be compressed into a stable concept
-4. Report findings ordered by severity:
-   - incorrect or conflicting docs
-   - missing canonical updates
-   - glossary/terminology drift
-   - duplication or readability issues
-5. For each finding include:
-   - affected file(s)
-   - what drifted or is missing
-   - minimal fix direction
-
-## Output format
-
-- Findings first, ordered by severity.
-- For each finding include:
-  - affected file(s)
-  - what drifted or is missing
-  - minimal fix direction
-- Then list:
-  - canonical doc updates needed
-  - optional cleanup
+Canonical docs: `README.md`, `docs/architecture.md`, `docs/lifecycle.md`, `docs/modes.md`, `docs/memory.md`, `docs/sessions-tasks.md`, `docs/protocol.md`, `docs/configuration.md`, `docs/cli.md`, `docs/tui.md`, `docs/tooling.md`, `docs/glossary.md`, `docs/features.md`, `docs/roadmap.md`.
 
 ## Style conventions
 
-Enforce these across all docs:
+- One H1 per doc (page title). Headings follow semantic order.
+- H1 title case, H2+ sentence case.
+- Bullets starting with a word or phrase use a capital letter.
+- No unnecessary fenced code blocks for content that reads as prose.
 
-- Each document has exactly one H1, used as the page title.
-- Headings follow semantic order — do not skip levels (e.g. H1 → H3 without an H2).
-- H1 headings use title case (every major word capitalized).
-- H2 and below use sentence case (first word only).
-- Bullet points that contain a word or phrase start with a capital letter.
-- Avoid unnecessary fenced code blocks for content that reads naturally as prose or inline code.
+## Output
+
+For each finding: **severity**, **affected file**, **what drifted or is missing**, **fix direction**.
+
+Then: **Canonical updates needed** | **Optional cleanup**.
 
 ## Anti-patterns
 
-- Turning docs review into generic prose polishing.
-- Recommending duplicate explanations across multiple docs.
-- Adding implementation detail where a stable concept is enough.
-- Treating roadmap notes as shipped behavior.
-- Expanding `docs/features.md` with internal implementation details.
+- Generic prose polishing
+- Duplicate explanations across docs
+- Implementation detail where a concept is enough
+- Treating roadmap notes as shipped behavior
