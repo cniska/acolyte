@@ -1,4 +1,5 @@
 import { stdout as output } from "node:process";
+import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type VerifyScope } from "./api";
 import { createMessage } from "./chat-session";
 import { formatChecklist } from "./checklist-format";
@@ -91,7 +92,7 @@ export async function handlePrompt(
   prompt: string,
   session: Session,
   client: Client,
-  options?: { resourceId?: ResourceId; workspace?: string; verifyScope?: VerifyScope },
+  options?: { resourceId?: ResourceId; workspace?: string; verifyScope?: VerifyScope; requestedMode?: AgentMode },
 ): Promise<boolean> {
   const userMsg = createMessage("user", prompt);
   session.messages.push(userMsg);
@@ -112,6 +113,7 @@ export async function handlePrompt(
         sessionId: session.id,
         resourceId: options?.resourceId,
         verifyScope: options?.verifyScope,
+        requestedMode: options?.requestedMode,
         ...createWorkspaceSpecifier(options?.workspace),
       },
       {

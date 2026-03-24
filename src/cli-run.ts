@@ -137,6 +137,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   const success = await handlePrompt(parsed.prompt, session, client, {
     resourceId: runResourceId(session.id),
     workspace: parsed.workspace,
+    requestedMode: "work",
   });
   const durationMs = Date.now() - startMs;
 
