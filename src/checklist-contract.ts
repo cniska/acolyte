@@ -21,10 +21,10 @@ export const checklistOutputSchema = z.object({
 export type ChecklistOutput = z.infer<typeof checklistOutputSchema>;
 
 const STATUS_MARKERS: Record<ChecklistItemStatus, string> = {
-  pending: "\u25CB",
-  in_progress: "\u25D0",
-  done: "\u25CF",
-  failed: "\u25C9",
+  pending: "○",
+  in_progress: "◐",
+  done: "●",
+  failed: "◉",
 };
 
 export function checklistMarker(status: ChecklistItemStatus): string {
