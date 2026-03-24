@@ -29,12 +29,15 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
-        • Build pipeline (1/3)
+      dedent(
+        `
+          Build pipeline (1/3)
             ● lint
             ◐ test
             ○ deploy
-      `,
+        `,
+        2,
+      ),
     );
   });
 
@@ -53,13 +56,16 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
-        • Steps (1/4)
+      dedent(
+        `
+          Steps (1/4)
             ● done step
             ◐ active step
             ○ waiting step
             ◉ broken step
-      `,
+        `,
+        2,
+      ),
     );
   });
 
@@ -77,12 +83,15 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
-        • Steps (1/3)
+      dedent(
+        `
+          Steps (1/3)
             ● first
             ◐ second
             ○ third
-      `,
+        `,
+        2,
+      ),
     );
   });
 
@@ -105,13 +114,16 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
-        • Phase A (1/1)
+      dedent(
+        `
+          Phase A (1/1)
             ● step A
 
-        • Phase B (0/1)
+          Phase B (0/1)
             ○ step B
-      `,
+        `,
+        2,
+      ),
     );
   });
 
@@ -128,11 +140,14 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
-        • Done (2/2)
+      dedent(
+        `
+          Done (2/2)
             ● a
             ● b
-      `,
+        `,
+        2,
+      ),
     );
   });
 });

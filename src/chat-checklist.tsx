@@ -2,7 +2,6 @@ import React from "react";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
 import { type ChecklistOutput, checklistMarker, checklistProgress } from "./checklist-contract";
-import { palette } from "./palette";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
 
@@ -37,7 +36,7 @@ export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
           <Text> </Text>
           <Box>
             <Box width={2}>
-              <Text color={palette.brand}>{"• "}</Text>
+              <Text>{"  "}</Text>
             </Box>
             <Box width={contentWidth}>
               {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
