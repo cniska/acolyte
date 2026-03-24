@@ -204,4 +204,78 @@ describe("lifecycle integration", () => {
     expect(phases).toContain("work:tool-call");
     expect(phases).not.toContain("verify:done");
   });
+
+  test("plan mode transitions to work mode on @signal done", async () => {
+    let turnCount = 0;
+    const phases: string[] = [];
+
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      // Turn 1 (plan): read a file, signal done
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "read-file", ["read"]);
+        phases.push("plan:read");
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ paths: [{ path: join(workspace, "a.ts") }] }),
+          },
+        ]);
+      }
+      if (turnCount === 2) {
+        phases.push("plan:done");
+        return createMessagePayload(ctx.model, ctx.responseCounter, "Plan ready.\n\n@signal done");
+      }
+      // Turn 3+ (work): edit and signal done
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        phases.push("work:tool-call");
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 99;" }],
+            }),
+          },
+        ]);
+      }
+      phases.push("work:done");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Done.\n\n@signal done");
+    });
+
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false },
+      soulPrompt: "",
+      workspace,
+    });
+
+    expect(phases).toContain("plan:read");
+    expect(phases).toContain("plan:done");
+    expect(phases).toContain("work:tool-call");
+    expect(phases).toContain("work:done");
+    expect(reply.output).toContain("Done.");
+  });
+
+  test("plan mode with no signal does not transition", async () => {
+    const phases: string[] = [];
+
+    setupFakeProvider((ctx) => {
+      phases.push("plan:text");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Still thinking about it.");
+    });
+
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "complex task", history: [], useMemory: false },
+      soulPrompt: "",
+      workspace,
+    });
+
+    expect(phases).toContain("plan:text");
+    expect(reply.output).toContain("Still thinking");
+  });
 });

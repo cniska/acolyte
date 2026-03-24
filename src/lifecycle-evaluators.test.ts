@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import {
   guardRecoveryEvaluator,
+  planTransitionEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
   verifyTransitionEvaluator,
@@ -13,6 +14,42 @@ import { createSessionContext, recordCall } from "./tool-guards";
 
 const VERIFY_CMD = { bin: "bun", args: ["run", "verify"] };
 const policyWithVerify = { ...defaultLifecyclePolicy, verifyCommand: VERIFY_CMD };
+
+describe("planTransitionEvaluator", () => {
+  test("returns done when mode is not plan", () => {
+    const ctx = createRunContext({
+      mode: "work",
+      result: { text: "Done.", toolCalls: [], signal: "done" },
+    });
+    expect(planTransitionEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when signal is not done", () => {
+    const ctx = createRunContext({
+      mode: "plan",
+      result: { text: "Need more info.", toolCalls: [], signal: "blocked" },
+    });
+    expect(planTransitionEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("returns done when no result", () => {
+    const ctx = createRunContext({ mode: "plan", result: undefined });
+    expect(planTransitionEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("transitions to work mode when plan signals done", () => {
+    const ctx = createRunContext({
+      mode: "plan",
+      result: { text: "Plan complete.", toolCalls: [], signal: "done" },
+    });
+    const action = planTransitionEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("work");
+      expect(action.feedback?.source).toBe("plan-transition");
+    }
+  });
+});
 
 describe("verifyTransitionEvaluator", () => {
   test("returns done when no verify command is configured", () => {
@@ -50,6 +87,21 @@ describe("verifyTransitionEvaluator", () => {
       observedTools: new Set(["edit-file"]),
     });
     expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
+  });
+
+  test("triggers verify for plan-originated tasks with writes", () => {
+    const ctx = createRunContext({
+      initialMode: "plan",
+      workspace: "/tmp/test",
+      policy: policyWithVerify,
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["edit-file"]),
+    });
+    const action = verifyTransitionEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.mode).toBe("verify");
+    }
   });
 
   test("returns done when verify already ran", () => {
