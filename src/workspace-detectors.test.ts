@@ -149,6 +149,18 @@ describe("python detector", () => {
     expect(profile.formatCommand).toEqual({ bin: "black", args: ["."] });
   });
 
+  test("detects uv as package manager", () => {
+    const ws = makeWorkspace({ "pyproject.toml": "[tool.ruff]\n", "uv.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.packageManager).toBe("uv");
+  });
+
+  test("defaults to pip when no lock file", () => {
+    const ws = makeWorkspace({ "ruff.toml": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.packageManager).toBe("pip");
+  });
+
   test("detects ruff lint and format from ruff.toml", () => {
     const ws = makeWorkspace({ "ruff.toml": "" });
     const profile = resolveWorkspaceProfile(ws);

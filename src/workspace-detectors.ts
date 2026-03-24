@@ -173,6 +173,13 @@ const pythonDetector: EcosystemDetector = {
   match: (workspace) =>
     fileExists(workspace, "pyproject.toml") || fileExists(workspace, "setup.py") || fileExists(workspace, "ruff.toml"),
 
+  detectPackageManager(workspace) {
+    if (fileExists(workspace, "uv.lock")) return "uv";
+    if (fileExists(workspace, "poetry.lock")) return "poetry";
+    if (fileExists(workspace, "Pipfile.lock")) return "pipenv";
+    return "pip";
+  },
+
   detectLintCommand(ctx) {
     if (fileExists(ctx.workspace, "ruff.toml")) return { bin: "ruff", args: ["check"] };
     const pyproject = readText(ctx.workspace, "pyproject.toml");
