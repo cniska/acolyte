@@ -23,7 +23,8 @@ export function runCommand(workspace: string, command: WorkspaceCommand): Comman
     }
     const stdout =
       typeof error === "object" && error !== null && "stdout" in error ? String(error.stdout) : String(error);
-    return { hasErrors: true, output: stdout.trim() };
+    const combined = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
+    return { hasErrors: true, output: combined };
   }
 }
 
