@@ -26,6 +26,8 @@ export interface ChatRequest {
   readonly useMemory?: boolean;
   /** Verifier scope: disable with `none`; otherwise task-bound by default and global only when explicitly requested. */
   readonly verifyScope?: VerifyScope;
+  /** Override the initial mode. Defaults to `plan`. */
+  readonly requestedMode?: AgentMode;
   /** Client working directory. Falls back to server CWD when omitted. */
   readonly workspace?: string;
 }

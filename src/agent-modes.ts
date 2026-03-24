@@ -9,6 +9,19 @@ export type AgentModeDefinition = {
 };
 
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
+  plan: {
+    grants: ["read"],
+    tools: toolIdsForGrants(["read"]),
+    preamble: [
+      "You are in plan mode. Explore the codebase and understand the task before making changes.",
+      "Read relevant files, search for patterns, and build a mental model of what needs to change.",
+      "For multi-step tasks (3+ distinct steps), use `create-checklist` to define a progress plan.",
+      "Think out loud — share what you find, relevant files, existing patterns, and potential complications.",
+      "At decision points where the implementation could go multiple ways, signal `blocked` and present the options to the user.",
+      "When you understand the task well enough to start coding, signal `done`. The lifecycle will transition to work mode automatically.",
+      "For simple, obvious tasks (typos, one-line fixes), read the target file and signal `done` immediately.",
+    ],
+  },
   work: {
     grants: ["read", "write", "execute", "network"],
     tools: toolIdsForGrants(["read", "write", "execute", "network"]),

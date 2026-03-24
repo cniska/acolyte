@@ -1,5 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { agentModeSchema } from "./agent-contract";
 import { type ChatRequest, verifyScopeSchema } from "./api";
 import { appConfig } from "./app-config";
 import { createDebugLogger } from "./debug-flags";
@@ -119,7 +120,7 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     (typeof req.modeModels === "object" &&
       req.modeModels !== null &&
       Object.entries(req.modeModels as Record<string, unknown>).every(
-        ([mode, model]) => (mode === "work" || mode === "verify" || mode === "chat") && typeof model === "string",
+        ([mode, model]) => agentModeSchema.safeParse(mode).success && typeof model === "string",
       ));
   return (
     typeof req.message === "string" &&

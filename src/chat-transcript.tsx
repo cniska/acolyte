@@ -13,6 +13,7 @@ import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
 
 const MODE_PENDING_TEXT: Record<AgentMode, string> = {
+  plan: t("agent.status.planning"),
   work: t("agent.status.working"),
   verify: t("agent.status.verifying"),
 };

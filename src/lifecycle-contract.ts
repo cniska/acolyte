@@ -121,7 +121,7 @@ export type VerifyOutcome = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "repeated-failure";
+export type FeedbackSource = "guard" | "lint" | "plan-transition" | "verify" | "tool-recovery" | "repeated-failure";
 
 export type LifecycleFeedback = {
   source: FeedbackSource;

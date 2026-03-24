@@ -4,7 +4,7 @@ import {
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyTransitionEvaluator,
 } from "./lifecycle-evaluators";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { updateRepeatedFailureState } from "./lifecycle-state";
@@ -14,14 +14,14 @@ import { createSessionContext, recordCall } from "./tool-guards";
 const VERIFY_CMD = { bin: "bun", args: ["run", "verify"] };
 const policyWithVerify = { ...defaultLifecyclePolicy, verifyCommand: VERIFY_CMD };
 
-describe("verifyEvaluator", () => {
+describe("verifyTransitionEvaluator", () => {
   test("returns done when no verify command is configured", () => {
     const ctx = createRunContext({
       initialMode: "work",
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("enters verify mode when write tools used with verify command", () => {
@@ -32,7 +32,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    const action = verifyEvaluator.evaluate(ctx);
+    const action = verifyTransitionEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
@@ -49,7 +49,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when verify already ran", () => {
@@ -64,7 +64,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no write tools used", () => {
@@ -75,12 +75,12 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no result", () => {
     const ctx = createRunContext({ result: undefined });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done in verify mode without verify command", () => {
@@ -89,7 +89,7 @@ describe("verifyEvaluator", () => {
       initialMode: "work",
       result: { text: "", toolCalls: [] },
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyTransitionEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 

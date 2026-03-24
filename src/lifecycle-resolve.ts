@@ -39,7 +39,7 @@ export function resolveInitialMode(
   request: ChatRequest,
   debug: RunContext["debug"],
 ): { mode: AgentMode; model: string } {
-  const mode: AgentMode = "work";
+  const mode: AgentMode = request.requestedMode ?? "plan";
   const resolved = resolveModeModel(mode, request.model, request.modeModels);
   debug("lifecycle.classify", { mode, model: resolved.model, provider: resolved.provider });
   return { mode, model: resolved.model };

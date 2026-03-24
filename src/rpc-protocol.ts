@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentModeSchema } from "./agent-contract";
 import { verifyScopeSchema } from "./api";
 import { errorIdSchema } from "./error-handling";
 import { domainIdSchema } from "./id-contract";
@@ -21,6 +22,7 @@ const chatRequestSchema = z.object({
   model: z.string().max(200),
   modeModels: z
     .object({
+      plan: z.string().max(200).optional(),
       work: z.string().max(200).optional(),
       verify: z.string().max(200).optional(),
     })
@@ -29,6 +31,7 @@ const chatRequestSchema = z.object({
   resourceId: resourceIdSchema.optional(),
   useMemory: z.boolean().optional(),
   verifyScope: verifyScopeSchema.optional(),
+  requestedMode: agentModeSchema.optional(),
   workspace: z.string().max(4096).optional(),
 });
 

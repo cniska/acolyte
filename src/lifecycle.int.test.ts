@@ -41,7 +41,7 @@ function setupFakeProvider(handler: (ctx: FakeProviderRequestContext) => Record<
 
 function run(message: string) {
   return runLifecycle({
-    request: { model: "gpt-5-mini", message, history: [], useMemory: false },
+    request: { model: "gpt-5-mini", message, history: [], useMemory: false, requestedMode: "work" },
     soulPrompt: "",
     workspace,
   });
@@ -157,7 +157,14 @@ describe("lifecycle integration", () => {
     });
 
     await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false, verifyScope: "none" },
+      request: {
+        model: "gpt-5-mini",
+        message: "update x",
+        history: [],
+        useMemory: false,
+        verifyScope: "none",
+        requestedMode: "work",
+      },
       soulPrompt: "",
       workspace,
     });

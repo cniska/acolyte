@@ -1,6 +1,12 @@
 import type { AgentMode } from "./agent-contract";
 import type { VerifyScope } from "./api";
-import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
+import type {
+  GenerateResult,
+  LifecycleError,
+  LifecycleEventName,
+  LifecycleFeedback,
+  LifecycleState,
+} from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -23,7 +29,7 @@ export type EvalAction =
     };
 
 export type EvaluatorContext = {
-  result?: { text: string };
+  result?: GenerateResult;
   observedTools: Set<string>;
   debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   policy: LifecyclePolicy;
@@ -80,6 +86,23 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   }
   return Array.from(out);
 }
+
+export const planTransitionEvaluator: Evaluator = {
+  id: "plan-transition",
+  evaluate(ctx) {
+    if (ctx.mode !== "plan") return { type: "done" };
+    if (ctx.result?.signal !== "done") return { type: "done" };
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "plan-transition",
+        mode: "work",
+        summary: "Plan complete. Executing.",
+      },
+      mode: "work",
+    };
+  },
+};
 
 export const formatEvaluator: Evaluator = {
   id: "format",
@@ -162,8 +185,8 @@ export const repeatedFailureEvaluator: Evaluator = {
   },
 };
 
-export const verifyEvaluator: Evaluator = {
-  id: "verify-cycle",
+export const verifyTransitionEvaluator: Evaluator = {
+  id: "verify-transition",
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.request.verifyScope === "none") return { type: "done" };
@@ -177,7 +200,7 @@ export const verifyEvaluator: Evaluator = {
         verified,
         verify_scope: ctx.request.verifyScope ?? null,
       });
-      if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
+      if (!(["plan", "work"].includes(ctx.initialMode) && usedWriteTools && !verified)) return { type: "done" };
 
       if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
 

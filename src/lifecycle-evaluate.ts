@@ -6,9 +6,10 @@ import {
   formatEvaluator,
   guardRecoveryEvaluator,
   lintEvaluator,
+  planTransitionEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyTransitionEvaluator,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
@@ -17,9 +18,10 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
+  planTransitionEvaluator,
   formatEvaluator,
   lintEvaluator,
-  verifyEvaluator,
+  verifyTransitionEvaluator,
   repeatedFailureEvaluator,
 ];
 

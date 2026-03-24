@@ -96,6 +96,7 @@ async function runGuardIntegrationScenario(
           model: TEST_MODEL,
           sessionId,
           workspace: project,
+          requestedMode: "work",
         },
         { onEvent: () => {} },
       );
