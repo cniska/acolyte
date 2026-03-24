@@ -12,6 +12,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
+import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
@@ -166,7 +167,18 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  const policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+  let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+
+  const profile = resolveWorkspaceProfile(input.workspace);
+  if (profile.formatCommand || profile.lintCommand || profile.verifyCommand) {
+    policy = {
+      ...policy,
+      ...(!policy.formatCommand && profile.formatCommand ? { formatCommand: profile.formatCommand } : {}),
+      ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
+      ...(!policy.verifyCommand && profile.verifyCommand ? { verifyCommand: profile.verifyCommand } : {}),
+    };
+  }
+
   let debugSequence = 0;
   let ctxRef: RunContext | undefined;
   const debugSink = input.onDebug ?? (() => {});
@@ -179,6 +191,17 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
       fields,
     });
   };
+
+  if (profile.ecosystem) {
+    debug("lifecycle.workspace.profile", {
+      ecosystem: profile.ecosystem,
+      package_manager: profile.packageManager ?? null,
+      lint_command: profile.lintCommand ? formatWorkspaceCommand(profile.lintCommand) : null,
+      format_command: profile.formatCommand ? formatWorkspaceCommand(profile.formatCommand) : null,
+      verify_command: profile.verifyCommand ? formatWorkspaceCommand(profile.verifyCommand) : null,
+      line_width: profile.lineWidth ?? null,
+    });
+  }
 
   const { mode: initialMode, model } = deps.resolveInitialMode(input.request, debug);
 

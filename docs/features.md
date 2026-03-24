@@ -32,6 +32,10 @@ Shipped, user-visible capabilities.
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
 - two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
+- workspace profile detection for ecosystem, package manager, lint, format, verify commands, and line width
+- automatic formatting of edited files via detected formatter
+- automatic linting of edited files via detected linter
+- deterministic verify command execution from detected project configuration
 
 ## Tools
 
