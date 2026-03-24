@@ -1,8 +1,9 @@
+import { isChecklistOutput } from "./chat-contract";
 import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
-import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { ChatChecklist, ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
 import { palette } from "./palette";
 import { Box, render, Static, Text, useApp } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
@@ -10,6 +11,9 @@ import { DEFAULT_COLUMNS } from "./tui/styles";
 function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();
   const state = useChatState(props, exit);
+
+  const transcriptRows = state.rows.filter((row) => !isChecklistOutput(row.content));
+  const checklistRows = state.rows.filter((row) => isChecklistOutput(row.content));
 
   return (
     <Box flexDirection="column">
@@ -39,13 +43,14 @@ function ChatApp(props: ChatAppProps) {
         }}
       </Static>
       <ChatTranscript
-        rows={state.rows}
+        rows={transcriptRows}
         pendingState={state.pendingState}
         pendingFrame={state.pendingFrame}
         pendingStartedAt={state.pendingStartedAt}
         queuedMessages={state.queuedMessages}
         runningUsage={state.runningUsage}
       />
+      <ChatChecklist rows={checklistRows} />
 
       <Text> </Text>
       <ChatInputPanel

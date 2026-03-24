@@ -340,3 +340,30 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     </>
   );
 }
+
+type ChatChecklistProps = {
+  rows: ChatRow[];
+};
+
+export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
+  if (rows.length === 0) return null;
+  const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
+  const contentWidth = Math.max(24, columns - 2);
+  return (
+    <>
+      {rows.map((row) => (
+        <React.Fragment key={row.id}>
+          <Text> </Text>
+          <Box>
+            <Box width={2}>
+              <Text color={palette.brand}>{"• "}</Text>
+            </Box>
+            <Box width={contentWidth}>
+              {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
+            </Box>
+          </Box>
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
