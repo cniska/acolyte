@@ -17,8 +17,8 @@ describe("checklist integration", () => {
             groupId: "grp_1",
             groupTitle: "Refactoring auth module",
             items: [
-              { id: "item_1", label: "read existing auth implementation", status: "done", order: 0 },
-              { id: "item_2", label: "extract token validation", status: "in_progress", order: 1 },
+              { id: "item_1", label: "read existing auth implementation", status: "pending", order: 0 },
+              { id: "item_2", label: "extract token validation", status: "pending", order: 1 },
               { id: "item_3", label: "add unit tests", status: "pending", order: 2 },
             ],
           });
@@ -37,9 +37,7 @@ describe("checklist integration", () => {
     expect(content.groupId).toBe("grp_1");
     expect(content.groupTitle).toBe("Refactoring auth module");
     expect(content.items).toHaveLength(3);
-    expect(content.items[0]?.status).toBe("done");
-    expect(content.items[1]?.status).toBe("in_progress");
-    expect(content.items[2]?.status).toBe("pending");
+    expect(content.items.every((item) => item.status === "pending")).toBe(true);
   });
 
   test("subsequent checklist events update the same row in place", async () => {
@@ -49,6 +47,7 @@ describe("checklist integration", () => {
         status: async () => ({}),
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          // set-checklist creates with all pending
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -58,6 +57,7 @@ describe("checklist integration", () => {
               { id: "s2", label: "test", status: "pending", order: 1 },
             ],
           });
+          // update-checklist updates individual items
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",

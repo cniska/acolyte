@@ -27,6 +27,7 @@ describe("toolsets", () => {
       "runCommand",
       "scanCode",
       "searchFiles",
+      "setChecklist",
       "updateChecklist",
       "webFetch",
       "webSearch",
