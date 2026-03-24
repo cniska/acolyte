@@ -4,7 +4,6 @@ import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleSt
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
-import { filterOutputByPaths } from "./verify-output";
 import { formatWorkspaceCommand, runCommand, runCommandWithFiles } from "./workspace-profile";
 
 export type EvalAction =
@@ -199,24 +198,15 @@ export const verifyEvaluator: Evaluator = {
       has_errors: result.hasErrors,
     });
     if (!result.hasErrors) return { type: "done" };
-    const workspace = ctx.workspace;
-    const changedPaths = writePathsForCurrentTask(ctx);
-    const scopedOutput = filterOutputByPaths(result.output, changedPaths, workspace);
-    const totalLines = result.output.split("\n").length;
-    const keptLines = scopedOutput.split("\n").length;
-    ctx.debug("lifecycle.eval.verify_filtered", {
-      total_lines: totalLines,
-      kept_lines: keptLines,
-      changed_paths: changedPaths.length,
-    });
     return {
       type: "regenerate",
       feedback: {
         source: "verify",
         mode: "work",
         summary: "Verification failed.",
-        details: scopedOutput,
-        instruction: "Fix the issues in your changed files, then stop.",
+        details: result.output,
+        instruction:
+          "Fix failures related to files you changed. If all failures are in files you did not edit, they are pre-existing — signal done.",
       },
       mode: "work",
     };
