@@ -150,6 +150,7 @@ export function createMessageStreamState(input: {
 
     finalize: () => {
       sealAssistantRow();
+      checklistRowIdByGroupId.clear();
       const ids = [...assistantRowIds];
       assistantRowIds.length = 0;
       return ids;
@@ -157,6 +158,7 @@ export function createMessageStreamState(input: {
 
     dispose: () => {
       cancelFlushTimer();
+      checklistRowIdByGroupId.clear();
       const idsToRemove = [...assistantRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;

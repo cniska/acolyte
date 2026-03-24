@@ -39,13 +39,7 @@ function createUpdateChecklistTool(_deps: ToolkitDeps, input: ToolkitInput) {
     inputSchema: updateChecklistInputSchema,
     outputSchema: updateChecklistOutputSchema,
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "update-checklist", toolCallId, toolInput, async (callId) => {
-        input.onOutput({
-          toolName: "update-checklist",
-          content: { kind: "tool-header", labelKey: "tool.label.update_checklist", detail: toolInput.groupTitle },
-          toolCallId: callId,
-        });
-
+      return runTool(input.session, "update-checklist", toolCallId, toolInput, async () => {
         input.onChecklist({
           groupId: toolInput.groupId,
           groupTitle: toolInput.groupTitle,

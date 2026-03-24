@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { ChecklistItem } from "./checklist-contract";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 
@@ -38,11 +39,7 @@ export type ToolkitDeps = {
   outputBudget: ToolOutputBudget;
 };
 
-export type ChecklistListener = (event: {
-  groupId: string;
-  groupTitle: string;
-  items: { id: string; label: string; status: "pending" | "in_progress" | "done" | "failed"; order: number }[];
-}) => void;
+export type ChecklistListener = (event: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
 
 export type ToolkitInput = {
   workspace: string;

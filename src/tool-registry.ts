@@ -78,8 +78,8 @@ function collectTools(
   workspace: string,
   session: SessionContext,
   onOutput: ToolOutputListener = noopOutput,
-  deps: ToolkitDeps = defaultToolkitDeps(),
   onChecklist: ChecklistListener = noopChecklist,
+  deps: ToolkitDeps = defaultToolkitDeps(),
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
@@ -149,7 +149,7 @@ export function toolsForAgent(options?: {
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   return {
-    tools: collectTools(workspace, session, options?.onOutput, undefined, options?.onChecklist) as unknown as Toolset,
+    tools: collectTools(workspace, session, options?.onOutput, options?.onChecklist) as unknown as Toolset,
     session,
   };
 }
