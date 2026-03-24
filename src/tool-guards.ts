@@ -7,6 +7,7 @@ import {
   extractSearchScope,
   includesUniversalFindPattern,
   normalizePath,
+  WORKSPACE_SCOPE,
 } from "./tool-arg-paths";
 import type { ToolCache } from "./tool-contract";
 
@@ -113,7 +114,7 @@ function isSubsetSet(subset: readonly string[], superset: readonly string[]): bo
 }
 
 function isWorkspaceScope(scope: readonly string[]): boolean {
-  return scope.length === 1 && scope[0] === "__workspace__";
+  return scope.length === 1 && scope[0] === WORKSPACE_SCOPE;
 }
 
 function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
@@ -230,7 +231,7 @@ function readCountForPath(session: SessionContext, path: string): number {
 
 function searchTouchesPath(args: Record<string, unknown>, path: string): boolean {
   const scope = extractSearchScope(args);
-  return scope.some((entry) => entry === path || entry === "__workspace__" || entry === ".");
+  return scope.some((entry) => entry === path || entry === WORKSPACE_SCOPE);
 }
 
 function scanTouchesPath(args: Record<string, unknown>, path: string): boolean {
@@ -434,7 +435,7 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
   preCheck({ args, session, report }) {
     const currentScope = extractSearchScope(args);
-    if (currentScope.length !== 1 || currentScope[0] === "__workspace__") return;
+    if (currentScope.length !== 1 || currentScope[0] === WORKSPACE_SCOPE) return;
     const targetPath = currentScope[0];
     if (!targetPath) return;
 

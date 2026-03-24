@@ -1,3 +1,5 @@
+export const WORKSPACE_SCOPE = "__workspace__";
+
 export function normalizePath(p: string): string {
   const trimmed = p.endsWith("/") ? p.replace(/\/+$/, "") : p;
   return trimmed.startsWith("./") ? trimmed.slice(2) : trimmed;
@@ -50,14 +52,18 @@ export function extractSearchPatterns(args: Record<string, unknown>): string[] {
 
 export function extractSearchScope(args: Record<string, unknown>): string[] {
   const raw = args.paths;
-  if (!Array.isArray(raw) || raw.length === 0) return ["__workspace__"];
+  if (!Array.isArray(raw) || raw.length === 0) return [WORKSPACE_SCOPE];
   const scope = new Set<string>();
   for (const entry of raw) {
     if (typeof entry !== "string") continue;
     const trimmed = normalizePath(entry.trim().toLowerCase());
-    if (trimmed.length > 0) scope.add(trimmed);
+    if (trimmed === "." || trimmed.length === 0) {
+      scope.clear();
+      return [WORKSPACE_SCOPE];
+    }
+    scope.add(trimmed);
   }
-  if (scope.size === 0) return ["__workspace__"];
+  if (scope.size === 0) return [WORKSPACE_SCOPE];
   return Array.from(scope).sort();
 }
 

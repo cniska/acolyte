@@ -6,6 +6,7 @@ import {
   extractSearchScope,
   includesUniversalFindPattern,
   normalizePath,
+  WORKSPACE_SCOPE,
 } from "./tool-arg-paths";
 
 describe("normalizePath", () => {
@@ -88,8 +89,8 @@ describe("extractSearchPatterns", () => {
 
 describe("extractSearchScope", () => {
   test("returns workspace sentinel for empty paths", () => {
-    expect(extractSearchScope({})).toEqual(["__workspace__"]);
-    expect(extractSearchScope({ paths: [] })).toEqual(["__workspace__"]);
+    expect(extractSearchScope({})).toEqual([WORKSPACE_SCOPE]);
+    expect(extractSearchScope({ paths: [] })).toEqual([WORKSPACE_SCOPE]);
   });
 
   test("normalizes and deduplicates paths", () => {
@@ -105,7 +106,7 @@ describe("extractSearchScope", () => {
   });
 
   test("returns workspace for all-empty entries", () => {
-    expect(extractSearchScope({ paths: ["  ", ""] })).toEqual(["__workspace__"]);
+    expect(extractSearchScope({ paths: ["  ", ""] })).toEqual([WORKSPACE_SCOPE]);
   });
 });
 
