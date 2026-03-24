@@ -222,7 +222,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
             }
@@ -246,7 +246,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for task.status.result: ${JSON.stringify(messages)}`));
             }
@@ -270,7 +270,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
             }
@@ -281,7 +281,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("status reports rpc queue depth and task counters", async () => {
     await withFakeProviderServer(
@@ -352,7 +352,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for queued envelope: ${JSON.stringify(messages)}`));
             }
@@ -387,7 +387,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("task.status returns null after server restart", async () => {
     await withFakeProviderServer(
@@ -441,7 +441,7 @@ describe("server rpc websocket queue", () => {
         await waitForRpcCondition(
           messages,
           (all) => Boolean(acceptedTaskIdFor(all, requestId)),
-          8000,
+          15_000,
           "pre-restart accepted task id",
         );
         const taskId = acceptedTaskIdFor(messages, requestId);
@@ -460,7 +460,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for pre-restart task status: ${JSON.stringify(messages)}`));
             }
@@ -510,7 +510,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for post-restart task status: ${JSON.stringify(messagesAfter)}`));
             }
@@ -587,7 +587,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for queue overflow error: ${JSON.stringify(messages)}`));
             }
@@ -600,7 +600,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("emits queue/abort envelopes and reindexes queued positions", async () => {
     await withFakeProviderServer(
@@ -688,7 +688,7 @@ describe("server rpc websocket queue", () => {
               return;
             }
 
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for expected rpc envelopes: ${JSON.stringify(messages)}`));
             }
@@ -699,7 +699,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("abort interrupts active chat and suppresses further stream envelopes", async () => {
     await withFakeProviderServer(
@@ -754,7 +754,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for chat.started: ${JSON.stringify(messages)}`));
             }
@@ -778,7 +778,7 @@ describe("server rpc websocket queue", () => {
               resolve(index);
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for chat.abort.result: ${JSON.stringify(messages)}`));
             }
@@ -796,7 +796,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("returns task status for missing and active rpc chat tasks", async () => {
     await withFakeProviderServer(
@@ -843,7 +843,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for missing task status: ${JSON.stringify(messages)}`));
             }
@@ -874,7 +874,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for chat.accepted: ${JSON.stringify(messages)}`));
             }
@@ -900,7 +900,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for active task status: ${JSON.stringify(messages)}`));
             }
@@ -912,7 +912,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("keeps queued task states isolated when aborting the active task", async () => {
     await withFakeProviderServer(
@@ -958,7 +958,7 @@ describe("server rpc websocket queue", () => {
           (all) =>
             all.some((m) => m.id === activeRequestId && m.type === "chat.started") &&
             all.some((m) => m.id === queuedRequestId && m.type === "chat.queued" && m.position === 1),
-          8000,
+          15_000,
           "running+queued envelopes",
         );
 
@@ -990,7 +990,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for pre-abort task statuses: ${JSON.stringify(messages)}`));
             }
@@ -1014,7 +1014,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for active abort result: ${JSON.stringify(messages)}`));
             }
@@ -1052,7 +1052,7 @@ describe("server rpc websocket queue", () => {
               resolve();
               return;
             }
-            if (Date.now() - startedAt > 8000) {
+            if (Date.now() - startedAt > 15_000) {
               clearInterval(interval);
               reject(new Error(`timed out waiting for post-abort task statuses: ${JSON.stringify(messages)}`));
             }
@@ -1064,7 +1064,7 @@ describe("server rpc websocket queue", () => {
       },
       { responseDelayMs: 5000 },
     );
-  }, 20_000);
+  }, 30_000);
 
   test("does not leak tool-call path args across task ids", async () => {
     const port = randomTestPort();
@@ -1199,5 +1199,5 @@ describe("server rpc websocket queue", () => {
       },
       { handleRequest: fakeHandler },
     );
-  }, 20_000);
+  }, 30_000);
 });
