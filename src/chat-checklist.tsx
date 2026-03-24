@@ -34,13 +34,8 @@ export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
       {rows.map((row) => (
         <React.Fragment key={row.id}>
           <Text> </Text>
-          <Box>
-            <Box width={2}>
-              <Text>{"  "}</Text>
-            </Box>
-            <Box width={contentWidth}>
-              {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
-            </Box>
+          <Box width={contentWidth}>
+            {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
           </Box>
         </React.Fragment>
       ))}
