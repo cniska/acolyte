@@ -85,10 +85,12 @@ function createUpdateChecklistTool(
       return runTool(input.session, "update-checklist", toolCallId, toolInput, async () => {
         const group = state.get(toolInput.groupId);
         if (!group) throw new Error(`No checklist found for groupId "${toolInput.groupId}"`);
-        const item = group.items.find((i) => i.id === toolInput.itemId);
-        if (!item) throw new Error(`No item "${toolInput.itemId}" in checklist "${toolInput.groupId}"`);
-        item.status = toolInput.status;
-        input.onChecklist({ groupId: toolInput.groupId, groupTitle: group.title, items: group.items });
+        if (!group.items.some((i) => i.id === toolInput.itemId)) {
+          throw new Error(`No item "${toolInput.itemId}" in checklist "${toolInput.groupId}"`);
+        }
+        const items = group.items.map((i) => (i.id === toolInput.itemId ? { ...i, status: toolInput.status } : i));
+        state.set(toolInput.groupId, { ...group, items });
+        input.onChecklist({ groupId: toolInput.groupId, groupTitle: group.title, items });
         return {
           kind: "update-checklist" as const,
           groupId: toolInput.groupId,

@@ -7,14 +7,14 @@ import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
 
 function renderChecklist(output: ChecklistOutput): React.ReactNode {
-  const { header, lines } = formatChecklist(output);
+  const { header, items } = formatChecklist(output);
   return (
     <>
       <Text bold>{header}</Text>
-      {lines.map((line) => (
-        <React.Fragment key={line}>
+      {items.map((item) => (
+        <React.Fragment key={item.id}>
           {"\n"}
-          <Text dimColor>{`  ${line}`}</Text>
+          <Text dimColor>{`  ${item.text}`}</Text>
         </React.Fragment>
       ))}
     </>

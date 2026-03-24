@@ -154,9 +154,9 @@ export async function handlePrompt(
               break;
             }
             case "checklist": {
-              const { header, lines } = formatChecklist(event);
+              const { header, items } = formatChecklist(event);
               printDim(`• ${header}`);
-              for (const line of lines) printIndentedDim(line);
+              for (const item of items) printIndentedDim(item.text);
               hasPrintedToolProgress = true;
               break;
             }
