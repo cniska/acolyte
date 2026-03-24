@@ -5,19 +5,18 @@ import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
 const updateChecklistInputSchema = z.object({
-  groupId: z.string().min(1).describe("Unique identifier for the checklist group."),
-  groupTitle: z.string().min(1).describe("Title displayed as the checklist header."),
+  groupId: z.string().min(1),
+  groupTitle: z.string().min(1),
   items: z
     .array(
       z.object({
-        id: z.string().min(1).describe("Unique item identifier within this group."),
-        label: z.string().min(1).describe("Short description of the step."),
-        status: checklistItemStatusSchema.describe("Current status of this item."),
-        order: z.number().int().nonnegative().describe("Display position (0-based)."),
+        id: z.string().min(1),
+        label: z.string().min(1),
+        status: checklistItemStatusSchema,
+        order: z.number().int().nonnegative(),
       }),
     )
-    .min(1)
-    .describe("Full list of checklist items. Always send the complete list, not a partial update."),
+    .min(1),
 });
 
 const updateChecklistOutputSchema = z.object({
