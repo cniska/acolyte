@@ -1,6 +1,6 @@
 ---
 name: benchmark
-description: Run scripts/benchmark.ts, parse the output, and update docs/benchmarks.md with fresh metrics and today's date.
+description: Run benchmarks and update docs/benchmarks.md.
 ---
 
 # Benchmark

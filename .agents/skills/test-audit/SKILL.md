@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: Audit test coverage, quality, and missing edge cases for changed code. Use when reviewing whether a branch has adequate tests before merge.
+description: Audit test coverage, quality, and missing edge cases.
 ---
 
 # Test Audit

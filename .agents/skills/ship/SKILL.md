@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Pre-deploy gate with automated release. Runs checks, determines version bump from conventional commits, and executes release.
+description: Pre-deploy gate with version bump and automated release.
 ---
 
 # Ship

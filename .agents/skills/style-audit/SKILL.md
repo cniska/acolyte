@@ -1,6 +1,6 @@
 ---
 name: style-audit
-description: Audit code style and consistency including naming, patterns, assertions, switch defaults, and module structure. Use when reviewing code quality, coding patterns, or style drift.
+description: Audit code style, naming, patterns, and consistency.
 ---
 
 # Style Audit

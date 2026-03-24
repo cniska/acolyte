@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Create a pull request for the current branch. Runs review, verify, infers title and description from the diff, follows project PR conventions.
+description: Create a pull request with review, verify, and project conventions.
 ---
 
 # PR

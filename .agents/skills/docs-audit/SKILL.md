@@ -1,6 +1,6 @@
 ---
 name: docs-audit
-description: Audit canonical docs for drift, missing updates, and terminology changes. Use when reviewing whether code changes are reflected in docs.
+description: Audit docs for drift, missing updates, and terminology changes.
 ---
 
 # Documentation Audit

@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Audit practical security risks including auth, workspace boundaries, command safety, secret handling, and protocol abuse. Use when reviewing security posture or assessing risk before release.
+description: Audit security risks, trust boundaries, and unsafe defaults.
 ---
 
 # Security Audit
