@@ -1,20 +1,19 @@
 import React from "react";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
-import { type ChecklistOutput, checklistMarker, checklistProgress } from "./checklist-contract";
+import { type ChecklistOutput, formatChecklist } from "./checklist-contract";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
 
 function renderChecklist(output: ChecklistOutput): React.ReactNode {
-  const sorted = [...output.items].sort((a, b) => a.order - b.order);
-  const { done, total } = checklistProgress(sorted);
+  const { header, lines } = formatChecklist(output);
   return (
     <>
-      <Text bold>{`${output.groupTitle} (${done}/${total})`}</Text>
-      {sorted.map((item) => (
-        <React.Fragment key={item.id}>
+      <Text bold>{header}</Text>
+      {lines.map((line) => (
+        <React.Fragment key={line}>
           {"\n"}
-          <Text dimColor>{`  ${checklistMarker(item.status)} ${item.label}`}</Text>
+          <Text dimColor>{`  ${line}`}</Text>
         </React.Fragment>
       ))}
     </>

@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier, type VerifyScope } from "./api";
 import { createMessage } from "./chat-session";
-import { checklistMarker, checklistProgress } from "./checklist-contract";
+import { formatChecklist } from "./checklist-contract";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
@@ -154,12 +154,9 @@ export async function handlePrompt(
               break;
             }
             case "checklist": {
-              const sorted = [...event.items].sort((a, b) => a.order - b.order);
-              const { done, total } = checklistProgress(sorted);
-              printDim(`• ${event.groupTitle} (${done}/${total})`);
-              for (const item of sorted) {
-                printIndentedDim(`${checklistMarker(item.status)} ${item.label}`);
-              }
+              const { header, lines } = formatChecklist(event);
+              printDim(`• ${header}`);
+              for (const line of lines) printIndentedDim(line);
               hasPrintedToolProgress = true;
               break;
             }
