@@ -30,8 +30,8 @@ function createUpdateChecklistTool(_deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "update-checklist",
     labelKey: "tool.label.update_checklist",
-    category: "write",
-    permissions: ["write"],
+    category: "read",
+    permissions: ["read"],
     description:
       "Create or update an inline task checklist visible to the user. Send the full item list each time — items not included are removed.",
     instruction:

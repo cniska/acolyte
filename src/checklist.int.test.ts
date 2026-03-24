@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { createClient, createMessageHandlerHarness } from "./test-utils";
 
 describe("checklist integration", () => {
   test("checklist event creates a task row with correct content", async () => {
+    let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
@@ -20,6 +22,7 @@ describe("checklist integration", () => {
               { id: "item_3", label: "add unit tests", status: "pending", order: 2 },
             ],
           });
+          snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
@@ -27,7 +30,7 @@ describe("checklist integration", () => {
 
     await handleMessage("refactor auth");
 
-    const taskRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
     expect(taskRows).toHaveLength(1);
 
     const content = taskRows[0]?.content as ChecklistOutput;
@@ -40,13 +43,12 @@ describe("checklist integration", () => {
   });
 
   test("subsequent checklist events update the same row in place", async () => {
+    let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
           options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
-
-          // Initial checklist
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -56,8 +58,6 @@ describe("checklist integration", () => {
               { id: "s2", label: "test", status: "pending", order: 1 },
             ],
           });
-
-          // Update: first item done, second in progress
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -67,7 +67,7 @@ describe("checklist integration", () => {
               { id: "s2", label: "test", status: "in_progress", order: 1 },
             ],
           });
-
+          snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
@@ -75,8 +75,7 @@ describe("checklist integration", () => {
 
     await handleMessage("run pipeline");
 
-    // Should have exactly one task row (updated in place, not two)
-    const taskRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
     expect(taskRows).toHaveLength(1);
 
     const content = taskRows[0]?.content as ChecklistOutput;
@@ -85,6 +84,7 @@ describe("checklist integration", () => {
   });
 
   test("different group IDs produce separate checklist rows", async () => {
+    let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
@@ -102,6 +102,7 @@ describe("checklist integration", () => {
             groupTitle: "Phase B",
             items: [{ id: "b1", label: "step B1", status: "pending", order: 0 }],
           });
+          snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
@@ -109,13 +110,14 @@ describe("checklist integration", () => {
 
     await handleMessage("multi-phase");
 
-    const taskRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
     expect(taskRows).toHaveLength(2);
     expect((taskRows[0]?.content as ChecklistOutput).groupId).toBe("grp_a");
     expect((taskRows[1]?.content as ChecklistOutput).groupId).toBe("grp_b");
   });
 
-  test("checklist row appears before subsequent assistant text", async () => {
+  test("checklist row appears before subsequent tool rows", async () => {
+    let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
@@ -127,22 +129,35 @@ describe("checklist integration", () => {
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "pending", order: 0 }],
           });
-          options.onEvent({ type: "text-delta", text: "Working on it." });
-          return { state: "done" as const, model: "gpt-5-mini", output: "Working on it." };
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_1",
+            toolName: "read-file",
+            args: { path: "a.ts" },
+          });
+          options.onEvent({
+            type: "tool-output",
+            toolCallId: "call_1",
+            toolName: "read-file",
+            content: { kind: "tool-header", labelKey: "tool.label.read", detail: "a.ts" },
+          });
+          snapshot = [...rows];
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
     });
 
     await handleMessage("go");
 
-    const taskIndex = rows.findIndex((row) => row.kind === "task" && isChecklistOutput(row.content));
-    const assistantIndex = rows.findIndex((row) => row.kind === "assistant");
+    const taskIndex = snapshot.findIndex((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const toolIndex = snapshot.findIndex((row) => row.kind === "tool");
     expect(taskIndex).toBeGreaterThanOrEqual(0);
-    expect(assistantIndex).toBeGreaterThanOrEqual(0);
-    expect(taskIndex).toBeLessThan(assistantIndex);
+    expect(toolIndex).toBeGreaterThanOrEqual(0);
+    expect(taskIndex).toBeLessThan(toolIndex);
   });
 
   test("checklist events do not break tool output rows", async () => {
+    let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
@@ -171,6 +186,7 @@ describe("checklist integration", () => {
             toolCallId: "call_1",
             toolName: "edit-file",
           });
+          snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
       }),
@@ -178,9 +194,55 @@ describe("checklist integration", () => {
 
     await handleMessage("edit something");
 
-    const taskRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
-    const toolRows = rows.filter((row) => row.kind === "tool");
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const toolRows = snapshot.filter((row) => row.kind === "tool");
     expect(taskRows).toHaveLength(1);
     expect(toolRows).toHaveLength(1);
+  });
+
+  test("checklist rows are removed after turn completes", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({
+            type: "checklist",
+            groupId: "grp_1",
+            groupTitle: "Steps",
+            items: [{ id: "s1", label: "do thing", status: "done", order: 0 }],
+          });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
+      }),
+    });
+
+    await handleMessage("go");
+
+    const checklistRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    expect(checklistRows).toHaveLength(0);
+  });
+
+  test("checklist rows are removed on abort", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({
+            type: "checklist",
+            groupId: "grp_1",
+            groupTitle: "Steps",
+            items: [{ id: "s1", label: "do thing", status: "in_progress", order: 0 }],
+          });
+          throw Object.assign(new Error("aborted"), { name: "AbortError" });
+        },
+      }),
+    });
+
+    await handleMessage("go");
+
+    const checklistRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    expect(checklistRows).toHaveLength(0);
   });
 });

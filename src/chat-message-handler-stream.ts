@@ -150,7 +150,11 @@ export function createMessageStreamState(input: {
 
     finalize: () => {
       sealAssistantRow();
+      const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
+      if (checklistIds.size > 0) {
+        input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
+      }
       const ids = [...assistantRowIds];
       assistantRowIds.length = 0;
       return ids;
@@ -158,14 +162,15 @@ export function createMessageStreamState(input: {
 
     dispose: () => {
       cancelFlushTimer();
+      const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
       const idsToRemove = [...assistantRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;
       activeContent = "";
       assistantRowIds.length = 0;
-      if (idsToRemove.length > 0) {
-        const removeSet = new Set(idsToRemove);
+      const removeSet = new Set([...idsToRemove, ...checklistIds]);
+      if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
       }
     },

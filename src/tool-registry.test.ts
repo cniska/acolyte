@@ -88,7 +88,7 @@ describe("toolIdsByCategory", () => {
     expect(ids).toContain("delete-file");
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
-    expect(ids).toContain("update-checklist");
+    expect(ids).not.toContain("update-checklist");
     expect(ids).not.toContain("read-file");
     expect(ids).not.toContain("run-command");
     expect(ids).not.toContain("web-search");
