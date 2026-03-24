@@ -16,8 +16,6 @@ Review doc coverage, terminology drift, and canonical doc accuracy.
 - `docs/features.md` discipline: shipped features only, one line, user-visible wording
 - docs staying conceptual rather than describing implementation line-by-line
 
-Canonical docs: `README.md`, `docs/architecture.md`, `docs/lifecycle.md`, `docs/modes.md`, `docs/memory.md`, `docs/sessions-tasks.md`, `docs/protocol.md`, `docs/configuration.md`, `docs/cli.md`, `docs/tui.md`, `docs/tooling.md`, `docs/glossary.md`, `docs/features.md`, `docs/roadmap.md`.
-
 ## Style conventions
 
 - One H1 per doc (page title). Headings follow semantic order.
