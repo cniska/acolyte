@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Draft an implementation plan for a feature or behavior change.
+description: Draft an implementation plan for a feature or behavior change. Use when asked to plan, scope, design, or break down work before coding.
 ---
 
 # Plan

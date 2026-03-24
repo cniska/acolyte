@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Audit security risks, trust boundaries, and unsafe defaults.
+description: Audit security risks, trust boundaries, and unsafe defaults. Use when reviewing security posture or assessing risk before release.
 ---
 
 # Security Audit

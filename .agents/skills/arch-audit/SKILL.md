@@ -1,6 +1,6 @@
 ---
 name: arch-audit
-description: Audit architecture, boundaries, and design consistency.
+description: Audit architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
 ---
 
 # Architecture Audit

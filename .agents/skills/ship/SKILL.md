@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Pre-deploy gate with version bump and automated release.
+description: Pre-deploy gate with version bump and automated release. Use when ready to cut a release.
 ---
 
 # Ship

@@ -1,6 +1,6 @@
 ---
 name: benchmark
-description: Run benchmarks and update docs/benchmarks.md.
+description: Run benchmarks and update docs/benchmarks.md. Use before releases or when comparing against other projects.
 ---
 
 # Benchmark

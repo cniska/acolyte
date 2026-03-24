@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Create a pull request with review, verify, and project conventions.
+description: Create a pull request with review, verify, and project conventions. Use when the branch is ready to merge.
 ---
 
 # PR

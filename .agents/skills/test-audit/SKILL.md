@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: Audit test coverage, quality, and missing edge cases.
+description: Audit test coverage, quality, and missing edge cases. Use when reviewing whether changed code has adequate tests.
 ---
 
 # Test Audit

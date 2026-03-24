@@ -1,6 +1,6 @@
 ---
 name: review
-description: Run all audit skills against the current branch diff.
+description: Run all audit skills against the current branch diff. Use when reviewing a feature branch before merge.
 ---
 
 # Review
