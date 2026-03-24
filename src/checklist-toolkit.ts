@@ -4,7 +4,7 @@ import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-const setChecklistInputSchema = z.object({
+const createChecklistInputSchema = z.object({
   groupId: z.string().min(1),
   groupTitle: z.string().min(1),
   items: z
@@ -18,8 +18,8 @@ const setChecklistInputSchema = z.object({
     .min(1),
 });
 
-const setChecklistOutputSchema = z.object({
-  kind: z.literal("set-checklist"),
+const createChecklistOutputSchema = z.object({
+  kind: z.literal("create-checklist"),
   groupId: z.string(),
   itemCount: z.number(),
 });
@@ -37,22 +37,22 @@ const updateChecklistOutputSchema = z.object({
   status: checklistItemStatusSchema,
 });
 
-function createSetChecklistTool(
+function createCreateChecklistTool(
   _deps: ToolkitDeps,
   input: ToolkitInput,
   state: Map<string, { title: string; items: ChecklistItem[] }>,
 ) {
   return createTool({
-    id: "set-checklist",
+    id: "create-checklist",
     category: "meta",
     permissions: [],
     description: "Create an inline task checklist visible to the user. All items start as pending.",
     instruction:
-      "Use `set-checklist` once at the start of multi-step tasks to show the user a progress checklist. Define all steps upfront. Use `update-checklist` to change item statuses as you work.",
-    inputSchema: setChecklistInputSchema,
-    outputSchema: setChecklistOutputSchema,
+      "Use `create-checklist` once at the start of multi-step tasks to show the user a progress checklist. Define all steps upfront. Use `update-checklist` to change item statuses as you work.",
+    inputSchema: createChecklistInputSchema,
+    outputSchema: createChecklistOutputSchema,
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "set-checklist", toolCallId, toolInput, async () => {
+      return runTool(input.session, "create-checklist", toolCallId, toolInput, async () => {
         const items: ChecklistItem[] = toolInput.items.map((item) => ({
           id: item.id,
           label: item.label,
@@ -61,7 +61,7 @@ function createSetChecklistTool(
         }));
         state.set(toolInput.groupId, { title: toolInput.groupTitle, items });
         input.onChecklist({ groupId: toolInput.groupId, groupTitle: toolInput.groupTitle, items });
-        return { kind: "set-checklist" as const, groupId: toolInput.groupId, itemCount: items.length };
+        return { kind: "create-checklist" as const, groupId: toolInput.groupId, itemCount: items.length };
       });
     },
   });
@@ -78,7 +78,7 @@ function createUpdateChecklistTool(
     permissions: [],
     description: "Update the status of a single checklist item.",
     instruction:
-      "Use `update-checklist` to mark a checklist item as `in_progress`, `done`, or `failed`. Requires a prior `set-checklist` call for the same groupId.",
+      "Use `update-checklist` to mark a checklist item as `in_progress`, `done`, or `failed`. Requires a prior `create-checklist` call for the same groupId.",
     inputSchema: updateChecklistInputSchema,
     outputSchema: updateChecklistOutputSchema,
     execute: async (toolInput, toolCallId) => {
@@ -103,7 +103,7 @@ function createUpdateChecklistTool(
 export function createChecklistToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   const state = new Map<string, { title: string; items: ChecklistItem[] }>();
   return {
-    setChecklist: createSetChecklistTool(deps, input, state),
+    createChecklist: createCreateChecklistTool(deps, input, state),
     updateChecklist: createUpdateChecklistTool(deps, input, state),
   };
 }

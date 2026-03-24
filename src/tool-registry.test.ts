@@ -12,6 +12,7 @@ describe("toolsets", () => {
   test("returns all tools", () => {
     const { tools, session } = toolsForAgent();
     expect(Object.keys(tools).sort()).toEqual([
+      "createChecklist",
       "createFile",
       "deleteFile",
       "editCode",
@@ -27,7 +28,6 @@ describe("toolsets", () => {
       "runCommand",
       "scanCode",
       "searchFiles",
-      "setChecklist",
       "updateChecklist",
       "webFetch",
       "webSearch",
