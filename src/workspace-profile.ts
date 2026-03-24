@@ -3,7 +3,7 @@ import { detectWorkspaceProfile } from "./workspace-detectors";
 
 export type WorkspaceCommand = { readonly bin: string; readonly args: readonly string[] };
 
-export type CommandResult = { hasErrors: boolean; output: string };
+export type CommandResult = { hasErrors: boolean; stdout: string; stderr: string };
 
 export function runCommand(workspace: string, command: WorkspaceCommand): CommandResult {
   const { bin, args } = command;
@@ -15,20 +15,22 @@ export function runCommand(workspace: string, command: WorkspaceCommand): Comman
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
-    return { hasErrors: false, output: "" };
+    return { hasErrors: false, stdout: "", stderr: "" };
   } catch (error) {
-    const stderr = typeof error === "object" && error !== null && "stderr" in error ? String(error.stderr) : "";
+    const stderr = typeof error === "object" && error !== null && "stderr" in error ? String(error.stderr).trim() : "";
     if (stderr.includes("not found") || stderr.includes("ENOENT")) {
-      return { hasErrors: false, output: "" };
+      return { hasErrors: false, stdout: "", stderr: "" };
     }
     const stdout =
-      typeof error === "object" && error !== null && "stdout" in error ? String(error.stdout) : String(error);
-    return { hasErrors: true, output: stdout.trim() };
+      typeof error === "object" && error !== null && "stdout" in error
+        ? String(error.stdout).trim()
+        : String(error).trim();
+    return { hasErrors: true, stdout, stderr };
   }
 }
 
 export function runCommandWithFiles(workspace: string, command: WorkspaceCommand, filePaths: string[]): CommandResult {
-  if (filePaths.length === 0) return { hasErrors: false, output: "" };
+  if (filePaths.length === 0) return { hasErrors: false, stdout: "", stderr: "" };
   return runCommand(workspace, { bin: command.bin, args: [...command.args, "--", ...filePaths] });
 }
 

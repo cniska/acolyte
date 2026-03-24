@@ -4,7 +4,13 @@ import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleSt
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
-import { formatWorkspaceCommand, runCommand, runCommandWithFiles } from "./workspace-profile";
+import { type CommandResult, formatWorkspaceCommand, runCommand, runCommandWithFiles } from "./workspace-profile";
+
+function renderCommandOutput(result: CommandResult): string {
+  if (!result.stderr) return result.stdout;
+  if (!result.stdout) return result.stderr;
+  return `stdout:\n${result.stdout}\n\nstderr:\n${result.stderr}`;
+}
 
 export type EvalAction =
   | { type: "done" }
@@ -104,7 +110,7 @@ export const lintEvaluator: Evaluator = {
         source: "lint",
         mode: "work",
         summary: "Lint errors detected in files you edited.",
-        details: result.output,
+        details: renderCommandOutput(result),
         instruction: "Fix the issues above, then stop.",
       },
     };
@@ -204,8 +210,9 @@ export const verifyEvaluator: Evaluator = {
         source: "verify",
         mode: "work",
         summary: "Verification failed.",
-        details: result.output,
-        instruction: "Fix the issues above, then stop.",
+        details: renderCommandOutput(result),
+        instruction:
+          "Fix failures related to files you changed. If all failures are in files you did not edit, they are pre-existing — signal done.",
       },
       mode: "work",
     };
