@@ -4,11 +4,10 @@ import type { SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 
 export type ToolPermission = "read" | "write" | "execute" | "network";
-export type ToolCategory = "read" | "search" | "write" | "execute" | "network";
+export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
-  readonly labelKey: string;
   readonly category: ToolCategory;
   readonly permissions: readonly ToolPermission[];
   readonly description: string;
@@ -16,6 +15,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly execute: (input: TInput, toolCallId: string) => Promise<TOutput>;
+  readonly labelKey?: string;
 };
 
 export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };

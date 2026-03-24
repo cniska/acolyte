@@ -92,14 +92,15 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
   const byId: Record<string, AnyToolDefinition> = {};
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
-    invariant(typeof tool.labelKey === "string" && tool.labelKey.trim().length > 0, `tool ${tool.id} missing labelKey`);
-    invariant(tool.labelKey in EN_MESSAGES, `tool ${tool.id} has unknown labelKey "${tool.labelKey}"`);
+    if (tool.labelKey) {
+      invariant(tool.labelKey in EN_MESSAGES, `tool ${tool.id} has unknown labelKey "${tool.labelKey}"`);
+    }
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
     invariant(
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,
       `tool ${tool.id} missing instruction`,
     );
-    invariant(Array.isArray(tool.permissions) && tool.permissions.length > 0, `tool ${tool.id} missing permissions`);
+    invariant(Array.isArray(tool.permissions), `tool ${tool.id} missing permissions`);
     byId[tool.id] = tool as AnyToolDefinition;
   }
   return byId;

@@ -44,9 +44,8 @@ function createSetChecklistTool(
 ) {
   return createTool({
     id: "set-checklist",
-    labelKey: "tool.label.set_checklist",
-    category: "read",
-    permissions: ["read"],
+    category: "meta",
+    permissions: [],
     description: "Create an inline task checklist visible to the user. All items start as pending.",
     instruction:
       "Use `set-checklist` once at the start of multi-step tasks to show the user a progress checklist. Define all steps upfront. Use `update-checklist` to change item statuses as you work.",
@@ -75,9 +74,8 @@ function createUpdateChecklistTool(
 ) {
   return createTool({
     id: "update-checklist",
-    labelKey: "tool.label.update_checklist",
-    category: "read",
-    permissions: ["read"],
+    category: "meta",
+    permissions: [],
     description: "Update the status of a single checklist item.",
     instruction:
       "Use `update-checklist` to mark a checklist item as `in_progress`, `done`, or `failed`. Requires a prior `set-checklist` call for the same groupId.",
