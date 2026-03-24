@@ -186,8 +186,8 @@ export const verifyEvaluator: Evaluator = {
         feedback: {
           source: "verify",
           mode: "verify",
-          summary: "Run verification for the current task scope.",
-          details: `Run: ${formatWorkspaceCommand(ctx.policy.verifyCommand)}`,
+          summary:
+            "Review the changes for correctness. Do not run the verify command — it runs automatically after your review.",
         },
         mode: "verify",
         cycleLimit: ctx.policy.verifyMaxSteps,
@@ -195,10 +195,10 @@ export const verifyEvaluator: Evaluator = {
       };
     }
 
-    // Verify → Work: run verify command directly
+    // Verify → Work: run the verify command after model review completes
     if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
 
-    const result = runCommand(ctx.workspace, ctx.policy.verifyCommand);
+    const result = runCommand(ctx.workspace, ctx.policy.verifyCommand, ctx.policy.verifyTimeoutMs);
     ctx.debug("lifecycle.eval.verify_command", {
       command: formatWorkspaceCommand(ctx.policy.verifyCommand),
       has_errors: result.hasErrors,

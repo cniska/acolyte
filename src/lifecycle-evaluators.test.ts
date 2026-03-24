@@ -24,7 +24,7 @@ describe("verifyEvaluator", () => {
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns regenerate to verify mode when write tools used with verify command", () => {
+  test("enters verify mode when write tools used with verify command", () => {
     const ctx = createRunContext({
       initialMode: "work",
       workspace: "/tmp/test",

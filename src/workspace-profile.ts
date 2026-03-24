@@ -5,12 +5,12 @@ export type WorkspaceCommand = { readonly bin: string; readonly args: readonly s
 
 export type CommandResult = { hasErrors: boolean; stdout: string; stderr: string };
 
-export function runCommand(workspace: string, command: WorkspaceCommand): CommandResult {
+export function runCommand(workspace: string, command: WorkspaceCommand, timeoutMs = 30_000): CommandResult {
   const { bin, args } = command;
   try {
     execFileSync(bin, [...args], {
       cwd: workspace,
-      timeout: 30_000,
+      timeout: timeoutMs,
       maxBuffer: 1024 * 1024,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
