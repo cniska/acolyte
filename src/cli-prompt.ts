@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier, type VerifyScope } from "./api";
 import { createMessage } from "./chat-session";
-import { formatChecklist } from "./checklist-contract";
+import { formatChecklist } from "./checklist-format";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";

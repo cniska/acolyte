@@ -1,7 +1,8 @@
 import React from "react";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
-import { type ChecklistOutput, formatChecklist } from "./checklist-contract";
+import type { ChecklistOutput } from "./checklist-contract";
+import { formatChecklist } from "./checklist-format";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
 
