@@ -14,7 +14,7 @@ function renderChecklist(output: ChecklistOutput): React.ReactNode {
       {items.map((item) => (
         <React.Fragment key={item.id}>
           {"\n"}
-          <Text dimColor>{`  ${item.text}`}</Text>
+          <Text dimColor>{`  ${item.marker} ${item.label}`}</Text>
         </React.Fragment>
       ))}
     </>

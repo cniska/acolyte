@@ -156,7 +156,7 @@ export async function handlePrompt(
             case "checklist": {
               const { header, items } = formatChecklist(event);
               printDim(`• ${header}`);
-              for (const item of items) printIndentedDim(item.text);
+              for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
               hasPrintedToolProgress = true;
               break;
             }
