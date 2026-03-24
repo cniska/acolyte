@@ -43,7 +43,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Trust type signatures; do not add impossible null/undefined guards unless the declared types allow them.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
-      "Do not run verify, test, or build commands — the lifecycle verify phase handles verification automatically after your edits.",
+      "Do not run verify, test, or build commands — the lifecycle handles format, lint, and verify automatically after your edits.",
+      "Do not signal done until the requested behavior is actually implemented. Updating help text, comments, or tests alone is not completing the task — the functional change must be in place.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
     ],
   },
@@ -53,7 +54,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     preamble: [
       "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Choose the lightest sufficient verification for the actual change. For narrow documentation or content-only edits, scan the changed files and stop unless the user explicitly asked for project-wide verification.",
-      "Otherwise run the project's verify/test/build command if one exists. If it fails with 'script not found', stop — your scan-code review is sufficient.",
+      "Do not run verify, test, or build commands — the lifecycle runs the project's verify command automatically after your review.",
       "Report any issues found. Do not fix them — work mode will handle fixes.",
       "Do not narrate — only respond if you found issues.",
     ],
