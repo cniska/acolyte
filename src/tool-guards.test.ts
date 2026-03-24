@@ -440,6 +440,20 @@ describe("post-edit-redundancy guard", () => {
     ).not.toThrow();
   });
 
+  test("allows same-file edit after workspace-wide search", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "edit-file", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+    recordCall(session, "search-files", { patterns: ["createId"], paths: ["."] });
+    expect(() =>
+      runGuards({
+        toolName: "edit-file",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+
   test("allows edit-file on a different file after a successful edit", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);

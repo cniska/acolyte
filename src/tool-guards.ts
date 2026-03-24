@@ -230,7 +230,7 @@ function readCountForPath(session: SessionContext, path: string): number {
 
 function searchTouchesPath(args: Record<string, unknown>, path: string): boolean {
   const scope = extractSearchScope(args);
-  return scope.some((entry) => entry === path);
+  return scope.some((entry) => entry === path || entry === "__workspace__" || entry === ".");
 }
 
 function scanTouchesPath(args: Record<string, unknown>, path: string): boolean {
