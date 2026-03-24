@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { WorkspaceCommand } from "./workspace-profile";
-import { runCommandWithFiles } from "./workspace-profile";
+import { runCommand, runCommandWithFiles } from "./workspace-profile";
 
 const BIOME: WorkspaceCommand = { bin: "bunx", args: ["biome", "check"] };
 
@@ -19,5 +19,12 @@ describe("runCommandWithFiles", () => {
   test("treats errors on missing files as lint errors", () => {
     const result = runCommandWithFiles(import.meta.dir, BIOME, ["nonexistent-file.ts"]);
     expect(result.hasErrors).toBe(true);
+  });
+
+  test("captures stderr in error output", () => {
+    const result = runCommand(import.meta.dir, { bin: "bash", args: ["-c", "echo stdout; echo stderr >&2; exit 1"] });
+    expect(result.hasErrors).toBe(true);
+    expect(result.output).toContain("stdout");
+    expect(result.output).toContain("stderr");
   });
 });

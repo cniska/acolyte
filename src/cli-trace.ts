@@ -51,6 +51,7 @@ const traceEventSchema = z.enum([
   "lifecycle.eval.format",
   "lifecycle.eval.verify_cycle",
   "lifecycle.eval.verify_command",
+  "lifecycle.eval.verify_filtered",
   "lifecycle.eval.verify_failure",
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
@@ -109,6 +110,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.format": ["files"],
   "lifecycle.eval.verify_cycle": ["used_write_tools", "verified", "verify_scope"],
   "lifecycle.eval.verify_command": ["command", "has_errors"],
+  "lifecycle.eval.verify_filtered": ["total_lines", "kept_lines", "changed_paths"],
   "lifecycle.eval.verify_failure": ["text_chars"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [

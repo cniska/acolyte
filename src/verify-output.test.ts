@@ -60,4 +60,11 @@ describe("filterOutputByPaths", () => {
     const result = filterOutputByPaths(output, [`${workspace}/src/deep/nested/file.ts`], workspace);
     expect(result).toContain("src/deep/nested/file.ts");
   });
+
+  test("handles paths that are already relative to workspace", () => {
+    const output = ["src/foo.ts:10: error", "", "", "", "src/bar.ts:20: error"].join("\n");
+    const result = filterOutputByPaths(output, [`${workspace}/src/foo.ts`], workspace);
+    expect(result).toContain("src/foo.ts");
+    expect(result).not.toContain("src/bar.ts");
+  });
 });

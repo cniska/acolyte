@@ -199,8 +199,16 @@ export const verifyEvaluator: Evaluator = {
       has_errors: result.hasErrors,
     });
     if (!result.hasErrors) return { type: "done" };
+    const workspace = ctx.workspace;
     const changedPaths = writePathsForCurrentTask(ctx);
-    const scopedOutput = filterOutputByPaths(result.output, changedPaths, ctx.workspace);
+    const scopedOutput = filterOutputByPaths(result.output, changedPaths, workspace);
+    const totalLines = result.output.split("\n").length;
+    const keptLines = scopedOutput.split("\n").length;
+    ctx.debug("lifecycle.eval.verify_filtered", {
+      total_lines: totalLines,
+      kept_lines: keptLines,
+      changed_paths: changedPaths.length,
+    });
     return {
       type: "regenerate",
       feedback: {
