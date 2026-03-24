@@ -8,7 +8,8 @@ describe("runCommandWithFiles", () => {
   test("returns no errors for empty file list", () => {
     const result = runCommandWithFiles("/tmp", BIOME, []);
     expect(result.hasErrors).toBe(false);
-    expect(result.output).toBe("");
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
   });
 
   test("returns no errors for a clean file", () => {
@@ -21,10 +22,10 @@ describe("runCommandWithFiles", () => {
     expect(result.hasErrors).toBe(true);
   });
 
-  test("captures stderr in error output", () => {
-    const result = runCommand(import.meta.dir, { bin: "bash", args: ["-c", "echo stdout; echo stderr >&2; exit 1"] });
+  test("captures stdout and stderr separately", () => {
+    const result = runCommand(import.meta.dir, { bin: "bash", args: ["-c", "echo out; echo err >&2; exit 1"] });
     expect(result.hasErrors).toBe(true);
-    expect(result.output).toContain("stdout");
-    expect(result.output).toContain("stderr");
+    expect(result.stdout).toBe("out");
+    expect(result.stderr).toBe("err");
   });
 });
