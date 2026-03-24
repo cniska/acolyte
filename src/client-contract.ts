@@ -2,6 +2,7 @@ import { z } from "zod";
 import { agentModeSchema } from "./agent-contract";
 import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./api";
 import { invariant } from "./assert";
+import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
@@ -89,6 +90,12 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   streamUsageEventSchema,
   z.object({ type: z.literal("status"), state: pendingStateSchema }),
   z.object({
+    type: z.literal("checklist"),
+    groupId: z.string().min(1),
+    groupTitle: z.string().min(1),
+    items: z.array(checklistItemSchema),
+  }),
+  z.object({
     type: z.literal("error"),
     errorMessage: z.string(),
     errorId: z.string().optional(),
@@ -116,6 +123,12 @@ type ToolResultEvent = {
 };
 type UsageEvent = { type: "usage"; inputTokens: number; outputTokens: number };
 type StatusEvent = { type: "status"; state: PendingState };
+type ChecklistEvent = {
+  type: "checklist";
+  groupId: string;
+  groupTitle: string;
+  items: z.infer<typeof checklistItemSchema>[];
+};
 type ErrorEvent = {
   type: "error";
   errorMessage: string;
@@ -132,6 +145,7 @@ export type StreamEvent =
   | ToolResultEvent
   | UsageEvent
   | StatusEvent
+  | ChecklistEvent
   | ErrorEvent;
 
 export interface Client {

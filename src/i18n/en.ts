@@ -226,6 +226,7 @@ export const EN_MESSAGES = {
   "tool.label.scan": "Scan",
   "tool.label.run": "Run",
   "tool.label.search": "Search",
+  "tool.label.update_checklist": "Checklist",
   "tool.label.web_fetch": "Web Fetch",
   "tool.label.web_search": "Web Search",
   "unit.call": "{count} calls",

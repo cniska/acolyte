@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { appConfig } from "./app-config";
 import { invariant } from "./assert";
+import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
@@ -8,7 +9,14 @@ import { EN_MESSAGES } from "./i18n/en";
 import { createShellToolkit } from "./shell-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
-import type { ToolCategory, ToolDefinition, ToolkitDeps, ToolkitInput, ToolPermission } from "./tool-contract";
+import type {
+  ChecklistListener,
+  ToolCategory,
+  ToolDefinition,
+  ToolkitDeps,
+  ToolkitInput,
+  ToolPermission,
+} from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createWebToolkit } from "./web-toolkit";
@@ -20,7 +28,8 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createCodeToolkit> &
   ReturnType<typeof createWebToolkit> &
   ReturnType<typeof createShellToolkit> &
-  ReturnType<typeof createGitToolkit>;
+  ReturnType<typeof createGitToolkit> &
+  ReturnType<typeof createChecklistToolkit>;
 
 export type Toolset = {
   [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
@@ -52,9 +61,14 @@ export const TOOLKIT_REGISTRY: {
     id: "git",
     createToolkit: (deps, input) => createGitToolkit(deps, input),
   },
+  {
+    id: "checklist",
+    createToolkit: (deps, input) => createChecklistToolkit(deps, input),
+  },
 ];
 
 const noopOutput: ToolOutputListener = () => {};
+const noopChecklist: ChecklistListener = () => {};
 
 const defaultToolkitDeps = (): ToolkitDeps => ({
   outputBudget: appConfig.agent.toolOutputBudget,
@@ -65,10 +79,11 @@ function collectTools(
   session: SessionContext,
   onOutput: ToolOutputListener = noopOutput,
   deps: ToolkitDeps = defaultToolkitDeps(),
+  onChecklist: ChecklistListener = noopChecklist,
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
-    Object.assign(combined, toolkit.createToolkit(deps, { workspace, session, onOutput }));
+    Object.assign(combined, toolkit.createToolkit(deps, { workspace, session, onOutput, onChecklist }));
   }
   return combined;
 }
@@ -123,6 +138,7 @@ export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
 export function toolsForAgent(options?: {
   workspace?: string;
   onOutput?: ToolOutputListener;
+  onChecklist?: ChecklistListener;
   taskId?: string;
   sessionId?: string;
 }): {
@@ -133,7 +149,7 @@ export function toolsForAgent(options?: {
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   return {
-    tools: collectTools(workspace, session, options?.onOutput) as unknown as Toolset,
+    tools: collectTools(workspace, session, options?.onOutput, undefined, options?.onChecklist) as unknown as Toolset,
     session,
   };
 }

@@ -38,10 +38,17 @@ export type ToolkitDeps = {
   outputBudget: ToolOutputBudget;
 };
 
+export type ChecklistListener = (event: {
+  groupId: string;
+  groupTitle: string;
+  items: { id: string; label: string; status: "pending" | "in_progress" | "done" | "failed"; order: number }[];
+}) => void;
+
 export type ToolkitInput = {
   workspace: string;
   session: SessionContext;
   onOutput: ToolOutputListener;
+  onChecklist: ChecklistListener;
 };
 
 export type ToolCacheEntry = {

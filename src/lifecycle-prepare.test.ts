@@ -19,6 +19,7 @@ describe("phasePrepare", () => {
       policy,
       debug: () => {},
       onOutput: () => {},
+      onChecklist: () => {},
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
     expect(prepared.session.flags.consecutiveGuardBlockLimit).toBe(7);

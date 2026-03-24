@@ -5,6 +5,7 @@ import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
+import type { ChecklistListener } from "./tool-contract";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutputPart } from "./tool-output-content";
 import type { ToolRecovery } from "./tool-recovery";
@@ -101,6 +102,7 @@ export type PhasePrepareInput = {
   policy: LifecyclePolicy;
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
+  onChecklist: ChecklistListener;
 };
 export type PhasePrepareResult = {
   session: SessionContext;

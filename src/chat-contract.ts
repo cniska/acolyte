@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checklistOutputSchema } from "./checklist-contract";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
@@ -48,7 +49,7 @@ export const commandOutputSchema = z.object({
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
 
-const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema]);
+const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema, checklistOutputSchema]);
 
 export type ChatRowContent = z.infer<typeof chatRowContentSchema>;
 
@@ -71,4 +72,10 @@ export function isToolOutput(content: ChatRowContent | undefined): content is To
 
 export function isCommandOutput(content: ChatRowContent | undefined): content is CommandOutput {
   return typeof content === "object" && "header" in content;
+}
+
+export function isChecklistOutput(
+  content: ChatRowContent | undefined,
+): content is z.infer<typeof checklistOutputSchema> {
+  return typeof content === "object" && "groupId" in content;
 }

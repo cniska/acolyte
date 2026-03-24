@@ -218,6 +218,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onOutput: (event: ToolOutputEvent) => {
       ctxRef?.toolOutputHandler?.(event);
     },
+    onChecklist: (event) => {
+      emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
+    },
   });
 
   const ctx = createRunContext(input, {
