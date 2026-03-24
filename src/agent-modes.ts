@@ -46,6 +46,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Do not run verify, test, or build commands — the lifecycle handles format, lint, and verify automatically after your edits.",
       "Do not signal done until the requested behavior is actually implemented. Updating help text, comments, or tests alone is not completing the task — the functional change must be in place.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
+      "For multi-step tasks (3+ distinct steps), use `create-checklist` at the start to define a progress checklist. Use `update-checklist` to mark items as you complete each step.",
     ],
   },
   verify: {

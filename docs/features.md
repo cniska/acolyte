@@ -36,6 +36,7 @@ Shipped, user-visible capabilities.
 - automatic formatting of edited files via detected formatter
 - automatic linting of edited files via detected linter
 - deterministic verify command execution from detected project configuration
+- inline task checklist for multi-step tasks, pinned between transcript and input
 
 ## Tools
 

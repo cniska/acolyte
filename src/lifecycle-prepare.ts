@@ -20,6 +20,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
     onOutput: input.onOutput,
+    onChecklist: input.onChecklist,
     taskId: input.taskId,
     sessionId: input.request.sessionId,
   });

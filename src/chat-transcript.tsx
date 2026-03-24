@@ -219,15 +219,15 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
           <Text>{renderToolOutput(row.content.parts, toolContentWidth)}</Text>
         ) : isCommandOutput(row.content) ? (
           <Text>{renderCommandOutput(row.content)}</Text>
-        ) : row.kind === "assistant" ? (
+        ) : row.kind === "assistant" && typeof row.content === "string" ? (
           <Text dimColor={dim} color={textColor}>
             {renderAssistantContent(row.content, contentWidth)}
           </Text>
-        ) : (
+        ) : typeof row.content === "string" ? (
           <Text dimColor={dim} color={textColor}>
             {row.content}
           </Text>
-        )}
+        ) : null}
       </Box>
     </Box>
   );

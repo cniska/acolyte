@@ -9,7 +9,7 @@ lifecycle → guard → cache → toolkit → registry
 ## Layers
 
 - **guard**: pre-execution checks and post-execution call recording
-- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`)
+- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
 - **registry**: permission filtering and agent-facing tool surface
 
 ## Guarded execution

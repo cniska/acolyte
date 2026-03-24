@@ -1,4 +1,5 @@
 import { type ChatRow, createRow } from "./chat-contract";
+import type { ChecklistItem } from "./checklist-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
@@ -14,6 +15,7 @@ export type MessageStreamState = {
     errorCode?: string;
     error?: { category?: string; [key: string]: unknown };
   }) => void;
+  onChecklist: (entry: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
   onProgressError: (error: string) => void;
   streamedAssistantText: () => string;
   /** Flush remaining content and return IDs of all streaming assistant rows (for replacement by final turn rows). */
@@ -36,6 +38,9 @@ export function createMessageStreamState(input: {
   // --- tool output state ---
   const toolRowIdByCallId = new Map<string, string>();
   const toolOutput = createToolOutputState();
+
+  // --- checklist state ---
+  const checklistRowIdByGroupId = new Map<string, string>();
 
   function cancelFlushTimer(): void {
     if (flushTimer) {
@@ -120,6 +125,19 @@ export function createMessageStreamState(input: {
       );
     },
 
+    onChecklist: (entry) => {
+      const content = { groupId: entry.groupId, groupTitle: entry.groupTitle, items: entry.items };
+      const existingRowId = checklistRowIdByGroupId.get(entry.groupId);
+      if (!existingRowId) {
+        sealAssistantRow();
+        const rowId = `row_${createId()}`;
+        checklistRowIdByGroupId.set(entry.groupId, rowId);
+        input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
+        return;
+      }
+      input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
+    },
+
     onProgressError: (error) => {
       input.setRows((current) => {
         const last = current[current.length - 1];
@@ -132,6 +150,11 @@ export function createMessageStreamState(input: {
 
     finalize: () => {
       sealAssistantRow();
+      const checklistIds = new Set(checklistRowIdByGroupId.values());
+      checklistRowIdByGroupId.clear();
+      if (checklistIds.size > 0) {
+        input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
+      }
       const ids = [...assistantRowIds];
       assistantRowIds.length = 0;
       return ids;
@@ -139,13 +162,15 @@ export function createMessageStreamState(input: {
 
     dispose: () => {
       cancelFlushTimer();
+      const checklistIds = new Set(checklistRowIdByGroupId.values());
+      checklistRowIdByGroupId.clear();
       const idsToRemove = [...assistantRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;
       activeContent = "";
       assistantRowIds.length = 0;
-      if (idsToRemove.length > 0) {
-        const removeSet = new Set(idsToRemove);
+      const removeSet = new Set([...idsToRemove, ...checklistIds]);
+      if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
       }
     },

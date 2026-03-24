@@ -21,6 +21,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Term | Definition |
 |---|---|
 | Base Agent Input | Immutable prompt input created during `prepare` and used as the base for each generation attempt |
+| Checklist | Inline progress display for multi-step tasks, rendered between transcript and input. The agent defines steps via `create-checklist` and marks progress via `update-checklist` |
 | Context Budgeting | Proactive token allocation via tiktoken — system prompt reserved first, remaining space filled by priority (memory → attachments → history → tool payloads) |
 | Continuation State | Persisted "Current task" and "Next step" cues carried into later turns |
 | Distill | Automatic memory source family that extracts and consolidates knowledge into records (project/user/session scope variants) |

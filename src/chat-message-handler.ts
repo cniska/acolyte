@@ -127,6 +127,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             case "tool-result":
               streamState.onToolResult(event);
               break;
+            case "checklist":
+              streamState.onChecklist(event);
+              break;
             case "error":
               streamState.onProgressError(event.errorMessage);
               break;

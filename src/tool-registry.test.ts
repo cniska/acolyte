@@ -12,6 +12,7 @@ describe("toolsets", () => {
   test("returns all tools", () => {
     const { tools, session } = toolsForAgent();
     expect(Object.keys(tools).sort()).toEqual([
+      "createChecklist",
       "createFile",
       "deleteFile",
       "editCode",
@@ -27,6 +28,7 @@ describe("toolsets", () => {
       "runCommand",
       "scanCode",
       "searchFiles",
+      "updateChecklist",
       "webFetch",
       "webSearch",
     ]);
@@ -87,6 +89,7 @@ describe("toolIdsByCategory", () => {
     expect(ids).toContain("delete-file");
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
+    expect(ids).not.toContain("update-checklist");
     expect(ids).not.toContain("read-file");
     expect(ids).not.toContain("run-command");
     expect(ids).not.toContain("web-search");

@@ -55,6 +55,42 @@ describe("cli-prompt", () => {
     expect(session.messages[session.messages.length - 1]?.kind).toBe("tool_payload");
   });
 
+  test("checklist events print header and items", async () => {
+    const printed: string[] = [];
+    const originalWrite = process.stdout.write;
+    process.stdout.write = ((chunk: string) => {
+      printed.push(chunk);
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const events: StreamEvent[] = [
+        {
+          type: "checklist",
+          groupId: "grp_1",
+          groupTitle: "Build pipeline",
+          items: [
+            { id: "s1", label: "lint", status: "done", order: 0 },
+            { id: "s2", label: "test", status: "in_progress", order: 1 },
+            { id: "s3", label: "deploy", status: "pending", order: 2 },
+          ],
+        },
+      ];
+
+      const session = createTestSession();
+      const client = createStreamingClient(events);
+      await handlePrompt("run pipeline", session, client);
+
+      const output = printed.join("");
+      expect(output).toContain("Build pipeline (1/3)");
+      expect(output).toContain("● lint");
+      expect(output).toContain("◐ test");
+      expect(output).toContain("○ deploy");
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
   test("tool-output events with growing numWidth do not reprint earlier diffs", async () => {
     const printed: string[] = [];
     const originalWrite = process.stdout.write;

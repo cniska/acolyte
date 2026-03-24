@@ -1,6 +1,7 @@
 import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier, type VerifyScope } from "./api";
 import { createMessage } from "./chat-session";
+import { formatChecklist } from "./checklist-format";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
@@ -149,6 +150,13 @@ export async function handlePrompt(
               }
               printDim(`• ${rendered.split("\n")[0] ?? ""}`);
               if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
+              hasPrintedToolProgress = true;
+              break;
+            }
+            case "checklist": {
+              const { header, items } = formatChecklist(event);
+              printDim(`• ${header}`);
+              for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
               hasPrintedToolProgress = true;
               break;
             }

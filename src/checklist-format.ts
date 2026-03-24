@@ -1,0 +1,12 @@
+import { type ChecklistOutput, checklistMarker, checklistProgress } from "./checklist-contract";
+
+export type FormattedChecklistItem = { id: string; marker: string; label: string };
+
+export function formatChecklist(output: ChecklistOutput): { header: string; items: FormattedChecklistItem[] } {
+  const sorted = [...output.items].sort((a, b) => a.order - b.order);
+  const { done, total } = checklistProgress(sorted);
+  return {
+    header: `${output.groupTitle} (${done}/${total})`,
+    items: sorted.map((item) => ({ id: item.id, marker: checklistMarker(item.status), label: item.label })),
+  };
+}

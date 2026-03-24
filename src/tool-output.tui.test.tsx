@@ -1,28 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
+import { dedent } from "./test-utils";
 import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
 import { renderPlain } from "./tui-test-utils";
-
-function dedent(value: string): string {
-  const lines = value.split("\n");
-  let start = 0;
-  while (start < lines.length && lines[start]?.trim().length === 0) start += 1;
-  let end = lines.length - 1;
-  while (end >= start && lines[end]?.trim().length === 0) end -= 1;
-  if (start > end) return "";
-  let prefix: string | null = null;
-  for (const line of lines.slice(start, end + 1)) {
-    if (line.trim().length === 0) continue;
-    const current = line.match(/^[ \t]*/)?.[0] ?? "";
-    if (prefix === null || current.length < prefix.length) prefix = current;
-  }
-  const p = prefix ?? "";
-  return lines
-    .slice(start, end + 1)
-    .map((line) => (line.startsWith(p) ? line.slice(p.length) : line))
-    .join("\n");
-}
 
 function renderChat(toolOutput: ToolOutputPart[]): string {
   const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
