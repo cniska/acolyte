@@ -113,7 +113,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",
-    "total_tool_calls",
+    { key: "tool_calls", label: "total_tool_calls" },
     { key: "read_calls", label: "read" },
     { key: "search_calls", label: "search" },
     { key: "write_calls", label: "write" },
@@ -129,6 +129,171 @@ const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
 /** Events hidden from `acolyte trace task` unless --verbose is passed. */
 const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
+
+function extractToolArg(fields: Record<string, string>): string {
+  if (fields.path) return fields.path;
+  if (fields.command) {
+    const cmd = fields.command;
+    return cmd.length > 40 ? `${cmd.slice(0, 39)}…` : cmd;
+  }
+  if (fields.pattern) return `"${fields.pattern}"`;
+  if (fields.paths) {
+    try {
+      const parsed = JSON.parse(fields.paths) as unknown;
+      if (Array.isArray(parsed)) {
+        const names = parsed
+          .map((entry) => {
+            if (typeof entry === "string") return entry;
+            if (entry && typeof entry === "object" && "path" in entry) return String((entry as { path: string }).path);
+            return "";
+          })
+          .filter(Boolean);
+        return names.join(", ");
+      }
+    } catch {}
+  }
+  return "";
+}
+
+function formatDuration(startTs: string, endTs: string): string {
+  const ms = new Date(endTs).getTime() - new Date(startTs).getTime();
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = Math.round((ms % 60_000) / 1000);
+  return `${minutes}m ${seconds}s`;
+}
+
+type CompactToolLine = {
+  tool: string;
+  arg: string;
+  status: string;
+};
+
+function renderCompactLines(lines: LogLine[]): string[] {
+  const output: string[] = [];
+
+  // Header: task_id, model, mode, duration
+  const firstTs = lines[0]?.timestamp;
+  const lastTs = lines[lines.length - 1]?.timestamp;
+  const startLine = lines.find((l) => l.fields.event === "lifecycle.start");
+  const summaryLine = lines.find((l) => l.fields.event === "lifecycle.summary");
+  const taskId = lines[0]?.taskId ?? "unknown";
+  const model = startLine?.fields.model ?? "unknown";
+  const mode = startLine?.fields.mode ?? "unknown";
+  const duration = firstTs && lastTs ? formatDuration(firstTs, lastTs) : "?";
+  output.push(`${taskId}  ${model}  ${mode}  ${duration}`);
+  output.push("");
+
+  // Build a map of tool call index → guard/result info
+  const toolLines: CompactToolLine[] = [];
+  let pendingToolCall: { tool: string; arg: string } | null = null;
+
+  for (const line of lines) {
+    const event = line.fields.event;
+    if (!event) continue;
+
+    if (event === "lifecycle.tool.call") {
+      if (pendingToolCall) {
+        toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status: "" });
+      }
+      pendingToolCall = {
+        tool: line.fields.tool ?? "?",
+        arg: extractToolArg(line.fields),
+      };
+      continue;
+    }
+
+    if (event === "lifecycle.guard" && pendingToolCall) {
+      const guard = line.fields.guard ?? "";
+      toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status: `BLOCKED  ${guard}` });
+      pendingToolCall = null;
+      continue;
+    }
+
+    if (event === "lifecycle.tool.result" && pendingToolCall) {
+      const durationMs = line.fields.duration_ms;
+      const isTimeout = durationMs && Number(durationMs) >= 120_000;
+      const status = isTimeout
+        ? `TIMEOUT ${Math.round(Number(durationMs) / 1000)}s`
+        : durationMs
+          ? `${durationMs}ms`
+          : "";
+      toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status });
+      pendingToolCall = null;
+      continue;
+    }
+
+    if (event === "lifecycle.eval.decision") {
+      if (pendingToolCall) {
+        toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status: "" });
+        pendingToolCall = null;
+      }
+      if (line.fields.action === "regenerate") {
+        const evaluator = line.fields.evaluator ?? "";
+        output.push(...formatToolTable(toolLines));
+        toolLines.length = 0;
+        output.push(`  ── regenerate (${evaluator}) ──`);
+      }
+      continue;
+    }
+
+    if (event === "lifecycle.eval.skipped") {
+      if (pendingToolCall) {
+        toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status: "" });
+        pendingToolCall = null;
+      }
+      const evaluator = line.fields.evaluator ?? "";
+      const reason = line.fields.reason ?? "";
+      output.push(...formatToolTable(toolLines));
+      toolLines.length = 0;
+      output.push(`  ── skipped ${evaluator} (${reason}) ──`);
+      continue;
+    }
+
+    if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
+      output.push(`  @signal ${line.fields.signal ?? "?"}`);
+    }
+  }
+
+  if (pendingToolCall) {
+    toolLines.push({ tool: pendingToolCall.tool, arg: pendingToolCall.arg, status: "" });
+  }
+
+  output.push(...formatToolTable(toolLines));
+
+  // Summary footer
+  if (summaryLine) {
+    output.push("  ──");
+    const f = summaryLine.fields;
+    const totalTools = f.tool_calls ?? "0";
+    const parts = [`model_calls=${f.model_calls ?? "0"}`, `tools=${totalTools}`];
+    const toolBreakdown: string[] = [];
+    if (f.read_calls && f.read_calls !== "0") toolBreakdown.push(`read=${f.read_calls}`);
+    if (f.search_calls && f.search_calls !== "0") toolBreakdown.push(`search=${f.search_calls}`);
+    if (f.write_calls && f.write_calls !== "0") toolBreakdown.push(`write=${f.write_calls}`);
+    if (toolBreakdown.length > 0) parts[parts.length - 1] += ` (${toolBreakdown.join(" ")})`;
+    if (f.regeneration_count && f.regeneration_count !== "0") parts.push(`regenerations=${f.regeneration_count}`);
+    if (f.guard_blocked_count && f.guard_blocked_count !== "0") parts.push(`guard_blocked=${f.guard_blocked_count}`);
+    const hasError = f.has_error === "true";
+    parts.push(`status=${hasError ? "error" : "ok"}`);
+    output.push(`  ${parts.join("  ")}`);
+  }
+
+  return output;
+}
+
+function formatToolTable(toolLines: CompactToolLine[]): string[] {
+  if (toolLines.length === 0) return [];
+  const maxTool = Math.max(...toolLines.map((l) => l.tool.length));
+  const maxArg = Math.max(...toolLines.map((l) => l.arg.length));
+  return toolLines.map((l) => {
+    const tool = l.tool.padEnd(maxTool);
+    const arg = l.arg.padEnd(maxArg);
+    const suffix = l.status ? `  ${l.status}` : "";
+    return `  ${tool}  ${arg}${suffix}`.trimEnd();
+  });
+}
 
 function traceRowData(line: LogLine): Record<string, string | undefined> {
   const event = line.fields.event;
@@ -185,7 +350,8 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const verbose = hasBoolFlag(args, "--verbose");
-  const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
+  const isJson = hasBoolFlag(args, "--json");
+  const out = isJson ? createJsonOutput() : createTextOutput();
 
   const positional = parsePositional(args, ["--lines", "-n"]);
   const subcommand = positional[0];
@@ -210,9 +376,13 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         continue;
       }
       if (i > 0) out.addSeparator();
-      for (const line of lines) {
-        if (!verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
-        out.addRow(traceRowData(line));
+      if (verbose || isJson) {
+        for (const line of lines) {
+          if (!verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
+          out.addRow(traceRowData(line));
+        }
+      } else {
+        for (const rendered of renderCompactLines(lines)) out.addHeader(rendered);
       }
     }
   } else if (!subcommand || subcommand === "list") {
