@@ -114,8 +114,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   const rows: ChatRow[] = [];
   if (reply.error) {
     rows.push(createRow("system", reply.error, { text: palette.error }));
-  } else if (reply.output.trim().length > 0) {
-    rows.push(createRow("assistant", reply.output));
   }
   const tokenEntry: SessionTokenUsageEntry = {
     id: assistantMessage.id,

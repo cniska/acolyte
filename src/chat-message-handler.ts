@@ -139,20 +139,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      const streamingRowIds = streamState.finalize();
+      streamState.finalize();
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
-      const removeSet = new Set(streamingRowIds);
-      input.setRows((current) => {
-        const insertIndex = removeSet.size > 0 ? current.findIndex((row) => removeSet.has(row.id)) : -1;
-        const filtered = current.filter((row) => !removeSet.has(row.id));
-        if (insertIndex >= 0) {
-          filtered.splice(insertIndex, 0, ...turn.rows);
-          return filtered;
-        }
-        return [...filtered, ...turn.rows];
-      });
+      input.setRows((current) => [...current, ...turn.rows]);
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);

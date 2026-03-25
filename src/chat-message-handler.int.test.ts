@@ -174,6 +174,7 @@ describe("chat message handler guards", () => {
           toolName: "edit-file",
           content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "sum.rs" },
         },
+        { type: "text-delta", text: "Created sum.rs." },
       ],
       [
         { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
@@ -195,6 +196,7 @@ describe("chat message handler guards", () => {
           toolName: "edit-file",
           content: { kind: "diff", lineNumber: 2, marker: "add", text: "let sum = a + b + c;" },
         },
+        { type: "text-delta", text: "Updated sum.rs for three args." },
       ],
       [
         { type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } },
@@ -204,6 +206,7 @@ describe("chat message handler guards", () => {
           toolName: "delete-file",
           content: { kind: "tool-header", labelKey: "tool.label.delete", detail: "sum.rs" },
         },
+        { type: "text-delta", text: "Removed sum.rs." },
       ],
     ];
     let replyCount = 0;
@@ -343,7 +346,7 @@ describe("chat message handler guards", () => {
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
-        reply: async (_input, options) => {
+        replyStream: async (_input, options) => {
           const call = callCount++;
           if (call === 0) {
             return await new Promise((_, reject) => {
@@ -359,6 +362,7 @@ describe("chat message handler guards", () => {
               options?.signal?.addEventListener("abort", abort, { once: true });
             });
           }
+          options.onEvent({ type: "text-delta", text: "Second answer." });
           return { state: "done" as const, model: "gpt-5-mini", output: "Second answer." };
         },
         status: async () => ({}),
@@ -481,8 +485,9 @@ describe("chat message handler guards", () => {
 
       const { handleSubmit } = createMessageHandler({
         client: createClient({
-          reply: async () => {
+          replyStream: async (_input, options) => {
             replyCalls += 1;
+            options.onEvent({ type: "text-delta", text: "ok" });
             return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
           },
           status: async () => ({}),

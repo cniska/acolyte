@@ -87,6 +87,52 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
+  test("finalize keeps tool rows and returns only assistant row ids", async () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // Simulate: assistant text → tool call → more assistant text
+    state.onAssistantDelta("thinking...");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("assistant");
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "read-file",
+      content: { kind: "tool-header", labelKey: "tool.label.read", detail: "a.ts" },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[1]?.kind).toBe("tool");
+
+    state.onAssistantDelta("done now");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows).toHaveLength(3);
+
+    const streamingIds = state.finalize();
+    // finalize should return only assistant row ids, not tool row ids
+    const toolRows = rows.filter((r) => r.kind === "tool");
+    expect(toolRows).toHaveLength(1);
+    for (const toolRow of toolRows) {
+      expect(streamingIds).not.toContain(toolRow.id);
+    }
+
+    // Simulate handler replacement: content rows at streaming position, status at end
+    const removeSet = new Set(streamingIds);
+    const contentRows: ChatRow[] = [{ id: "final_assistant", kind: "assistant", content: "done" }];
+    const statusRows: ChatRow[] = [{ id: "final_status", kind: "status", content: "Worked 5s" }];
+    const filtered = rows.filter((row) => !removeSet.has(row.id));
+    const insertIndex = rows.findIndex((row) => removeSet.has(row.id));
+    if (insertIndex >= 0) filtered.splice(insertIndex, 0, ...contentRows);
+    else filtered.push(...contentRows);
+    filtered.push(...statusRows);
+
+    // Tool rows should appear BEFORE the status row
+    const toolIndex = filtered.findIndex((r) => r.kind === "tool");
+    const statusIndex = filtered.findIndex((r) => r.kind === "status");
+    expect(toolIndex).toBeLessThan(statusIndex);
+  });
+
   test("removes guard-blocked tool rows", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });

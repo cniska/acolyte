@@ -23,6 +23,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "run-command",
             content: { kind: "tool-header", labelKey: "tool.label.run", detail: "echo hi" },
           });
+          options.onEvent({ type: "text-delta", text: "done" });
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
@@ -37,11 +38,10 @@ describe("chat message handler stream behavior", () => {
     expect(
       rows.some((row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Working")),
     ).toBe(false);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
   });
 
   test("does not add generic tool rows when progress stream is empty", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         reply: async () => ({
           state: "done" as const,
@@ -56,11 +56,11 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("hello");
 
     expect(rows.some((row) => row.kind === "tool")).toBe(false);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
+    expect(session.messages.some((m) => m.role === "assistant" && m.content === "done")).toBe(true);
   });
 
   test("suppresses empty discovery/read tool rows when no body output arrives", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
@@ -76,6 +76,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "search-files",
             isError: false,
           });
+          options.onEvent({ type: "text-delta", text: "No matches found." });
           return { state: "done" as const, model: "gpt-5-mini", output: "No matches found." };
         },
       }),
@@ -84,7 +85,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("search for needle");
 
     expect(rows.some((row) => row.kind === "tool")).toBe(false);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "No matches found.")).toBe(true);
+    expect(session.messages.some((m) => m.role === "assistant" && m.content === "No matches found.")).toBe(true);
   });
 
   test("maps quota errors to user-facing message handler error", async () => {
@@ -128,17 +129,19 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("recovers cleanly after timeout and allows next message", async () => {
-    let calls = 0;
+    let callCount = 0;
     const {
       handleMessage,
       rows,
+      session,
       calls: spies,
     } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
-          calls += 1;
-          if (calls === 1) throw new Error("Remote server stream timed out after 120000ms");
+        replyStream: async (_input, options) => {
+          callCount += 1;
+          if (callCount === 1) throw new Error("Remote server stream timed out after 120000ms");
+          options.onEvent({ type: "text-delta", text: "ok" });
           return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
       }),
@@ -147,7 +150,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("first");
     await handleMessage("second");
 
-    expect(calls).toBe(2);
+    expect(callCount).toBe(2);
     expect(spies.pendingTransitions).toEqual([true, false, true, false]);
     expect(
       rows.some(
@@ -155,7 +158,7 @@ describe("chat message handler stream behavior", () => {
           row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
       ),
     ).toBe(true);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
+    expect(session.messages.some((m) => m.role === "assistant" && m.content === "ok")).toBe(true);
   });
 
   test("keeps thinking indicator active while remote task is still running", async () => {
@@ -464,7 +467,7 @@ describe("chat message handler stream behavior", () => {
       replyStream: async (_input, options) => {
         replyCount += 1;
         options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
-        options.onEvent({ type: "text-delta", text: `delta-${replyCount}` });
+        options.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
         return { state: "done" as const, model: "gpt-5-mini", output: `reply-${replyCount}` };
       },
     });

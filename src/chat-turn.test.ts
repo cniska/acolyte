@@ -66,7 +66,8 @@ describe("chat turn helpers", () => {
 
     const toolRows = turn.rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(0);
-    expect(turn.rows.some((row) => row.kind === "assistant" && row.content === "done")).toBe(true);
+    expect(turn.rows.every((row) => row.kind !== "assistant")).toBe(true);
+    expect(turn.assistantMessage.content).toBe("done");
   });
 
   test("runAssistantTurn marks assistant message as tool_payload when tools were used", async () => {
