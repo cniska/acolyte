@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
-import { formatRelativeTime } from "./datetime";
+import { formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
@@ -163,38 +163,32 @@ type CompactToolLine = {
   status: string;
 };
 
+function parsePaths(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => (typeof entry === "string" ? entry : entry?.path))
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
 function extractToolArg(fields: Record<string, string>): string {
   if (fields.path) return fields.path;
-  if (fields.command) {
-    const cmd = fields.command;
-    return cmd.length > 40 ? `${cmd.slice(0, 39)}…` : cmd;
-  }
+  if (fields.command) return truncate(fields.command, 40);
   if (fields.pattern) return `"${fields.pattern}"`;
-  if (fields.paths) {
-    try {
-      const parsed = JSON.parse(fields.paths) as unknown;
-      if (Array.isArray(parsed)) {
-        const names = parsed
-          .map((entry) => {
-            if (typeof entry === "string") return entry;
-            if (entry && typeof entry === "object" && "path" in entry) return String((entry as { path: string }).path);
-            return "";
-          })
-          .filter(Boolean);
-        return names.join(", ");
-      }
-    } catch {}
-  }
+  if (fields.paths) return parsePaths(fields.paths).join(", ");
   return "";
 }
 
-function formatDuration(startTs: string, endTs: string): string {
-  const ms = new Date(endTs).getTime() - new Date(startTs).getTime();
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  const minutes = Math.floor(ms / 60_000);
-  const seconds = Math.round((ms % 60_000) / 1000);
-  return `${minutes}m ${seconds}s`;
+function elapsedMs(startTs: string, endTs: string): number {
+  return new Date(endTs).getTime() - new Date(startTs).getTime();
 }
 
 type CompactRow = { kind: "tool"; line: CompactToolLine } | { kind: "separator"; text: string };
@@ -238,7 +232,7 @@ function renderCompactLines(lines: LogLine[]): string[] {
   const taskId = lines[0]?.taskId ?? "unknown";
   const model = startLine?.fields.model ?? "unknown";
   const mode = startLine?.fields.mode ?? "unknown";
-  const duration = firstTs && lastTs ? formatDuration(firstTs, lastTs) : "?";
+  const duration = firstTs && lastTs ? formatDuration(elapsedMs(firstTs, lastTs)) : "?";
   output.push(`${taskId}  ${model}  ${mode}  ${duration}`);
   output.push("");
 
