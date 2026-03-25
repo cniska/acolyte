@@ -14,6 +14,11 @@ function renderChecklist(checklists: ChecklistOutput[]): string {
   return renderPlain(<ChatChecklist rows={rows} />, 96);
 }
 
+/** dedent with a 2-char gutter matching the checklist spacer column. */
+function expected(value: string): string {
+  return dedent(value, 2);
+}
+
 describe("checklist TUI rendering", () => {
   test("renders header with progress and status markers", () => {
     expect(
@@ -29,12 +34,12 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
+      expected(`
         Build pipeline (1/3)
           ● lint
           ◐ test
           ○ deploy
-      `,
+      `),
     );
   });
 
@@ -53,13 +58,13 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
+      expected(`
         Steps (1/4)
           ● done step
           ◐ active step
           ○ waiting step
           ◉ broken step
-      `,
+      `),
     );
   });
 
@@ -77,17 +82,29 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
+      expected(`
         Steps (1/3)
           ● first
           ◐ second
           ○ third
-      `,
+      `),
     );
   });
 
   test("renders nothing when rows are empty", () => {
     expect(renderPlain(<ChatChecklist rows={[]} />, 96)).toBe("");
+  });
+
+  test("checklist aligns with transcript row markers", () => {
+    const output = renderChecklist([
+      {
+        groupId: "g1",
+        groupTitle: "Steps",
+        items: [{ id: "s1", label: "lint", status: "done", order: 0 }],
+      },
+    ]);
+    // Header starts at column 2 (after 2-char spacer), matching ChatTranscriptRow content column
+    expect(output).toMatch(/^ {2}\S/);
   });
 
   test("renders multiple checklists", () => {
@@ -105,13 +122,13 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
+      expected(`
         Phase A (1/1)
           ● step A
 
         Phase B (0/1)
           ○ step B
-      `,
+      `),
     );
   });
 
@@ -128,11 +145,11 @@ describe("checklist TUI rendering", () => {
         },
       ]),
     ).toBe(
-      dedent`
+      expected(`
         Done (2/2)
           ● a
           ● b
-      `,
+      `),
     );
   });
 });
