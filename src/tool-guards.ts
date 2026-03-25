@@ -10,6 +10,7 @@ import {
   WORKSPACE_SCOPE,
 } from "./tool-arg-paths";
 import type { ToolCache } from "./tool-contract";
+import { formatWorkspaceCommand, type WorkspaceCommand, type WorkspaceProfile } from "./workspace-profile";
 
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
 const DEFAULT_TOTAL_STEP_LIMIT = 200;
@@ -51,6 +52,7 @@ export type SessionContext = {
   onGuard?: (event: GuardEvent) => void;
   cache?: ToolCache;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
+  workspaceProfile?: WorkspaceProfile;
 };
 
 const FILE_CHURN_MIN_COMBINED = 12;
@@ -677,6 +679,32 @@ const shellBypassGuard: ToolGuard = {
   },
 };
 
+function commandMatchesProfile(command: string, profile: WorkspaceProfile): boolean {
+  const commands = [profile.lintCommand, profile.formatCommand, profile.verifyCommand]
+    .filter((cmd): cmd is WorkspaceCommand => cmd !== undefined)
+    .map((cmd) => formatWorkspaceCommand(cmd));
+  return commands.some((cmd) => command.includes(cmd));
+}
+
+const lifecycleCommandGuard: ToolGuard = {
+  id: "lifecycle-command",
+  description: "Block lint/format/verify commands in work mode — the lifecycle runs them automatically.",
+  tools: ["run-command"],
+  check({ args, session, report }) {
+    if (session.mode !== "work") return;
+    const profile = session.workspaceProfile;
+    if (!profile) return;
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!command) return;
+    if (commandMatchesProfile(command, profile)) {
+      report("blocked", command);
+      throw new Error(
+        "Lint, format, and verify commands run automatically after your edits. Do not run them manually.",
+      );
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   circuitBreakerGuard,
   stepBudgetGuard,
@@ -689,6 +717,7 @@ const GUARDS: ToolGuard[] = [
   redundantVerifyGuard,
   postEditRedundancyGuard,
   shellBypassGuard,
+  lifecycleCommandGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {
