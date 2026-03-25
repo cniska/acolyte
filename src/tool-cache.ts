@@ -131,11 +131,7 @@ export function createToolCache(
       const paths = args.paths;
       if (!Array.isArray(paths) || paths.length < 2) return;
       const output =
-        typeof result === "string"
-          ? result
-          : typeof (result as { output?: unknown })?.output === "string"
-            ? (result as { output: string }).output
-            : null;
+        typeof (result as { output?: unknown })?.output === "string" ? (result as { output: string }).output : null;
       if (!output) return;
       const sections = output.split("\n\nFile: ");
       if (sections.length < 2) return;

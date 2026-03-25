@@ -2,7 +2,15 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
+import {
+  deleteTextFile,
+  editFile,
+  findFiles,
+  readFileContent,
+  readFileContents,
+  searchFiles,
+  writeTextFile,
+} from "./file-ops";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
@@ -43,6 +51,32 @@ describe("path guards", () => {
     await writeFile(filePath, "hello from tmp", "utf8");
     const output = await readFileContent(WORKSPACE, filePath);
     expect(output).toContain("hello from tmp");
+  });
+
+  test("readFileContent rejects files exceeding maxLines", async () => {
+    const filePath = `/tmp/acolyte-test-large-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    const lines = Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    await expect(readFileContent(WORKSPACE, filePath, 10)).rejects.toThrow(/too large/);
+  });
+
+  test("readFileContent allows files at exactly maxLines", async () => {
+    const filePath = `/tmp/acolyte-test-exact-${testUuid()}.txt`;
+    tempFiles.push(filePath);
+    const lines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    const output = await readFileContent(WORKSPACE, filePath, 10);
+    expect(output).toContain("line 1");
+  });
+
+  test("readFileContents rejects batch when any file exceeds maxLines", async () => {
+    const small = `/tmp/acolyte-test-small-${testUuid()}.txt`;
+    const large = `/tmp/acolyte-test-large-${testUuid()}.txt`;
+    tempFiles.push(small, large);
+    await writeFile(small, "ok", "utf8");
+    await writeFile(large, Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n"), "utf8");
+    await expect(readFileContents(WORKSPACE, [small, large], 10)).rejects.toThrow(/too large/);
   });
 
   test("editFile allows /tmp files", async () => {

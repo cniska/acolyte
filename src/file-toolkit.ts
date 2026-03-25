@@ -77,7 +77,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
         const count = toolInput.patterns.length;
         const baseBudget = deps.outputBudget.findFiles;
         const budget = {
-          maxChars: baseBudget.maxChars ? Math.max(400, Math.floor(baseBudget.maxChars / count) * count) : undefined,
+          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
         };
         const result = compactToolOutput(await findFiles(input.workspace, toolInput.patterns, maxResults), budget);
@@ -213,7 +213,8 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           },
           toolCallId: callId,
         });
-        const output = await readFileContents(input.workspace, paths, deps.outputBudget.read.maxLines);
+        const raw = await readFileContents(input.workspace, paths, deps.outputBudget.read.maxLines);
+        const output = compactToolOutput(raw, deps.outputBudget.read);
         return { kind: "read-file", paths, output };
       });
     },

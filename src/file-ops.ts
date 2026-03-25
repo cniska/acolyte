@@ -194,7 +194,7 @@ export async function readFileContent(workspace: string, pathInput: string, maxL
   const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
-  if (maxLines && lines.length > maxLines) {
+  if (maxLines !== undefined && lines.length > maxLines) {
     throw new Error(
       `File "${pathInput}" is too large (${lines.length} lines). Use \`search-files\` or \`scan-code\` to find the relevant sections.`,
     );
