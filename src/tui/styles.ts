@@ -37,6 +37,8 @@ export const ansi = {
   cursorRestorePosition: "\x1b8",
   syncStart: `${ESC}?2026h`,
   syncEnd: `${ESC}?2026l`,
+  bracketedPasteEnable: `${ESC}?2004h`,
+  bracketedPasteDisable: `${ESC}?2004l`,
 } as const;
 
 export const kitty = {

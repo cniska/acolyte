@@ -95,6 +95,7 @@ export function render(node: ReactNode): RenderInstance {
   if (stdout.isTTY) {
     stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
+    stdout.write(ansi.bracketedPasteEnable);
   }
 
   function countRows(output: string): number {
@@ -232,6 +233,7 @@ export function render(node: ReactNode): RenderInstance {
       stdin.pause();
     }
     if (stdout.isTTY) {
+      stdout.write(ansi.bracketedPasteDisable);
       stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
@@ -247,6 +249,7 @@ export function render(node: ReactNode): RenderInstance {
     if (exited) return;
     // Synchronous cleanup on exit — restore terminal state.
     if (stdout.isTTY) {
+      stdout.write(ansi.bracketedPasteDisable);
       stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");

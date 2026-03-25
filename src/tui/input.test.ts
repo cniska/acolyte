@@ -14,9 +14,24 @@ describe("parseKeyInput", () => {
     expect(key.meta).toBe(false);
   });
 
-  test("enter", () => {
+  test("enter (CR) triggers return", () => {
     const { input, key } = parse("\r");
     expect(key.return).toBe(true);
+    expect(key.shift).toBe(false);
+    expect(input).toBe("");
+  });
+
+  test("line feed (LF) triggers shift+return for newline insert", () => {
+    const { input, key } = parse("\n");
+    expect(key.return).toBe(true);
+    expect(key.shift).toBe(true);
+    expect(input).toBe("");
+  });
+
+  test("alt+enter (ESC CR) triggers meta+return for newline insert", () => {
+    const { input, key } = parse("\x1b\r");
+    expect(key.return).toBe(true);
+    expect(key.meta).toBe(true);
     expect(input).toBe("");
   });
 
@@ -193,6 +208,48 @@ describe("parseKeyInput", () => {
       expect(parse("\x1b[1;5D").input).toBe("");
       expect(parse("\x1b[3~").input).toBe("");
       expect(parse("\x1b[1;9C").input).toBe("");
+    });
+  });
+
+  describe("bracketed paste", () => {
+    test("pasted text with newlines emits insert events, not return", () => {
+      // Bracketed paste: ESC[200~ <content> ESC[201~
+      const pasted = "\x1b[200~hello\nworld\x1b[201~";
+      const results = parseKeyInput(pasted);
+      // Should produce insert events for the text, no return key
+      const hasReturn = results.some((r) => r.key.return);
+      expect(hasReturn).toBe(false);
+      const text = results.map((r) => r.input).join("");
+      expect(text).toBe("hello\nworld");
+    });
+
+    test("pasted text preserves CR+LF as newlines", () => {
+      const pasted = "\x1b[200~line1\r\nline2\x1b[201~";
+      const results = parseKeyInput(pasted);
+      const hasReturn = results.some((r) => r.key.return);
+      expect(hasReturn).toBe(false);
+      const text = results.map((r) => r.input).join("");
+      expect(text).toBe("line1\nline2");
+    });
+
+    test("regular enter outside paste still triggers return", () => {
+      const results = parseKeyInput("\r");
+      expect(results[0]?.key.return).toBe(true);
+    });
+
+    test("unterminated paste consumes remaining input as text", () => {
+      const pasted = "\x1b[200~hello world";
+      const results = parseKeyInput(pasted);
+      const hasReturn = results.some((r) => r.key.return);
+      expect(hasReturn).toBe(false);
+      const text = results.map((r) => r.input).join("");
+      expect(text).toBe("hello world");
+    });
+
+    test("empty paste produces no events", () => {
+      const pasted = "\x1b[200~\x1b[201~";
+      const results = parseKeyInput(pasted);
+      expect(results).toHaveLength(0);
     });
   });
 

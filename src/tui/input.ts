@@ -221,6 +221,11 @@ function parseSingle(raw: string, offset: number): { event: { input: string; key
       key.backspace = true;
       return { event: { input: "", key }, consumed: 2 };
     }
+    const code1 = raw.charCodeAt(offset + 1);
+    if (code1 === Codepoint.CR || code1 === Codepoint.LF) {
+      key.return = true;
+      return { event: { input: "", key }, consumed: 2 };
+    }
     return { event: { input: ch, key }, consumed: 2 };
   }
 
@@ -234,8 +239,13 @@ function parseSingle(raw: string, offset: number): { event: { input: string; key
   // Control characters
   const key = emptyKey();
 
-  if (code0 === Codepoint.CR || code0 === Codepoint.LF) {
+  if (code0 === Codepoint.CR) {
     key.return = true;
+    return { event: { input: "", key }, consumed: 1 };
+  }
+  if (code0 === Codepoint.LF) {
+    key.return = true;
+    key.shift = true;
     return { event: { input: "", key }, consumed: 1 };
   }
   if (code0 === Codepoint.TAB) {
@@ -255,11 +265,37 @@ function parseSingle(raw: string, offset: number): { event: { input: string; key
   return { event: { input: ch0, key }, consumed: 1 };
 }
 
+const PASTE_START = "\x1b[200~";
+const PASTE_END = "\x1b[201~";
+
+function parseBracketedPaste(
+  raw: string,
+  offset: number,
+): { events: Array<{ input: string; key: KeyEvent }>; consumed: number } | null {
+  if (!raw.startsWith(PASTE_START, offset)) return null;
+  const contentStart = offset + PASTE_START.length;
+  const endIdx = raw.indexOf(PASTE_END, contentStart);
+  const contentEnd = endIdx >= 0 ? endIdx : raw.length;
+  const consumed = endIdx >= 0 ? contentEnd + PASTE_END.length - offset : raw.length - offset;
+  const content = raw.slice(contentStart, contentEnd).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const events: Array<{ input: string; key: KeyEvent }> = [];
+  for (const ch of content) {
+    events.push({ input: ch, key: emptyKey() });
+  }
+  return { events, consumed };
+}
+
 export function parseKeyInput(data: Buffer | string): Array<{ input: string; key: KeyEvent }> {
   const raw = typeof data === "string" ? data : data.toString("utf8");
   const results: Array<{ input: string; key: KeyEvent }> = [];
   let offset = 0;
   while (offset < raw.length) {
+    const paste = parseBracketedPaste(raw, offset);
+    if (paste) {
+      results.push(...paste.events);
+      offset += paste.consumed;
+      continue;
+    }
     const { event, consumed } = parseSingle(raw, offset);
     results.push(event);
     offset += consumed;

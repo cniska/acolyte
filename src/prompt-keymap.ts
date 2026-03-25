@@ -22,6 +22,7 @@ export function resolvePromptAction(input: string, key: KeyEvent, options: { has
 
   // Submit / newline
   if (key.return && key.shift) return { type: "insert", text: "\n" };
+  if (key.return && key.meta) return { type: "insert", text: "\n" };
   if (key.return) return { type: "submit" };
 
   // Home: Home key, Cmd+Left, Ctrl+A
