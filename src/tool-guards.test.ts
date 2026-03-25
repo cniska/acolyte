@@ -138,13 +138,33 @@ describe("file-churn guard", () => {
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/chat-commands.ts" }] }, session }),
     ).not.toThrow();
   });
-  test("blocks rereading an edited file before verify", () => {
+  test("allows first re-read of an edited file for follow-up edits", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
+  });
+
+  test("blocks re-read of an edited file when already re-read since last edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    session.cache = {
+      isCacheable: () => true,
+      get: () => undefined,
+      set: () => {},
+      populateSubEntries: () => {},
+      invalidateForWrite: () => {},
+      clear: () => {},
+      stats: () => ({ hits: 0, misses: 0, invalidations: 0, evictions: 0, size: 0 }),
+    };
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /already edited/,
+      /already re-read/,
     );
   });
 
@@ -177,7 +197,7 @@ describe("file-churn guard", () => {
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /already edited/,
+      /read\/edit loop/,
     );
   });
 

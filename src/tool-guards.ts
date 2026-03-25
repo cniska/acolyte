@@ -242,6 +242,24 @@ const duplicateCallGuard: ToolGuard = {
   },
 };
 
+function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionContext, path: string): boolean {
+  for (let i = callLog.length - 1; i >= 0; i--) {
+    const entry = callLog[i];
+    if (!entry) continue;
+    if (
+      entry.status !== "failed" &&
+      isWriteTool(session, entry.toolName) &&
+      normalizePath(String(entry.args.path ?? "")) === path
+    ) {
+      return false;
+    }
+    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
@@ -281,10 +299,12 @@ const fileChurnGuard: ToolGuard = {
       const { readCount, editCount } = countsForPath(target);
 
       if (toolName === "read-file" && editCount > 0 && session.mode !== "verify") {
-        report("blocked", target);
-        throw new Error(
-          `File "${target}" was already edited successfully in this turn. Use the diff you already have.`,
-        );
+        if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
+          report("blocked", target);
+          throw new Error(
+            `File "${target}" was already re-read after the last edit. Use the content you already have.`,
+          );
+        }
       }
 
       if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
