@@ -22,6 +22,10 @@ export function formatDuration(ms: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
+export function elapsedMs(startIso: string, endIso: string): number {
+  return new Date(endIso).getTime() - new Date(startIso).getTime();
+}
+
 export function parseSince(value: string, now?: number): Date | undefined {
   const match = value.match(/^(\d+)([mhd])$/);
   if (!match) return undefined;

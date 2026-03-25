@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
-import { formatDuration, formatRelativeTime } from "./datetime";
+import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
@@ -185,10 +185,6 @@ function extractToolArg(fields: Record<string, string>): string {
   if (fields.pattern) return `"${fields.pattern}"`;
   if (fields.paths) return parsePaths(fields.paths).join(", ");
   return "";
-}
-
-function elapsedMs(startTs: string, endTs: string): number {
-  return new Date(endTs).getTime() - new Date(startTs).getTime();
 }
 
 type CompactRow = { kind: "tool"; line: CompactToolLine } | { kind: "separator"; text: string };
