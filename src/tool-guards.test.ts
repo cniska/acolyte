@@ -138,21 +138,33 @@ describe("file-churn guard", () => {
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/chat-commands.ts" }] }, session }),
     ).not.toThrow();
   });
-  test("allows a second read with a different range before any edit", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
-    expect(() =>
-      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
-    ).not.toThrow();
-  });
-
-  test("blocks repeating the same reread after a successful edit before verify", () => {
+  test("allows first re-read of an edited file for follow-up edits", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["edit-file"]);
     recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "edit-file", { path: "src/foo.ts" });
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
+  });
+
+  test("blocks re-read of an edited file when already re-read since last edit", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    session.cache = {
+      isCacheable: () => true,
+      get: () => undefined,
+      set: () => {},
+      populateSubEntries: () => {},
+      invalidateForWrite: () => {},
+      clear: () => {},
+      stats: () => ({ hits: 0, misses: 0, invalidations: 0, evictions: 0, size: 0 }),
+    };
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" });
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /this reread repeats an earlier read/,
+      /already re-read/,
     );
   });
 
@@ -164,16 +176,6 @@ describe("file-churn guard", () => {
     session.mode = "verify";
     expect(() =>
       runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
-    ).not.toThrow();
-  });
-
-  test("allows reading a different range of the same file after an edit", () => {
-    const session = createSessionContext();
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts", start: 1, end: 40 }] });
-    recordCall(session, "edit-file", { path: "src/foo.ts" });
-    expect(() =>
-      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts", start: 41, end: 80 }] }, session }),
     ).not.toThrow();
   });
 
@@ -195,7 +197,7 @@ describe("file-churn guard", () => {
       recordCall(session, "edit-file", { path: "src/foo.ts" });
     }
     expect(() => runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
-      /this reread repeats an earlier read/,
+      /read\/edit loop/,
     );
   });
 
@@ -319,21 +321,9 @@ describe("redundant-search guard", () => {
     ).toThrow(/already read directly in full/i);
   });
 
-  test("allows same-file search after a ranged read", () => {
+  test("blocks same-file search after reading that file", () => {
     const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
-    expect(() =>
-      runGuards({
-        toolName: "search-files",
-        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
-        session,
-      }),
-    ).not.toThrow();
-  });
-
-  test("blocks same-file search after a whole-file sentinel ranged read", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: Number.MAX_SAFE_INTEGER }] });
+    recordCall(session, "read-file", { paths: [{ path: "src/a.ts" }] });
     expect(() =>
       runGuards({
         toolName: "search-files",
@@ -341,19 +331,6 @@ describe("redundant-search guard", () => {
         session,
       }),
     ).toThrow(/already read directly in full/i);
-  });
-
-  test("blocks same-file search after multiple rereads of the same file", () => {
-    const session = createSessionContext();
-    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 1, end: 40 }] });
-    recordCall(session, "read-file", { paths: [{ path: "src/a.ts", start: 41, end: 80 }] });
-    expect(() =>
-      runGuards({
-        toolName: "search-files",
-        args: { patterns: ["return undefined;"], paths: ["src/a.ts"] },
-        session,
-      }),
-    ).toThrow(/already read multiple times/i);
   });
 });
 
@@ -738,5 +715,59 @@ describe("shell-bypass guard", () => {
   test("allows git read commands via run-command", () => {
     const session = createSessionContext();
     expect(() => runGuards({ toolName: "run-command", args: { command: "git status" }, session })).not.toThrow();
+  });
+});
+
+describe("lifecycle-command guard", () => {
+  test("blocks verify command in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
+      /automatically/,
+    );
+  });
+
+  test("blocks lint command in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { lintCommand: { bin: "bunx", args: ["biome", "check"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bunx biome check" }, session })).toThrow(
+      /automatically/,
+    );
+  });
+
+  test("allows lifecycle commands in verify mode", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+
+  test("allows commands when no workspace profile", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+
+  test("allows unrelated commands in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "bun test src/foo.test.ts" }, session }),
+    ).not.toThrow();
+  });
+});
+
+describe("file-churn guard with failed edits", () => {
+  test("failed edit does not block subsequent re-read", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" }, undefined, "failed");
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
   });
 });

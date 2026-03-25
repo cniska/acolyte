@@ -1,6 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { deleteTextFile, editFile, findFiles, readSnippets, searchFiles, writeTextFile } from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readFileContents, searchFiles, writeTextFile } from "./file-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -37,20 +37,16 @@ function formatDeletePaths(paths: string[]): string {
   return remaining > 0 ? `${shown} (+${remaining})` : shown;
 }
 
-type ReadPathInput = { path: string; start?: number; end?: number };
-type NormalizedReadEntry = { path: string; start?: string; end?: string };
-
-function normalizeReadEntries(paths: ReadPathInput[]): NormalizedReadEntry[] {
-  const deduped = new Map<string, NormalizedReadEntry>();
+function deduplicatePaths(paths: Array<{ path: string }>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
   for (const entry of paths) {
     const path = entry.path.trim();
-    if (path.length === 0) continue;
-    const start = entry.start != null ? String(entry.start) : undefined;
-    const end = entry.end != null ? String(entry.end) : undefined;
-    const key = `${path}\u0000${start ?? ""}\u0000${end ?? ""}`;
-    if (!deduped.has(key)) deduped.set(key, { path, start, end });
+    if (path.length === 0 || seen.has(path)) continue;
+    seen.add(path);
+    result.push(path);
   }
-  return Array.from(deduped.values());
+  return result;
 }
 
 function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
@@ -188,62 +184,38 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     category: "read",
     permissions: ["read"],
     description:
-      "Read one or more text files. Always pass `paths` as an array of {path, start?, end?} objects, even for a single file. Omit start/end to read the entire file (preferred). Only use line ranges for files over 500 lines. Never re-read a file you already have. Batch multiple files only while discovering scope or comparing targets.",
-    instruction: [
-      "Use `read-file` to inspect code before editing.",
-      "Read whole files by default and use start/end only for very large files.",
-      "Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `edit-file` or `edit-code`.",
-      "For one named file with a repeated literal replacement, read it once, compute the edits from that text, and do not re-read the same file unless the edit fails or the direct read output was truncated and you need the remaining ranges.",
-    ].join(" "),
+      "Read one or more text files. Pass `paths` as an array of {path} objects. Never re-read a file you already have.",
+    instruction:
+      "Use `read-file` to inspect code before editing. Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `edit-file` or `edit-code`.",
     inputSchema: z.object({
-      paths: z
-        .array(
-          z
-            .object({
-              path: z.string().min(1),
-              start: z.number().int().min(1).optional(),
-              end: z.number().int().min(1).optional(),
-            })
-            .refine((entry) => entry.start === undefined || entry.end === undefined || entry.start <= entry.end, {
-              message: "start must be less than or equal to end",
-              path: ["end"],
-            }),
-        )
-        .min(1),
+      paths: z.array(z.object({ path: z.string().min(1) })).min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("read-file"),
-      paths: z.array(z.object({ path: z.string().min(1), start: z.string().optional(), end: z.string().optional() })),
+      paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "read-file", toolCallId, toolInput, async (callId) => {
-        const entries = normalizeReadEntries(toolInput.paths);
-        if (entries.length === 0) throw new Error("Read requires at least one non-empty path");
-        const unique = Array.from(new Set(entries.map((entry) => toDisplayPath(entry.path, input.workspace))));
-        if (unique.length > 0) {
-          const shown = unique.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
-          const remaining = unique.length - shown.length;
-          input.onOutput({
-            toolName: "read-file",
-            content: {
-              kind: "file-header",
-              labelKey: "tool.label.read",
-              count: unique.length,
-              targets: shown,
-              omitted: remaining > 0 ? remaining : undefined,
-            },
-            toolCallId: callId,
-          });
-        }
-        const baseBudget = deps.outputBudget.read;
-        const count = entries.length;
-        const budget = {
-          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
-          maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
-        };
-        const result = compactToolOutput(await readSnippets(input.workspace, entries), budget);
-        return { kind: "read-file", paths: entries, output: result };
+        const paths = deduplicatePaths(toolInput.paths);
+        if (paths.length === 0) throw new Error("Read requires at least one non-empty path");
+        const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
+        const shown = displayPaths.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
+        const remaining = displayPaths.length - shown.length;
+        input.onOutput({
+          toolName: "read-file",
+          content: {
+            kind: "file-header",
+            labelKey: "tool.label.read",
+            count: displayPaths.length,
+            targets: shown,
+            omitted: remaining > 0 ? remaining : undefined,
+          },
+          toolCallId: callId,
+        });
+        const raw = await readFileContents(input.workspace, paths, deps.outputBudget.read.maxLines);
+        const output = compactToolOutput(raw, deps.outputBudget.read);
+        return { kind: "read-file", paths, output };
       });
     },
   });

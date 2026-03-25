@@ -63,6 +63,36 @@ describe("usePromotion hook", () => {
     unmount();
   });
 
+  test("clearTranscript replaces header without duplicating", async () => {
+    const session = createSession({ id: "sess_clear1" });
+    const { result, unmount } = renderHook(() =>
+      usePromotion({
+        version: "1.0",
+        session,
+        currentSessionId: session.id,
+        rowsRef: { current: [] },
+        setRows: () => {},
+      }),
+    );
+
+    expect(result.current.promotedRows.filter((r) => r.id === "header_sess_clear1")).toHaveLength(1);
+
+    result.current.clearTranscript();
+    await wait();
+
+    const headers = result.current.promotedRows.filter((r) => r.kind === "header");
+    // Original header + new header after clear (unique IDs, no duplicates)
+    expect(headers).toHaveLength(2);
+    expect(headers[0]?.id).toBe("header_sess_clear1");
+    expect(headers[1]?.id).toMatch(/^header_sess_clear1_/);
+
+    // No duplicate key warnings — all IDs are unique
+    const ids = result.current.promotedRows.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    unmount();
+  });
+
   test("promote moves live rows to promoted", async () => {
     const session = createSession({ id: "sess_p1" });
     const liveRows: ChatRow[] = [{ id: "row_1", kind: "user", content: "hello" }];

@@ -88,20 +88,7 @@ Autonomous coding agents frequently enter degenerate loops:
 - Repeated searches
 - Verification cycles with no changes
 
-Acolyte uses behavioral guards that run before every tool call.
-
-| Guard id | Purpose |
-|---|---|
-| `circuit-breaker` | Stop execution after too many consecutive blocked calls |
-| `step-budget` | Enforce per-cycle and total step budgets |
-| `duplicate-call` | Block near-duplicate tool calls with no state change in between |
-| `ping-pong` | Block alternating tool call patterns indicating the model is stuck |
-| `stale-result` | Block calls that repeatedly return the same result |
-| `file-churn` | Detect read/edit loops against the same file |
-| `redundant-find` | Block narrower file discovery after broader calls |
-| `redundant-search` | Block redundant search-files calls |
-| `redundant-verify` | Prevent verify when no write tools ran |
-| `post-edit-redundancy` | Block redundant follow-up edits without fresh file evidence |
+Acolyte uses behavioral guards that run before every tool call. Guards cover step budgets, duplicate/redundant calls, file churn, ping-pong loops, and lifecycle command enforcement. See `src/tool-guards.ts` for the full set.
 
 Only OpenClaw and OpenHands ship comparable runtime safeguards.
 

@@ -10,6 +10,7 @@ import {
   WORKSPACE_SCOPE,
 } from "./tool-arg-paths";
 import type { ToolCache } from "./tool-contract";
+import { formatWorkspaceCommand, type WorkspaceCommand, type WorkspaceProfile } from "./workspace-profile";
 
 const DEFAULT_CYCLE_STEP_LIMIT = 80;
 const DEFAULT_TOTAL_STEP_LIMIT = 200;
@@ -51,6 +52,7 @@ export type SessionContext = {
   onGuard?: (event: GuardEvent) => void;
   cache?: ToolCache;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
+  workspaceProfile?: WorkspaceProfile;
 };
 
 const FILE_CHURN_MIN_COMBINED = 12;
@@ -139,13 +141,6 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
 
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
-type ReadRequestSignature = {
-  path: string;
-  signature: string;
-};
-
-const WHOLE_FILE_SENTINEL_END = 1_000_000;
-
 function redundantQueryKind(input: {
   toolName: string;
   session: SessionContext;
@@ -185,39 +180,6 @@ function normalizeGuardArgValue(value: unknown): unknown {
     return out;
   }
   return value;
-}
-
-function extractReadRequestSignatures(args: Record<string, unknown>): ReadRequestSignature[] {
-  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
-  const signatures: ReadRequestSignature[] = [];
-  for (const entry of rawPaths) {
-    if (!entry || typeof entry !== "object") continue;
-    const pathValue = (entry as { path?: unknown }).path;
-    if (typeof pathValue !== "string") continue;
-    const path = normalizePath(pathValue.trim().toLowerCase());
-    if (path.length === 0) continue;
-    const start = (entry as { start?: unknown }).start;
-    const end = (entry as { end?: unknown }).end;
-    const startValue = typeof start === "number" ? String(start) : "";
-    const endValue = typeof end === "number" ? String(end) : "";
-    signatures.push({ path, signature: `${path}\u0000${startValue}\u0000${endValue}` });
-  }
-  return signatures;
-}
-
-function isWholeFileReadOfPath(args: Record<string, unknown>, path: string): boolean {
-  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
-  if (rawPaths.length !== 1) return false;
-  const [entry] = rawPaths;
-  if (!entry || typeof entry !== "object") return false;
-  const pathValue = (entry as { path?: unknown }).path;
-  if (typeof pathValue !== "string") return false;
-  const normalizedPath = normalizePath(pathValue.trim().toLowerCase());
-  if (normalizedPath !== path) return false;
-  const start = (entry as { start?: unknown }).start;
-  const end = (entry as { end?: unknown }).end;
-  if (start === undefined && end === undefined) return true;
-  return start === 1 && typeof end === "number" && end >= WHOLE_FILE_SENTINEL_END;
 }
 
 function readCountForPath(session: SessionContext, path: string): number {
@@ -282,6 +244,24 @@ const duplicateCallGuard: ToolGuard = {
   },
 };
 
+function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionContext, path: string): boolean {
+  for (let i = callLog.length - 1; i >= 0; i--) {
+    const entry = callLog[i];
+    if (!entry) continue;
+    if (
+      entry.status !== "failed" &&
+      isWriteTool(session, entry.toolName) &&
+      normalizePath(String(entry.args.path ?? "")) === path
+    ) {
+      return false;
+    }
+    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
@@ -294,10 +274,7 @@ const fileChurnGuard: ToolGuard = {
           : []
         : extractReadPaths(args, { normalize: true });
     if (targetPaths.length === 0) return;
-    const requestedReadSignatures =
-      toolName === "read-file" ? extractReadRequestSignatures(args).map((entry) => entry.signature) : [];
     const pathCounts = new Map<string, { readCount: number; editCount: number }>();
-    const readSignaturesByPath = new Map<string, Set<string>>();
     const countsForPath = (path: string): { readCount: number; editCount: number } => {
       const existing = pathCounts.get(path);
       if (existing) return existing;
@@ -305,19 +282,11 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    const signaturesForPath = (path: string): Set<string> => {
-      const existing = readSignaturesByPath.get(path);
-      if (existing) return existing;
-      const created = new Set<string>();
-      readSignaturesByPath.set(path, created);
-      return created;
-    };
     const sinceLastVerify = callsSinceLastVerify(session);
     for (const entry of sinceLastVerify) {
       if (entry.toolName === "read-file") {
-        for (const readEntry of extractReadRequestSignatures(entry.args)) {
-          countsForPath(readEntry.path).readCount += 1;
-          signaturesForPath(readEntry.path).add(readEntry.signature);
+        for (const readPath of extractReadPaths(entry.args, { normalize: true })) {
+          countsForPath(readPath).readCount += 1;
         }
       } else if (
         entry.status !== "failed" &&
@@ -331,17 +300,13 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (
-        toolName === "read-file" &&
-        editCount > 0 &&
-        session.mode !== "verify" &&
-        requestedReadSignatures.some((signature) => signaturesForPath(target).has(signature))
-      ) {
-        report("blocked", target);
-        throw new Error(
-          `File "${target}" was already edited successfully in this turn, and this reread repeats an earlier read. ` +
-            "Use the diff you already have or read a different section if you need new context.",
-        );
+      if (toolName === "read-file" && editCount > 0 && session.mode !== "verify") {
+        if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
+          report("blocked", target);
+          throw new Error(
+            `File "${target}" was already re-read after the last edit. Use the content you already have.`,
+          );
+        }
       }
 
       if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
@@ -358,7 +323,7 @@ const fileChurnGuard: ToolGuard = {
       report("blocked", target);
       throw new Error(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-          "Use one consolidated edit (line-range block or edit-code), then run verify.",
+          "Use one consolidated edit or edit-code, then run verify.",
       );
     }
   },
@@ -446,7 +411,7 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     const calls = scopedCallLog(session);
     const prior = calls[calls.length - 1];
     if (!prior || prior.toolName !== "read-file") return;
-    if (isWholeFileReadOfPath(prior.args, targetPath)) {
+    if (extractReadPaths(prior.args, { normalize: true }).includes(targetPath)) {
       report("blocked", targetPath);
       throw new Error(
         `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
@@ -714,6 +679,32 @@ const shellBypassGuard: ToolGuard = {
   },
 };
 
+function commandMatchesProfile(command: string, profile: WorkspaceProfile): boolean {
+  const commands = [profile.lintCommand, profile.formatCommand, profile.verifyCommand]
+    .filter((cmd): cmd is WorkspaceCommand => cmd !== undefined)
+    .map((cmd) => formatWorkspaceCommand(cmd));
+  return commands.some((cmd) => command.includes(cmd));
+}
+
+const lifecycleCommandGuard: ToolGuard = {
+  id: "lifecycle-command",
+  description: "Block lint/format/verify commands in work mode — the lifecycle runs them automatically.",
+  tools: ["run-command"],
+  check({ args, session, report }) {
+    if (session.mode !== "work") return;
+    const profile = session.workspaceProfile;
+    if (!profile) return;
+    const command = typeof args.command === "string" ? args.command : "";
+    if (!command) return;
+    if (commandMatchesProfile(command, profile)) {
+      report("blocked", command);
+      throw new Error(
+        "Lint, format, and verify commands run automatically after your edits. Do not run them manually.",
+      );
+    }
+  },
+};
+
 const GUARDS: ToolGuard[] = [
   circuitBreakerGuard,
   stepBudgetGuard,
@@ -726,6 +717,7 @@ const GUARDS: ToolGuard[] = [
   redundantVerifyGuard,
   postEditRedundancyGuard,
   shellBypassGuard,
+  lifecycleCommandGuard,
 ];
 
 export function runGuards(input: Omit<GuardInput, "report">): void {

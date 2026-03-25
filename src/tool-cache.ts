@@ -36,6 +36,16 @@ function extractCachedPaths(toolName: string, args: Record<string, unknown>): st
   return [];
 }
 
+type ReadFileResult = { kind: "read-file"; paths: string[]; output: string };
+
+function asReadFileResult(result: unknown): ReadFileResult | null {
+  if (typeof result !== "object" || result === null) return null;
+  if (!("kind" in result) || result.kind !== "read-file") return null;
+  if (!("output" in result) || typeof result.output !== "string") return null;
+  if (!("paths" in result) || !Array.isArray(result.paths)) return null;
+  return { kind: "read-file", paths: result.paths, output: result.output };
+}
+
 const DEFAULT_MAX_ENTRIES = 256;
 
 export function createToolCache(
@@ -130,26 +140,18 @@ export function createToolCache(
       if (toolName !== "read-file") return;
       const paths = args.paths;
       if (!Array.isArray(paths) || paths.length < 2) return;
-      if (typeof result !== "string") return;
-      const sections = result.split("\n\nFile: ");
+      const parsed = asReadFileResult(result);
+      if (!parsed) return;
+      const sections = parsed.output.split("\n\nFile: ");
       if (sections.length < 2) return;
       const normalized = [sections[0], ...sections.slice(1).map((s) => `File: ${s}`)];
       for (let i = 0; i < normalized.length && i < paths.length; i++) {
         const entry = paths[i];
         if (!entry || typeof entry !== "object") continue;
-        const pathEntry = entry as Record<string, unknown>;
-        const p = pathEntry.path;
+        const p = "path" in entry ? entry.path : undefined;
         if (typeof p !== "string") continue;
-        const subArg: Record<string, unknown> = { path: p };
-        if (pathEntry.start !== undefined) subArg.start = pathEntry.start;
-        if (pathEntry.end !== undefined) subArg.end = pathEntry.end;
-        this.set(toolName, { paths: [subArg] }, { result: normalized[i] });
-        if (pathEntry.start !== undefined || pathEntry.end !== undefined) {
-          const rangelessKey = stableKey(toolName, { paths: [{ path: p }] });
-          if (!cache.has(rangelessKey)) {
-            this.set(toolName, { paths: [{ path: p }] }, { result: normalized[i] });
-          }
-        }
+        const subResult: ReadFileResult = { kind: "read-file", paths: [p], output: normalized[i] ?? "" };
+        this.set(toolName, { paths: [{ path: p }] }, { result: subResult });
       }
     },
 

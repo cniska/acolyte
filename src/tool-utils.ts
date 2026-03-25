@@ -40,9 +40,9 @@ export function isAllowedPath(pathInput: string, workspace: string): boolean {
   return isWithinWorkspace(pathInput, workspace) || isWithinTempRoot(pathInput, workspace);
 }
 
-export function ensurePathWithinAllowedRoots(pathInput: string, operation: string, workspace: string): string {
+export function ensurePathWithinAllowedRoots(pathInput: string, workspace: string): string {
   const absPath = resolveAgentPath(pathInput, workspace);
-  if (!isAllowedPath(absPath, workspace)) throw new Error(`${operation} is restricted to the workspace or /tmp`);
+  if (!isAllowedPath(absPath, workspace)) throw new Error("Path is restricted to the workspace or /tmp");
   return absPath;
 }
 
@@ -189,7 +189,7 @@ export async function resolveSearchScopeFiles(workspace: string, paths: string[]
   if (normalizedPaths.length === 0) return allFiles;
   const include = new Set<string>();
   for (const rawPath of normalizedPaths) {
-    const absPath = ensurePathWithinAllowedRoots(rawPath, "Search", workspace);
+    const absPath = ensurePathWithinAllowedRoots(rawPath, workspace);
     if (!isWithinWorkspacePath(absPath, workspace)) throw new Error("Search paths must be within the workspace");
     let entryStat: Awaited<ReturnType<typeof stat>>;
     try {
@@ -361,11 +361,4 @@ export function createUnifiedDeleteDiff(path: string, previous: string): string 
   ];
   const removed = oldLines.map((line) => `-${line}`);
   return [...header, ...removed].join("\n");
-}
-
-export function toInt(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1) return fallback;
-  return parsed;
 }

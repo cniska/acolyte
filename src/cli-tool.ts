@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { formatReadDetail, printToolResult } from "./cli-format";
+import { printToolResult } from "./cli-format";
 import { formatUsage } from "./cli-help";
-import { editFile, findFiles, readSnippet, searchFiles } from "./file-ops";
+import { editFile, findFiles, readFileContent, searchFiles } from "./file-ops";
 import { gitDiff, gitStatusShort } from "./git-ops";
 import { t } from "./i18n";
 import { runShellCommand } from "./shell-ops";
@@ -74,14 +74,14 @@ function createToolHandlers(printError: (msg: string) => void): Record<string, T
       printToolResult("web-fetch", result, url);
     },
     "read-file": async (rest) => {
-      const [pathInput, start, end] = rest;
+      const [pathInput] = rest;
       if (!pathInput) {
-        printError(formatUsage("acolyte tool read-file <path> [start] [end]"));
+        printError(formatUsage("acolyte tool read-file <path>"));
         process.exitCode = 1;
         return;
       }
-      const snippet = await readSnippet(process.cwd(), pathInput, start, end);
-      printToolResult("read-file", snippet, formatReadDetail(pathInput, start, end));
+      const content = await readFileContent(process.cwd(), pathInput);
+      printToolResult("read-file", content, pathInput);
     },
     "git-status": async () => {
       const result = await gitStatusShort(process.cwd());

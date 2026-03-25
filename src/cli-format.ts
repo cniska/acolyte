@@ -133,13 +133,6 @@ export function formatForTool(toolId: string, raw: string): string {
   return (TOOL_FORMATTERS[toolId] ?? formatReadOutput)(raw);
 }
 
-export function formatReadDetail(pathInput: string, start?: string, end?: string): string {
-  if (!start && !end) return pathInput;
-  const from = start ?? "1";
-  const to = end ?? "EOF";
-  return `${pathInput}:${from}-${to}`;
-}
-
 export function formatRunSummary(
   label: string,
   tokenUsage: { usage: { inputTokens: number; outputTokens: number; totalTokens: number }; modelCalls?: number }[],

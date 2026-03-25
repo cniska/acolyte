@@ -35,7 +35,6 @@ describe("createModeInstructions", () => {
     expect(out).toContain("repeated literal replacements in one known file");
     expect(out).toContain("collect every visible requested occurrence");
     expect(out).toContain("must cover all of those visible locations");
-    expect(out).toContain("If a direct `read-file` result is truncated");
     expect(out).toContain("if a named file has separated occurrences you have not yet pinned to exact snippets");
     expect(out).toContain("do not signal completion after the first hit or first partial batch");
     expect(out).toContain("make the requested change and stop");
@@ -99,7 +98,6 @@ describe("createInstructions", () => {
     expect(out).toContain('{ op: "replace", rule: { all: [{ kind: "call_expression" }');
     expect(out).toContain("broadening the rewrite to unrelated matches");
     expect(out).toContain("calling another write tool on that same file");
-    expect(out).toContain("do not re-read the same file unless the edit fails or the direct read output was truncated");
     expect(out).toContain("If that preview shows the requested bounded change, stop");
     expect(out).toContain("stop instead of re-reading, searching, reviewing, or editing that same file again");
     expect(out).toContain("use several small exact edits in one call rather than one oversized `find` block");

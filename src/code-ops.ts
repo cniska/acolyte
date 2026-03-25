@@ -571,7 +571,7 @@ export async function editCode(input: {
   path: string;
   edits: EditCodeEdit[];
 }): Promise<EditCodeResult> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "AST edit", input.workspace);
+  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
   const pathStats = await stat(absPath);
 
   if (pathStats.isDirectory()) {
@@ -688,7 +688,7 @@ export async function scanCode(input: {
   let scanned = 0;
 
   const scanPath = async (rawPath: string) => {
-    const absPath = ensurePathWithinAllowedRoots(rawPath, "Scan", input.workspace);
+    const absPath = ensurePathWithinAllowedRoots(rawPath, input.workspace);
     const info = await stat(absPath);
 
     if (info.isFile()) {

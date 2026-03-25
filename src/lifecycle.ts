@@ -235,6 +235,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
+  if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: initialMode, model });
   await deps.phaseGenerate(ctx, {

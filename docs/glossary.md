@@ -29,7 +29,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Ecosystem Detector | Pluggable workspace detection rule that identifies project type and resolves available tooling |
 | Entry | Runtime/pipeline item used during processing; not necessarily persisted |
 | Evaluator | Post-generation rule that accepts or requests regeneration |
-| Guard | Pre-tool execution rule that may block calls (step budget, file churn, duplicate call, redundant search/find/verify) |
+| Guard | Pre-tool execution rule that may block calls; see `src/tool-guards.ts` for the full set |
 | Host | The runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery behavior |
 | Lifecycle Feedback | Task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt |
 | Lifecycle Policy | Bounded execution controls for lifecycle behavior (timeouts, regeneration caps) |
