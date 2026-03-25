@@ -197,14 +197,18 @@ function formatDuration(startTs: string, endTs: string): string {
   return `${minutes}m ${seconds}s`;
 }
 
-function formatToolTable(toolLines: CompactToolLine[]): string[] {
-  if (toolLines.length === 0) return [];
-  const maxTool = Math.max(...toolLines.map((l) => l.tool.length));
-  const maxArg = Math.max(...toolLines.map((l) => l.arg.length));
-  return toolLines.map((l) => {
-    const tool = l.tool.padEnd(maxTool);
-    const arg = l.arg.padEnd(maxArg);
-    const suffix = l.status ? `  ${l.status}` : "";
+type CompactRow = { kind: "tool"; line: CompactToolLine } | { kind: "separator"; text: string };
+
+function renderCompactRows(rows: CompactRow[]): string[] {
+  const tools = rows.filter((r): r is { kind: "tool"; line: CompactToolLine } => r.kind === "tool");
+  if (tools.length === 0) return rows.filter((r) => r.kind === "separator").map((r) => r.text);
+  const maxTool = Math.max(...tools.map((r) => r.line.tool.length));
+  const maxArg = Math.max(...tools.map((r) => r.line.arg.length));
+  return rows.map((r) => {
+    if (r.kind === "separator") return r.text;
+    const tool = r.line.tool.padEnd(maxTool);
+    const arg = r.line.arg.padEnd(maxArg);
+    const suffix = r.line.status ? `  ${r.line.status}` : "";
     return `  ${tool}  ${arg}${suffix}`.trimEnd();
   });
 }
@@ -238,20 +242,13 @@ function renderCompactLines(lines: LogLine[]): string[] {
   output.push(`${taskId}  ${model}  ${mode}  ${duration}`);
   output.push("");
 
-  const toolLines: CompactToolLine[] = [];
+  const rows: CompactRow[] = [];
   let pending: CompactToolLine | null = null;
 
   const flushPending = () => {
     if (!pending) return;
-    toolLines.push(pending);
+    rows.push({ kind: "tool", line: pending });
     pending = null;
-  };
-
-  const flushSection = (separator: string) => {
-    flushPending();
-    output.push(...formatToolTable(toolLines));
-    toolLines.length = 0;
-    output.push(separator);
   };
 
   for (const line of lines) {
@@ -279,23 +276,28 @@ function renderCompactLines(lines: LogLine[]): string[] {
 
     if (event === "lifecycle.eval.decision") {
       if (line.fields.action === "regenerate") {
-        flushSection(`  ── regenerate (${line.fields.evaluator ?? ""}) ──`);
+        flushPending();
+        rows.push({ kind: "separator", text: `  ── regenerate (${line.fields.evaluator ?? ""}) ──` });
       }
       continue;
     }
 
     if (event === "lifecycle.eval.skipped") {
-      flushSection(`  ── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`);
+      flushPending();
+      rows.push({
+        kind: "separator",
+        text: `  ── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+      });
       continue;
     }
 
     if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
-      output.push(`  @signal ${line.fields.signal ?? "?"}`);
+      rows.push({ kind: "separator", text: `  @signal ${line.fields.signal ?? "?"}` });
     }
   }
 
   flushPending();
-  output.push(...formatToolTable(toolLines));
+  output.push(...renderCompactRows(rows));
 
   if (summaryLine) {
     output.push("  ──");
