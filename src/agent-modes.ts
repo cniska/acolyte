@@ -14,6 +14,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     tools: toolIdsForGrants(["read", "write", "execute", "network"]),
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
+      "Always read the full file without line ranges unless you know the file is very large.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
       "If the user names the files to change, limit reads and edits to those files plus directly referenced support files needed to complete the task.",
       "For explicit multi-file edit tasks, work one named file at a time: read the file you are about to change, edit it, then move to the next.",
