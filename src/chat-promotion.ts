@@ -86,10 +86,16 @@ export function usePromotion(input: UsePromotionInput): UsePromotionResult {
   const currentSessionIdRef = useRef(input.currentSessionId);
   currentSessionIdRef.current = input.currentSessionId;
 
+  const clearCountRef = useRef(0);
+
   const clearTranscript = useCallback(
     (sessionId?: string) => {
       clearScreen();
-      setPromotedRows((prev) => [...prev, createHeaderItem(input.version, sessionId ?? currentSessionIdRef.current)]);
+      clearCountRef.current += 1;
+      const id = sessionId ?? currentSessionIdRef.current;
+      const header = createHeaderItem(input.version, id);
+      header.id = `${header.id}_${clearCountRef.current}`;
+      setPromotedRows((prev) => [...prev, header]);
       input.setRows(() => []);
     },
     [input.version, input.setRows],
