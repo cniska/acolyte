@@ -351,7 +351,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const verbose = hasBoolFlag(args, "--verbose");
   const isJson = hasBoolFlag(args, "--json");
-  const out = isJson ? createJsonOutput() : createTextOutput();
+  const out = isJson ? createJsonOutput({ verbose }) : createTextOutput({ verbose });
 
   const positional = parsePositional(args, ["--lines", "-n"]);
   const subcommand = positional[0];
@@ -376,9 +376,9 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         continue;
       }
       if (i > 0) out.addSeparator();
-      if (verbose || isJson) {
+      if (out.verbose || isJson) {
         for (const line of lines) {
-          if (!verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
+          if (!out.verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
           out.addRow(traceRowData(line));
         }
       } else {

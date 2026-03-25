@@ -61,6 +61,14 @@ describe("createTextOutput", () => {
     const out = createTextOutput();
     expect(out.render()).toBe("");
   });
+
+  test("verbose defaults to false", () => {
+    expect(createTextOutput().verbose).toBe(false);
+  });
+
+  test("verbose can be set via options", () => {
+    expect(createTextOutput({ verbose: true }).verbose).toBe(true);
+  });
 });
 
 describe("createJsonOutput", () => {
