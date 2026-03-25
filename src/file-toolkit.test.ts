@@ -2,38 +2,33 @@ import { describe, expect, test } from "bun:test";
 import { toolsForAgent } from "./tool-registry";
 
 describe("read-file tool schema", () => {
-  test("rejects invalid range when start is greater than end", () => {
+  test("accepts single path", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile.inputSchema;
-    expect(() => schema.parse({ paths: [{ path: "src/agent.ts", start: 20, end: 10 }] })).toThrow(
-      "start must be less than or equal to end",
-    );
-  });
-
-  test("accepts bounded ranges and single-sided ranges", () => {
-    const { tools } = toolsForAgent();
-    const schema = tools.readFile.inputSchema;
-    expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] })).toEqual({
-      paths: [{ path: "src/agent.ts", start: 10, end: 20 }],
-    });
-    expect(schema.parse({ paths: [{ path: "src/agent.ts", start: 10 }] })).toEqual({
-      paths: [{ path: "src/agent.ts", start: 10 }],
-    });
-    expect(schema.parse({ paths: [{ path: "src/agent.ts", end: 20 }] })).toEqual({
-      paths: [{ path: "src/agent.ts", end: 20 }],
+    expect(schema.parse({ paths: [{ path: "src/agent.ts" }] })).toEqual({
+      paths: [{ path: "src/agent.ts" }],
     });
   });
 
   test("accepts multiple paths", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile.inputSchema;
-    expect(
-      schema.parse({
-        paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
-      }),
-    ).toEqual({
-      paths: [{ path: "src/agent.ts", start: 1, end: 10 }, { path: "src/cli.ts" }],
+    expect(schema.parse({ paths: [{ path: "src/agent.ts" }, { path: "src/cli.ts" }] })).toEqual({
+      paths: [{ path: "src/agent.ts" }, { path: "src/cli.ts" }],
     });
+  });
+
+  test("rejects empty paths array", () => {
+    const { tools } = toolsForAgent();
+    const schema = tools.readFile.inputSchema;
+    expect(() => schema.parse({ paths: [] })).toThrow();
+  });
+
+  test("strips unknown properties", () => {
+    const { tools } = toolsForAgent();
+    const schema = tools.readFile.inputSchema;
+    const result = schema.parse({ paths: [{ path: "src/agent.ts", start: 10, end: 20 }] });
+    expect(result).toEqual({ paths: [{ path: "src/agent.ts" }] });
   });
 });
 

@@ -14,7 +14,6 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     tools: toolIdsForGrants(["read", "write", "execute", "network"]),
     preamble: [
       "If the target path is explicit, skip `find-files`/`search-files` and read that file directly.",
-      "Always read the full file without line ranges unless you know the file is very large.",
       "For 'add/update in file X' tasks, make `read-file` on X your first tool call.",
       "If the user names the files to change, limit reads and edits to those files plus directly referenced support files needed to complete the task.",
       "For explicit multi-file edit tasks, work one named file at a time: read the file you are about to change, edit it, then move to the next.",
@@ -27,7 +26,6 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "For small fixes in an existing file, use exact `find`/`replace` edits and keep the change as small as the request allows.",
       "For repeated literal replacements in one known file, do not use `search-files`, `scan-code`, or extra rereads after the initial direct read. Use that read to collect every visible requested occurrence and make one consolidated `edit-file` call.",
       "If the requested literal appears in multiple visible locations in the direct read of a named file, your `edit-file` call must cover all of those visible locations, not just the first contiguous block.",
-      "If a direct `read-file` result is truncated or omits part of a named file, gather the missing ranges with bounded `read-file` calls before finishing a repeated replacement task on that file.",
       "For multi-file rename or repeated replacement tasks, if a named file has separated occurrences you have not yet pinned to exact snippets, run one scoped `search-files` on that file before editing instead of guessing a larger `find` block.",
       "For bounded 'each'/'every'/'all' replacements in one named file, do not signal completion after the first hit or first partial batch; finish only when the latest file text and edit preview show no remaining requested matches in that file.",
       "For explicit bounded fixes, make the requested change and stop.",

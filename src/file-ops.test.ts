@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { deleteTextFile, editFile, findFiles, readSnippet, searchFiles, writeTextFile } from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
@@ -15,8 +15,8 @@ afterAll(async () => {
 });
 
 describe("path guards", () => {
-  test("readSnippet blocks paths outside workspace", async () => {
-    await expect(readSnippet(WORKSPACE, "/etc/hosts")).rejects.toThrow("restricted to the workspace or /tmp");
+  test("readFileContent blocks paths outside workspace", async () => {
+    await expect(readFileContent(WORKSPACE, "/etc/hosts")).rejects.toThrow("restricted to the workspace or /tmp");
   });
 
   test("editFile blocks paths outside workspace", async () => {
@@ -37,11 +37,11 @@ describe("path guards", () => {
     );
   });
 
-  test("readSnippet allows /tmp files", async () => {
+  test("readFileContent allows /tmp files", async () => {
     const filePath = `/tmp/acolyte-test-read-${testUuid()}.txt`;
     tempFiles.push(filePath);
     await writeFile(filePath, "hello from tmp", "utf8");
-    const output = await readSnippet(WORKSPACE, filePath, "1", "1");
+    const output = await readFileContent(WORKSPACE, filePath);
     expect(output).toContain("hello from tmp");
   });
 
@@ -348,7 +348,7 @@ describe("deleteTextFile", () => {
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
     const result = await deleteTextFile({ workspace: WORKSPACE, path: filePath });
     expect(result).toContain("bytes=");
-    await expect(readSnippet(WORKSPACE, filePath)).rejects.toThrow();
+    await expect(readFileContent(WORKSPACE, filePath)).rejects.toThrow();
   });
 });
 

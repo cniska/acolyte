@@ -130,26 +130,23 @@ export function createToolCache(
       if (toolName !== "read-file") return;
       const paths = args.paths;
       if (!Array.isArray(paths) || paths.length < 2) return;
-      if (typeof result !== "string") return;
-      const sections = result.split("\n\nFile: ");
+      const output =
+        typeof result === "string"
+          ? result
+          : typeof (result as { output?: unknown })?.output === "string"
+            ? (result as { output: string }).output
+            : null;
+      if (!output) return;
+      const sections = output.split("\n\nFile: ");
       if (sections.length < 2) return;
       const normalized = [sections[0], ...sections.slice(1).map((s) => `File: ${s}`)];
       for (let i = 0; i < normalized.length && i < paths.length; i++) {
         const entry = paths[i];
         if (!entry || typeof entry !== "object") continue;
-        const pathEntry = entry as Record<string, unknown>;
-        const p = pathEntry.path;
+        const p = (entry as { path?: unknown }).path;
         if (typeof p !== "string") continue;
-        const subArg: Record<string, unknown> = { path: p };
-        if (pathEntry.start !== undefined) subArg.start = pathEntry.start;
-        if (pathEntry.end !== undefined) subArg.end = pathEntry.end;
-        this.set(toolName, { paths: [subArg] }, { result: normalized[i] });
-        if (pathEntry.start !== undefined || pathEntry.end !== undefined) {
-          const rangelessKey = stableKey(toolName, { paths: [{ path: p }] });
-          if (!cache.has(rangelessKey)) {
-            this.set(toolName, { paths: [{ path: p }] }, { result: normalized[i] });
-          }
-        }
+        const subResult = { kind: "read-file", paths: [p], output: normalized[i] };
+        this.set(toolName, { paths: [{ path: p }] }, { result: subResult });
       }
     },
 

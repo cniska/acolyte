@@ -362,10 +362,3 @@ export function createUnifiedDeleteDiff(path: string, previous: string): string 
   const removed = oldLines.map((line) => `-${line}`);
   return [...header, ...removed].join("\n");
 }
-
-export function toInt(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1) return fallback;
-  return parsed;
-}
