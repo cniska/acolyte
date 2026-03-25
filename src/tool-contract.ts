@@ -18,7 +18,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly labelKey?: string;
 };
 
-export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };
+export type ToolOutputBudgetEntry = { maxChars?: number; maxLines: number };
 
 export type ToolOutputBudget = {
   findFiles: ToolOutputBudgetEntry;

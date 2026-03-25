@@ -95,7 +95,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
         const baseBudget = deps.outputBudget.scanCode;
         const count = paths.length * toolInput.patterns.length;
         const budget = {
-          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
+          maxChars: baseBudget.maxChars ? Math.max(400, Math.floor(baseBudget.maxChars / count) * count) : undefined,
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
         };
         const rawScan = await scanCode({

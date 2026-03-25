@@ -190,18 +190,23 @@ export async function searchFiles(
   return "No matches.";
 }
 
-export async function readFileContent(workspace: string, pathInput: string): Promise<string> {
+export async function readFileContent(workspace: string, pathInput: string, maxLines?: number): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
+  if (maxLines && lines.length > maxLines) {
+    throw new Error(
+      `File "${pathInput}" is too large (${lines.length} lines). Use \`search-files\` or \`scan-code\` to find the relevant sections.`,
+    );
+  }
   const numbered = lines.map((line, idx) => `${idx + 1}: ${line}`);
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
-export async function readFileContents(workspace: string, paths: string[]): Promise<string> {
+export async function readFileContents(workspace: string, paths: string[], maxLines?: number): Promise<string> {
   const results: string[] = [];
   for (const path of paths) {
-    results.push(await readFileContent(workspace, path));
+    results.push(await readFileContent(workspace, path, maxLines));
   }
   return results.join("\n\n");
 }
