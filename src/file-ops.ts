@@ -15,7 +15,6 @@ import {
   ensurePathWithinAllowedRoots,
   isBinaryExtension,
   resolveSearchScopeFiles,
-  toInt,
 } from "./tool-utils";
 
 export type FindReplaceEdit = { find: string; replace: string };
@@ -191,26 +190,18 @@ export async function searchFiles(
   return "No matches.";
 }
 
-export async function readSnippet(workspace: string, pathInput: string, start?: string, end?: string): Promise<string> {
+export async function readFileContent(workspace: string, pathInput: string): Promise<string> {
   const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
-
-  const from = toInt(start, 1);
-  const to = Math.max(from, toInt(end, Math.min(from + 119, lines.length)));
-  const slice = lines.slice(from - 1, to);
-  const numbered = slice.map((line, idx) => `${from + idx}: ${line}`);
-
+  const numbered = lines.map((line, idx) => `${idx + 1}: ${line}`);
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
-export async function readSnippets(
-  workspace: string,
-  entries: Array<{ path: string; start?: string; end?: string }>,
-): Promise<string> {
+export async function readFileContents(workspace: string, paths: string[]): Promise<string> {
   const results: string[] = [];
-  for (const entry of entries) {
-    results.push(await readSnippet(workspace, entry.path, entry.start, entry.end));
+  for (const path of paths) {
+    results.push(await readFileContent(workspace, path));
   }
   return results.join("\n\n");
 }

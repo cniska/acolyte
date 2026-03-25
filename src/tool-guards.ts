@@ -139,13 +139,6 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
 
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
-type ReadRequestSignature = {
-  path: string;
-  signature: string;
-};
-
-const WHOLE_FILE_SENTINEL_END = 1_000_000;
-
 function redundantQueryKind(input: {
   toolName: string;
   session: SessionContext;
@@ -185,39 +178,6 @@ function normalizeGuardArgValue(value: unknown): unknown {
     return out;
   }
   return value;
-}
-
-function extractReadRequestSignatures(args: Record<string, unknown>): ReadRequestSignature[] {
-  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
-  const signatures: ReadRequestSignature[] = [];
-  for (const entry of rawPaths) {
-    if (!entry || typeof entry !== "object") continue;
-    const pathValue = (entry as { path?: unknown }).path;
-    if (typeof pathValue !== "string") continue;
-    const path = normalizePath(pathValue.trim().toLowerCase());
-    if (path.length === 0) continue;
-    const start = (entry as { start?: unknown }).start;
-    const end = (entry as { end?: unknown }).end;
-    const startValue = typeof start === "number" ? String(start) : "";
-    const endValue = typeof end === "number" ? String(end) : "";
-    signatures.push({ path, signature: `${path}\u0000${startValue}\u0000${endValue}` });
-  }
-  return signatures;
-}
-
-function isWholeFileReadOfPath(args: Record<string, unknown>, path: string): boolean {
-  const rawPaths = Array.isArray(args.paths) ? args.paths : [];
-  if (rawPaths.length !== 1) return false;
-  const [entry] = rawPaths;
-  if (!entry || typeof entry !== "object") return false;
-  const pathValue = (entry as { path?: unknown }).path;
-  if (typeof pathValue !== "string") return false;
-  const normalizedPath = normalizePath(pathValue.trim().toLowerCase());
-  if (normalizedPath !== path) return false;
-  const start = (entry as { start?: unknown }).start;
-  const end = (entry as { end?: unknown }).end;
-  if (start === undefined && end === undefined) return true;
-  return start === 1 && typeof end === "number" && end >= WHOLE_FILE_SENTINEL_END;
 }
 
 function readCountForPath(session: SessionContext, path: string): number {
@@ -294,10 +254,7 @@ const fileChurnGuard: ToolGuard = {
           : []
         : extractReadPaths(args, { normalize: true });
     if (targetPaths.length === 0) return;
-    const requestedReadSignatures =
-      toolName === "read-file" ? extractReadRequestSignatures(args).map((entry) => entry.signature) : [];
     const pathCounts = new Map<string, { readCount: number; editCount: number }>();
-    const readSignaturesByPath = new Map<string, Set<string>>();
     const countsForPath = (path: string): { readCount: number; editCount: number } => {
       const existing = pathCounts.get(path);
       if (existing) return existing;
@@ -305,19 +262,11 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    const signaturesForPath = (path: string): Set<string> => {
-      const existing = readSignaturesByPath.get(path);
-      if (existing) return existing;
-      const created = new Set<string>();
-      readSignaturesByPath.set(path, created);
-      return created;
-    };
     const sinceLastVerify = callsSinceLastVerify(session);
     for (const entry of sinceLastVerify) {
       if (entry.toolName === "read-file") {
-        for (const readEntry of extractReadRequestSignatures(entry.args)) {
-          countsForPath(readEntry.path).readCount += 1;
-          signaturesForPath(readEntry.path).add(readEntry.signature);
+        for (const readPath of extractReadPaths(entry.args, { normalize: true })) {
+          countsForPath(readPath).readCount += 1;
         }
       } else if (
         entry.status !== "failed" &&
@@ -331,16 +280,10 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (
-        toolName === "read-file" &&
-        editCount > 0 &&
-        session.mode !== "verify" &&
-        requestedReadSignatures.some((signature) => signaturesForPath(target).has(signature))
-      ) {
+      if (toolName === "read-file" && editCount > 0 && session.mode !== "verify") {
         report("blocked", target);
         throw new Error(
-          `File "${target}" was already edited successfully in this turn, and this reread repeats an earlier read. ` +
-            "Use the diff you already have or read a different section if you need new context.",
+          `File "${target}" was already edited successfully in this turn. Use the diff you already have.`,
         );
       }
 
@@ -358,7 +301,7 @@ const fileChurnGuard: ToolGuard = {
       report("blocked", target);
       throw new Error(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-          "Use one consolidated edit (line-range block or edit-code), then run verify.",
+          "Use one consolidated edit or edit-code, then run verify.",
       );
     }
   },
@@ -446,7 +389,7 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
     const calls = scopedCallLog(session);
     const prior = calls[calls.length - 1];
     if (!prior || prior.toolName !== "read-file") return;
-    if (isWholeFileReadOfPath(prior.args, targetPath)) {
+    if (extractReadPaths(prior.args, { normalize: true }).includes(targetPath)) {
       report("blocked", targetPath);
       throw new Error(
         `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
