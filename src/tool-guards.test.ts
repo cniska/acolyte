@@ -717,3 +717,57 @@ describe("shell-bypass guard", () => {
     expect(() => runGuards({ toolName: "run-command", args: { command: "git status" }, session })).not.toThrow();
   });
 });
+
+describe("lifecycle-command guard", () => {
+  test("blocks verify command in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).toThrow(
+      /automatically/,
+    );
+  });
+
+  test("blocks lint command in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { lintCommand: { bin: "bunx", args: ["biome", "check"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bunx biome check" }, session })).toThrow(
+      /automatically/,
+    );
+  });
+
+  test("allows lifecycle commands in verify mode", () => {
+    const session = createSessionContext();
+    session.mode = "verify";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+
+  test("allows commands when no workspace profile", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun run verify" }, session })).not.toThrow();
+  });
+
+  test("allows unrelated commands in work mode", () => {
+    const session = createSessionContext();
+    session.mode = "work";
+    session.workspaceProfile = { verifyCommand: { bin: "bun", args: ["run", "verify"] } };
+    expect(() =>
+      runGuards({ toolName: "run-command", args: { command: "bun test src/foo.test.ts" }, session }),
+    ).not.toThrow();
+  });
+});
+
+describe("file-churn guard with failed edits", () => {
+  test("failed edit does not block subsequent re-read", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["edit-file"]);
+    recordCall(session, "read-file", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "edit-file", { path: "src/foo.ts" }, undefined, "failed");
+    expect(() =>
+      runGuards({ toolName: "read-file", args: { paths: [{ path: "src/foo.ts" }] }, session }),
+    ).not.toThrow();
+  });
+});

@@ -42,7 +42,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Trust type signatures; do not add impossible null/undefined guards unless the declared types allow them.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
-      "Do not run lint, format, build, or verify commands — the lifecycle runs them automatically after your edits. If you added or changed a test file, run only that specific test file (e.g. `bun test src/foo.test.ts`), not the full test suite.",
+      "Do not run lint, format, build, or verify commands — the lifecycle runs them automatically after your edits. If you added or changed a test file, run only that specific test file, not the full test suite.",
       "Do not signal done until the requested behavior is actually implemented. Updating help text, comments, or tests alone is not completing the task — the functional change must be in place.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
       "For multi-step tasks (3+ distinct steps), use `create-checklist` at the start to define a progress checklist. Use `update-checklist` to mark items as you complete each step.",

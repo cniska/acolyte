@@ -190,13 +190,13 @@ export async function searchFiles(
   return "No matches.";
 }
 
-export async function readFileContent(workspace: string, pathInput: string, maxLines?: number): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(pathInput, "Read", workspace);
+export async function readFileContent(workspace: string, path: string, maxLines?: number): Promise<string> {
+  const absPath = ensurePathWithinAllowedRoots(path, workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
   if (maxLines !== undefined && lines.length > maxLines) {
     throw new Error(
-      `File "${pathInput}" is too large (${lines.length} lines). Use \`search-files\` or \`scan-code\` to find the relevant sections.`,
+      `File "${path}" is too large (${lines.length} lines). Use \`search-files\` or \`scan-code\` to find the relevant sections.`,
     );
   }
   const numbered = lines.map((line, idx) => `${idx + 1}: ${line}`);
@@ -217,7 +217,7 @@ export async function editFile(input: {
   edits: FileEdit[];
   dryRun?: boolean;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Edit", input.workspace);
+  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
 
@@ -368,7 +368,7 @@ export async function writeTextFile(input: {
   content: string;
   overwrite?: boolean;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Write", input.workspace);
+  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
   const overwrite = input.overwrite ?? true;
   let previousContent: string | null = null;
 
@@ -394,7 +394,7 @@ export async function writeTextFile(input: {
 }
 
 export async function deleteTextFile(input: { workspace: string; path: string; dryRun?: boolean }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, "Delete", input.workspace);
+  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
   const previousContent = await readFile(absPath, "utf8");
   const dryRun = input.dryRun ?? false;
   if (!dryRun) await unlink(absPath);
