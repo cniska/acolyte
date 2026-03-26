@@ -82,7 +82,7 @@ function renderToolPart(
               {prefix}
               {marker}
             </Text>
-            <Text color="white">{padded}</Text>
+            <Text color={palette.text}>{padded}</Text>
           </Text>
         </Text>
       );
@@ -91,7 +91,7 @@ function renderToolPart(
       <Text key={`tool-${index}`}>
         {"\n  "}
         <Text dimColor>{prefix} </Text>
-        <Text color="white">{content}</Text>
+        <Text color={palette.text}>{content}</Text>
       </Text>
     );
   }
@@ -207,7 +207,7 @@ type ChatTranscriptRowProps = {
 export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatTranscriptRowProps): React.ReactNode {
   const marker = MARKERS[row.kind];
   const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.brand : undefined);
-  const textColor = row.style?.text ?? (row.kind === "assistant" && !row.style?.dim ? palette.brand : undefined);
+  const textColor = row.style?.text;
   const dim = row.style?.dim ?? false;
   return (
     <Box>

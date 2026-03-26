@@ -5,6 +5,7 @@ export const palette = {
   mascotEyes: "#FFD84D",
 
   // Text
+  text: "white",
   textCode: "#D4B3FF",
   textMuted: "#6B7280",
 

@@ -1,4 +1,5 @@
 import type React from "react";
+import { palette } from "./palette";
 import { Box, Text } from "./tui";
 
 export type HeaderLine = {
@@ -23,11 +24,11 @@ export function ChatHeader(props: ChatHeaderProps): React.ReactNode {
   const renderMetaLine = (text: string | undefined): React.ReactNode => {
     if (!text) return <Text dimColor />;
     const [key, ...rest] = text.split(" ");
-    if (rest.length === 0) return <Text color="white">{text}</Text>;
+    if (rest.length === 0) return <Text color={palette.text}>{text}</Text>;
     return (
       <>
         <Text dimColor>{key} </Text>
-        <Text color="white">{rest.join(" ")}</Text>
+        <Text color={palette.text}>{rest.join(" ")}</Text>
       </>
     );
   };
