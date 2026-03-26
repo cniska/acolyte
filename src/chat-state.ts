@@ -64,8 +64,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>([]);
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
 
   const {
     value,
@@ -119,7 +117,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     version: props.version,
     session,
     currentSessionId: currentSession.id,
-    rowsRef,
     setRows,
   });
 

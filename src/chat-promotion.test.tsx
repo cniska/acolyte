@@ -50,7 +50,6 @@ describe("usePromotion hook", () => {
         version: "1.0",
         session,
         currentSessionId: session.id,
-        rowsRef: { current: [] },
         setRows: () => {},
       }),
     );
@@ -70,7 +69,6 @@ describe("usePromotion hook", () => {
         version: "1.0",
         session,
         currentSessionId: session.id,
-        rowsRef: { current: [] },
         setRows: () => {},
       }),
     );
@@ -96,7 +94,6 @@ describe("usePromotion hook", () => {
   test("promote moves live rows to promoted", async () => {
     const session = createSession({ id: "sess_p1" });
     const liveRows: ChatRow[] = [{ id: "row_1", kind: "user", content: "hello" }];
-    const rowsRef = { current: liveRows };
     let rowsState = liveRows;
 
     const { result, unmount } = renderHook(() =>
@@ -104,7 +101,6 @@ describe("usePromotion hook", () => {
         version: "1.0",
         session,
         currentSessionId: session.id,
-        rowsRef,
         setRows: (updater) => {
           rowsState = updater(rowsState);
         },
@@ -117,6 +113,7 @@ describe("usePromotion hook", () => {
 
     expect(result.current.promotedRows.length).toBeGreaterThan(before);
     expect(result.current.promotedRows.some((r) => r.id === "row_1")).toBe(true);
+    expect(rowsState).toEqual([]);
 
     unmount();
   });

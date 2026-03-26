@@ -53,7 +53,6 @@ type UsePromotionInput = {
   version: string;
   session: Session;
   currentSessionId: string;
-  rowsRef: { current: ChatRow[] };
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 };
 
@@ -71,17 +70,14 @@ export function usePromotion(input: UsePromotionInput): UsePromotionResult {
   ]);
 
   const promote = useCallback(() => {
-    const current = input.rowsRef.current;
-    log.debug("chat.promote.trigger", { rows: current.length });
-    if (current.length === 0) return;
-    const promotedIds = new Set(current.map((row) => row.id));
-    setPromotedRows((prev) => appendPromotedItems(prev, current));
-    input.setRows((live) => {
-      const surviving = live.filter((row) => !promotedIds.has(row.id));
-      log.debug("chat.promote.done", { promoted: promotedIds.size, surviving: surviving.length });
-      return surviving;
+    input.setRows((current) => {
+      log.debug("chat.promote.trigger", { rows: current.length });
+      if (current.length === 0) return current;
+      setPromotedRows((prev) => appendPromotedItems(prev, current));
+      log.debug("chat.promote.done", { promoted: current.length, surviving: 0 });
+      return [];
     });
-  }, [input.rowsRef, input.setRows]);
+  }, [input.setRows]);
 
   const currentSessionIdRef = useRef(input.currentSessionId);
   currentSessionIdRef.current = input.currentSessionId;
