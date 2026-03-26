@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0 (2026-03-26)
+
+- chore: simplify changelog format to raw commit messages (`56d9e091`)
+- fix(tui): align checklist indentation with transcript rows (`587b3692`)
+- feat(tui): add bracketed paste and multi-line input support (`b3f3105d`)
+- fix(tui): preserve streaming row order on finalization (`df859302`)
+- fix(modes): encourage full file reads over paged ranges (`da34e5d7`)
+- chore(deps): upgrade typescript 6, biome, ai-sdk, and ast-grep (`257ab3e6`)
+- refactor(tools): remove partial read support from read-file (#60) (`a4c469b2`)
+- fix(tui): repair display corruption on xterm tab switch (`7faa37a9`)
+- fix(chat): read current rows from updater to fix stale promote (`48a363b2`)
+- refactor(tui): use palette.text instead of hardcoded white (`aebfec75`)
+- feat(config): add skipVerify to disable auto-verification (`acff3de8`)
+- feat(trace): compact default output (#61) (`df8479db`)
+- feat(tools): add run-tests tool with test runner detection (#66) (`37e9a141`)
+- refactor(cli): clean up trace task compact output (`dc2dfdb1`)
+- fix(tui): use vertical ellipsis for diff truncation markers (`06b495e4`)
+- docs: update cli screenshot (`0d41613d`)
+- docs: replace assistant with agent, clean up prose (`719790d2`)
+- docs: update cli screenshot (`71d4794e`)
+- docs: add further reading links and fix trailing newlines (`6ce8a714`)
+- docs: update features and roadmap for v0.10.0 (`c74f7829`)
+
+
 ## 0.9.0 (2026-03-24)
 
 - docs: add section descriptions to cli commands (`91a4f618`)
