@@ -1,6 +1,6 @@
 # Documentation
 
-Developer documentation for Acolyte — a terminal-first AI coding agent: reliable by default, observable, and open source.
+Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable by default, observable, and open source.
 
 ## Overview
 

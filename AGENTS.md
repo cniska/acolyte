@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Acolyte is a terminal-first AI coding assistant: local-first, observable, extensible. Read `docs/architecture.md` before working on unfamiliar subsystems.
+Acolyte is a terminal-first AI coding agent: local-first, observable, extensible. Read `docs/architecture.md` before working on unfamiliar subsystems.
 
 Extension points:
 - New post-generation behavior → `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS`

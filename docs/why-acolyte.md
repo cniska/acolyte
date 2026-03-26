@@ -1,6 +1,6 @@
 # Why Acolyte?
 
-> **TL;DR** — Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it prevents drift, stops redundant work, verifies its own output, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control — behavioral guards, a 5-phase lifecycle pipeline, auto-verification, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
+> **TL;DR** Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it prevents drift, stops redundant work, verifies its own output, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control. Behavioral guards, a 5-phase lifecycle pipeline, auto-verification, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
 
 ## Why open source?
 
@@ -14,7 +14,7 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 - **transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
 - **no vendor lock-in**: your sessions, memory, and configuration are local files you own
 
-Acolyte is for developers who want reliable, observable agent behavior — not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
+Acolyte is for developers who want reliable, observable agent behavior, not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
 
 ## What makes Acolyte different
 
@@ -29,23 +29,23 @@ Acolyte is for developers who want reliable, observable agent behavior — not a
 
 ### Daemon architecture
 
-The server runs headless. CLI, editor plugins, and third-party clients all connect over the same typed RPC protocol. The TUI is just another client — it has no special access. Multiple clients can share a session, and integrations speak the protocol instead of forking the project.
+The server runs headless. CLI, editor plugins, and third-party clients all connect over the same typed RPC protocol. The TUI is just another client with no special access. Multiple clients can share a session, and integrations speak the protocol instead of forking the project.
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation or mode transitions — no manual intervention needed.
+Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation or mode transitions without manual intervention.
 
 ### Tool guards
 
-Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find blocking, and delete-rewrite prevention. Guards are pluggable — add custom guards without touching the pipeline.
+Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find blocking, and delete-rewrite prevention. Guards are pluggable. Add custom guards without touching the pipeline.
 
 ### Memory
 
-Instead of compressing context under pressure, Acolyte proactively extracts structured facts — observations, reflections, and corrections — and commits them to persistent storage across three tiers: session, project, and user. The pipeline is explicit and each stage is strategy-injectable.
+Instead of compressing context under pressure, Acolyte proactively extracts structured facts (observations, reflections, and corrections) and commits them to persistent storage across three tiers: session, project, and user. The pipeline is explicit and each stage is strategy-injectable.
 
 ### Context budgeting
 
-The system prompt is measured and reserved before history allocation begins. Remaining budget is filled by priority: pinned context → file attachments → history → tool payloads. Older tool outputs are progressively capped. When output is truncated, the model sees an explicit notice — no silent data loss.
+The system prompt is measured and reserved before history allocation begins. Remaining budget is filled by priority: pinned context → file attachments → history → tool payloads. Older tool outputs are progressively capped. When output is truncated, the model sees an explicit notice, not silent data loss.
 
 ### Developer experience
 

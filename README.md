@@ -6,9 +6,9 @@
 [![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/typescript-strict-3178c6?style=flat)](https://www.typescriptlang.org)
 
-A terminal-first AI coding assistant — open-source, observable, and built for developer control.
+A terminal-first AI coding agent. Open-source, observable, and built for developer control.
 
-A lifecycle-driven agent with strong defaults, behavioral guards, and transparent execution — every decision visible, every behavior overridable.
+A lifecycle-driven agent with strong defaults, behavioral guards, and transparent execution. Every decision visible, every behavior overridable.
 
 ![Acolyte CLI](docs/assets/cli.png)
 
