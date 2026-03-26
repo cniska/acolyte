@@ -32,6 +32,8 @@ export type LifecyclePolicy = {
   verifyCommand?: WorkspaceCommand;
   /** Timeout for the verify command in ms. */
   verifyTimeoutMs: number;
+  /** When true, skip auto-verification after writes. */
+  skipVerify?: boolean;
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {

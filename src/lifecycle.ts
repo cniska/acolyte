@@ -175,7 +175,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
       ...policy,
       ...(!policy.formatCommand && profile.formatCommand ? { formatCommand: profile.formatCommand } : {}),
       ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
-      ...(!policy.verifyCommand && profile.verifyCommand ? { verifyCommand: profile.verifyCommand } : {}),
+      ...(!policy.skipVerify && !policy.verifyCommand && profile.verifyCommand
+        ? { verifyCommand: profile.verifyCommand }
+        : {}),
     };
   }
 

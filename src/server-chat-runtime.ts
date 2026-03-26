@@ -227,6 +227,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       memoryTokens: soulPrompt.memoryTokens,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,
+      lifecyclePolicy: appConfig.skipVerify ? { skipVerify: true } : undefined,
       shouldYield: handlers.shouldYield,
       onEvent: (event) => {
         if (handlers.isCancelled?.()) return;
