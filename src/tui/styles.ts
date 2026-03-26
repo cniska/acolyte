@@ -39,6 +39,8 @@ export const ansi = {
   syncEnd: `${ESC}?2026l`,
   bracketedPasteEnable: `${ESC}?2004h`,
   bracketedPasteDisable: `${ESC}?2004l`,
+  focusReportEnable: `${ESC}?1004h`,
+  focusReportDisable: `${ESC}?1004l`,
 } as const;
 
 export const kitty = {

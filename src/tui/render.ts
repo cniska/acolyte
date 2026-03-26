@@ -82,7 +82,13 @@ export function render(node: ReactNode): RenderInstance {
     },
   };
 
+  const FOCUS_IN = "\x1b[I";
+
   const onStdinData = (data: Buffer | string) => {
+    const raw = typeof data === "string" ? data : data.toString("utf8");
+    if (raw.includes(FOCUS_IN)) {
+      forceRedraw();
+    }
     dispatcher.dispatch(data);
   };
 
@@ -96,6 +102,7 @@ export function render(node: ReactNode): RenderInstance {
     stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
     stdout.write(ansi.bracketedPasteEnable);
+    stdout.write(ansi.focusReportEnable);
   }
 
   function countRows(output: string): number {
@@ -115,10 +122,39 @@ export function render(node: ReactNode): RenderInstance {
 
   function syncWrite(data: string) {
     if (stdout.isTTY) {
-      stdout.write(`${ansi.syncStart}${data}${ansi.syncEnd}`);
+      // Trailing \r defuses auto-margin pending-wrap state left when a
+      // line fills exactly `columns` characters.  Without it, the next
+      // cursorUp may overshoot (pending-wrap counts as the next row in
+      // some terminals), causing eraseSequence to eat into static content.
+      stdout.write(`${ansi.syncStart}${data}\r${ansi.syncEnd}`);
     } else {
       stdout.write(data);
     }
+  }
+
+  /** Full-screen erase and re-render.  Called on terminal focus-in to
+   *  repair display corruption caused by xterm resolving auto-margin
+   *  pending-wrap state during tab switches.  Re-flushes static items
+   *  (header, completed messages) because the erase may have cleared
+   *  them from the visible area. */
+  function forceRedraw() {
+    if (exited || !stdout.isTTY) return;
+    const { staticItems, active } = serializeSplit(root);
+    const cols = stdout.columns ?? DEFAULT_COLUMNS;
+    const rows = stdout.rows ?? 24;
+    const maxLiveRows = rows - 1;
+
+    // Move to top of visible area and erase everything.
+    let buf = `${ansi.cursorUp(rows)}\r${ansi.eraseDown}`;
+    for (const item of staticItems) buf += `${item}\n`;
+    buf += active;
+
+    syncWrite(buf);
+    flushedStaticCount = staticItems.length;
+    frozenLineCount = 0;
+    frozenOverflowText = "";
+    lastActive = active;
+    lastActiveLineCount = Math.min(physicalRowCount(active, cols), maxLiveRows);
   }
 
   function commitRender() {
@@ -233,6 +269,7 @@ export function render(node: ReactNode): RenderInstance {
       stdin.pause();
     }
     if (stdout.isTTY) {
+      stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
       stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
@@ -249,6 +286,7 @@ export function render(node: ReactNode): RenderInstance {
     if (exited) return;
     // Synchronous cleanup on exit — restore terminal state.
     if (stdout.isTTY) {
+      stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
       stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
