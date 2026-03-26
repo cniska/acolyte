@@ -528,11 +528,11 @@ describe("cli visual regression", () => {
       const out = await run(["trace", "task", "task_abc"]);
       expect(out).toBe(
         dedent(`
-          task_abc  gpt-5-mini  work  3.0s
+          task_abc  gpt-5-mini  3.0s
 
-            read-file  src/cli.ts
-            ──
-            model_calls=1  tools=1 (read=1)  status=ok
+          read-file  src/cli.ts
+
+          model_calls=1  tools=1 (read=1)  status=ok
         `),
       );
     });

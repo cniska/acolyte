@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
-import { createJsonOutput, createTextOutput } from "./cli-output";
+import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { LogLine } from "./log-parser";
@@ -185,18 +185,10 @@ function extractToolArg(fields: Record<string, string>): string {
 
 type CompactRow = { kind: "tool"; line: CompactToolLine } | { kind: "separator"; text: string };
 
-function renderCompactRows(rows: CompactRow[]): string[] {
-  const tools = rows.filter((r): r is { kind: "tool"; line: CompactToolLine } => r.kind === "tool");
-  if (tools.length === 0) return rows.filter((r) => r.kind === "separator").map((r) => r.text);
-  const maxTool = Math.max(...tools.map((r) => r.line.tool.length));
-  const maxArg = Math.max(...tools.map((r) => r.line.arg.length));
-  return rows.map((r) => {
-    if (r.kind === "separator") return r.text;
-    const tool = r.line.tool.padEnd(maxTool);
-    const arg = r.line.arg.padEnd(maxArg);
-    const suffix = r.line.status ? `  ${r.line.status}` : "";
-    return `  ${tool}  ${arg}${suffix}`.trimEnd();
-  });
+/** Right-align the status column in a batch of tool rows by padding with spaces. */
+function rightAlignStatus(batch: CompactToolLine[]): Record<string, string>[] {
+  const maxStatus = Math.max(0, ...batch.map((r) => r.status.length));
+  return batch.map((r) => ({ tool: r.tool, arg: r.arg, status: r.status.padStart(maxStatus) }));
 }
 
 function compactSummary(fields: Record<string, string>): string {
@@ -212,21 +204,18 @@ function compactSummary(fields: Record<string, string>): string {
   if (fields.guard_blocked_count && fields.guard_blocked_count !== "0")
     parts.push(`guard_blocked=${fields.guard_blocked_count}`);
   parts.push(`status=${fields.has_error === "true" ? "error" : "ok"}`);
-  return `  ${parts.join("  ")}`;
+  return parts.join("  ");
 }
 
-function renderCompactLines(lines: LogLine[]): string[] {
-  const output: string[] = [];
+function renderCompact(lines: LogLine[], out: CliOutput): void {
   const firstTs = lines[0]?.timestamp;
   const lastTs = lines[lines.length - 1]?.timestamp;
   const startLine = lines.find((l) => l.fields.event === "lifecycle.start");
   const summaryLine = lines.find((l) => l.fields.event === "lifecycle.summary");
   const taskId = lines[0]?.taskId ?? "unknown";
   const model = startLine?.fields.model ?? "unknown";
-  const mode = startLine?.fields.mode ?? "unknown";
   const duration = firstTs && lastTs ? formatDuration(elapsedMs(firstTs, lastTs)) : "?";
-  output.push(`${taskId}  ${model}  ${mode}  ${duration}`);
-  output.push("");
+  out.addHeader(`${taskId}  ${model}  ${duration}`);
 
   const rows: CompactRow[] = [];
   let pending: CompactToolLine | null = null;
@@ -260,10 +249,18 @@ function renderCompactLines(lines: LogLine[]): string[] {
       continue;
     }
 
+    if (event === "lifecycle.agent.reconfigured") {
+      flushPending();
+      const mode = line.fields.to_mode ?? "?";
+      const model = line.fields.to_model;
+      rows.push({ kind: "separator", text: model ? `── ${mode}  model=${model} ──` : `── ${mode} ──` });
+      continue;
+    }
+
     if (event === "lifecycle.eval.decision") {
       if (line.fields.action === "regenerate") {
         flushPending();
-        rows.push({ kind: "separator", text: `  ── regenerate (${line.fields.evaluator ?? ""}) ──` });
+        rows.push({ kind: "separator", text: `── regenerate (${line.fields.evaluator ?? ""}) ──` });
       }
       continue;
     }
@@ -272,25 +269,44 @@ function renderCompactLines(lines: LogLine[]): string[] {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `  ── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }
 
     if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
-      rows.push({ kind: "separator", text: `  @signal ${line.fields.signal ?? "?"}` });
+      rows.push({ kind: "separator", text: `@signal ${line.fields.signal ?? "?"}` });
     }
   }
 
   flushPending();
-  output.push(...renderCompactRows(rows));
+
+  // Flush tool rows as tables, interleaving separators.
+  let batch: CompactToolLine[] = [];
+  const flushBatch = () => {
+    if (batch.length === 0) return;
+    out.addTable(rightAlignStatus(batch));
+    batch = [];
+  };
+  let hasBody = false;
+  for (const row of rows) {
+    if (!hasBody) {
+      out.addSeparator();
+      hasBody = true;
+    }
+    if (row.kind === "tool") {
+      batch.push(row.line);
+    } else {
+      flushBatch();
+      out.addHeader(row.text);
+    }
+  }
+  flushBatch();
 
   if (summaryLine) {
-    output.push("  ──");
-    output.push(compactSummary(summaryLine.fields));
+    out.addSeparator();
+    out.addHeader(compactSummary(summaryLine.fields));
   }
-
-  return output;
 }
 
 function parseTaskIdsArg(value: string | undefined): string[] {
@@ -352,7 +368,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
           out.addRow(verboseRowData(line));
         }
       } else {
-        for (const rendered of renderCompactLines(lines)) out.addHeader(rendered);
+        renderCompact(lines, out);
       }
     }
   } else if (!subcommand || subcommand === "list") {
