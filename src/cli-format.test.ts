@@ -1,12 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  clampLines,
-  displayPath,
-  formatAssistantReplyOutput,
-  formatForTool,
-  formatRunOutput,
-  parseRunExitCode,
-} from "./cli-format";
+import { clampLines, displayPath, formatAssistantReplyOutput, formatForTool, formatRunOutput } from "./cli-format";
 import { truncateText } from "./compact-text";
 import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
@@ -26,12 +19,6 @@ describe("cli-format", () => {
     const raw = ["exit_code=0", "duration_ms=12", "stdout:", "ok", "stderr:", "$ bun run typecheck"].join("\n");
     const out = formatRunOutput(raw);
     expect(out).toBe("ok");
-  });
-
-  test("parseRunExitCode reads exit code from run output", () => {
-    expect(parseRunExitCode("exit_code=0\nduration_ms=20")).toBe(0);
-    expect(parseRunExitCode("exit_code=17\nstdout:\nnope")).toBe(17);
-    expect(parseRunExitCode("stdout:\nmissing")).toBeNull();
   });
 
   test("formatForTool formats search-files output", () => {

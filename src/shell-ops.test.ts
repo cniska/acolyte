@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { runShellCommand } from "./shell-ops";
+import { parseExitCode, runShellCommand } from "./shell-ops";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
@@ -45,5 +45,22 @@ describe("runShellCommand", () => {
 
   test("blocks path traversal", async () => {
     await expect(runShellCommand(WORKSPACE, "cat ../../etc/passwd")).rejects.toThrow("path traversal");
+  });
+});
+
+describe("parseExitCode", () => {
+  test("parses valid exit codes", () => {
+    expect(parseExitCode("exit_code=0\nduration_ms=20")).toBe(0);
+    expect(parseExitCode("exit_code=17\nstdout:\nnope")).toBe(17);
+    expect(parseExitCode("exit_code=127")).toBe(127);
+  });
+
+  test("returns undefined for missing exit code", () => {
+    expect(parseExitCode("stdout:\nmissing")).toBeUndefined();
+    expect(parseExitCode("")).toBeUndefined();
+  });
+
+  test("returns undefined for malformed exit code", () => {
+    expect(parseExitCode("exit_code=abc")).toBeUndefined();
   });
 });

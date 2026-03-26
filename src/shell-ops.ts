@@ -1,6 +1,9 @@
+import { z } from "zod";
 import { isAllowedPath } from "./tool-utils";
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
+
+const exitCodeSchema = z.coerce.number().int();
 
 type ShellChunk = {
   stream: "stdout" | "stderr";
@@ -111,8 +114,8 @@ export async function runShellCommand(
 }
 
 export function parseExitCode(result: string): number | undefined {
-  const match = result.match(/^exit_code=(\d+)$/m);
-  if (!match?.[1]) return undefined;
-  const value = Number.parseInt(match[1], 10);
-  return Number.isNaN(value) ? undefined : value;
+  const first = result.split("\n")[0]?.trim() ?? "";
+  if (!first.startsWith("exit_code=")) return undefined;
+  const parsed = exitCodeSchema.safeParse(first.slice("exit_code=".length));
+  return parsed.success ? parsed.data : undefined;
 }
