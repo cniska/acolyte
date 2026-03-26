@@ -33,11 +33,11 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation, mode transitions, or verify cycles — no manual intervention needed.
+Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation or mode transitions — no manual intervention needed.
 
 ### Tool guards
 
-Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find/verify blocking, and delete-rewrite prevention. Guards are pluggable — add custom guards without touching the pipeline.
+Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find blocking, and delete-rewrite prevention. Guards are pluggable — add custom guards without touching the pipeline.
 
 ### Memory
 

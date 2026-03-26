@@ -17,7 +17,7 @@ resolve → prepare → generate → evaluate → finalize
 ## Regeneration model
 
 - evaluators can request regeneration
-- regeneration uses task-scoped `lifecycleState` to carry internal feedback and verify outcome between attempts
+- regeneration uses task-scoped `lifecycleState` to carry internal feedback and review outcome between attempts
 - generation input is rebuilt from immutable base input plus pending mode-scoped lifecycle feedback
 - selected guard blocks may also be translated into lifecycle feedback before the next attempt
 - a valid lifecycle signal can end the loop cleanly before recovery logic reopens the turn
@@ -29,7 +29,7 @@ resolve → prepare → generate → evaluate → finalize
 - `lifecycleState` is internal, task-scoped runtime state owned by the lifecycle
 - it currently carries:
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
-  - `verifyOutcome`: structured verifier result used across `keepResult` restore boundaries
+  - `verifyOutcome`: structured review result used across `keepResult` restore boundaries
   - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
 - lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction
 - lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context

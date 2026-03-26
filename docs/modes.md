@@ -5,12 +5,12 @@ Acolyte uses two explicit operating modes to shape behavior: `work` and `verify`
 ## Purpose
 
 - **work**: execute task changes directly
-- **verify**: validate behavior and report findings
+- **verify**: review code changes and report findings
 
 ## Behavior
 
 - **work** stays inside the requested scope, favors surgical edits, and preserves unrelated file content.
-- **verify** chooses the lightest sufficient validation for the actual change instead of assuming every task needs full-project checks.
+- **verify** reviews code changes using the lightest sufficient validation for the actual change — typically a `scan-code` call on edited files. It does not run test or build commands.
 
 ## Selection
 
