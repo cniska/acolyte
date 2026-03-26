@@ -26,6 +26,7 @@ describe("toolsets", () => {
       "gitStatus",
       "readFile",
       "runCommand",
+      "runTests",
       "scanCode",
       "searchFiles",
       "updateChecklist",

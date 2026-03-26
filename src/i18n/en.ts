@@ -225,6 +225,7 @@ export const EN_MESSAGES = {
   "tool.label.read": "Read",
   "tool.label.scan": "Scan",
   "tool.label.run": "Run",
+  "tool.label.run_tests": "Test Run",
   "tool.label.search": "Search",
   "tool.label.web_fetch": "Web Fetch",
   "tool.label.web_search": "Web Search",
