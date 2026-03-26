@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { createJsonOutput, createTextOutput } from "./cli-output";
-import { formatRelativeTime } from "./datetime";
+import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
@@ -113,7 +113,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",
-    "total_tool_calls",
+    { key: "tool_calls", label: "total_tool_calls" },
     { key: "read_calls", label: "read" },
     { key: "search_calls", label: "search" },
     { key: "write_calls", label: "write" },
@@ -127,10 +127,9 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
 
 const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
-/** Events hidden from `acolyte trace task` unless --verbose is passed. */
 const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
 
-function traceRowData(line: LogLine): Record<string, string | undefined> {
+function verboseRowData(line: LogLine): Record<string, string | undefined> {
   const event = line.fields.event;
   const data: Record<string, string | undefined> = {
     timestamp: line.timestamp,
@@ -156,6 +155,146 @@ function traceRowData(line: LogLine): Record<string, string | undefined> {
   }
 
   return data;
+}
+
+type CompactToolLine = {
+  tool: string;
+  arg: string;
+  status: string;
+};
+
+function parsePaths(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => (typeof entry === "string" ? entry : entry?.path))
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function extractToolArg(fields: Record<string, string>): string {
+  if (fields.path) return fields.path;
+  if (fields.command) return truncate(fields.command, 40);
+  if (fields.pattern) return `"${fields.pattern}"`;
+  if (fields.paths) return parsePaths(fields.paths).join(", ");
+  return "";
+}
+
+type CompactRow = { kind: "tool"; line: CompactToolLine } | { kind: "separator"; text: string };
+
+function renderCompactRows(rows: CompactRow[]): string[] {
+  const tools = rows.filter((r): r is { kind: "tool"; line: CompactToolLine } => r.kind === "tool");
+  if (tools.length === 0) return rows.filter((r) => r.kind === "separator").map((r) => r.text);
+  const maxTool = Math.max(...tools.map((r) => r.line.tool.length));
+  const maxArg = Math.max(...tools.map((r) => r.line.arg.length));
+  return rows.map((r) => {
+    if (r.kind === "separator") return r.text;
+    const tool = r.line.tool.padEnd(maxTool);
+    const arg = r.line.arg.padEnd(maxArg);
+    const suffix = r.line.status ? `  ${r.line.status}` : "";
+    return `  ${tool}  ${arg}${suffix}`.trimEnd();
+  });
+}
+
+function compactSummary(fields: Record<string, string>): string {
+  const totalTools = fields.tool_calls ?? "0";
+  const parts = [`model_calls=${fields.model_calls ?? "0"}`, `tools=${totalTools}`];
+  const breakdown: string[] = [];
+  if (fields.read_calls && fields.read_calls !== "0") breakdown.push(`read=${fields.read_calls}`);
+  if (fields.search_calls && fields.search_calls !== "0") breakdown.push(`search=${fields.search_calls}`);
+  if (fields.write_calls && fields.write_calls !== "0") breakdown.push(`write=${fields.write_calls}`);
+  if (breakdown.length > 0) parts[parts.length - 1] += ` (${breakdown.join(" ")})`;
+  if (fields.regeneration_count && fields.regeneration_count !== "0")
+    parts.push(`regenerations=${fields.regeneration_count}`);
+  if (fields.guard_blocked_count && fields.guard_blocked_count !== "0")
+    parts.push(`guard_blocked=${fields.guard_blocked_count}`);
+  parts.push(`status=${fields.has_error === "true" ? "error" : "ok"}`);
+  return `  ${parts.join("  ")}`;
+}
+
+function renderCompactLines(lines: LogLine[]): string[] {
+  const output: string[] = [];
+  const firstTs = lines[0]?.timestamp;
+  const lastTs = lines[lines.length - 1]?.timestamp;
+  const startLine = lines.find((l) => l.fields.event === "lifecycle.start");
+  const summaryLine = lines.find((l) => l.fields.event === "lifecycle.summary");
+  const taskId = lines[0]?.taskId ?? "unknown";
+  const model = startLine?.fields.model ?? "unknown";
+  const mode = startLine?.fields.mode ?? "unknown";
+  const duration = firstTs && lastTs ? formatDuration(elapsedMs(firstTs, lastTs)) : "?";
+  output.push(`${taskId}  ${model}  ${mode}  ${duration}`);
+  output.push("");
+
+  const rows: CompactRow[] = [];
+  let pending: CompactToolLine | null = null;
+
+  const flushPending = () => {
+    if (!pending) return;
+    rows.push({ kind: "tool", line: pending });
+    pending = null;
+  };
+
+  for (const line of lines) {
+    const event = line.fields.event;
+    if (!event) continue;
+
+    if (event === "lifecycle.tool.call") {
+      flushPending();
+      pending = { tool: line.fields.tool ?? "?", arg: extractToolArg(line.fields), status: "" };
+      continue;
+    }
+
+    if (event === "lifecycle.guard" && pending) {
+      pending.status = `BLOCKED  ${line.fields.guard ?? ""}`;
+      flushPending();
+      continue;
+    }
+
+    if (event === "lifecycle.tool.result" && pending) {
+      const ms = line.fields.duration_ms;
+      pending.status = ms && Number(ms) >= 120_000 ? `TIMEOUT ${Math.round(Number(ms) / 1000)}s` : ms ? `${ms}ms` : "";
+      flushPending();
+      continue;
+    }
+
+    if (event === "lifecycle.eval.decision") {
+      if (line.fields.action === "regenerate") {
+        flushPending();
+        rows.push({ kind: "separator", text: `  ── regenerate (${line.fields.evaluator ?? ""}) ──` });
+      }
+      continue;
+    }
+
+    if (event === "lifecycle.eval.skipped") {
+      flushPending();
+      rows.push({
+        kind: "separator",
+        text: `  ── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+      });
+      continue;
+    }
+
+    if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
+      rows.push({ kind: "separator", text: `  @signal ${line.fields.signal ?? "?"}` });
+    }
+  }
+
+  flushPending();
+  output.push(...renderCompactRows(rows));
+
+  if (summaryLine) {
+    output.push("  ──");
+    output.push(compactSummary(summaryLine.fields));
+  }
+
+  return output;
 }
 
 function parseTaskIdsArg(value: string | undefined): string[] {
@@ -185,7 +324,8 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
 
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const verbose = hasBoolFlag(args, "--verbose");
-  const out = hasBoolFlag(args, "--json") ? createJsonOutput() : createTextOutput();
+  const isJson = hasBoolFlag(args, "--json");
+  const out = isJson ? createJsonOutput({ verbose }) : createTextOutput({ verbose });
 
   const positional = parsePositional(args, ["--lines", "-n"]);
   const subcommand = positional[0];
@@ -210,9 +350,13 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         continue;
       }
       if (i > 0) out.addSeparator();
-      for (const line of lines) {
-        if (!verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
-        out.addRow(traceRowData(line));
+      if (out.verbose || isJson) {
+        for (const line of lines) {
+          if (!out.verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
+          out.addRow(verboseRowData(line));
+        }
+      } else {
+        for (const rendered of renderCompactLines(lines)) out.addHeader(rendered);
       }
     }
   } else if (!subcommand || subcommand === "list") {

@@ -1,6 +1,11 @@
 import { alignCols } from "./chat-format";
 
+export type CliOutputOptions = {
+  verbose?: boolean;
+};
+
 export type CliOutput = {
+  readonly verbose: boolean;
   addRow: (data: Record<string, string | undefined>) => void;
   addTable: (rows: Record<string, string | undefined>[], labels?: Record<string, string>) => void;
   addHeader: (text: string) => void;
@@ -15,10 +20,11 @@ function renderKvPairs(data: Record<string, string | undefined>): string {
     .join(" ");
 }
 
-export function createTextOutput(): CliOutput {
+export function createTextOutput(options?: CliOutputOptions): CliOutput {
   const sections: string[] = [];
 
   return {
+    verbose: options?.verbose ?? false,
     addRow: (data) => sections.push(renderKvPairs(data)),
     addTable: (rows, labels) => {
       if (rows.length === 0) return;
@@ -41,10 +47,11 @@ function stripUndefined(data: Record<string, string | undefined>): Record<string
   return out;
 }
 
-export function createJsonOutput(): CliOutput {
+export function createJsonOutput(options?: CliOutputOptions): CliOutput {
   const lines: string[] = [];
 
   return {
+    verbose: options?.verbose ?? false,
     addRow: (data) => lines.push(JSON.stringify(stripUndefined(data))),
     addTable: (rows) => {
       for (const row of rows) lines.push(JSON.stringify(stripUndefined(row)));

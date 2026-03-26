@@ -87,8 +87,8 @@ describe("traceMode", () => {
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
-    expect(output()).toContain("task_id=task_1");
-    expect(output()).not.toContain("task_id=task_12");
+    expect(output()).toContain("task_1");
+    expect(output()).not.toContain("task_12");
   });
 
   test("default lists recent tasks", async () => {
@@ -179,41 +179,41 @@ describe("traceMode", () => {
     expect(output()).toContain("No trace data available");
   });
 
-  test("task subcommand hides tool.output and tool.cache events by default", async () => {
+  test("default compact output shows tool name and duration, not raw events", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
       taskId: "task_1",
-      event: "lifecycle.tool.call",
-      fields: { tool: "edit-code", path: "." },
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
     });
-    for (let i = 0; i < 5; i++) {
-      store.write({
-        timestamp: `2026-01-01T00:00:00.${String(i).padStart(3, "0")}Z`,
-        taskId: "task_1",
-        event: "lifecycle.tool.output",
-        fields: { tool: "edit-code" },
-      });
-    }
     store.write({
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
-      event: "lifecycle.tool.cache",
-      fields: { tool: "edit-code", hit: "false" },
+      event: "lifecycle.tool.call",
+      fields: { tool: "edit-code", path: "src/foo.ts" },
     });
     store.write({
-      timestamp: "2026-01-01T00:00:01.000Z",
+      timestamp: "2026-01-01T00:00:00.545Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
       fields: { tool: "edit-code", duration_ms: "445", is_error: "false" },
     });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: { model_calls: "1", tool_calls: "1", write_calls: "1", has_error: "false" },
+    });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
     const text = output();
-    expect(text).toContain("lifecycle.tool.call");
-    expect(text).toContain("lifecycle.tool.result");
-    expect(text).not.toContain("lifecycle.tool.output");
-    expect(text).not.toContain("lifecycle.tool.cache");
+    expect(text).toContain("edit-code");
+    expect(text).toContain("src/foo.ts");
+    expect(text).toContain("445ms");
+    expect(text).toContain("status=ok");
+    expect(text).not.toContain("lifecycle.tool.call");
+    expect(text).not.toContain("lifecycle.tool.result");
   });
 
   test("task list shows blocked status for blocked tasks", async () => {
@@ -235,6 +235,213 @@ describe("traceMode", () => {
     const text = output();
     expect(text).toContain("blocked");
     expect(text).not.toContain("ok");
+  });
+
+  test("compact output shows BLOCKED with guard id", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "edit-file", path: "src/foo.ts" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.200Z",
+      taskId: "task_1",
+      event: "lifecycle.guard",
+      fields: { guard: "post-edit-redundancy", tool: "edit-file", action: "blocked", detail: "src/foo.ts" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.200Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.result",
+      fields: { tool: "edit-file", duration_ms: "100", is_error: "false" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).toContain("BLOCKED");
+    expect(text).toContain("post-edit-redundancy");
+  });
+
+  test("compact output shows regeneration separators and hides eval done", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "read-file", path: "src/a.ts" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.200Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.result",
+      fields: { tool: "read-file", duration_ms: "100", is_error: "false" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.eval.decision",
+      fields: { evaluator: "guard-recovery", action: "done" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.001Z",
+      taskId: "task_1",
+      event: "lifecycle.eval.decision",
+      fields: { evaluator: "verify-cycle", action: "regenerate", regeneration_count: "1" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:02.000Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: {
+        model_calls: "2",
+        tool_calls: "1",
+        read_calls: "1",
+        regeneration_count: "1",
+        has_error: "false",
+      },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).toContain("regenerate (verify-cycle)");
+    expect(text).not.toContain("action=done");
+    expect(text).toContain("regenerations=1");
+  });
+
+  test("compact output renders summary footer", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:05.000Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: {
+        model_calls: "3",
+        tool_calls: "5",
+        read_calls: "2",
+        search_calls: "1",
+        write_calls: "2",
+        regeneration_count: "0",
+        guard_blocked_count: "1",
+        has_error: "true",
+      },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).toContain("model_calls=3");
+    expect(text).toContain("tools=5");
+    expect(text).toContain("read=2");
+    expect(text).toContain("write=2");
+    expect(text).toContain("guard_blocked=1");
+    expect(text).toContain("status=error");
+  });
+
+  test("compact output hides setup events", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.workspace.profile",
+      fields: { ecosystem: "typescript", package_manager: "bun" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.001Z",
+      taskId: "task_1",
+      event: "lifecycle.classify",
+      fields: { mode: "work", model: "m", provider: "openai" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.002Z",
+      taskId: "task_1",
+      event: "lifecycle.prepare",
+      fields: { mode: "work", model: "m", history_messages: "2" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.003Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.004Z",
+      taskId: "task_1",
+      event: "lifecycle.generate.start",
+      fields: { model: "m", mode: "work" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.generate.done",
+      fields: { model: "m", tool_calls: "0", text_chars: "5" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.001Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: { model_calls: "1", tool_calls: "0", has_error: "false" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).not.toContain("workspace.profile");
+    expect(text).not.toContain("classify");
+    expect(text).not.toContain("prepare");
+    expect(text).not.toContain("generate.start");
+    expect(text).not.toContain("generate.done");
+    expect(text).toContain("task_1");
+    expect(text).toContain("status=ok");
+  });
+
+  test("--json outputs raw events not compact format", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "read-file", path: "src/a.ts" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:01.000Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: { model_calls: "1", tool_calls: "1", has_error: "false" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1", "--json"], deps);
+    const text = output();
+    const lines = text.split("\n");
+    for (const l of lines) {
+      expect(() => JSON.parse(l)).not.toThrow();
+    }
+    expect(text).toContain("lifecycle.start");
+    expect(text).toContain("lifecycle.tool.call");
+    expect(text).not.toContain("──");
   });
 
   test("task subcommand --verbose shows tool.output and tool.cache events", async () => {
