@@ -64,7 +64,7 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
       execute: (input: unknown, callId: string) => Promise<unknown>;
     }
   >;
-  const tool = Object.values(toolMap).find((t) => t.id === toolId);
+  const tool = Object.values(toolMap).find((entry) => entry.id === toolId);
   if (!tool) {
     printError(t("cli.tool.usage"));
     process.exitCode = 1;
