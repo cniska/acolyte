@@ -117,7 +117,7 @@ function renderToolPart(
     }
     const display =
       part.kind === "truncated"
-        ? `${"…".padStart(lineNumWidth)}  ${text.slice(2)}`
+        ? `${"⋮".padStart(lineNumWidth)}  ${text.slice(2)}`
         : `${" ".repeat(lineNumWidth + 2)}${text}`;
     return (
       <Text key={`tool-${index}`}>
