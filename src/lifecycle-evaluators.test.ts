@@ -6,29 +6,15 @@ import {
   toolRecoveryEvaluator,
   verifyEvaluator,
 } from "./lifecycle-evaluators";
-import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
-const VERIFY_CMD = { bin: "bun", args: ["run", "verify"] };
-const policyWithVerify = { ...defaultLifecyclePolicy, verifyCommand: VERIFY_CMD };
-
 describe("verifyEvaluator", () => {
-  test("returns done when no verify command is configured", () => {
-    const ctx = createRunContext({
-      initialMode: "work",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
-    });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("enters verify mode when write tools used with verify command", () => {
+  test("enters verify mode when write tools used", () => {
     const ctx = createRunContext({
       initialMode: "work",
       workspace: "/tmp/test",
-      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -45,7 +31,6 @@ describe("verifyEvaluator", () => {
       request: { model: "gpt-5-mini", message: "fix", history: [], verifyScope: "none" },
       initialMode: "work",
       workspace: "/tmp/test",
-      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -60,7 +45,6 @@ describe("verifyEvaluator", () => {
       initialMode: "work",
       session,
       workspace: "/tmp/test",
-      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["edit-file"]),
     });
@@ -71,7 +55,6 @@ describe("verifyEvaluator", () => {
     const ctx = createRunContext({
       initialMode: "work",
       workspace: "/tmp/test",
-      policy: policyWithVerify,
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["read-file", "search-files"]),
     });
@@ -83,7 +66,7 @@ describe("verifyEvaluator", () => {
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns done in verify mode without verify command", () => {
+  test("returns done in verify mode", () => {
     const ctx = createRunContext({
       mode: "verify",
       initialMode: "work",

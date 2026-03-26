@@ -73,7 +73,7 @@ resolve → prepare → generate → evaluate → finalize
 - **evaluate**: inspect output, decide accept or regenerate
 - **finalize**: persist results and emit the response
 
-Evaluators (for example `lintEvaluator` and `verifyEvaluator`) run after generation and may return a `regenerate` action. Evaluators can also change the agent mode (work ↔ verify), causing the lifecycle to re-run the generate phase under the new mode.
+Evaluators run after generation and can return a `regenerate` action. The verify-cycle evaluator transitions to verify mode for code review whenever the model used write tools, causing the lifecycle to re-run the generate phase under the new mode. The lint evaluator regenerates when lint errors are found in edited files.
 
 Most other agents use flat tool loops or implicit state machines.
 
@@ -99,8 +99,10 @@ Others rely primarily on prompt instructions or user confirmation.
 After generation, evaluators inspect the result and may trigger:
 
 - Regeneration with a different tool strategy
-- Mode transitions (work → verify)
-- Verify cycles that automatically run project checks
+- Mode transitions (work → verify) for code review
+- Scoped test execution via the `run-tests` tool during work mode
+
+The model uses an ecosystem-aware `run-tests` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.
 
 Goose has a `RetryManager` that checks shell command success.
 
@@ -110,7 +112,7 @@ Most other agents rely on prompt instructions such as "please run the tests".
 
 ## Workspace detection
 
-Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, verify command, and line width. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
+Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, test command, and line width. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
 
 | Project | Detection approach |
 |---|---|

@@ -12,7 +12,7 @@ describe("workspace self-detection", () => {
     expect(profile.packageManager).toBe("bun");
     expect(profile.lintCommand).toEqual({ bin: "bunx", args: ["biome", "check"] });
     expect(profile.formatCommand).toEqual({ bin: "bunx", args: ["biome", "check", "--write"] });
-    expect(profile.verifyCommand).toEqual({ bin: "bun", args: ["run", "verify"] });
+    expect(profile.testCommand).toEqual({ bin: "bun", args: ["test", "$FILES"] });
     expect(profile.lineWidth).toBe(120);
   });
 });

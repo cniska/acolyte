@@ -170,14 +170,11 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
-  if (profile.formatCommand || profile.lintCommand || profile.verifyCommand) {
+  if (profile.formatCommand || profile.lintCommand) {
     policy = {
       ...policy,
       ...(!policy.formatCommand && profile.formatCommand ? { formatCommand: profile.formatCommand } : {}),
       ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
-      ...(!policy.skipVerify && !policy.verifyCommand && profile.verifyCommand
-        ? { verifyCommand: profile.verifyCommand }
-        : {}),
     };
   }
 
@@ -200,7 +197,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
       package_manager: profile.packageManager ?? null,
       lint_command: profile.lintCommand ? formatWorkspaceCommand(profile.lintCommand) : null,
       format_command: profile.formatCommand ? formatWorkspaceCommand(profile.formatCommand) : null,
-      verify_command: profile.verifyCommand ? formatWorkspaceCommand(profile.verifyCommand) : null,
+      test_command: profile.testCommand ? formatWorkspaceCommand(profile.testCommand) : null,
       line_width: profile.lineWidth ?? null,
     });
   }

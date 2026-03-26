@@ -26,16 +26,15 @@ Shipped, user-visible capabilities.
 
 - lifecycle-driven execution with work/verify behavior
 - explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed
-- automatic verify pass after write operations
-- task-scoped verify boundaries by default, with opt-in global verify scope
+- automatic code review via verify mode after write operations
 - tool-guarded execution for safer autonomous runs
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
 - two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
-- workspace profile detection for ecosystem, package manager, lint, format, verify commands, and line width
+- workspace profile detection for ecosystem, package manager, lint, format, test commands, and line width
 - automatic formatting of edited files via detected formatter
 - automatic linting of edited files via detected linter
-- deterministic verify command execution from detected project configuration
+- ecosystem-aware scoped test runner (`run-tests`) with auto-detected test command
 - inline task checklist for multi-step tasks, pinned between transcript and input
 
 ## Tools
@@ -45,6 +44,7 @@ Shipped, user-visible capabilities.
 - scan/edit code via AST-based tools
 - git status/diff/log/show/add/commit
 - shell command execution
+- scoped test execution via detected test runner
 - web search/fetch
 - file discovery respects `.gitignore` (including nested)
 

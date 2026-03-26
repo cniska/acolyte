@@ -1,31 +1,53 @@
 import { describe, expect, test } from "bun:test";
-import { parseEditArgs } from "./cli-tool";
+import { toolMode } from "./cli-tool";
+
+type ToolDeps = Parameters<typeof toolMode>[1];
+
+function createDeps(overrides?: Partial<ToolDeps>): { deps: ToolDeps; errors: () => string[] } {
+  const errors: string[] = [];
+  const deps: ToolDeps = {
+    hasHelpFlag: () => false,
+    printError: (msg) => errors.push(msg),
+    commandHelp: () => {},
+    ...overrides,
+  };
+  return { deps, errors: () => errors };
+}
 
 describe("cli-tool", () => {
-  test("parseEditArgs parses path, find, and replace", () => {
-    const result = parseEditArgs(["src/cli.ts", "old text", "new text"]);
-    expect(result.path).toBe("src/cli.ts");
-    expect(result.edits).toEqual([{ find: "old text", replace: "new text" }]);
-    expect(result.dryRun).toBe(false);
+  test("unknown tool prints usage", async () => {
+    const { deps, errors } = createDeps();
+    await toolMode(["nonexistent"], deps);
+    expect(process.exitCode).toBe(1);
+    expect(errors().length).toBeGreaterThan(0);
+    process.exitCode = 0;
   });
 
-  test("parseEditArgs joins multi-word replace", () => {
-    const result = parseEditArgs(["src/cli.ts", "old", "new", "text", "here"]);
-    expect(result.edits[0].replace).toBe("new text here");
+  test("no arguments prints usage", async () => {
+    const { deps, errors } = createDeps();
+    await toolMode([], deps);
+    expect(process.exitCode).toBe(1);
+    expect(errors().length).toBeGreaterThan(0);
+    process.exitCode = 0;
   });
 
-  test("parseEditArgs supports --dry-run flag", () => {
-    const result = parseEditArgs(["--dry-run", "src/cli.ts", "old", "new"]);
-    expect(result.dryRun).toBe(true);
-    expect(result.path).toBe("src/cli.ts");
+  test("help flag calls commandHelp", async () => {
+    let called = false;
+    const { deps } = createDeps({
+      hasHelpFlag: () => true,
+      commandHelp: () => {
+        called = true;
+      },
+    });
+    await toolMode(["find-files", "*.ts"], deps);
+    expect(called).toBe(true);
   });
 
-  test("parseEditArgs throws on too few arguments", () => {
-    expect(() => parseEditArgs(["src/cli.ts"])).toThrow();
-    expect(() => parseEditArgs(["src/cli.ts", "find"])).toThrow();
-  });
-
-  test("parseEditArgs throws on empty find string", () => {
-    expect(() => parseEditArgs(["src/cli.ts", "", "replace"])).toThrow();
+  test("invalid input prints error", async () => {
+    const { deps, errors } = createDeps();
+    await toolMode(["run-tests"], deps);
+    expect(process.exitCode).toBe(1);
+    expect(errors().length).toBeGreaterThan(0);
+    process.exitCode = 0;
   });
 });

@@ -42,7 +42,8 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "Trust type signatures; do not add impossible null/undefined guards unless the declared types allow them.",
       "Never delete a file to recreate it — use `edit-file` to modify existing files.",
       "When a target file does not exist, say so instead of silently creating it.",
-      "Do not run lint, format, build, or verify commands — the lifecycle runs them automatically after your edits. If you added or changed a test file, run only that specific test file, not the full test suite.",
+      "Do not run lint, format, or build commands — the lifecycle runs them automatically after your edits.",
+      "After editing a source file that has a test file (e.g. `foo.test.ts` for `foo.ts`), run `run-tests` with the test file to validate your changes. Do not skip this step. Never run the full test suite via `run-command`.",
       "Do not signal done until the requested behavior is actually implemented. Updating help text, comments, or tests alone is not completing the task — the functional change must be in place.",
       "After the last tool call, use the lifecycle signal format from the base instructions and keep the user-facing outcome to one sentence.",
       "For multi-step tasks (3+ distinct steps), use `create-checklist` at the start to define a progress checklist. Use `update-checklist` to mark items as you complete each step.",
@@ -54,7 +55,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     preamble: [
       "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Choose the lightest sufficient verification for the actual change. For narrow documentation or content-only edits, scan the changed files and stop unless the user explicitly asked for project-wide verification.",
-      "Do not run verify, test, or build commands — the lifecycle runs the project's verify command automatically after your review.",
+      "Do not run test or build commands in verify mode. Focus on reviewing the code changes.",
       "Report any issues found. Do not fix them — work mode will handle fixes.",
       "Do not narrate — only respond if you found issues.",
     ],

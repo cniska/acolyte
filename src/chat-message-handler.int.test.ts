@@ -172,7 +172,7 @@ describe("chat message handler guards", () => {
           type: "tool-output",
           toolCallId: "call_1",
           toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "sum.rs" },
+          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
         },
         { type: "text-delta", text: "Created sum.rs." },
       ],
@@ -182,7 +182,7 @@ describe("chat message handler guards", () => {
           type: "tool-output",
           toolCallId: "call_2",
           toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit", detail: "sum.rs" },
+          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
         },
         {
           type: "tool-output",
@@ -204,7 +204,7 @@ describe("chat message handler guards", () => {
           type: "tool-output",
           toolCallId: "call_3",
           toolName: "delete-file",
-          content: { kind: "tool-header", labelKey: "tool.label.delete", detail: "sum.rs" },
+          content: { kind: "tool-header", labelKey: "tool.label.delete_file", detail: "sum.rs" },
         },
         { type: "text-delta", text: "Removed sum.rs." },
       ],
@@ -232,11 +232,11 @@ describe("chat message handler guards", () => {
     expect(toolRows).toHaveLength(3);
     expect(
       isToolOutput(toolRows[0]?.content) &&
-        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit"),
+        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit_file"),
     ).toBe(true);
     expect(
       isToolOutput(toolRows[1]?.content) &&
-        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit"),
+        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit_file"),
     ).toBe(true);
     expect(
       isToolOutput(toolRows[1]?.content) &&
@@ -244,7 +244,7 @@ describe("chat message handler guards", () => {
     ).toBe(true);
     expect(
       isToolOutput(toolRows[2]?.content) &&
-        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.delete"),
+        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.delete_file"),
     ).toBe(true);
     // Assistant text rows are kept as-is (no redundancy filtering).
     expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);

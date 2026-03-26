@@ -36,7 +36,6 @@ function createDefaultConfig() {
     maxPinnedMessageTokens: 1_200,
     replyTimeoutMs: 180_000,
     embeddingModel: "text-embedding-3-small",
-    skipVerify: false,
   };
 }
 
@@ -187,7 +186,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? defaults.maxPinnedMessageTokens,
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
-    skipVerify: config.skipVerify ?? defaults.skipVerify,
   };
 }
 

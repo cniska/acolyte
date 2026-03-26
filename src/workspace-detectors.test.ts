@@ -38,23 +38,17 @@ describe("typescript detector", () => {
     expect(profile.lintCommand?.args).toContain("eslint");
   });
 
-  test("detects verify command from package.json scripts", () => {
-    const ws = makeWorkspace({ "package.json": '{"scripts":{"verify":"bun run lint && bun test"}}' });
-    const profile = resolveWorkspaceProfile(ws);
-    expect(profile.ecosystem).toBe("typescript");
-    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "verify"] });
-  });
-
-  test("falls back to test script when verify is absent", () => {
+  test("detects jest test command from package.json scripts", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"jest"}}' });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "test"] });
+    expect(profile.ecosystem).toBe("typescript");
+    expect(profile.testCommand).toEqual({ bin: "npx", args: ["jest", "$FILES"] });
   });
 
-  test("falls back to check script when verify and test are absent", () => {
-    const ws = makeWorkspace({ "package.json": '{"scripts":{"check":"tsc --noEmit"}}' });
+  test("detects vitest test command from package.json scripts", () => {
+    const ws = makeWorkspace({ "package.json": '{"scripts":{"test":"vitest"}}' });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toEqual({ bin: "npm", args: ["run", "check"] });
+    expect(profile.testCommand).toEqual({ bin: "npx", args: ["vitest", "$FILES"] });
   });
 
   test("detects lineWidth from biome.json", () => {
@@ -75,22 +69,16 @@ describe("typescript detector", () => {
     expect(profile.lineWidth).toBe(100);
   });
 
-  test("no verify command when package.json has no relevant scripts", () => {
+  test("no test command when package.json has no test scripts", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"start":"node index.js"}}' });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toBeUndefined();
+    expect(profile.testCommand).toBeUndefined();
   });
 
-  test("uses bun when bun.lock exists", () => {
-    const ws = makeWorkspace({ "package.json": '{"scripts":{"verify":"echo ok"}}', "bun.lock": "" });
+  test("detects bun test when bun.lock exists", () => {
+    const ws = makeWorkspace({ "package.json": '{"scripts":{}}', "bun.lock": "" });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand?.bin).toBe("bun");
-  });
-
-  test("uses npm when package-lock.json exists", () => {
-    const ws = makeWorkspace({ "package.json": '{"scripts":{"verify":"echo ok"}}', "package-lock.json": "" });
-    const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand?.bin).toBe("npm");
+    expect(profile.testCommand).toEqual({ bin: "bun", args: ["test", "$FILES"] });
   });
 
   test("exposes detected package manager from lock file", () => {
@@ -176,10 +164,10 @@ describe("python detector", () => {
     expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check"] });
   });
 
-  test("detects pytest as verify command", () => {
+  test("detects pytest as test command", () => {
     const ws = makeWorkspace({ "pyproject.toml": "[tool.ruff]\n" });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.verifyCommand).toEqual({ bin: "pytest", args: [] });
+    expect(profile.testCommand).toEqual({ bin: "pytest", args: ["$FILES"] });
   });
 });
 
@@ -196,7 +184,7 @@ describe("go detector", () => {
     expect(profile.ecosystem).toBe("go");
     expect(profile.lintCommand).toEqual({ bin: "go", args: ["vet", "./..."] });
     expect(profile.formatCommand).toEqual({ bin: "gofmt", args: ["-w"] });
-    expect(profile.verifyCommand).toEqual({ bin: "go", args: ["test", "./..."] });
+    expect(profile.testCommand).toEqual({ bin: "go", args: ["test", "$FILES"] });
   });
 });
 
@@ -207,7 +195,7 @@ describe("rust detector", () => {
     expect(profile.ecosystem).toBe("rust");
     expect(profile.lintCommand).toEqual({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings"] });
     expect(profile.formatCommand).toEqual({ bin: "cargo", args: ["fmt"] });
-    expect(profile.verifyCommand).toEqual({ bin: "cargo", args: ["test"] });
+    expect(profile.testCommand).toEqual({ bin: "cargo", args: ["test", "--", "$FILES"] });
   });
 });
 
@@ -217,7 +205,7 @@ describe("no match", () => {
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBeUndefined();
     expect(profile.lintCommand).toBeUndefined();
-    expect(profile.verifyCommand).toBeUndefined();
+    expect(profile.testCommand).toBeUndefined();
   });
 });
 

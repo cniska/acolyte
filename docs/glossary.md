@@ -34,7 +34,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Lifecycle Feedback | Task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt |
 | Lifecycle Policy | Bounded execution controls for lifecycle behavior (timeouts, regeneration caps) |
 | Lifecycle Signal | Small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted only if current runtime state does not contradict it |
-| Lifecycle State | Internal task-scoped lifecycle runtime state used to carry feedback, verify outcomes, and repeated-failure streaks between attempts |
+| Lifecycle State | Internal task-scoped lifecycle runtime state used to carry feedback, review outcomes, and repeated-failure streaks between attempts |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal staged flow inside the Memory Engine (ingest → normalize → select → inject → commit) |
 | Memory Policy | Bounded operational thresholds for memory behavior (reflection retry limit, context message window, malformed tag warning threshold) |
@@ -61,6 +61,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Cache | Two-tier cache for read-only and search tool results. L1 is in-memory LRU per task; L2 is SQLite-backed persistence across tasks within a session |
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Grouped domain tools exposed through adapters/composition |
-| Verify Cycle | Post-write verification sequence; the evaluator transitions to verify mode, performs scoped verification, and re-generates on failure |
-| Workspace Command | Typed shell command descriptor (`{ bin, args }`) used for lint, format, and verify commands |
-| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, lint/format/verify commands, and line width |
+| Verify Cycle | Post-write review sequence; the evaluator transitions to verify mode for code review, then returns to work mode |
+| Workspace Command | Typed shell command descriptor (`{ bin, args }`) used for lint, format, and test commands |
+| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, lint/format/test commands, and line width |

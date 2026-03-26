@@ -15,6 +15,7 @@ import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import type { ToolkitDeps } from "./tool-contract";
 import { createSessionContext } from "./tool-guards";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
@@ -520,4 +521,25 @@ export function createCommandContext(
     ...overrides,
   };
   return { ctx, spies };
+}
+
+const DEFAULT_BUDGET_ENTRY = { maxChars: 2000, maxLines: 80 };
+
+export function createToolkitDeps(): ToolkitDeps {
+  return {
+    outputBudget: {
+      findFiles: DEFAULT_BUDGET_ENTRY,
+      searchFiles: DEFAULT_BUDGET_ENTRY,
+      webSearch: DEFAULT_BUDGET_ENTRY,
+      webFetch: DEFAULT_BUDGET_ENTRY,
+      read: DEFAULT_BUDGET_ENTRY,
+      gitStatus: DEFAULT_BUDGET_ENTRY,
+      gitDiff: DEFAULT_BUDGET_ENTRY,
+      run: DEFAULT_BUDGET_ENTRY,
+      edit: DEFAULT_BUDGET_ENTRY,
+      astEdit: DEFAULT_BUDGET_ENTRY,
+      scanCode: DEFAULT_BUDGET_ENTRY,
+      create: DEFAULT_BUDGET_ENTRY,
+    },
+  };
 }

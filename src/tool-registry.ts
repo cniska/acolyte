@@ -7,6 +7,7 @@ import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { EN_MESSAGES } from "./i18n/en";
 import { createShellToolkit } from "./shell-toolkit";
+import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type {
@@ -28,6 +29,7 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createCodeToolkit> &
   ReturnType<typeof createWebToolkit> &
   ReturnType<typeof createShellToolkit> &
+  ReturnType<typeof createTestToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit>;
 
@@ -56,6 +58,10 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "shell",
     createToolkit: (deps, input) => createShellToolkit(deps, input),
+  },
+  {
+    id: "test",
+    createToolkit: (deps, input) => createTestToolkit(deps, input),
   },
   {
     id: "git",

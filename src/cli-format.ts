@@ -1,5 +1,4 @@
 import { relative } from "node:path";
-import { z } from "zod";
 import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { t, tDynamic } from "./i18n";
@@ -7,8 +6,6 @@ import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
-
-const runExitCodeSchema = z.coerce.number().int();
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
@@ -107,13 +104,6 @@ export function formatRunOutput(raw: string): string {
 
   if (out.length === 0) return t("tool.content.no_output");
   return out.join("\n");
-}
-
-export function parseRunExitCode(raw: string): number | null {
-  const first = raw.split("\n")[0]?.trim() ?? "";
-  if (!first.startsWith("exit_code=")) return null;
-  const parsed = runExitCodeSchema.safeParse(first.slice("exit_code=".length));
-  return parsed.success ? parsed.data : null;
 }
 
 const TOOL_FORMATTERS: Record<string, (raw: string) => string> = {
