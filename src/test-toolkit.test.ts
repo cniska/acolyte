@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
 import { createTestToolkit } from "./test-toolkit";
+import { createToolkitDeps } from "./test-utils";
 import { createSessionContext } from "./tool-guards";
 
 type TestResult = { kind: string; command: string; exitCode?: number; output: string };
@@ -9,10 +9,12 @@ function createToolkit(testCommand?: { bin: string; args: string[] }) {
   const session = createSessionContext();
   if (testCommand) session.workspaceProfile = { testCommand };
   const output: unknown[] = [];
-  const toolkit = createTestToolkit(
-    { outputBudget: appConfig.agent.toolOutputBudget },
-    { workspace: process.cwd(), session, onOutput: (e) => output.push(e), onChecklist: () => {} },
-  );
+  const toolkit = createTestToolkit(createToolkitDeps(), {
+    workspace: process.cwd(),
+    session,
+    onOutput: (e) => output.push(e),
+    onChecklist: () => {},
+  });
   return { toolkit, output };
 }
 

@@ -109,3 +109,10 @@ export async function runShellCommand(
   if (!out && !err) return headers.join("\n");
   return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
 }
+
+export function parseExitCode(result: string): number | undefined {
+  const match = result.match(/^exit_code=(\d+)$/m);
+  if (!match?.[1]) return undefined;
+  const value = Number.parseInt(match[1], 10);
+  return Number.isNaN(value) ? undefined : value;
+}

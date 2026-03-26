@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
-import { runShellCommand } from "./shell-ops";
+import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -20,7 +20,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
     instruction:
       "Use `run-tests` to validate changes by running tests for the files you modified. Always scope to specific test files rather than running the full suite.",
     inputSchema: z.object({
-      files: z.array(z.string().min(1)).min(1).describe("Test file paths to run"),
+      files: z.array(z.string().min(1)).min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
     }),
     outputSchema: z.object({
@@ -63,13 +63,6 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolCallId: callId,
           });
         }
-
-        const parseExitCode = (result: string): number | undefined => {
-          const match = result.match(/^exit_code=(\d+)$/m);
-          if (!match?.[1]) return undefined;
-          const value = Number.parseInt(match[1], 10);
-          return Number.isNaN(value) ? undefined : value;
-        };
 
         const result = compactToolOutput(rawResult, deps.outputBudget.run);
         return { kind: "run-tests" as const, command, exitCode: parseExitCode(rawResult), output: result };

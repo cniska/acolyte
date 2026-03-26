@@ -1,19 +1,12 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
-import { runShellCommand } from "./shell-ops";
+import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
 
 function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const parseExitCode = (result: string): number | undefined => {
-    const match = result.match(/^exit_code=(\d+)$/m);
-    if (!match?.[1]) return undefined;
-    const value = Number.parseInt(match[1], 10);
-    return Number.isNaN(value) ? undefined : value;
-  };
-
   return createTool({
     id: "run-command",
     labelKey: "tool.label.run_command",
