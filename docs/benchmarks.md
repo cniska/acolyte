@@ -77,7 +77,7 @@ Higher values indicate stronger runtime validation of model outputs, RPC payload
 
 Acolyte validates at a higher rate than every other project in the benchmark.
 
-## Type safety — TypeScript
+## TypeScript type safety
 
 Per 1k source lines.
 
@@ -91,7 +91,7 @@ Per 1k source lines.
 
 Acolyte has near-zero `any` usage. It uses `unknown` with explicit narrowing — every tool output, model response, and RPC payload is validated through Zod schemas before entering the type system.
 
-## Type safety — Python, Rust, Go
+## Cross-language type safety
 
 Per 1k source lines.
 
