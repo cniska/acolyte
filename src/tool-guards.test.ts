@@ -719,14 +719,14 @@ describe("shell-bypass guard", () => {
 });
 
 describe("lifecycle-command guard", () => {
-  test("blocks test command in work mode", () => {
+  test("blocks test command", () => {
     const session = createSessionContext();
     session.mode = "work";
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
     expect(() => runGuards({ toolName: "run-command", args: { command: "bun test" }, session })).toThrow(/run-tests/);
   });
 
-  test("blocks lint command in work mode", () => {
+  test("blocks lint command", () => {
     const session = createSessionContext();
     session.mode = "work";
     session.workspaceProfile = { lintCommand: { bin: "bunx", args: ["biome", "check"] } };
@@ -735,11 +735,11 @@ describe("lifecycle-command guard", () => {
     );
   });
 
-  test("allows commands in verify mode", () => {
+  test("blocks test command in verify mode", () => {
     const session = createSessionContext();
     session.mode = "verify";
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
-    expect(() => runGuards({ toolName: "run-command", args: { command: "bun test" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "run-command", args: { command: "bun test" }, session })).toThrow(/run-tests/);
   });
 
   test("allows commands when no workspace profile", () => {

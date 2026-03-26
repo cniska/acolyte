@@ -694,10 +694,9 @@ function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): b
 
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
-  description: "Block lint/format/test commands in work mode — use dedicated tools instead.",
+  description: "Block lint/format/test commands — use dedicated tools or let the lifecycle handle them.",
   tools: ["run-command"],
   check({ args, session, report }) {
-    if (session.mode !== "work") return;
     const profile = session.workspaceProfile;
     if (!profile) return;
     const command = typeof args.command === "string" ? args.command : "";
