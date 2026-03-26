@@ -8,7 +8,6 @@ import {
   TOOL_TIMEOUT_MS,
   TOTAL_MAX_STEPS,
   VERIFY_MAX_STEPS,
-  VERIFY_TIMEOUT_MS,
 } from "./lifecycle-constants";
 import type { WorkspaceCommand } from "./workspace-profile";
 
@@ -28,12 +27,6 @@ export type LifecyclePolicy = {
   formatCommand?: WorkspaceCommand;
   /** Lint command to run after writes. Undefined disables lint evaluation. */
   lintCommand?: WorkspaceCommand;
-  /** Verify command to run after writes. Undefined skips verification. */
-  verifyCommand?: WorkspaceCommand;
-  /** Timeout for the verify command in ms. */
-  verifyTimeoutMs: number;
-  /** When true, skip auto-verification after writes. */
-  skipVerify?: boolean;
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
@@ -46,7 +39,6 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
   consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT,
-  verifyTimeoutMs: VERIFY_TIMEOUT_MS,
 };
 
 export function resolveLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

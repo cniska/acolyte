@@ -50,8 +50,6 @@ const traceEventSchema = z.enum([
   "lifecycle.eval.repeated_failure",
   "lifecycle.eval.format",
   "lifecycle.eval.verify_cycle",
-  "lifecycle.eval.verify_command",
-  "lifecycle.eval.verify_failure",
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
 ]);
@@ -80,7 +78,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     "package_manager",
     "lint_command",
     "format_command",
-    "verify_command",
+    "test_command",
     "line_width",
   ],
   "lifecycle.start": ["mode", "model"],
@@ -108,8 +106,6 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
   "lifecycle.eval.format": ["files"],
   "lifecycle.eval.verify_cycle": ["used_write_tools", "verified", "verify_scope"],
-  "lifecycle.eval.verify_command": ["command", "has_errors"],
-  "lifecycle.eval.verify_failure": ["text_chars"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",

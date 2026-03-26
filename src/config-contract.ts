@@ -80,7 +80,6 @@ export interface Config {
   maxPinnedMessageTokens?: number;
   replyTimeoutMs?: number;
   embeddingModel?: string;
-  skipVerify?: boolean;
 }
 
 export interface ResolvedConfig {
@@ -107,7 +106,6 @@ export interface ResolvedConfig {
   maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
   embeddingModel: string;
-  skipVerify: boolean;
 }
 
 export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
@@ -121,7 +119,6 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   googleBaseUrl: nonEmptyStringSchema,
   logFormat: logFormatSchema,
   embeddingModel: nonEmptyStringSchema,
-  skipVerify: z.preprocess((v) => (v === "true" ? true : v === "false" ? false : v), z.boolean()),
 };
 
 export function toConfig(input: Record<string, unknown>): Config {
@@ -184,6 +181,5 @@ export function toConfig(input: Record<string, unknown>): Config {
     ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
-    skipVerify: parseField(z.boolean(), input.skipVerify),
   };
 }

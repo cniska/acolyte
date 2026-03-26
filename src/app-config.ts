@@ -64,7 +64,6 @@ export const appConfig = {
     },
     skillBudget: { maxChars: 4000, maxLines: 120 },
   },
-  skipVerify: fileConfig.skipVerify,
 } as const;
 
 export function setDefaultModel(model: string): void {

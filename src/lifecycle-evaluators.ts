@@ -4,7 +4,7 @@ import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleSt
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
-import { type CommandResult, formatWorkspaceCommand, runCommand, runCommandWithFiles } from "./workspace-profile";
+import { type CommandResult, runCommandWithFiles } from "./workspace-profile";
 
 function renderCommandOutput(result: CommandResult): string {
   if (!result.stderr) return result.stdout;
@@ -168,7 +168,6 @@ export const verifyEvaluator: Evaluator = {
     if (!ctx.result) return { type: "done" };
     if (ctx.request.verifyScope === "none") return { type: "done" };
 
-    // Work → Verify: trigger verify when write tools were used
     if (ctx.mode !== "verify") {
       const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
       const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
@@ -179,15 +178,12 @@ export const verifyEvaluator: Evaluator = {
       });
       if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
 
-      if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
-
       return {
         type: "regenerate",
         feedback: {
           source: "verify",
           mode: "verify",
-          summary:
-            "Review the changes for correctness. Do not run the verify command — it runs automatically after your review.",
+          summary: "Review the changes for correctness.",
         },
         mode: "verify",
         cycleLimit: ctx.policy.verifyMaxSteps,
@@ -195,27 +191,7 @@ export const verifyEvaluator: Evaluator = {
       };
     }
 
-    // Verify → Work: run the verify command after model review completes
-    if (!ctx.workspace || !ctx.policy.verifyCommand) return { type: "done" };
-
-    const result = runCommand(ctx.workspace, ctx.policy.verifyCommand, ctx.policy.verifyTimeoutMs);
-    ctx.debug("lifecycle.eval.verify_command", {
-      command: formatWorkspaceCommand(ctx.policy.verifyCommand),
-      has_errors: result.hasErrors,
-    });
-    if (!result.hasErrors) return { type: "done" };
-    return {
-      type: "regenerate",
-      feedback: {
-        source: "verify",
-        mode: "work",
-        summary: "Verification failed.",
-        details: renderCommandOutput(result),
-        instruction:
-          "Fix failures related to files you changed. If all failures are in files you did not edit, they are pre-existing — signal done.",
-      },
-      mode: "work",
-    };
+    return { type: "done" };
   },
 };
 

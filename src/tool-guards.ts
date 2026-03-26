@@ -680,15 +680,21 @@ const shellBypassGuard: ToolGuard = {
 };
 
 function commandMatchesProfile(command: string, profile: WorkspaceProfile): boolean {
-  const commands = [profile.lintCommand, profile.formatCommand, profile.verifyCommand]
+  const commands = [profile.lintCommand, profile.formatCommand]
     .filter((cmd): cmd is WorkspaceCommand => cmd !== undefined)
     .map((cmd) => formatWorkspaceCommand(cmd));
   return commands.some((cmd) => command.includes(cmd));
 }
 
+function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): boolean {
+  if (!profile.testCommand) return false;
+  const baseCommand = formatWorkspaceCommand(profile.testCommand).replace("$FILES", "").trim();
+  return command.includes(baseCommand);
+}
+
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
-  description: "Block lint/format/verify commands in work mode — the lifecycle runs them automatically.",
+  description: "Block lint/format/test commands in work mode — use dedicated tools instead.",
   tools: ["run-command"],
   check({ args, session, report }) {
     if (session.mode !== "work") return;
@@ -698,9 +704,11 @@ const lifecycleCommandGuard: ToolGuard = {
     if (!command) return;
     if (commandMatchesProfile(command, profile)) {
       report("blocked", command);
-      throw new Error(
-        "Lint, format, and verify commands run automatically after your edits. Do not run them manually.",
-      );
+      throw new Error("Lint and format commands run automatically after your edits. Do not run them manually.");
+    }
+    if (commandMatchesTestRunner(command, profile)) {
+      report("blocked", command);
+      throw new Error("Use the run-tests tool instead of running test commands directly.");
     }
   },
 };

@@ -39,7 +39,6 @@ export type WorkspaceProfile = {
   packageManager?: string;
   lintCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
-  verifyCommand?: WorkspaceCommand;
   testCommand?: WorkspaceCommand;
   lineWidth?: number;
 };

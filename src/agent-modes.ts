@@ -54,7 +54,7 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
     preamble: [
       "Review the changes: one `scan-code` call with all edited files as `paths` and patterns like [`export function $NAME`, `import $SPEC from $MOD`]. No extra reads or searches.",
       "Choose the lightest sufficient verification for the actual change. For narrow documentation or content-only edits, scan the changed files and stop unless the user explicitly asked for project-wide verification.",
-      "Do not run verify, test, or build commands — the lifecycle runs the project's verify command automatically after your review.",
+      "Do not run test or build commands in verify mode. Focus on reviewing the code changes.",
       "Report any issues found. Do not fix them — work mode will handle fixes.",
       "Do not narrate — only respond if you found issues.",
     ],
