@@ -60,6 +60,7 @@ export type EcosystemDetector = {
   detectLintCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectFormatCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectVerifyCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
+  detectTestCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectLineWidth?: (workspace: string) => number | null;
 };
 
@@ -69,8 +70,9 @@ function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProf
   const lintCommand = eco.detectLintCommand?.(ctx) ?? undefined;
   const formatCommand = eco.detectFormatCommand?.(ctx) ?? undefined;
   const verifyCommand = eco.detectVerifyCommand?.(ctx) ?? undefined;
+  const testCommand = eco.detectTestCommand?.(ctx) ?? undefined;
   const lineWidth = eco.detectLineWidth?.(workspace) ?? undefined;
-  return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, verifyCommand, lineWidth };
+  return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, verifyCommand, testCommand, lineWidth };
 }
 
 const typescriptDetector: EcosystemDetector = {
@@ -139,6 +141,33 @@ const typescriptDetector: EcosystemDetector = {
     }
     for (const name of ["deno.json", "deno.jsonc"]) {
       if (readJson(ctx.workspace, name)) return { bin: "deno", args: ["test"] };
+    }
+    return null;
+  },
+
+  detectTestCommand(ctx) {
+    const { bin, args: prefix } = packageRunner(ctx.packageManager ?? "npm");
+    const pkg = readJson(ctx.workspace, "package.json");
+    if (pkg) {
+      const scripts = (typeof pkg.scripts === "object" && pkg.scripts !== null ? pkg.scripts : {}) as Record<
+        string,
+        unknown
+      >;
+      if (typeof scripts.test === "string") {
+        const script = scripts.test;
+        if (script.includes("vitest")) return { bin, args: [...prefix, "vitest", "$FILES"] };
+        if (script.includes("jest")) return { bin, args: [...prefix, "jest", "$FILES"] };
+      }
+    }
+    for (const name of ["vitest.config.ts", "vitest.config.js", "vitest.config.mts"]) {
+      if (fileExists(ctx.workspace, name)) return { bin, args: [...prefix, "vitest", "$FILES"] };
+    }
+    for (const name of ["jest.config.js", "jest.config.ts", "jest.config.mjs"]) {
+      if (fileExists(ctx.workspace, name)) return { bin, args: [...prefix, "jest", "$FILES"] };
+    }
+    if (ctx.packageManager === "bun") return { bin: "bun", args: ["test", "$FILES"] };
+    for (const name of ["deno.json", "deno.jsonc"]) {
+      if (readJson(ctx.workspace, name)) return { bin: "deno", args: ["test", "$FILES"] };
     }
     return null;
   },
@@ -212,6 +241,20 @@ const pythonDetector: EcosystemDetector = {
     return null;
   },
 
+  detectTestCommand(ctx) {
+    const pyproject = readText(ctx.workspace, "pyproject.toml");
+    if (pyproject?.includes("[tool.pytest]") || fileExists(ctx.workspace, "pytest.ini"))
+      return { bin: "pytest", args: ["$FILES"] };
+    if (pyproject?.includes("[tool.nose2]")) return { bin: "nose2", args: ["$FILES"] };
+    if (
+      fileExists(ctx.workspace, "pyproject.toml") ||
+      fileExists(ctx.workspace, "setup.py") ||
+      fileExists(ctx.workspace, "setup.cfg")
+    )
+      return { bin: "pytest", args: ["$FILES"] };
+    return null;
+  },
+
   detectLineWidth(workspace) {
     const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
     if (editorconfigWidth) return editorconfigWidth;
@@ -229,6 +272,7 @@ const goDetector: EcosystemDetector = {
   },
   detectFormatCommand: () => ({ bin: "gofmt", args: ["-w"] }),
   detectVerifyCommand: () => ({ bin: "go", args: ["test", "./..."] }),
+  detectTestCommand: () => ({ bin: "go", args: ["test", "$FILES"] }),
 
   detectLineWidth(workspace) {
     const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
@@ -243,6 +287,7 @@ const rustDetector: EcosystemDetector = {
   detectLintCommand: () => ({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings"] }),
   detectFormatCommand: () => ({ bin: "cargo", args: ["fmt"] }),
   detectVerifyCommand: () => ({ bin: "cargo", args: ["test"] }),
+  detectTestCommand: () => ({ bin: "cargo", args: ["test", "--", "$FILES"] }),
 
   detectLineWidth(workspace) {
     const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);

@@ -40,6 +40,7 @@ export type WorkspaceProfile = {
   lintCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   verifyCommand?: WorkspaceCommand;
+  testCommand?: WorkspaceCommand;
   lineWidth?: number;
 };
 
