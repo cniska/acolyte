@@ -48,7 +48,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "scan-code",
-    labelKey: "tool.label.scan",
+    labelKey: "tool.label.scan_code",
     category: "search",
     permissions: ["read"],
     description:
@@ -84,7 +84,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolName: "scan-code",
             content: {
               kind: "file-header",
-              labelKey: "tool.label.scan",
+              labelKey: "tool.label.scan_code",
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -115,7 +115,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-code",
-    labelKey: "tool.label.edit",
+    labelKey: "tool.label.edit_code",
     onOutput: input.onOutput,
   });
   const outputSchema = z.object({
@@ -131,7 +131,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
   return createTool({
     id: "edit-code",
-    labelKey: "tool.label.edit",
+    labelKey: "tool.label.edit_code",
     category: "write",
     permissions: ["read", "write"],
     description:

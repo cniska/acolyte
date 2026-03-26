@@ -16,7 +16,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
 
   return createTool({
     id: "run-command",
-    labelKey: "tool.label.run",
+    labelKey: "tool.label.run_command",
     category: "execute",
     permissions: ["execute"],
     description:
@@ -42,7 +42,11 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
         async (callId) => {
           input.onOutput({
             toolName: "run-command",
-            content: { kind: "tool-header", labelKey: "tool.label.run", detail: compactDetail(toolInput.command) },
+            content: {
+              kind: "tool-header",
+              labelKey: "tool.label.run_command",
+              detail: compactDetail(toolInput.command),
+            },
             toolCallId: callId,
           });
           const headRows = 2;

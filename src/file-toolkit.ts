@@ -52,7 +52,7 @@ function deduplicatePaths(paths: Array<{ path: string }>): string[] {
 function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "find-files",
-    labelKey: "tool.label.find",
+    labelKey: "tool.label.find_files",
     category: "search",
     permissions: ["read"],
     description:
@@ -85,7 +85,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitFindSummary(
           paths,
           toolInput.patterns,
-          "tool.label.find",
+          "tool.label.find_files",
           input.onOutput,
           callId,
           TOOL_OUTPUT_LIMITS.files,
@@ -107,7 +107,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "search-files",
-    labelKey: "tool.label.search",
+    labelKey: "tool.label.search_files",
     category: "search",
     permissions: ["read"],
     description:
@@ -158,7 +158,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           summaryEntries,
           patterns,
           toolInput.paths,
-          "tool.label.search",
+          "tool.label.search_files",
           input.onOutput,
           callId,
           TOOL_OUTPUT_LIMITS.files,
@@ -180,7 +180,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "read-file",
-    labelKey: "tool.label.read",
+    labelKey: "tool.label.read_file",
     category: "read",
     permissions: ["read"],
     description:
@@ -206,7 +206,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           toolName: "read-file",
           content: {
             kind: "file-header",
-            labelKey: "tool.label.read",
+            labelKey: "tool.label.read_file",
             count: displayPaths.length,
             targets: shown,
             omitted: remaining > 0 ? remaining : undefined,
@@ -224,7 +224,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "edit-file",
-    labelKey: "tool.label.edit",
+    labelKey: "tool.label.edit_file",
     onOutput: input.onOutput,
   });
   const outputSchema = z.object({
@@ -237,7 +237,7 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
   return createTool({
     id: "edit-file",
-    labelKey: "tool.label.edit",
+    labelKey: "tool.label.edit_file",
     category: "write",
     permissions: ["read", "write"],
     description:
@@ -297,12 +297,12 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
     toolName: "create-file",
-    labelKey: "tool.label.create",
+    labelKey: "tool.label.create_file",
     onOutput: input.onOutput,
   });
   return createTool({
     id: "create-file",
-    labelKey: "tool.label.create",
+    labelKey: "tool.label.create_file",
     category: "write",
     permissions: ["write"],
     description:
@@ -349,7 +349,7 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "delete-file",
-    labelKey: "tool.label.delete",
+    labelKey: "tool.label.delete_file",
     category: "write",
     permissions: ["write"],
     description: "Delete a file from the repository.",
@@ -370,7 +370,7 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         const deleteDetail = paths.length > 0 ? formatDeletePaths(paths) : undefined;
         input.onOutput({
           toolName: "delete-file",
-          content: { kind: "tool-header", labelKey: "tool.label.delete", detail: deleteDetail },
+          content: { kind: "tool-header", labelKey: "tool.label.delete_file", detail: deleteDetail },
           toolCallId: callId,
         });
         const resultParts: string[] = [];

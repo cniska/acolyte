@@ -10,7 +10,7 @@ function setup() {
 describe("createToolOutputState", () => {
   test("returns items and label for tool-header", () => {
     const { push } = setup();
-    const update = push({ kind: "tool-header", labelKey: "tool.label.find" });
+    const update = push({ kind: "tool-header", labelKey: "tool.label.find_files" });
     expect(update?.label).toBe("Find");
     expect(update?.items).toHaveLength(1);
   });
@@ -19,7 +19,7 @@ describe("createToolOutputState", () => {
     const { push } = setup();
     const update = push({
       kind: "scope-header",
-      labelKey: "tool.label.find",
+      labelKey: "tool.label.find_files",
       scope: "workspace",
       patterns: ["*.ts"],
       matches: 2,
@@ -29,7 +29,7 @@ describe("createToolOutputState", () => {
 
   test("extracts label from file-header", () => {
     const { push } = setup();
-    const update = push({ kind: "file-header", labelKey: "tool.label.read", count: 1, targets: ["a.ts"] });
+    const update = push({ kind: "file-header", labelKey: "tool.label.read_file", count: 1, targets: ["a.ts"] });
     expect(update?.label).toBe("Read");
   });
 
@@ -37,7 +37,7 @@ describe("createToolOutputState", () => {
     const { push } = setup();
     const update = push({
       kind: "edit-header",
-      labelKey: "tool.label.edit",
+      labelKey: "tool.label.edit_file",
       path: "notes.ts",
       files: 1,
       added: 1,
@@ -48,7 +48,13 @@ describe("createToolOutputState", () => {
 
   test("accumulates items across pushes", () => {
     const { push } = setup();
-    push({ kind: "scope-header", labelKey: "tool.label.find", scope: "workspace", patterns: ["*.ts"], matches: 2 });
+    push({
+      kind: "scope-header",
+      labelKey: "tool.label.find_files",
+      scope: "workspace",
+      patterns: ["*.ts"],
+      matches: 2,
+    });
     push({ kind: "text", text: "a.ts" });
     const update = push({ kind: "text", text: "b.ts" });
     expect(update?.items).toHaveLength(3);
@@ -56,7 +62,7 @@ describe("createToolOutputState", () => {
 
   test("deduplicates identical consecutive items", () => {
     const { push } = setup();
-    push({ kind: "tool-header", labelKey: "tool.label.run", detail: "cmd" });
+    push({ kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" });
     push({ kind: "text", text: "out | a" });
     const update = push({ kind: "text", text: "out | a" });
     expect(update).toBeNull();
@@ -64,8 +70,14 @@ describe("createToolOutputState", () => {
 
   test("tracks independent tool calls", () => {
     const { state } = setup();
-    state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.run", detail: "cmd1" } });
-    state.push({ toolCallId: "tc_2", content: { kind: "tool-header", labelKey: "tool.label.run", detail: "cmd2" } });
+    state.push({
+      toolCallId: "tc_1",
+      content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd1" },
+    });
+    state.push({
+      toolCallId: "tc_2",
+      content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd2" },
+    });
     const u1 = state.push({ toolCallId: "tc_1", content: { kind: "text", text: "a" } });
     const u2 = state.push({ toolCallId: "tc_2", content: { kind: "text", text: "b" } });
     expect(u1?.items).toHaveLength(2);
@@ -76,11 +88,14 @@ describe("createToolOutputState", () => {
 
   test("delete removes state for a tool call", () => {
     const { state } = setup();
-    state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.run", detail: "cmd" } });
+    state.push({
+      toolCallId: "tc_1",
+      content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
+    });
     state.delete("tc_1");
     const update = state.push({
       toolCallId: "tc_1",
-      content: { kind: "tool-header", labelKey: "tool.label.run", detail: "cmd2" },
+      content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd2" },
     });
     expect(update?.items).toHaveLength(1);
   });
