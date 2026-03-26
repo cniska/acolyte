@@ -26,11 +26,11 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 - Format → lint evaluator chain from detected workspace commands
 - Ecosystem-aware scoped test runner with auto-detected test command
 - Pluggable ecosystem detectors for TypeScript, Python, Go, Rust
+- Inline task checklist for multi-step tasks
 
 ## What's next
 
 Tracked in [GitHub Issues](https://github.com/cniska/acolyte/issues). Key priorities:
 
 - **Plan mode** — lifecycle-driven planning phase with approval workflow (#14)
-- **Inline task checklist** — real-time progress display for multi-step tasks (#49)
 - **Trace event subscription** — real-time trace events over RPC (#45)

@@ -20,6 +20,7 @@ Shipped, user-visible capabilities.
 - slash command support
 - skill invocation via slash commands
 - HTTP and RPC transport support
+- multi-line input support
 - custom terminal renderer with React reconciler, static/active split, and structured output
 
 ## Agent execution
