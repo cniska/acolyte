@@ -72,6 +72,7 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
   }
 
   try {
+    // Bypass runTool intentionally — CLI tool invocations skip guards and cache for direct debugging.
     const rawInput = coerceInput(toolId, rest);
     const input = tool.inputSchema.parse(rawInput);
     const result = await tool.execute(input, `cli_${toolId}`);
