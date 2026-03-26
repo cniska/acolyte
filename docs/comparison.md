@@ -73,7 +73,7 @@ resolve → prepare → generate → evaluate → finalize
 - **evaluate**: inspect output, decide accept or regenerate
 - **finalize**: persist results and emit the response
 
-Evaluators (for example `lintEvaluator` and the verify-cycle evaluator) run after generation and may return a `regenerate` action. The verify-cycle evaluator transitions to verify mode for code review after writes, causing the lifecycle to re-run the generate phase under the new mode.
+Evaluators run after generation and can return a `regenerate` action. The verify-cycle evaluator transitions to verify mode for code review whenever the model used write tools, causing the lifecycle to re-run the generate phase under the new mode. The lint evaluator regenerates when lint errors are found in edited files.
 
 Most other agents use flat tool loops or implicit state machines.
 
