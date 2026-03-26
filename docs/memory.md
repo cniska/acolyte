@@ -106,3 +106,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - `src/memory-distill-store.ts` — SQLite-based distill record and embedding persistence.
 - `src/memory-embedding.ts` — Provider embedding API wrapper and cosine similarity.
 - `src/memory-store.ts` — Memory store interface for list, add, and remove.
+
+## Further reading
+
+[Nothing Forgotten](https://crisu.me/blog/nothing-forgotten) — Why context compaction is the wrong approach to AI memory.

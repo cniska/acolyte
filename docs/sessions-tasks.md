@@ -36,4 +36,5 @@ accepted → queued → running → completed|failed|cancelled
 
 ## Further reading
 
-[How It Works](https://crisu.me/blog/how-it-works) — Daemon architecture and task flow.
+- [How It Works](https://crisu.me/blog/how-it-works) — Daemon architecture and task flow.
+- [Follow the Thread](https://crisu.me/blog/follow-the-thread) — How the trace tool went from a debugging script to a first-class CLI command.

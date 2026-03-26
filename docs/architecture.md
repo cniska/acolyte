@@ -133,3 +133,7 @@ Memory Engine
 ```text
 accepted → queued → running → completed|failed|cancelled
 ```
+
+## Further reading
+
+[Know the Ground](https://crisu.me/blog/know-the-ground) — Why the host should detect formatters, linters, and test runners from config files.
