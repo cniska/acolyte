@@ -1,24 +1,15 @@
 ---
 name: plan
-description: Draft an implementation plan for a feature or behavior change. Use when asked to plan, scope, design, or break down work before coding.
+description: Design a feature or behavior change through dialogue. Use when asked to plan, scope, design, or break down work before coding.
 ---
 
-# Plan
+If an issue number is given, fetch it with `gh issue view $ARGUMENTS` and use it as the starting point.
 
-Plan before editing. Produce a plan another coding agent can execute without rediscovering the system.
+Have a design conversation about this task. Read the relevant code, share what you find, say what you think, and let the user shape the direction. The plan emerges from the dialogue — do not build it in isolation.
 
-Ground every recommendation in the current codebase, docs, and project rules.
+If a question can be answered by reading the code, read the code instead of asking.
 
-## Workflow
-
-1. Fetch the issue with `gh issue view $ARGUMENTS` if an issue number is given.
-2. Read `AGENTS.md`, `docs/architecture.md`, `docs/features.md`, `docs/roadmap.md`, then source files related to the feature.
-3. **Define the outcome**: user-visible behavior, goals, non-goals, constraints, assumptions.
-4. **Build context from evidence**: read existing code paths, contracts, guards, evaluators, and TUI surfaces the feature would touch.
-5. **Find the canonical owner**: put behavior in the boundary that already owns it. Prefer contract fixes over host-side patches.
-6. **Shape the smallest end-to-end slice**: list files that change and why. Call out new schemas, commands, lifecycle seams, docs, and tests.
-7. **Plan validation**: lightest checks that prove the change, final gate, regression tests, manual smoke only when automated proof is not enough.
-8. **Surface risks**: edge cases, migration concerns, reversibility.
+Ground every recommendation in current code, docs, and project rules. Read `AGENTS.md` and `docs/architecture.md` before forming opinions.
 
 ## Acolyte checks
 
@@ -29,18 +20,17 @@ Ground every recommendation in the current codebase, docs, and project rules.
 - Chat-layer code must use approved effect helpers, not direct `useEffect`
 - Shared string unions start as Zod schemas
 
-## Output
+## When aligned
 
-Sections: **Outcome** | **Current-state evidence** | **Proposed design** | **Change list** | **Validation** | **Risks and open questions**.
+Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | **Validation** | **Open questions**.
 
-Split change list into phases if the work is large. Each phase independently valuable. Reference concrete files.
+Split into phases if the work is large. Each phase independently valuable. Reference concrete files.
 
 ## Anti-patterns
 
+- Disappearing to build a plan and returning with a document for approval
+- Presenting options instead of surfacing the underlying problem
 - Planning from intuition without reading current code
-- Broad refactors when a smaller canonical change exists
-- Vague validation
 - Hiding uncertainty instead of stating assumptions
-- Task lists without explaining why the chosen boundary is correct
 
 Do not implement inside this skill flow unless the user explicitly switches to execution.
