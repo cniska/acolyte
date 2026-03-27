@@ -347,7 +347,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       dedent(`
         Edit notes.ts (+1 -1)
            1  const a = 1;
-           …
+           ⋮
           10 -const y = 2;
           10 +const y = 3;
           11  const b = 4;

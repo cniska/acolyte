@@ -56,6 +56,32 @@ export function createDiffSummaryEmitter<TToolName extends string>(input: {
   };
 }
 
+type ShellLine = { stream: "stdout" | "stderr"; text: string };
+
+export function emitShellHeadTail(
+  toolName: string,
+  lines: ShellLine[],
+  onOutput: ToolOutputListener,
+  toolCallId: string,
+  options?: { headRows?: number; tailRows?: number },
+): void {
+  const headRows = options?.headRows ?? 2;
+  const tailRows = options?.tailRows ?? 2;
+  const emitLine = (entry: ShellLine): void => {
+    onOutput({ toolName, content: { kind: "shell-output", stream: entry.stream, text: entry.text }, toolCallId });
+  };
+  if (lines.length > headRows + tailRows) {
+    const omitted = lines.length - (headRows + tailRows);
+    for (const line of lines.slice(0, headRows)) emitLine(line);
+    onOutput({ toolName, content: { kind: "truncated", count: omitted, unit: "lines" }, toolCallId });
+    for (const line of lines.slice(-tailRows)) emitLine(line);
+  } else if (lines.length === 0) {
+    onOutput({ toolName, content: { kind: "no-output" }, toolCallId });
+  } else {
+    for (const line of lines) emitLine(line);
+  }
+}
+
 export function emitHeadTailLines(
   toolName: string,
   rawText: string,

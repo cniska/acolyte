@@ -127,7 +127,7 @@ export function formatToolOutput(items: ToolOutputPart[]): string {
     if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
     if (item.kind === "truncated" && numWidth > 0) {
       const suffix = renderToolOutputPart(item).slice(2);
-      return suffix ? `${diffIndent}${"…".padStart(numWidth)} ${suffix}` : `${diffIndent}${"…".padStart(numWidth)}`;
+      return suffix ? `${diffIndent}${"⋮".padStart(numWidth)} ${suffix}` : `${diffIndent}${"⋮".padStart(numWidth)}`;
     }
     return renderToolOutputPart(item);
   });

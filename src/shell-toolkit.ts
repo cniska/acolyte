@@ -4,7 +4,7 @@ import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { emitShellHeadTail } from "./tool-output-format";
 
 function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
@@ -42,8 +42,6 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
             },
             toolCallId: callId,
           });
-          const headRows = 2;
-          const tailRows = 2;
           const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
           let stdoutBuffer = "";
           let stderrBuffer = "";
@@ -90,27 +88,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           };
           flushRemainder("stdout");
           flushRemainder("stderr");
-          const emitLine = (entry: { stream: "stdout" | "stderr"; text: string }): void => {
-            input.onOutput({
-              toolName: "run-command",
-              content: { kind: "shell-output", stream: entry.stream, text: entry.text },
-              toolCallId: callId,
-            });
-          };
-          if (streamed.length > headRows + tailRows) {
-            const omitted = streamed.length - (headRows + tailRows);
-            for (const line of streamed.slice(0, headRows)) emitLine(line);
-            input.onOutput({
-              toolName: "run-command",
-              content: { kind: "truncated", count: omitted, unit: "lines" },
-              toolCallId: callId,
-            });
-            for (const line of streamed.slice(streamed.length - tailRows)) emitLine(line);
-          } else if (streamed.length === 0) {
-            input.onOutput({ toolName: "run-command", content: { kind: "no-output" }, toolCallId: callId });
-          } else {
-            for (const line of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) emitLine(line);
-          }
+          emitShellHeadTail("run-command", streamed, input.onOutput, callId);
           const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
             kind: "run-command",

@@ -4,7 +4,7 @@ import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { emitShellHeadTail } from "./tool-output-format";
 import { formatWorkspaceCommand } from "./workspace-profile";
 
 function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
@@ -56,13 +56,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
             }
           },
         );
-        for (const entry of streamed.slice(0, TOOL_OUTPUT_LIMITS.run)) {
-          onOutput({
-            toolName: "run-tests",
-            content: { kind: "shell-output", stream: entry.stream, text: entry.text },
-            toolCallId: callId,
-          });
-        }
+        emitShellHeadTail("run-tests", streamed, onOutput, callId);
 
         const result = compactToolOutput(rawResult, deps.outputBudget.run);
         return { kind: "run-tests" as const, command, exitCode: parseExitCode(rawResult), output: result };
