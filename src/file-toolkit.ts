@@ -82,15 +82,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
         };
         const result = compactToolOutput(await findFiles(input.workspace, toolInput.patterns, maxResults), budget);
         const paths = findResultPaths(result);
-        emitFindSummary(
-          paths,
-          toolInput.patterns,
-          "tool.label.find_files",
-          input.onOutput,
-          callId,
-          TOOL_OUTPUT_LIMITS.files,
-          input.workspace,
-        );
+        emitFindSummary(paths, toolInput.patterns, "tool.label.find_files", input.onOutput, callId);
         return {
           kind: "find-files",
           scope: "workspace",
@@ -161,7 +153,6 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           "tool.label.search_files",
           input.onOutput,
           callId,
-          TOOL_OUTPUT_LIMITS.files,
           input.workspace,
         );
         return {

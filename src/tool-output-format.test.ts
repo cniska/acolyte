@@ -42,7 +42,7 @@ describe("emitHeadTailLines", () => {
     expect(events).toHaveLength(5);
     expect(events[0]?.content).toEqual({ kind: "text", text: "line-0" });
     expect(events[1]?.content).toEqual({ kind: "text", text: "line-1" });
-    expect(events[2]?.content).toEqual({ kind: "truncated", count: 16, unit: "lines" });
+    expect(events[2]?.content).toEqual({ kind: "text", text: "⋮ +16 lines" });
     expect(events[3]?.content).toEqual({ kind: "text", text: "line-18" });
     expect(events[4]?.content).toEqual({ kind: "text", text: "line-19" });
   });

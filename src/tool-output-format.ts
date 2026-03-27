@@ -56,7 +56,26 @@ export function createDiffSummaryEmitter<TToolName extends string>(input: {
   };
 }
 
-type ShellLine = { stream: "stdout" | "stderr"; text: string };
+function emitHeadTail<T>(
+  items: T[],
+  emit: (item: T) => void,
+  emitOmitted: (count: number) => void,
+  emitEmpty: () => void,
+  headRows: number,
+  tailRows: number,
+): void {
+  if (items.length === 0) {
+    emitEmpty();
+  } else if (items.length > headRows + tailRows) {
+    for (const item of items.slice(0, headRows)) emit(item);
+    emitOmitted(items.length - (headRows + tailRows));
+    for (const item of items.slice(-tailRows)) emit(item);
+  } else {
+    for (const item of items) emit(item);
+  }
+}
+
+export type ShellLine = { stream: "stdout" | "stderr"; text: string };
 
 export function emitShellHeadTail(
   toolName: string,
@@ -65,21 +84,15 @@ export function emitShellHeadTail(
   toolCallId: string,
   options?: { headRows?: number; tailRows?: number },
 ): void {
-  const headRows = options?.headRows ?? 2;
-  const tailRows = options?.tailRows ?? 2;
-  const emitLine = (entry: ShellLine): void => {
-    onOutput({ toolName, content: { kind: "shell-output", stream: entry.stream, text: entry.text }, toolCallId });
-  };
-  if (lines.length > headRows + tailRows) {
-    const omitted = lines.length - (headRows + tailRows);
-    for (const line of lines.slice(0, headRows)) emitLine(line);
-    onOutput({ toolName, content: { kind: "truncated", count: omitted, unit: "lines" }, toolCallId });
-    for (const line of lines.slice(-tailRows)) emitLine(line);
-  } else if (lines.length === 0) {
-    onOutput({ toolName, content: { kind: "no-output" }, toolCallId });
-  } else {
-    for (const line of lines) emitLine(line);
-  }
+  emitHeadTail(
+    lines,
+    (entry) =>
+      onOutput({ toolName, content: { kind: "shell-output", stream: entry.stream, text: entry.text }, toolCallId }),
+    (n) => onOutput({ toolName, content: { kind: "text", text: `⋮ +${t("unit.line", { count: n })}` }, toolCallId }),
+    () => onOutput({ toolName, content: { kind: "no-output" }, toolCallId }),
+    options?.headRows ?? 2,
+    options?.tailRows ?? 2,
+  );
 }
 
 export function emitHeadTailLines(
@@ -89,26 +102,18 @@ export function emitHeadTailLines(
   toolCallId: string,
   options?: { headRows?: number; tailRows?: number },
 ): void {
-  const headRows = options?.headRows ?? 2;
-  const tailRows = options?.tailRows ?? 2;
   const lines = rawText
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  if (lines.length === 0) {
-    onOutput({ toolName, content: { kind: "no-output" }, toolCallId });
-    return;
-  }
-  if (lines.length > headRows + tailRows) {
-    const omitted = lines.length - (headRows + tailRows);
-    for (const line of lines.slice(0, headRows))
-      onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
-    onOutput({ toolName, content: { kind: "truncated", count: omitted, unit: "lines" }, toolCallId });
-    for (const line of lines.slice(lines.length - tailRows))
-      onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
-    return;
-  }
-  for (const line of lines) onOutput({ toolName, content: { kind: "text", text: line }, toolCallId });
+  emitHeadTail(
+    lines,
+    (line) => onOutput({ toolName, content: { kind: "text", text: line }, toolCallId }),
+    (n) => onOutput({ toolName, content: { kind: "text", text: `⋮ +${t("unit.line", { count: n })}` }, toolCallId }),
+    () => onOutput({ toolName, content: { kind: "no-output" }, toolCallId }),
+    options?.headRows ?? 2,
+    options?.tailRows ?? 2,
+  );
 }
 
 export function emitResultChunks(
@@ -159,8 +164,6 @@ export function emitFindSummary(
   labelKey: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_LIMITS.files,
-  workspace?: string,
 ): void {
   const unique = uniquePaths(filePaths);
   if (unique.length === 0) return;
@@ -170,19 +173,11 @@ export function emitFindSummary(
     content: { kind: "scope-header", labelKey, scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
   });
-  const displayed = unique.slice(0, maxFiles).map((path) => toDisplayPath(path, workspace));
-  const allInHeader = displayed.every((d) => labels.some((l) => d.endsWith(l) || l.endsWith(d)));
-  if (!allInHeader) {
-    for (const path of displayed) {
-      onOutput({ toolName: "find-files", content: { kind: "text", text: path }, toolCallId });
-    }
-    if (unique.length > maxFiles)
-      onOutput({
-        toolName: "find-files",
-        content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
-        toolCallId,
-      });
-  }
+  onOutput({
+    toolName: "find-files",
+    content: { kind: "text", text: t("unit.file", { count: unique.length }) },
+    toolCallId,
+  });
 }
 
 export function findResultPaths(result: string): string[] {
@@ -379,13 +374,11 @@ export function emitSearchSummary(
   labelKey: string,
   onOutput: ToolOutputListener,
   toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_LIMITS.files,
   workspace?: string,
 ): void {
   const filePaths = entries.map((entry) => entry.path);
   const unique = uniquePaths(filePaths);
   if (unique.length === 0) return;
-  const hitsByPath = new Map(entries.map((entry) => [entry.path, entry.hits] as const));
   const labels = compactPatternLabels(patterns);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   const scopeLabels = Array.from(
@@ -402,23 +395,20 @@ export function emitSearchSummary(
   } else {
     scope = "workspace";
   }
+  const totalHits = entries.reduce((sum, e) => sum + e.hits.length, 0);
   onOutput({
     toolName: "search-files",
     content: { kind: "scope-header", labelKey, scope, patterns: labels, matches: unique.length },
     toolCallId,
   });
-  for (const path of unique.slice(0, maxFiles)) {
-    const display = toDisplayPath(path, workspace);
-    const hits = hitsByPath.get(path) ?? [];
-    const text = hits.length === 0 ? display : `${display} [${hits.join(", ")}]`;
-    onOutput({ toolName: "search-files", content: { kind: "text", text }, toolCallId });
-  }
-  if (unique.length > maxFiles)
-    onOutput({
-      toolName: "search-files",
-      content: { kind: "truncated", count: unique.length - maxFiles, unit: "matches" },
-      toolCallId,
-    });
+  onOutput({
+    toolName: "search-files",
+    content: {
+      kind: "text",
+      text: `${t("unit.match", { count: totalHits })} in ${t("unit.file", { count: unique.length })}`,
+    },
+    toolCallId,
+  });
 }
 
 function unifiedDiffLines(rawResult: string): string[] {

@@ -170,12 +170,13 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     );
   }
   if (part.kind === "scope-header") {
-    const display =
-      part.scope === "workspace" ? part.patterns.join(", ") : `${part.scope} [${part.patterns.join(", ")}]`;
+    const isSearch = part.labelKey.includes("search");
+    const patternsDisplay = isSearch ? part.patterns.map((p) => `"${p}"`).join(", ") : part.patterns.join(", ");
+    const scopeSuffix = part.scope !== "workspace" ? ` in ${part.scope}` : "";
     return (
       <>
         <Text bold>{tDynamic(part.labelKey)}</Text>
-        <Text dimColor>{` ${display}`}</Text>
+        <Text dimColor>{` ${patternsDisplay}${scopeSuffix}`}</Text>
       </>
     );
   }

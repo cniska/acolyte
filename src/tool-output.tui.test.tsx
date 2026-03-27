@@ -45,7 +45,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     expect(formatToolOutput(items)).toBe("Read a.ts, b.ts, c.ts, +1");
   });
 
-  test("scope-header with hit rows", () => {
+  test("scope-header for search with summary", () => {
     const items: ToolOutputPart[] = [
       {
         kind: "scope-header",
@@ -54,14 +54,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         patterns: ["needle"],
         matches: 3,
       },
-      { kind: "text", text: "a.ts [needle@1]" },
-      { kind: "text", text: "b.ts [needle@2, needle@5]" },
+      { kind: "text", text: "3 matches in 2 files" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
-        Search needle
-          a.ts [needle@1]
-          b.ts [needle@2, needle@5]
+        Search "needle"
+          3 matches in 2 files
       `),
     );
   });
@@ -69,12 +67,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   test("scope-header with non-workspace scope", () => {
     const items: ToolOutputPart[] = [
       { kind: "scope-header", labelKey: "tool.label.search_files", scope: "src/", patterns: ["needle"], matches: 1 },
-      { kind: "text", text: "a.ts [needle@1]" },
+      { kind: "text", text: "1 match in 1 file" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
-        Search src/ [needle]
-          a.ts [needle@1]
+        Search "needle" in src/
+          1 match in 1 file
       `),
     );
   });
@@ -82,14 +80,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   test("scope-header for find-files", () => {
     const items: ToolOutputPart[] = [
       { kind: "scope-header", labelKey: "tool.label.find_files", scope: "workspace", patterns: ["*.ts"], matches: 2 },
-      { kind: "text", text: "a.ts" },
-      { kind: "text", text: "b.ts" },
+      { kind: "text", text: "2 files" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
         Find *.ts
-          a.ts
-          b.ts
+          2 files
       `),
     );
   });
@@ -131,7 +127,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
       { kind: "shell-output", stream: "stdout", text: "line1" },
       { kind: "shell-output", stream: "stdout", text: "line2" },
-      { kind: "truncated", count: 3, unit: "lines" },
+      { kind: "text", text: "⋮ +3 lines" },
       { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(formatToolOutput(items)).toBe(
@@ -139,7 +135,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         Run cmd
           out | line1
           out | line2
-          … +3 lines
+          ⋮ +3 lines
           out | line6
       `),
     );
@@ -193,7 +189,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "tool-header", labelKey: "tool.label.git_diff" },
       { kind: "text", text: "+line1" },
       { kind: "text", text: "-line2" },
-      { kind: "truncated", count: 10, unit: "lines" },
+      { kind: "text", text: "⋮ +10 lines" },
       { kind: "text", text: "+line13" },
     ];
     expect(formatToolOutput(items)).toBe(
@@ -201,7 +197,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         Git Diff
           +line1
           -line2
-          … +10 lines
+          ⋮ +10 lines
           +line13
       `),
     );
@@ -424,7 +420,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     ).toBe("• Read a.ts, b.ts");
   });
 
-  test("scope-header with hit rows", () => {
+  test("scope-header with summary", () => {
     const items: ToolOutputPart[] = [
       {
         kind: "scope-header",
@@ -433,14 +429,12 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         patterns: ["needle"],
         matches: 3,
       },
-      { kind: "text", text: "a.ts [needle@1]" },
-      { kind: "text", text: "b.ts [needle@2, needle@5]" },
+      { kind: "text", text: "3 matches in 2 files" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
-        • Search needle
-            a.ts [needle@1]
-            b.ts [needle@2, needle@5]
+        • Search "needle"
+            3 matches in 2 files
       `),
     );
   });
@@ -499,7 +493,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
       { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
       { kind: "shell-output", stream: "stdout", text: "line1" },
       { kind: "shell-output", stream: "stdout", text: "line2" },
-      { kind: "truncated", count: 3, unit: "lines" },
+      { kind: "text", text: "⋮ +3 lines" },
       { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(renderChat(items)).toBe(
@@ -507,7 +501,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         • Run cmd
             line1
             line2
-            … +3 lines
+            ⋮ +3 lines
             line6
       `),
     );
@@ -545,14 +539,14 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     const items: ToolOutputPart[] = [
       { kind: "tool-header", labelKey: "tool.label.git_diff", detail: "src/agent.ts" },
       { kind: "text", text: "+const x = 1;" },
-      { kind: "truncated", count: 5, unit: "lines" },
+      { kind: "text", text: "⋮ +5 lines" },
       { kind: "text", text: "-const y = 2;" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
         • Git Diff src/agent.ts
             +const x = 1;
-            … +5 lines
+            ⋮ +5 lines
             -const y = 2;
       `),
     );

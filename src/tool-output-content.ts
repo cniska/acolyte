@@ -70,10 +70,10 @@ export function renderToolOutputPart(content: ToolOutputPart): string {
     }
     case "scope-header": {
       const label = tDynamic(content.labelKey);
-      const needsBrackets = content.scope !== "workspace";
-      const patternsDisplay = needsBrackets ? `[${content.patterns.join(", ")}]` : content.patterns.join(", ");
-      const scopePrefix = content.scope === "workspace" ? "" : `${content.scope} `;
-      return `${label} ${scopePrefix}${patternsDisplay}`;
+      const isSearch = content.labelKey.includes("search");
+      const patternsDisplay = isSearch ? content.patterns.map((p) => `"${p}"`).join(", ") : content.patterns.join(", ");
+      const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
+      return `${label} ${patternsDisplay}${scopeSuffix}`;
     }
     case "edit-header":
       return `${tDynamic(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
