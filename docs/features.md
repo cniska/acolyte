@@ -35,7 +35,7 @@ Shipped, user-visible capabilities.
 - workspace profile detection for ecosystem, package manager, lint, format, test commands, and line width
 - automatic formatting of edited files via detected formatter
 - automatic linting of edited files via detected linter
-- ecosystem-aware scoped test runner (`run-tests`) with auto-detected test command
+- ecosystem-aware scoped test runner (`test-run`) with auto-detected test command
 - inline task checklist for multi-step tasks, pinned between transcript and input
 
 ## Tools

@@ -57,7 +57,7 @@ describe("checklist integration", () => {
               { id: "s2", label: "test", status: "pending", order: 1 },
             ],
           });
-          // update-checklist updates individual items
+          // checklist-update updates individual items
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -132,14 +132,14 @@ describe("checklist integration", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
-            toolName: "read-file",
+            toolName: "file-read",
             args: { path: "a.ts" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
-            toolName: "read-file",
-            content: { kind: "tool-header", labelKey: "tool.label.read_file", detail: "a.ts" },
+            toolName: "file-read",
+            content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
           });
           snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
@@ -172,19 +172,19 @@ describe("checklist integration", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
-            toolName: "edit-file",
+            toolName: "file-edit",
             args: { path: "a.ts" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
-            toolName: "edit-file",
-            content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "a.ts" },
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "a.ts" },
           });
           options.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
-            toolName: "edit-file",
+            toolName: "file-edit",
           });
           snapshot = [...rows];
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };

@@ -29,10 +29,10 @@ export const PERF_SCENARIOS: PerfScenario[] = [
   {
     id: "tool-read-roundtrip",
     marker: "[perf:tool-read-roundtrip]",
-    description: "One read-file call followed by a short answer.",
+    description: "One file-read call followed by a short answer.",
     prompt: "[perf:tool-read-roundtrip] Read src/lifecycle.ts and summarize in one short sentence.",
     handle: (ctx) => {
-      const readTool = pickFunctionToolName(ctx.body.tools, "read-file", ["read", "file"]);
+      const readTool = pickFunctionToolName(ctx.body.tools, "file-read", ["read", "file"]);
       if (ctx.outputs.length === 0) {
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
@@ -49,11 +49,11 @@ export const PERF_SCENARIOS: PerfScenario[] = [
   {
     id: "edit-then-verify",
     marker: "[perf:edit-then-verify]",
-    description: "One edit-file call followed by one run-command verify call.",
+    description: "One file-edit call followed by one shell-run verify call.",
     prompt: "[perf:edit-then-verify] Edit src/lifecycle.ts and run verification once, then answer briefly.",
     handle: (ctx) => {
-      const editTool = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit", "file"]);
-      const runTool = pickFunctionToolName(ctx.body.tools, "run-command", ["run", "command", "terminal"]);
+      const editTool = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit", "file"]);
+      const runTool = pickFunctionToolName(ctx.body.tools, "shell-run", ["run", "command", "terminal"]);
       const lastCallId = ctx.outputs[ctx.outputs.length - 1]?.callId;
 
       if (ctx.outputs.length === 0) {

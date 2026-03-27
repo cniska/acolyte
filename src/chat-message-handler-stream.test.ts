@@ -45,10 +45,10 @@ describe("chat-message-handler-stream", () => {
 
     state.onOutput({
       toolCallId: "call_1",
-      toolName: "search-files",
+      toolName: "file-search",
       content: {
         kind: "scope-header",
-        labelKey: "tool.label.search_files",
+        labelKey: "tool.label.file_search",
         scope: "workspace",
         patterns: ["needle"],
         matches: 2,
@@ -60,7 +60,7 @@ describe("chat-message-handler-stream", () => {
 
     state.onOutput({
       toolCallId: "call_1",
-      toolName: "search-files",
+      toolName: "file-search",
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
     expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(2);
@@ -77,11 +77,11 @@ describe("chat-message-handler-stream", () => {
 
     state.onOutput({
       toolCallId: "call_1",
-      toolName: "edit-file",
-      content: { kind: "edit-header", labelKey: "tool.label.edit_file", path: "a.ts", files: 1, added: 1, removed: 0 },
+      toolName: "file-edit",
+      content: { kind: "edit-header", labelKey: "tool.label.file_edit", path: "a.ts", files: 1, added: 1, removed: 0 },
     });
-    state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
-    state.onOutput({ toolCallId: "call_1", toolName: "edit-file", content: { kind: "text", text: "line A" } });
+    state.onOutput({ toolCallId: "call_1", toolName: "file-edit", content: { kind: "text", text: "line A" } });
+    state.onOutput({ toolCallId: "call_1", toolName: "file-edit", content: { kind: "text", text: "line A" } });
     expect(rows).toHaveLength(1);
     expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(2);
     state.dispose();
@@ -99,8 +99,8 @@ describe("chat-message-handler-stream", () => {
 
     state.onOutput({
       toolCallId: "call_1",
-      toolName: "read-file",
-      content: { kind: "tool-header", labelKey: "tool.label.read_file", detail: "a.ts" },
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
     });
     expect(rows).toHaveLength(2);
     expect(rows[1]?.kind).toBe("tool");
@@ -139,14 +139,14 @@ describe("chat-message-handler-stream", () => {
 
     state.onOutput({
       toolCallId: "call_blocked",
-      toolName: "run-command",
-      content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "echo hi" },
+      toolName: "shell-run",
+      content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
     });
     expect(rows).toHaveLength(1);
 
     state.onToolResult({
       toolCallId: "call_blocked",
-      toolName: "run-command",
+      toolName: "shell-run",
       isError: true,
       errorCode: "E_GUARD_BLOCKED",
       error: { category: "guard-blocked" },

@@ -43,22 +43,22 @@ describe("error handling helpers", () => {
   test("parseError preserves structured tool recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editFileFindNotFound, "stale find", undefined, {
-        tool: "edit-file",
+        tool: "file-edit",
         kind: "refresh-snippet",
         summary: "Refresh the snippet.",
         instruction: "Reread the file and rebuild the edit.",
-        nextTool: "read-file",
+        nextTool: "file-read",
         targetPaths: ["src/a.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "edit-file",
+      tool: "file-edit",
       kind: "refresh-snippet",
       summary: "Refresh the snippet.",
       instruction: "Reread the file and rebuild the edit.",
-      nextTool: "read-file",
+      nextTool: "file-read",
       targetPaths: ["src/a.ts"],
     });
   });
@@ -67,11 +67,11 @@ describe("error handling helpers", () => {
     expect(
       serializeToolError(
         createToolError(TOOL_ERROR_CODES.editFileFindTooLarge, "find too large", undefined, {
-          tool: "edit-file",
+          tool: "file-edit",
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
-          nextTool: "edit-file",
+          nextTool: "file-edit",
           targetPaths: ["src/a.ts"],
         }),
       ),
@@ -80,72 +80,72 @@ describe("error handling helpers", () => {
         message: "find too large",
         code: TOOL_ERROR_CODES.editFileFindTooLarge,
         recovery: {
-          tool: "edit-file",
+          tool: "file-edit",
           kind: "shrink-edit",
           summary: "Shrink the edit.",
           instruction: "Use smaller snippets.",
-          nextTool: "edit-file",
+          nextTool: "file-edit",
           targetPaths: ["src/a.ts"],
         },
       },
     });
   });
 
-  test("parseError preserves structured edit-code recovery metadata", () => {
+  test("parseError preserves structured code-edit recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "No AST matches found", undefined, {
-        tool: "edit-code",
+        tool: "code-edit",
         kind: "refine-pattern",
         summary: "Your AST pattern did not match the current file.",
-        instruction: "Refine the pattern from the latest read-file output.",
-        nextTool: "read-file",
+        instruction: "Refine the pattern from the latest file-read output.",
+        nextTool: "file-read",
         targetPaths: ["src/code-ops.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "edit-code",
+      tool: "code-edit",
       kind: "refine-pattern",
       summary: "Your AST pattern did not match the current file.",
-      instruction: "Refine the pattern from the latest read-file output.",
-      nextTool: "read-file",
+      instruction: "Refine the pattern from the latest file-read output.",
+      nextTool: "file-read",
       targetPaths: ["src/code-ops.ts"],
     });
   });
 
-  test("parseError preserves ambiguous edit-code rename recovery metadata", () => {
+  test("parseError preserves ambiguous code-edit rename recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.editCodeNoMatch, "Scoped rename target is ambiguous", undefined, {
-        tool: "edit-code",
+        tool: "code-edit",
         kind: "clarify-rename-target",
         summary: "This scoped rename matches both local and member symbols.",
         instruction: 'Retry the rename with target: "local" or target: "member".',
-        nextTool: "edit-code",
+        nextTool: "code-edit",
         targetPaths: ["src/provider-config.ts"],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "edit-code",
+      tool: "code-edit",
       kind: "clarify-rename-target",
       summary: "This scoped rename matches both local and member symbols.",
       instruction: 'Retry the rename with target: "local" or target: "member".',
-      nextTool: "edit-code",
+      nextTool: "code-edit",
       targetPaths: ["src/provider-config.ts"],
     });
   });
 
-  test("serializeToolError preserves structured edit-code recovery metadata", () => {
+  test("serializeToolError preserves structured code-edit recovery metadata", () => {
     expect(
       serializeToolError(
         createToolError(TOOL_ERROR_CODES.editCodeUnsupportedFile, "unsupported file", undefined, {
-          tool: "edit-code",
+          tool: "code-edit",
           kind: "use-supported-file",
-          summary: "edit-code only works on supported code files.",
-          instruction: "Use a supported code file or switch to edit-file.",
-          nextTool: "edit-file",
+          summary: "code-edit only works on supported code files.",
+          instruction: "Use a supported code file or switch to file-edit.",
+          nextTool: "file-edit",
           targetPaths: ["notes.md"],
         }),
       ),
@@ -154,85 +154,85 @@ describe("error handling helpers", () => {
         message: "unsupported file",
         code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
         recovery: {
-          tool: "edit-code",
+          tool: "code-edit",
           kind: "use-supported-file",
-          summary: "edit-code only works on supported code files.",
-          instruction: "Use a supported code file or switch to edit-file.",
-          nextTool: "edit-file",
+          summary: "code-edit only works on supported code files.",
+          instruction: "Use a supported code file or switch to file-edit.",
+          nextTool: "file-edit",
           targetPaths: ["notes.md"],
         },
       },
     });
   });
 
-  test("parseError preserves structured scan-code recovery metadata", () => {
+  test("parseError preserves structured code-scan recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.scanCodeUnsupportedFile, "unsupported file", undefined, {
-        tool: "scan-code",
+        tool: "code-scan",
         kind: "use-supported-file",
-        summary: "scan-code only works on supported code files.",
-        instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
-        nextTool: "search-files",
+        summary: "code-scan only works on supported code files.",
+        instruction: "Use code-scan on a supported code file or directory, or switch to file-search.",
+        nextTool: "file-search",
         targetPaths: ["config/models.yaml"],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "scan-code",
+      tool: "code-scan",
       kind: "use-supported-file",
-      summary: "scan-code only works on supported code files.",
-      instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
-      nextTool: "search-files",
+      summary: "code-scan only works on supported code files.",
+      instruction: "Use code-scan on a supported code file or directory, or switch to file-search.",
+      nextTool: "file-search",
       targetPaths: ["config/models.yaml"],
     });
   });
 
-  test("parseError preserves structured search-files recovery metadata", () => {
+  test("parseError preserves structured file-search recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.searchFilesEmptyScope, "empty search scope", undefined, {
-        tool: "search-files",
+        tool: "file-search",
         kind: "broaden-scope",
-        summary: "Your search-files scope resolved to no searchable files.",
-        instruction: "Broaden the scope or use find-files first.",
-        nextTool: "find-files",
-        resolvesOn: [{ tool: "find-files" }],
+        summary: "Your file-search scope resolved to no searchable files.",
+        instruction: "Broaden the scope or use file-find first.",
+        nextTool: "file-find",
+        resolvesOn: [{ tool: "file-find" }],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "search-files",
+      tool: "file-search",
       kind: "broaden-scope",
-      summary: "Your search-files scope resolved to no searchable files.",
-      instruction: "Broaden the scope or use find-files first.",
-      nextTool: "find-files",
-      resolvesOn: [{ tool: "find-files" }],
+      summary: "Your file-search scope resolved to no searchable files.",
+      instruction: "Broaden the scope or use file-find first.",
+      nextTool: "file-find",
+      resolvesOn: [{ tool: "file-find" }],
     });
   });
 
-  test("parseError preserves structured scoped no-match search-files recovery metadata", () => {
+  test("parseError preserves structured scoped no-match file-search recovery metadata", () => {
     const parsed = parseError(
       createToolError(TOOL_ERROR_CODES.searchFilesNoMatch, "no match in scoped file", undefined, {
-        tool: "search-files",
+        tool: "file-search",
         kind: "switch-to-read",
-        summary: "Your search-files query found no matches in the scoped file.",
-        instruction: "Switch to read-file and inspect the file directly.",
-        nextTool: "read-file",
+        summary: "Your file-search query found no matches in the scoped file.",
+        instruction: "Switch to file-read and inspect the file directly.",
+        nextTool: "file-read",
         targetPaths: ["src/provider-config.ts"],
-        resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
+        resolvesOn: [{ tool: "file-read", targetPaths: ["src/provider-config.ts"] }],
       }),
     );
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "search-files",
+      tool: "file-search",
       kind: "switch-to-read",
-      summary: "Your search-files query found no matches in the scoped file.",
-      instruction: "Switch to read-file and inspect the file directly.",
-      nextTool: "read-file",
+      summary: "Your file-search query found no matches in the scoped file.",
+      instruction: "Switch to file-read and inspect the file directly.",
+      nextTool: "file-read",
       targetPaths: ["src/provider-config.ts"],
-      resolvesOn: [{ tool: "read-file", targetPaths: ["src/provider-config.ts"] }],
+      resolvesOn: [{ tool: "file-read", targetPaths: ["src/provider-config.ts"] }],
     });
   });
 
@@ -242,11 +242,11 @@ describe("error handling helpers", () => {
         message: "unsupported file",
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
         recovery: {
-          tool: "scan-code",
+          tool: "code-scan",
           kind: "use-supported-file",
-          summary: "scan-code only works on supported code files.",
-          instruction: "Use search-files instead.",
-          nextTool: "run-command",
+          summary: "code-scan only works on supported code files.",
+          instruction: "Use file-search instead.",
+          nextTool: "shell-run",
           targetPaths: ["config/models.yaml", "", 42],
         },
       },
@@ -254,10 +254,10 @@ describe("error handling helpers", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.recovery).toEqual({
-      tool: "scan-code",
+      tool: "code-scan",
       kind: "use-supported-file",
-      summary: "scan-code only works on supported code files.",
-      instruction: "Use search-files instead.",
+      summary: "code-scan only works on supported code files.",
+      instruction: "Use file-search instead.",
       targetPaths: ["config/models.yaml"],
     });
   });

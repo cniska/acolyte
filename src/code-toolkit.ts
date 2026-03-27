@@ -47,19 +47,20 @@ function formatScanCodeResult(result: ScanCodeResult): string {
 
 function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
-    id: "scan-code",
-    labelKey: "tool.label.scan_code",
+    id: "code-scan",
+    toolkit: "code",
+    labelKey: "tool.label.code_scan",
     category: "search",
     permissions: ["read"],
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries.",
     instruction: [
-      "Use `scan-code` for AST pattern matching.",
+      "Use `code-scan` for AST pattern matching.",
       "Always pass `paths` and `patterns` as arrays.",
       "Batch multiple files and patterns in one call.",
-      "Use it to map structural targets before `edit-code`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
-      "For keyword or regex searches prefer `search-files`.",
-      "Each match includes an `enclosingSymbol` in the output — use it directly as `withinSymbol` in a follow-up `edit-code` call.",
+      "Use it to map structural targets before `code-edit`, not for plain text replacements or post-edit reassurance on a bounded named-file task.",
+      "For keyword or regex searches prefer `file-search`.",
+      "Each match includes an `enclosingSymbol` in the output — use it directly as `withinSymbol` in a follow-up `code-edit` call.",
     ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
@@ -68,23 +69,23 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       maxResults: z.number().int().min(1).max(200).optional(),
     }),
     outputSchema: z.object({
-      kind: z.literal("scan-code"),
+      kind: z.literal("code-scan"),
       paths: z.array(z.string().min(1)),
       patterns: z.array(z.string().min(1)),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "scan-code", toolCallId, toolInput, async (callId) => {
+      return runTool(input.session, "code-scan", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
         if (unique.length > 0) {
           const shown = unique.slice(0, 4);
           const remaining = unique.length - shown.length;
           input.onOutput({
-            toolName: "scan-code",
+            toolName: "code-scan",
             content: {
               kind: "file-header",
-              labelKey: "tool.label.scan_code",
+              labelKey: "tool.label.code_scan",
               count: unique.length,
               targets: shown,
               omitted: remaining > 0 ? remaining : undefined,
@@ -106,7 +107,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
           maxResults: toolInput.maxResults ?? 50,
         });
         const result = compactToolOutput(formatScanCodeResult(rawScan), budget);
-        return { kind: "scan-code", paths, patterns: toolInput.patterns, output: result };
+        return { kind: "code-scan", paths, patterns: toolInput.patterns, output: result };
       });
     },
   });
@@ -114,12 +115,12 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
 
 function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
   const emitDiffSummaryHeader = createDiffSummaryEmitter({
-    toolName: "edit-code",
-    labelKey: "tool.label.edit_code",
+    toolName: "code-edit",
+    labelKey: "tool.label.code_edit",
     onOutput: input.onOutput,
   });
   const outputSchema = z.object({
-    kind: z.literal("edit-code"),
+    kind: z.literal("code-edit"),
     path: z.string().min(1),
     files: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
@@ -130,14 +131,15 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     output: z.string(),
   });
   return createTool({
-    id: "edit-code",
-    labelKey: "tool.label.edit_code",
+    id: "code-edit",
+    toolkit: "code",
+    labelKey: "tool.label.code_edit",
     category: "write",
     permissions: ["read", "write"],
     description:
-      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `edit-file`.',
+      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `file-edit`.',
     instruction: [
-      "Use `edit-code` for AST-aware refactors or structural code rewrites.",
+      "Use `code-edit` for AST-aware refactors or structural code rewrites.",
       "Prefer explicit operation objects.",
       'For identifier renames, use { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }.',
       "Scoped rename follows the symbol kind inside the named scope: local renames update local references and shorthand uses, while member renames stay on the declared member and `this.member` references.",
@@ -150,10 +152,10 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       'Example replace rule: { op: "replace", rule: { all: [{ kind: "call_expression" }, { inside: { pattern: "function $NAME() { $$$BODY }", stopBy: "end" } }] }, replacement: "..." }.',
       "`path` must be a concrete file path, and you should read that file directly right before editing it.",
       "When the change must stay inside one named helper, declaration, or block, prefer `withinSymbol` with the enclosing name.",
-      "If `edit-code` reports no AST matches, refine the rename scope or rule against the latest read-file text for that same file instead of broadening the rewrite to unrelated matches.",
-      "The `edit-code` result already includes a diff preview.",
+      "If `code-edit` reports no AST matches, refine the rename scope or rule against the latest file-read text for that same file instead of broadening the rewrite to unrelated matches.",
+      "The `code-edit` result already includes a diff preview.",
       "If that preview shows the requested bounded change, stop immediately instead of re-reading, searching, reviewing, or calling another write tool on that same file in work mode.",
-      "Prefer `edit-file` for single-location text edits and repeated plain-text replacements within one file.",
+      "Prefer `file-edit` for single-location text edits and repeated plain-text replacements within one file.",
     ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
@@ -161,7 +163,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     }),
     outputSchema,
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "edit-code", toolCallId, toolInput, async (callId) => {
+      return runTool(input.session, "code-edit", toolCallId, toolInput, async (callId) => {
         const editResult = await editCode({
           workspace: input.workspace,
           path: toolInput.path,
@@ -169,11 +171,11 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
         });
         emitDiffSummaryHeader(toolInput.path, editResult.output, callId);
         for (const content of numberedUnifiedDiffLines(editResult.output))
-          input.onOutput({ toolName: "edit-code", content, toolCallId: callId });
+          input.onOutput({ toolName: "code-edit", content, toolCallId: callId });
         const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {
-          kind: "edit-code",
+          kind: "code-edit",
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,

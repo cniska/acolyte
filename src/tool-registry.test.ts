@@ -53,29 +53,29 @@ describe("hasPermissions", () => {
 describe("toolIdsForGrants", () => {
   test("plan grants return read and network tools", () => {
     const ids = toolIdsForGrants(["read", "network"]);
-    expect(ids).toContain("read-file");
-    expect(ids).toContain("find-files");
+    expect(ids).toContain("file-read");
+    expect(ids).toContain("file-find");
     expect(ids).toContain("web-search");
-    expect(ids).not.toContain("edit-file");
-    expect(ids).not.toContain("run-command");
+    expect(ids).not.toContain("file-edit");
+    expect(ids).not.toContain("shell-run");
     expect(ids).not.toContain("git-add");
   });
 
   test("work grants return all tools", () => {
     const ids = toolIdsForGrants(["read", "write", "execute", "network"]);
-    expect(ids).toContain("read-file");
-    expect(ids).toContain("edit-file");
-    expect(ids).toContain("run-command");
+    expect(ids).toContain("file-read");
+    expect(ids).toContain("file-edit");
+    expect(ids).toContain("shell-run");
     expect(ids).toContain("web-search");
     expect(ids).toContain("git-add");
   });
 
   test("verify grants return read and execute tools", () => {
     const ids = toolIdsForGrants(["read", "execute"]);
-    expect(ids).toContain("read-file");
-    expect(ids).toContain("run-command");
-    expect(ids).toContain("scan-code");
-    expect(ids).not.toContain("edit-file");
+    expect(ids).toContain("file-read");
+    expect(ids).toContain("shell-run");
+    expect(ids).toContain("code-scan");
+    expect(ids).not.toContain("file-edit");
     expect(ids).not.toContain("web-search");
     expect(ids).not.toContain("git-add");
   });
@@ -84,15 +84,15 @@ describe("toolIdsForGrants", () => {
 describe("toolIdsByCategory", () => {
   test("write category returns write tools only", () => {
     const ids = toolIdsByCategory("write");
-    expect(ids).toContain("edit-file");
-    expect(ids).toContain("edit-code");
-    expect(ids).toContain("create-file");
-    expect(ids).toContain("delete-file");
+    expect(ids).toContain("file-edit");
+    expect(ids).toContain("code-edit");
+    expect(ids).toContain("file-create");
+    expect(ids).toContain("file-delete");
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
-    expect(ids).not.toContain("update-checklist");
-    expect(ids).not.toContain("read-file");
-    expect(ids).not.toContain("run-command");
+    expect(ids).not.toContain("checklist-update");
+    expect(ids).not.toContain("file-read");
+    expect(ids).not.toContain("shell-run");
     expect(ids).not.toContain("web-search");
   });
 });
@@ -114,21 +114,21 @@ describe("localization baseline", () => {
   });
 
   test("file tool instructions prefer direct reads before editing a chosen file", () => {
-    const readInstruction = toolDefinitionsById["read-file"]?.instruction ?? "";
-    const editInstruction = toolDefinitionsById["edit-file"]?.instruction ?? "";
-    const editCodeInstruction = toolDefinitionsById["edit-code"]?.instruction ?? "";
-    const searchInstruction = toolDefinitionsById["search-files"]?.instruction ?? "";
+    const readInstruction = toolDefinitionsById["file-read"]?.instruction ?? "";
+    const editInstruction = toolDefinitionsById["file-edit"]?.instruction ?? "";
+    const editCodeInstruction = toolDefinitionsById["code-edit"]?.instruction ?? "";
+    const searchInstruction = toolDefinitionsById["file-search"]?.instruction ?? "";
     const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
     const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
     const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
     const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
-    const runCommandInstruction = toolDefinitionsById["run-command"]?.instruction ?? "";
+    const runCommandInstruction = toolDefinitionsById["shell-run"]?.instruction ?? "";
 
     expect(readInstruction).toContain("Batch reads while discovering scope");
     expect(readInstruction).toContain("once you are editing named targets");
     expect(readInstruction).toContain("read each target separately right before its edit");
-    expect(editInstruction).toContain("latest direct `read-file` of that file");
-    expect(editInstruction).toContain("smallest unique snippet from the latest direct `read-file`");
+    expect(editInstruction).toContain("latest direct `file-read` of that file");
+    expect(editInstruction).toContain("smallest unique snippet from the latest direct `file-read`");
     expect(editInstruction).toContain("Keep anchors tight");
     expect(editInstruction).toContain("keep line-range edits to the changed lines when possible");
     expect(editInstruction).toContain("preserve nearby path or link style");
@@ -142,6 +142,6 @@ describe("localization baseline", () => {
     expect(gitDiffInstruction).toContain("not to re-check an edit you just made");
     expect(gitLogInstruction).toContain("It is for history, not current uncommitted edits");
     expect(gitShowInstruction).toContain("It is for history, not current uncommitted edits");
-    expect(runCommandInstruction).toContain("Use `run-command` for known repository commands");
+    expect(runCommandInstruction).toContain("Use `shell-run` for known repository commands");
   });
 });

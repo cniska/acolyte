@@ -8,6 +8,7 @@ export type ToolCategory = "read" | "search" | "write" | "execute" | "network" |
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
+  readonly toolkit: string;
   readonly category: ToolCategory;
   readonly permissions: readonly ToolPermission[];
   readonly description: string;

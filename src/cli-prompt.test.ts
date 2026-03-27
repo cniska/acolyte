@@ -21,7 +21,7 @@ function createStreamingClient(events: StreamEvent[]): Client {
   return {
     replyStream: async (_input, options) => {
       for (const event of events) options.onEvent(event);
-      return { state: "done" as const, output: "done", model: "gpt-5-mini", toolCalls: ["edit-code"] };
+      return { state: "done" as const, output: "done", model: "gpt-5-mini", toolCalls: ["code-edit"] };
     },
     status: async () => ({}),
     taskStatus: async () => null,
@@ -44,7 +44,7 @@ describe("cli-prompt", () => {
         state: "done" as const,
         output: "done",
         model: "gpt-5-mini",
-        toolCalls: ["read-file"],
+        toolCalls: ["file-read"],
       }),
       status: async () => ({}),
       taskStatus: async () => null,
@@ -101,7 +101,7 @@ describe("cli-prompt", () => {
 
     try {
       const callId = "call_1";
-      const toolName = "edit-code";
+      const toolName = "code-edit";
 
       const header: ToolOutputPart = {
         kind: "edit-header",

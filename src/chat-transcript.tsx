@@ -170,8 +170,7 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     );
   }
   if (part.kind === "scope-header") {
-    const isSearch = part.labelKey.includes("search");
-    const patternsDisplay = isSearch ? part.patterns.map((p) => `"${p}"`).join(", ") : part.patterns.join(", ");
+    const patternsDisplay = part.patterns.join(", ");
     const scopeSuffix = part.scope !== "workspace" ? ` in ${part.scope}` : "";
     return (
       <>

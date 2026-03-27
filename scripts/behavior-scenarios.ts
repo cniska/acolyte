@@ -10,13 +10,13 @@ const behaviorScenarioIdSchema = z.enum([
   "two-file-deps-rename",
   "bounded-return-fix",
   "post-success-stop",
-  "scan-code-yaml-recovery",
-  "search-files-no-match-recovery",
-  "scoped-edit-code-rename",
-  "scoped-edit-code-rename-shorthand",
-  "class-field-edit-code-rename",
-  "scoped-edit-code-rename-target",
-  "structured-edit-code-replace",
+  "code-scan-yaml-recovery",
+  "file-search-no-match-recovery",
+  "scoped-code-edit-rename",
+  "scoped-code-edit-rename-shorthand",
+  "class-field-code-edit-rename",
+  "scoped-code-edit-rename-target",
+  "structured-code-edit-replace",
 ]);
 
 export type BehaviorScenarioId = z.infer<typeof behaviorScenarioIdSchema>;
@@ -238,32 +238,32 @@ function validateTwoFileDepsRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const readRunCalls = toolCallLines.filter(
-    (line) => line.includes("tool=read-file") && line.includes("src/cli-run.ts"),
+    (line) => line.includes("tool=file-read") && line.includes("src/cli-run.ts"),
   ).length;
   const readSkillCalls = toolCallLines.filter(
-    (line) => line.includes("tool=read-file") && line.includes("src/cli-skill.ts"),
+    (line) => line.includes("tool=file-read") && line.includes("src/cli-skill.ts"),
   ).length;
-  const searchCalls = toolCallLines.filter((line) => line.includes("tool=search-files")).length;
+  const searchCalls = toolCallLines.filter((line) => line.includes("tool=file-search")).length;
   const editRunCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-run.ts"),
+    (line) => line.includes("tool=file-edit") && line.includes("path=src/cli-run.ts"),
   ).length;
   const editSkillCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-file") && line.includes("path=src/cli-skill.ts"),
+    (line) => line.includes("tool=file-edit") && line.includes("path=src/cli-skill.ts"),
   ).length;
 
   const firstReadTools = toolCallLines
     .slice(0, 2)
-    .filter((line) => line.includes("tool=read-file"))
+    .filter((line) => line.includes("tool=file-read"))
     .map((line) => (line.includes("src/cli-run.ts") ? "run" : line.includes("src/cli-skill.ts") ? "skill" : "other"));
   if (!(firstReadTools.includes("run") && firstReadTools.includes("skill"))) {
     issues.push("first two tool calls should read src/cli-run.ts and src/cli-skill.ts");
   }
-  if (toolCallLines.some((line) => line.includes("tool=find-files"))) {
-    issues.push("two-file deps rename should not use find-files");
+  if (toolCallLines.some((line) => line.includes("tool=file-find"))) {
+    issues.push("two-file deps rename should not use file-find");
   }
   if (readRunCalls > 1) issues.push(`should read src/cli-run.ts at most once, saw ${readRunCalls}`);
   if (readSkillCalls > 1) issues.push(`should read src/cli-skill.ts at most once, saw ${readSkillCalls}`);
-  if (searchCalls > 1) issues.push(`should use at most one scoped search-files call, saw ${searchCalls}`);
+  if (searchCalls > 1) issues.push(`should use at most one scoped file-search call, saw ${searchCalls}`);
   if (editRunCalls > 1) issues.push(`should edit src/cli-run.ts at most once, saw ${editRunCalls}`);
   if (editSkillCalls > 1) issues.push(`should edit src/cli-skill.ts at most once, saw ${editSkillCalls}`);
 
@@ -370,20 +370,20 @@ function validatePostSuccessStopTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.ts")) {
-    issues.push("first tool call should be read-file on src/provider-config.ts");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
+    issues.push("first tool call should be file-read on src/provider-config.ts");
   }
-  if (toolCallLines.some((line) => line.includes("tool=find-files") || line.includes("tool=search-files"))) {
-    issues.push("post-success stop scenario should not use find-files or search-files");
+  if (toolCallLines.some((line) => line.includes("tool=file-find") || line.includes("tool=file-search"))) {
+    issues.push("post-success stop scenario should not use file-find or file-search");
   }
   const readCalls = toolCallLines.filter(
-    (line) => line.includes("tool=read-file") && line.includes("src/provider-config.ts"),
+    (line) => line.includes("tool=file-read") && line.includes("src/provider-config.ts"),
   ).length;
   if (readCalls > 1) {
     issues.push(`post-success stop scenario should read src/provider-config.ts at most once, saw ${readCalls}`);
   }
   const editCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+    (line) => line.includes("tool=file-edit") && line.includes("path=src/provider-config.ts"),
   ).length;
   if (editCalls !== 1) {
     issues.push(`post-success stop scenario should edit src/provider-config.ts exactly once, saw ${editCalls}`);
@@ -401,43 +401,43 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   }));
 
   const firstTool = toolCalls[0];
-  if (!firstTool || firstTool.tool !== "read-file" || !firstTool.line.includes("src/lifecycle-state.ts")) {
-    issues.push("first tool call should be read-file on src/lifecycle-state.ts");
+  if (!firstTool || firstTool.tool !== "file-read" || !firstTool.line.includes("src/lifecycle-state.ts")) {
+    issues.push("first tool call should be file-read on src/lifecycle-state.ts");
   }
 
-  if (toolCalls.some((call) => call.tool === "find-files")) {
-    issues.push("bounded single-file scenario should not use find-files");
+  if (toolCalls.some((call) => call.tool === "file-find")) {
+    issues.push("bounded single-file scenario should not use file-find");
   }
 
-  if (toolCalls.some((call) => call.tool === "edit-code")) {
-    issues.push("bounded single-file scenario should not use edit-code");
+  if (toolCalls.some((call) => call.tool === "code-edit")) {
+    issues.push("bounded single-file scenario should not use code-edit");
   }
 
-  if (toolCalls.some((call) => call.tool === "search-files" && call.line.includes("src/lifecycle-state.ts"))) {
+  if (toolCalls.some((call) => call.tool === "file-search" && call.line.includes("src/lifecycle-state.ts"))) {
     issues.push("bounded single-file scenario should not search the already-read target file");
   }
 
   const sameFileEditCalls = toolCalls.filter(
-    (call) => call.tool === "edit-file" && call.path === "src/lifecycle-state.ts",
+    (call) => call.tool === "file-edit" && call.path === "src/lifecycle-state.ts",
   ).length;
   if (sameFileEditCalls > 2) {
-    issues.push(`bounded single-file scenario should use at most 2 edit-file calls, saw ${sameFileEditCalls}`);
+    issues.push(`bounded single-file scenario should use at most 2 file-edit calls, saw ${sameFileEditCalls}`);
   }
 
   const verifyModeIndex = traceLines.findIndex(
     (line) => line.includes("event=lifecycle.mode.changed") && line.includes("to=verify"),
   );
   const firstVerifyCommandIndex = traceLines.findIndex(
-    (line) => line.includes("event=lifecycle.tool.call") && line.includes("tool=run-command"),
+    (line) => line.includes("event=lifecycle.tool.call") && line.includes("tool=shell-run"),
   );
   if (verifyModeIndex >= 0 && firstVerifyCommandIndex > verifyModeIndex) {
     const verifyPrelude = traceLines.slice(verifyModeIndex + 1, firstVerifyCommandIndex);
     const badVerifyPrelude = verifyPrelude.some(
       (line) =>
         line.includes("event=lifecycle.tool.call") &&
-        (line.includes("tool=read-file") ||
-          line.includes("tool=search-files") ||
-          line.includes("tool=scan-code") ||
+        (line.includes("tool=file-read") ||
+          line.includes("tool=file-search") ||
+          line.includes("tool=code-scan") ||
           line.includes("tool=git-diff")) &&
         line.includes("src/lifecycle-state.ts"),
     );
@@ -518,25 +518,25 @@ function validateSearchFilesNoMatchRecoveryTrace(traceLines: string[]): string[]
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const scopedSearchCalls = toolCallLines.filter(
-    (line) => line.includes("tool=search-files") && line.includes("src/provider-config.ts"),
+    (line) => line.includes("tool=file-search") && line.includes("src/provider-config.ts"),
   ).length;
   if (scopedSearchCalls === 0) {
-    issues.push("search-files no-match scenario should attempt search-files on src/provider-config.ts");
+    issues.push("file-search no-match scenario should attempt file-search on src/provider-config.ts");
   }
   const readCalls = toolCallLines.filter(
-    (line) => line.includes("tool=read-file") && line.includes("src/provider-config.ts"),
+    (line) => line.includes("tool=file-read") && line.includes("src/provider-config.ts"),
   ).length;
   if (readCalls === 0) {
-    issues.push("search-files no-match scenario should recover with read-file on src/provider-config.ts");
+    issues.push("file-search no-match scenario should recover with file-read on src/provider-config.ts");
   }
   const editCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+    (line) => line.includes("tool=file-edit") && line.includes("path=src/provider-config.ts"),
   ).length;
   if (editCalls === 0) {
-    issues.push("search-files no-match scenario should update src/provider-config.ts");
+    issues.push("file-search no-match scenario should update src/provider-config.ts");
   }
   if (editCalls > 1) {
-    issues.push(`search-files no-match scenario should edit src/provider-config.ts at most once, saw ${editCalls}`);
+    issues.push(`file-search no-match scenario should edit src/provider-config.ts at most once, saw ${editCalls}`);
   }
   return issues;
 }
@@ -545,31 +545,31 @@ function validateScanCodeYamlRecoveryTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const scanYamlCalls = toolCallLines.filter(
-    (line) => line.includes("tool=scan-code") && line.includes("config/models.yaml"),
+    (line) => line.includes("tool=code-scan") && line.includes("config/models.yaml"),
   ).length;
   if (scanYamlCalls === 0) {
-    issues.push("scan-code recovery scenario should attempt scan-code on config/models.yaml");
+    issues.push("code-scan recovery scenario should attempt code-scan on config/models.yaml");
   }
   const searchYamlCalls = toolCallLines.filter(
-    (line) => line.includes("tool=search-files") && line.includes("config/models.yaml"),
+    (line) => line.includes("tool=file-search") && line.includes("config/models.yaml"),
   ).length;
   const readYamlCalls = toolCallLines.filter(
-    (line) => line.includes("tool=read-file") && line.includes("config/models.yaml"),
+    (line) => line.includes("tool=file-read") && line.includes("config/models.yaml"),
   ).length;
   if (searchYamlCalls + readYamlCalls === 0) {
-    issues.push("scan-code recovery scenario should recover with a plain-text lookup on config/models.yaml");
+    issues.push("code-scan recovery scenario should recover with a plain-text lookup on config/models.yaml");
   }
   const editTargetCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"),
+    (line) => line.includes("tool=file-edit") && line.includes("path=src/provider-config.ts"),
   ).length;
   if (editTargetCalls === 0) {
-    issues.push("scan-code recovery scenario should update src/provider-config.ts");
+    issues.push("code-scan recovery scenario should update src/provider-config.ts");
   }
   if (editTargetCalls > 1) {
-    issues.push(`scan-code recovery scenario should edit src/provider-config.ts at most once, saw ${editTargetCalls}`);
+    issues.push(`code-scan recovery scenario should edit src/provider-config.ts at most once, saw ${editTargetCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-code") && line.includes("src/provider-config.ts"))) {
-    issues.push("scan-code recovery scenario should not switch to edit-code for src/provider-config.ts");
+  if (toolCallLines.some((line) => line.includes("tool=code-edit") && line.includes("src/provider-config.ts"))) {
+    issues.push("code-scan recovery scenario should not switch to code-edit for src/provider-config.ts");
   }
   return issues;
 }
@@ -761,18 +761,18 @@ function validateStructuredEditCodeReplaceTrace(traceLines: string[]): string[] 
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/logger-migration.ts")) {
-    issues.push("first tool call should be read-file on src/logger-migration.ts");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/logger-migration.ts")) {
+    issues.push("first tool call should be file-read on src/logger-migration.ts");
   }
   const editCodeCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-code") && line.includes("path=src/logger-migration.ts"),
+    (line) => line.includes("tool=code-edit") && line.includes("path=src/logger-migration.ts"),
   ).length;
-  if (editCodeCalls === 0) issues.push("structured replace scenario should use edit-code on src/logger-migration.ts");
+  if (editCodeCalls === 0) issues.push("structured replace scenario should use code-edit on src/logger-migration.ts");
   if (editCodeCalls > 2) {
-    issues.push(`structured replace scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+    issues.push(`structured replace scenario should use at most 2 code-edit calls, saw ${editCodeCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/logger-migration.ts"))) {
-    issues.push("structured replace scenario should not fall back to edit-file on src/logger-migration.ts");
+  if (toolCallLines.some((line) => line.includes("tool=file-edit") && line.includes("path=src/logger-migration.ts"))) {
+    issues.push("structured replace scenario should not fall back to file-edit on src/logger-migration.ts");
   }
   return issues;
 }
@@ -781,18 +781,18 @@ function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.js")) {
-    issues.push("first tool call should be read-file on src/provider-config.js");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.js")) {
+    issues.push("first tool call should be file-read on src/provider-config.js");
   }
   const editCodeCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-code") && line.includes("path=src/provider-config.js"),
+    (line) => line.includes("tool=code-edit") && line.includes("path=src/provider-config.js"),
   ).length;
-  if (editCodeCalls === 0) issues.push("class-field rename scenario should use edit-code on src/provider-config.js");
+  if (editCodeCalls === 0) issues.push("class-field rename scenario should use code-edit on src/provider-config.js");
   if (editCodeCalls > 2) {
-    issues.push(`class-field rename scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+    issues.push(`class-field rename scenario should use at most 2 code-edit calls, saw ${editCodeCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.js"))) {
-    issues.push("class-field rename scenario should not fall back to edit-file on src/provider-config.js");
+  if (toolCallLines.some((line) => line.includes("tool=file-edit") && line.includes("path=src/provider-config.js"))) {
+    issues.push("class-field rename scenario should not fall back to file-edit on src/provider-config.js");
   }
   return issues;
 }
@@ -801,18 +801,18 @@ function validateScopedEditCodeRenameTargetTrace(traceLines: string[]): string[]
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/provider-config.ts")) {
-    issues.push("first tool call should be read-file on src/provider-config.ts");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
+    issues.push("first tool call should be file-read on src/provider-config.ts");
   }
   const editCodeCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-code") && line.includes("path=src/provider-config.ts"),
+    (line) => line.includes("tool=code-edit") && line.includes("path=src/provider-config.ts"),
   ).length;
-  if (editCodeCalls === 0) issues.push("scoped rename target scenario should use edit-code on src/provider-config.ts");
+  if (editCodeCalls === 0) issues.push("scoped rename target scenario should use code-edit on src/provider-config.ts");
   if (editCodeCalls > 2) {
-    issues.push(`scoped rename target scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+    issues.push(`scoped rename target scenario should use at most 2 code-edit calls, saw ${editCodeCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/provider-config.ts"))) {
-    issues.push("scoped rename target scenario should not fall back to edit-file on src/provider-config.ts");
+  if (toolCallLines.some((line) => line.includes("tool=file-edit") && line.includes("path=src/provider-config.ts"))) {
+    issues.push("scoped rename target scenario should not fall back to file-edit on src/provider-config.ts");
   }
   return issues;
 }
@@ -821,18 +821,18 @@ function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/code-ops.ts")) {
-    issues.push("first tool call should be read-file on src/code-ops.ts");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
+    issues.push("first tool call should be file-read on src/code-ops.ts");
   }
   const editCodeCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-code") && line.includes("path=src/code-ops.ts"),
+    (line) => line.includes("tool=code-edit") && line.includes("path=src/code-ops.ts"),
   ).length;
-  if (editCodeCalls === 0) issues.push("scoped edit-code scenario should use edit-code on src/code-ops.ts");
+  if (editCodeCalls === 0) issues.push("scoped code-edit scenario should use code-edit on src/code-ops.ts");
   if (editCodeCalls > 2) {
-    issues.push(`scoped edit-code scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+    issues.push(`scoped code-edit scenario should use at most 2 code-edit calls, saw ${editCodeCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/code-ops.ts"))) {
-    issues.push("scoped edit-code scenario should not fall back to edit-file on src/code-ops.ts");
+  if (toolCallLines.some((line) => line.includes("tool=file-edit") && line.includes("path=src/code-ops.ts"))) {
+    issues.push("scoped code-edit scenario should not fall back to file-edit on src/code-ops.ts");
   }
   return issues;
 }
@@ -841,18 +841,18 @@ function validateScopedEditCodeRenameShorthandTrace(traceLines: string[]): strin
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=read-file") || !firstTool.includes("src/code-ops.ts")) {
-    issues.push("first tool call should be read-file on src/code-ops.ts");
+  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
+    issues.push("first tool call should be file-read on src/code-ops.ts");
   }
   const editCodeCalls = toolCallLines.filter(
-    (line) => line.includes("tool=edit-code") && line.includes("path=src/code-ops.ts"),
+    (line) => line.includes("tool=code-edit") && line.includes("path=src/code-ops.ts"),
   ).length;
-  if (editCodeCalls === 0) issues.push("scoped shorthand rename scenario should use edit-code on src/code-ops.ts");
+  if (editCodeCalls === 0) issues.push("scoped shorthand rename scenario should use code-edit on src/code-ops.ts");
   if (editCodeCalls > 2) {
-    issues.push(`scoped shorthand rename scenario should use at most 2 edit-code calls, saw ${editCodeCalls}`);
+    issues.push(`scoped shorthand rename scenario should use at most 2 code-edit calls, saw ${editCodeCalls}`);
   }
-  if (toolCallLines.some((line) => line.includes("tool=edit-file") && line.includes("path=src/code-ops.ts"))) {
-    issues.push("scoped shorthand rename scenario should not fall back to edit-file on src/code-ops.ts");
+  if (toolCallLines.some((line) => line.includes("tool=file-edit") && line.includes("path=src/code-ops.ts"))) {
+    issues.push("scoped shorthand rename scenario should not fall back to file-edit on src/code-ops.ts");
   }
   return issues;
 }
@@ -917,77 +917,77 @@ export const BEHAVIOR_SCENARIOS: BehaviorScenario[] = [
     id: "post-success-stop",
     description: "Read once, make one bounded edit, and stop without rereads.",
     prompt:
-      "Use `read-file` on src/provider-config.ts first. Then rename MODEL_ALIAS to DEFAULT_ALIAS in that file, keep the same alias value, update only that file, and stop.",
+      "Use `file-read` on src/provider-config.ts first. Then rename MODEL_ALIAS to DEFAULT_ALIAS in that file, keep the same alias value, update only that file, and stop.",
     expectedChanges: ["src/provider-config.ts"],
     setup: createPostSuccessStopWorkspace,
     validate: validatePostSuccessStopWorkspace,
     validateTrace: validatePostSuccessStopTrace,
   },
   {
-    id: "scan-code-yaml-recovery",
-    description: "Recover from unsupported scan-code input by switching to plain-text lookup.",
+    id: "code-scan-yaml-recovery",
+    description: "Recover from unsupported code-scan input by switching to plain-text lookup.",
     prompt:
-      "Use scan-code on config/models.yaml to find the default alias. Then in src/provider-config.ts rename MODEL_ALIAS to DEFAULT_ALIAS and keep the same alias value. If scan-code cannot read the yaml file, recover with the appropriate plain-text tool. Update only src/provider-config.ts, then stop.",
+      "Use code-scan on config/models.yaml to find the default alias. Then in src/provider-config.ts rename MODEL_ALIAS to DEFAULT_ALIAS and keep the same alias value. If code-scan cannot read the yaml file, recover with the appropriate plain-text tool. Update only src/provider-config.ts, then stop.",
     expectedChanges: ["src/provider-config.ts"],
     setup: createScanCodeYamlRecoveryWorkspace,
     validate: validateScanCodeYamlRecoveryWorkspace,
     validateTrace: validateScanCodeYamlRecoveryTrace,
   },
   {
-    id: "search-files-no-match-recovery",
-    description: "Recover from a scoped search-files no-match by switching to read-file.",
+    id: "file-search-no-match-recovery",
+    description: "Recover from a scoped file-search no-match by switching to file-read.",
     prompt:
-      "Use `search-files` on src/provider-config.ts to look for DEFAULT_ALIAS first. If that search finds no matches, recover by reading the file directly. Then rename MODEL_ALIAS to DEFAULT_ALIAS in src/provider-config.ts, keep the same alias value, update only that file, and stop.",
+      "Use `file-search` on src/provider-config.ts to look for DEFAULT_ALIAS first. If that search finds no matches, recover by reading the file directly. Then rename MODEL_ALIAS to DEFAULT_ALIAS in src/provider-config.ts, keep the same alias value, update only that file, and stop.",
     expectedChanges: ["src/provider-config.ts"],
     setup: createSearchFilesNoMatchRecoveryWorkspace,
     validate: validateSearchFilesNoMatchRecoveryWorkspace,
     validateTrace: validateSearchFilesNoMatchRecoveryTrace,
   },
   {
-    id: "scoped-edit-code-rename",
-    description: "Scoped helper-only rename using edit-code with within.",
+    id: "scoped-code-edit-rename",
+    description: "Scoped helper-only rename using code-edit with within.",
     prompt:
-      'In src/code-ops.ts, rename the loop variable `result` to `patternResult` inside the `scanFile` helper only. Use `edit-code` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update only that file, then stop.',
+      'In src/code-ops.ts, rename the loop variable `result` to `patternResult` inside the `scanFile` helper only. Use `code-edit` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update only that file, then stop.',
     expectedChanges: ["src/code-ops.ts"],
     setup: createScopedEditCodeRenameWorkspace,
     validate: validateScopedEditCodeRenameWorkspace,
     validateTrace: validateScopedEditCodeRenameTrace,
   },
   {
-    id: "scoped-edit-code-rename-shorthand",
+    id: "scoped-code-edit-rename-shorthand",
     description: "Scoped helper-only rename updates shorthand object references safely.",
     prompt:
-      'In src/code-ops.ts, rename the local variable `result` to `patternResult` inside the `scanFile` helper only. Use `edit-code` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update shorthand object references like `{ result }` inside that helper too, but do not rename `config.result`. Update only that file, then stop.',
+      'In src/code-ops.ts, rename the local variable `result` to `patternResult` inside the `scanFile` helper only. Use `code-edit` with a structured rename edit like { op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }. Update shorthand object references like `{ result }` inside that helper too, but do not rename `config.result`. Update only that file, then stop.',
     expectedChanges: ["src/code-ops.ts"],
     setup: createScopedEditCodeRenameShorthandWorkspace,
     validate: validateScopedEditCodeRenameShorthandWorkspace,
     validateTrace: validateScopedEditCodeRenameShorthandTrace,
   },
   {
-    id: "class-field-edit-code-rename",
-    description: "Scoped class-field rename using edit-code with withinSymbol.",
+    id: "class-field-code-edit-rename",
+    description: "Scoped class-field rename using code-edit with withinSymbol.",
     prompt:
-      'In src/provider-config.js, rename `alias` to `defaultAlias` inside `ProviderConfig` only. Use `edit-code` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig" }. Update only that file, then stop.',
+      'In src/provider-config.js, rename `alias` to `defaultAlias` inside `ProviderConfig` only. Use `code-edit` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig" }. Update only that file, then stop.',
     expectedChanges: ["src/provider-config.js"],
     setup: createClassFieldEditCodeRenameWorkspace,
     validate: validateClassFieldEditCodeRenameWorkspace,
     validateTrace: validateClassFieldEditCodeRenameTrace,
   },
   {
-    id: "scoped-edit-code-rename-target",
+    id: "scoped-code-edit-rename-target",
     description: "Scoped rename can target the class member explicitly when local and member names collide.",
     prompt:
-      'In src/provider-config.ts, rename the `alias` member to `defaultAlias` inside `ProviderConfig` only. There is also a local `alias` in the same scope, so use `edit-code` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig", target: "member" }. Update only that file, then stop.',
+      'In src/provider-config.ts, rename the `alias` member to `defaultAlias` inside `ProviderConfig` only. There is also a local `alias` in the same scope, so use `code-edit` with a structured rename edit like { op: "rename", from: "alias", to: "defaultAlias", withinSymbol: "ProviderConfig", target: "member" }. Update only that file, then stop.',
     expectedChanges: ["src/provider-config.ts"],
     setup: createScopedEditCodeRenameTargetWorkspace,
     validate: validateScopedEditCodeRenameTargetWorkspace,
     validateTrace: validateScopedEditCodeRenameTargetTrace,
   },
   {
-    id: "structured-edit-code-replace",
-    description: "Structured edit-code replace using a rule object with any.",
+    id: "structured-code-edit-replace",
+    description: "Structured code-edit replace using a rule object with any.",
     prompt:
-      'In src/logger-migration.ts, replace console.log(...) and console.info(...) with logger.debug(...) using `edit-code` and a structured replace edit like { op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }. Leave console.warn unchanged. Update only that file, then stop.',
+      'In src/logger-migration.ts, replace console.log(...) and console.info(...) with logger.debug(...) using `code-edit` and a structured replace edit like { op: "replace", rule: { any: ["console.log($ARG)", "console.info($ARG)"] }, replacement: "logger.debug($ARG)" }. Leave console.warn unchanged. Update only that file, then stop.',
     expectedChanges: ["src/logger-migration.ts"],
     setup: createStructuredEditCodeReplaceWorkspace,
     validate: validateStructuredEditCodeReplaceWorkspace,

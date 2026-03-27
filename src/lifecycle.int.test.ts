@@ -60,7 +60,7 @@ describe("lifecycle integration", () => {
       turnCount += 1;
 
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
@@ -107,7 +107,7 @@ describe("lifecycle integration", () => {
     setupFakeProvider((ctx) => {
       turnCount += 1;
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
@@ -138,7 +138,7 @@ describe("lifecycle integration", () => {
     setupFakeProvider((ctx) => {
       turnCount += 1;
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
@@ -174,7 +174,7 @@ describe("lifecycle integration", () => {
     setupFakeProvider((ctx) => {
       turnCount += 1;
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "edit-file", ["edit"]);
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {

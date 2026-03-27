@@ -362,7 +362,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeNoMatch,
-      recovery: { tool: "edit-code", kind: "clarify-rename-target" },
+      recovery: { tool: "code-edit", kind: "clarify-rename-target" },
       message: expect.stringContaining('target: "local" or target: "member"'),
     });
   });
@@ -389,7 +389,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeNoMatch,
-      recovery: { tool: "edit-code", kind: "refine-pattern" },
+      recovery: { tool: "code-edit", kind: "refine-pattern" },
       message: expect.stringContaining("target: member"),
     });
   });
@@ -611,7 +611,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeNoMatch,
-      recovery: { tool: "edit-code", kind: "refine-pattern" },
+      recovery: { tool: "code-edit", kind: "refine-pattern" },
     });
   });
 
@@ -669,7 +669,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
-      recovery: { tool: "edit-code", kind: "use-supported-file" },
+      recovery: { tool: "code-edit", kind: "use-supported-file" },
     });
   });
 
@@ -685,7 +685,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
-      recovery: { tool: "edit-code", kind: "use-supported-file" },
+      recovery: { tool: "code-edit", kind: "use-supported-file" },
     });
   });
 
@@ -701,7 +701,7 @@ describe("editCode", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
-      recovery: { tool: "edit-code", kind: "fix-replacement" },
+      recovery: { tool: "code-edit", kind: "fix-replacement" },
     });
   });
 
@@ -800,7 +800,7 @@ describe("scanCode", () => {
     await writeFile(filePath, "foo: bar\n", "utf8");
     await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
-      recovery: { tool: "scan-code", kind: "use-supported-file" },
+      recovery: { tool: "code-scan", kind: "use-supported-file" },
     });
   });
 

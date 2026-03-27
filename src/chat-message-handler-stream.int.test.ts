@@ -14,14 +14,14 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
-            toolName: "run-command",
+            toolName: "shell-run",
             args: { command: "echo hi" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
-            toolName: "run-command",
-            content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "echo hi" },
+            toolName: "shell-run",
+            content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
           options.onEvent({ type: "text-delta", text: "done" });
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
@@ -47,7 +47,7 @@ describe("chat message handler stream behavior", () => {
           state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
-          toolCalls: ["run-command"],
+          toolCalls: ["shell-run"],
         }),
         status: async () => ({}),
       }),
@@ -67,13 +67,13 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_search",
-            toolName: "search-files",
+            toolName: "file-search",
             args: { pattern: "needle" },
           });
           options.onEvent({
             type: "tool-result",
             toolCallId: "call_search",
-            toolName: "search-files",
+            toolName: "file-search",
             isError: false,
           });
           options.onEvent({ type: "text-delta", text: "No matches found." });
@@ -287,11 +287,11 @@ describe("chat message handler stream behavior", () => {
       client: createClient({
         status: async () => ({}),
         events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "read-file", args: { paths: [{ path: "a.ts" }] } },
+          { type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: { paths: [{ path: "a.ts" }] } },
           {
             type: "tool-result",
             toolCallId: "call_1",
-            toolName: "read-file",
+            toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
             error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
@@ -316,26 +316,26 @@ describe("chat message handler stream behavior", () => {
       client: createClient({
         status: async () => ({}),
         events: [
-          { type: "tool-call", toolCallId: "call_blocked", toolName: "read-file", args: { paths: [{ path: "a.ts" }] } },
+          { type: "tool-call", toolCallId: "call_blocked", toolName: "file-read", args: { paths: [{ path: "a.ts" }] } },
           {
             type: "tool-result",
             toolCallId: "call_blocked",
-            toolName: "read-file",
+            toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
             error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
           },
-          { type: "tool-call", toolCallId: "call_ok", toolName: "edit-file", args: { path: "b.ts" } },
+          { type: "tool-call", toolCallId: "call_ok", toolName: "file-edit", args: { path: "b.ts" } },
           {
             type: "tool-output",
             toolCallId: "call_ok",
-            toolName: "edit-file",
-            content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "b.ts" },
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "b.ts" },
           },
           {
             type: "tool-output",
             toolCallId: "call_ok",
-            toolName: "edit-file",
+            toolName: "file-edit",
             content: { kind: "diff", lineNumber: 2, marker: "add", text: "export const b = 2;" },
           },
         ],
@@ -354,7 +354,7 @@ describe("chat message handler stream behavior", () => {
     expect(
       isToolOutput(toolRows[0]?.content) &&
         toolRows[0]?.content.parts.some(
-          (item) => item.kind === "tool-header" && item.labelKey === "tool.label.edit_file",
+          (item) => item.kind === "tool-header" && item.labelKey === "tool.label.file_edit",
         ),
     ).toBe(true);
     expect(
@@ -369,32 +369,32 @@ describe("chat message handler stream behavior", () => {
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
-        { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-call", toolCallId: "call_1", toolName: "file-edit", args: { path: "sum.rs" } },
         {
           type: "tool-output",
           toolCallId: "call_1",
-          toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
+          toolName: "file-edit",
+          content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "sum.rs" },
         },
         {
           type: "tool-output",
           toolCallId: "call_1",
-          toolName: "edit-file",
+          toolName: "file-edit",
           content: { kind: "diff", lineNumber: 1, marker: "add", text: "fn main() {}" },
         },
       ],
       [
-        { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-call", toolCallId: "call_2", toolName: "file-edit", args: { path: "sum.rs" } },
         {
           type: "tool-output",
           toolCallId: "call_2",
-          toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
+          toolName: "file-edit",
+          content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "sum.rs" },
         },
         {
           type: "tool-output",
           toolCallId: "call_2",
-          toolName: "edit-file",
+          toolName: "file-edit",
           content: { kind: "diff", lineNumber: 2, marker: "add", text: 'println!("ok");' },
         },
       ],
@@ -421,7 +421,7 @@ describe("chat message handler stream behavior", () => {
       (row) =>
         row.kind === "tool" &&
         isToolOutput(row.content) &&
-        row.content.parts.some((item) => item.kind === "tool-header" && item.labelKey === "tool.label.edit_file"),
+        row.content.parts.some((item) => item.kind === "tool-header" && item.labelKey === "tool.label.file_edit"),
     );
     expect(editedRows).toHaveLength(2);
   });
@@ -552,19 +552,19 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
-            toolName: "run-command",
+            toolName: "shell-run",
             args: { command: "echo hi" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
-            toolName: "run-command",
-            content: { kind: "tool-header", labelKey: "tool.label.run_command", detail: "echo hi" },
+            toolName: "shell-run",
+            content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
           options.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
-            toolName: "run-command",
+            toolName: "shell-run",
           });
           return { state: "done" as const, model: "gpt-5-mini", output: "I will run the command." };
         },
@@ -590,16 +590,16 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_A",
-            toolName: "edit-code",
+            toolName: "code-edit",
             args: { path: "a.ts" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_A",
-            toolName: "edit-code",
+            toolName: "code-edit",
             content: {
               kind: "edit-header",
-              labelKey: "tool.label.edit_file",
+              labelKey: "tool.label.file_edit",
               path: "a.ts",
               files: 1,
               added: 1,
@@ -609,21 +609,21 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-result",
             toolCallId: "call_A",
-            toolName: "edit-code",
+            toolName: "code-edit",
           });
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_B",
-            toolName: "edit-code",
+            toolName: "code-edit",
             args: { path: "b.ts" },
           });
           options.onEvent({
             type: "tool-output",
             toolCallId: "call_B",
-            toolName: "edit-code",
+            toolName: "code-edit",
             content: {
               kind: "edit-header",
-              labelKey: "tool.label.edit_file",
+              labelKey: "tool.label.file_edit",
               path: "b.ts",
               files: 1,
               added: 1,
@@ -633,7 +633,7 @@ describe("chat message handler stream behavior", () => {
           options.onEvent({
             type: "tool-result",
             toolCallId: "call_B",
-            toolName: "edit-code",
+            toolName: "code-edit",
           });
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },

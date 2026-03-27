@@ -21,26 +21,26 @@ describe("cli-format", () => {
     expect(out).toBe("ok");
   });
 
-  test("formatForTool formats search-files output", () => {
+  test("formatForTool formats file-search output", () => {
     const raw = ["./a.ts:1:foo", "./a.ts:2:bar", "./b.ts:9:baz"].join("\n");
-    const out = formatForTool("search-files", raw);
+    const out = formatForTool("file-search", raw);
     expect(out).toBe("./a.ts:1:foo\n./a.ts:2:bar\n./b.ts:9:baz");
   });
 
   test("formatForTool handles no-match search responses", () => {
-    expect(formatForTool("search-files", "No matches.")).toBe(t("tool.content.no_matches"));
-    expect(formatForTool("search-files", "")).toBe(t("tool.content.no_matches"));
+    expect(formatForTool("file-search", "No matches.")).toBe(t("tool.content.no_matches"));
+    expect(formatForTool("file-search", "")).toBe(t("tool.content.no_matches"));
   });
 
-  test("formatForTool formats read-file output", () => {
+  test("formatForTool formats file-read output", () => {
     const raw = ["one", "two", "three"].join("\n");
-    const out = formatForTool("read-file", raw);
+    const out = formatForTool("file-read", raw);
     expect(out).toBe("one\ntwo\nthree");
   });
 
   test("formatForTool normalizes repo-local File path in read output", () => {
     const raw = [`File: ${process.cwd()}/src/cli.ts`, "1: a", "2: b"].join("\n");
-    const out = formatForTool("read-file", raw);
+    const out = formatForTool("file-read", raw);
     expect(out).toContain("File: src/cli.ts");
     expect(out).toContain("1: a");
   });

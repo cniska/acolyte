@@ -20,8 +20,8 @@ describe("acceptedLifecycleSignal", () => {
 
   test("rejects no_op after writes happened", () => {
     const session = createSessionContext("task_noop");
-    session.writeTools = new Set(["edit-file"]);
-    recordCall(session, "edit-file", { path: "src/a.ts" });
+    session.writeTools = new Set(["file-edit"]);
+    recordCall(session, "file-edit", { path: "src/a.ts" });
     const ctx = createRunContext({
       taskId: "task_noop",
       session,

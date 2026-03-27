@@ -17,7 +17,7 @@ function stableJSON(value: unknown): string {
 }
 
 function extractWrittenPaths(toolName: string, args: Record<string, unknown>): string[] {
-  if (toolName === "edit-file" || toolName === "create-file" || toolName === "delete-file") {
+  if (toolName === "file-edit" || toolName === "file-create" || toolName === "file-delete") {
     const path = args.path;
     if (typeof path === "string" && path.trim().length > 0) return [normalizePath(path.trim())];
     const paths = args.paths;
@@ -31,19 +31,19 @@ function extractWrittenPaths(toolName: string, args: Record<string, unknown>): s
 }
 
 function extractCachedPaths(toolName: string, args: Record<string, unknown>): string[] {
-  if (toolName === "read-file") return extractReadPaths(args, { normalize: true });
-  if (toolName === "scan-code") return extractReadPaths(args, { normalize: true });
+  if (toolName === "file-read") return extractReadPaths(args, { normalize: true });
+  if (toolName === "code-scan") return extractReadPaths(args, { normalize: true });
   return [];
 }
 
-type ReadFileResult = { kind: "read-file"; paths: string[]; output: string };
+type ReadFileResult = { kind: "file-read"; paths: string[]; output: string };
 
 function asReadFileResult(result: unknown): ReadFileResult | null {
   if (typeof result !== "object" || result === null) return null;
-  if (!("kind" in result) || result.kind !== "read-file") return null;
+  if (!("kind" in result) || result.kind !== "file-read") return null;
   if (!("output" in result) || typeof result.output !== "string") return null;
   if (!("paths" in result) || !Array.isArray(result.paths)) return null;
-  return { kind: "read-file", paths: result.paths, output: result.output };
+  return { kind: "file-read", paths: result.paths, output: result.output };
 }
 
 const DEFAULT_MAX_ENTRIES = 256;
@@ -137,7 +137,7 @@ export function createToolCache(
     },
 
     populateSubEntries(toolName, args, result) {
-      if (toolName !== "read-file") return;
+      if (toolName !== "file-read") return;
       const paths = args.paths;
       if (!Array.isArray(paths) || paths.length < 2) return;
       const parsed = asReadFileResult(result);
@@ -150,13 +150,13 @@ export function createToolCache(
         if (!entry || typeof entry !== "object") continue;
         const p = "path" in entry ? entry.path : undefined;
         if (typeof p !== "string") continue;
-        const subResult: ReadFileResult = { kind: "read-file", paths: [p], output: normalized[i] ?? "" };
+        const subResult: ReadFileResult = { kind: "file-read", paths: [p], output: normalized[i] ?? "" };
         this.set(toolName, { paths: [{ path: p }] }, { result: subResult });
       }
     },
 
     invalidateForWrite(toolName, args) {
-      if (toolName === "run-command") {
+      if (toolName === "shell-run") {
         const removed = cache.size;
         cache.clear();
         keyPaths.clear();

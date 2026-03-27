@@ -107,15 +107,15 @@ export function formatRunOutput(raw: string): string {
 }
 
 const TOOL_FORMATTERS: Record<string, (raw: string) => string> = {
-  "find-files": formatFindOutput,
-  "search-files": formatSearchOutput,
-  "read-file": formatReadOutput,
-  "scan-code": formatReadOutput,
+  "file-find": formatFindOutput,
+  "file-search": formatSearchOutput,
+  "file-read": formatReadOutput,
+  "code-scan": formatReadOutput,
   "git-diff": formatDiffOutput,
-  "edit-file": formatDiffOutput,
-  "edit-code": formatDiffOutput,
-  "create-file": formatDiffOutput,
-  "run-command": formatRunOutput,
+  "file-edit": formatDiffOutput,
+  "code-edit": formatDiffOutput,
+  "file-create": formatDiffOutput,
+  "shell-run": formatRunOutput,
   "git-status": formatGitStatusOutput,
 };
 

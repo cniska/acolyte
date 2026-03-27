@@ -10,8 +10,8 @@ describe("createTextOutput", () => {
 
   test("omits undefined values in row", () => {
     const out = createTextOutput();
-    out.addRow({ event: "lifecycle.tool.call", tool: "read-file", path: undefined });
-    expect(out.render()).toBe("event=lifecycle.tool.call tool=read-file");
+    out.addRow({ event: "lifecycle.tool.call", tool: "file-read", path: undefined });
+    expect(out.render()).toBe("event=lifecycle.tool.call tool=file-read");
   });
 
   test("renders header and rows", () => {
@@ -82,9 +82,9 @@ describe("createJsonOutput", () => {
 
   test("strips undefined values", () => {
     const out = createJsonOutput();
-    out.addRow({ event: "lifecycle.tool.call", tool: "read-file", path: undefined });
+    out.addRow({ event: "lifecycle.tool.call", tool: "file-read", path: undefined });
     const parsed = JSON.parse(out.render()) as Record<string, string>;
-    expect(parsed.tool).toBe("read-file");
+    expect(parsed.tool).toBe("file-read");
     expect("path" in parsed).toBe(false);
   });
 

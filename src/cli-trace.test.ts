@@ -139,7 +139,7 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:01.000Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "read-file", path: "src/cli.ts" },
+      fields: { tool: "file-read", path: "src/cli.ts" },
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1", "--json"], deps);
@@ -191,13 +191,13 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "edit-code", path: "src/foo.ts" },
+      fields: { tool: "code-edit", path: "src/foo.ts" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.545Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
-      fields: { tool: "edit-code", duration_ms: "445", is_error: "false" },
+      fields: { tool: "code-edit", duration_ms: "445", is_error: "false" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
@@ -208,7 +208,7 @@ describe("traceMode", () => {
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
     const text = output();
-    expect(text).toContain("edit-code");
+    expect(text).toContain("code-edit");
     expect(text).toContain("src/foo.ts");
     expect(text).toContain("445ms");
     expect(text).toContain("status=ok");
@@ -249,19 +249,19 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "edit-file", path: "src/foo.ts" },
+      fields: { tool: "file-edit", path: "src/foo.ts" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
       taskId: "task_1",
       event: "lifecycle.guard",
-      fields: { guard: "post-edit-redundancy", tool: "edit-file", action: "blocked", detail: "src/foo.ts" },
+      fields: { guard: "post-edit-redundancy", tool: "file-edit", action: "blocked", detail: "src/foo.ts" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
-      fields: { tool: "edit-file", duration_ms: "100", is_error: "false" },
+      fields: { tool: "file-edit", duration_ms: "100", is_error: "false" },
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
@@ -282,13 +282,13 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "read-file", path: "src/a.ts" },
+      fields: { tool: "file-read", path: "src/a.ts" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
-      fields: { tool: "read-file", duration_ms: "100", is_error: "false" },
+      fields: { tool: "file-read", duration_ms: "100", is_error: "false" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
@@ -424,7 +424,7 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "read-file", path: "src/a.ts" },
+      fields: { tool: "file-read", path: "src/a.ts" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
@@ -450,25 +450,25 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.000Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "edit-code", path: "." },
+      fields: { tool: "code-edit", path: "." },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.001Z",
       taskId: "task_1",
       event: "lifecycle.tool.output",
-      fields: { tool: "edit-code" },
+      fields: { tool: "code-edit" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.002Z",
       taskId: "task_1",
       event: "lifecycle.tool.cache",
-      fields: { tool: "edit-code", hit: "false" },
+      fields: { tool: "code-edit", hit: "false" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
-      fields: { tool: "edit-code", duration_ms: "445", is_error: "false" },
+      fields: { tool: "code-edit", duration_ms: "445", is_error: "false" },
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1", "--verbose"], deps);

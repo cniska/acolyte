@@ -25,11 +25,11 @@ function coerceInput(toolId: string, rest: string[]): unknown {
     if (typeof parsed === "object" && parsed !== null) return parsed;
   }
   const joined = rest.join(" ");
-  if (toolId === "run-command") return { command: joined };
-  if (toolId === "find-files") return { patterns: [joined] };
-  if (toolId === "search-files") return { patterns: [joined] };
-  if (toolId === "read-file") return { paths: [{ path: joined }] };
-  if (toolId === "run-tests") return { files: rest };
+  if (toolId === "shell-run") return { command: joined };
+  if (toolId === "file-find") return { patterns: [joined] };
+  if (toolId === "file-search") return { patterns: [joined] };
+  if (toolId === "file-read") return { paths: [{ path: joined }] };
+  if (toolId === "test-run") return { files: rest };
   return { command: joined };
 }
 

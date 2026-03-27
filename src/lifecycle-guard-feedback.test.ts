@@ -5,7 +5,7 @@ import type { GuardEvent } from "./tool-guards";
 function createGuardEvent(overrides: Partial<GuardEvent> = {}): GuardEvent {
   return {
     guardId: "duplicate-call",
-    toolName: "read-file",
+    toolName: "file-read",
     action: "blocked",
     detail: "duplicate-call",
     ...overrides,
@@ -28,7 +28,7 @@ describe("createLifecycleFeedbackForGuard", () => {
     expect(feedback).toEqual({
       source: "guard",
       mode: "work",
-      summary: "The previous read-file call already used these arguments.",
+      summary: "The previous file-read call already used these arguments.",
       instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
     });
   });
@@ -37,8 +37,8 @@ describe("createLifecycleFeedbackForGuard", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({
         guardId: "ping-pong",
-        toolName: "search-files",
-        detail: "search-files<->find-files",
+        toolName: "file-search",
+        detail: "file-search<->file-find",
       }),
       "work",
     );
@@ -46,7 +46,7 @@ describe("createLifecycleFeedbackForGuard", () => {
       source: "guard",
       mode: "work",
       summary: "You are alternating between the same tools without changing strategy.",
-      details: "Recent calls are bouncing between search-files<->find-files.",
+      details: "Recent calls are bouncing between file-search<->file-find.",
       instruction: "Stop repeating the same pattern. Change approach or change inputs.",
     });
   });
@@ -55,7 +55,7 @@ describe("createLifecycleFeedbackForGuard", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({
         guardId: "redundant-verify",
-        toolName: "run-command",
+        toolName: "shell-run",
         detail: "no-writes-since-last-verify",
       }),
       "work",
@@ -68,11 +68,11 @@ describe("createLifecycleFeedbackForGuard", () => {
     });
   });
 
-  test("maps post-edit delete-file to work-scoped lifecycle feedback", () => {
+  test("maps post-edit file-delete to work-scoped lifecycle feedback", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({
         guardId: "post-edit-redundancy",
-        toolName: "delete-file",
+        toolName: "file-delete",
         detail: "src/clamp.ts",
       }),
       "work",

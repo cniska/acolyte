@@ -16,7 +16,7 @@ describe("verifyEvaluator", () => {
       initialMode: "work",
       workspace: "/tmp/test",
       result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
+      observedTools: new Set(["file-edit"]),
     });
     const action = verifyEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
@@ -32,7 +32,7 @@ describe("verifyEvaluator", () => {
       initialMode: "work",
       workspace: "/tmp/test",
       result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
+      observedTools: new Set(["file-edit"]),
     });
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
@@ -40,13 +40,13 @@ describe("verifyEvaluator", () => {
   test("returns done when verify already ran", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "run-command", { command: "bun run verify" });
+    recordCall(session, "shell-run", { command: "bun run verify" });
     const ctx = createRunContext({
       initialMode: "work",
       session,
       workspace: "/tmp/test",
       result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["edit-file"]),
+      observedTools: new Set(["file-edit"]),
     });
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
@@ -56,7 +56,7 @@ describe("verifyEvaluator", () => {
       initialMode: "work",
       workspace: "/tmp/test",
       result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["read-file", "search-files"]),
+      observedTools: new Set(["file-read", "file-search"]),
     });
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
@@ -79,14 +79,14 @@ describe("verifyEvaluator", () => {
 describe("guardRecoveryEvaluator", () => {
   test("returns regenerate when guard-blocked error has pending guard feedback", () => {
     const ctx = createRunContext({
-      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      currentError: { message: "Duplicate file-read call detected", category: "guard-blocked" },
       result: { text: "Attempted read.", toolCalls: [] },
       lifecycleState: {
         feedback: [
           {
             source: "guard",
             mode: "work",
-            summary: "The previous read-file call already used these arguments.",
+            summary: "The previous file-read call already used these arguments.",
             instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
           },
         ],
@@ -99,7 +99,7 @@ describe("guardRecoveryEvaluator", () => {
 
   test("returns done when no pending guard feedback exists", () => {
     const ctx = createRunContext({
-      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      currentError: { message: "Duplicate file-read call detected", category: "guard-blocked" },
       result: { text: "Attempted read.", toolCalls: [] },
     });
 
@@ -111,10 +111,10 @@ describe("repeatedFailureEvaluator", () => {
   test("returns regenerate when the same non-guard failure repeats", () => {
     const ctx = createRunContext({
       currentError: {
-        message: "run-command failed: command exited with code 1",
+        message: "shell-run failed: command exited with code 1",
         category: "other",
         code: "E_COMMAND_FAILED",
-        tool: "run-command",
+        tool: "shell-run",
         source: "tool-error",
       },
       result: { text: "Attempted fix.", toolCalls: [] },
@@ -122,7 +122,7 @@ describe("repeatedFailureEvaluator", () => {
         feedback: [],
         verifyOutcome: undefined,
         repeatedFailure: {
-          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 2,
           status: "pending",
         },
@@ -141,7 +141,7 @@ describe("repeatedFailureEvaluator", () => {
 
   test("returns done for repeated guard-blocked failures", () => {
     const ctx = createRunContext({
-      currentError: { message: "Duplicate read-file call detected", category: "guard-blocked" },
+      currentError: { message: "Duplicate file-read call detected", category: "guard-blocked" },
       result: { text: "Attempted read.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
@@ -160,10 +160,10 @@ describe("repeatedFailureEvaluator", () => {
   test("returns done after the repeated failure streak was already surfaced", () => {
     const ctx = createRunContext({
       currentError: {
-        message: "run-command failed: command exited with code 1",
+        message: "shell-run failed: command exited with code 1",
         category: "other",
         code: "E_COMMAND_FAILED",
-        tool: "run-command",
+        tool: "shell-run",
         source: "tool-error",
       },
       result: { text: "Attempted fix.", toolCalls: [] },
@@ -171,7 +171,7 @@ describe("repeatedFailureEvaluator", () => {
         feedback: [],
         verifyOutcome: undefined,
         repeatedFailure: {
-          signature: "other:tool-error:run-command:E_COMMAND_FAILED",
+          signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 3,
           status: "surfaced",
         },
@@ -181,18 +181,18 @@ describe("repeatedFailureEvaluator", () => {
     expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
   });
 
-  test("tracks different run-command failures as different repeated-failure streaks", () => {
+  test("tracks different shell-run failures as different repeated-failure streaks", () => {
     const session = createSessionContext("task_repeat");
-    recordCall(session, "run-command", { command: "bun test src/a.test.ts" });
+    recordCall(session, "shell-run", { command: "bun test src/a.test.ts" });
 
     const ctx = createRunContext({
       taskId: "task_repeat",
       session,
       currentError: {
-        message: "run-command failed: command exited with code 1",
+        message: "shell-run failed: command exited with code 1",
         category: "other",
         code: "E_COMMAND_FAILED",
-        tool: "run-command",
+        tool: "shell-run",
         source: "tool-error",
       },
     });
@@ -200,7 +200,7 @@ describe("repeatedFailureEvaluator", () => {
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
 
-    recordCall(session, "run-command", { command: "bun test src/b.test.ts" });
+    recordCall(session, "shell-run", { command: "bun test src/b.test.ts" });
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
     expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");
@@ -208,22 +208,22 @@ describe("repeatedFailureEvaluator", () => {
 });
 
 describe("toolRecoveryEvaluator", () => {
-  test("returns regenerate when edit-file exposes structured recovery", () => {
+  test("returns regenerate when file-edit exposes structured recovery", () => {
     const session = createSessionContext();
-    session.callLog = [{ toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" }];
+    session.callLog = [{ toolName: "file-edit", args: { path: "src/priority.ts" }, status: "failed" }];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
       session,
-      observedTools: new Set(["read-file", "edit-file"]),
+      observedTools: new Set(["file-read", "file-edit"]),
       currentError: {
         code: "E_EDIT_FILE_MULTI_MATCH",
-        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
-        tool: "edit-file",
+        message: "file-edit failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations (foo…).",
+        tool: "file-edit",
         recovery: {
-          tool: "edit-file",
+          tool: "file-edit",
           kind: "disambiguate-match",
-          summary: "Your edit-file snippet matched multiple locations.",
+          summary: "Your file-edit snippet matched multiple locations.",
           instruction: "Keep the change in 'src/priority.ts' and make one bounded edit with a more unique snippet.",
         },
       },
@@ -233,25 +233,25 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your edit-file snippet matched multiple locations.");
+      expect(action.feedback?.summary).toBe("Your file-edit snippet matched multiple locations.");
       expect(action.feedback?.details).toContain("Find text matched 3 locations");
       expect(action.feedback?.instruction).toContain("src/priority.ts");
     }
   });
 
-  test("returns regenerate when edit-code exposes structured recovery", () => {
+  test("returns regenerate when code-edit exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editCodeNoMatch,
-        tool: "edit-code",
-        message: "edit-code failed: [E_EDIT_CODE_NO_MATCH] No AST matches found for pattern: return $VALUE",
+        tool: "code-edit",
+        message: "code-edit failed: [E_EDIT_CODE_NO_MATCH] No AST matches found for pattern: return $VALUE",
         recovery: {
-          tool: "edit-code",
+          tool: "code-edit",
           kind: "refine-pattern",
           summary: "Your AST pattern did not match the current file.",
           instruction: "Refine the pattern against the latest file syntax.",
-          nextTool: "read-file",
+          nextTool: "file-read",
           targetPaths: ["src/code-ops.ts"],
         },
       },
@@ -263,26 +263,26 @@ describe("toolRecoveryEvaluator", () => {
       expect(action.feedback?.source).toBe("tool-recovery");
       expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
       expect(action.feedback?.details).toContain("No AST matches found");
-      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested next tool: file-read");
       expect(action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
       expect(action.feedback?.instruction).toContain("Refine the pattern");
     }
   });
 
-  test("returns regenerate when edit-code rename target is ambiguous", () => {
+  test("returns regenerate when code-edit rename target is ambiguous", () => {
     const ctx = createRunContext({
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editCodeNoMatch,
-        tool: "edit-code",
+        tool: "code-edit",
         message:
-          'edit-code failed: [E_EDIT_CODE_NO_MATCH] Scoped rename target is ambiguous for alias; retry with target: "local" or target: "member" withinSymbol: ProviderConfig',
+          'code-edit failed: [E_EDIT_CODE_NO_MATCH] Scoped rename target is ambiguous for alias; retry with target: "local" or target: "member" withinSymbol: ProviderConfig',
         recovery: {
-          tool: "edit-code",
+          tool: "code-edit",
           kind: "clarify-rename-target",
           summary: "This scoped rename matches both local and member symbols.",
           instruction: 'Retry the rename with target: "local" or target: "member".',
-          nextTool: "edit-code",
+          nextTool: "code-edit",
           targetPaths: ["src/provider-config.ts"],
         },
       },
@@ -294,26 +294,26 @@ describe("toolRecoveryEvaluator", () => {
       expect(action.feedback?.source).toBe("tool-recovery");
       expect(action.feedback?.summary).toBe("This scoped rename matches both local and member symbols.");
       expect(action.feedback?.details).toContain('target: "local"');
-      expect(action.feedback?.details).toContain("Suggested next tool: edit-code");
+      expect(action.feedback?.details).toContain("Suggested next tool: code-edit");
       expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
       expect(action.feedback?.instruction).toContain('target: "member"');
     }
   });
 
-  test("returns regenerate when scan-code exposes structured recovery", () => {
+  test("returns regenerate when code-scan exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
-        tool: "scan-code",
+        tool: "code-scan",
         message:
-          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+          "code-scan failed: [E_SCAN_CODE_UNSUPPORTED_FILE] code-scan requires a supported code file, got: notes.yaml",
         recovery: {
-          tool: "scan-code",
+          tool: "code-scan",
           kind: "use-supported-file",
-          summary: "scan-code only works on supported code files.",
-          instruction: "Use scan-code on a supported code file or directory, or switch to search-files.",
-          nextTool: "search-files",
+          summary: "code-scan only works on supported code files.",
+          instruction: "Use code-scan on a supported code file or directory, or switch to file-search.",
+          nextTool: "file-search",
           targetPaths: ["notes.yaml"],
         },
       },
@@ -323,11 +323,11 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("scan-code only works on supported code files.");
+      expect(action.feedback?.summary).toBe("code-scan only works on supported code files.");
       expect(action.feedback?.details).toContain("notes.yaml");
-      expect(action.feedback?.details).toContain("Suggested next tool: search-files");
+      expect(action.feedback?.details).toContain("Suggested next tool: file-search");
       expect(action.feedback?.details).toContain("Suggested paths: notes.yaml");
-      expect(action.feedback?.instruction).toContain("search-files");
+      expect(action.feedback?.instruction).toContain("file-search");
     }
   });
 
@@ -337,15 +337,15 @@ describe("toolRecoveryEvaluator", () => {
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
-        tool: "scan-code",
+        tool: "code-scan",
         message:
-          "scan-code failed: [E_SCAN_CODE_UNSUPPORTED_FILE] scan-code requires a supported code file, got: notes.yaml",
+          "code-scan failed: [E_SCAN_CODE_UNSUPPORTED_FILE] code-scan requires a supported code file, got: notes.yaml",
         recovery: {
-          tool: "scan-code",
+          tool: "code-scan",
           kind: "use-supported-file",
-          summary: "scan-code only works on supported code files.",
-          instruction: "Use search-files for plain-text lookup.",
-          nextTool: "search-files",
+          summary: "code-scan only works on supported code files.",
+          instruction: "Use file-search for plain-text lookup.",
+          nextTool: "file-search",
           targetPaths: ["notes.yaml"],
         },
       },
@@ -354,20 +354,19 @@ describe("toolRecoveryEvaluator", () => {
     expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
   });
 
-  test("returns regenerate when search-files empty-scope exposes structured recovery", () => {
+  test("returns regenerate when file-search empty-scope exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesEmptyScope,
-        tool: "search-files",
-        message:
-          "search-files failed: [E_SEARCH_FILES_EMPTY_SCOPE] search-files scope resolved to no files: src/missing",
+        tool: "file-search",
+        message: "file-search failed: [E_SEARCH_FILES_EMPTY_SCOPE] file-search scope resolved to no files: src/missing",
         recovery: {
-          tool: "search-files",
+          tool: "file-search",
           kind: "broaden-scope",
-          summary: "Your search-files scope resolved to no searchable files.",
-          instruction: "Broaden the scope or use find-files to locate the target file before searching again.",
-          nextTool: "find-files",
+          summary: "Your file-search scope resolved to no searchable files.",
+          instruction: "Broaden the scope or use file-find to locate the target file before searching again.",
+          nextTool: "file-find",
         },
       },
       result: { text: "Attempted search.", toolCalls: [] },
@@ -377,27 +376,27 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your search-files scope resolved to no searchable files.");
+      expect(action.feedback?.summary).toBe("Your file-search scope resolved to no searchable files.");
       expect(action.feedback?.details).toContain("E_SEARCH_FILES_EMPTY_SCOPE");
-      expect(action.feedback?.details).toContain("Suggested next tool: find-files");
-      expect(action.feedback?.instruction).toContain("find-files");
+      expect(action.feedback?.details).toContain("Suggested next tool: file-find");
+      expect(action.feedback?.instruction).toContain("file-find");
     }
   });
 
-  test("returns regenerate when search-files no-match exposes structured recovery", () => {
+  test("returns regenerate when file-search no-match exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesNoMatch,
-        tool: "search-files",
+        tool: "file-search",
         message:
-          "search-files failed: [E_SEARCH_FILES_NO_MATCH] search-files found no matches in scoped file: src/provider-config.ts",
+          "file-search failed: [E_SEARCH_FILES_NO_MATCH] file-search found no matches in scoped file: src/provider-config.ts",
         recovery: {
-          tool: "search-files",
+          tool: "file-search",
           kind: "switch-to-read",
-          summary: "Your search-files query found no matches in the scoped file.",
-          instruction: "Switch to read-file and inspect the file directly.",
-          nextTool: "read-file",
+          summary: "Your file-search query found no matches in the scoped file.",
+          instruction: "Switch to file-read and inspect the file directly.",
+          nextTool: "file-read",
           targetPaths: ["src/provider-config.ts"],
         },
       },
@@ -408,11 +407,11 @@ describe("toolRecoveryEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your search-files query found no matches in the scoped file.");
+      expect(action.feedback?.summary).toBe("Your file-search query found no matches in the scoped file.");
       expect(action.feedback?.details).toContain("E_SEARCH_FILES_NO_MATCH");
-      expect(action.feedback?.details).toContain("Suggested next tool: read-file");
+      expect(action.feedback?.details).toContain("Suggested next tool: file-read");
       expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
-      expect(action.feedback?.instruction).toContain("read-file");
+      expect(action.feedback?.instruction).toContain("file-read");
     }
   });
 
@@ -421,8 +420,8 @@ describe("toolRecoveryEvaluator", () => {
       initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editFileFindTooLarge,
-        tool: "edit-file",
-        message: "edit-file failed: find must be a short unique snippet",
+        tool: "file-edit",
+        message: "file-edit failed: find must be a short unique snippet",
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
@@ -431,22 +430,22 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns done after a later successful write for disambiguate-match recovery", () => {
     const session = createSessionContext();
-    session.writeTools = new Set(["edit-file", "edit-code"]);
+    session.writeTools = new Set(["file-edit", "code-edit"]);
     session.callLog = [
-      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "failed" },
-      { toolName: "edit-file", args: { path: "src/priority.ts" }, status: "succeeded" },
+      { toolName: "file-edit", args: { path: "src/priority.ts" }, status: "failed" },
+      { toolName: "file-edit", args: { path: "src/priority.ts" }, status: "succeeded" },
     ];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
       initialMode: "work",
       session,
       currentError: {
-        tool: "edit-file",
-        message: "edit-file failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations.",
+        tool: "file-edit",
+        message: "file-edit failed: [E_EDIT_FILE_MULTI_MATCH] Find text matched 3 locations.",
         recovery: {
-          tool: "edit-file",
+          tool: "file-edit",
           kind: "disambiguate-match",
-          summary: "Your edit-file snippet matched multiple locations.",
+          summary: "Your file-edit snippet matched multiple locations.",
           instruction: "Use a more unique snippet.",
         },
       },

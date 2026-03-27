@@ -169,12 +169,12 @@ export function emitFindSummary(
   if (unique.length === 0) return;
   const labels = compactPatternLabels(patterns);
   onOutput({
-    toolName: "find-files",
+    toolName: "file-find",
     content: { kind: "scope-header", labelKey, scope: "workspace", patterns: labels, matches: unique.length },
     toolCallId,
   });
   onOutput({
-    toolName: "find-files",
+    toolName: "file-find",
     content: { kind: "text", text: t("unit.file", { count: unique.length }) },
     toolCallId,
   });
@@ -397,12 +397,12 @@ export function emitSearchSummary(
   }
   const totalHits = entries.reduce((sum, e) => sum + e.hits.length, 0);
   onOutput({
-    toolName: "search-files",
+    toolName: "file-search",
     content: { kind: "scope-header", labelKey, scope, patterns: labels, matches: unique.length },
     toolCallId,
   });
   onOutput({
-    toolName: "search-files",
+    toolName: "file-search",
     content: {
       kind: "text",
       text: `${t("unit.match", { count: totalHits })} in ${t("unit.file", { count: unique.length })}`,

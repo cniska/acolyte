@@ -21,7 +21,7 @@ export function extractReadPaths(args: Record<string, unknown>, opts?: { normali
 }
 
 export function extractToolTargetPaths(args: Record<string, unknown>, toolName: string): string[] {
-  if (toolName === "read-file") return extractReadPaths(args);
+  if (toolName === "file-read") return extractReadPaths(args);
   const path = args.path;
   if (typeof path === "string" && path.trim().length > 0) return [path.trim()];
   const paths = args.paths;

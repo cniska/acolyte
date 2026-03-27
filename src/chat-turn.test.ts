@@ -77,7 +77,7 @@ describe("chat turn helpers", () => {
           state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
-          toolCalls: ["read-file"],
+          toolCalls: ["file-read"],
         }),
         status: async () => ({}),
         taskStatus: async () => null,

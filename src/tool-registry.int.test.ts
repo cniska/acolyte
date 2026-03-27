@@ -13,7 +13,7 @@ describe("tool error wrapper integration", () => {
       expect(error).toBeInstanceOf(Error);
       const wrapped = error as Error & { code?: string };
       expect(wrapped.code).toBe(LIFECYCLE_ERROR_CODES.guardBlocked);
-      expect(wrapped.message).toContain("run-command failed:");
+      expect(wrapped.message).toContain("shell-run failed:");
     }
   });
 });

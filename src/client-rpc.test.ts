@@ -53,7 +53,7 @@ describe("rpc websocket lifecycle", () => {
         queueMicrotask(() =>
           sendMessage({
             type: "chat.event",
-            event: { type: "tool-call", toolCallId: "call_1", toolName: "read-file", args: { path: "a.ts" } },
+            event: { type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: { path: "a.ts" } },
           }),
         );
         queueMicrotask(() => sendMessage({ type: "chat.done", reply: { output: "done", model: "gpt-5-mini" } }));
@@ -181,7 +181,7 @@ describe("rpc websocket lifecycle", () => {
         queueMicrotask(() =>
           sendMessage({
             type: "chat.event",
-            event: { type: "tool-call", toolCallId: "call_1", toolName: "read-file", args: { path: "a.ts" } },
+            event: { type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: { path: "a.ts" } },
           }),
         );
         queueMicrotask(() => this.close());

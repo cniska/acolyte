@@ -11,7 +11,7 @@ import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 
 describe("phaseGenerate", () => {
-  test("does not clear an edit-file error after an unrelated successful read", async () => {
+  test("does not clear an file-edit error after an unrelated successful read", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -24,18 +24,18 @@ describe("phaseGenerate", () => {
           const chunks = [
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
             },
             {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "edit-file",
+                toolName: "file-edit",
                 error: {
                   message: "Find text not found",
                   code: TOOL_ERROR_CODES.editFileFindNotFound,
                   recovery: {
-                    tool: "edit-file" as const,
+                    tool: "file-edit" as const,
                     kind: "refresh-snippet" as const,
                     summary: "Refresh the snippet.",
                     instruction: "Reread the file and rebuild the edit.",
@@ -45,11 +45,11 @@ describe("phaseGenerate", () => {
             },
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "read-file", args: { paths: [{ path: "src/a.ts" }] } },
+              payload: { toolCallId: "call_2", toolName: "file-read", args: { paths: [{ path: "src/a.ts" }] } },
             },
             {
               type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/a.ts" } },
+              payload: { toolCallId: "call_2", toolName: "file-read", result: { output: "File: src/a.ts" } },
             },
           ];
           return {
@@ -69,11 +69,11 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(ctx.currentError?.tool).toBe("file-edit");
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 
-  test("clears an edit-file error after a later successful write recovery", async () => {
+  test("clears an file-edit error after a later successful write recovery", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -86,18 +86,18 @@ describe("phaseGenerate", () => {
           const chunks = [
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
             },
             {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "edit-file",
+                toolName: "file-edit",
                 error: {
                   message: "Find text not found",
                   code: TOOL_ERROR_CODES.editFileFindNotFound,
                   recovery: {
-                    tool: "edit-file" as const,
+                    tool: "file-edit" as const,
                     kind: "refresh-snippet" as const,
                     summary: "Refresh the snippet.",
                     instruction: "Reread the file and rebuild the edit.",
@@ -107,11 +107,11 @@ describe("phaseGenerate", () => {
             },
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "edit-file", args: { path: "src/a.ts" } },
+              payload: { toolCallId: "call_2", toolName: "file-edit", args: { path: "src/a.ts" } },
             },
             {
               type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "edit-file", result: { ok: true } },
+              payload: { toolCallId: "call_2", toolName: "file-edit", result: { ok: true } },
             },
           ];
           return {
@@ -135,7 +135,7 @@ describe("phaseGenerate", () => {
     expect(acceptedLifecycleSignal(ctx)).toBe("done");
   });
 
-  test("does not clear an edit-file error after a different write tool succeeds", async () => {
+  test("does not clear an file-edit error after a different write tool succeeds", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -148,18 +148,18 @@ describe("phaseGenerate", () => {
           const chunks = [
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "edit-file", args: { path: "src/a.ts" } },
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
             },
             {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "edit-file",
+                toolName: "file-edit",
                 error: {
                   message: "Find text not found",
                   code: TOOL_ERROR_CODES.editFileFindNotFound,
                   recovery: {
-                    tool: "edit-file" as const,
+                    tool: "file-edit" as const,
                     kind: "refresh-snippet" as const,
                     summary: "Refresh the snippet.",
                     instruction: "Reread the file and rebuild the edit.",
@@ -169,11 +169,11 @@ describe("phaseGenerate", () => {
             },
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "create-file", args: { path: "src/b.ts" } },
+              payload: { toolCallId: "call_2", toolName: "file-create", args: { path: "src/b.ts" } },
             },
             {
               type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "create-file", result: { ok: true } },
+              payload: { toolCallId: "call_2", toolName: "file-create", result: { ok: true } },
             },
           ];
           return {
@@ -193,11 +193,11 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.currentError?.tool).toBe("edit-file");
+    expect(ctx.currentError?.tool).toBe("file-edit");
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 
-  test("clears a search-files recovery after read-file succeeds on the suggested path", async () => {
+  test("clears a file-search recovery after file-read succeeds on the suggested path", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -212,7 +212,7 @@ describe("phaseGenerate", () => {
               type: "tool-call" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "search-files",
+                toolName: "file-search",
                 args: { patterns: ["alias"], paths: ["src/provider-config.ts"] },
               },
             },
@@ -220,18 +220,18 @@ describe("phaseGenerate", () => {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "search-files",
+                toolName: "file-search",
                 error: {
-                  message: "search-files found no matches in scoped file: src/provider-config.ts",
+                  message: "file-search found no matches in scoped file: src/provider-config.ts",
                   code: TOOL_ERROR_CODES.searchFilesNoMatch,
                   recovery: {
-                    tool: "search-files" as const,
+                    tool: "file-search" as const,
                     kind: "switch-to-read" as const,
-                    summary: "Your search-files query found no matches in the scoped file.",
-                    instruction: "Switch to read-file and inspect the file directly.",
-                    nextTool: "read-file" as const,
+                    summary: "Your file-search query found no matches in the scoped file.",
+                    instruction: "Switch to file-read and inspect the file directly.",
+                    nextTool: "file-read" as const,
                     targetPaths: ["src/provider-config.ts"],
-                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/provider-config.ts"] }],
+                    resolvesOn: [{ tool: "file-read" as const, targetPaths: ["src/provider-config.ts"] }],
                   },
                 },
               },
@@ -240,7 +240,7 @@ describe("phaseGenerate", () => {
               type: "tool-call" as const,
               payload: {
                 toolCallId: "call_2",
-                toolName: "read-file",
+                toolName: "file-read",
                 args: { paths: [{ path: "src/provider-config.ts" }] },
               },
             },
@@ -248,7 +248,7 @@ describe("phaseGenerate", () => {
               type: "tool-result" as const,
               payload: {
                 toolCallId: "call_2",
-                toolName: "read-file",
+                toolName: "file-read",
                 result: { output: "File: src/provider-config.ts" },
               },
             },
@@ -274,7 +274,7 @@ describe("phaseGenerate", () => {
     expect(acceptedLifecycleSignal(ctx)).toBe("done");
   });
 
-  test("does not clear a search-files recovery after read-file succeeds on a different path", async () => {
+  test("does not clear a file-search recovery after file-read succeeds on a different path", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -289,7 +289,7 @@ describe("phaseGenerate", () => {
               type: "tool-call" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "search-files",
+                toolName: "file-search",
                 args: { patterns: ["alias"], paths: ["src/provider-config.ts"] },
               },
             },
@@ -297,18 +297,18 @@ describe("phaseGenerate", () => {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "search-files",
+                toolName: "file-search",
                 error: {
-                  message: "search-files found no matches in scoped file: src/provider-config.ts",
+                  message: "file-search found no matches in scoped file: src/provider-config.ts",
                   code: TOOL_ERROR_CODES.searchFilesNoMatch,
                   recovery: {
-                    tool: "search-files" as const,
+                    tool: "file-search" as const,
                     kind: "switch-to-read" as const,
-                    summary: "Your search-files query found no matches in the scoped file.",
-                    instruction: "Switch to read-file and inspect the file directly.",
-                    nextTool: "read-file" as const,
+                    summary: "Your file-search query found no matches in the scoped file.",
+                    instruction: "Switch to file-read and inspect the file directly.",
+                    nextTool: "file-read" as const,
                     targetPaths: ["src/provider-config.ts"],
-                    resolvesOn: [{ tool: "read-file" as const, targetPaths: ["src/provider-config.ts"] }],
+                    resolvesOn: [{ tool: "file-read" as const, targetPaths: ["src/provider-config.ts"] }],
                   },
                 },
               },
@@ -317,13 +317,13 @@ describe("phaseGenerate", () => {
               type: "tool-call" as const,
               payload: {
                 toolCallId: "call_2",
-                toolName: "read-file",
+                toolName: "file-read",
                 args: { paths: [{ path: "src/other.ts" }] },
               },
             },
             {
               type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "read-file", result: { output: "File: src/other.ts" } },
+              payload: { toolCallId: "call_2", toolName: "file-read", result: { output: "File: src/other.ts" } },
             },
           ];
           return {
@@ -343,7 +343,7 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.currentError?.tool).toBe("search-files");
+    expect(ctx.currentError?.tool).toBe("file-search");
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 

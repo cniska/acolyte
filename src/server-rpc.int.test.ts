@@ -1081,7 +1081,7 @@ describe("server rpc websocket queue", () => {
           marker: fileA,
           handle: ({ model, responseCounter, outputs, body }) => {
             if (outputs.length === 0) {
-              const toolName = pickFunctionToolName(body.tools, "create-file", ["create", "file"]);
+              const toolName = pickFunctionToolName(body.tools, "file-create", ["create", "file"]);
               return createToolCallsPayload(model, responseCounter, [
                 {
                   id: "fc_path_iso_a",
@@ -1099,7 +1099,7 @@ describe("server rpc websocket queue", () => {
           marker: fileB,
           handle: ({ model, responseCounter, outputs, body }) => {
             if (outputs.length === 0) {
-              const toolName = pickFunctionToolName(body.tools, "create-file", ["create", "file"]);
+              const toolName = pickFunctionToolName(body.tools, "file-create", ["create", "file"]);
               return createToolCallsPayload(model, responseCounter, [
                 {
                   id: "fc_path_iso_b",

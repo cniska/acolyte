@@ -59,6 +59,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
 function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-search",
+    toolkit: "web",
     labelKey: "tool.label.web_search",
     category: "network",
     permissions: ["network"],
@@ -99,6 +100,7 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-fetch",
+    toolkit: "web",
     labelKey: "tool.label.web_fetch",
     category: "network",
     permissions: ["network"],

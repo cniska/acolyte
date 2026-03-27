@@ -132,9 +132,9 @@ describe("editFile", () => {
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editFileFindNotFound,
       recovery: {
-        tool: "edit-file",
+        tool: "file-edit",
         kind: "refresh-snippet",
-        nextTool: "read-file",
+        nextTool: "file-read",
         targetPaths: [filePath],
       },
     });
@@ -175,9 +175,9 @@ describe("editFile", () => {
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editFileFindTooLarge,
       recovery: {
-        tool: "edit-file",
+        tool: "file-edit",
         kind: "shrink-edit",
-        nextTool: "read-file",
+        nextTool: "file-read",
         targetPaths: [filePath],
       },
     });
@@ -341,10 +341,10 @@ describe("searchFiles", () => {
     await expect(searchFiles(WORKSPACE, ["alias"], 20, ["src/does-not-exist"])).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesEmptyScope,
       recovery: {
-        tool: "search-files",
+        tool: "file-search",
         kind: "broaden-scope",
-        nextTool: "find-files",
-        resolvesOn: [{ tool: "find-files" }],
+        nextTool: "file-find",
+        resolvesOn: [{ tool: "file-find" }],
       },
     });
   });
@@ -356,11 +356,11 @@ describe("searchFiles", () => {
     await expect(searchFiles(WORKSPACE, ["gamma"], 20, [filePath])).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesNoMatch,
       recovery: {
-        tool: "search-files",
+        tool: "file-search",
         kind: "switch-to-read",
-        nextTool: "read-file",
+        nextTool: "file-read",
         targetPaths: [filePath],
-        resolvesOn: [{ tool: "read-file", targetPaths: [filePath] }],
+        resolvesOn: [{ tool: "file-read", targetPaths: [filePath] }],
       },
     });
   });

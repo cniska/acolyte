@@ -1,10 +1,10 @@
 export const TOOL_RECOVERY_NEXT_TOOLS = [
-  "read-file",
-  "find-files",
-  "search-files",
-  "edit-file",
-  "scan-code",
-  "edit-code",
+  "file-read",
+  "file-find",
+  "file-search",
+  "file-edit",
+  "code-scan",
+  "code-edit",
 ] as const;
 export type ToolRecoveryNextTool = (typeof TOOL_RECOVERY_NEXT_TOOLS)[number];
 export type ToolRecoveryHints = {
@@ -23,7 +23,7 @@ export const EDIT_FILE_RECOVERY_KINDS: readonly EditFileRecoveryKind[] = [
   "shrink-edit",
 ];
 export type EditFileRecovery = {
-  tool: "edit-file";
+  tool: "file-edit";
   kind: EditFileRecoveryKind;
   summary: string;
   instruction: string;
@@ -42,7 +42,7 @@ export const EDIT_CODE_RECOVERY_KINDS: readonly EditCodeRecoveryKind[] = [
   "use-supported-file",
 ];
 export type EditCodeRecovery = {
-  tool: "edit-code";
+  tool: "code-edit";
   kind: EditCodeRecoveryKind;
   summary: string;
   instruction: string;
@@ -52,7 +52,7 @@ export type EditCodeRecovery = {
 export type ScanCodeRecoveryKind = "use-supported-file";
 export const SCAN_CODE_RECOVERY_KINDS: readonly ScanCodeRecoveryKind[] = ["use-supported-file"];
 export type ScanCodeRecovery = {
-  tool: "scan-code";
+  tool: "code-scan";
   kind: ScanCodeRecoveryKind;
   summary: string;
   instruction: string;
@@ -62,7 +62,7 @@ export type ScanCodeRecovery = {
 export type SearchFilesRecoveryKind = "broaden-scope" | "switch-to-read";
 export const SEARCH_FILES_RECOVERY_KINDS: readonly SearchFilesRecoveryKind[] = ["broaden-scope", "switch-to-read"];
 export type SearchFilesRecovery = {
-  tool: "search-files";
+  tool: "file-search";
   kind: SearchFilesRecoveryKind;
   summary: string;
   instruction: string;
@@ -84,7 +84,7 @@ export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
   }
   const hints = parseToolRecoveryHints(rec);
   const resolvesOn = parseToolRecoveryResolutions(rec);
-  if (rec.tool === "edit-file" && EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind))
+  if (rec.tool === "file-edit" && EDIT_FILE_RECOVERY_KINDS.includes(rec.kind as EditFileRecoveryKind))
     return {
       tool: rec.tool,
       kind: rec.kind as EditFileRecoveryKind,
@@ -93,7 +93,7 @@ export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
       ...hints,
       ...(resolvesOn.length > 0 ? { resolvesOn } : {}),
     };
-  if (rec.tool === "edit-code" && EDIT_CODE_RECOVERY_KINDS.includes(rec.kind as EditCodeRecoveryKind))
+  if (rec.tool === "code-edit" && EDIT_CODE_RECOVERY_KINDS.includes(rec.kind as EditCodeRecoveryKind))
     return {
       tool: rec.tool,
       kind: rec.kind as EditCodeRecoveryKind,
@@ -102,7 +102,7 @@ export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
       ...hints,
       ...(resolvesOn.length > 0 ? { resolvesOn } : {}),
     };
-  if (rec.tool === "scan-code" && SCAN_CODE_RECOVERY_KINDS.includes(rec.kind as ScanCodeRecoveryKind))
+  if (rec.tool === "code-scan" && SCAN_CODE_RECOVERY_KINDS.includes(rec.kind as ScanCodeRecoveryKind))
     return {
       tool: rec.tool,
       kind: rec.kind as ScanCodeRecoveryKind,
@@ -111,7 +111,7 @@ export function parseToolRecovery(value: unknown): ToolRecovery | undefined {
       ...hints,
       ...(resolvesOn.length > 0 ? { resolvesOn } : {}),
     };
-  if (rec.tool === "search-files" && SEARCH_FILES_RECOVERY_KINDS.includes(rec.kind as SearchFilesRecoveryKind))
+  if (rec.tool === "file-search" && SEARCH_FILES_RECOVERY_KINDS.includes(rec.kind as SearchFilesRecoveryKind))
     return {
       tool: rec.tool,
       kind: rec.kind as SearchFilesRecoveryKind,

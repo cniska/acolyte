@@ -11,20 +11,21 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
   const { session, onOutput } = input;
 
   return createTool({
-    id: "run-tests",
-    labelKey: "tool.label.run_tests",
+    id: "test-run",
+    toolkit: "test",
+    labelKey: "tool.label.test_run",
     category: "execute",
     permissions: ["execute"],
     description:
       "Run the project's test runner against specific files. The test command is auto-detected from the workspace.",
     instruction:
-      "Use `run-tests` to validate changes by running tests for the files you modified. Always scope to specific test files rather than running the full suite.",
+      "Use `test-run` to validate changes by running tests for the files you modified. Always scope to specific test files rather than running the full suite.",
     inputSchema: z.object({
       files: z.array(z.string().min(1)).min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
     }),
     outputSchema: z.object({
-      kind: z.literal("run-tests"),
+      kind: z.literal("test-run"),
       command: z.string(),
       exitCode: z.number().int().optional(),
       output: z.string(),
@@ -33,16 +34,16 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
       const profile = session.workspaceProfile;
       const testCommand = profile?.testCommand;
       if (!testCommand) {
-        return { kind: "run-tests" as const, command: "", exitCode: 1, output: "No test command detected." };
+        return { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." };
       }
 
       const resolvedArgs = testCommand.args.flatMap((arg) => (arg === "$FILES" ? toolInput.files : [arg]));
       const command = formatWorkspaceCommand({ bin: testCommand.bin, args: resolvedArgs });
 
-      return runTool(session, "run-tests", toolCallId, toolInput, async (callId) => {
+      return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         onOutput({
-          toolName: "run-tests",
-          content: { kind: "tool-header", labelKey: "tool.label.run_tests", detail: compactDetail(command) },
+          toolName: "test-run",
+          content: { kind: "tool-header", labelKey: "tool.label.test_run", detail: compactDetail(command) },
           toolCallId: callId,
         });
         const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
@@ -56,10 +57,10 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
             }
           },
         );
-        emitShellHeadTail("run-tests", streamed, onOutput, callId);
+        emitShellHeadTail("test-run", streamed, onOutput, callId);
 
         const result = compactToolOutput(rawResult, deps.outputBudget.run);
-        return { kind: "run-tests" as const, command, exitCode: parseExitCode(rawResult), output: result };
+        return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: result };
       });
     },
   });

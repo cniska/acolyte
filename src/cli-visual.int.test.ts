@@ -451,8 +451,8 @@ describe("cli visual regression", () => {
         Description: run a tool directly
 
         Examples:
-          acolyte tool find-files "src/**/*.ts"
-          acolyte tool run-command "bun run verify"
+          acolyte tool file-find "src/**/*.ts"
+          acolyte tool shell-run "bun run verify"
       `),
     },
     {
@@ -499,13 +499,13 @@ describe("cli visual regression", () => {
         timestamp: "2026-03-19T10:00:01Z",
         taskId: "task_abc",
         event: "lifecycle.tool.call",
-        fields: { tool: "read-file", path: "src/cli.ts" },
+        fields: { tool: "file-read", path: "src/cli.ts" },
       });
       store.write({
         timestamp: "2026-03-19T10:00:02Z",
         taskId: "task_other",
         event: "lifecycle.tool.call",
-        fields: { tool: "read-file", path: "README.md" },
+        fields: { tool: "file-read", path: "README.md" },
       });
       store.write({
         timestamp: "2026-03-19T10:00:03Z",
@@ -530,7 +530,7 @@ describe("cli visual regression", () => {
         dedent(`
           task_abc  gpt-5-mini  3.0s
 
-          read-file  src/cli.ts
+          file-read  src/cli.ts
 
           model_calls=1  tools=1 (read=1)  status=ok
         `),

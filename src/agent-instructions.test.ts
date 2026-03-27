@@ -4,32 +4,32 @@ import { createInstructions, createModeInstructions } from "./agent-instructions
 describe("createModeInstructions", () => {
   test("work mode includes tool instructions from tool definitions", () => {
     const out = createModeInstructions("work");
-    expect(out).toContain("scan-code");
-    expect(out).toContain("edit-code");
-    expect(out).toContain("edit-file");
-    expect(out).toContain("create-file");
-    expect(out).toContain("run-command");
+    expect(out).toContain("code-scan");
+    expect(out).toContain("code-edit");
+    expect(out).toContain("file-edit");
+    expect(out).toContain("file-create");
+    expect(out).toContain("shell-run");
   });
 
   test("work mode includes discovery tool instructions", () => {
     const out = createModeInstructions("work");
-    expect(out).toContain("Use `find-files` to locate");
-    expect(out).toContain("Use `search-files` to search");
-    expect(out).toContain("do not use `search-files`; read the file once and make one consolidated `edit-file` call");
-    expect(out).toContain("run one scoped `search-files` on that file before `edit-file`");
+    expect(out).toContain("Use `file-find` to locate");
+    expect(out).toContain("Use `file-search` to search");
+    expect(out).toContain("do not use `file-search`; read the file once and make one consolidated `file-edit` call");
+    expect(out).toContain("run one scoped `file-search` on that file before `file-edit`");
     expect(out).toContain("do not invent old lines that are not present");
   });
 
   test("includes preamble lines", () => {
     const out = createModeInstructions("work");
-    expect(out).toContain("make `read-file` on X your first tool call");
+    expect(out).toContain("make `file-read` on X your first tool call");
     expect(out).toContain("If the user names the files to change");
     expect(out).toContain("work one named file at a time");
     expect(out).toContain("once every requested file has the requested bounded change, stop");
     expect(out).toContain("read fails with ENOENT, stop and report");
     expect(out).toContain("stay inside the named files");
-    expect(out).toContain("use the exact line already visible in `read-file` output as your edit anchor");
-    expect(out).toContain("Every `edit-file` find snippet must come directly from the current `read-file` output");
+    expect(out).toContain("use the exact line already visible in `file-read` output as your edit anchor");
+    expect(out).toContain("Every `file-edit` find snippet must come directly from the current `file-read` output");
     expect(out).toContain("preserve the relative or absolute form already used in that file");
     expect(out).toContain("keep the change as small as the request allows");
     expect(out).toContain("repeated literal replacements in one known file");
@@ -41,7 +41,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("trust the edit preview and the text you already have");
     expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
     expect(out).toContain("Do not call another write tool on the same named file after a successful bounded edit");
-    expect(out).toContain("prefer `scan-code` + `edit-code`");
+    expect(out).toContain("prefer `code-scan` + `code-edit`");
     expect(out).toContain("`withinSymbol` naming that enclosing symbol");
     expect(out).toContain("symbol-aware within that scope");
     expect(out).toContain('target: "local"');
@@ -85,7 +85,7 @@ describe("createInstructions", () => {
 
   test("work mode includes work-specific instructions", () => {
     const out = createInstructions("Soul.", "work");
-    expect(out).toContain("edit-code");
+    expect(out).toContain("code-edit");
     expect(out).toContain("AST");
     expect(out).toContain("Prefer explicit operation objects");
     expect(out).toContain("Scoped rename follows the symbol kind inside the named scope");
@@ -101,10 +101,10 @@ describe("createInstructions", () => {
     expect(out).toContain("If that preview shows the requested bounded change, stop");
     expect(out).toContain("stop instead of re-reading, searching, reviewing, or editing that same file again");
     expect(out).toContain("use several small exact edits in one call rather than one oversized `find` block");
-    expect(out).toContain("collect all visible requested occurrences into the same `edit-file` call");
+    expect(out).toContain("collect all visible requested occurrences into the same `file-edit` call");
     expect(out).toContain("include every visible location in that one call");
     expect(out).toContain("Completion means no requested matches remain in that file");
     expect(out).toContain("do not run commands after the edit just to double-check the result");
-    expect(out).toContain("call `create-file` with full content");
+    expect(out).toContain("call `file-create` with full content");
   });
 });

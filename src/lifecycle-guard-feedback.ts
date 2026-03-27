@@ -19,11 +19,11 @@ const guardFeedbackFactories = {
   "file-churn": (event, mode) =>
     createGuardFeedback(mode, {
       summary:
-        event.toolName === "read-file"
+        event.toolName === "file-read"
           ? `You have already revisited "${event.detail ?? "this file"}" multiple times without making progress.`
           : `You are stuck in a read/edit loop on "${event.detail ?? "this file"}".`,
       instruction:
-        event.toolName === "read-file"
+        event.toolName === "file-read"
           ? "Use the content you already have, edit the file, or move to a different file."
           : "Use one consolidated edit or change approach instead of making another incremental pass.",
     }),

@@ -37,17 +37,17 @@ describe("behavior scenarios", () => {
     expect(() => parseBehaviorScenarioId("wrong")).toThrow();
   });
 
-  test("includes bounded-return-fix, post-success-stop, scan-code-yaml-recovery, search-files-no-match-recovery, two-file-deps-rename, scoped-edit-code-rename, scoped-edit-code-rename-shorthand, class-field-edit-code-rename, scoped-edit-code-rename-target, and structured-edit-code-replace scenarios", () => {
+  test("includes bounded-return-fix, post-success-stop, code-scan-yaml-recovery, file-search-no-match-recovery, two-file-deps-rename, scoped-code-edit-rename, scoped-code-edit-rename-shorthand, class-field-code-edit-rename, scoped-code-edit-rename-target, and structured-code-edit-replace scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "bounded-return-fix")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "post-success-stop")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scan-code-yaml-recovery")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "search-files-no-match-recovery")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "code-scan-yaml-recovery")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "file-search-no-match-recovery")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "two-file-deps-rename")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename-shorthand")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-edit-code-rename")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-edit-code-rename-target")).toBe(true);
-    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "structured-edit-code-replace")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-code-edit-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-code-edit-rename-shorthand")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-code-edit-rename")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-code-edit-rename-target")).toBe(true);
+    expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "structured-code-edit-replace")).toBe(true);
   });
 });
 
@@ -55,9 +55,9 @@ describe("behavior analysis", () => {
   test("summarizeTrace counts code tools in fallback trace mode", () => {
     const trace = summarizeTrace([
       "ts level=debug event=lifecycle.generate.start task_id=task_123",
-      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=read-file path=src/code-ops.ts",
-      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=scan-code path=src/code-ops.ts",
-      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=edit-code path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=file-read path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=code-scan path=src/code-ops.ts",
+      "ts level=debug event=lifecycle.tool.call task_id=task_123 tool=code-edit path=src/code-ops.ts",
       "ts level=debug event=lifecycle.signal.accepted task_id=task_123 signal=done",
     ]);
 

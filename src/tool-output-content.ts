@@ -70,8 +70,7 @@ export function renderToolOutputPart(content: ToolOutputPart): string {
     }
     case "scope-header": {
       const label = tDynamic(content.labelKey);
-      const isSearch = content.labelKey.includes("search");
-      const patternsDisplay = isSearch ? content.patterns.map((p) => `"${p}"`).join(", ") : content.patterns.join(", ");
+      const patternsDisplay = content.patterns.join(", ");
       const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
       return `${label} ${patternsDisplay}${scopeSuffix}`;
     }

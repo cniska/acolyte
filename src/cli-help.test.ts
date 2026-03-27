@@ -21,7 +21,7 @@ const toolHelp: CliCommandHelp = {
   command: "tool",
   usage: "acolyte tool <tool-id> [args...]",
   description: "run a tool directly",
-  examples: ['acolyte tool find-files "src/**/*.ts"'],
+  examples: ['acolyte tool file-find "src/**/*.ts"'],
 };
 
 describe("cli-help", () => {

@@ -90,6 +90,7 @@ function stripGitShowMetadataForPreview(rawText: string): string {
 function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-status",
+    toolkit: "git",
     labelKey: "tool.label.git_status",
     category: "search",
     permissions: ["read"],
@@ -120,6 +121,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
 function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-diff",
+    toolkit: "git",
     labelKey: "tool.label.git_diff",
     category: "search",
     permissions: ["read"],
@@ -155,6 +157,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-log",
+    toolkit: "git",
     labelKey: "tool.label.git_log",
     category: "search",
     permissions: ["read"],
@@ -190,6 +193,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-show",
+    toolkit: "git",
     labelKey: "tool.label.git_show",
     category: "search",
     permissions: ["read"],
@@ -237,6 +241,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-add",
+    toolkit: "git",
     labelKey: "tool.label.git_add",
     category: "write",
     permissions: ["write"],
@@ -285,6 +290,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-commit",
+    toolkit: "git",
     labelKey: "tool.label.git_commit",
     category: "write",
     permissions: ["write"],

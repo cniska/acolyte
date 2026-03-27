@@ -8,20 +8,21 @@ import { emitShellHeadTail } from "./tool-output-format";
 
 function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
-    id: "run-command",
-    labelKey: "tool.label.run_command",
+    id: "shell-run",
+    toolkit: "shell",
+    labelKey: "tool.label.shell_run",
     category: "execute",
     permissions: ["execute"],
     description:
       "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
     instruction:
-      "Use `run-command` for known repository commands such as documented build/test/verify steps, or when the user explicitly asked you to run a command. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `read-file`, `search-files`, `find-files`, `edit-file`, or `edit-code`. For explicit named-file bounded tasks, do not run commands after the edit just to double-check the result unless the user asked for verification.",
+      "Use `shell-run` for known repository commands such as documented build/test/verify steps, or when the user explicitly asked you to run a command. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `file-read`, `file-search`, `file-find`, `file-edit`, or `code-edit`. For explicit named-file bounded tasks, do not run commands after the edit just to double-check the result unless the user asked for verification.",
     inputSchema: z.object({
       command: z.string().min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
     }),
     outputSchema: z.object({
-      kind: z.literal("run-command"),
+      kind: z.literal("shell-run"),
       command: z.string().min(1),
       exitCode: z.number().int().optional(),
       output: z.string(),
@@ -29,15 +30,15 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
-        "run-command",
+        "shell-run",
         toolCallId,
         toolInput,
         async (callId) => {
           input.onOutput({
-            toolName: "run-command",
+            toolName: "shell-run",
             content: {
               kind: "tool-header",
-              labelKey: "tool.label.run_command",
+              labelKey: "tool.label.shell_run",
               detail: compactDetail(toolInput.command),
             },
             toolCallId: callId,
@@ -88,10 +89,10 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           };
           flushRemainder("stdout");
           flushRemainder("stderr");
-          emitShellHeadTail("run-command", streamed, input.onOutput, callId);
+          emitShellHeadTail("shell-run", streamed, input.onOutput, callId);
           const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
-            kind: "run-command",
+            kind: "shell-run",
             command: toolInput.command,
             exitCode: parseExitCode(rawResult),
             output: result,

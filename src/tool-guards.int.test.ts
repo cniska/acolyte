@@ -110,7 +110,7 @@ describe("guard regression integration", () => {
       "[int:duplicate-consecutive-call] Run the same harmless command eight times in a row.",
       "sess_guardregressionduplicate",
       ({ model, responseCounter, outputs, body }) => {
-        const toolName = pickFunctionToolName(body.tools, "run-command", ["run", "command", "terminal"]);
+        const toolName = pickFunctionToolName(body.tools, "shell-run", ["run", "command", "terminal"]);
         if (outputs.length === 0) {
           return createToolCallsPayload(model, responseCounter, [
             {
@@ -141,6 +141,6 @@ describe("guard regression integration", () => {
     expect(reply.output).toContain("Done");
     expect(Array.isArray(reply.toolCalls)).toBe(true);
     expect(reply.toolCalls?.length).toBe(1);
-    expect(reply.toolCalls?.[0]).toBe("run-command");
+    expect(reply.toolCalls?.[0]).toBe("shell-run");
   }, 20_000);
 });
