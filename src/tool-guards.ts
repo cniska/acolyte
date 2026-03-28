@@ -143,6 +143,18 @@ function editedPathsSinceLastVerify(session: SessionContext): string[] {
   return Array.from(paths);
 }
 
+function editedPathsForCurrentTask(session: SessionContext): string[] {
+  const paths = new Set<string>();
+  for (const entry of scopedCallLog(session)) {
+    if (entry.status === "failed") continue;
+    if (!isWriteTool(session, entry.toolName)) continue;
+    if (typeof entry.args.path !== "string") continue;
+    const path = normalizePath(entry.args.path.trim().toLowerCase());
+    if (path.length > 0) paths.add(path);
+  }
+  return Array.from(paths);
+}
+
 type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 function redundantQueryKind(input: {
@@ -348,6 +360,41 @@ const verifyReadOrderGuard: ToolGuard = {
         `File "${path}" was edited in this task. In verify mode, use code-scan or test-run before rereading the edited file.`,
       );
     }
+  },
+};
+
+const verifyRediscoveryGuard: ToolGuard = {
+  id: "verify-rediscovery",
+  description: "In verify mode, block rediscovery of already edited files with search and git diff.",
+  tools: ["file-search", "git-diff"],
+  check({ args, session, toolName, report }) {
+    if (session.mode !== "verify") return;
+    const editedPaths = editedPathsForCurrentTask(session);
+    if (editedPaths.length === 0) return;
+
+    if (toolName === "file-search") {
+      for (const editedPath of editedPaths) {
+        if (!searchTouchesPath(args, editedPath)) continue;
+        report("blocked", editedPath);
+        throw new Error(
+          `Verify already has enough evidence for "${editedPath}". Do not use file-search on that edited file in verify mode.`,
+        );
+      }
+      return;
+    }
+
+    const diffPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
+    if (!diffPath) {
+      report("blocked", editedPaths[0]);
+      throw new Error(
+        `Verify already has enough evidence for "${editedPaths[0]}". Do not use git-diff on that edited file in verify mode.`,
+      );
+    }
+    if (!editedPaths.includes(diffPath)) return;
+    report("blocked", diffPath);
+    throw new Error(
+      `Verify already has enough evidence for "${diffPath}". Do not use git-diff on that edited file in verify mode.`,
+    );
   },
 };
 
@@ -703,6 +750,7 @@ const GUARDS: ToolGuard[] = [
   pingPongGuard,
   staleResultGuard,
   verifyReadOrderGuard,
+  verifyRediscoveryGuard,
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,

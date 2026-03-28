@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import type { AgentMode } from "./agent-contract";
 import type { VerifyScope } from "./api";
 import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import { normalizePath } from "./tool-arg-paths";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 import { type CommandResult, runCommandWithFiles } from "./workspace-profile";
@@ -80,6 +82,83 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   }
   return Array.from(out);
 }
+
+type BoundedLiteralReplacement = {
+  path: string;
+  literal: string;
+};
+
+function extractSingleTargetPath(message: string): string | undefined {
+  const matches = message.matchAll(/(?:^|[\s(,])((?:\.{0,2}\/)?[A-Za-z0-9_./-]+\.[A-Za-z0-9_-]+)/g);
+  const unique = new Set<string>();
+  for (const match of matches) {
+    const value = match[1]?.trim();
+    if (!value) continue;
+    unique.add(normalizePath(value));
+    if (unique.size > 1) return undefined;
+  }
+  return unique.size === 1 ? Array.from(unique)[0] : undefined;
+}
+
+function boundedLiteralReplacementForRequest(message: string): BoundedLiteralReplacement | undefined {
+  if (!/\b(each|every|all)\b/i.test(message)) return undefined;
+  const path = extractSingleTargetPath(message);
+  if (!path) return undefined;
+  const literalMatch = message.match(
+    /replace\s+(?:each|every|all(?:\s+eligible\s+occurrences?)?(?:\s+of)?)\s+([`'"])(.+?)\1/i,
+  );
+  const literal = literalMatch?.[2]?.trim();
+  if (!literal) return undefined;
+  return { path, literal };
+}
+
+function countOccurrences(text: string, needle: string): number {
+  if (needle.length === 0) return 0;
+  let count = 0;
+  let index = text.indexOf(needle);
+  while (index !== -1) {
+    count += 1;
+    index = text.indexOf(needle, index + needle.length);
+  }
+  return count;
+}
+
+export const boundedLiteralCompletenessEvaluator: Evaluator = {
+  id: "bounded-literal-completeness",
+  evaluate(ctx) {
+    if (!ctx.result) return { type: "done" };
+    if (ctx.mode !== "work" || !ctx.workspace) return { type: "done" };
+    const replacement = boundedLiteralReplacementForRequest(ctx.request.message);
+    if (!replacement) return { type: "done" };
+    if (!writePathsForCurrentTask(ctx).includes(replacement.path)) return { type: "done" };
+
+    let content: string;
+    try {
+      content = readFileSync(`${ctx.workspace}/${replacement.path}`, "utf8");
+    } catch {
+      return { type: "done" };
+    }
+
+    const remaining = countOccurrences(content, replacement.literal);
+    ctx.debug("lifecycle.eval.bounded_literal_completeness", {
+      path: replacement.path,
+      literal: replacement.literal,
+      remaining,
+    });
+    if (remaining === 0) return { type: "done" };
+
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "completeness",
+        mode: "work",
+        summary: `The requested literal replacement in "${replacement.path}" is incomplete.`,
+        details: `The file still contains ${remaining} occurrence${remaining === 1 ? "" : "s"} of \`${replacement.literal}\`.`,
+        instruction: "Finish the requested bounded replacement in that file before stopping.",
+      },
+    };
+  },
+};
 
 export const formatEvaluator: Evaluator = {
   id: "format",

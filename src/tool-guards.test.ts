@@ -214,6 +214,49 @@ describe("file-churn guard", () => {
   });
 });
 
+describe("verify-rediscovery guard", () => {
+  test("blocks file-search on an edited file in verify mode", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["file-edit"]);
+    recordCall(session, "file-edit", { path: "src/lifecycle-state.ts" });
+    session.mode = "verify";
+    recordCall(session, "code-scan", { paths: ["src/lifecycle-state.ts"], patterns: ["return undefined;"] });
+    expect(() =>
+      runGuards({
+        toolName: "file-search",
+        args: { patterns: ["return undefined;"], paths: ["src/lifecycle-state.ts"] },
+        session,
+      }),
+    ).toThrow(/do not use file-search on that edited file in verify mode/i);
+  });
+
+  test("blocks git-diff on an edited file in verify mode", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["file-edit"]);
+    recordCall(session, "file-edit", { path: "src/lifecycle-state.ts" });
+    session.mode = "verify";
+    recordCall(session, "code-scan", { paths: ["src/lifecycle-state.ts"], patterns: ["return undefined;"] });
+    expect(() => runGuards({ toolName: "git-diff", args: { path: "src/lifecycle-state.ts" }, session })).toThrow(
+      /do not use git-diff on that edited file in verify mode/i,
+    );
+  });
+
+  test("allows file-search on a different file in verify mode", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["file-edit"]);
+    recordCall(session, "file-edit", { path: "src/lifecycle-state.ts" });
+    session.mode = "verify";
+    recordCall(session, "code-scan", { paths: ["src/lifecycle-state.ts"], patterns: ["return undefined;"] });
+    expect(() =>
+      runGuards({
+        toolName: "file-search",
+        args: { patterns: ["return undefined;"], paths: ["src/other.ts"] },
+        session,
+      }),
+    ).not.toThrow();
+  });
+});
+
 describe("redundant-search guard", () => {
   test("blocks duplicate search in same scope", () => {
     const session = createSessionContext();

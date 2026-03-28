@@ -53,6 +53,12 @@ const guardFeedbackFactories = {
       summary: `A previous edit already changed "${event.detail ?? "this file"}".`,
       instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
     }),
+  "verify-rediscovery": (event) =>
+    createGuardFeedback("verify", {
+      summary: `Verify already has enough evidence for "${event.detail ?? "this file"}".`,
+      instruction:
+        "Do not rediscover that edited file in verify mode. Conclude from code-scan, test-run, and the existing edit preview.",
+    }),
 } satisfies Record<string, GuardFeedbackFactory>;
 
 type SupportedGuardId = keyof typeof guardFeedbackFactories;

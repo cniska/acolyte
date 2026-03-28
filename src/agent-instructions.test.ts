@@ -22,6 +22,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("Act as an independent code reviewer.");
     expect(out).toContain("Review the changes with ONE `code-scan` call");
     expect(out).toContain("Do not `file-read` edited files in verify mode");
+    expect(out).toContain("For bounded 'each'/'every'/'all' replacements in one edited file");
     expect(out).toContain("If the verification pass is clean, stop.");
   });
 

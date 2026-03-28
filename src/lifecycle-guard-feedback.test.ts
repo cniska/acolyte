@@ -67,4 +67,22 @@ describe("createLifecycleFeedbackForGuard", () => {
       instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
     });
   });
+
+  test("maps verify rediscovery to verify-scoped lifecycle feedback", () => {
+    const feedback = createLifecycleFeedbackForGuard(
+      createGuardEvent({
+        guardId: "verify-rediscovery",
+        toolName: "file-search",
+        detail: "src/lifecycle-state.ts",
+      }),
+      "verify",
+    );
+    expect(feedback).toEqual({
+      source: "guard",
+      mode: "verify",
+      summary: 'Verify already has enough evidence for "src/lifecycle-state.ts".',
+      instruction:
+        "Do not rediscover that edited file in verify mode. Conclude from code-scan, test-run, and the existing edit preview.",
+    });
+  });
 });
