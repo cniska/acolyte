@@ -20,47 +20,48 @@ Naming conventions and core terms used across Acolyte code and docs.
 
 | Term | Definition |
 |---|---|
-| Base Agent Input | Immutable prompt input created during `prepare` and used as the base for each generation attempt |
-| Checklist | Inline progress display for multi-step tasks, rendered between transcript and input. The agent defines steps via `checklist-create` and marks progress via `checklist-update` |
-| Context Budgeting | Proactive token allocation via tiktoken — system prompt reserved first, remaining space filled by priority (memory → attachments → history → tool payloads) |
+| Base Agent Input | Immutable prompt input created during `prepare` and reused as the base for each generation attempt |
+| Checklist | Inline progress display for multi-step tasks, defined by `checklist-create` and updated by `checklist-update` |
+| Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
 | Continuation State | Persisted "Current task" and "Next step" cues carried into later turns |
-| Distill | Automatic memory source family that extracts and consolidates knowledge into records (project/user/session scope variants) |
-| Embedding | Provider-generated vector representation of a distill record, stored as a BLOB in SQLite and used for semantic recall |
-| Ecosystem Detector | Pluggable workspace detection rule that identifies project type and resolves available tooling |
-| Entry | Runtime/pipeline item used during processing; not necessarily persisted |
-| Evaluator | Post-generation rule that accepts or requests regeneration |
-| Guard | Pre-tool execution rule that may block calls; see `src/tool-guards.ts` for the full set |
-| Host | The runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery behavior |
-| Lifecycle Feedback | Task-scoped runtime feedback emitted by evaluators or selected guard outcomes and consumed by the next matching lifecycle attempt |
-| Lifecycle Policy | Bounded execution controls for lifecycle behavior (timeouts, regeneration caps) |
-| Lifecycle Signal | Small model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) and accepted only if current runtime state does not contradict it |
-| Lifecycle State | Internal task-scoped lifecycle runtime state used to carry feedback, review outcomes, and repeated-failure streaks between attempts |
+| Distill | Memory source family that extracts and consolidates knowledge into records at project, user, or session scope |
+| Embedding | Provider-generated vector representation of a distill record used for semantic recall |
+| Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
+| Entry | Runtime or pipeline item used during processing and not necessarily persisted |
+| Evaluator | Post-generation rule that accepts output or requests regeneration |
+| Guard | Pre-tool execution rule that may block a call |
+| Host | Runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery |
+| Lifecycle Feedback | Task-scoped runtime feedback carried into the next matching lifecycle attempt |
+| Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
+| Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
+| Lifecycle State | Internal task-scoped runtime state carried between lifecycle attempts |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
-| Memory Pipeline | Internal staged flow inside the Memory Engine (ingest → normalize → select → inject → commit) |
-| Memory Policy | Bounded operational thresholds for memory behavior (reflection retry limit, context message window, malformed tag warning threshold) |
-| Memory Source | Pluggable provider that contributes memory entries and optional commit behavior (`stored`, `distill_project`, `distill_user`, `distill_session`) |
-| Memory Source Strategy | Configured source ID set and order used by the Memory Engine (`memorySources`) |
-| Message Kind | Semantic message classification for history behavior (`text`, `tool_payload`) |
-| Mode | Explicit operating behavior profile for a request (`work`, `verify`) |
-| Model Judgment | The model's responsibility for deciding how to complete the task; lifecycle policy supports this judgment but does not replace it with host-side task heuristics |
-| Observation | Distill record tier capturing round-level facts |
-| Provider | Model backend selected by the active model for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`) |
+| Memory Pipeline | Internal memory flow from ingest through commit |
+| Memory Policy | Centralized limits and defaults for memory behavior |
+| Memory Source | Pluggable provider that contributes memory entries and optional commit behavior |
+| Memory Source Strategy | Configured memory source IDs and order used by the Memory Engine |
+| Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
+| Mode | Explicit operating profile for a request (`work`, `verify`) |
+| Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
+| Observation | Distill record tier for round-level facts |
+| Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
+| Provider | Model backend selected for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`) |
 | Record | Persisted entity object stored by a persistence backend |
-| Reflection | Distill record tier consolidating cross-round facts |
-| Registry | Composition layer that wires implementations into an agent-facing surface under contracts (tool registry, memory registry) |
-| Resource ID | Typed cross-session identity key used by memory and execution scoping (`proj_*`, `user_*`, `run_*`, `skill_*`) |
-| Semantic Recall | Relevance-ranked memory selection using provider embeddings and cosine similarity, replacing recency-based ordering when a query is available |
-| Session | One chat session in memory (messages, model, token usage, timestamps) |
+| Reflection | Distill record tier for cross-round consolidation |
+| Registry | Composition layer that wires implementations into an agent-facing surface under shared contracts |
+| Resource ID | Typed cross-session identity key used for memory and execution scoping |
+| Semantic Recall | Relevance-ranked memory selection using embeddings and cosine similarity |
+| Session | One chat session in memory, including messages, model, token usage, and timestamps |
 | SessionRecord | One stored session record |
-| SessionState | Sessions aggregate (`sessions[]`, `activeSessionId`) |
+| SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
 | SessionStore | Read/write/create interface for session persistence |
-| Skill | Declarative prompt extension defined in a SKILL.md file with frontmatter metadata, tool restrictions, and compatibility checks |
-| Step Budget | Guard that enforces per-cycle and total limits on tool calls to prevent runaway loops |
-| Task | Lifecycle work request flowing through accept/queue/run/terminal states |
-| Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity/cancellation boundaries |
-| Tool Cache | Two-tier cache for read-only and search tool results. L1 is in-memory LRU per task; L2 is SQLite-backed persistence across tasks within a session |
+| Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
+| Step Budget | Guard that limits per-cycle and total tool calls to prevent runaway loops |
+| Task | Lifecycle work request moving through accept, queue, run, and terminal states |
+| Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
+| Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
-| Toolkit | Grouped domain tools exposed through adapters/composition |
-| Verify Cycle | Post-write review sequence; the evaluator transitions to verify mode for code review, then returns to work mode |
-| Workspace Command | Typed shell command descriptor (`{ bin, args }`) used for lint, format, and test commands |
-| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, lint/format/test commands, and line width |
+| Toolkit | Group of domain tools exposed through adapters and composition |
+| Verify Cycle | Post-write review sequence that switches to verify mode and then returns to work mode |
+| Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
+| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, commands, and line width |
