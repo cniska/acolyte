@@ -18,9 +18,9 @@ describe("parseLog", () => {
   });
 
   test("parses quoted values", () => {
-    const [entry] = parseLog('2026-03-19T10:00:00Z msg="hello world" tool=read-file');
+    const [entry] = parseLog('2026-03-19T10:00:00Z msg="hello world" tool=file-read');
     expect(entry.fields.msg).toBe("hello world");
-    expect(entry.fields.tool).toBe("read-file");
+    expect(entry.fields.tool).toBe("file-read");
   });
 
   test("extracts taskId from task_id field", () => {

@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitResultChunks } from "./tool-output-format";
+import { emitParts, resultChunkParts } from "./tool-output-format";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -59,6 +59,7 @@ export function webSearchStreamRows(result: string, query?: string): string {
 function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-search",
+    toolkit: "web",
     labelKey: "tool.label.web_search",
     category: "network",
     permissions: ["network"],
@@ -89,7 +90,9 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
           deps.outputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, callId);
+        const previewRows = webSearchStreamRows(result, toolInput.query);
+        const previewParts = resultChunkParts(previewRows, 80);
+        emitParts(previewParts, "web-search", input.onOutput, callId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },
@@ -99,6 +102,7 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
 function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "web-fetch",
+    toolkit: "web",
     labelKey: "tool.label.web_fetch",
     category: "network",
     permissions: ["network"],

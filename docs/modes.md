@@ -10,7 +10,7 @@ Acolyte uses two explicit operating modes to shape behavior: `work` and `verify`
 ## Behavior
 
 - **work** stays inside the requested scope, favors surgical edits, and preserves unrelated file content.
-- **verify** reviews code changes using the lightest sufficient validation for the actual change — typically a `scan-code` call on edited files. It does not run test or build commands.
+- **verify** reviews code changes using the lightest sufficient validation for the actual change — typically a `code-scan` call on edited files. It does not run test or build commands.
 
 ## Selection
 

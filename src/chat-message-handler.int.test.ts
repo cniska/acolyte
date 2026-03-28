@@ -167,44 +167,44 @@ describe("chat message handler guards", () => {
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
-        { type: "tool-call", toolCallId: "call_1", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-call", toolCallId: "call_1", toolName: "file-edit", args: { path: "sum.rs" } },
         {
           type: "tool-output",
           toolCallId: "call_1",
-          toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
+          toolName: "file-edit",
+          content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "sum.rs" },
         },
         { type: "text-delta", text: "Created sum.rs." },
       ],
       [
-        { type: "tool-call", toolCallId: "call_2", toolName: "edit-file", args: { path: "sum.rs" } },
+        { type: "tool-call", toolCallId: "call_2", toolName: "file-edit", args: { path: "sum.rs" } },
         {
           type: "tool-output",
           toolCallId: "call_2",
-          toolName: "edit-file",
-          content: { kind: "tool-header", labelKey: "tool.label.edit_file", detail: "sum.rs" },
+          toolName: "file-edit",
+          content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "sum.rs" },
         },
         {
           type: "tool-output",
           toolCallId: "call_2",
-          toolName: "edit-file",
+          toolName: "file-edit",
           content: { kind: "diff", lineNumber: 2, marker: "remove", text: "let sum = a + b;" },
         },
         {
           type: "tool-output",
           toolCallId: "call_2",
-          toolName: "edit-file",
+          toolName: "file-edit",
           content: { kind: "diff", lineNumber: 2, marker: "add", text: "let sum = a + b + c;" },
         },
         { type: "text-delta", text: "Updated sum.rs for three args." },
       ],
       [
-        { type: "tool-call", toolCallId: "call_3", toolName: "delete-file", args: { path: "sum.rs" } },
+        { type: "tool-call", toolCallId: "call_3", toolName: "file-delete", args: { path: "sum.rs" } },
         {
           type: "tool-output",
           toolCallId: "call_3",
-          toolName: "delete-file",
-          content: { kind: "tool-header", labelKey: "tool.label.delete_file", detail: "sum.rs" },
+          toolName: "file-delete",
+          content: { kind: "tool-header", labelKey: "tool.label.file_delete", detail: "sum.rs" },
         },
         { type: "text-delta", text: "Removed sum.rs." },
       ],
@@ -232,11 +232,11 @@ describe("chat message handler guards", () => {
     expect(toolRows).toHaveLength(3);
     expect(
       isToolOutput(toolRows[0]?.content) &&
-        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit_file"),
+        toolRows[0]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_edit"),
     ).toBe(true);
     expect(
       isToolOutput(toolRows[1]?.content) &&
-        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.edit_file"),
+        toolRows[1]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_edit"),
     ).toBe(true);
     expect(
       isToolOutput(toolRows[1]?.content) &&
@@ -244,7 +244,7 @@ describe("chat message handler guards", () => {
     ).toBe(true);
     expect(
       isToolOutput(toolRows[2]?.content) &&
-        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.delete_file"),
+        toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_delete"),
     ).toBe(true);
     // Assistant text rows are kept as-is (no redundancy filtering).
     expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);

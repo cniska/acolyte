@@ -39,13 +39,13 @@ describe("cli-tool", () => {
         called = true;
       },
     });
-    await toolMode(["find-files", "*.ts"], deps);
+    await toolMode(["file-find", "*.ts"], deps);
     expect(called).toBe(true);
   });
 
   test("invalid input prints error", async () => {
     const { deps, errors } = createDeps();
-    await toolMode(["run-tests"], deps);
+    await toolMode(["test-run"], deps);
     expect(process.exitCode).toBe(1);
     expect(errors().length).toBeGreaterThan(0);
     process.exitCode = 0;

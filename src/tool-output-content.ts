@@ -70,10 +70,9 @@ export function renderToolOutputPart(content: ToolOutputPart): string {
     }
     case "scope-header": {
       const label = tDynamic(content.labelKey);
-      const needsBrackets = content.scope !== "workspace";
-      const patternsDisplay = needsBrackets ? `[${content.patterns.join(", ")}]` : content.patterns.join(", ");
-      const scopePrefix = content.scope === "workspace" ? "" : `${content.scope} `;
-      return `${label} ${scopePrefix}${patternsDisplay}`;
+      const patternsDisplay = content.patterns.join(", ");
+      const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
+      return `${label} ${patternsDisplay}${scopeSuffix}`;
     }
     case "edit-header":
       return `${tDynamic(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
@@ -127,7 +126,7 @@ export function formatToolOutput(items: ToolOutputPart[]): string {
     if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
     if (item.kind === "truncated" && numWidth > 0) {
       const suffix = renderToolOutputPart(item).slice(2);
-      return suffix ? `${diffIndent}${"…".padStart(numWidth)} ${suffix}` : `${diffIndent}${"…".padStart(numWidth)}`;
+      return suffix ? `${diffIndent}${"⋮".padStart(numWidth)} ${suffix}` : `${diffIndent}${"⋮".padStart(numWidth)}`;
     }
     return renderToolOutputPart(item);
   });

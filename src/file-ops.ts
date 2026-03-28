@@ -32,29 +32,29 @@ function editFileRecovery(path: string, kind: EditFileRecoveryKind): ToolRecover
   switch (kind) {
     case "disambiguate-match":
       return {
-        tool: "edit-file",
+        tool: "file-edit",
         kind,
-        summary: "Your edit-file snippet matched multiple locations.",
-        instruction: `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. If the rewrite is genuinely structural, switch to edit-code with a real ast-grep pattern.`,
-        nextTool: "read-file",
+        summary: "Your file-edit snippet matched multiple locations.",
+        instruction: `Keep the change in '${path}' and make one bounded edit with a more unique snippet or a single line-range edit. If the rewrite is genuinely structural, switch to code-edit with a real ast-grep pattern.`,
+        nextTool: "file-read",
         targetPaths: [path],
       };
     case "refresh-snippet":
       return {
-        tool: "edit-file",
+        tool: "file-edit",
         kind,
-        summary: "Your edit-file find snippet no longer matches the file.",
-        instruction: `Keep the change in '${path}' and rebuild the next edit from the latest read-file output or use a bounded line-range edit. Do not retry the same stale find text.`,
-        nextTool: "read-file",
+        summary: "Your file-edit find snippet no longer matches the file.",
+        instruction: `Keep the change in '${path}' and rebuild the next edit from the latest file-read output or use a bounded line-range edit. Do not retry the same stale find text.`,
+        nextTool: "file-read",
         targetPaths: [path],
       };
     case "shrink-edit":
       return {
-        tool: "edit-file",
+        tool: "file-edit",
         kind,
-        summary: "Your edit-file request was too large for a bounded edit.",
-        instruction: `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use edit-code for a structural rewrite. Do not pass large file blocks as find or replacement text.`,
-        nextTool: "read-file",
+        summary: "Your file-edit request was too large for a bounded edit.",
+        instruction: `Keep the change in '${path}' and shrink it: use short unique find snippets, a bounded line-range edit covering only the changed region, or use code-edit for a structural rewrite. Do not pass large file blocks as find or replacement text.`,
+        nextTool: "file-read",
         targetPaths: [path],
       };
     default:
@@ -66,26 +66,26 @@ function searchFilesRecovery(kind: SearchFilesRecoveryKind, targetPaths?: string
   switch (kind) {
     case "broaden-scope":
       return {
-        tool: "search-files",
+        tool: "file-search",
         kind,
-        summary: "Your search-files scope resolved to no searchable files.",
+        summary: "Your file-search scope resolved to no searchable files.",
         instruction:
-          "If you already know the exact file, read it directly. Otherwise broaden the scope or use find-files to locate the target file before searching again.",
-        nextTool: "find-files",
-        resolvesOn: [{ tool: "find-files" }],
+          "If you already know the exact file, read it directly. Otherwise broaden the scope or use file-find to locate the target file before searching again.",
+        nextTool: "file-find",
+        resolvesOn: [{ tool: "file-find" }],
       };
     case "switch-to-read":
       return {
-        tool: "search-files",
+        tool: "file-search",
         kind,
-        summary: "Your search-files query found no matches in the scoped file.",
+        summary: "Your file-search query found no matches in the scoped file.",
         instruction:
-          "If the file is still the right target, switch to read-file and inspect the current text directly before deciding the next edit or search.",
-        nextTool: "read-file",
+          "If the file is still the right target, switch to file-read and inspect the current text directly before deciding the next edit or search.",
+        nextTool: "file-read",
         ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
         resolvesOn: [
           {
-            tool: "read-file",
+            tool: "file-read",
             ...(targetPaths && targetPaths.length > 0 ? { targetPaths } : {}),
           },
         ],
@@ -142,7 +142,7 @@ export async function searchFiles(
   if (normalizedPaths.length > 0 && allFiles.length === 0) {
     throw createToolError(
       TOOL_ERROR_CODES.searchFilesEmptyScope,
-      `search-files scope resolved to no files: ${normalizedPaths.join(", ")}`,
+      `file-search scope resolved to no files: ${normalizedPaths.join(", ")}`,
       undefined,
       searchFilesRecovery("broaden-scope"),
     );
@@ -182,7 +182,7 @@ export async function searchFiles(
   if (singleScopedFile) {
     throw createToolError(
       TOOL_ERROR_CODES.searchFilesNoMatch,
-      `search-files found no matches in scoped file: ${singleScopedFile}`,
+      `file-search found no matches in scoped file: ${singleScopedFile}`,
       undefined,
       searchFilesRecovery("switch-to-read", [singleScopedFile]),
     );
@@ -196,7 +196,7 @@ export async function readFileContent(workspace: string, path: string, maxLines?
   const lines = raw.split("\n");
   if (maxLines !== undefined && lines.length > maxLines) {
     throw new Error(
-      `File "${path}" is too large (${lines.length} lines). Use \`search-files\` or \`scan-code\` to find the relevant sections.`,
+      `File "${path}" is too large (${lines.length} lines). Use \`file-search\` or \`code-scan\` to find the relevant sections.`,
     );
   }
   const numbered = lines.map((line, idx) => `${idx + 1}: ${line}`);
@@ -254,7 +254,7 @@ export async function editFile(input: {
         );
       }
       if (count > 1) {
-        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location. For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. Use edit-code only for structural code changes.`;
+        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location. For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. Use code-edit only for structural code changes.`;
         throw createToolError(
           TOOL_ERROR_CODES.editFileMultiMatch,
           message,
@@ -272,7 +272,7 @@ export async function editFile(input: {
       if (startLine === 1 && clampedEnd === lines.length && replace.trim().length === 0) {
         throw createToolError(
           TOOL_ERROR_CODES.editFileLineRangeTooLarge,
-          "line-range edit would clear the entire file. Use a bounded range edit, or delete-file if the file should be removed.",
+          "line-range edit would clear the entire file. Use a bounded range edit, or file-delete if the file should be removed.",
           undefined,
           editFileRecovery(input.path, "shrink-edit"),
         );
@@ -313,7 +313,7 @@ export async function editFile(input: {
   ) {
     throw createToolError(
       TOOL_ERROR_CODES.editFileBatchTooLarge,
-      "edit-file batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or edit-code for structural rewrites.",
+      "file-edit batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or code-edit for structural rewrites.",
       undefined,
       editFileRecovery(input.path, "shrink-edit"),
     );

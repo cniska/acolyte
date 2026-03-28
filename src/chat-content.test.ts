@@ -3,7 +3,7 @@ import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent
 
 describe("chat-content helpers", () => {
   test("sanitizeAssistantContent removes tools/evidence footer lines", () => {
-    const raw = ["Run bun run verify", "", "Tools used: run-command", "Evidence: src/cli.ts"].join("\n");
+    const raw = ["Run bun run verify", "", "Tools used: shell-run", "Evidence: src/cli.ts"].join("\n");
     expect(sanitizeAssistantContent(raw)).toBe("Run bun run verify");
   });
 
@@ -13,7 +13,7 @@ describe("chat-content helpers", () => {
   });
 
   test("sanitizeAssistantContent returns empty when everything is stripped", () => {
-    const raw = ["Tools used: search-files", "Evidence: src/cli.ts:1"].join("\n");
+    const raw = ["Tools used: file-search", "Evidence: src/cli.ts:1"].join("\n");
     expect(sanitizeAssistantContent(raw)).toBe("");
   });
 

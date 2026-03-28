@@ -24,8 +24,8 @@ describe("debug flags", () => {
   });
 
   test("formats debug lines with stable key=value fields", () => {
-    expect(formatDebugLine("tool-stream", { tool: "read-file", count: 2 })).toBe(
-      "[debug:tool-stream] tool=read-file count=2",
+    expect(formatDebugLine("tool-stream", { tool: "file-read", count: 2 })).toBe(
+      "[debug:tool-stream] tool=file-read count=2",
     );
   });
 });

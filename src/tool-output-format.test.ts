@@ -1,69 +1,50 @@
 import { describe, expect, test } from "bun:test";
-import type { ToolOutputPart } from "./tool-output-content";
-import {
-  emitHeadTailLines,
-  emitResultChunks,
-  findResultPaths,
-  numberedUnifiedDiffLines,
-  searchResultSummaryEntries,
-  type ToolOutputListener,
-} from "./tool-output-format";
+import { resultChunkParts, textHeadTailParts } from "./tool-output-format";
+import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryStats } from "./tool-output-parse";
 
-function collect() {
-  const events: Array<{ toolName: string; content: ToolOutputPart }> = [];
-  const listener: ToolOutputListener = (e) => events.push({ toolName: e.toolName, content: e.content });
-  return { events, listener };
-}
-
-describe("emitHeadTailLines", () => {
-  test("empty input emits single no-output event", () => {
-    const { events, listener } = collect();
-    emitHeadTailLines("test", "", listener, "call-1");
-    expect(events).toHaveLength(1);
-    expect(events[0]?.content).toEqual({ kind: "no-output" });
+describe("textHeadTailParts", () => {
+  test("empty input returns single no-output part", () => {
+    const parts = textHeadTailParts("");
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toEqual({ kind: "no-output" });
   });
 
-  test("few lines within head+tail emits all lines as text", () => {
-    const { events, listener } = collect();
-    emitHeadTailLines("test", "alpha\nbeta\ngamma", listener, "call-2");
-    expect(events).toHaveLength(3);
-    expect(events.map((e) => e.content)).toEqual([
+  test("few lines within head+tail returns all lines as text", () => {
+    const parts = textHeadTailParts("alpha\nbeta\ngamma");
+    expect(parts).toHaveLength(3);
+    expect(parts).toEqual([
       { kind: "text", text: "alpha" },
       { kind: "text", text: "beta" },
       { kind: "text", text: "gamma" },
     ]);
   });
 
-  test("many lines emits head + truncated + tail", () => {
+  test("many lines returns head + omitted + tail", () => {
     const lines = Array.from({ length: 20 }, (_, i) => `line-${i}`).join("\n");
-    const { events, listener } = collect();
-    emitHeadTailLines("test", lines, listener, "call-3", { headRows: 2, tailRows: 2 });
-    // head (2) + truncated (1) + tail (2) = 5
-    expect(events).toHaveLength(5);
-    expect(events[0]?.content).toEqual({ kind: "text", text: "line-0" });
-    expect(events[1]?.content).toEqual({ kind: "text", text: "line-1" });
-    expect(events[2]?.content).toEqual({ kind: "truncated", count: 16, unit: "lines" });
-    expect(events[3]?.content).toEqual({ kind: "text", text: "line-18" });
-    expect(events[4]?.content).toEqual({ kind: "text", text: "line-19" });
+    const parts = textHeadTailParts(lines, { headRows: 2, tailRows: 2 });
+    // head (2) + omitted (1) + tail (2) = 5
+    expect(parts).toHaveLength(5);
+    expect(parts[0]).toEqual({ kind: "text", text: "line-0" });
+    expect(parts[1]).toEqual({ kind: "text", text: "line-1" });
+    expect(parts[2]).toEqual({ kind: "text", text: "⋮ +16 lines" });
+    expect(parts[3]).toEqual({ kind: "text", text: "line-18" });
+    expect(parts[4]).toEqual({ kind: "text", text: "line-19" });
   });
 });
 
-describe("emitResultChunks", () => {
-  test("within limit emits all lines", () => {
-    const { events, listener } = collect();
-    emitResultChunks("test", "a\nb\nc", listener, 10);
-    expect(events).toHaveLength(3);
-    expect(events.every((e) => e.content.kind === "text")).toBe(true);
+describe("resultChunkParts", () => {
+  test("within limit returns all lines", () => {
+    const parts = resultChunkParts("a\nb\nc", 10);
+    expect(parts).toHaveLength(3);
+    expect(parts.every((p) => p.kind === "text")).toBe(true);
   });
 
-  test("over limit emits truncated event at end", () => {
+  test("over limit returns truncated part at end", () => {
     const input = Array.from({ length: 10 }, (_, i) => `row-${i}`).join("\n");
-    const { events, listener } = collect();
-    emitResultChunks("test", input, listener, 3);
+    const parts = resultChunkParts(input, 3);
     // 3 text + 1 truncated
-    expect(events).toHaveLength(4);
-    const last = events[3]?.content;
-    expect(last).toEqual({ kind: "truncated", count: 7, unit: "lines" });
+    expect(parts).toHaveLength(4);
+    expect(parts[3]).toEqual({ kind: "truncated", count: 7, unit: "lines" });
   });
 });
 
@@ -79,19 +60,15 @@ describe("findResultPaths", () => {
   });
 });
 
-describe("searchResultSummaryEntries", () => {
-  test("parses grep-style output with pattern and returns entries", () => {
+describe("searchResultSummaryStats", () => {
+  test("parses grep-style output into file and match counts", () => {
     const result = [
       "./src/foo.ts:10:const hello = true;",
       "./src/foo.ts:20:let hello = false;",
       "./src/bar.ts:5:hello world",
     ].join("\n");
-    const entries = searchResultSummaryEntries(result, ["hello"]);
-    expect(entries).toHaveLength(2);
-    expect(entries[0]?.path).toBe("./src/foo.ts");
-    expect(entries[0]?.hits.length).toBeGreaterThan(0);
-    expect(entries[1]?.path).toBe("./src/bar.ts");
-    expect(entries[1]?.hits.length).toBeGreaterThan(0);
+    const stats = searchResultSummaryStats(result, ["hello"]);
+    expect(stats).toEqual({ files: 2, matches: 3 });
   });
 });
 

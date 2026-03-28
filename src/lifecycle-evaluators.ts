@@ -57,7 +57,7 @@ function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
   let lastFailIdx = -1;
   for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
-    if (entry?.toolName === "edit-file" && entry.status === "failed") {
+    if (entry?.toolName === "file-edit" && entry.status === "failed") {
       lastFailIdx = i;
       break;
     }
@@ -205,7 +205,7 @@ export const toolRecoveryEvaluator: Evaluator = {
     const recovery = currentError.recovery;
     if (!recovery) return { type: "done" };
     if (
-      recovery.tool === "edit-file" &&
+      recovery.tool === "file-edit" &&
       recovery.kind === "disambiguate-match" &&
       hasRecoveredFromLastEditFileFailure(ctx)
     ) {

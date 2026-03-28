@@ -293,7 +293,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       command: "tool",
       usage: "acolyte tool <tool-id> [args...]",
       description: t("cli.help.desc.tool"),
-      examples: ['acolyte tool find-files "src/**/*.ts"', 'acolyte tool run-command "bun run verify"'],
+      examples: ['acolyte tool file-find "src/**/*.ts"', 'acolyte tool shell-run "bun run verify"'],
     },
     handler: (args) =>
       toolMode(args, {

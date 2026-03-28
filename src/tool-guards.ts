@@ -98,7 +98,7 @@ export function scopedCallLog(session: SessionContext, taskId?: string): ToolCal
 }
 
 export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
-  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "run-command" && entry.mode === "verify");
+  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "shell-run" && entry.mode === "verify");
 }
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
@@ -122,7 +122,7 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
 function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
   const calls = scopedCallLog(session);
   for (let i = calls.length - 1; i >= 0; i -= 1) {
-    if (calls[i]?.toolName === "run-command" && calls[i]?.mode === "verify") return calls.slice(i + 1);
+    if (calls[i]?.toolName === "shell-run" && calls[i]?.mode === "verify") return calls.slice(i + 1);
   }
   return calls;
 }
@@ -185,7 +185,7 @@ function normalizeGuardArgValue(value: unknown): unknown {
 function readCountForPath(session: SessionContext, path: string): number {
   let count = 0;
   for (const entry of scopedCallLog(session)) {
-    if (entry.toolName !== "read-file") continue;
+    if (entry.toolName !== "file-read") continue;
     count += extractReadPaths(entry.args, { normalize: true }).filter((readPath) => readPath === path).length;
   }
   return count;
@@ -206,11 +206,11 @@ function hasFreshEvidenceSinceLastSuccessfulEdit(session: SessionContext, path: 
   for (let i = calls.length - 1; i >= 0; i -= 1) {
     const entry = calls[i];
     if (!entry) continue;
-    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) return true;
-    if (entry.toolName === "search-files" && searchTouchesPath(entry.args, path)) return true;
-    if (entry.toolName === "scan-code" && scanTouchesPath(entry.args, path)) return true;
+    if (entry.toolName === "file-read" && extractReadPaths(entry.args, { normalize: true }).includes(path)) return true;
+    if (entry.toolName === "file-search" && searchTouchesPath(entry.args, path)) return true;
+    if (entry.toolName === "code-scan" && scanTouchesPath(entry.args, path)) return true;
     if (entry.status === "failed") continue;
-    if (entry.toolName === "edit-file") {
+    if (entry.toolName === "file-edit") {
       const editedPath = typeof entry.args.path === "string" ? normalizePath(entry.args.path.trim().toLowerCase()) : "";
       if (editedPath === path) return false;
     }
@@ -255,7 +255,7 @@ function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionConte
     ) {
       return false;
     }
-    if (entry.toolName === "read-file" && extractReadPaths(entry.args, { normalize: true }).includes(path)) {
+    if (entry.toolName === "file-read" && extractReadPaths(entry.args, { normalize: true }).includes(path)) {
       return true;
     }
   }
@@ -265,10 +265,10 @@ function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionConte
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
-  tools: ["read-file", "edit-file"],
+  tools: ["file-read", "file-edit"],
   check({ args, session, toolName, report }) {
     const targetPaths =
-      toolName === "edit-file"
+      toolName === "file-edit"
         ? typeof args.path === "string" && args.path.trim().length > 0
           ? [normalizePath(args.path.trim())]
           : []
@@ -284,7 +284,7 @@ const fileChurnGuard: ToolGuard = {
     };
     const sinceLastVerify = callsSinceLastVerify(session);
     for (const entry of sinceLastVerify) {
-      if (entry.toolName === "read-file") {
+      if (entry.toolName === "file-read") {
         for (const readPath of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(readPath).readCount += 1;
         }
@@ -300,7 +300,7 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (toolName === "read-file" && editCount > 0 && session.mode !== "verify") {
+      if (toolName === "file-read" && editCount > 0 && session.mode !== "verify") {
         if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
           report("blocked", target);
           throw new Error(
@@ -309,7 +309,7 @@ const fileChurnGuard: ToolGuard = {
         }
       }
 
-      if (toolName === "read-file" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
+      if (toolName === "file-read" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
         report("blocked", target);
         throw new Error(
           `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
@@ -323,7 +323,7 @@ const fileChurnGuard: ToolGuard = {
       report("blocked", target);
       throw new Error(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-          "Use one consolidated edit or edit-code, then run verify.",
+          "Use one consolidated edit or code-edit, then run verify.",
       );
     }
   },
@@ -376,7 +376,7 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
       for (const entry of scopedCallLog(session)) {
         if (entry.toolName === config.tool) {
           discoveryCount += 1;
-        } else if (entry.toolName === "read-file") {
+        } else if (entry.toolName === "file-read") {
           readCount += 1;
         } else if (isWriteTool(session, entry.toolName)) {
           writeCount += 1;
@@ -394,10 +394,10 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
 const redundantSearchGuard = createRedundantDiscoveryGuard({
   id: "redundant-search",
   description: "Block repeated search-only churn to force an evidence-based conclusion.",
-  tool: "search-files",
+  tool: "file-search",
   extractPatterns: extractSearchPatterns,
   loopMessage:
-    "Repeated search-files loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
+    "Repeated file-search loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
   preCheck({ args, session, report }) {
     const currentScope = extractSearchScope(args);
     if (currentScope.length !== 1 || currentScope[0] === WORKSPACE_SCOPE) return;
@@ -410,7 +410,7 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
 
     const calls = scopedCallLog(session);
     const prior = calls[calls.length - 1];
-    if (!prior || prior.toolName !== "read-file") return;
+    if (!prior || prior.toolName !== "file-read") return;
     if (extractReadPaths(prior.args, { normalize: true }).includes(targetPath)) {
       report("blocked", targetPath);
       throw new Error(
@@ -432,14 +432,14 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
 const redundantFindGuard = createRedundantDiscoveryGuard({
   id: "redundant-find",
   description: "Block repeated find-only churn to force direct reads or a conclusion.",
-  tool: "find-files",
+  tool: "file-find",
   extractPatterns: extractFindPatterns,
   loopMessage:
-    "Repeated find-files loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
+    "Repeated file-find loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
   preCheck({ args, session, report }) {
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
-      if (entry.toolName !== "find-files") continue;
+      if (entry.toolName !== "file-find") continue;
       const priorPatterns = extractFindPatterns(entry.args);
       const priorScope = extractSearchScope(entry.args);
       const sameScope = sameArray(priorScope, currentScope);
@@ -447,7 +447,7 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
       if (!sameScope && !narrowingScope) continue;
       if (includesUniversalFindPattern(priorPatterns)) {
         report("blocked", "covered-by-universal-find");
-        throw new Error("Redundant find-files call detected. Prior universal find already covers this scope.");
+        throw new Error("Redundant file-find call detected. Prior universal find already covers this scope.");
       }
     }
   },
@@ -456,7 +456,7 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
 const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
-  tools: ["run-command"],
+  tools: ["shell-run"],
   check({ args, session, report }) {
     if (session.mode !== "verify") return;
     const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
@@ -466,7 +466,7 @@ const redundantVerifyGuard: ToolGuard = {
     const lastMatchingVerifyRunIndex = (() => {
       for (let i = calls.length - 1; i >= 0; i -= 1) {
         const entry = calls[i];
-        if (entry?.toolName !== "run-command" || entry.mode !== "verify") continue;
+        if (entry?.toolName !== "shell-run" || entry.mode !== "verify") continue;
         const priorCommand =
           typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
         if (priorCommand === command) return i;
@@ -494,9 +494,9 @@ const redundantVerifyGuard: ToolGuard = {
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
-  tools: ["delete-file", "edit-file"],
+  tools: ["file-delete", "file-edit"],
   check({ args, session, report, toolName }) {
-    if (toolName === "edit-file") {
+    if (toolName === "file-edit") {
       const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
       if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
       report("blocked", targetPath);
@@ -519,7 +519,7 @@ const postEditRedundancyGuard: ToolGuard = {
       if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
       report("blocked", path);
       throw new Error(
-        `delete-file is trying to remove "${path}" after it was already edited in this task. ` +
+        `file-delete is trying to remove "${path}" after it was already edited in this task. ` +
           "Keep the file and revise it in place instead of deleting it.",
       );
     }
@@ -666,14 +666,14 @@ const GIT_WRITE_COMMANDS: { pattern: RegExp; tool: string }[] = [
 const shellBypassGuard: ToolGuard = {
   id: "shell-bypass",
   description: "Block shell commands that bypass dedicated tools.",
-  tools: ["run-command"],
+  tools: ["shell-run"],
   check({ args, report }) {
     const command = typeof args.command === "string" ? args.command : "";
     if (!command) return;
     for (const { pattern, tool } of GIT_WRITE_COMMANDS) {
       if (pattern.test(command)) {
         report("blocked", tool);
-        throw new Error(`This git operation is blocked via run-command. Use the dedicated ${tool} tool instead.`);
+        throw new Error(`This git operation is blocked via shell-run. Use the dedicated ${tool} tool instead.`);
       }
     }
   },
@@ -695,7 +695,7 @@ function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): b
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
   description: "Block lint/format/test commands — use dedicated tools or let the lifecycle handle them.",
-  tools: ["run-command"],
+  tools: ["shell-run"],
   check({ args, session, report }) {
     const profile = session.workspaceProfile;
     if (!profile) return;
@@ -707,7 +707,7 @@ const lifecycleCommandGuard: ToolGuard = {
     }
     if (commandMatchesTestRunner(command, profile)) {
       report("blocked", command);
-      throw new Error("Use the run-tests tool instead of running test commands directly.");
+      throw new Error("Use the test-run tool instead of running test commands directly.");
     }
   },
 };

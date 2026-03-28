@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { toolsForAgent } from "./tool-registry";
 
-describe("read-file tool schema", () => {
+describe("file-read tool schema", () => {
   test("accepts single path", () => {
     const { tools } = toolsForAgent();
     const schema = tools.readFile.inputSchema;
@@ -32,7 +32,7 @@ describe("read-file tool schema", () => {
   });
 });
 
-describe("delete-file tool schema", () => {
+describe("file-delete tool schema", () => {
   test("requires paths array and rejects legacy single path input", () => {
     const { tools } = toolsForAgent();
     const schema = tools.deleteFile.inputSchema;

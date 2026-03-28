@@ -6,20 +6,20 @@ import { createSessionContext } from "./tool-guards";
 
 describe("withToolError", () => {
   test("prefixes thrown errors with tool id", async () => {
-    await expect(withToolError("read-file", async () => Promise.reject(new Error("boom")))).rejects.toThrow(
-      "read-file failed: boom",
+    await expect(withToolError("file-read", async () => Promise.reject(new Error("boom")))).rejects.toThrow(
+      "file-read failed: boom",
     );
   });
 
   test("preserves structured error code on wrapped errors", async () => {
     const source = Object.assign(new Error("multi-match"), { code: "E_EDIT_FILE_MULTI_MATCH" });
     try {
-      await withToolError("edit-file", async () => Promise.reject(source));
+      await withToolError("file-edit", async () => Promise.reject(source));
       invariant(false, "expected withToolError to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       const wrapped = error as Error & { code?: string };
-      expect(wrapped.message).toBe("edit-file failed: multi-match");
+      expect(wrapped.message).toBe("file-edit failed: multi-match");
       expect(wrapped.code).toBe("E_EDIT_FILE_MULTI_MATCH");
     }
   });
@@ -51,7 +51,7 @@ describe("per-tool timeout", () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 50;
     const result = await guardedExecute(
-      "run-command",
+      "shell-run",
       { command: "npm test", timeoutMs: 300 },
       session,
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),

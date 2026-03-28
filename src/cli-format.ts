@@ -3,7 +3,7 @@ import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { t, tDynamic } from "./i18n";
 import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
-import { TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
 import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
 
@@ -47,14 +47,14 @@ export function clampLines(lines: string[], maxLines: number, overflowTolerance 
 export function formatFindOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
   if (lines.length === 0) return t("tool.content.no_matches");
-  return clampLines(lines, TOOL_OUTPUT_LIMITS.files).join("\n");
+  return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.files).join("\n");
 }
 
 export function formatSearchOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
   if (lines.length === 0 || (lines.length === 1 && lines[0].toLowerCase().startsWith("no matches")))
     return t("tool.content.no_matches");
-  return clampLines(lines, TOOL_OUTPUT_LIMITS.files).join("\n");
+  return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.files).join("\n");
 }
 
 export function formatReadOutput(raw: string): string {
@@ -64,12 +64,12 @@ export function formatReadOutput(raw: string): string {
     const rawPath = normalized[0].slice("File: ".length).trim();
     normalized[0] = `File: ${displayPath(rawPath)}`;
   }
-  return clampLines(normalized, TOOL_OUTPUT_LIMITS.read).join("\n");
+  return clampLines(normalized, CLI_TOOL_OUTPUT_LIMITS.read).join("\n");
 }
 
 export function formatDiffOutput(raw: string): string {
   const lines = raw.split("\n").filter((line) => line.length > 0);
-  return clampLines(lines, TOOL_OUTPUT_LIMITS.diff).join("\n");
+  return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.diff).join("\n");
 }
 
 export function formatGitStatusOutput(raw: string): string {
@@ -78,7 +78,7 @@ export function formatGitStatusOutput(raw: string): string {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
   if (lines.length === 0) return t("tool.content.working_tree_clean");
-  return clampLines(lines, TOOL_OUTPUT_LIMITS.status).join("\n");
+  return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.status).join("\n");
 }
 
 export function formatRunOutput(raw: string): string {
@@ -95,7 +95,7 @@ export function formatRunOutput(raw: string): string {
     let payload = lines.slice(start + 1, end).filter((line) => line.trim().length > 0);
     if (name === "stderr:" && exitCode === 0 && stdoutIdx >= 0) payload = [];
     if (payload.length === 0) return;
-    out.push(...clampLines(payload, TOOL_OUTPUT_LIMITS.run));
+    out.push(...clampLines(payload, CLI_TOOL_OUTPUT_LIMITS.run));
   };
 
   const nextAfterStdout = stderrIdx >= 0 ? stderrIdx : lines.length;
@@ -107,15 +107,15 @@ export function formatRunOutput(raw: string): string {
 }
 
 const TOOL_FORMATTERS: Record<string, (raw: string) => string> = {
-  "find-files": formatFindOutput,
-  "search-files": formatSearchOutput,
-  "read-file": formatReadOutput,
-  "scan-code": formatReadOutput,
+  "file-find": formatFindOutput,
+  "file-search": formatSearchOutput,
+  "file-read": formatReadOutput,
+  "code-scan": formatReadOutput,
   "git-diff": formatDiffOutput,
-  "edit-file": formatDiffOutput,
-  "edit-code": formatDiffOutput,
-  "create-file": formatDiffOutput,
-  "run-command": formatRunOutput,
+  "file-edit": formatDiffOutput,
+  "code-edit": formatDiffOutput,
+  "file-create": formatDiffOutput,
+  "shell-run": formatRunOutput,
   "git-status": formatGitStatusOutput,
 };
 

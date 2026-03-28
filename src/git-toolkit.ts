@@ -5,7 +5,8 @@ import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitHeadTailLines, emitResultChunks, TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
+import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
@@ -90,6 +91,7 @@ function stripGitShowMetadataForPreview(rawText: string): string {
 function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-status",
+    toolkit: "git",
     labelKey: "tool.label.git_status",
     category: "search",
     permissions: ["read"],
@@ -109,7 +111,8 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
           toolCallId: callId,
         });
         const rawStatus = await git.statusShort();
-        emitHeadTailLines("git-status", rawStatus, input.onOutput, callId);
+        const previewParts = textHeadTailParts(rawStatus);
+        emitParts(previewParts, "git-status", input.onOutput, callId);
         const result = compactToolOutput(rawStatus, deps.outputBudget.gitStatus);
         return { kind: "git-status", output: result };
       });
@@ -120,6 +123,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
 function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-diff",
+    toolkit: "git",
     labelKey: "tool.label.git_diff",
     category: "search",
     permissions: ["read"],
@@ -144,7 +148,8 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
           toolCallId: callId,
         });
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
-        emitHeadTailLines("git-diff", rawDiff, input.onOutput, callId, { headRows: 2, tailRows: 2 });
+        const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
+        emitParts(previewParts, "git-diff", input.onOutput, callId);
         const result = compactToolOutput(rawDiff, deps.outputBudget.gitDiff);
         return { kind: "git-diff", path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: result };
       });
@@ -155,6 +160,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-log",
+    toolkit: "git",
     labelKey: "tool.label.git_log",
     category: "search",
     permissions: ["read"],
@@ -179,7 +185,8 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
           toolCallId: callId,
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
-        emitResultChunks("git-log", rawLog, input.onOutput, 4, callId);
+        const previewParts = resultChunkParts(rawLog, 4);
+        emitParts(previewParts, "git-log", input.onOutput, callId);
         const result = compactToolOutput(rawLog, deps.outputBudget.gitDiff);
         return { kind: "git-log", path: toolInput.path, limit: toolInput.limit, output: result };
       });
@@ -190,6 +197,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-show",
+    toolkit: "git",
     labelKey: "tool.label.git_show",
     category: "search",
     permissions: ["read"],
@@ -220,7 +228,9 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
           path: toolInput.path,
           contextLines: toolInput.contextLines ?? 3,
         });
-        emitHeadTailLines("git-show", stripGitShowMetadataForPreview(rawShow), input.onOutput, callId);
+        const previewText = stripGitShowMetadataForPreview(rawShow);
+        const previewParts = textHeadTailParts(previewText);
+        emitParts(previewParts, "git-show", input.onOutput, callId);
         const result = compactToolOutput(rawShow, deps.outputBudget.gitDiff);
         return {
           kind: "git-show",
@@ -237,6 +247,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
 function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-add",
+    toolkit: "git",
     labelKey: "tool.label.git_add",
     category: "write",
     permissions: ["write"],
@@ -264,13 +275,13 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
         if (paths.length > 0) {
-          for (const p of paths.slice(0, TOOL_OUTPUT_LIMITS.files)) {
+          for (const p of paths.slice(0, TOOL_PROGRESS_LIMITS.files)) {
             input.onOutput({ toolName: "git-add", content: { kind: "text", text: p }, toolCallId: callId });
           }
-          if (paths.length > TOOL_OUTPUT_LIMITS.files) {
+          if (paths.length > TOOL_PROGRESS_LIMITS.files) {
             input.onOutput({
               toolName: "git-add",
-              content: { kind: "truncated", count: paths.length - TOOL_OUTPUT_LIMITS.files, unit: "files" },
+              content: { kind: "truncated", count: paths.length - TOOL_PROGRESS_LIMITS.files, unit: "files" },
               toolCallId: callId,
             });
           }
@@ -285,6 +296,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
 function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-commit",
+    toolkit: "git",
     labelKey: "tool.label.git_commit",
     category: "write",
     permissions: ["write"],
@@ -313,7 +325,7 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
           toolCallId: callId,
         });
         if (toolInput.body && toolInput.body.length > 0) {
-          const maxBodyLines = TOOL_OUTPUT_LIMITS.files;
+          const maxBodyLines = TOOL_PROGRESS_LIMITS.files;
           for (const line of toolInput.body.slice(0, maxBodyLines)) {
             input.onOutput({ toolName: "git-commit", content: { kind: "text", text: line }, toolCallId: callId });
           }

@@ -100,9 +100,9 @@ After generation, evaluators inspect the result and may trigger:
 
 - Regeneration with a different tool strategy
 - Mode transitions (work → verify) for code review
-- Scoped test execution via the `run-tests` tool during work mode
+- Scoped test execution via the `test-run` tool during work mode
 
-The model uses an ecosystem-aware `run-tests` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.
+The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.
 
 Goose has a `RetryManager` that checks shell command success.
 
@@ -152,9 +152,9 @@ Every lifecycle event emits structured debug logs describing:
 The `acolyte trace` command converts daemon logs into timelines:
 
 ```
-timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=edit-file path=src/foo.ts
-timestamp=... task_id=task_abc123 event=lifecycle.tool.result tool=edit-file duration_ms=45 is_error=false
-timestamp=... task_id=task_abc123 event=lifecycle.guard guard=file-churn tool=read-file action=blocked
+timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=file-edit path=src/foo.ts
+timestamp=... task_id=task_abc123 event=lifecycle.tool.result tool=file-edit duration_ms=45 is_error=false
+timestamp=... task_id=task_abc123 event=lifecycle.guard guard=file-churn tool=file-read action=blocked
 timestamp=... task_id=task_abc123 event=lifecycle.eval.decision evaluator=verify-cycle action=regenerate
 timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=2 read=3 search=1 write=1 guard_blocked=1
 ```

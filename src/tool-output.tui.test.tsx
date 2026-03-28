@@ -16,7 +16,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("tool-header only", () => {
-    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.read_file", detail: "a.ts" }])).toBe(
+    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }])).toBe(
       "Read a.ts",
     );
   });
@@ -27,7 +27,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("file-header renders label and targets", () => {
     const items: ToolOutputPart[] = [
-      { kind: "file-header", labelKey: "tool.label.read_file", count: 2, targets: ["a.ts", "b.ts"] },
+      { kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] },
     ];
     expect(formatToolOutput(items)).toBe("Read a.ts, b.ts");
   });
@@ -36,7 +36,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     const items: ToolOutputPart[] = [
       {
         kind: "file-header",
-        labelKey: "tool.label.read_file",
+        labelKey: "tool.label.file_read",
         count: 4,
         targets: ["a.ts", "b.ts", "c.ts"],
         omitted: 1,
@@ -45,58 +45,54 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     expect(formatToolOutput(items)).toBe("Read a.ts, b.ts, c.ts, +1");
   });
 
-  test("scope-header with hit rows", () => {
+  test("scope-header for search with summary", () => {
     const items: ToolOutputPart[] = [
       {
         kind: "scope-header",
-        labelKey: "tool.label.search_files",
+        labelKey: "tool.label.file_search",
         scope: "workspace",
         patterns: ["needle"],
         matches: 3,
       },
-      { kind: "text", text: "a.ts [needle@1]" },
-      { kind: "text", text: "b.ts [needle@2, needle@5]" },
+      { kind: "text", text: "3 matches in 2 files" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
         Search needle
-          a.ts [needle@1]
-          b.ts [needle@2, needle@5]
+          3 matches in 2 files
       `),
     );
   });
 
   test("scope-header with non-workspace scope", () => {
     const items: ToolOutputPart[] = [
-      { kind: "scope-header", labelKey: "tool.label.search_files", scope: "src/", patterns: ["needle"], matches: 1 },
-      { kind: "text", text: "a.ts [needle@1]" },
+      { kind: "scope-header", labelKey: "tool.label.file_search", scope: "src/", patterns: ["needle"], matches: 1 },
+      { kind: "text", text: "1 match in 1 file" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
-        Search src/ [needle]
-          a.ts [needle@1]
+        Search needle in src/
+          1 match in 1 file
       `),
     );
   });
 
-  test("scope-header for find-files", () => {
+  test("scope-header for file-find", () => {
     const items: ToolOutputPart[] = [
-      { kind: "scope-header", labelKey: "tool.label.find_files", scope: "workspace", patterns: ["*.ts"], matches: 2 },
-      { kind: "text", text: "a.ts" },
-      { kind: "text", text: "b.ts" },
+      { kind: "scope-header", labelKey: "tool.label.file_find", scope: "workspace", patterns: ["*.ts"], matches: 2 },
+      { kind: "text", text: "2 files" },
     ];
     expect(formatToolOutput(items)).toBe(
       dedent(`
         Find *.ts
-          a.ts
-          b.ts
+          2 files
       `),
     );
   });
 
   test("edit-header with diff lines", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.edit_file", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
@@ -111,9 +107,9 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
-  test("run-command with text body", () => {
+  test("shell-run with text body", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "echo hello" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hello" },
       { kind: "shell-output", stream: "stdout", text: "hello" },
       { kind: "shell-output", stream: "stdout", text: "world" },
     ];
@@ -126,12 +122,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
-  test("run-command with truncated output", () => {
+  test("shell-run with truncated output", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd" },
       { kind: "shell-output", stream: "stdout", text: "line1" },
       { kind: "shell-output", stream: "stdout", text: "line2" },
-      { kind: "truncated", count: 3, unit: "lines" },
+      { kind: "text", text: "⋮ +3 lines" },
       { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(formatToolOutput(items)).toBe(
@@ -139,7 +135,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         Run cmd
           out | line1
           out | line2
-          … +3 lines
+          ⋮ +3 lines
           out | line6
       `),
     );
@@ -147,7 +143,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("no-output marker", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd" },
       { kind: "no-output" },
     ];
     expect(formatToolOutput(items)).toBe(
@@ -193,7 +189,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "tool-header", labelKey: "tool.label.git_diff" },
       { kind: "text", text: "+line1" },
       { kind: "text", text: "-line2" },
-      { kind: "truncated", count: 10, unit: "lines" },
+      { kind: "text", text: "⋮ +10 lines" },
       { kind: "text", text: "+line13" },
     ];
     expect(formatToolOutput(items)).toBe(
@@ -201,7 +197,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
         Git Diff
           +line1
           -line2
-          … +10 lines
+          ⋮ +10 lines
           +line13
       `),
     );
@@ -336,7 +332,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("diff context gaps show ellipsis without line count", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.edit_file", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 1, marker: "context", text: "const a = 1;" },
       { kind: "truncated" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
@@ -347,7 +343,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       dedent(`
         Edit notes.ts (+1 -1)
            1  const a = 1;
-           …
+           ⋮
           10 -const y = 2;
           10 +const y = 3;
           11  const b = 4;
@@ -357,7 +353,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("multi-file edit-header with per-file sub-headers", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.edit_file", path: "14 files", files: 14, added: 28, removed: 28 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "14 files", files: 14, added: 28, removed: 28 },
       { kind: "text", text: "src/short-id.ts (+1 -1)" },
       { kind: "diff", lineNumber: 2, marker: "remove", text: "export function generateId(size = 8): string {" },
       { kind: "diff", lineNumber: 2, marker: "add", text: "export function generateId(size = 8): string {" },
@@ -380,7 +376,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("single-file edit has no per-file sub-header", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.edit_file", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 2, marker: "remove", text: "old" },
       { kind: "diff", lineNumber: 2, marker: "add", text: "new" },
     ];
@@ -395,7 +391,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("truncated without unit", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.find_files", detail: "*.ts" },
+      { kind: "tool-header", labelKey: "tool.label.file_find", detail: "*.ts" },
       { kind: "text", text: "a.ts" },
       { kind: "truncated", count: 5, unit: "matches" },
     ];
@@ -411,7 +407,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
 describe("tool output TUI — chat (Ink rendering)", () => {
   test("tool-header only", () => {
-    expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.read_file", detail: "a.ts" }])).toBe("• Read a.ts");
+    expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }])).toBe("• Read a.ts");
   });
 
   test("tool-header without detail", () => {
@@ -420,34 +416,32 @@ describe("tool output TUI — chat (Ink rendering)", () => {
 
   test("file-header renders label and targets", () => {
     expect(
-      renderChat([{ kind: "file-header", labelKey: "tool.label.read_file", count: 2, targets: ["a.ts", "b.ts"] }]),
+      renderChat([{ kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] }]),
     ).toBe("• Read a.ts, b.ts");
   });
 
-  test("scope-header with hit rows", () => {
+  test("scope-header with summary", () => {
     const items: ToolOutputPart[] = [
       {
         kind: "scope-header",
-        labelKey: "tool.label.search_files",
+        labelKey: "tool.label.file_search",
         scope: "workspace",
         patterns: ["needle"],
         matches: 3,
       },
-      { kind: "text", text: "a.ts [needle@1]" },
-      { kind: "text", text: "b.ts [needle@2, needle@5]" },
+      { kind: "text", text: "3 matches in 2 files" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
         • Search needle
-            a.ts [needle@1]
-            b.ts [needle@2, needle@5]
+            3 matches in 2 files
       `),
     );
   });
 
   test("edit-header with diff lines", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.edit_file", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
@@ -462,9 +456,9 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     );
   });
 
-  test("run-command with stdout", () => {
+  test("shell-run with stdout", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "echo hello" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hello" },
       { kind: "shell-output", stream: "stdout", text: "hello" },
       { kind: "shell-output", stream: "stdout", text: "world" },
     ];
@@ -477,9 +471,9 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     );
   });
 
-  test("run-command with mixed stdout and stderr", () => {
+  test("shell-run with mixed stdout and stderr", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "make" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "make" },
       { kind: "shell-output", stream: "stdout", text: "compiling..." },
       { kind: "shell-output", stream: "stderr", text: "warning: unused var" },
       { kind: "shell-output", stream: "stdout", text: "done" },
@@ -494,12 +488,12 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     );
   });
 
-  test("run-command with truncated output", () => {
+  test("shell-run with truncated output", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd" },
       { kind: "shell-output", stream: "stdout", text: "line1" },
       { kind: "shell-output", stream: "stdout", text: "line2" },
-      { kind: "truncated", count: 3, unit: "lines" },
+      { kind: "text", text: "⋮ +3 lines" },
       { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
     expect(renderChat(items)).toBe(
@@ -507,7 +501,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         • Run cmd
             line1
             line2
-            … +3 lines
+            ⋮ +3 lines
             line6
       `),
     );
@@ -515,7 +509,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
 
   test("no-output marker", () => {
     const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.run_command", detail: "cmd" },
+      { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd" },
       { kind: "no-output" },
     ];
     expect(renderChat(items)).toBe(
@@ -545,14 +539,14 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     const items: ToolOutputPart[] = [
       { kind: "tool-header", labelKey: "tool.label.git_diff", detail: "src/agent.ts" },
       { kind: "text", text: "+const x = 1;" },
-      { kind: "truncated", count: 5, unit: "lines" },
+      { kind: "text", text: "⋮ +5 lines" },
       { kind: "text", text: "-const y = 2;" },
     ];
     expect(renderChat(items)).toBe(
       dedent(`
         • Git Diff src/agent.ts
             +const x = 1;
-            … +5 lines
+            ⋮ +5 lines
             -const y = 2;
       `),
     );

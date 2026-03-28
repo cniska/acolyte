@@ -22,11 +22,11 @@ async function runTests(toolkit: ReturnType<typeof createToolkit>["toolkit"], fi
   return (await toolkit.runTests.execute({ files }, "call_1")) as TestResult;
 }
 
-describe("run-tests tool", () => {
+describe("test-run tool", () => {
   test("returns error when no test command detected", async () => {
     const { toolkit } = createToolkit();
     const result = await runTests(toolkit, ["src/foo.test.ts"]);
-    expect(result.kind).toBe("run-tests");
+    expect(result.kind).toBe("test-run");
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("No test command");
   });
@@ -34,7 +34,7 @@ describe("run-tests tool", () => {
   test("substitutes $FILES in test command args", async () => {
     const { toolkit } = createToolkit({ bin: "bun", args: ["test", "$FILES"] });
     const result = await runTests(toolkit, ["src/datetime.test.ts"]);
-    expect(result.kind).toBe("run-tests");
+    expect(result.kind).toBe("test-run");
     expect(result.command).toBe("bun test src/datetime.test.ts");
     expect(result.exitCode).toBe(0);
   });

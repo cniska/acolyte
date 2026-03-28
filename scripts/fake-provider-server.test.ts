@@ -41,7 +41,7 @@ describe("fake provider server", () => {
           body: JSON.stringify({
             model: "gpt-5-mini",
             input: [{ role: "user", content: [{ type: "input_text", text: "use tool then answer" }] }],
-            tools: [{ type: "function", name: "read-file" }],
+            tools: [{ type: "function", name: "file-read" }],
           }),
         });
         const firstJson = (await first.json()) as {
@@ -50,7 +50,7 @@ describe("fake provider server", () => {
         };
         expect(firstJson.output?.[0]?.type).toBe("function_call");
         expect(firstJson.output?.[0]?.call_id).toBe("call_read_pkg");
-        expect(firstJson.output?.[0]?.name).toBe("read-file");
+        expect(firstJson.output?.[0]?.name).toBe("file-read");
 
         const second = await fetch(`${baseUrl}/responses`, {
           method: "POST",
@@ -75,7 +75,7 @@ describe("fake provider server", () => {
               {
                 id: "fc_read_pkg",
                 callId: "call_read_pkg",
-                name: "read-file",
+                name: "file-read",
                 args: JSON.stringify({ paths: [{ path: "package.json" }] }),
               },
             ]);

@@ -20,38 +20,38 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
   switch (kind) {
     case "use-supported-file":
       return {
-        tool: "edit-code",
+        tool: "code-edit",
         kind,
-        summary: "edit-code only works on supported code files.",
-        instruction: `Switch to a supported code file for edit-code when changing '${path}', or use edit-file if this is a plain-text rewrite.`,
-        nextTool: "edit-file",
+        summary: "code-edit only works on supported code files.",
+        instruction: `Switch to a supported code file for code-edit when changing '${path}', or use file-edit if this is a plain-text rewrite.`,
+        nextTool: "file-edit",
         targetPaths: [path],
       };
     case "refine-pattern":
       return {
-        tool: "edit-code",
+        tool: "code-edit",
         kind,
         summary: "Your AST pattern did not match the current file.",
-        instruction: `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest read-file output. For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. Do not switch to plain-text snippets unless you are changing to edit-file.`,
-        nextTool: "read-file",
+        instruction: `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest file-read output. For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. Do not switch to plain-text snippets unless you are changing to file-edit.`,
+        nextTool: "file-read",
         targetPaths: [path],
       };
     case "clarify-rename-target":
       return {
-        tool: "edit-code",
+        tool: "code-edit",
         kind,
         summary: "This scoped rename matches both local and member symbols.",
         instruction: `Keep the change in '${path}' and retry the rename with an explicit target. Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.`,
-        nextTool: "edit-code",
+        nextTool: "code-edit",
         targetPaths: [path],
       };
     case "fix-replacement":
       return {
-        tool: "edit-code",
+        tool: "code-edit",
         kind,
-        summary: "Your edit-code replacement shape is invalid for this pattern.",
-        instruction: `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. If the rewrite needs variadic or plain-text editing, switch to edit-file.`,
-        nextTool: "edit-code",
+        summary: "Your code-edit replacement shape is invalid for this pattern.",
+        instruction: `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. If the rewrite needs variadic or plain-text editing, switch to file-edit.`,
+        nextTool: "code-edit",
         targetPaths: [path],
       };
     default:
@@ -61,11 +61,11 @@ function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecover
 
 function scanCodeRecovery(path: string): ToolRecovery {
   return {
-    tool: "scan-code",
+    tool: "code-scan",
     kind: "use-supported-file",
-    summary: "scan-code only works on supported code files.",
-    instruction: `Use scan-code on a supported code file or directory when scanning '${path}', or switch to search-files for plain-text lookup.`,
-    nextTool: "search-files",
+    summary: "code-scan only works on supported code files.",
+    instruction: `Use code-scan on a supported code file or directory when scanning '${path}', or switch to file-search for plain-text lookup.`,
+    nextTool: "file-search",
     targetPaths: [path],
   };
 }
@@ -237,7 +237,7 @@ function compileRule(rule: EditCodeRule | EditCodeRelationalRule): Record<string
   if (typeof rule === "string" || isPatternObject(rule)) {
     return { pattern: compilePattern(rule) };
   }
-  invariant(isRuleObject(rule), "edit-code rule must compile from a rule object");
+  invariant(isRuleObject(rule), "code-edit rule must compile from a rule object");
   return {
     ...(rule.pattern !== undefined ? { pattern: compilePattern(rule.pattern) } : {}),
     ...(rule.kind ? { kind: rule.kind } : {}),
@@ -270,7 +270,7 @@ function ruleLabel(rule: EditCodeRule): string {
 function collectRulePatternSources(rule: EditCodeRule | EditCodeRelationalRule): string[] {
   if (typeof rule === "string") return [rule];
   if (isPatternObject(rule)) return [patternSourceText(rule)];
-  invariant(isRuleObject(rule), "edit-code rule must collect pattern sources from a rule object");
+  invariant(isRuleObject(rule), "code-edit rule must collect pattern sources from a rule object");
   const out: string[] = [];
   if (rule.pattern !== undefined) out.push(...collectRulePatternSources(rule.pattern));
   if (rule.inside) out.push(...collectRulePatternSources(rule.inside));
@@ -578,11 +578,11 @@ export async function editCode(input: {
     return editCodeDirectory(input.workspace, absPath, input.edits);
   }
 
-  if (!pathStats.isFile()) throw new Error(`edit-code requires a file or directory path, got: ${input.path}`);
+  if (!pathStats.isFile()) throw new Error(`code-edit requires a file or directory path, got: ${input.path}`);
   if (!isParseable(absPath)) {
     throw createToolError(
       TOOL_ERROR_CODES.editCodeUnsupportedFile,
-      `edit-code requires a supported code file, got: ${input.path}`,
+      `code-edit requires a supported code file, got: ${input.path}`,
       undefined,
       editCodeRecovery(input.path, "use-supported-file"),
     );
@@ -695,14 +695,14 @@ export async function scanCode(input: {
       if (!input.language && !isParseable(absPath)) {
         throw createToolError(
           TOOL_ERROR_CODES.scanCodeUnsupportedFile,
-          `scan-code requires a supported code file, got: ${rawPath}`,
+          `code-scan requires a supported code file, got: ${rawPath}`,
           undefined,
           scanCodeRecovery(rawPath),
         );
       }
       const content = await readFile(absPath, "utf8");
       const lang = input.language ?? languageFromPath(absPath);
-      invariant(lang, `scan-code requires a supported code file, got: ${rawPath}`);
+      invariant(lang, `code-scan requires a supported code file, got: ${rawPath}`);
       scanned++;
       scanFile(displayPathForDiff(absPath, input.workspace), content, lang);
       return;
