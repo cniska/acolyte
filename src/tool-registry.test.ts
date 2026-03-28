@@ -125,17 +125,17 @@ describe("localization baseline", () => {
     const runCommandInstruction = toolDefinitionsById["shell-run"]?.instruction ?? "";
 
     expect(readInstruction).toContain("Batch reads while discovering scope");
-    expect(readInstruction).toContain("once you are editing named targets");
+    expect(readInstruction).toContain("Once you are editing named targets");
     expect(readInstruction).toContain("read each target separately right before its edit");
     expect(editInstruction).toContain("latest direct `file-read` of that file");
     expect(editInstruction).toContain("smallest unique snippet from the latest direct `file-read`");
     expect(editInstruction).toContain("Keep anchors tight");
-    expect(editInstruction).toContain("keep line-range edits to the changed lines when possible");
-    expect(editInstruction).toContain("preserve nearby path or link style");
-    expect(editCodeInstruction).toContain("read that file directly right before editing it");
+    expect(editInstruction).toContain("Keep line-range edits to the changed lines when possible");
+    expect(editInstruction).toContain("Preserve nearby path or link style");
+    expect(editCodeInstruction).toContain("Read that file directly right before editing it");
     expect(searchInstruction).toContain("scope with `paths` when you know the target area");
     expect(searchInstruction).toContain("edit from that evidence");
-    expect(searchInstruction).toContain("keep the local reference style from the target file");
+    expect(searchInstruction).toContain("Keep the local reference style when fixing a visible path or link.");
     expect(gitStatusInstruction).toContain("repository state itself matters");
     expect(gitStatusInstruction).toContain("not to re-check a file-scoped task");
     expect(gitDiffInstruction).toContain("repository diff context matters");

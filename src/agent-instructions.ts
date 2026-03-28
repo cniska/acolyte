@@ -4,38 +4,70 @@ import { toolDefinitionsById } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
 const BASE_INSTRUCTIONS = [
-  "Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
-  "Then execute directly; avoid extra process narration.",
-  "Execute tool calls immediately in the same turn — do not describe what you will do without doing it.",
+  "Write ONE short direct sentence before acting.",
+  'Use factual prose like "Checking X, then updating Y." Do not say "I will..." and do not describe multiple upcoming steps.',
+  "After that sentence, act IMMEDIATELY.",
+  "Do NOT send another assistant message until you are blocked or done.",
+  "During tool use, stay silent. Do NOT narrate obvious read, edit, search, or verify steps.",
   "Keep tool calls and file changes within the current workspace and the requested scope.",
   "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
   "Prefer targeted, surgical edits. Preserve unrelated content and surrounding structure, and change only the minimal lines needed.",
   "Do exactly the requested change. Do not add opportunistic comments, refactors, cleanup, or extra edge-case handling unless the request or concrete evidence requires it.",
   "Preserve local conventions in the file you are editing. Match nearby style and path forms instead of inventing a new one.",
   "When fixing an existing path or link, keep the file's local relative/absolute reference style unless the user explicitly asked to normalize it.",
-  "Keep responses concise and outcome-first; expand only when asked.",
-  "Never summarize, recap, or list what you did. The user can see your actions directly.",
+  "Keep responses concise and outcome-first. Prefer short direct prose, not dash bullets, unless the user asked for a list.",
+  "Treat assistant text as delta-only. After tool output, add only what the tool output did not already make clear.",
+  "Do NOT recap visible tool output.",
+  "If a write-tool diff or preview already makes the result obvious, say NOTHING after it.",
+  "If a checklist is present, let the checklist and tool output show progress. Do not narrate checklist steps in prose.",
+  "If you notice you have derailed, stop taking new actions. Do not keep searching, rereading, or narrating just to recover.",
+  "If you can correct the mistake safely, say so briefly, correct it, and continue.",
+  "If you cannot recover without user input, use `@signal blocked`.",
   "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
   "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
-  "When the task is complete or needs no changes, end the final response with `@signal done` or `@signal no_op` on its own line. When you cannot proceed without information only the user can provide, use `@signal blocked` — this stops execution; the user must reply before work continues. On the next line, write a concise message stating: what is missing, why it is needed, and what you will do once you have the answer.",
+  "The `@signal` line is how you communicate task state to the host.",
+  "End every final response with EXACTLY ONE `@signal` line.",
+  "Use `@signal done` only when the requested work is complete.",
+  "Use `@signal no_op` only when no change is needed.",
+  "Use `@signal blocked` only when you cannot proceed without user input. This stops execution until the user replies.",
+  "After `@signal blocked`, write ONE short sentence stating what is missing and why it is needed.",
 ];
 
-export function createModeInstructions(mode: AgentMode, workspace?: string): string {
-  const { tools, preamble } = agentModes[mode];
-  const lines: string[] = preamble.map((p) => `- ${p}`);
+function createModePreamble(mode: AgentMode): string {
+  return agentModes[mode].preamble.map((p) => `- ${p}`).join("\n");
+}
+
+function createToolInstructions(mode: AgentMode): string {
+  const { tools } = agentModes[mode];
+  const lines: string[] = [];
   for (const toolId of tools) {
     const tool = toolDefinitionsById[toolId];
     if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }
-  if (workspace) {
-    const profile = resolveWorkspaceProfile(workspace);
-    for (const line of createWorkspaceInstructions(profile)) lines.push(`- ${line}`);
-  }
   return lines.join("\n");
+}
+
+function createWorkspaceInstructionBlock(workspace?: string): string {
+  if (!workspace) return "";
+  const profile = resolveWorkspaceProfile(workspace);
+  return createWorkspaceInstructions(profile)
+    .map((line) => `- ${line}`)
+    .join("\n");
+}
+
+export function createModeInstructions(mode: AgentMode, workspace?: string): string {
+  const sections = [createModePreamble(mode), createToolInstructions(mode), createWorkspaceInstructionBlock(workspace)];
+  return sections.filter((section) => section.length > 0).join("\n");
 }
 
 export function createInstructions(soulPrompt: string, mode: AgentMode, workspace?: string): string {
   const baseInstructions = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
-  const modeInstructions = createModeInstructions(mode, workspace);
-  return `${soulPrompt}\n\n${baseInstructions}\n\n${modeInstructions}`;
+  const sections = [
+    soulPrompt,
+    createModePreamble(mode),
+    baseInstructions,
+    createToolInstructions(mode),
+    createWorkspaceInstructionBlock(workspace),
+  ];
+  return sections.filter((section) => section.length > 0).join("\n\n");
 }
