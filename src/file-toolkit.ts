@@ -5,12 +5,13 @@ import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import {
-  createDiffSummaryEmitter,
-  emitFindSummary,
-  emitSearchSummary,
+  diffSummaryParts,
+  emitParts,
   findResultPaths,
+  findSummaryParts,
   numberedUnifiedDiffLines,
   searchResultSummaryEntries,
+  searchSummaryParts,
   summarizeUnifiedDiff,
   TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
@@ -83,7 +84,12 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
         };
         const result = compactToolOutput(await findFiles(input.workspace, toolInput.patterns, maxResults), budget);
         const paths = findResultPaths(result);
-        emitFindSummary(paths, toolInput.patterns, "tool.label.file_find", input.onOutput, callId);
+        emitParts(
+          findSummaryParts(paths, toolInput.patterns, "tool.label.file_find"),
+          "file-find",
+          input.onOutput,
+          callId,
+        );
         return {
           kind: "file-find",
           scope: "workspace",
@@ -148,14 +154,11 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           deps.outputBudget.searchFiles,
         );
         const summaryEntries = searchResultSummaryEntries(result, patterns);
-        emitSearchSummary(
-          summaryEntries,
-          patterns,
-          toolInput.paths,
-          "tool.label.file_search",
+        emitParts(
+          searchSummaryParts(summaryEntries, patterns, toolInput.paths, "tool.label.file_search", input.workspace),
+          "file-search",
           input.onOutput,
           callId,
-          input.workspace,
         );
         return {
           kind: "file-search",
@@ -216,11 +219,6 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 }
 
 function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const emitDiffSummaryHeader = createDiffSummaryEmitter({
-    toolName: "file-edit",
-    labelKey: "tool.label.file_edit",
-    onOutput: input.onOutput,
-  });
   const outputSchema = z.object({
     kind: z.literal("file-edit"),
     path: z.string().min(1),
@@ -271,9 +269,13 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(toolInput.path, rawResult, callId);
-        for (const content of numberedUnifiedDiffLines(rawResult))
-          input.onOutput({ toolName: "file-edit", content, toolCallId: callId });
+        emitParts(
+          diffSummaryParts(toolInput.path, rawResult, "tool.label.file_edit"),
+          "file-edit",
+          input.onOutput,
+          callId,
+        );
+        emitParts(numberedUnifiedDiffLines(rawResult), "file-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, deps.outputBudget.edit);
         return {
@@ -290,11 +292,6 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
 }
 
 function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const emitDiffSummaryHeader = createDiffSummaryEmitter({
-    toolName: "file-create",
-    labelKey: "tool.label.file_create",
-    onOutput: input.onOutput,
-  });
   return createTool({
     id: "file-create",
     toolkit: "file",
@@ -324,9 +321,13 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           content: toolInput.content,
           overwrite: true,
         });
-        emitDiffSummaryHeader(toolInput.path, rawResult, callId);
-        for (const content of numberedUnifiedDiffLines(rawResult))
-          input.onOutput({ toolName: "file-create", content, toolCallId: callId });
+        emitParts(
+          diffSummaryParts(toolInput.path, rawResult, "tool.label.file_create"),
+          "file-create",
+          input.onOutput,
+          callId,
+        );
+        emitParts(numberedUnifiedDiffLines(rawResult), "file-create", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
         const result = compactToolOutput(rawResult, deps.outputBudget.create);
         return {

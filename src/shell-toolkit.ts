@@ -4,7 +4,7 @@ import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitShellHeadTail } from "./tool-output-format";
+import { emitParts, shellHeadTailParts } from "./tool-output-format";
 
 function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
@@ -89,7 +89,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           };
           flushRemainder("stdout");
           flushRemainder("stderr");
-          emitShellHeadTail("shell-run", streamed, input.onOutput, callId);
+          emitParts(shellHeadTailParts(streamed), "shell-run", input.onOutput, callId);
           const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
             kind: "shell-run",

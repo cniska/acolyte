@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitResultChunks } from "./tool-output-format";
+import { emitParts, resultChunkParts } from "./tool-output-format";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -90,7 +90,12 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
           deps.outputBudget.webSearch,
         );
-        emitResultChunks("web-search", webSearchStreamRows(result, toolInput.query), input.onOutput, 80, callId);
+        emitParts(
+          resultChunkParts(webSearchStreamRows(result, toolInput.query), 80),
+          "web-search",
+          input.onOutput,
+          callId,
+        );
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },

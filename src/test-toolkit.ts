@@ -4,7 +4,7 @@ import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitShellHeadTail } from "./tool-output-format";
+import { emitParts, shellHeadTailParts } from "./tool-output-format";
 import { formatWorkspaceCommand } from "./workspace-profile";
 
 function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
@@ -57,7 +57,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
             }
           },
         );
-        emitShellHeadTail("test-run", streamed, onOutput, callId);
+        emitParts(shellHeadTailParts(streamed), "test-run", onOutput, callId);
 
         const result = compactToolOutput(rawResult, deps.outputBudget.run);
         return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: result };

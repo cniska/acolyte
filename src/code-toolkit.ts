@@ -5,7 +5,7 @@ import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { createDiffSummaryEmitter, numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
+import { diffSummaryParts, emitParts, numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -114,11 +114,6 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
 }
 
 function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
-  const emitDiffSummaryHeader = createDiffSummaryEmitter({
-    toolName: "code-edit",
-    labelKey: "tool.label.code_edit",
-    onOutput: input.onOutput,
-  });
   const outputSchema = z.object({
     kind: z.literal("code-edit"),
     path: z.string().min(1),
@@ -169,9 +164,13 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitDiffSummaryHeader(toolInput.path, editResult.output, callId);
-        for (const content of numberedUnifiedDiffLines(editResult.output))
-          input.onOutput({ toolName: "code-edit", content, toolCallId: callId });
+        emitParts(
+          diffSummaryParts(toolInput.path, editResult.output, "tool.label.code_edit"),
+          "code-edit",
+          input.onOutput,
+          callId,
+        );
+        emitParts(numberedUnifiedDiffLines(editResult.output), "code-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {

@@ -54,18 +54,6 @@ export function diffSummaryParts(path: string, rawResult: string, labelKey: stri
   return [{ kind: "edit-header", labelKey, path: displayPath, files: touchedFiles, added, removed }];
 }
 
-/** @deprecated Use diffSummaryParts + emitParts instead. */
-export function createDiffSummaryEmitter<TToolName extends string>(input: {
-  toolName: TToolName;
-  labelKey: string;
-  onOutput: ToolOutputListener;
-}): (path: string, rawResult: string, toolCallId: string) => void {
-  const { toolName, labelKey, onOutput } = input;
-  return (path, rawResult, toolCallId) => {
-    emitParts(diffSummaryParts(path, rawResult, labelKey), toolName, onOutput, toolCallId);
-  };
-}
-
 function headTailParts<T>(
   items: T[],
   toPart: (item: T) => ToolOutputPart,
@@ -120,28 +108,6 @@ export function textHeadTailParts(
   );
 }
 
-/** @deprecated Use shellHeadTailParts + emitParts instead. */
-export function emitShellHeadTail(
-  toolName: string,
-  lines: ShellLine[],
-  onOutput: ToolOutputListener,
-  toolCallId: string,
-  options?: { headRows?: number; tailRows?: number },
-): void {
-  emitParts(shellHeadTailParts(lines, options), toolName, onOutput, toolCallId);
-}
-
-/** @deprecated Use textHeadTailParts + emitParts instead. */
-export function emitHeadTailLines(
-  toolName: string,
-  rawText: string,
-  onOutput: ToolOutputListener,
-  toolCallId: string,
-  options?: { headRows?: number; tailRows?: number },
-): void {
-  emitParts(textHeadTailParts(rawText, options), toolName, onOutput, toolCallId);
-}
-
 export function resultChunkParts(result: string, maxLines = 80): ToolOutputPart[] {
   const allLines = result
     .split("\n")
@@ -152,17 +118,6 @@ export function resultChunkParts(result: string, maxLines = 80): ToolOutputPart[
     parts.push({ kind: "truncated", count: allLines.length - maxLines, unit: "lines" });
   }
   return parts;
-}
-
-/** @deprecated Use resultChunkParts + emitParts instead. */
-export function emitResultChunks(
-  toolName: string,
-  result: string,
-  onOutput: ToolOutputListener,
-  maxLines = 80,
-  toolCallId?: string,
-): void {
-  emitParts(resultChunkParts(result, maxLines), toolName, onOutput, toolCallId);
 }
 
 export function fileListSummaryParts(
@@ -182,18 +137,6 @@ export function fileListSummaryParts(
   return parts;
 }
 
-/** @deprecated Use fileListSummaryParts + emitParts instead. */
-export function emitFileListSummary(
-  toolName: string,
-  filePaths: string[],
-  onOutput: ToolOutputListener,
-  toolCallId?: string,
-  maxFiles = TOOL_OUTPUT_LIMITS.files,
-  workspace?: string,
-): void {
-  emitParts(fileListSummaryParts(filePaths, maxFiles, workspace), toolName, onOutput, toolCallId);
-}
-
 export function findSummaryParts(filePaths: string[], patterns: string[], labelKey: string): ToolOutputPart[] {
   const unique = uniquePaths(filePaths);
   if (unique.length === 0) return [];
@@ -202,18 +145,6 @@ export function findSummaryParts(filePaths: string[], patterns: string[], labelK
     { kind: "scope-header", labelKey, scope: "workspace", patterns: labels, matches: unique.length },
     { kind: "text", text: t("unit.file", { count: unique.length }) },
   ];
-}
-
-/** @deprecated Use findSummaryParts + emitParts instead. */
-export function emitFindSummary(
-  filePaths: string[],
-  patterns: string[],
-  labelKey: string,
-  onOutput: ToolOutputListener,
-  toolCallId?: string,
-  toolName = "file-find",
-): void {
-  emitParts(findSummaryParts(filePaths, patterns, labelKey), toolName, onOutput, toolCallId);
 }
 
 export function findResultPaths(result: string): string[] {
@@ -401,20 +332,6 @@ export function searchSummaryParts(
     { kind: "scope-header", labelKey, scope, patterns: labels, matches: unique.length },
     { kind: "text", text: `${t("unit.match", { count: totalHits })} in ${t("unit.file", { count: unique.length })}` },
   ];
-}
-
-/** @deprecated Use searchSummaryParts + emitParts instead. */
-export function emitSearchSummary(
-  entries: SearchSummaryEntry[],
-  patterns: string[],
-  paths: string[] | undefined,
-  labelKey: string,
-  onOutput: ToolOutputListener,
-  toolCallId?: string,
-  workspace?: string,
-  toolName = "file-search",
-): void {
-  emitParts(searchSummaryParts(entries, patterns, paths, labelKey, workspace), toolName, onOutput, toolCallId);
 }
 
 function unifiedDiffLines(rawResult: string): string[] {
