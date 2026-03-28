@@ -9,12 +9,12 @@ import {
   emitParts,
   findSummaryParts,
   searchSummaryParts,
-  TOOL_OUTPUT_LIMITS,
+  TOOL_PROGRESS_LIMITS,
 } from "./tool-output-format";
 import {
   findResultPaths,
   numberedUnifiedDiffLines,
-  searchResultSummaryEntries,
+  searchResultSummaryStats,
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
 
@@ -155,9 +155,9 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           await searchFiles(input.workspace, patterns, maxResults, toolInput.paths),
           deps.outputBudget.searchFiles,
         );
-        const summaryEntries = searchResultSummaryEntries(result, patterns);
+        const summaryStats = searchResultSummaryStats(result, patterns);
         emitParts(
-          searchSummaryParts(summaryEntries, patterns, toolInput.paths, "tool.label.file_search", input.workspace),
+          searchSummaryParts(summaryStats, patterns, toolInput.paths, "tool.label.file_search", input.workspace),
           "file-search",
           input.onOutput,
           callId,
@@ -166,8 +166,8 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           kind: "file-search",
           scope: toolInput.paths && toolInput.paths.length > 0 ? "paths" : "workspace",
           patterns,
-          matches: summaryEntries.length,
-          entries: summaryEntries,
+          matches: summaryStats.files,
+          entries: [],
           output: result,
         };
       });
@@ -199,7 +199,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         const paths = deduplicatePaths(toolInput.paths);
         if (paths.length === 0) throw new Error("Read requires at least one non-empty path");
         const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
-        const shown = displayPaths.slice(0, TOOL_OUTPUT_LIMITS.inlineFiles);
+        const shown = displayPaths.slice(0, TOOL_PROGRESS_LIMITS.inlineFiles);
         const remaining = displayPaths.length - shown.length;
         input.onOutput({
           toolName: "file-read",

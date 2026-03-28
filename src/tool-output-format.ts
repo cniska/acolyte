@@ -1,7 +1,7 @@
 import { isAbsolute, relative } from "node:path";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
-import { compactPatternLabels, type SearchSummaryEntry, summarizeUnifiedDiff } from "./tool-output-parse";
+import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
 
@@ -14,9 +14,13 @@ export function emitParts(
   for (const content of parts) onOutput({ toolName, content, toolCallId });
 }
 
-export const TOOL_OUTPUT_LIMITS = {
+export const TOOL_PROGRESS_LIMITS = {
   files: 5,
   inlineFiles: 3,
+} as const;
+
+export const CLI_TOOL_OUTPUT_LIMITS = {
+  files: 5,
   run: 5,
   read: 48,
   diff: 64,
@@ -100,7 +104,7 @@ export function resultChunkParts(result: string, maxLines = 80): ToolOutputPart[
 
 export function fileListSummaryParts(
   filePaths: string[],
-  maxFiles = TOOL_OUTPUT_LIMITS.files,
+  maxFiles = TOOL_PROGRESS_LIMITS.files,
   workspace?: string,
 ): ToolOutputPart[] {
   const unique = uniquePaths(filePaths);
@@ -148,15 +152,13 @@ function uniquePaths(filePaths: string[]): string[] {
 }
 
 export function searchSummaryParts(
-  entries: SearchSummaryEntry[],
+  stats: SearchSummaryStats,
   patterns: string[],
   paths: string[] | undefined,
   labelKey: string,
   workspace?: string,
 ): ToolOutputPart[] {
-  const filePaths = entries.map((entry) => entry.path);
-  const unique = uniquePaths(filePaths);
-  if (unique.length === 0) return [];
+  if (stats.files === 0) return [];
   const labels = compactPatternLabels(patterns);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   const scopeLabels = Array.from(
@@ -173,9 +175,8 @@ export function searchSummaryParts(
   } else {
     scope = "workspace";
   }
-  const totalHits = entries.reduce((sum, e) => sum + e.hits.length, 0);
   return [
-    { kind: "scope-header", labelKey, scope, patterns: labels, matches: unique.length },
-    { kind: "text", text: `${t("unit.match", { count: totalHits })} in ${t("unit.file", { count: unique.length })}` },
+    { kind: "scope-header", labelKey, scope, patterns: labels, matches: stats.files },
+    { kind: "text", text: `${t("unit.match", { count: stats.matches })} in ${t("unit.file", { count: stats.files })}` },
   ];
 }

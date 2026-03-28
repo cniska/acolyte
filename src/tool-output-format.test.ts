@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resultChunkParts, textHeadTailParts } from "./tool-output-format";
-import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryEntries } from "./tool-output-parse";
+import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryStats } from "./tool-output-parse";
 
 describe("textHeadTailParts", () => {
   test("empty input returns single no-output part", () => {
@@ -60,19 +60,15 @@ describe("findResultPaths", () => {
   });
 });
 
-describe("searchResultSummaryEntries", () => {
-  test("parses grep-style output with pattern and returns entries", () => {
+describe("searchResultSummaryStats", () => {
+  test("parses grep-style output into file and match counts", () => {
     const result = [
       "./src/foo.ts:10:const hello = true;",
       "./src/foo.ts:20:let hello = false;",
       "./src/bar.ts:5:hello world",
     ].join("\n");
-    const entries = searchResultSummaryEntries(result, ["hello"]);
-    expect(entries).toHaveLength(2);
-    expect(entries[0]?.path).toBe("./src/foo.ts");
-    expect(entries[0]?.hits.length).toBeGreaterThan(0);
-    expect(entries[1]?.path).toBe("./src/bar.ts");
-    expect(entries[1]?.hits.length).toBeGreaterThan(0);
+    const stats = searchResultSummaryStats(result, ["hello"]);
+    expect(stats).toEqual({ files: 2, matches: 3 });
   });
 });
 

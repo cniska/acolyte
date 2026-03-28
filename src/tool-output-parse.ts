@@ -65,16 +65,16 @@ export function compactPatternLabels(patterns: string[]): string[] {
   return deduped;
 }
 
-export type SearchSummaryEntry = {
-  path: string;
-  hits: string[];
+export type SearchSummaryStats = {
+  files: number;
+  matches: number;
 };
 
-export function searchResultSummaryEntries(result: string, patterns: string[]): SearchSummaryEntry[] {
+export function searchResultSummaryStats(result: string, patterns: string[]): SearchSummaryStats {
   const normalized = patterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
   const regexes = normalized.map((pattern) => asSearchRegex(pattern));
-  const labels = normalized.map((pattern) => compactPatternLabel(pattern));
-  const byPath = new Map<string, Map<string, Set<number>>>();
+  const matchedPaths = new Set<string>();
+  let matches = 0;
   for (const line of result.split("\n")) {
     const firstColon = line.indexOf(":");
     if (firstColon <= 0) continue;
@@ -82,44 +82,13 @@ export function searchResultSummaryEntries(result: string, patterns: string[]): 
     if (secondColon <= firstColon) continue;
     const path = line.slice(0, firstColon).trim();
     if (!path.startsWith("./")) continue;
-    const lineNumber = Number.parseInt(line.slice(firstColon + 1, secondColon), 10);
     const text = line.slice(secondColon + 1);
-    const forPath = byPath.get(path) ?? new Map<string, Set<number>>();
-    for (let i = 0; i < regexes.length; i++) {
-      if (!regexes[i]?.test(text)) continue;
-      const label = labels[i] ?? normalized[i] ?? "";
-      if (!label) continue;
-      const lines = forPath.get(label) ?? new Set<number>();
-      if (Number.isFinite(lineNumber) && lineNumber > 0) lines.add(lineNumber);
-      forPath.set(label, lines);
+    if (regexes.length === 0 || regexes.some((regex) => regex.test(text))) {
+      matchedPaths.add(path);
+      matches += 1;
     }
-    if (forPath.size === 0 && labels.length > 0) {
-      const label = labels[0] ?? normalized[0] ?? "";
-      if (label) {
-        const lines = new Set<number>();
-        if (Number.isFinite(lineNumber) && lineNumber > 0) lines.add(lineNumber);
-        forPath.set(label, lines);
-      }
-    }
-    byPath.set(path, forPath);
   }
-  return Array.from(byPath.entries()).map(([path, matches]) => {
-    const hitTokens: string[] = [];
-    for (const [label, lineNumbers] of matches.entries()) {
-      const sortedLines = Array.from(lineNumbers).sort((a, b) => a - b);
-      if (sortedLines.length === 0) {
-        hitTokens.push(label);
-        continue;
-      }
-      for (const ln of sortedLines) hitTokens.push(`${label}@${ln}`);
-    }
-    const maxHits = 4;
-    if (hitTokens.length > maxHits) {
-      const extra = hitTokens.length - maxHits;
-      return { path, hits: [...hitTokens.slice(0, maxHits), `+${extra}`] };
-    }
-    return { path, hits: hitTokens };
-  });
+  return { files: matchedPaths.size, matches };
 }
 
 function unifiedDiffLines(rawResult: string): string[] {

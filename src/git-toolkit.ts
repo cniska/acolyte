@@ -5,7 +5,7 @@ import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitParts, resultChunkParts, TOOL_OUTPUT_LIMITS, textHeadTailParts } from "./tool-output-format";
+import { emitParts, resultChunkParts, textHeadTailParts, TOOL_PROGRESS_LIMITS } from "./tool-output-format";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
@@ -269,13 +269,13 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
         if (paths.length > 0) {
-          for (const p of paths.slice(0, TOOL_OUTPUT_LIMITS.files)) {
+          for (const p of paths.slice(0, TOOL_PROGRESS_LIMITS.files)) {
             input.onOutput({ toolName: "git-add", content: { kind: "text", text: p }, toolCallId: callId });
           }
-          if (paths.length > TOOL_OUTPUT_LIMITS.files) {
+          if (paths.length > TOOL_PROGRESS_LIMITS.files) {
             input.onOutput({
               toolName: "git-add",
-              content: { kind: "truncated", count: paths.length - TOOL_OUTPUT_LIMITS.files, unit: "files" },
+              content: { kind: "truncated", count: paths.length - TOOL_PROGRESS_LIMITS.files, unit: "files" },
               toolCallId: callId,
             });
           }
@@ -319,7 +319,7 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
           toolCallId: callId,
         });
         if (toolInput.body && toolInput.body.length > 0) {
-          const maxBodyLines = TOOL_OUTPUT_LIMITS.files;
+          const maxBodyLines = TOOL_PROGRESS_LIMITS.files;
           for (const line of toolInput.body.slice(0, maxBodyLines)) {
             input.onOutput({ toolName: "git-commit", content: { kind: "text", text: line }, toolCallId: callId });
           }
