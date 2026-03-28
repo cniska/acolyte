@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  resultChunkParts,
-  textHeadTailParts,
-} from "./tool-output-format";
+import { resultChunkParts, textHeadTailParts } from "./tool-output-format";
 import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryEntries } from "./tool-output-parse";
 
 describe("textHeadTailParts", () => {
