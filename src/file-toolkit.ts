@@ -7,14 +7,16 @@ import { compactToolOutput } from "./tool-output";
 import {
   diffSummaryParts,
   emitParts,
-  findResultPaths,
   findSummaryParts,
-  numberedUnifiedDiffLines,
-  searchResultSummaryEntries,
   searchSummaryParts,
-  summarizeUnifiedDiff,
   TOOL_OUTPUT_LIMITS,
 } from "./tool-output-format";
+import {
+  findResultPaths,
+  numberedUnifiedDiffLines,
+  searchResultSummaryEntries,
+  summarizeUnifiedDiff,
+} from "./tool-output-parse";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);

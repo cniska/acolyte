@@ -1,11 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-  findResultPaths,
-  numberedUnifiedDiffLines,
   resultChunkParts,
-  searchResultSummaryEntries,
   textHeadTailParts,
 } from "./tool-output-format";
+import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryEntries } from "./tool-output-parse";
 
 describe("textHeadTailParts", () => {
   test("empty input returns single no-output part", () => {

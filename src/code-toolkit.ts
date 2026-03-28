@@ -5,7 +5,8 @@ import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { diffSummaryParts, emitParts, numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-format";
+import { diffSummaryParts, emitParts } from "./tool-output-format";
+import { numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-parse";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
