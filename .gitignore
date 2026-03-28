@@ -1,5 +1,6 @@
 node_modules/
 .acolyte/
+.claude/
 .DS_Store
 .env
 .superset/
