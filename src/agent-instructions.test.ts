@@ -14,9 +14,7 @@ describe("createModeInstructions", () => {
     const out = createModeInstructions("work");
     expect(out).toContain("You are in work mode. Implement the requested change directly.");
     expect(out).toContain("once every requested file has the requested bounded change, stop");
-    expect(out).toContain("Do NOT create a checklist for a simple bounded fix.");
-    expect(out).toContain("NEVER create a checklist just to represent read, edit, and verify as separate steps.");
-    expect(out).toContain("Use `checklist-create` only for tasks with 5+ distinct user-visible steps");
+    expect(out).toContain("If you use a checklist, keep it for real multi-step delivery");
   });
 
   test("verify mode includes verification instructions", () => {

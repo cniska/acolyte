@@ -28,6 +28,7 @@ function missingAssistantStreamTail(streamed: string, finalOutput: string): stri
 
 function createAssistantStreamRenderer(): {
   onAssistantDelta: (delta: string) => void;
+  flushPendingText: () => void;
   renderReply: (replyOutput: string, hasPrintedProgress: boolean) => Promise<void>;
   streamedText: () => string;
 } {
@@ -62,6 +63,9 @@ function createAssistantStreamRenderer(): {
         assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
         flushAssistantLine(line);
       }
+    },
+    flushPendingText: () => {
+      flushBufferedLines();
     },
     renderReply: async (replyOutput, hasPrintedProgress) => {
       printOutput("");
@@ -121,6 +125,7 @@ export async function handlePrompt(
               assistantRenderer.onAssistantDelta(event.text);
               break;
             case "tool-output": {
+              assistantRenderer.flushPendingText();
               const update = toolOutput.push(event);
               if (!update) break;
               if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail)
@@ -154,6 +159,7 @@ export async function handlePrompt(
               break;
             }
             case "checklist": {
+              assistantRenderer.flushPendingText();
               const { header, items } = formatChecklist(event);
               printDim(`• ${header}`);
               for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);

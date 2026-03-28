@@ -3,7 +3,7 @@ import type { ChecklistItem } from "./checklist-contract";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 
-export type ToolPermission = "read" | "write" | "execute" | "network";
+export type ToolPermission = "read" | "write" | "execute" | "network" | "test";
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {

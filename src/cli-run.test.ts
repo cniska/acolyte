@@ -32,7 +32,6 @@ function createRunDeps(): {
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
-    createMessage: (role, content) => ({ role, content }) as never,
     printDim: (message) => calls.dims.push(message),
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
@@ -93,5 +92,28 @@ describe("cli-run", () => {
     await runMode(["do something"], deps);
 
     expect(seenOptions?.verifyScope).toBeUndefined();
+  });
+
+  test("runMode does not inject a separate system prompt", async () => {
+    const { deps } = createRunDeps();
+    const session = {
+      id: "sess_123",
+      title: "run",
+      createdAt: "",
+      updatedAt: "",
+      messages: [],
+      tokenUsage: [],
+    };
+    deps.createSession = () => session as never;
+    let seenSession: unknown;
+    deps.handlePrompt = async (_prompt, currentSession) => {
+      seenSession = currentSession;
+      return true;
+    };
+
+    await runMode(["do something"], deps);
+
+    expect(seenSession).toBe(session);
+    expect(session.messages).toEqual([]);
   });
 });

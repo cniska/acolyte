@@ -1,5 +1,5 @@
 import type { AgentMode } from "./agent-contract";
-import { agentModes } from "./agent-modes";
+import { agentModes, toolIdsForMode } from "./agent-modes";
 import { toolDefinitionsById } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
@@ -19,7 +19,7 @@ const BASE_INSTRUCTIONS = [
   "Treat assistant text as delta-only. After tool output, add only what the tool output did not already make clear.",
   "Do NOT recap visible tool output.",
   "If a write-tool diff or preview already makes the result obvious, say NOTHING after it.",
-  "If a checklist is present, let the checklist and tool output show progress. Do not narrate checklist steps in prose.",
+  "If a checklist is present, let the checklist and tool output show progress instead of narrating each step in prose.",
   "If you notice you have derailed, stop taking new actions. Do not keep searching, rereading, or narrating just to recover.",
   "If you can correct the mistake safely, say so briefly, correct it, and continue.",
   "If you cannot recover without user input, use `@signal blocked`.",
@@ -38,9 +38,8 @@ function createModePreamble(mode: AgentMode): string {
 }
 
 function createToolInstructions(mode: AgentMode): string {
-  const { tools } = agentModes[mode];
   const lines: string[] = [];
-  for (const toolId of tools) {
+  for (const toolId of toolIdsForMode(mode)) {
     const tool = toolDefinitionsById[toolId];
     if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }

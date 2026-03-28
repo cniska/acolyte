@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
-import type { createMessage as createMessageType } from "./chat-session";
 import { parseRepeatableFlag, parseRequiredFlag } from "./cli-args";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import { formatRunSummary } from "./cli-format";
@@ -11,26 +10,6 @@ import { t } from "./i18n";
 import { type ResourceId, userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
-
-const RUN_MODE_INSTRUCTIONS = [
-  "Run mode: keep output tight.",
-  "Write ONE short direct sentence before acting, then act IMMEDIATELY.",
-  "Do NOT send another assistant message until you are blocked or done.",
-  "Do NOT narrate obvious read, edit, search, or verify steps.",
-  "Do NOT create a checklist for a simple bounded fix.",
-  "The `@signal` line is how you communicate task state to the host.",
-  "End every final response with EXACTLY ONE `@signal` line.",
-  "Use `@signal done` only when the requested work is complete.",
-  "Use `@signal no_op` only when no change is needed.",
-  "Use `@signal blocked` only when you cannot proceed without user input.",
-  "After `@signal blocked`, write ONE short sentence stating what is missing and why it is needed.",
-  "After tool output, add text only if it says something the tool output did not already make clear.",
-  "If a write-tool diff already makes the result obvious, say NOTHING after it.",
-  "If the result is obvious from the tool output, stop.",
-  "Prefer short prose, not dash bullets or option menus.",
-];
-
-export const RUN_MODE_SYSTEM_PROMPT = RUN_MODE_INSTRUCTIONS.join(" ");
 
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
@@ -48,7 +27,6 @@ type RunModeDeps = {
   ensureLocalServer: typeof ensureLocalServerType;
   hasHelpFlag: (args: string[]) => boolean;
   handlePrompt: typeof handlePromptType;
-  createMessage: typeof createMessageType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
@@ -92,7 +70,6 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     ensureLocalServer,
     hasHelpFlag,
     handlePrompt,
-    createMessage,
     printDim,
     printError,
     readResolvedConfigSync,
@@ -124,7 +101,6 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(parsed.model ?? appModel);
-  session.messages.push(createMessage("system", RUN_MODE_SYSTEM_PROMPT));
   const daemon = await ensureLocalServer({
     port: serverPort,
     apiKey: serverApiKey,

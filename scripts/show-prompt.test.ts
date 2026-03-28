@@ -6,8 +6,8 @@ describe("parseArgs", () => {
     expect(parseArgs(["work"])).toEqual({ mode: "work", workspace: undefined });
   });
 
-  test("parses run mode with workspace", () => {
-    expect(parseArgs(["run", "--workspace", "/tmp/demo"])).toEqual({ mode: "run", workspace: "/tmp/demo" });
+  test("parses verify mode with workspace", () => {
+    expect(parseArgs(["verify", "--workspace", "/tmp/demo"])).toEqual({ mode: "verify", workspace: "/tmp/demo" });
   });
 
   test("rejects unknown flags", () => {

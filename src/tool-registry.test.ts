@@ -62,19 +62,21 @@ describe("toolIdsForGrants", () => {
   });
 
   test("work grants return all tools", () => {
-    const ids = toolIdsForGrants(["read", "write", "execute", "network"]);
+    const ids = toolIdsForGrants(["read", "write", "execute", "network", "test"]);
     expect(ids).toContain("file-read");
     expect(ids).toContain("file-edit");
     expect(ids).toContain("shell-run");
     expect(ids).toContain("web-search");
     expect(ids).toContain("git-add");
+    expect(ids).toContain("test-run");
   });
 
-  test("verify grants return read and execute tools", () => {
-    const ids = toolIdsForGrants(["read", "execute"]);
+  test("verify grants return read and test tools", () => {
+    const ids = toolIdsForGrants(["read", "test"]);
     expect(ids).toContain("file-read");
-    expect(ids).toContain("shell-run");
     expect(ids).toContain("code-scan");
+    expect(ids).toContain("test-run");
+    expect(ids).not.toContain("shell-run");
     expect(ids).not.toContain("file-edit");
     expect(ids).not.toContain("web-search");
     expect(ids).not.toContain("git-add");

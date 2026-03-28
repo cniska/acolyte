@@ -138,4 +138,43 @@ describe("cli-prompt", () => {
       process.stdout.write = originalWrite;
     }
   });
+
+  test("flushes a buffered assistant preamble before first tool output", async () => {
+    const printed: string[] = [];
+    const originalWrite = process.stdout.write;
+    process.stdout.write = ((chunk: string) => {
+      printed.push(chunk);
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const events: StreamEvent[] = [
+        { type: "text-delta", text: "Checking src/foo.ts, then updating it." },
+        {
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "file-read",
+          content: {
+            kind: "file-header",
+            labelKey: "tool.label.file_read",
+            count: 1,
+            targets: ["src/foo.ts"],
+          },
+        },
+      ];
+
+      const session = createTestSession();
+      const client = createStreamingClient(events);
+      await handlePrompt("update foo", session, client);
+
+      const output = printed.join("");
+      const preambleIndex = output.indexOf("• Checking src/foo.ts, then updating it.");
+      const toolIndex = output.indexOf("• Read src/foo.ts");
+      expect(preambleIndex).toBeGreaterThan(-1);
+      expect(toolIndex).toBeGreaterThan(-1);
+      expect(preambleIndex).toBeLessThan(toolIndex);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
 });

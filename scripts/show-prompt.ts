@@ -2,11 +2,10 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { agentModeSchema } from "../src/agent-contract";
 import { createInstructions } from "../src/agent-instructions";
-import { RUN_MODE_SYSTEM_PROMPT } from "../src/cli-run";
 import { loadSystemPrompt } from "../src/soul";
 
 const showPromptArgsSchema = z.object({
-  mode: z.union([agentModeSchema, z.literal("run")]),
+  mode: agentModeSchema,
   workspace: z.string().min(1).optional(),
 });
 
@@ -35,10 +34,6 @@ function printSection(title: string, body: string): void {
   process.stdout.write(`## ${title}\n${body.trim()}\n\n`);
 }
 
-function showRunPrompt(): void {
-  printSection("Run Mode Prompt", RUN_MODE_SYSTEM_PROMPT);
-}
-
 function showAgentPrompt(mode: "work" | "verify", workspace?: string): void {
   const cwd = workspace ? resolve(workspace) : process.cwd();
   const soulPrompt = loadSystemPrompt(cwd);
@@ -47,10 +42,6 @@ function showAgentPrompt(mode: "work" | "verify", workspace?: string): void {
 
 function main(argv: string[]): void {
   const args = parseArgs(argv);
-  if (args.mode === "run") {
-    showRunPrompt();
-    return;
-  }
   showAgentPrompt(args.mode, args.workspace);
 }
 

@@ -4,39 +4,6 @@ import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-const createChecklistInputSchema = z.object({
-  groupId: z.string().min(1),
-  groupTitle: z.string().min(1),
-  items: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        label: z.string().min(1),
-        order: z.number().int().nonnegative(),
-      }),
-    )
-    .min(1),
-});
-
-const createChecklistOutputSchema = z.object({
-  kind: z.literal("checklist-create"),
-  groupId: z.string(),
-  itemCount: z.number(),
-});
-
-const updateChecklistInputSchema = z.object({
-  groupId: z.string().min(1),
-  itemId: z.string().min(1),
-  status: checklistItemStatusSchema,
-});
-
-const updateChecklistOutputSchema = z.object({
-  kind: z.literal("checklist-update"),
-  groupId: z.string(),
-  itemId: z.string(),
-  status: checklistItemStatusSchema,
-});
-
 function createCreateChecklistTool(
   _deps: ToolkitDeps,
   input: ToolkitInput,
@@ -49,9 +16,25 @@ function createCreateChecklistTool(
     permissions: [],
     description: "Create an inline task checklist visible to the user. All items start as pending.",
     instruction:
-      "Use `checklist-create` only for tasks with 5+ user-visible steps or clear independent subgoals the user would benefit from tracking. Define all steps upfront. Do not create a checklist for a simple bounded fix. Use `checklist-update` as you work.",
-    inputSchema: createChecklistInputSchema,
-    outputSchema: createChecklistOutputSchema,
+      "Use `checklist-create` only for tasks with 5+ user-visible steps or clear independent subgoals the user would benefit from tracking. Define all steps upfront. Do not use it for a simple bounded fix. Use `checklist-update` as you work.",
+    inputSchema: z.object({
+      groupId: z.string().min(1),
+      groupTitle: z.string().min(1),
+      items: z
+        .array(
+          z.object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            order: z.number().int().nonnegative(),
+          }),
+        )
+        .min(1),
+    }),
+    outputSchema: z.object({
+      kind: z.literal("checklist-create"),
+      groupId: z.string(),
+      itemCount: z.number(),
+    }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "checklist-create", toolCallId, toolInput, async () => {
         const items: ChecklistItem[] = toolInput.items.map((item) => ({
@@ -81,8 +64,17 @@ function createUpdateChecklistTool(
     description: "Update the status of a single checklist item.",
     instruction:
       "Use `checklist-update` to mark one checklist item as `in_progress`, `done`, or `failed`. Use it only after `checklist-create` for the same groupId.",
-    inputSchema: updateChecklistInputSchema,
-    outputSchema: updateChecklistOutputSchema,
+    inputSchema: z.object({
+      groupId: z.string().min(1),
+      itemId: z.string().min(1),
+      status: checklistItemStatusSchema,
+    }),
+    outputSchema: z.object({
+      kind: z.literal("checklist-update"),
+      groupId: z.string(),
+      itemId: z.string(),
+      status: checklistItemStatusSchema,
+    }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "checklist-update", toolCallId, toolInput, async () => {
         const group = state.get(toolInput.groupId);

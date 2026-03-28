@@ -131,7 +131,6 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         ensureLocalServer,
         hasHelpFlag,
         handlePrompt,
-        createMessage,
         printDim,
         printError,
         readResolvedConfigSync,

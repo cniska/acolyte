@@ -4,20 +4,21 @@ import { toolIdsForGrants } from "./tool-registry";
 
 export type AgentModeDefinition = {
   grants: readonly ToolPermission[];
-  tools: string[];
   preamble: string[];
 };
 
+export function toolIdsForMode(mode: AgentMode): string[] {
+  return toolIdsForGrants(agentModes[mode].grants);
+}
+
 export const agentModes: Record<AgentMode, AgentModeDefinition> = {
   work: {
-    grants: ["read", "write", "execute", "network"],
-    tools: toolIdsForGrants(["read", "write", "execute", "network"]),
+    grants: ["read", "write", "execute", "network", "test"],
     preamble: [
       "You are in work mode. Implement the requested change directly.",
       "If the target path is explicit, skip `file-find`/`file-search` and read that file directly.",
       "For 'add/update in file X' tasks, make `file-read` on X your first tool call.",
       "For simple named-file fixes, read the file, make the change, verify lightly if needed, and stop.",
-      "Do NOT create a checklist for a simple bounded fix.",
       "Do NOT narrate read, edit, and verify as separate steps.",
       "If the user names the files to change, limit reads and edits to those files plus directly referenced support files needed to complete the task.",
       "For explicit multi-file edit tasks, work one named file at a time: read the file you are about to change, edit it, then move to the next.",
@@ -55,15 +56,11 @@ export const agentModes: Record<AgentMode, AgentModeDefinition> = {
       "If the tool output already makes the result obvious, do not restate it.",
       "If the bounded edit is obvious from the diff or file header, silence is better than a recap.",
       "If a write-tool diff already shows the requested bounded change, do not add a closing sentence.",
-      "Use `checklist-create` only for tasks with 5+ distinct user-visible steps, multiple independent subgoals, or a clear multi-part delivery the user would benefit from tracking. Use `checklist-update` to mark items as you complete each step.",
-      "Do NOT create a checklist for a simple bounded read-edit-verify flow in one area of the codebase.",
-      "NEVER create a checklist just to represent read, edit, and verify as separate steps.",
-      "When a checklist is present, let checklist updates and tool output show progress. Do not narrate each checklist step in prose unless something unexpected happens.",
+      "If you use a checklist, keep it for real multi-step delivery, not simple bounded read-edit-verify work.",
     ],
   },
   verify: {
-    grants: ["read", "execute"],
-    tools: toolIdsForGrants(["read", "execute"]),
+    grants: ["read", "test"],
     preamble: [
       "You are in verify mode. Act as an independent code reviewer.",
       "Assume nothing. Verify from the visible change and repository evidence.",
