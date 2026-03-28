@@ -57,7 +57,8 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
             }
           },
         );
-        emitParts(shellHeadTailParts(streamed), "test-run", onOutput, callId);
+        const previewParts = shellHeadTailParts(streamed);
+        emitParts(previewParts, "test-run", onOutput, callId);
 
         const result = compactToolOutput(rawResult, deps.outputBudget.run);
         return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: result };

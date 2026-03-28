@@ -165,13 +165,10 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
           path: toolInput.path,
           edits: toolInput.edits,
         });
-        emitParts(
-          diffSummaryParts(toolInput.path, editResult.output, "tool.label.code_edit"),
-          "code-edit",
-          input.onOutput,
-          callId,
-        );
-        emitParts(numberedUnifiedDiffLines(editResult.output), "code-edit", input.onOutput, callId);
+        const summaryParts = diffSummaryParts(toolInput.path, editResult.output, "tool.label.code_edit");
+        const diffParts = numberedUnifiedDiffLines(editResult.output);
+        emitParts(summaryParts, "code-edit", input.onOutput, callId);
+        emitParts(diffParts, "code-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(editResult.output);
         const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
         return {

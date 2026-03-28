@@ -111,7 +111,8 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
           toolCallId: callId,
         });
         const rawStatus = await git.statusShort();
-        emitParts(textHeadTailParts(rawStatus), "git-status", input.onOutput, callId);
+        const previewParts = textHeadTailParts(rawStatus);
+        emitParts(previewParts, "git-status", input.onOutput, callId);
         const result = compactToolOutput(rawStatus, deps.outputBudget.gitStatus);
         return { kind: "git-status", output: result };
       });
@@ -147,7 +148,8 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
           toolCallId: callId,
         });
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
-        emitParts(textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 }), "git-diff", input.onOutput, callId);
+        const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
+        emitParts(previewParts, "git-diff", input.onOutput, callId);
         const result = compactToolOutput(rawDiff, deps.outputBudget.gitDiff);
         return { kind: "git-diff", path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: result };
       });
@@ -183,7 +185,8 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
           toolCallId: callId,
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
-        emitParts(resultChunkParts(rawLog, 4), "git-log", input.onOutput, callId);
+        const previewParts = resultChunkParts(rawLog, 4);
+        emitParts(previewParts, "git-log", input.onOutput, callId);
         const result = compactToolOutput(rawLog, deps.outputBudget.gitDiff);
         return { kind: "git-log", path: toolInput.path, limit: toolInput.limit, output: result };
       });
@@ -225,7 +228,9 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
           path: toolInput.path,
           contextLines: toolInput.contextLines ?? 3,
         });
-        emitParts(textHeadTailParts(stripGitShowMetadataForPreview(rawShow)), "git-show", input.onOutput, callId);
+        const previewText = stripGitShowMetadataForPreview(rawShow);
+        const previewParts = textHeadTailParts(previewText);
+        emitParts(previewParts, "git-show", input.onOutput, callId);
         const result = compactToolOutput(rawShow, deps.outputBudget.gitDiff);
         return {
           kind: "git-show",

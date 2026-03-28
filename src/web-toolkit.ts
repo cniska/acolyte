@@ -90,12 +90,9 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
           await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS),
           deps.outputBudget.webSearch,
         );
-        emitParts(
-          resultChunkParts(webSearchStreamRows(result, toolInput.query), 80),
-          "web-search",
-          input.onOutput,
-          callId,
-        );
+        const previewRows = webSearchStreamRows(result, toolInput.query);
+        const previewParts = resultChunkParts(previewRows, 80);
+        emitParts(previewParts, "web-search", input.onOutput, callId);
         return { kind: "web-search", query: toolInput.query, output: result };
       });
     },
