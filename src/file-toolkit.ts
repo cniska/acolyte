@@ -112,7 +112,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       "If the needed text is already visible in `file-read`, edit from that evidence instead of searching the same file again.",
       "For one named file with a repeated literal replacement, do not use `file-search`; read the file once and make one consolidated `file-edit` call.",
       "For a multi-file rename or repeated replacement, if a named file has separated occurrences you have not yet anchored to exact snippets, run one scoped `file-search` on that file before `file-edit` so you can batch small exact edits instead of guessing a larger `find` block.",
-      "When building an `file-edit` call, every `find` snippet must come from the current `file-read` text or scoped `file-search` hits for that file; do not invent old lines that are not present.",
+      "When building a `file-edit` call, every `find` snippet must come from the current `file-read` text or scoped `file-search` hits for that file; do not invent old lines that are not present.",
       "When fixing a visible path or link, keep the local reference style from the target file.",
     ].join(" "),
     inputSchema: z

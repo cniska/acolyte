@@ -11,7 +11,7 @@ import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 
 describe("phaseGenerate", () => {
-  test("does not clear an file-edit error after an unrelated successful read", async () => {
+  test("does not clear a file-edit error after an unrelated successful read", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -73,7 +73,7 @@ describe("phaseGenerate", () => {
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 
-  test("clears an file-edit error after a later successful write recovery", async () => {
+  test("clears a file-edit error after a later successful write recovery", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
@@ -135,7 +135,7 @@ describe("phaseGenerate", () => {
     expect(acceptedLifecycleSignal(ctx)).toBe("done");
   });
 
-  test("does not clear an file-edit error after a different write tool succeeds", async () => {
+  test("does not clear a file-edit error after a different write tool succeeds", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       agent: {
