@@ -533,7 +533,6 @@ export function createToolkitDeps(): ToolkitDeps {
       webSearch: DEFAULT_BUDGET_ENTRY,
       webFetch: DEFAULT_BUDGET_ENTRY,
       read: DEFAULT_BUDGET_ENTRY,
-      gitStatus: DEFAULT_BUDGET_ENTRY,
       gitDiff: DEFAULT_BUDGET_ENTRY,
       run: DEFAULT_BUDGET_ENTRY,
       edit: DEFAULT_BUDGET_ENTRY,

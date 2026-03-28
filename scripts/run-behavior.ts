@@ -142,7 +142,6 @@ export function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSum
         "file-find",
         "file-search",
         "code-scan",
-        "git-status",
         "git-diff",
         "git-log",
         "git-show",

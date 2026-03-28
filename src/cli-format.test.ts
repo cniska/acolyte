@@ -52,13 +52,6 @@ describe("cli-format", () => {
     expect(out).toContain("+new");
   });
 
-  test("formatForTool formats git-status output", () => {
-    const raw = ["## main...origin/main", " M src/cli.ts", "?? src/new.ts"].join("\n");
-    const out = formatForTool("git-status", raw);
-    expect(out).toContain("## main...origin/main");
-    expect(out).toContain("M src/cli.ts");
-  });
-
   test("formatForTool falls back to read formatting for unknown tools", () => {
     const raw = ["line1", "line2"].join("\n");
     const out = formatForTool("unknown-tool", raw);

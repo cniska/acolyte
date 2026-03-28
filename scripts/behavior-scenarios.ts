@@ -369,6 +369,7 @@ async function validatePostSuccessStopWorkspace(workspace: string): Promise<stri
 function validatePostSuccessStopTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
+  const toolResultLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.result"));
   const firstTool = toolCallLines[0];
   if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
     issues.push("first tool call should be file-read on src/provider-config.ts");
@@ -376,7 +377,7 @@ function validatePostSuccessStopTrace(traceLines: string[]): string[] {
   if (toolCallLines.some((line) => line.includes("tool=file-find") || line.includes("tool=file-search"))) {
     issues.push("post-success stop scenario should not use file-find or file-search");
   }
-  const readCalls = toolCallLines.filter(
+  const readCalls = toolResultLines.filter(
     (line) => line.includes("tool=file-read") && line.includes("src/provider-config.ts"),
   ).length;
   if (readCalls > 1) {
@@ -427,22 +428,22 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   const verifyModeIndex = traceLines.findIndex(
     (line) => line.includes("event=lifecycle.mode.changed") && line.includes("to=verify"),
   );
-  const firstVerifyCommandIndex = traceLines.findIndex(
-    (line) => line.includes("event=lifecycle.tool.call") && line.includes("tool=shell-run"),
+  const firstVerifyReviewIndex = traceLines.findIndex(
+    (line) =>
+      line.includes("event=lifecycle.tool.result") &&
+      (line.includes("tool=code-scan") || line.includes("tool=test-run")) &&
+      line.includes("src/lifecycle-state.ts"),
   );
-  if (verifyModeIndex >= 0 && firstVerifyCommandIndex > verifyModeIndex) {
-    const verifyPrelude = traceLines.slice(verifyModeIndex + 1, firstVerifyCommandIndex);
+  if (verifyModeIndex >= 0 && firstVerifyReviewIndex > verifyModeIndex) {
+    const verifyPrelude = traceLines.slice(verifyModeIndex + 1, firstVerifyReviewIndex);
     const badVerifyPrelude = verifyPrelude.some(
       (line) =>
-        line.includes("event=lifecycle.tool.call") &&
-        (line.includes("tool=file-read") ||
-          line.includes("tool=file-search") ||
-          line.includes("tool=code-scan") ||
-          line.includes("tool=git-diff")) &&
+        line.includes("event=lifecycle.tool.result") &&
+        (line.includes("tool=file-read") || line.includes("tool=file-search") || line.includes("tool=git-diff")) &&
         line.includes("src/lifecycle-state.ts"),
     );
     if (badVerifyPrelude) {
-      issues.push("verify mode should run the verify command before rereading or diffing src/lifecycle-state.ts");
+      issues.push("verify mode should review src/lifecycle-state.ts before rereading or diffing it");
     }
   }
 

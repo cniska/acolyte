@@ -98,7 +98,11 @@ export function scopedCallLog(session: SessionContext, taskId?: string): ToolCal
 }
 
 export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
-  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "shell-run" && entry.mode === "verify");
+  return scopedCallLog(session, taskId).some((entry) => isVerifyReviewTool(entry.toolName) && entry.mode === "verify");
+}
+
+function isVerifyReviewTool(toolName: string): boolean {
+  return toolName === "code-scan" || toolName === "test-run" || toolName === "shell-run";
 }
 
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
@@ -122,7 +126,7 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
 function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
   const calls = scopedCallLog(session);
   for (let i = calls.length - 1; i >= 0; i -= 1) {
-    if (calls[i]?.toolName === "shell-run" && calls[i]?.mode === "verify") return calls.slice(i + 1);
+    if (calls[i]?.mode === "verify" && isVerifyReviewTool(calls[i]?.toolName ?? "")) return calls.slice(i + 1);
   }
   return calls;
 }
@@ -329,6 +333,24 @@ const fileChurnGuard: ToolGuard = {
   },
 };
 
+const verifyReadOrderGuard: ToolGuard = {
+  id: "verify-read-order",
+  description: "In verify mode, review edited files with code-scan or tests before rereading them.",
+  tools: ["file-read"],
+  check({ args, session, report }) {
+    if (session.mode !== "verify") return;
+    const editedPaths = new Set(editedPathsSinceLastVerify(session));
+    if (editedPaths.size === 0) return;
+    for (const path of extractReadPaths(args, { normalize: true })) {
+      if (!editedPaths.has(path)) continue;
+      report("blocked", path);
+      throw new Error(
+        `File "${path}" was edited in this task. In verify mode, use code-scan or test-run before rereading the edited file.`,
+      );
+    }
+  },
+};
+
 type RedundantDiscoveryConfig = {
   id: string;
   description: string;
@@ -452,44 +474,6 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
     }
   },
 });
-
-const redundantVerifyGuard: ToolGuard = {
-  id: "redundant-verify",
-  description: "Block redundant verify runs when no writes happened since the last one.",
-  tools: ["shell-run"],
-  check({ args, session, report }) {
-    if (session.mode !== "verify") return;
-    const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-    if (!command) return;
-
-    const calls = scopedCallLog(session);
-    const lastMatchingVerifyRunIndex = (() => {
-      for (let i = calls.length - 1; i >= 0; i -= 1) {
-        const entry = calls[i];
-        if (entry?.toolName !== "shell-run" || entry.mode !== "verify") continue;
-        const priorCommand =
-          typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-        if (priorCommand === command) return i;
-      }
-      return -1;
-    })();
-
-    if (lastMatchingVerifyRunIndex < 0) return;
-
-    let wroteAfterLastVerify = false;
-    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i++) {
-      const tool = calls[i]?.toolName;
-      if (tool && isWriteTool(session, tool)) {
-        wroteAfterLastVerify = true;
-        break;
-      }
-    }
-    if (!wroteAfterLastVerify) {
-      report("blocked", "no-writes-since-last-verify");
-      throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
-    }
-  },
-};
 
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
@@ -718,10 +702,10 @@ const GUARDS: ToolGuard[] = [
   duplicateCallGuard,
   pingPongGuard,
   staleResultGuard,
+  verifyReadOrderGuard,
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,
-  redundantVerifyGuard,
   postEditRedundancyGuard,
   shellBypassGuard,
   lifecycleCommandGuard,

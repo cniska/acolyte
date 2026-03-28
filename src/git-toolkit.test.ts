@@ -3,7 +3,6 @@ import { createGitOps, type GitOpsDeps } from "./git-toolkit";
 
 function createDeps(overrides?: Partial<GitOpsDeps>): GitOpsDeps {
   return {
-    gitStatusShort: overrides?.gitStatusShort ?? (async () => "status"),
     gitDiff: overrides?.gitDiff ?? (async () => "diff"),
     gitLog: overrides?.gitLog ?? (async () => "log"),
     gitShow: overrides?.gitShow ?? (async () => "show"),
@@ -45,10 +44,6 @@ describe("git toolkit", () => {
   test("forwards explicit arguments to git operations", async () => {
     const calls: Array<{ op: string; args: unknown[] }> = [];
     const deps = createDeps({
-      gitStatusShort: async (...args) => {
-        calls.push({ op: "status", args });
-        return "status";
-      },
       gitDiff: async (...args) => {
         calls.push({ op: "diff", args });
         return "diff";
@@ -64,13 +59,11 @@ describe("git toolkit", () => {
     });
     const toolkit = createGitOps("/repo", deps);
 
-    await toolkit.statusShort();
     await toolkit.diff({ path: "src/a.ts", contextLines: 7 });
     await toolkit.log({ path: "src/a.ts", limit: 4 });
     await toolkit.show({ ref: "HEAD~1", path: "src/a.ts", contextLines: 2 });
 
     expect(calls).toEqual([
-      { op: "status", args: ["/repo"] },
       { op: "diff", args: ["/repo", "src/a.ts", 7] },
       { op: "log", args: ["/repo", { path: "src/a.ts", limit: 4 }] },
       { op: "show", args: ["/repo", { ref: "HEAD~1", path: "src/a.ts", contextLines: 2 }] },

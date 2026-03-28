@@ -27,7 +27,6 @@ export type ToolOutputBudget = {
   webSearch: ToolOutputBudgetEntry;
   webFetch: ToolOutputBudgetEntry;
   read: ToolOutputBudgetEntry;
-  gitStatus: ToolOutputBudgetEntry;
   gitDiff: ToolOutputBudgetEntry;
   run: ToolOutputBudgetEntry;
   edit: ToolOutputBudgetEntry;

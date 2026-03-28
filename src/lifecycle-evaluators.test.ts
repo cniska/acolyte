@@ -40,7 +40,7 @@ describe("verifyEvaluator", () => {
   test("returns done when verify already ran", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "code-scan", { paths: ["/tmp/test.ts"], patterns: ["export function $NAME"] });
     const ctx = createRunContext({
       initialMode: "work",
       session,

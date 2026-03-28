@@ -23,7 +23,6 @@ describe("toolsets", () => {
       "gitDiff",
       "gitLog",
       "gitShow",
-      "gitStatus",
       "readFile",
       "runCommand",
       "runTests",
@@ -120,7 +119,6 @@ describe("localization baseline", () => {
     const editInstruction = toolDefinitionsById["file-edit"]?.instruction ?? "";
     const editCodeInstruction = toolDefinitionsById["code-edit"]?.instruction ?? "";
     const searchInstruction = toolDefinitionsById["file-search"]?.instruction ?? "";
-    const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
     const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
     const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
     const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
@@ -138,8 +136,6 @@ describe("localization baseline", () => {
     expect(searchInstruction).toContain("scope with `paths` when you know the target area");
     expect(searchInstruction).toContain("edit from that evidence");
     expect(searchInstruction).toContain("Keep the local reference style when fixing a visible path or link.");
-    expect(gitStatusInstruction).toContain("repository state itself matters");
-    expect(gitStatusInstruction).toContain("not to re-check a file-scoped task");
     expect(gitDiffInstruction).toContain("repository diff context matters");
     expect(gitDiffInstruction).toContain("not to re-check an edit you just made");
     expect(gitLogInstruction).toContain("It is for history, not current uncommitted edits");

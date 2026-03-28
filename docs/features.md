@@ -43,7 +43,7 @@ Shipped, user-visible capabilities.
 - find/search/read files
 - edit/create/delete files
 - scan/edit code via AST-based tools
-- git status/diff/log/show/add/commit
+- git diff/log/show/add/commit
 - shell command execution
 - scoped test execution via detected test runner
 - web search/fetch

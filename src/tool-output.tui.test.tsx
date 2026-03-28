@@ -21,10 +21,6 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
-  test("tool-header without detail", () => {
-    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.git_status" }])).toBe("Git Status");
-  });
-
   test("file-header renders label and targets", () => {
     const items: ToolOutputPart[] = [
       { kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] },
@@ -150,21 +146,6 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       dedent(`
         Run cmd
           (No output)
-      `),
-    );
-  });
-
-  test("git-status with changes", () => {
-    const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.git_status" },
-      { kind: "text", text: "M src/cli.ts" },
-      { kind: "text", text: "?? src/new.ts" },
-    ];
-    expect(formatToolOutput(items)).toBe(
-      dedent(`
-        Git Status
-          M src/cli.ts
-          ?? src/new.ts
       `),
     );
   });
@@ -410,10 +391,6 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }])).toBe("• Read a.ts");
   });
 
-  test("tool-header without detail", () => {
-    expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.git_status" }])).toBe("• Git Status");
-  });
-
   test("file-header renders label and targets", () => {
     expect(
       renderChat([{ kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] }]),
@@ -516,21 +493,6 @@ describe("tool output TUI — chat (Ink rendering)", () => {
       dedent(`
         • Run cmd
             (No output)
-      `),
-    );
-  });
-
-  test("git-status with changes", () => {
-    const items: ToolOutputPart[] = [
-      { kind: "tool-header", labelKey: "tool.label.git_status" },
-      { kind: "text", text: "M src/cli.ts" },
-      { kind: "text", text: "?? src/new.ts" },
-    ];
-    expect(renderChat(items)).toBe(
-      dedent(`
-        • Git Status
-            M src/cli.ts
-            ?? src/new.ts
       `),
     );
   });

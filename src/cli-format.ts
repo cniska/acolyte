@@ -72,15 +72,6 @@ export function formatDiffOutput(raw: string): string {
   return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.diff).join("\n");
 }
 
-export function formatGitStatusOutput(raw: string): string {
-  const lines = raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  if (lines.length === 0) return t("tool.content.working_tree_clean");
-  return clampLines(lines, CLI_TOOL_OUTPUT_LIMITS.status).join("\n");
-}
-
 export function formatRunOutput(raw: string): string {
   const lines = raw.split("\n");
   if (lines.length === 0) return t("tool.content.no_output");
@@ -116,7 +107,6 @@ const TOOL_FORMATTERS: Record<string, (raw: string) => string> = {
   "code-edit": formatDiffOutput,
   "file-create": formatDiffOutput,
   "shell-run": formatRunOutput,
-  "git-status": formatGitStatusOutput,
 };
 
 export function formatForTool(toolId: string, raw: string): string {

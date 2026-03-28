@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
+import { gitAdd, gitCommit, gitDiff, gitLog, gitShow } from "./git-ops";
 import { t } from "./i18n";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -8,7 +8,7 @@ import { compactToolOutput } from "./tool-output";
 import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
 import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
-const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
+const GIT_OPS = ["diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
 
 export type GitDiffInput = { path?: string; contextLines?: number };
@@ -18,7 +18,6 @@ export type GitAddInput = { paths?: string[]; all?: boolean };
 export type GitCommitInput = { message: string; body?: string[] };
 
 export type GitOps = {
-  statusShort: () => Promise<string>;
   diff: (input?: GitDiffInput) => Promise<string>;
   log: (input?: GitLogInput) => Promise<string>;
   show: (input?: GitShowInput) => Promise<string>;
@@ -27,7 +26,6 @@ export type GitOps = {
 };
 
 export type GitOpsDeps = {
-  gitStatusShort: typeof gitStatusShort;
   gitDiff: typeof gitDiff;
   gitLog: typeof gitLog;
   gitShow: typeof gitShow;
@@ -36,7 +34,6 @@ export type GitOpsDeps = {
 };
 
 const defaultDeps: GitOpsDeps = {
-  gitStatusShort,
   gitDiff,
   gitLog,
   gitShow,
@@ -55,7 +52,6 @@ async function runGitOp(operation: GitOp, execute: () => Promise<string>): Promi
 
 export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps): GitOps {
   return {
-    statusShort: () => runGitOp("statusShort", () => deps.gitStatusShort(workspace)),
     diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
     log: (input) => runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
     show: (input) =>
@@ -86,38 +82,6 @@ function stripGitShowMetadataForPreview(rawText: string): string {
       return line;
     })
     .join("\n");
-}
-
-function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
-  return createTool({
-    id: "git-status",
-    toolkit: "git",
-    labelKey: "tool.label.git_status",
-    category: "search",
-    permissions: ["read"],
-    description: "Show working tree status (short format with branch) for the current repository.",
-    instruction:
-      "Use `git-status` when repository state itself matters, not to re-check a file-scoped task you already understand from the task and tool results.",
-    outputSchema: z.object({
-      kind: z.literal("git-status"),
-      output: z.string(),
-    }),
-    inputSchema: z.object({}).optional(),
-    execute: async (_toolInput, toolCallId) => {
-      return runTool(input.session, "git-status", toolCallId, {}, async (callId) => {
-        input.onOutput({
-          toolName: "git-status",
-          content: { kind: "tool-header", labelKey: "tool.label.git_status" },
-          toolCallId: callId,
-        });
-        const rawStatus = await git.statusShort();
-        const previewParts = textHeadTailParts(rawStatus);
-        emitParts(previewParts, "git-status", input.onOutput, callId);
-        const result = compactToolOutput(rawStatus, deps.outputBudget.gitStatus);
-        return { kind: "git-status", output: result };
-      });
-    },
-  });
 }
 
 function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
@@ -286,7 +250,7 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
             });
           }
         }
-        const result = compactToolOutput(rawAdd, deps.outputBudget.gitStatus);
+        const result = compactToolOutput(rawAdd, deps.outputBudget.gitDiff);
         return { kind: "git-add", all: toolInput.all, paths: toolInput.paths, output: result };
       });
     },
@@ -347,7 +311,6 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
 export function createGitToolkit(deps: ToolkitDeps, input: ToolkitInput) {
   const git = createGitOps(input.workspace);
   return {
-    gitStatus: createGitStatusTool(git, deps, input),
     gitDiff: createGitDiffTool(git, deps, input),
     gitLog: createGitLogTool(git, deps, input),
     gitShow: createGitShowTool(git, deps, input),

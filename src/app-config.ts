@@ -54,7 +54,6 @@ export const appConfig = {
       webSearch: { maxChars: 2400, maxLines: 80 },
       webFetch: { maxChars: 2600, maxLines: 90 },
       read: { maxChars: 80_000, maxLines: 2000 },
-      gitStatus: { maxChars: 1800, maxLines: 80 },
       gitDiff: { maxChars: 3200, maxLines: 120 },
       run: { maxChars: 2600, maxLines: 120 },
       edit: { maxChars: 1400, maxLines: 60 },

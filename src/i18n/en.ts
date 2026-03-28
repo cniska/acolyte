@@ -225,7 +225,6 @@ export const EN_MESSAGES = {
   "tool.label.git_diff": "Git Diff",
   "tool.label.git_log": "Git Log",
   "tool.label.git_show": "Git Show",
-  "tool.label.git_status": "Git Status",
   "tool.label.shell_run": "Run",
   "tool.label.test_run": "Run (Test)",
   "tool.label.web_fetch": "Web Fetch",

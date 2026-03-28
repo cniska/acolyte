@@ -66,45 +66,6 @@ describe("step-budget guard", () => {
   });
 });
 
-describe("redundant-verify guard", () => {
-  test("allows first verify run", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-
-  test("blocks duplicate verify-mode command when no writes happened since previous run", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "shell-run", { command: "npm test" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "npm test" }, session })).toThrow(
-      /Duplicate shell-run call detected|verify already ran this turn/,
-    );
-  });
-
-  test("allows a different command in verify mode", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "shell-run", { command: "npm test" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-
-  test("allows verify rerun after a write", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    session.writeTools = new Set(["file-edit", "shell-run"]);
-    recordCall(session, "shell-run", { command: "bun run verify" });
-    recordCall(session, "file-edit", { path: "src/foo.ts" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-
-  test("does not block outside verify mode", () => {
-    const session = createSessionContext();
-    session.mode = "work";
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-});
-
 describe("file-churn guard", () => {
   test("blocks immediate duplicate file-read call on same path and range", () => {
     const session = createSessionContext();
@@ -174,6 +135,18 @@ describe("file-churn guard", () => {
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
     session.mode = "verify";
+    expect(() => runGuards({ toolName: "file-read", args: { paths: [{ path: "src/foo.ts" }] }, session })).toThrow(
+      /use code-scan or test-run before rereading/i,
+    );
+  });
+
+  test("allows rereading an edited file in verify mode after code-scan", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["file-edit"]);
+    recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
+    recordCall(session, "file-edit", { path: "src/foo.ts" });
+    session.mode = "verify";
+    recordCall(session, "code-scan", { paths: ["src/foo.ts"], patterns: ["export function $NAME"] });
     expect(() =>
       runGuards({ toolName: "file-read", args: { paths: [{ path: "src/foo.ts" }] }, session }),
     ).not.toThrow();
@@ -204,7 +177,7 @@ describe("file-churn guard", () => {
   test("still blocks heavy churn even when verify already ran", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "code-scan", { paths: ["src/foo.ts"], patterns: ["export function $NAME"] });
     session.mode = "work";
     for (let i = 0; i < 8; i++) {
       recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
@@ -218,7 +191,7 @@ describe("file-churn guard", () => {
   test("still blocks immediate duplicate edit calls after verify", () => {
     const session = createSessionContext();
     session.mode = "verify";
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "code-scan", { paths: ["src/foo.ts"], patterns: ["export function $NAME"] });
     session.mode = "work";
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
@@ -478,28 +451,24 @@ describe("recordCall", () => {
 describe("duplicate-call guard", () => {
   test("blocks immediate duplicate tool calls with same args", () => {
     const session = createSessionContext();
-    recordCall(session, "git-status", {});
-    expect(() => runGuards({ toolName: "git-status", args: {}, session })).toThrow(
-      /Duplicate git-status call detected/,
-    );
+    recordCall(session, "git-log", {});
+    expect(() => runGuards({ toolName: "git-log", args: {}, session })).toThrow(/Duplicate git-log call detected/);
   });
 
   test("blocks duplicate with only read-only tools in between", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["file-edit", "shell-run"]);
-    recordCall(session, "git-status", {});
+    recordCall(session, "git-log", {});
     recordCall(session, "file-read", { paths: [{ path: "src/a.ts" }] });
-    expect(() => runGuards({ toolName: "git-status", args: {}, session })).toThrow(
-      /Duplicate git-status call detected/,
-    );
+    expect(() => runGuards({ toolName: "git-log", args: {}, session })).toThrow(/Duplicate git-log call detected/);
   });
 
   test("allows duplicate after a write tool in between", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["file-edit", "shell-run"]);
-    recordCall(session, "git-status", {});
+    recordCall(session, "git-log", {});
     recordCall(session, "file-edit", { path: "src/a.ts" });
-    expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "git-log", args: {}, session })).not.toThrow();
   });
 
   test("treats whitespace-only arg changes as duplicates", () => {
@@ -512,9 +481,9 @@ describe("duplicate-call guard", () => {
 
   test("is task-scoped: duplicate in prior task does not block current task", () => {
     const session = createSessionContext("task_a");
-    recordCall(session, "git-status", {});
+    recordCall(session, "git-log", {});
     session.taskId = "task_b";
-    expect(() => runGuards({ toolName: "git-status", args: {}, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "git-log", args: {}, session })).not.toThrow();
   });
 });
 
