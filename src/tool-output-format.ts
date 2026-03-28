@@ -2,6 +2,7 @@ import { isAbsolute, relative } from "node:path";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
+import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
 
@@ -13,19 +14,6 @@ export function emitParts(
 ): void {
   for (const content of parts) onOutput({ toolName, content, toolCallId });
 }
-
-export const TOOL_PROGRESS_LIMITS = {
-  files: 5,
-  inlineFiles: 3,
-} as const;
-
-export const CLI_TOOL_OUTPUT_LIMITS = {
-  files: 5,
-  run: 5,
-  read: 48,
-  diff: 64,
-  status: 6,
-} as const;
 
 export function diffSummaryParts(path: string, rawResult: string, labelKey: string): ToolOutputPart[] {
   const { files, added, removed } = summarizeUnifiedDiff(rawResult);

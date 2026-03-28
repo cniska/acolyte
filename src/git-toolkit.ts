@@ -5,7 +5,8 @@ import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
-import { emitParts, resultChunkParts, textHeadTailParts, TOOL_PROGRESS_LIMITS } from "./tool-output-format";
+import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
+import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];

@@ -3,7 +3,7 @@ import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { t, tDynamic } from "./i18n";
 import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
-import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-output-format";
+import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
 import { toolDefinitionsById } from "./tool-registry";
 import { printDim, printToolHeader } from "./ui";
 
