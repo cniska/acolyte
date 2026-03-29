@@ -100,7 +100,6 @@ describe("phaseEvaluate", () => {
     expect(decisions).toEqual(["format:done", "lint:regenerate"]);
     expect(ctx.lifecycleState.feedback.at(-1)).toEqual({
       source: "lint",
-      mode: "work",
       summary: "Lint errors detected in files you edited.",
     });
     expect(generateOptions).toEqual({ cycleLimit: ctx.policy.initialMaxSteps, timeoutMs: ctx.policy.stepTimeoutMs });
@@ -146,80 +145,6 @@ describe("phaseEvaluate", () => {
     expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
   });
 
-  test("restores the work result after a clean verify pass", async () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [],
-      evaluators: [
-        {
-          id: "review",
-          evaluate: () =>
-            ctx.result?.signal === "done"
-              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
-              : { action: { type: "done" } },
-        },
-      ],
-      phaseGenerate: async () => {
-        ctx.result = { text: "", toolCalls: [], signal: "no_op" };
-        ctx.currentError = undefined;
-      },
-    });
-
-    expect(ctx.result).toEqual({ text: "Updated x.", toolCalls: [], signal: "done" });
-    expect(ctx.lifecycleState.reviewCandidate).toEqual({
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      currentError: undefined,
-    });
-    expect(ctx.lifecycleState.reviewResult).toEqual({ status: "clean" });
-  });
-
-  test("preserves a blocked verify result instead of restoring the work result", async () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [],
-      evaluators: [
-        {
-          id: "review",
-          evaluate: () =>
-            ctx.result?.signal === "done"
-              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
-              : { action: { type: "done" } },
-        },
-      ],
-      phaseGenerate: async () => {
-        ctx.result = {
-          text: "Need generated artifacts before I can review this change.",
-          toolCalls: [],
-          signal: "blocked",
-        };
-        ctx.currentError = undefined;
-      },
-    });
-
-    expect(ctx.result).toEqual({
-      text: "Need generated artifacts before I can review this change.",
-      toolCalls: [],
-      signal: "blocked",
-    });
-    expect(ctx.lifecycleState.reviewCandidate).toEqual({
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      currentError: undefined,
-    });
-    expect(ctx.lifecycleState.reviewResult).toEqual({
-      status: "blocked",
-      details: "Need generated artifacts before I can review this change.",
-    });
-  });
 
   test("stops regeneration when a reason-specific budget is exhausted", async () => {
     const ctx = createRunContext({

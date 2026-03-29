@@ -423,33 +423,21 @@ describe("createLifecycleFeedbackText", () => {
 });
 
 describe("consumeLifecycleFeedback", () => {
-  test("returns and clears pending feedback for the active mode only", () => {
+  test("returns and clears all pending feedback", () => {
     const state = {
       feedback: [
-        {
-          source: "verify" as const,
-          mode: "verify" as const,
-          summary: "Run verification.",
-          details: "Task boundary:\n- src/a.ts",
-        },
-        { source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" },
-        {
-          source: "tool-recovery" as const,
-          mode: "work" as const,
-          summary: "Use a bounded edit next",
-        },
+        { source: "lint" as const, summary: "Lint errors detected" },
+        { source: "tool-recovery" as const, summary: "Use a bounded edit next" },
       ],
     };
 
-    const consumed = consumeLifecycleFeedback(state, "work");
+    const consumed = consumeLifecycleFeedback(state);
 
     expect(consumed).toEqual([
-      { source: "lint", mode: "work", summary: "Lint errors detected" },
-      { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
+      { source: "lint", summary: "Lint errors detected" },
+      { source: "tool-recovery", summary: "Use a bounded edit next" },
     ]);
-    expect(state.feedback).toEqual([
-      { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
-    ]);
+    expect(state.feedback).toEqual([]);
   });
 
   test("does not leak consumed feedback into later prompt creation", () => {

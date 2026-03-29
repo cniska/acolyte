@@ -127,15 +127,6 @@ export function createModeAgent(input: {
   });
 }
 
-export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: string): void {
-  if (ctx.mode === mode) return;
-  const from = ctx.mode;
-  ctx.mode = mode;
-  ctx.session.mode = mode;
-  ctx.debug("lifecycle.mode.changed", { from, to: mode, trigger: trigger ?? null });
-  ctx.emit({ type: "status", state: { kind: "running", mode, model: formatModel(ctx.model) } });
-}
-
 function ensureAgentForMode(ctx: RunContext): void {
   if (ctx.agentForMode === ctx.mode) return;
 
@@ -176,11 +167,10 @@ function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedbac
 
 export function consumeLifecycleFeedback(
   state: Pick<LifecycleState, "feedback">,
-  mode: RunContext["mode"],
 ): LifecycleFeedback[] {
-  const activeFeedback = state.feedback.filter((feedback) => feedback.mode === mode);
+  const activeFeedback = [...state.feedback];
   if (activeFeedback.length === 0) return [];
-  state.feedback = state.feedback.filter((feedback) => feedback.mode !== mode);
+  state.feedback = [];
   return activeFeedback;
 }
 
@@ -196,7 +186,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
-  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
+  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running", mode: ctx.mode, model: formatModel(ctx.model) } });
@@ -373,7 +363,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     case "text-delta": {
       const p = chunk.payload;
       if (typeof p?.text === "string" && p.text.length > 0) {
-        if (ctx.mode !== "verify") ctx.emit({ type: "text-delta", text: p.text });
+        ctx.emit({ type: "text-delta", text: p.text });
         emitStreamingUsage(ctx, p.text.length);
       }
       break;
