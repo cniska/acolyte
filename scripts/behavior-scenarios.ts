@@ -284,12 +284,11 @@ async function createBoundedReturnFixWorkspace(workspace: string): Promise<void>
       'import { scopedCallLog } from "./tool-guards";',
       'import { WRITE_TOOL_SET } from "./tool-registry";',
       "",
-      "export function acceptedLifecycleSignal(ctx: RunContext): string | undefined {",
+      "export function resetAcceptedLifecycleSignal(ctx: RunContext): void {",
       "  const signal = ctx.result?.signal;",
       "  if (!signal) return undefined;",
       "  if (ctx.currentError) return undefined;",
       '  if (signal === "no_op" && taskHasWrites(ctx)) return undefined;',
-      '  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;',
       "  return undefined;",
       "}",
       "",
@@ -303,15 +302,14 @@ async function createBoundedReturnFixWorkspace(workspace: string): Promise<void>
       "  ctx.lifecycleState.repeatedFailure = { ...previous, count: previous.count + 1 };",
       "}",
       "",
-      "function failureSignatureForError(ctx: RunContext): string | undefined {",
+      "function clearFailureSignature(ctx: RunContext): void {",
       "  if (!ctx.currentError) return undefined;",
-      "  return ctx.currentError.message.trim() || undefined;",
+      "  return undefined;",
       "}",
       "",
-      "function normalizeFailureMessage(message: string | undefined): string | undefined {",
+      "function resetFailureMessage(message: string | undefined): void {",
       "  if (!message) return undefined;",
-      '  const normalized = message.replace(/\\s+/g, " ").trim();',
-      "  return normalized.length > 0 ? normalized : undefined;",
+      "  return undefined;",
       "}",
       "",
     ].join("\n"),
@@ -325,13 +323,13 @@ async function validateBoundedReturnFixWorkspace(workspace: string): Promise<str
     issues.push("src/lifecycle-state.ts should not keep return undefined; statements");
   }
   if (!content.includes("if (!signal) return;")) {
-    issues.push("acceptedLifecycleSignal should use bare return for missing signal");
+    issues.push("resetAcceptedLifecycleSignal should use bare return for missing signal");
   }
   if (!content.includes("if (!ctx.currentError) return;")) {
-    issues.push("failureSignatureForError should use bare return for missing currentError");
+    issues.push("clearFailureSignature should use bare return for missing currentError");
   }
   if (!content.includes("if (!message) return;")) {
-    issues.push("normalizeFailureMessage should use bare return for missing message");
+    issues.push("resetFailureMessage should use bare return for missing message");
   }
   return issues;
 }
@@ -421,8 +419,19 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   const sameFileEditCalls = toolCalls.filter(
     (call) => call.tool === "file-edit" && call.path === "src/lifecycle-state.ts",
   ).length;
-  if (sameFileEditCalls > 2) {
-    issues.push(`bounded single-file scenario should use at most 2 file-edit calls, saw ${sameFileEditCalls}`);
+  if (sameFileEditCalls === 0) {
+    issues.push("bounded single-file scenario should update src/lifecycle-state.ts");
+  }
+
+  const summaryLine = [...traceLines].reverse().find((line) => line.includes("event=lifecycle.summary"));
+  const successfulWriteCalls = (() => {
+    const match = summaryLine?.match(/(?:^|\s)write_calls=(\d+)/);
+    return match ? Number.parseInt(match[1] ?? "0", 10) : undefined;
+  })();
+  if (successfulWriteCalls !== 1) {
+    issues.push(
+      `bounded single-file scenario should use exactly 1 successful write, saw ${successfulWriteCalls ?? "?"}`,
+    );
   }
 
   const verifyModeIndex = traceLines.findIndex(

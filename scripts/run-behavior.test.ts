@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { BEHAVIOR_SCENARIO_LIST, parseBehaviorScenarioId } from "./behavior-scenarios";
-import { analyzeBehavior, parseArgs, summarizeTrace } from "./run-behavior";
+import { analyzeBehavior, parseArgs, summarizeTrace, summarizeTranscript } from "./run-behavior";
 
 describe("run-behavior args", () => {
   test("parseArgs applies defaults", () => {
@@ -67,6 +67,28 @@ describe("behavior analysis", () => {
     expect(trace?.searchCalls).toBe(1);
     expect(trace?.writeCalls).toBe(1);
     expect(trace?.lifecycleSignal).toBe("done");
+  });
+
+  test("summarizeTranscript counts assistant preamble, tool lines, and post-write chatter", () => {
+    const transcript = summarizeTranscript(
+      [
+        "\u001b[2mStarted server on port 52930 (pid 9658)\u001b[22m",
+        "❯ Update src/foo.ts",
+        "• Checking src/foo.ts, then updating it.",
+        "\u001b[2m• Read src/foo.ts\u001b[22m",
+        "\u001b[2m• Edit src/foo.ts (+1 -1)\u001b[22m",
+        "Updated src/foo.ts.",
+        "\u001b[2m• Scan Code src/foo.ts\u001b[22m",
+      ].join("\n"),
+    );
+
+    expect(transcript).toEqual({
+      assistantMessages: 2,
+      assistantMessagesBeforeFirstTool: 1,
+      assistantMessagesAfterFirstWrite: 1,
+      toolMessages: 3,
+      firstWriteSeen: true,
+    });
   });
 
   test("analyzeBehavior scores a clean bounded run highly", () => {

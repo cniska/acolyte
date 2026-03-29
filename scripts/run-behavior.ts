@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { stripAnsi } from "../src/tui/serialize";
 import {
   BEHAVIOR_SCENARIO_BY_ID,
   BEHAVIOR_SCENARIO_LIST,
@@ -38,6 +39,14 @@ const behaviorTraceSummarySchema = z.object({
   otherErrorCount: z.number().int().nonnegative().optional(),
 });
 
+const behaviorTranscriptSummarySchema = z.object({
+  assistantMessages: z.number().int().nonnegative(),
+  assistantMessagesBeforeFirstTool: z.number().int().nonnegative(),
+  assistantMessagesAfterFirstWrite: z.number().int().nonnegative(),
+  toolMessages: z.number().int().nonnegative(),
+  firstWriteSeen: z.boolean(),
+});
+
 const behaviorAnalysisSchema = z.object({
   score: z.number().min(0).max(1),
   verdict: z.enum(["strong", "mixed", "weak"]),
@@ -57,6 +66,7 @@ const behaviorOutputSchema = z.object({
   stdout: z.string(),
   stderr: z.string(),
   trace: behaviorTraceSummarySchema.optional(),
+  transcript: behaviorTranscriptSummarySchema.optional(),
   analysis: behaviorAnalysisSchema,
 });
 
@@ -112,6 +122,51 @@ function countToolCalls(taskLines: string[], toolNames: string[]): number {
     (line) =>
       line.includes("event=lifecycle.tool.call") && toolNames.some((toolName) => line.includes(`tool=${toolName}`)),
   ).length;
+}
+
+function isToolTranscriptLine(line: string): boolean {
+  return /^(Read|Edit|Scan Code|Search|Find|Create|Delete|Run|Test|Fetch|Web Search|Add|Commit|Diff|Log|Show)\b/.test(
+    line,
+  );
+}
+
+export function summarizeTranscript(stdout: string): z.infer<typeof behaviorTranscriptSummarySchema> | undefined {
+  const text = stripAnsi(stdout);
+  const lines = text
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0 && !line.startsWith("Started server on port") && !line.startsWith("❯ "));
+  if (lines.length === 0) return undefined;
+
+  let assistantMessages = 0;
+  let assistantMessagesBeforeFirstTool = 0;
+  let assistantMessagesAfterFirstWrite = 0;
+  let toolMessages = 0;
+  let seenFirstTool = false;
+  let seenFirstWrite = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.startsWith("• ") ? rawLine.slice(2) : rawLine;
+    if (isToolTranscriptLine(line)) {
+      toolMessages += 1;
+      seenFirstTool = true;
+      if (/^(Edit|Create|Delete|Commit|Add)\b/.test(line)) seenFirstWrite = true;
+      continue;
+    }
+
+    if (line.startsWith(" ")) continue;
+    assistantMessages += 1;
+    if (!seenFirstTool) assistantMessagesBeforeFirstTool += 1;
+    if (seenFirstWrite) assistantMessagesAfterFirstWrite += 1;
+  }
+
+  return behaviorTranscriptSummarySchema.parse({
+    assistantMessages,
+    assistantMessagesBeforeFirstTool,
+    assistantMessagesAfterFirstWrite,
+    toolMessages,
+    firstWriteSeen: seenFirstWrite,
+  });
 }
 
 async function readLogLines(logPath: string): Promise<string[]> {
@@ -386,6 +441,7 @@ async function runScenario(
   const afterLines = await readLogLines(behaviorEnv.daemonLogPath);
   const traceLines = afterLines.slice(beforeLines.length);
   const trace = summarizeTrace(traceLines);
+  const transcript = summarizeTranscript(result.stdout);
   const correctnessIssues = [...(await scenario.validate(workspace)), ...(scenario.validateTrace?.(traceLines) ?? [])];
 
   return behaviorOutputSchema.parse({
@@ -400,6 +456,7 @@ async function runScenario(
     stdout: result.stdout,
     stderr: result.stderr,
     trace,
+    transcript,
     analysis: analyzeBehavior({
       exitCode: result.exitCode,
       expectedChangeCount: scenario.expectedChanges.length,
@@ -419,6 +476,11 @@ function printRun(run: BehaviorRun): void {
   if (run.trace) {
     console.log(
       `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} signal=${run.trace.lifecycleSignal ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} regen_limit_hit=${run.trace.regenerationLimitHit ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} guard_flags=${run.trace.guardFlagSetCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
+    );
+  }
+  if (run.transcript) {
+    console.log(
+      `transcript: assistant=${run.transcript.assistantMessages} before_first_tool=${run.transcript.assistantMessagesBeforeFirstTool} after_first_write=${run.transcript.assistantMessagesAfterFirstWrite} tools=${run.transcript.toolMessages}`,
     );
   }
   console.log(`analysis: ${run.analysis.reasons.join("; ")}`);
