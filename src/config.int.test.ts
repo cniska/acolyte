@@ -179,7 +179,7 @@ describe("config store", () => {
 
         'logFormat = "json"',
         'transportMode = "rpc"',
-        "temperatures.work = 0.3",
+        "temperature = 0.3",
         "distillMessageThreshold = 25",
         "distillReflectionThresholdTokens = 9000",
         "distillMaxOutputTokens = 1500",
@@ -202,7 +202,7 @@ describe("config store", () => {
 
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
-    expect(loaded.temperatures).toEqual({ work: 0.3 });
+    expect(loaded.temperature).toBe(0.3);
     expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
@@ -218,8 +218,7 @@ describe("config store", () => {
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.models).toEqual({});
-    expect(resolved.temperatures).toEqual({});
+    expect(resolved.temperature).toBeUndefined();
     expect(resolved.memorySources).toEqual(["stored", "distill_project", "distill_user", "distill_session"]);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
@@ -229,35 +228,27 @@ describe("config store", () => {
     expect(resolved.replyTimeoutMs).toBe(180000);
   });
 
-  test("readResolvedConfigSync uses per-mode models when set", () => {
+  test("readResolvedConfigSync uses top-level temperature when set", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(
-      join(dataDir, "config.toml"),
-      'model = "anthropic/claude-sonnet-4"\n\n[models]\nwork = "openai/gpt-5-mini"\n',
-      "utf8",
-    );
+    writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.2\n', "utf8");
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.models).toEqual({ work: "openai/gpt-5-mini" });
+    expect(resolved.temperature).toBe(0.2);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
   });
 
-  test("readResolvedConfigSync uses per-mode temperatures when set", () => {
+  test("readResolvedConfigSync uses top-level temperature from config", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(
-      join(dataDir, "config.toml"),
-      'model = "anthropic/claude-sonnet-4"\n\ntemperatures.work = 0.2\ntemperatures.verify = 0.1\n',
-      "utf8",
-    );
+    writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.1\n', "utf8");
 
     const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.temperatures).toEqual({ work: 0.2, verify: 0.1 });
+    expect(resolved.temperature).toBe(0.1);
   });
 
   test("setConfigValue rejects internal config keys", async () => {
@@ -344,39 +335,37 @@ describe("config store", () => {
       "Invalid value for port",
     );
 
-    await expect(setConfigValue("temperatures.work", "3", { homeDir: home, cwd: project })).rejects.toThrow(
-      "Invalid value for temperatures.work",
+    await expect(setConfigValue("temperature", "3", { homeDir: home, cwd: project })).rejects.toThrow(
+      "Invalid value for temperature",
     );
     await expect(setConfigValue("locale", "xx", { homeDir: home, cwd: project })).rejects.toThrow(
       "Invalid value for locale",
     );
   });
 
-  test("setConfigValue supports per-mode temperatures through dotted keys", async () => {
+  test("setConfigValue supports top-level temperature", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperatures.work", "0.2", { homeDir: home, cwd: project, scope: "project" });
-    await setConfigValue("temperatures.verify", "0.4", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.2", { homeDir: home, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
-    expect(loaded.temperatures).toEqual({ work: 0.2, verify: 0.4 });
+    expect(loaded.temperature).toBe(0.2);
   });
 
-  test("unsetConfigValue removes models.work dotted key", async () => {
+  test("unsetConfigValue removes temperature key", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("models.work", "gpt-5-mini", { homeDir: home, cwd: project, scope: "project" });
-    await setConfigValue("models.verify", "gpt-5", { homeDir: home, cwd: project, scope: "project" });
-    await unsetConfigValue("models.work", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.4", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("temperature", { homeDir: home, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
-    expect(loaded.models).toEqual({ verify: "gpt-5" });
+    expect(loaded.temperature).toBeUndefined();
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {

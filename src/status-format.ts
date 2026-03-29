@@ -8,8 +8,6 @@ const STATUS_KEY_LABEL_MAP: Record<string, string> = {
   capabilities: t("chat.status.label.capabilities"),
   memory: t("chat.status.label.memory"),
   model: t("chat.status.label.model"),
-  "model.verify": t("chat.status.label.model.verify"),
-  "model.work": t("chat.status.label.model.work"),
   permissions: t("chat.status.label.permissions"),
   protocol_version: t("chat.status.label.protocol_version"),
   providers: t("chat.status.label.providers"),

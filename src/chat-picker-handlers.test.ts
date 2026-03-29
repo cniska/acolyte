@@ -63,6 +63,6 @@ describe("chat picker handlers", () => {
     });
 
     expect(spies.currentSessions.at(-1)?.model).toBe("gpt-5.2");
-    expect(spies.rows.some((row) => row.content === "Changed default model to gpt-5.2.")).toBe(true);
+    expect(spies.rows.some((row) => row.content === "Changed model to gpt-5.2.")).toBe(true);
   });
 });

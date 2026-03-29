@@ -34,23 +34,23 @@ describe("cli config", () => {
     expect(dimLines).toContain("locale:  en");
   });
 
-  test("list still renders object maps as dotted rows", async () => {
+  test("list renders temperature scalar key", async () => {
     const { deps, dimLines } = createDeps({
-      readConfig: async () => ({ models: { work: "gpt-5-mini" } }),
+      readConfig: async () => ({ temperature: 0.2 }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("models.work:  gpt-5-mini");
+    expect(dimLines).toContain("temperature:  0.2");
   });
 
-  test("unset forwards dotted keys", async () => {
+  test("unset forwards key", async () => {
     const calls: Array<{ key: string; scope: "user" | "project" }> = [];
     const { deps } = createDeps({
       unsetConfigValue: async (key, options) => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.work"], deps);
-    expect(calls).toEqual([{ key: "models.work", scope: "user" }]);
+    await configMode(["unset", "temperature"], deps);
+    expect(calls).toEqual([{ key: "temperature", scope: "user" }]);
   });
 
   test("unset accepts trailing scope flag", async () => {
@@ -60,8 +60,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "models.work", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.work", scope: "project" }]);
+    await configMode(["unset", "temperature", "--project"], deps);
+    expect(calls).toEqual([{ key: "temperature", scope: "project" }]);
   });
 
   test("set accepts trailing scope flag", async () => {
@@ -71,7 +71,7 @@ describe("cli config", () => {
         calls.push({ key, value, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["set", "models.work", "gpt-5-mini", "--project"], deps);
-    expect(calls).toEqual([{ key: "models.work", value: "gpt-5-mini", scope: "project" }]);
+    await configMode(["set", "temperature", "0.3", "--project"], deps);
+    expect(calls).toEqual([{ key: "temperature", value: "0.3", scope: "project" }]);
   });
 });

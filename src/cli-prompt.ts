@@ -1,5 +1,5 @@
 import { stdout as output } from "node:process";
-import { createWorkspaceSpecifier, type VerifyScope } from "./api";
+import { createWorkspaceSpecifier } from "./api";
 import { createMessage } from "./chat-session";
 import { formatChecklist } from "./checklist-format";
 import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
@@ -91,7 +91,7 @@ export async function handlePrompt(
   prompt: string,
   session: Session,
   client: Client,
-  options?: { resourceId?: ResourceId; workspace?: string; verifyScope?: VerifyScope },
+  options?: { resourceId?: ResourceId; workspace?: string },
 ): Promise<boolean> {
   const userMsg = createMessage("user", prompt);
   session.messages.push(userMsg);
@@ -111,7 +111,6 @@ export async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         resourceId: options?.resourceId,
-        verifyScope: options?.verifyScope,
         ...createWorkspaceSpecifier(options?.workspace),
       },
       {

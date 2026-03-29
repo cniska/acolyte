@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { agentModeSchema } from "./agent-contract";
 import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./api";
 import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
@@ -15,8 +14,7 @@ export const pendingStateSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("accepted") }),
   z.object({
     kind: z.literal("running"),
-    mode: agentModeSchema,
-    model: z.string().optional(),
+    toolCalls: z.number().int().nonnegative().optional(),
   }),
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;

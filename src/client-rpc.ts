@@ -251,7 +251,7 @@ export class RpcClient implements Client {
           return;
         }
         if (msg.type === "chat.started") {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           return;
         }
         if (msg.type === "chat.abort.result") return;

@@ -22,8 +22,8 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/memory u")).toEqual(["/memory user"]);
     expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
-    expect(suggestSlashCommands("/mo")).toEqual(["/model", "/model work", "/model verify"]);
-    expect(suggestSlashCommands("/mod")).toEqual(["/model", "/model work", "/model verify"]);
+    expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
+    expect(suggestSlashCommands("/mod")).toEqual(["/model"]);
     expect(suggestSlashCommands("/reme")).toEqual(["/remember"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
@@ -38,8 +38,8 @@ describe("chat-slash helpers", () => {
   });
 
   test("suggestSlashCommands fuzzy-matches root and expands subcommands", () => {
-    expect(suggestSlashCommands("/mov")).toEqual(["/model", "/model work", "/model verify", "/memory", "/memory list"]);
-    expect(suggestSlashCommands("/modle")).toEqual(["/model", "/model work", "/model verify"]);
+    expect(suggestSlashCommands("/mov")).toEqual(["/model", "/memory", "/memory list", "/memory add", "/memory all"]);
+    expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
     expect(suggestSlashCommands("/memry")).toEqual([
       "/memory",
       "/memory list",
@@ -50,17 +50,17 @@ describe("chat-slash helpers", () => {
   });
 
   test("suggestSlashCommands fuzzy-matches multi-token input", () => {
-    expect(suggestSlashCommands("/model vreify")).toEqual(["/model verify"]);
-    expect(suggestSlashCommands("/model wrk")).toEqual(["/model work"]);
+    expect(suggestSlashCommands("/model vreify")).toEqual([]);
+    expect(suggestSlashCommands("/model wrk")).toEqual([]);
   });
 
   test("shouldAutocompleteSlashSubmit only intercepts unresolved slash command token", () => {
     expect(shouldAutocompleteSlashSubmit("/st", "/status")).toBe(true);
-    expect(shouldAutocompleteSlashSubmit("/model w", "/model work")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/mo", "/model")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/stauts", "/status")).toBe(true);
-    expect(shouldAutocompleteSlashSubmit("/mov", "/model verify")).toBe(true);
+    expect(shouldAutocompleteSlashSubmit("/mov", "/model")).toBe(true);
     expect(shouldAutocompleteSlashSubmit("/status", "/status")).toBe(false);
-    expect(shouldAutocompleteSlashSubmit("/model work", "/model work")).toBe(false);
+    expect(shouldAutocompleteSlashSubmit("/model", "/model")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("/status now", "/status")).toBe(false);
     expect(shouldAutocompleteSlashSubmit("status", "/status")).toBe(false);
   });
@@ -69,14 +69,14 @@ describe("chat-slash helpers", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/usage")).toBe(true);
     expect(isKnownSlashToken("/model")).toBe(true);
-    expect(isKnownSlashToken("/model work")).toBe(true);
+    expect(isKnownSlashToken("/model work")).toBe(false);
     expect(isKnownSlashToken("/memory list")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
   });
 
   test("slashCommandHelp returns short descriptions", () => {
     expect(slashCommandHelp("/model")).toBe("change model");
-    expect(slashCommandHelp("/model work")).toBe("change work model");
+    expect(slashCommandHelp("/model work")).toBe("");
     expect(slashCommandHelp("/unknown")).toBe("");
   });
 

@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
@@ -427,7 +426,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
 export type CommandContextSpies = {
   rows: ChatRow[];
   openedModel: boolean;
-  openedModelMode?: AgentMode;
+  openedModelMode?: string;
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
 };
@@ -440,10 +439,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     soulPrompt: "",
     emit: () => {},
     debug: () => {},
-    initialMode: "work",
     tools: {} as RunContext["tools"],
-    mode: "work",
-    agentForMode: "work",
     model: "gpt-5-mini",
     session: createSessionContext(),
     agent: {} as RunContext["agent"],
@@ -473,7 +469,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     regenerationCounts: {
       "guard-recovery": 0,
       lint: 0,
-      verify: 0,
       "tool-recovery": 0,
       "repeated-failure": 0,
     },
@@ -517,9 +512,8 @@ export function createCommandContext(
     exit: () => {},
     openSkillsPanel: async () => {},
     openResumePanel: () => {},
-    openModelPanel: (mode?: AgentMode) => {
+    openModelPanel: () => {
       spies.openedModel = true;
-      spies.openedModelMode = mode;
     },
     clearTranscript: () => {
       spies.rows = [];

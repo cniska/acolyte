@@ -1,4 +1,3 @@
-import type { AgentMode } from "./agent-contract";
 import { readResolvedConfigSync } from "./config";
 import { env } from "./env";
 
@@ -25,8 +24,7 @@ export const appConfig = {
     baseUrl: fileConfig.googleBaseUrl,
   },
   model: fileConfig.model,
-  models: fileConfig.models,
-  temperatures: fileConfig.temperatures,
+  temperature: fileConfig.temperature,
   distill: {
     model: fileConfig.distillModel,
     messageThreshold: fileConfig.distillMessageThreshold,
@@ -68,8 +66,4 @@ export const appConfig = {
 
 export function setDefaultModel(model: string): void {
   (appConfig as { model: string }).model = model;
-}
-
-export function setModeModel(mode: AgentMode, model: string): void {
-  (appConfig.models as Record<string, string>)[mode] = model;
 }

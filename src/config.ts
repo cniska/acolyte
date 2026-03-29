@@ -2,12 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { agentModeSchema } from "./agent-contract";
 import {
   CONFIG_SET_SCHEMAS,
   type Config,
   type ConfigScope,
-  isModeModelKey,
   type LogFormat,
   type ResolvedConfig,
   toConfig,
@@ -120,16 +118,7 @@ function serializeToml(config: Config): string {
   if (typeof config.port === "number") lines.push(`port = ${config.port}`);
   if (config.locale) lines.push(`locale = ${JSON.stringify(config.locale)}`);
   if (config.model) lines.push(`model = ${JSON.stringify(config.model)}`);
-  if (config.models) {
-    for (const [mode, m] of Object.entries(config.models)) {
-      lines.push(`models.${mode} = ${JSON.stringify(m)}`);
-    }
-  }
-  if (config.temperatures) {
-    for (const [mode, value] of Object.entries(config.temperatures)) {
-      lines.push(`temperatures.${mode} = ${value}`);
-    }
-  }
+  if (typeof config.temperature === "number") lines.push(`temperature = ${config.temperature}`);
   if (config.distillModel) lines.push(`distillModel = ${JSON.stringify(config.distillModel)}`);
   if (typeof config.distillMessageThreshold === "number")
     lines.push(`distillMessageThreshold = ${config.distillMessageThreshold}`);
@@ -165,8 +154,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     port,
     locale: config.locale ?? defaults.locale,
     model,
-    models: config.models ?? {},
-    temperatures: config.temperatures ?? {},
+    temperature: config.temperature,
     distillModel: config.distillModel ?? model,
     distillMessageThreshold: config.distillMessageThreshold ?? defaults.distillMessageThreshold,
     distillReflectionThresholdTokens:
@@ -224,8 +212,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  models: new Set([...agentModeSchema.options]),
-  temperatures: new Set([...agentModeSchema.options]),
+  // No dotted keys are currently supported.
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {
@@ -234,9 +221,8 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   const section = key.slice(0, dot) as keyof Config;
   const subKey = key.slice(dot + 1);
   if (!(section in CONFIG_SET_SCHEMAS) || subKey.length === 0) return null;
-  if (section === "models" && !isModeModelKey(subKey)) return null;
   const allowed = RECORD_VALID_KEYS[section];
-  if (allowed && !allowed.has(subKey)) return null;
+  if (!allowed || !allowed.has(subKey)) return null;
   return { section, subKey };
 }
 

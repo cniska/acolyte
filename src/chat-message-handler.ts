@@ -1,6 +1,3 @@
-import type { AgentMode } from "./agent-contract";
-import type { ChatRequest } from "./api";
-import { appConfig } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -37,7 +34,7 @@ type CreateMessageHandlerInput = {
   openSkillsPanel: () => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => void | Promise<void>;
+  openModelPanel: () => void | Promise<void>;
   tokenUsage: SessionTokenUsageEntry[];
   isPending: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
@@ -52,7 +49,6 @@ type CreateMessageHandlerInput = {
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
   useMemory?: boolean;
-  modeModels?: ChatRequest["modeModels"];
   promote?: () => void;
   clearTranscript: (sessionId?: string) => void;
 };
@@ -89,10 +85,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       await input.persist();
       return;
     }
-    input.setPendingState({ kind: "running", mode: "work" });
+    input.setPendingState({ kind: "running" });
     const controller = new AbortController();
     input.setInterrupt(() => controller.abort());
     const pendingStartedAt = Date.now();
+    const runningToolCallIds = new Set<string>();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
     });
@@ -106,17 +103,28 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         userText,
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: input.currentSession.model,
-        modeModels: input.modeModels ?? appConfig.models,
         sessionId: input.currentSession.id,
         useMemory: input.useMemory,
         signal: controller.signal,
         onEvent: (event) => {
           switch (event.type) {
             case "status":
-              input.setPendingState(event.state);
+              if (event.state.kind === "running") {
+                input.setPendingState(
+                  runningToolCallIds.size > 0
+                    ? { kind: "running", toolCalls: runningToolCallIds.size }
+                    : { kind: "running" },
+                );
+              } else {
+                input.setPendingState(event.state);
+              }
               break;
             case "usage":
               input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
+              break;
+            case "tool-call":
+              runningToolCallIds.add(event.toolCallId);
+              input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
               break;
             case "text-delta":
               streamState.onAssistantDelta(event.text);
@@ -226,7 +234,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       });
       input.setRows((current) => [...current, userRow]);
       startPending();
-      input.setPendingState({ kind: "running", mode: "work" });
+      input.setPendingState({ kind: "running" });
       try {
         const distilled = naturalRememberDirective.content
           .trim()

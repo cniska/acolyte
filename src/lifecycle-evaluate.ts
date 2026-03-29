@@ -11,19 +11,11 @@ import {
 } from "./lifecycle-evaluators";
 import { phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import {
-  acceptedLifecycleSignal,
-  clearReviewStateForRegenerationReason,
-  updateRepeatedFailureState,
-} from "./lifecycle-state";
+import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 
 const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
-const EVALUATORS: Evaluator[] = [
-  guardRecoveryEvaluator,
-  toolRecoveryEvaluator,
-  repeatedFailureEvaluator,
-];
+const EVALUATORS: Evaluator[] = [guardRecoveryEvaluator, toolRecoveryEvaluator, repeatedFailureEvaluator];
 
 type PhaseEvaluateDeps = {
   phaseGenerate: typeof phaseGenerate;
@@ -102,7 +94,6 @@ async function triggerRegeneration(
     regeneration_reason_count: ctx.regenerationCounts[regenerationReason],
   });
 
-  clearReviewStateForRegenerationReason(ctx, action.reason);
   if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
   await deps.phaseGenerate(ctx, {
@@ -124,7 +115,6 @@ export async function phaseEvaluate(
       ctx.currentError = undefined;
       ctx.debug("lifecycle.signal.accepted", {
         signal: lifecycleSignal,
-        mode: ctx.mode,
         tool_calls: ctx.result.toolCalls.length,
       });
     }

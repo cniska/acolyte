@@ -2,11 +2,11 @@ import { createErrorStats } from "./error-handling";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { createModeAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { createRunAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
-import { resolveInitialMode } from "./lifecycle-resolve";
+import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
@@ -17,10 +17,10 @@ import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-pro
 const memoryCommitQueue = createInMemoryTaskQueue();
 
 export type LifecycleDeps = {
-  resolveInitialMode: typeof resolveInitialMode;
+  resolveModel: typeof resolveModel;
   resolveLifecyclePolicy: typeof resolveLifecyclePolicy;
   phasePrepare: typeof phasePrepare;
-  createModeAgent: typeof createModeAgent;
+  createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
   shouldYieldNow: typeof shouldYieldNow;
   phaseEvaluate: typeof phaseEvaluate;
@@ -28,10 +28,10 @@ export type LifecycleDeps = {
 };
 
 const defaultLifecycleDeps: LifecycleDeps = {
-  resolveInitialMode,
+  resolveModel,
   resolveLifecyclePolicy,
   phasePrepare,
-  createModeAgent,
+  createRunAgent,
   phaseGenerate,
   shouldYieldNow,
   phaseEvaluate,
@@ -78,19 +78,17 @@ function createRunContext(
   input: LifecycleInput,
   params: {
     debug: RunContext["debug"];
-    initialMode: RunContext["initialMode"];
     model: string;
     prepared: ReturnType<typeof phasePrepare>;
     emit: RunContext["emit"];
     policy: RunContext["policy"];
-    createModeAgent: typeof createModeAgent;
+    createRunAgent: typeof createRunAgent;
   },
 ): RunContext {
   const session = params.prepared.session;
   const previousOnGuard = session.onGuard;
-  const agent = params.createModeAgent({
+  const agent = params.createRunAgent({
     soulPrompt: input.soulPrompt,
-    mode: params.initialMode,
     workspace: input.workspace,
     model: params.model,
     tools: params.prepared.tools,
@@ -103,13 +101,9 @@ function createRunContext(
     soulPrompt: input.soulPrompt,
     emit: params.emit,
     debug: params.debug,
-    initialMode: params.initialMode,
     tools: params.prepared.tools,
-    mode: params.initialMode,
-    agentForMode: params.initialMode,
     model: params.model,
     session: Object.assign(session, {
-      mode: params.initialMode,
       onDebug: (event: `lifecycle.${string}`, data: Record<string, unknown>) => params.debug(event, data),
     }),
     agent,
@@ -129,7 +123,6 @@ function createRunContext(
     regenerationCounts: {
       "guard-recovery": 0,
       lint: 0,
-      verify: 0,
       "tool-recovery": 0,
       "repeated-failure": 0,
     },
@@ -205,7 +198,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     });
   }
 
-  const { mode: initialMode, model } = deps.resolveInitialMode(input.request, debug);
+  const { model } = deps.resolveModel(input.request.model);
 
   const prepared = deps.phasePrepare({
     request: input.request,
@@ -213,7 +206,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
     memoryTokens: input.memoryTokens,
-    initialMode,
     model,
     policy,
     debug,
@@ -227,19 +219,18 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const ctx = createRunContext(input, {
     debug,
-    initialMode,
     model,
     prepared,
     emit,
     policy,
-    createModeAgent: deps.createModeAgent,
+    createRunAgent: deps.createRunAgent,
   });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
   if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 
-  ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, mode: initialMode, model });
+  ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, model });
   await deps.phaseGenerate(ctx, {
     cycleLimit: policy.initialMaxSteps,
     timeoutMs: policy.stepTimeoutMs,

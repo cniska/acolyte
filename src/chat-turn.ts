@@ -1,4 +1,3 @@
-import type { AgentMode } from "./agent-contract";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -81,7 +80,6 @@ type RunAssistantTurnParams = {
   userText: string;
   history: ChatMessage[];
   model: string;
-  modeModels?: Partial<Record<AgentMode, string>>;
   sessionId: string;
   useMemory?: boolean;
   signal?: AbortSignal;
@@ -100,7 +98,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       message: params.userText,
       history: params.history,
       model: params.model,
-      modeModels: params.modeModels,
       sessionId: params.sessionId,
       useMemory: params.useMemory,
       ...createWorkspaceSpecifier(),

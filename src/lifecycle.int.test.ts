@@ -10,7 +10,6 @@ import {
   pickFunctionToolName,
   startFakeProviderServer,
 } from "../scripts/fake-provider-server";
-import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 
@@ -46,11 +45,6 @@ function run(message: string) {
     soulPrompt: "",
     workspace,
   });
-}
-
-function requestMode(ctx: FakeProviderRequestContext): AgentMode {
-  const hasFileEditTool = ctx.body.tools?.some((tool) => tool?.type === "function" && tool.name?.includes("edit"));
-  return hasFileEditTool ? "work" : "verify";
 }
 
 async function writeExecutableScript(name: string, body: string): Promise<string> {
@@ -144,7 +138,7 @@ describe("lifecycle integration", () => {
     expect(phases).toContain("work:blocked");
   });
 
-  test("verifyScope none skips verify even with write tools", async () => {
+  test("write tools remain single-pass without a verify stage", async () => {
     let turnCount = 0;
     const phases: string[] = [];
 
@@ -170,7 +164,7 @@ describe("lifecycle integration", () => {
     });
 
     await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
     });
@@ -211,7 +205,6 @@ describe("lifecycle integration", () => {
     expect(phases).not.toContain("verify:done");
   });
 
-
   test("format effect runs configured command for written files", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const formatLog = join(workspace, "format.log");
@@ -243,7 +236,7 @@ printf '%s\n' "$@" > "${formatLog}"
     });
 
     await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
@@ -296,7 +289,7 @@ exit 0
     });
 
     const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {

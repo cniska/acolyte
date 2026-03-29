@@ -25,7 +25,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
     return false;
   }
 
-  input.setPendingState({ kind: "running", mode: "work" });
+  input.setPendingState({ kind: "running" });
   void (async () => {
     try {
       for (let pollCount = 0; pollCount < MAX_POLL_ITERATIONS; pollCount += 1) {

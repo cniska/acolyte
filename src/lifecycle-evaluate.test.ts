@@ -145,15 +145,13 @@ describe("phaseEvaluate", () => {
     expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
   });
 
-
   test("stops regeneration when a reason-specific budget is exhausted", async () => {
     const ctx = createRunContext({
       result: { text: "done", toolCalls: [] },
       regenerationCounts: {
         "guard-recovery": 0,
         lint: 0,
-        verify: 1,
-        "tool-recovery": 0,
+        "tool-recovery": 1,
         "repeated-failure": 0,
       },
       policy: {
@@ -161,15 +159,14 @@ describe("phaseEvaluate", () => {
         maxRegenerationsPerReason: {
           "guard-recovery": 2,
           lint: 1,
-          verify: 1,
-          "tool-recovery": 2,
+          "tool-recovery": 1,
           "repeated-failure": 1,
         },
       },
       debug: (event, fields) => {
         if (event !== "lifecycle.eval.skipped") return;
         expect(fields?.reason).toBe("regeneration_reason_cap");
-        expect(fields?.regeneration_reason).toBe("verify");
+        expect(fields?.regeneration_reason).toBe("tool-recovery");
       },
     });
 
@@ -178,19 +175,18 @@ describe("phaseEvaluate", () => {
       effects: [],
       evaluators: [
         {
-          id: "verify-cycle",
+          id: "tool-recovery",
           evaluate: () => ({
             action: {
               type: "regenerate",
-              reason: "verify",
-              feedback: { source: "verify", summary: "Review the changes." },
-              transition: { to: "verify" },
+              reason: "tool-recovery",
+              feedback: { source: "tool-recovery", summary: "Review the changes." },
             },
           }),
         },
       ],
       phaseGenerate: async () => {
-        throw new Error("phaseGenerate should not run after the verify budget is exhausted");
+        throw new Error("phaseGenerate should not run after the reason budget is exhausted");
       },
     });
 

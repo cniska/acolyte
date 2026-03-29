@@ -1,4 +1,3 @@
-import type { AgentMode } from "./agent-contract";
 import { type ModelPickerItem, PICKER_PAGE_SIZE, type PickerState } from "./chat-picker";
 import { getAvailableModels } from "./provider-models";
 import type { SessionState } from "./session-contract";
@@ -38,7 +37,7 @@ function modelPickerItem(id: string): ModelPickerItem {
   return { label: id, value: id };
 }
 
-export async function createModelPicker(targetMode?: AgentMode): Promise<PickerState> {
+export async function createModelPicker(): Promise<PickerState> {
   const items = (await getAvailableModels()).map(modelPickerItem);
   return {
     kind: "model",
@@ -47,6 +46,5 @@ export async function createModelPicker(targetMode?: AgentMode): Promise<PickerS
     query: "",
     index: 0,
     scrollOffset: 0,
-    targetMode,
   };
 }

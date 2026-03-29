@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { type AgentMode, agentModeSchema } from "./agent-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const logFormatSchema = z.enum(["logfmt", "json"]);
@@ -39,29 +38,12 @@ const parseMemorySourcesSchema = z.preprocess((value) => {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 }, z.array(memorySourceIdSchema).min(1));
-const MODE_MODEL_KEYS = new Set<string>([...agentModeSchema.options]);
-const modeTemperatureMapSchema = z
-  .record(
-    z.string(),
-    z.preprocess(
-      (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
-      z.number().min(0).max(MAX_TEMPERATURE),
-    ),
-  )
-  .transform((input) =>
-    Object.fromEntries(Object.entries(input).filter(([mode]) => agentModeSchema.options.includes(mode as AgentMode))),
-  );
-
-export function isModeModelKey(key: string): boolean {
-  return MODE_MODEL_KEYS.has(key);
-}
 
 export interface Config {
   port?: number;
   locale?: TranslationLocale;
   model?: string;
-  models?: Record<string, string>;
-  temperatures?: Record<string, number>;
+  temperature?: number;
   distillModel?: string;
   distillMessageThreshold?: number;
   distillReflectionThresholdTokens?: number;
@@ -86,8 +68,7 @@ export interface ResolvedConfig {
   port: number;
   locale: TranslationLocale;
   model: string;
-  models: Record<string, string>;
-  temperatures: Record<string, number>;
+  temperature?: number;
   distillModel: string;
   distillMessageThreshold: number;
   distillReflectionThresholdTokens: number;
@@ -112,8 +93,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   port: parseIntegerSchema(1, 65535),
   locale: translationLocaleSchema,
   model: nonEmptyStringSchema,
-  models: z.record(z.string(), nonEmptyStringSchema),
-  temperatures: modeTemperatureMapSchema,
+  temperature: parseTemperatureSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
@@ -131,26 +111,7 @@ export function toConfig(input: Record<string, unknown>): Config {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     locale: parseField(translationLocaleSchema, input.locale),
     model: parseField(nonEmptyStringSchema, input.model),
-    models:
-      typeof input.models === "object" && input.models !== null
-        ? Object.fromEntries(
-            Object.entries(input.models as Record<string, unknown>).flatMap(([k, v]) => {
-              if (!isModeModelKey(k)) return [];
-              const result = nonEmptyStringSchema.safeParse(v);
-              return result.success ? [[k, result.data]] : [];
-            }),
-          )
-        : undefined,
-    temperatures:
-      typeof input.temperatures === "object" && input.temperatures !== null
-        ? Object.fromEntries(
-            Object.entries(input.temperatures as Record<string, unknown>).flatMap(([k, v]) => {
-              if (!agentModeSchema.options.includes(k as AgentMode)) return [];
-              const result = parseTemperatureSchema.safeParse(v);
-              return result.success ? [[k, result.data]] : [];
-            }),
-          )
-        : undefined,
+    temperature: parseField(parseTemperatureSchema, input.temperature),
     distillModel: parseField(nonEmptyStringSchema, input.distillModel),
     distillMessageThreshold: parseField(parseIntegerSchema(1, 200), input.distillMessageThreshold),
     distillReflectionThresholdTokens: parseField(

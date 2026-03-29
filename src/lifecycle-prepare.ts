@@ -2,7 +2,7 @@ import { createAgentInput, estimateTokens } from "./agent-input";
 import { guardStatsFromSession, type PhasePrepareInput, type PhasePrepareResult } from "./lifecycle-contract";
 import { toolsForAgent } from "./tool-registry";
 
-/** Approximate overhead for BASE_INSTRUCTIONS + mode-specific instructions. */
+/** Approximate overhead for BASE_INSTRUCTIONS + runtime instructions. */
 const INSTRUCTION_OVERHEAD_TOKENS = 300;
 
 function estimateToolTokens(tools: ReturnType<typeof toolsForAgent>["tools"]): number {
@@ -51,7 +51,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   input.debug("lifecycle.prepare", {
     task_id: input.taskId ?? null,
     model: input.model,
-    mode: input.initialMode,
     history_messages: input.request.history.length,
   });
 

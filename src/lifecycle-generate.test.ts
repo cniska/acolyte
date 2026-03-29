@@ -378,7 +378,6 @@ describe("createGenerationInput", () => {
   test("returns base input when there is no feedback", () => {
     const input = createGenerationInput({
       baseAgentInput: "USER: fix it",
-      mode: "work",
       lifecycleState: { feedback: [] },
     });
     expect(input).toBe("USER: fix it");
@@ -438,23 +437,21 @@ describe("consumeLifecycleFeedback", () => {
 
   test("does not leak consumed feedback into later prompt creation", () => {
     const state = {
-      feedback: [{ source: "lint" as const, mode: "work" as const, summary: "Lint errors detected" }],
+      feedback: [{ source: "lint" as const, summary: "Lint errors detected" }],
     };
 
     expect(
       createGenerationInput({
         baseAgentInput: "USER: fix it",
-        mode: "work",
         lifecycleState: state,
       }),
     ).toContain("Lint errors detected");
 
-    consumeLifecycleFeedback(state, "work");
+    consumeLifecycleFeedback(state);
 
     expect(
       createGenerationInput({
         baseAgentInput: "USER: fix it",
-        mode: "work",
         lifecycleState: state,
       }),
     ).toBe("USER: fix it");

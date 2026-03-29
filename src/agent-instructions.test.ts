@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { createInstructions, createModeInstructions } from "./agent-instructions";
+import { createInstructions, createWorkInstructions } from "./agent-instructions";
 
-describe("createModeInstructions", () => {
-  test("work mode includes tool instructions from tool definitions", () => {
-    const out = createModeInstructions("work");
+describe("createWorkInstructions", () => {
+  test("includes tool instructions from tool definitions", () => {
+    const out = createWorkInstructions();
     expect(out).toContain("code-scan");
     expect(out).toContain("code-edit");
     expect(out).toContain("file-edit");
@@ -11,8 +11,8 @@ describe("createModeInstructions", () => {
     expect(out).toContain("shell-run");
   });
 
-  test("work mode includes discovery tool instructions", () => {
-    const out = createModeInstructions("work");
+  test("includes discovery tool instructions", () => {
+    const out = createWorkInstructions();
     expect(out).toContain("Use `file-find` to locate");
     expect(out).toContain("Use `file-search` to search");
     expect(out).toContain("do not use `file-search`; read the file once and make one consolidated `file-edit` call");
@@ -21,7 +21,7 @@ describe("createModeInstructions", () => {
   });
 
   test("includes preamble lines", () => {
-    const out = createModeInstructions("work");
+    const out = createWorkInstructions();
     expect(out).toContain("make `file-read` on X your first tool call");
     expect(out).toContain("If the user names the files to change");
     expect(out).toContain("work one named file at a time");
@@ -39,7 +39,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("do not signal completion after the first hit or first partial batch");
     expect(out).toContain("make the requested change and stop");
     expect(out).toContain("trust the edit preview and the text you already have");
-    expect(out).toContain("do not review, find, search, or scan that same file again in work mode");
+    expect(out).toContain("do not review, find, search, or scan that same file again in the same task");
     expect(out).toContain("Do not call another write tool on the same named file after a successful bounded edit");
     expect(out).toContain("prefer `code-scan` + `code-edit`");
     expect(out).toContain("`withinSymbol` naming that enclosing symbol");
@@ -52,25 +52,11 @@ describe("createModeInstructions", () => {
     expect(out).toContain("repeated plain-text rewrite inside one known file");
     expect(out).toContain("Trust type signatures");
   });
-
-  test("verify mode includes verification instructions", () => {
-    const out = createModeInstructions("verify");
-    expect(out).toContain("Review the changes");
-    expect(out).toContain("Choose the lightest sufficient verification");
-    expect(out).toContain("If the review is clean, respond with `@signal no_op`");
-    expect(out).toContain("If you find issues, list only the concrete findings");
-    expect(out).toContain("Do not fix issues in verify mode");
-  });
-
-  test("work mode does not include verification instructions", () => {
-    const out = createModeInstructions("work");
-    expect(out).not.toContain("Review the changes");
-  });
 });
 
 describe("createInstructions", () => {
-  test("includes base instructions for all modes", () => {
-    const out = createInstructions("Soul.", "work");
+  test("includes base instructions", () => {
+    const out = createInstructions("Soul.");
     expect(out).toContain("Soul.");
     expect(out).toContain("Prefer dedicated project tools; use shell only when no dedicated tool exists.");
     expect(out).toContain("Before taking action (tool call, command, or edit), write exactly one sentence");
@@ -84,8 +70,8 @@ describe("createInstructions", () => {
     expect(out).toContain("@signal blocked");
   });
 
-  test("work mode includes work-specific instructions", () => {
-    const out = createInstructions("Soul.", "work");
+  test("includes work-specific instructions", () => {
+    const out = createInstructions("Soul.");
     expect(out).toContain("code-edit");
     expect(out).toContain("AST");
     expect(out).toContain("Prefer explicit operation objects");

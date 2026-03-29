@@ -1,4 +1,3 @@
-import type { AgentMode } from "./agent-contract";
 import type {
   GenerateResult,
   LifecycleError,
@@ -35,8 +34,6 @@ export type EvaluatorResult = {
 export type EvaluatorContext = {
   readonly result?: Readonly<GenerateResult>;
   readonly observedTools: ReadonlySet<string>;
-  readonly initialMode: AgentMode;
-  readonly mode: AgentMode;
   readonly taskId: string | undefined;
   readonly session: Readonly<SessionContext>;
   readonly workspace: string | undefined;
@@ -81,15 +78,13 @@ export const guardRecoveryEvaluator: Evaluator = {
   evaluate(ctx) {
     if (!ctx.result) return { action: { type: "done" } };
     if (ctx.currentError?.category !== "guard-blocked") return { action: { type: "done" } };
-    const hasPendingFeedback = ctx.lifecycleState.feedback.some(
-      (feedback) => feedback.source === "guard",
-    );
+    const hasPendingFeedback = ctx.lifecycleState.feedback.some((feedback) => feedback.source === "guard");
     if (!hasPendingFeedback) return { action: { type: "done" } };
     return {
       action: { type: "regenerate", reason: "guard-recovery" },
       debug: {
         event: "lifecycle.eval.guard_recovery",
-        fields: { mode: ctx.mode, error: ctx.currentError.message },
+        fields: { error: ctx.currentError.message },
       },
     };
   },

@@ -42,21 +42,21 @@ const phaseFinalize = mock(
   }),
 );
 
-const createModeAgent = mock(() => ({
+const createRunAgent = mock(() => ({
   id: "test-agent",
   name: "test-agent",
   instructions: "",
   model: {} as never,
   tools: {},
   async stream() {
-    throw new Error("createModeAgent stream should not be called in runLifecycle unit test");
+    throw new Error("createRunAgent stream should not be called in runLifecycle unit test");
   },
 }));
 
 describe("runLifecycle", () => {
   test("orchestrates prepare, generate, evaluate, and finalize", async () => {
     const deps: LifecycleDeps = {
-      resolveInitialMode: () => ({ mode: "work", model: "gpt-5-mini" }),
+      resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
       resolveLifecyclePolicy: () => ({
         ...defaultLifecyclePolicy,
         initialMaxSteps: 3,
@@ -65,7 +65,7 @@ describe("runLifecycle", () => {
         maxNudgesPerGeneration: 1,
       }),
       phasePrepare,
-      createModeAgent,
+      createRunAgent,
       phaseGenerate,
       shouldYieldNow: () => false,
       phaseEvaluate,
@@ -83,7 +83,7 @@ describe("runLifecycle", () => {
     );
 
     expect(phasePrepare).toHaveBeenCalledTimes(1);
-    expect(createModeAgent).toHaveBeenCalledTimes(1);
+    expect(createRunAgent).toHaveBeenCalledTimes(1);
     expect(phaseGenerate).toHaveBeenCalledTimes(1);
     expect(phaseEvaluate).toHaveBeenCalledTimes(1);
     expect(phaseFinalize).toHaveBeenCalledTimes(1);

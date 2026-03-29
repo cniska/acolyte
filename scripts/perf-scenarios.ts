@@ -49,11 +49,11 @@ export const PERF_SCENARIOS: PerfScenario[] = [
   {
     id: "edit-then-verify",
     marker: "[perf:edit-then-verify]",
-    description: "One file-edit call followed by one shell-run verify call.",
-    prompt: "[perf:edit-then-verify] Edit src/lifecycle.ts and run verification once, then answer briefly.",
+    description: "One file-edit call followed by one test-run call.",
+    prompt: "[perf:edit-then-verify] Edit src/lifecycle.ts and run one targeted test command, then answer briefly.",
     handle: (ctx) => {
       const editTool = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit", "file"]);
-      const runTool = pickFunctionToolName(ctx.body.tools, "shell-run", ["run", "command", "terminal"]);
+      const runTool = pickFunctionToolName(ctx.body.tools, "test-run", ["test"]);
       const lastCallId = ctx.outputs[ctx.outputs.length - 1]?.callId;
 
       if (ctx.outputs.length === 0) {
@@ -76,7 +76,7 @@ export const PERF_SCENARIOS: PerfScenario[] = [
             id: "fc_run_1",
             callId: "call_run_1",
             name: runTool,
-            args: JSON.stringify({ command: "bun test" }),
+            args: JSON.stringify({ files: ["src/lifecycle.ts"] }),
           },
         ]);
       }

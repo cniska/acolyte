@@ -335,7 +335,7 @@ const fileChurnGuard: ToolGuard = {
 
       return blockGuard(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-          "Use one consolidated edit or code-edit, then run verify.",
+          "Use one consolidated edit or code-edit, then run targeted validation.",
         target,
       );
     }
@@ -356,7 +356,7 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
   return {
     id: config.id,
     description: config.description,
-      tools: [config.tool],
+    tools: [config.tool],
     check(input) {
       const { toolName, args, session } = input;
       const preCheck = config.preCheck?.(input);

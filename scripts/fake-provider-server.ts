@@ -175,22 +175,14 @@ export function createMarkerScenarioHandler<Id extends string>(
   scenarios: readonly MarkerScenario<Id>[],
   defaultText = "ok",
 ): FakeProviderHandler {
-  const scenarioByResponseId = new Map<string, Id>();
-  const scenarioById = new Map<Id, MarkerScenario<Id>>(scenarios.map((scenario) => [scenario.id, scenario]));
+  const scenarioByResponseId = new Map<string, MarkerScenario<Id>>();
 
   return (ctx: FakeProviderRequestContext): Record<string, unknown> => {
-    let scenarioId: Id | undefined;
-    if (ctx.previousResponseId) {
-      scenarioId = scenarioByResponseId.get(ctx.previousResponseId);
-    }
-    if (!scenarioId) {
-      scenarioId = scenarios.find((entry) => ctx.sourceText.includes(entry.marker))?.id;
-    }
-    if (!scenarioId) return createMessagePayload(ctx.model, ctx.responseCounter, defaultText);
-
-    scenarioByResponseId.set(fakeResponseId(ctx.responseCounter), scenarioId);
-    const scenario = scenarioById.get(scenarioId);
+    const scenario =
+      (ctx.previousResponseId ? scenarioByResponseId.get(ctx.previousResponseId) : undefined) ??
+      scenarios.find((entry) => ctx.sourceText.includes(entry.marker));
     if (!scenario) return createMessagePayload(ctx.model, ctx.responseCounter, defaultText);
+    scenarioByResponseId.set(fakeResponseId(ctx.responseCounter), scenario);
     return scenario.handle(ctx);
   };
 }
@@ -270,16 +262,18 @@ export function startFakeProviderServer(options: FakeProviderServerOptions = {})
   const handleRequest = options.handleRequest ?? defaultHandler;
   const responseDelayMs = options.responseDelayMs ?? 0;
   let responseCounter = 0;
+  const notFound = () =>
+    new Response(JSON.stringify({ error: { message: "Not found" } }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
 
   const server = Bun.serve({
     port: 0,
     async fetch(req) {
       const url = new URL(req.url);
       if (url.pathname !== "/v1/responses" || req.method !== "POST") {
-        return new Response(JSON.stringify({ error: { message: "Not found" } }), {
-          status: 404,
-          headers: { "content-type": "application/json" },
-        });
+        return notFound();
       }
 
       const bodyText = await req.text();

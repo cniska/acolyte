@@ -1,5 +1,4 @@
 import type React from "react";
-import type { AgentMode } from "./agent-contract";
 import { unreachable } from "./assert";
 import { alignCols } from "./chat-format";
 import { truncateText } from "./compact-text";
@@ -25,7 +24,6 @@ export type PickerState =
       query: string;
       index: number;
       scrollOffset: number;
-      targetMode?: AgentMode;
       loading?: boolean;
     };
 
@@ -63,9 +61,7 @@ export function pickerLabel(picker: PickerState): string {
     case "resume":
       return t("chat.picker.title.resume");
     case "model":
-      return picker.targetMode
-        ? `${t("chat.picker.title.model.mode", { mode: picker.targetMode })}: `
-        : `${t("chat.picker.title.model")}: `;
+      return `${t("chat.picker.title.model")}: `;
     default:
       return unreachable(picker);
   }
