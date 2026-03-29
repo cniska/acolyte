@@ -2,7 +2,6 @@ import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } 
 import { t } from "./i18n";
 import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import {
-  boundedLiteralCompletenessEvaluator,
   type Evaluator,
   formatEvaluator,
   guardRecoveryEvaluator,
@@ -18,7 +17,6 @@ import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedF
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
-  boundedLiteralCompletenessEvaluator,
   formatEvaluator,
   lintEvaluator,
   verifyEvaluator,
