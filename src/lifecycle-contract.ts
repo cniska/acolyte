@@ -112,27 +112,12 @@ export type PhasePrepareResult = {
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
-export type ReviewCandidate = {
-  result: GenerateResult | undefined;
-  currentError: LifecycleError | undefined;
-};
-
-export const reviewOutcomeStatusSchema = z.enum(["clean", "issues", "blocked"]);
-export type ReviewOutcomeStatus = z.infer<typeof reviewOutcomeStatusSchema>;
-
-export type ReviewResult = {
-  status: ReviewOutcomeStatus;
-  details?: string;
-  error?: LifecycleError;
-};
-
-export const feedbackSourceSchema = z.enum(["guard", "lint", "verify", "tool-recovery", "repeated-failure"]);
+export const feedbackSourceSchema = z.enum(["guard", "lint", "tool-recovery", "repeated-failure"]);
 export type FeedbackSource = z.infer<typeof feedbackSourceSchema>;
 
 export const regenerationReasonSchema = z.enum([
   "guard-recovery",
   "lint",
-  "verify",
   "tool-recovery",
   "repeated-failure",
 ]);
@@ -140,23 +125,15 @@ export type RegenerationReason = z.infer<typeof regenerationReasonSchema>;
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
-  mode: AgentMode;
   summary: string;
   details?: string;
   instruction?: string;
 };
 
-export type LifecycleFeedbackInput = Omit<LifecycleFeedback, "mode">;
-
-export type LifecycleTransition = {
-  to: AgentMode;
-};
-
 export type RegenerateAction = {
   type: "regenerate";
   reason: RegenerationReason;
-  feedback?: LifecycleFeedbackInput;
-  transition?: LifecycleTransition;
+  feedback?: LifecycleFeedback;
   cycleLimit?: number;
 };
 
@@ -169,8 +146,6 @@ export type Effect = {
 
 export type LifecycleState = {
   feedback: LifecycleFeedback[];
-  reviewCandidate?: ReviewCandidate;
-  reviewResult?: ReviewResult;
   repeatedFailure?: {
     signature: string;
     count: number;

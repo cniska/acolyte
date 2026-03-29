@@ -141,7 +141,7 @@ function createRunContext(
 
   session.onGuard = (event) => {
     previousOnGuard?.(event);
-    const feedback = createLifecycleFeedbackForGuard(event, ctx.mode);
+    const feedback = createLifecycleFeedbackForGuard(event);
     if (!feedback) return;
     ctx.lifecycleState.feedback.push(feedback);
   };

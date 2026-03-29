@@ -175,10 +175,9 @@ export function consumeLifecycleFeedback(
 }
 
 export function createGenerationInput(
-  ctx: Pick<RunContext, "baseAgentInput" | "mode"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
+  ctx: Pick<RunContext, "baseAgentInput"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
 ): string {
-  const activeFeedback = ctx.lifecycleState.feedback.filter((feedback) => feedback.mode === ctx.mode);
-  return createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  return createGenerationInputFromFeedback(ctx.baseAgentInput, ctx.lifecycleState.feedback);
 }
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {

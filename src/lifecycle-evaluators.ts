@@ -82,7 +82,7 @@ export const guardRecoveryEvaluator: Evaluator = {
     if (!ctx.result) return { action: { type: "done" } };
     if (ctx.currentError?.category !== "guard-blocked") return { action: { type: "done" } };
     const hasPendingFeedback = ctx.lifecycleState.feedback.some(
-      (feedback) => feedback.source === "guard" && feedback.mode === ctx.mode,
+      (feedback) => feedback.source === "guard",
     );
     if (!hasPendingFeedback) return { action: { type: "done" } };
     return {

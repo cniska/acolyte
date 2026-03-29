@@ -384,15 +384,13 @@ describe("createGenerationInput", () => {
     expect(input).toBe("USER: fix it");
   });
 
-  test("appends only active-mode feedback in order", () => {
+  test("appends all pending feedback in order", () => {
     const input = createGenerationInput({
       baseAgentInput: "USER: fix it",
-      mode: "work",
       lifecycleState: {
         feedback: [
-          { source: "verify", mode: "verify", summary: "Run verification.", details: "Task boundary:\n- src/a.ts" },
-          { source: "lint", mode: "work", summary: "Lint errors detected" },
-          { source: "tool-recovery", mode: "work", summary: "Use a bounded edit next" },
+          { source: "lint", summary: "Lint errors detected" },
+          { source: "tool-recovery", summary: "Use a bounded edit next" },
         ],
       },
     });
@@ -401,7 +399,6 @@ describe("createGenerationInput", () => {
     expect(input).toContain("Lint errors detected");
     expect(input).toContain("Lifecycle feedback (tool-recovery)");
     expect(input).toContain("Use a bounded edit next");
-    expect(input).not.toContain("Task boundary:\n- src/a.ts");
   });
 });
 
@@ -409,7 +406,6 @@ describe("createLifecycleFeedbackText", () => {
   test("renders summary, details, and instruction in a single lifecycle-owned format", () => {
     const text = createLifecycleFeedbackText({
       source: "lint",
-      mode: "work",
       summary: "Lint errors detected in files you edited.",
       details: "src/a.ts:1:1 error unexpected any",
       instruction: "Fix the issues above, then stop.",
