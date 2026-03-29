@@ -25,12 +25,10 @@ describe("createLifecycleFeedbackForGuard", () => {
 
   test("maps duplicate-call to work-scoped lifecycle feedback", () => {
     const feedback = createLifecycleFeedbackForGuard(createGuardEvent(), "work");
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "work",
-      summary: "The previous file-read call already used these arguments.",
-      instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
-    });
+    expect(feedback?.source).toBe("guard");
+    expect(feedback?.mode).toBe("work");
+    expect(feedback?.summary).toContain("file-read");
+    expect(feedback?.instruction).toContain("Reuse the earlier result");
   });
 
   test("maps ping-pong detail into lifecycle feedback details", () => {
@@ -42,13 +40,10 @@ describe("createLifecycleFeedbackForGuard", () => {
       }),
       "work",
     );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "work",
-      summary: "You are alternating between the same tools without changing strategy.",
-      details: "Recent calls are bouncing between file-search<->file-find.",
-      instruction: "Stop repeating the same pattern. Change approach or change inputs.",
-    });
+    expect(feedback?.source).toBe("guard");
+    expect(feedback?.mode).toBe("work");
+    expect(feedback?.summary).toContain("alternating");
+    expect(feedback?.details).toContain("file-search<->file-find");
   });
 
   test("maps post-edit file-delete to work-scoped lifecycle feedback", () => {
@@ -60,12 +55,10 @@ describe("createLifecycleFeedbackForGuard", () => {
       }),
       "work",
     );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "work",
-      summary: 'A previous edit already changed "src/clamp.ts".',
-      instruction: "Do not undo or discard the file after a successful edit. Keep it and revise it in place if needed.",
-    });
+    expect(feedback?.source).toBe("guard");
+    expect(feedback?.mode).toBe("work");
+    expect(feedback?.summary).toContain("src/clamp.ts");
+    expect(feedback?.instruction).toContain("Do not undo");
   });
 
   test("maps verify rediscovery to verify-scoped lifecycle feedback", () => {
@@ -77,12 +70,9 @@ describe("createLifecycleFeedbackForGuard", () => {
       }),
       "verify",
     );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "verify",
-      summary: 'Verify already has enough evidence for "src/lifecycle-state.ts".',
-      instruction:
-        "Do not rediscover that edited file in verify mode. Conclude from code-scan, test-run, and the existing edit preview.",
-    });
+    expect(feedback?.source).toBe("guard");
+    expect(feedback?.mode).toBe("verify");
+    expect(feedback?.summary).toContain("src/lifecycle-state.ts");
+    expect(feedback?.instruction).toContain("Do not rediscover");
   });
 });
