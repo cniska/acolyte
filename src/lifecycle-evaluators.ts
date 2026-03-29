@@ -109,7 +109,7 @@ export const repeatedFailureEvaluator: Evaluator = {
   },
 };
 
-export const verifyEvaluator: Evaluator = {
+export const verifyCycleEvaluator: Evaluator = {
   id: "verify-cycle",
   modes: ["work"],
   evaluate(ctx) {

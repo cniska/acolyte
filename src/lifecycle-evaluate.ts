@@ -13,7 +13,7 @@ import {
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyCycleEvaluator,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
@@ -24,7 +24,7 @@ const EFFECTS: LifecycleEffect[] = [formatEffect, lintEffect];
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyCycleEvaluator,
   repeatedFailureEvaluator,
 ];
 

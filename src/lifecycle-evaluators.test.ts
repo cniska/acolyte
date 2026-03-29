@@ -4,15 +4,15 @@ import {
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyCycleEvaluator,
 } from "./lifecycle-evaluators";
 import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
-describe("verifyEvaluator", () => {
+describe("verifyCycleEvaluator", () => {
   test("declares work-only applicability", () => {
-    expect(verifyEvaluator.modes).toEqual(["work"]);
+    expect(verifyCycleEvaluator.modes).toEqual(["work"]);
   });
 
   test("enters verify mode when write tools used", () => {
@@ -22,7 +22,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    const action = verifyEvaluator.evaluate(ctx);
+    const action = verifyCycleEvaluator.evaluate(ctx);
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
@@ -38,7 +38,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when verify already ran", () => {
@@ -52,7 +52,7 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no write tools used", () => {
@@ -62,12 +62,12 @@ describe("verifyEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-read", "file-search"]),
     });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
   });
 
   test("returns done when no result", () => {
     const ctx = createRunContext({ result: undefined });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
 
