@@ -1,5 +1,4 @@
 import type { AgentMode } from "./agent-contract";
-import type { VerifyScope } from "./api";
 import type {
   GenerateResult,
   LifecycleError,
@@ -7,19 +6,14 @@ import type {
   LifecycleFeedback,
   LifecycleState,
   RegenerateAction,
-  ReviewCandidate,
-  ReviewResult,
 } from "./lifecycle-contract";
-import type { LifecyclePolicy } from "./lifecycle-policy";
-import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
-import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
+import { type SessionContext, scopedCallLog } from "./tool-guards";
+import { WRITE_TOOL_SET } from "./tool-registry";
 
 export type EvaluatorAction = { type: "done" } | RegenerateAction;
 
 type EvaluatorLifecycleState = {
   readonly feedback: readonly LifecycleFeedback[];
-  readonly reviewCandidate?: Readonly<ReviewCandidate>;
-  readonly reviewResult?: Readonly<ReviewResult>;
   readonly repeatedFailure?: Readonly<NonNullable<LifecycleState["repeatedFailure"]>>;
 };
 
@@ -41,13 +35,12 @@ export type EvaluatorResult = {
 export type EvaluatorContext = {
   readonly result?: Readonly<GenerateResult>;
   readonly observedTools: ReadonlySet<string>;
-  readonly policy: LifecyclePolicy;
   readonly initialMode: AgentMode;
   readonly mode: AgentMode;
   readonly taskId: string | undefined;
   readonly session: Readonly<SessionContext>;
   readonly workspace: string | undefined;
-  readonly request: { readonly message: string; readonly verifyScope?: VerifyScope };
+  readonly request: { readonly message: string };
   readonly lifecycleState: EvaluatorLifecycleState;
   readonly currentError?: LifecycleError;
 };
@@ -134,90 +127,6 @@ export const repeatedFailureEvaluator: Evaluator = {
           code: ctx.currentError.code ?? null,
           category: ctx.currentError.category ?? null,
           tool: ctx.currentError.tool ?? null,
-        },
-      },
-    };
-  },
-};
-
-export const verifyCycleEvaluator: Evaluator = {
-  id: "verify-cycle",
-  modes: ["work", "verify"],
-  evaluate(ctx) {
-    if (!ctx.result) return { action: { type: "done" } };
-    if (ctx.request.verifyScope === "none") return { action: { type: "done" } };
-    if (ctx.mode === "verify") {
-      const reviewResult = ctx.lifecycleState.reviewResult;
-      if (!reviewResult) return { action: { type: "done" } };
-      if (reviewResult.status !== "issues") {
-        return {
-          action: { type: "done" },
-          debug: {
-            event: "lifecycle.eval.verify_cycle",
-            fields: {
-              status: reviewResult.status,
-              verify_scope: ctx.request.verifyScope ?? null,
-            },
-          },
-        };
-      }
-
-      return {
-        action: {
-          type: "regenerate",
-          reason: "verify",
-          feedback: {
-            source: "verify",
-            summary: "Code review found issues to fix.",
-            ...(reviewResult.details ? { details: reviewResult.details } : {}),
-            instruction: "Fix the review findings, then continue.",
-          },
-          transition: { to: "work" },
-        },
-        debug: {
-          event: "lifecycle.eval.verify_cycle",
-          fields: {
-            status: reviewResult.status,
-            verify_scope: ctx.request.verifyScope ?? null,
-          },
-        },
-      };
-    }
-
-    const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-    const verified =
-      haveChangesBeenVerified(ctx.session, ctx.taskId) || ctx.lifecycleState.reviewResult?.status === "clean";
-    if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) {
-      return {
-        action: { type: "done" },
-        debug: {
-          event: "lifecycle.eval.verify_cycle",
-          fields: {
-            used_write_tools: usedWriteTools,
-            verified,
-            verify_scope: ctx.request.verifyScope ?? null,
-          },
-        },
-      };
-    }
-
-    return {
-      action: {
-        type: "regenerate",
-        reason: "verify",
-        feedback: {
-          source: "verify",
-          summary: "Review the changes for correctness.",
-        },
-        transition: { to: "verify" },
-        cycleLimit: ctx.policy.verifyMaxSteps,
-      },
-      debug: {
-        event: "lifecycle.eval.verify_cycle",
-        fields: {
-          used_write_tools: usedWriteTools,
-          verified,
-          verify_scope: ctx.request.verifyScope ?? null,
         },
       },
     };
