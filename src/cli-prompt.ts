@@ -45,44 +45,40 @@ function createAssistantStreamRenderer(): {
     printOutput(`  ${line}`);
   };
 
-  const flushBufferedLines = (): void => {
+  const flushPendingText = (): void => {
     if (assistantLineBuffer.length === 0) return;
     flushAssistantLine(assistantLineBuffer);
     assistantLineBuffer = "";
+  };
+
+  const appendAssistantText = (text: string): void => {
+    if (text.length === 0) return;
+    assistantLineBuffer += text;
+    while (true) {
+      const newlineIndex = assistantLineBuffer.indexOf("\n");
+      if (newlineIndex === -1) break;
+      const line = assistantLineBuffer.slice(0, newlineIndex);
+      assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
+      flushAssistantLine(line);
+    }
   };
 
   return {
     onAssistantDelta: (delta) => {
       if (delta.length === 0) return;
       assistantStreamText += delta;
-      assistantLineBuffer += delta;
-      while (true) {
-        const newlineIndex = assistantLineBuffer.indexOf("\n");
-        if (newlineIndex === -1) break;
-        const line = assistantLineBuffer.slice(0, newlineIndex);
-        assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
-        flushAssistantLine(line);
-      }
+      appendAssistantText(delta);
     },
-    flushPendingText: () => {
-      flushBufferedLines();
-    },
+    flushPendingText,
     renderReply: async (replyOutput, hasPrintedProgress) => {
       printOutput("");
       if (hasPrintedProgress) printOutput("");
       const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-      flushBufferedLines();
+      flushPendingText();
       const missingTail = missingAssistantStreamTail(assistantStreamText, replyOutput);
       if (missingTail.length > 0) {
-        assistantLineBuffer += missingTail;
-        while (true) {
-          const newlineIndex = assistantLineBuffer.indexOf("\n");
-          if (newlineIndex === -1) break;
-          const line = assistantLineBuffer.slice(0, newlineIndex);
-          assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
-          flushAssistantLine(line);
-        }
-        flushBufferedLines();
+        appendAssistantText(missingTail);
+        flushPendingText();
       } else if (!assistantStreamStarted) {
         await streamText(formatAssistantReplyOutput(replyOutput, wrapWidth));
       }
