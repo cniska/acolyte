@@ -67,6 +67,18 @@ describe("step-budget guard", () => {
 });
 
 describe("redundant-verify guard", () => {
+  test("declares verify-only applicability", () => {
+    const events: GuardEvent[] = [];
+    const session = createSessionContext();
+    session.onGuard = (event) => events.push(event);
+    recordCall(session, "shell-run", { command: "bun run verify" });
+
+    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).toThrow(
+      /Duplicate shell-run call detected/,
+    );
+    expect(events.every((event) => event.guardId !== "redundant-verify")).toBe(true);
+  });
+
   test("allows first verify run", () => {
     const session = createSessionContext();
     session.mode = "verify";

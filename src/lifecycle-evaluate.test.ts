@@ -37,12 +37,13 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", run: () => ({ type: "done" }) },
-        { id: "lint", run: () => ({ type: "done" }) },
+        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
+        { id: "lint", modes: ["work"], run: () => ({ type: "done" }) },
       ],
       evaluators: [
         {
           id: "guard-recovery",
+          modes: ["work"],
           evaluate: () => ({ type: "regenerate" }),
         },
       ],
@@ -70,9 +71,10 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", run: () => ({ type: "done" }) },
+        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
         {
           id: "lint",
+          modes: ["work"],
           run: () => ({
             type: "regenerate",
             feedback: {
@@ -86,6 +88,7 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "guard-recovery",
+          modes: ["work"],
           evaluate: () => {
             throw new Error("evaluators should not run after command regeneration");
           },
@@ -100,5 +103,45 @@ describe("phaseEvaluate", () => {
     expect(decisions).toEqual(["format:done", "lint:regenerate"]);
     expect(ctx.lifecycleState.feedback.at(-1)?.source).toBe("lint");
     expect(generateOptions).toEqual({ cycleLimit: ctx.policy.initialMaxSteps, timeoutMs: ctx.policy.stepTimeoutMs });
+  });
+
+  test("skips effects and evaluators whose modes do not include the active mode", async () => {
+    const events: string[] = [];
+    const ctx = createRunContext({
+      mode: "verify",
+      result: { text: "done", toolCalls: [] },
+      debug: (event, fields) => {
+        if (event === "lifecycle.eval.decision") {
+          events.push(`${String(fields?.effect ?? fields?.evaluator)}:${String(fields?.action)}`);
+        }
+      },
+    });
+
+    await phaseEvaluate(ctx, undefined, {
+      shouldYieldNow: () => false,
+      effects: [
+        {
+          id: "work-only-effect",
+          modes: ["work"],
+          run: () => {
+            throw new Error("work-only effect should be skipped in verify mode");
+          },
+        },
+      ],
+      evaluators: [
+        {
+          id: "work-only-evaluator",
+          modes: ["work"],
+          evaluate: () => {
+            throw new Error("work-only evaluator should be skipped in verify mode");
+          },
+        },
+      ],
+      phaseGenerate: async () => {
+        throw new Error("phaseGenerate should not run");
+      },
+    });
+
+    expect(events).toEqual([]);
   });
 });

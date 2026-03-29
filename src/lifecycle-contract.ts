@@ -140,6 +140,7 @@ export type LifecycleEffectAction =
 
 export type LifecycleEffect = {
   id: string;
+  modes: readonly AgentMode[];
   run: (ctx: RunContext) => LifecycleEffectAction;
 };
 

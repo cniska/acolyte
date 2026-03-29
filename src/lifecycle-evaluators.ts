@@ -32,6 +32,7 @@ export type EvaluatorContext = {
 
 export type Evaluator = {
   id: string;
+  modes: readonly AgentMode[];
   evaluate: (ctx: EvaluatorContext) => EvalAction;
 };
 
@@ -63,6 +64,7 @@ function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
 
 export const guardRecoveryEvaluator: Evaluator = {
   id: "guard-recovery",
+  modes: ["work", "verify"],
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.currentError?.category !== "guard-blocked") return { type: "done" };
@@ -77,6 +79,7 @@ export const guardRecoveryEvaluator: Evaluator = {
 
 export const repeatedFailureEvaluator: Evaluator = {
   id: "repeated-failure",
+  modes: ["work", "verify"],
   evaluate(ctx) {
     const repeatedFailure = ctx.lifecycleState.repeatedFailure;
     if (!ctx.result || !ctx.currentError || !repeatedFailure) return { type: "done" };
@@ -108,42 +111,38 @@ export const repeatedFailureEvaluator: Evaluator = {
 
 export const verifyEvaluator: Evaluator = {
   id: "verify-cycle",
+  modes: ["work"],
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.request.verifyScope === "none") return { type: "done" };
+    const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
+    const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
+    ctx.debug("lifecycle.eval.verify_cycle", {
+      used_write_tools: usedWriteTools,
+      verified,
+      verify_scope: ctx.request.verifyScope ?? null,
+    });
+    if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
 
-    if (ctx.mode !== "verify") {
-      const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-      const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
-      ctx.debug("lifecycle.eval.verify_cycle", {
-        used_write_tools: usedWriteTools,
-        verified,
-        verify_scope: ctx.request.verifyScope ?? null,
-      });
-      if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
-
-      return {
-        type: "regenerate",
-        feedback: {
-          source: "verify",
-          mode: "verify",
-          summary: "Review the changes for correctness.",
-        },
+    return {
+      type: "regenerate",
+      feedback: {
+        source: "verify",
         mode: "verify",
-        cycleLimit: ctx.policy.verifyMaxSteps,
-        keepResult: true,
-      };
-    }
-
-    return { type: "done" };
+        summary: "Review the changes for correctness.",
+      },
+      mode: "verify",
+      cycleLimit: ctx.policy.verifyMaxSteps,
+      keepResult: true,
+    };
   },
 };
 
 export const toolRecoveryEvaluator: Evaluator = {
   id: "tool-recovery",
+  modes: ["work"],
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
-    if (ctx.mode !== "work") return { type: "done" };
     const currentError = ctx.currentError;
     if (!currentError) return { type: "done" };
     const recovery = currentError.recovery;

@@ -18,8 +18,9 @@ function writePathsForCurrentTask(ctx: RunContext): string[] {
 
 export const formatEffect: LifecycleEffect = {
   id: "format",
+  modes: ["work"],
   run: (ctx): LifecycleEffectAction => {
-    if (ctx.mode !== "work" || !ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
+    if (!ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
     runCommandWithFiles(ctx.workspace, ctx.policy.formatCommand, paths);
@@ -30,8 +31,9 @@ export const formatEffect: LifecycleEffect = {
 
 export const lintEffect: LifecycleEffect = {
   id: "lint",
+  modes: ["work"],
   run: (ctx): LifecycleEffectAction => {
-    if (ctx.mode !== "work" || !ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
+    if (!ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
     const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);

@@ -32,6 +32,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Guard | Pre-tool execution rule that may block a call |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery |
 | Lifecycle Feedback | Task-scoped runtime feedback carried into the next matching lifecycle attempt |
+| Lifecycle Effect | Lifecycle-owned side-effect unit that runs before pure evaluators in the evaluate phase |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
 | Lifecycle State | Internal task-scoped runtime state carried between lifecycle attempts |

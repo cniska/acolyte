@@ -1,3 +1,4 @@
+import type { AgentMode } from "./agent-contract";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -73,6 +74,7 @@ export type GuardInput = {
 export type ToolGuard = {
   id: string;
   description: string;
+  modes: readonly AgentMode[];
   tools?: readonly string[];
   check: (input: GuardInput) => void;
 };
@@ -227,6 +229,7 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
+  modes: ["work", "verify"],
   check({ args, toolName, session, report }) {
     if (session.cache?.isCacheable(toolName)) return;
     const calls = scopedCallLog(session);
@@ -265,6 +268,7 @@ function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionConte
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
+  modes: ["work", "verify"],
   tools: ["file-read", "file-edit"],
   check({ args, session, toolName, report }) {
     const targetPaths =
@@ -342,6 +346,7 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
   return {
     id: config.id,
     description: config.description,
+    modes: ["work", "verify"],
     tools: [config.tool],
     check(input) {
       const { toolName, args, session, report } = input;
@@ -456,9 +461,9 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
 const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
+  modes: ["verify"],
   tools: ["shell-run"],
   check({ args, session, report }) {
-    if (session.mode !== "verify") return;
     const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
     if (!command) return;
 
@@ -494,6 +499,7 @@ const redundantVerifyGuard: ToolGuard = {
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
+  modes: ["work"],
   tools: ["file-delete", "file-edit"],
   check({ args, session, report, toolName }) {
     if (toolName === "file-edit") {
@@ -529,6 +535,7 @@ const postEditRedundancyGuard: ToolGuard = {
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
+  modes: ["work", "verify"],
   check({ session, report }) {
     const cycleLimit = session.flags.cycleStepLimit ?? DEFAULT_CYCLE_STEP_LIMIT;
     const cycleCount = session.flags.cycleStepCount ?? 0;
@@ -558,6 +565,7 @@ const PING_PONG_MIN_ALTERNATIONS = 2;
 const pingPongGuard: ToolGuard = {
   id: "ping-pong",
   description: "Block alternating tool call patterns that indicate the model is stuck.",
+  modes: ["work", "verify"],
   check({ toolName, args, session, report }) {
     const calls = scopedCallLog(session);
     // Filter to non-write-tool calls only — write tools are expected between read ops
@@ -595,6 +603,7 @@ const STALE_RESULT_THRESHOLD = 3;
 const staleResultGuard: ToolGuard = {
   id: "stale-result",
   description: "Block tool calls that repeatedly return the same result, indicating no progress.",
+  modes: ["work", "verify"],
   check({ toolName, args, session, report }) {
     if (isWriteTool(session, toolName)) return;
 
@@ -633,6 +642,7 @@ const staleResultGuard: ToolGuard = {
 const circuitBreakerGuard: ToolGuard = {
   id: "circuit-breaker",
   description: "Stop the model after too many consecutive guard blocks.",
+  modes: ["work", "verify"],
   check({ session, report }) {
     const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
     const blockLimit = session.flags.consecutiveGuardBlockLimit;
@@ -666,6 +676,7 @@ const GIT_WRITE_COMMANDS: { pattern: RegExp; tool: string }[] = [
 const shellBypassGuard: ToolGuard = {
   id: "shell-bypass",
   description: "Block shell commands that bypass dedicated tools.",
+  modes: ["work", "verify"],
   tools: ["shell-run"],
   check({ args, report }) {
     const command = typeof args.command === "string" ? args.command : "";
@@ -695,6 +706,7 @@ function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): b
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
   description: "Block lint/format/test commands — use dedicated tools or let the lifecycle handle them.",
+  modes: ["work", "verify"],
   tools: ["shell-run"],
   check({ args, session, report }) {
     const profile = session.workspaceProfile;
@@ -729,6 +741,8 @@ const GUARDS: ToolGuard[] = [
 
 export function runGuards(input: Omit<GuardInput, "report">): void {
   for (const guard of GUARDS) {
+    const mode = input.session.mode === "verify" ? "verify" : "work";
+    if (!guard.modes.includes(mode)) continue;
     if (guard.tools && !guard.tools.includes(input.toolName)) continue;
     const report: GuardReport = (action, detail) => {
       input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail });

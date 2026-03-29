@@ -11,6 +11,10 @@ import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
 describe("verifyEvaluator", () => {
+  test("declares work-only applicability", () => {
+    expect(verifyEvaluator.modes).toEqual(["work"]);
+  });
+
   test("enters verify mode when write tools used", () => {
     const ctx = createRunContext({
       initialMode: "work",
@@ -63,15 +67,6 @@ describe("verifyEvaluator", () => {
 
   test("returns done when no result", () => {
     const ctx = createRunContext({ result: undefined });
-    expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
-  });
-
-  test("returns done in verify mode", () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      initialMode: "work",
-      result: { text: "", toolCalls: [] },
-    });
     expect(verifyEvaluator.evaluate(ctx).type).toBe("done");
   });
 });
@@ -331,27 +326,8 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
-  test("returns done for structured recovery while active mode is verify", () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      initialMode: "work",
-      currentError: {
-        code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
-        tool: "code-scan",
-        message:
-          "code-scan failed: [E_SCAN_CODE_UNSUPPORTED_FILE] code-scan requires a supported code file, got: notes.yaml",
-        recovery: {
-          tool: "code-scan",
-          kind: "use-supported-file",
-          summary: "code-scan only works on supported code files.",
-          instruction: "Use file-search for plain-text lookup.",
-          nextTool: "file-search",
-          targetPaths: ["notes.yaml"],
-        },
-      },
-      result: { text: "Attempted verify scan.", toolCalls: [] },
-    });
-    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+  test("declares work-only applicability", () => {
+    expect(toolRecoveryEvaluator.modes).toEqual(["work"]);
   });
 
   test("returns regenerate when file-search empty-scope exposes structured recovery", () => {
