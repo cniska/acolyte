@@ -251,12 +251,22 @@ function validateTwoFileDepsRenameTrace(traceLines: string[]): string[] {
     (line) => line.includes("tool=file-edit") && line.includes("path=src/cli-skill.ts"),
   ).length;
 
-  const firstReadTools = toolCallLines
-    .slice(0, 2)
-    .filter((line) => line.includes("tool=file-read"))
-    .map((line) => (line.includes("src/cli-run.ts") ? "run" : line.includes("src/cli-skill.ts") ? "skill" : "other"));
-  if (!(firstReadTools.includes("run") && firstReadTools.includes("skill"))) {
-    issues.push("first two tool calls should read src/cli-run.ts and src/cli-skill.ts");
+  const firstTool = toolCallLines[0];
+  const hasBatchedInitialRead =
+    firstTool?.includes("tool=file-read") &&
+    firstTool.includes("src/cli-run.ts") &&
+    firstTool.includes("src/cli-skill.ts");
+  const firstTwoReadsCoverBothFiles =
+    toolCallLines
+      .slice(0, 2)
+      .filter((line) => line.includes("tool=file-read"))
+      .some((line) => line.includes("src/cli-run.ts")) &&
+    toolCallLines
+      .slice(0, 2)
+      .filter((line) => line.includes("tool=file-read"))
+      .some((line) => line.includes("src/cli-skill.ts"));
+  if (!hasBatchedInitialRead && !firstTwoReadsCoverBothFiles) {
+    issues.push("initial direct reads should cover src/cli-run.ts and src/cli-skill.ts before editing");
   }
   if (toolCallLines.some((line) => line.includes("tool=file-find"))) {
     issues.push("two-file deps rename should not use file-find");
@@ -423,11 +433,12 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
     issues.push("bounded single-file scenario should update src/lifecycle-state.ts");
   }
 
-  const summaryLine = [...traceLines].reverse().find((line) => line.includes("event=lifecycle.summary"));
-  const successfulWriteCalls = (() => {
-    const match = summaryLine?.match(/(?:^|\s)write_calls=(\d+)/);
-    return match ? Number.parseInt(match[1] ?? "0", 10) : undefined;
-  })();
+  const successfulWriteCalls = traceLines.filter(
+    (line) =>
+      line.includes("event=lifecycle.tool.output") &&
+      line.includes("tool=file-edit") &&
+      line.includes('preview="Edit src/lifecycle-state.ts'),
+  ).length;
   if (successfulWriteCalls !== 1) {
     issues.push(
       `bounded single-file scenario should use exactly 1 successful write, saw ${successfulWriteCalls ?? "?"}`,

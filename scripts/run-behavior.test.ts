@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { BEHAVIOR_SCENARIO_LIST, parseBehaviorScenarioId } from "./behavior-scenarios";
+import { BEHAVIOR_SCENARIO_BY_ID, BEHAVIOR_SCENARIO_LIST, parseBehaviorScenarioId } from "./behavior-scenarios";
 import { analyzeBehavior, parseArgs, summarizeTrace, summarizeTranscript } from "./run-behavior";
 
 describe("run-behavior args", () => {
@@ -48,6 +48,34 @@ describe("behavior scenarios", () => {
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "class-field-code-edit-rename")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "scoped-code-edit-rename-target")).toBe(true);
     expect(BEHAVIOR_SCENARIO_LIST.some((scenario) => scenario.id === "structured-code-edit-replace")).toBe(true);
+  });
+
+  test("two-file-deps-rename trace accepts a single batched initial file-read", () => {
+    const issues =
+      BEHAVIOR_SCENARIO_BY_ID["two-file-deps-rename"].validateTrace?.([
+        'ts event=lifecycle.tool.call tool=file-read paths="[{\\"path\\":\\"src/cli-run.ts\\"},{\\"path\\":\\"src/cli-skill.ts\\"}]"',
+        "ts event=lifecycle.tool.call tool=file-edit path=src/cli-run.ts",
+        "ts event=lifecycle.tool.call tool=file-edit path=src/cli-skill.ts",
+        "ts event=lifecycle.summary lifecycle_signal=done has_error=false",
+      ]) ?? [];
+
+    expect(issues).not.toContain(
+      "initial direct reads should cover src/cli-run.ts and src/cli-skill.ts before editing",
+    );
+  });
+
+  test("bounded-return-fix trace counts successful writes from edit previews, not total write attempts", () => {
+    const issues =
+      BEHAVIOR_SCENARIO_BY_ID["bounded-return-fix"].validateTrace?.([
+        'ts event=lifecycle.tool.call tool=file-read paths="[{\\"path\\":\\"src/lifecycle-state.ts\\"}]"',
+        "ts event=lifecycle.tool.call tool=file-edit path=src/lifecycle-state.ts",
+        'ts event=lifecycle.tool.output tool=file-edit preview="Edit src/lifecycle-state.ts (+8 -8)"',
+        "ts event=lifecycle.tool.call tool=file-edit path=src/lifecycle-state.ts",
+        'ts event=lifecycle.tool.error tool=file-edit error="find block not found"',
+        "ts event=lifecycle.summary write_calls=2 lifecycle_signal=done has_error=false",
+      ]) ?? [];
+
+    expect(issues).not.toContain("bounded single-file scenario should use exactly 1 successful write, saw 2");
   });
 });
 
