@@ -131,6 +131,18 @@ export type LifecycleFeedback = {
   instruction?: string;
 };
 
+export type LifecycleCommandAction =
+  | { type: "done" }
+  | {
+      type: "regenerate";
+      feedback?: LifecycleFeedback;
+    };
+
+export type LifecycleCommand = {
+  id: string;
+  run: (ctx: RunContext) => LifecycleCommandAction;
+};
+
 export type LifecycleState = {
   feedback: LifecycleFeedback[];
   verifyOutcome?: VerifyOutcome;
