@@ -97,7 +97,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
     permissions: ["read"],
     description: "Show working tree status (short format with branch) for the current repository.",
     instruction:
-      "Use `git-status` when repository state itself matters, not to re-check a file-scoped task you already understand from the task and tool results.",
+      "Use `git-status` when repository-wide state matters, not to re-check an already understood file-scoped task.",
     outputSchema: z.object({
       kind: z.literal("git-status"),
       output: z.string(),
@@ -129,7 +129,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     instruction:
-      "Use `git-diff` when repository diff context matters, not to re-check an edit you just made. For explicit named-file bounded tasks, trust the write-tool diff preview and stop unless the user asked for verification or git context.",
+      "Use `git-diff` when repository diff context matters. For bounded named-file edits, trust write-tool previews unless the user asked for git-level verification.",
     outputSchema: z.object({
       kind: z.literal("git-diff"),
       path: z.string().optional(),
@@ -166,7 +166,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
     permissions: ["read"],
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
     instruction:
-      "Use `git-log` to inspect committed history quickly, optionally scoped by path. It is for history, not current uncommitted edits.",
+      "Use `git-log` to inspect committed history, optionally scoped by path. It is for history, not current uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-log"),
       path: z.string().optional(),
@@ -203,7 +203,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     permissions: ["read"],
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
     instruction:
-      "Use `git-show` to inspect committed history for a specific ref, optionally scoped by path. It is for history, not current uncommitted edits.",
+      "Use `git-show` to inspect committed history for a ref, optionally scoped by path. It is for history, not current uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-show"),
       ref: z.string().optional(),

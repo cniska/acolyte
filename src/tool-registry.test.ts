@@ -124,24 +124,25 @@ describe("localization baseline", () => {
     const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
     const runCommandInstruction = toolDefinitionsById["shell-run"]?.instruction ?? "";
 
-    expect(readInstruction).toContain("Batch reads while discovering scope");
-    expect(readInstruction).toContain("once you are editing named targets");
-    expect(readInstruction).toContain("read each target separately right before its edit");
+    expect(readInstruction).toContain("Use `file-read` before editing.");
+    expect(readInstruction).toContain("when editing named files, read the file right before");
     expect(editInstruction).toContain("latest direct `file-read` of that file");
-    expect(editInstruction).toContain("smallest unique snippet from the latest direct `file-read`");
-    expect(editInstruction).toContain("Keep anchors tight");
-    expect(editInstruction).toContain("keep line-range edits to the changed lines when possible");
-    expect(editInstruction).toContain("preserve nearby path or link style");
-    expect(editCodeInstruction).toContain("read that file directly right before editing it");
-    expect(searchInstruction).toContain("scope with `paths` when you know the target area");
+    expect(editInstruction).toContain("Batch multiple edits to the same file");
+    expect(editInstruction).toContain("Use `code-edit` only for structural AST-aware refactors");
+    expect(editCodeInstruction).toContain("Use `code-edit` for AST-aware refactors and structural rewrites.");
+    expect(editCodeInstruction).toContain("set `target` explicitly to `local` or `member`");
+    expect(searchInstruction).toContain("narrow scope with `paths`");
     expect(searchInstruction).toContain("edit from that evidence");
-    expect(searchInstruction).toContain("keep the local reference style from the target file");
-    expect(gitStatusInstruction).toContain("repository state itself matters");
-    expect(gitStatusInstruction).toContain("not to re-check a file-scoped task");
+    expect(searchInstruction).toContain(
+      "use `find` snippets from current `file-read` text or scoped `file-search` hits only",
+    );
+    expect(gitStatusInstruction).toContain("repository-wide state matters");
+    expect(gitStatusInstruction).toContain("already understood file-scoped task");
     expect(gitDiffInstruction).toContain("repository diff context matters");
-    expect(gitDiffInstruction).toContain("not to re-check an edit you just made");
-    expect(gitLogInstruction).toContain("It is for history, not current uncommitted edits");
-    expect(gitShowInstruction).toContain("It is for history, not current uncommitted edits");
+    expect(gitDiffInstruction).toContain("trust write-tool previews");
+    expect(gitLogInstruction).toContain("for history, not current uncommitted edits");
+    expect(gitShowInstruction).toContain("for history, not current uncommitted edits");
     expect(runCommandInstruction).toContain("Use `shell-run` for known repository commands");
+    expect(runCommandInstruction).toContain("Do not use shell for file read/search/edit fallbacks");
   });
 });

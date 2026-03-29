@@ -16,7 +16,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
     description:
       "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
     instruction:
-      "Use `shell-run` for known repository commands such as documented build/test/verify steps, or when the user explicitly asked you to run a command. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `file-read`, `file-search`, `file-find`, `file-edit`, or `code-edit`. For explicit named-file bounded tasks, do not run commands after the edit just to double-check the result unless the user asked for verification.",
+      "Use `shell-run` for known repository commands (build/test/verify) or explicit user command requests. Do not use shell for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use file/code tools instead. Do not run extra commands just to reconfirm bounded edits unless the user asked for verification.",
     inputSchema: z.object({
       command: z.string().min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
