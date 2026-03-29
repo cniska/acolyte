@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isAllowedPath } from "./tool-utils";
+import { ensurePathWithinSandbox, sandboxViolationError } from "./workspace-sandbox";
 
 const BLOCKED_SHELL_TOKENS = ["rm -rf /", "shutdown", "reboot", "mkfs", "dd if="];
 
@@ -16,14 +16,12 @@ function extractAbsolutePathsFromCommand(command: string): string[] {
 }
 
 function ensureCommandScopedToWorkspace(command: string, workspace: string): void {
-  if (command.includes("../") || command.includes("..\\"))
-    throw new Error("Command contains path traversal outside workspace");
+  if (command.includes("../") || command.includes("..\\")) throw sandboxViolationError("pathTraversal");
   const absPaths = extractAbsolutePathsFromCommand(command);
   for (const absPath of absPaths) {
-    if (!isAllowedPath(absPath, workspace)) throw new Error("Command references path outside workspace and /tmp");
+    ensurePathWithinSandbox(absPath, workspace);
   }
-  if (/(?:^|[\s"'`])~[a-zA-Z0-9_]*\//.test(command))
-    throw new Error("Command references home path outside allowed roots");
+  if (/(?:^|[\s"'`])~[a-zA-Z0-9_]*\//.test(command)) throw sandboxViolationError("homePath");
 }
 
 async function readStreamText(

@@ -112,7 +112,7 @@ Most other agents rely on prompt instructions such as "please run the tests".
 
 ## Workspace detection
 
-Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, test command, and line width. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
+Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, and test command. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
 
 | Project | Detection approach |
 |---|---|

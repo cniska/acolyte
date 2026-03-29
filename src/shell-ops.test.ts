@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { parseExitCode, runShellCommand } from "./shell-ops";
 import { testUuid } from "./test-utils";
 
@@ -13,21 +15,27 @@ describe("runShellCommand", () => {
   });
 
   test("blocks absolute paths outside workspace", async () => {
-    await expect(runShellCommand(WORKSPACE, "echo hi > /etc/acolyte-outside.txt")).rejects.toThrow(
-      "Command references path outside workspace and /tmp",
-    );
+    await expect(runShellCommand(WORKSPACE, "echo hi > /etc/acolyte-outside.txt")).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
-  test("allows /tmp paths", async () => {
-    const filePath = `/tmp/acolyte-test-run-${testUuid()}.txt`;
-    const output = await runShellCommand(WORKSPACE, `printf 'ok' > ${filePath}`);
-    expect(output).toContain("exit_code=0");
+  test("allows workspace paths", async () => {
+    const filePath = join(WORKSPACE, `acolyte-test-run-${testUuid()}.txt`);
+    try {
+      const output = await runShellCommand(WORKSPACE, `printf 'ok' > ${filePath}`);
+      expect(output).toContain("exit_code=0");
+    } finally {
+      await rm(filePath, { force: true });
+    }
   });
 
   test("blocks home paths", async () => {
-    await expect(runShellCommand(WORKSPACE, "cat ~/Documents")).rejects.toThrow(
-      "Command references home path outside allowed roots",
-    );
+    await expect(runShellCommand(WORKSPACE, "cat ~/Documents")).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("includes timeout indicator when command exceeds timeout", async () => {
@@ -44,7 +52,10 @@ describe("runShellCommand", () => {
   });
 
   test("blocks path traversal", async () => {
-    await expect(runShellCommand(WORKSPACE, "cat ../../etc/passwd")).rejects.toThrow("path traversal");
+    await expect(runShellCommand(WORKSPACE, "cat ../../etc/passwd")).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 });
 

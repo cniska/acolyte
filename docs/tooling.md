@@ -20,6 +20,16 @@ All tool calls run through guarded execution paths to ensure:
 - consistent error shaping
 - call recording for evaluators/debug
 
+## Workspace sandbox
+
+Tool filesystem access is enforced by the workspace sandbox boundary. Paths are
+validated against the active workspace root using resolved-path checks
+(`realpath`), including nearest-existing-parent validation for new file paths.
+Any attempt to cross that boundary fails closed with a structured
+`sandbox_violation` error.
+
+For workspace root and profile detection behavior, see [Workspace](./workspace.md).
+
 ## File discovery
 
 `collectWorkspaceFiles` determines what files are in scope for `file-find` and `file-search`. Three exclusion layers apply in order:
@@ -73,7 +83,8 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 - `src/code-toolkit.ts` — Code manipulation for scanning and editing source files.
 - `src/git-toolkit.ts` — Git operations (status, diff, log, show, add, commit).
 - `src/tool-registry.ts` — Tool registration and agent-facing surface.
-- `src/tool-guards.ts` — Pre-execution guards including limits and path validation.
+- `src/tool-guards.ts` — Pre-execution guards including limits and redundancy controls.
+- `src/workspace-sandbox.ts` — Canonical workspace sandbox boundary and path enforcement.
 - `src/tool-cache.ts` — Per-task result caching with stable key generation.
 
 ## Further reading

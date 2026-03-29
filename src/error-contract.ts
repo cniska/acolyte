@@ -1,4 +1,5 @@
 export const TOOL_ERROR_CODES = {
+  sandboxViolation: "E_SANDBOX_VIOLATION",
   editFileMultiMatch: "E_EDIT_FILE_MULTI_MATCH",
   editFileBatchTooLarge: "E_EDIT_FILE_BATCH_TOO_LARGE",
   editFileFindTooLarge: "E_EDIT_FILE_FIND_TOO_LARGE",
@@ -26,6 +27,7 @@ export type LifecycleErrorCode = (typeof LIFECYCLE_ERROR_CODES)[keyof typeof LIF
 export type ErrorCode = ToolErrorCode | LifecycleErrorCode;
 
 export const ERROR_KINDS = {
+  sandboxViolation: "sandbox_violation",
   timeout: "timeout",
   fileNotFound: "file_not_found",
   guardBlocked: "guard_blocked",

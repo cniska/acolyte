@@ -13,6 +13,7 @@ import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
+import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
 
@@ -194,9 +195,14 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
       lint_command: profile.lintCommand ? formatWorkspaceCommand(profile.lintCommand) : null,
       format_command: profile.formatCommand ? formatWorkspaceCommand(profile.formatCommand) : null,
       test_command: profile.testCommand ? formatWorkspaceCommand(profile.testCommand) : null,
-      line_width: profile.lineWidth ?? null,
     });
   }
+
+  const sandboxWorkspace = input.workspace ?? process.cwd();
+  debug("lifecycle.workspace.sandbox", {
+    workspace: sandboxWorkspace,
+    sandbox_root: resolveWorkspaceSandboxRoot(sandboxWorkspace),
+  });
 
   const { model } = deps.resolveModel(input.request.model);
 

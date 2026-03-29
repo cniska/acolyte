@@ -1,5 +1,5 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import { ToolError } from "./tool-error";
 import { recordCall, runGuards, type SessionContext } from "./tool-guards";
 import type { ToolRecovery } from "./tool-recovery";
@@ -43,6 +43,14 @@ export function runTool(
   options?: { timeoutMs?: number },
 ): Promise<unknown> {
   return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(toolCallId), options));
+}
+
+function sandboxDebugFields(toolId: string, args: Record<string, unknown>): Record<string, unknown> {
+  const fields: Record<string, unknown> = { tool: toolId };
+  if (typeof args.path === "string") fields.path = args.path;
+  if (Array.isArray(args.paths)) fields.paths = args.paths;
+  if (typeof args.command === "string") fields.command = args.command;
+  return fields;
 }
 
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
@@ -119,6 +127,11 @@ export async function guardedExecute<T>(
     return taskResult as T;
   } catch (error) {
     taskFailed = true;
+    const code =
+      typeof error === "object" && error !== null && "code" in error ? (error as { code?: unknown }).code : undefined;
+    if (code === TOOL_ERROR_CODES.sandboxViolation) {
+      session.onDebug?.("lifecycle.sandbox.violation", sandboxDebugFields(toolId, argsRecord));
+    }
     throw error;
   } finally {
     recordCall(

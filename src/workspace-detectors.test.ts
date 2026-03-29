@@ -51,24 +51,6 @@ describe("typescript detector", () => {
     expect(profile.testCommand).toEqual({ bin: "npx", args: ["vitest", "$FILES"] });
   });
 
-  test("detects lineWidth from biome.json", () => {
-    const ws = makeWorkspace({
-      "biome.json": '{"formatter":{"lineWidth":120}}',
-      "package.json": '{"scripts":{}}',
-    });
-    const profile = resolveWorkspaceProfile(ws);
-    expect(profile.lineWidth).toBe(120);
-  });
-
-  test("detects lineWidth from .editorconfig when no biome", () => {
-    const ws = makeWorkspace({
-      "package.json": '{"scripts":{"test":"jest"}}',
-      ".editorconfig": "root = true\n[*]\nmax_line_length = 100\n",
-    });
-    const profile = resolveWorkspaceProfile(ws);
-    expect(profile.lineWidth).toBe(100);
-  });
-
   test("no test command when package.json has no test scripts", () => {
     const ws = makeWorkspace({ "package.json": '{"scripts":{"start":"node index.js"}}' });
     const profile = resolveWorkspaceProfile(ws);
@@ -108,12 +90,11 @@ describe("typescript detector", () => {
 
   test("detects biome from biome.jsonc with comments", () => {
     const ws = makeWorkspace({
-      "biome.jsonc": '{\n  // formatting\n  "formatter": { "lineWidth": 100 }\n}',
+      "biome.jsonc": '{\n  // formatting\n  "formatter": {}\n}',
       "package.json": '{"scripts":{}}',
     });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.lintCommand?.args).toContain("biome");
-    expect(profile.lineWidth).toBe(100);
   });
 
   test("uses npx for biome in npm projects", () => {

@@ -46,7 +46,6 @@ export type WorkspaceProfile = {
   lintCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   testCommand?: WorkspaceCommand;
-  lineWidth?: number;
 };
 
 export function formatWorkspaceCommand(cmd: WorkspaceCommand): string {
@@ -78,7 +77,6 @@ export function clearWorkspaceProfileCache(): void {
 
 export function createWorkspaceInstructions(profile: WorkspaceProfile): string[] {
   const lines: string[] = [];
-  if (profile.lineWidth) lines.push(`Keep lines under ${profile.lineWidth} characters.`);
   if (profile.formatCommand) {
     const cmd = formatWorkspaceCommand(profile.formatCommand);
     lines.push(`Format command: \`${cmd}\`. Run this to auto-fix lint or format issues before manual repairs.`);
