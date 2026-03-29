@@ -116,12 +116,7 @@ function createRunContext(
     baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
-    lifecycleState: {
-      feedback: [],
-      reviewCandidate: undefined,
-      reviewResult: undefined,
-      repeatedFailure: undefined,
-    },
+    lifecycleState: { feedback: [] },
     observedTools: new Set(),
     modelCallCount: 0,
     inputTokensAccum: 0,

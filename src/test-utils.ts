@@ -460,7 +460,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
-    lifecycleState: { feedback: [], reviewCandidate: undefined, reviewResult: undefined, repeatedFailure: undefined },
+    lifecycleState: { feedback: [] },
     observedTools: new Set(),
     modelCallCount: 1,
     inputTokensAccum: 0,

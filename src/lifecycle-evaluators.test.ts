@@ -75,9 +75,7 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Updated x.", toolCalls: [], signal: "done" },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
         reviewResult: { status: "clean" },
-        repeatedFailure: undefined,
       },
     });
     expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
@@ -89,12 +87,10 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Updated x.", toolCalls: [], signal: "done" },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
         reviewResult: {
           status: "issues",
           details: "Missing null check in src/a.ts.",
         },
-        repeatedFailure: undefined,
       },
     });
     expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({
@@ -116,12 +112,10 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Need generated types to review this safely.", toolCalls: [], signal: "blocked" },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
         reviewResult: {
           status: "blocked",
           details: "Need generated types to review this safely.",
         },
-        repeatedFailure: undefined,
       },
     });
     expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
@@ -142,8 +136,6 @@ describe("guardRecoveryEvaluator", () => {
             instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
           },
         ],
-        reviewCandidate: undefined,
-        reviewResult: undefined,
       },
     });
 
@@ -173,8 +165,6 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted fix.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
-        reviewResult: undefined,
         repeatedFailure: {
           signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 2,
@@ -200,8 +190,6 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted read.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
-        reviewResult: undefined,
         repeatedFailure: {
           signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
           count: 2,
@@ -225,8 +213,6 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted fix.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
-        reviewResult: undefined,
         repeatedFailure: {
           signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 3,

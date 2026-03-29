@@ -161,8 +161,6 @@ describe("phaseEvaluate", () => {
       },
       lifecycleState: {
         feedback: [],
-        reviewCandidate: undefined,
-        reviewResult: undefined,
         repeatedFailure: {
           signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 2,

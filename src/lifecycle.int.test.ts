@@ -10,6 +10,7 @@ import {
   pickFunctionToolName,
   startFakeProviderServer,
 } from "../scripts/fake-provider-server";
+import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 
@@ -47,7 +48,7 @@ function run(message: string) {
   });
 }
 
-function requestMode(ctx: FakeProviderRequestContext): "work" | "verify" {
+function requestMode(ctx: FakeProviderRequestContext): AgentMode {
   const hasFileEditTool = ctx.body.tools?.some((tool) => tool?.type === "function" && tool.name?.includes("edit"));
   return hasFileEditTool ? "work" : "verify";
 }
