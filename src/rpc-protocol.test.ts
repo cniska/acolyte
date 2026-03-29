@@ -59,10 +59,9 @@ describe("rpc protocol schema", () => {
         ok: true,
         providers: ["openai"],
         model: "gpt-5-mini",
-        "model.work": "claude-3-5-haiku",
+        active_skill: "review",
         protocol_version: "v1",
-        capabilities: "chat,permissions",
-        permissions: "write",
+        capabilities: "chat",
         service: "http://localhost:6767",
         memory: "file (2 entries)",
         tasks_total: 3,
@@ -116,10 +115,9 @@ describe("rpc protocol schema", () => {
 
   test("uses language-neutral rpc identifiers", () => {
     const identifierPattern = /^[a-z][a-z0-9]*(?:[.-][a-z][a-z0-9]*)+$/;
-    const clientTypes = ["status.get", "permissions.set", "chat.start", "chat.abort", "task.status"] as const;
+    const clientTypes = ["status.get", "chat.start", "chat.abort", "task.status"] as const;
     const serverTypes = [
       "status.result",
-      "permissions.result",
       "chat.event",
       "chat.accepted",
       "chat.queued",

@@ -14,7 +14,6 @@ describe("chat slash command visual regression", () => {
         status: async () => ({
           providers: ["openai"],
           model: "gpt-5-mini",
-          permissions: "write",
         }),
       }),
     });
@@ -29,7 +28,6 @@ describe("chat slash command visual regression", () => {
 
           Providers:          openai
           Model:              gpt-5-mini
-          Permissions:        write
     `),
     );
   });

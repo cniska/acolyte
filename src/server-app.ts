@@ -115,7 +115,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     model,
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
-    permissions: "write",
     service: `http://localhost:${PORT}`,
     memory: memoryStatus,
     tasks_total: taskSummary.total,

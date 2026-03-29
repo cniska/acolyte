@@ -19,7 +19,6 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 - [Architecture](./architecture.md) — system map of runtime flow and boundaries
 - [Errors](./errors.md) — error contracts, runtime classes, and recovery boundaries
 - [Lifecycle](./lifecycle.md) — one request through a bounded phase loop
-- [Modes](./modes.md) — explicit operating modes that shape behavior
 - [TUI](./tui.md) — custom React reconciler for terminal rendering
 - [Tooling](./tooling.md) — layered and contract-driven tool execution
 - [Sessions and tasks](./sessions-tasks.md) — separate runtime concerns of sessions and tasks

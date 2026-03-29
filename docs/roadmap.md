@@ -32,5 +32,5 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 
 Tracked in [GitHub Issues](https://github.com/cniska/acolyte/issues). Key priorities:
 
-- **Plan mode** — lifecycle-driven planning phase with approval workflow (#14)
+- **Planning workflow** — lifecycle-driven planning and approval flow (#14)
 - **Trace event subscription** — real-time trace events over RPC (#45)

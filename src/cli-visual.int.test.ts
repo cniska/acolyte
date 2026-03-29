@@ -55,7 +55,6 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 model: "gpt-5-mini",
                 protocol_version: PROTOCOL_VERSION,
                 capabilities: "stream.sse, error.structured",
-                permissions: "write",
                 service: "http://localhost:6767",
                 memory: "file",
                 tasks_total: 0,
@@ -280,7 +279,6 @@ describe("cli visual regression", () => {
           Model:              gpt-5-mini
           Protocol version:   ${PROTOCOL_VERSION}
           Capabilities:       stream.sse, error.structured
-          Permissions:        write
           Service:            http://localhost:6767
           Memory:             file
           Tasks total:        0

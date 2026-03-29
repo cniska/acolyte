@@ -89,14 +89,12 @@ describe("chat-commands", () => {
     const [row] = statusRows({
       providers: ["openai"],
       model: "gpt-5-mini",
-      permissions: "write",
     });
     const content = row?.content;
     expect(isCommandOutput(content) && content.header).toBe("Status");
     const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
     expect(pairs).toContainEqual(["Providers", "openai"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
-    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("statusRows returns empty array when payload has no visible fields", () => {

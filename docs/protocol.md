@@ -55,7 +55,6 @@ Authentication:
 Client methods:
 
 - `status.get`
-- `permissions.set` (`read` | `write`)
 - `chat.start` (request payload)
 - `chat.abort` (request id)
 - `task.status` (task id)
@@ -63,7 +62,6 @@ Client methods:
 Server responses:
 
 - `status.result`
-- `permissions.result`
 - `chat.accepted` (includes `taskId`)
 - `chat.queued`
 - `chat.started`

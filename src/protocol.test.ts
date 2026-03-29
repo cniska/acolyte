@@ -7,6 +7,6 @@ describe("protocol metadata", () => {
   });
 
   test("formats server capabilities as deterministic csv", () => {
-    expect(formatServerCapabilities()).toBe("error.structured, permissions.mode, stream.sse, workspace.path");
+    expect(formatServerCapabilities()).toBe("error.structured, stream.sse, workspace.path");
   });
 });

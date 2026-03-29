@@ -61,9 +61,7 @@ Shipped, user-visible capabilities.
 
 ## Safety and control
 
-- read/write permission modes
 - workspace and temp-root path guardrails
-- write confirmation flow in read mode
 - cooperative interruption and queued message handling over RPC
 
 ## Diagnostics

@@ -262,7 +262,7 @@ export function createClient(overrides?: {
     });
   return {
     replyStream,
-    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini", permissions: "write" })),
+    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini" })),
     taskStatus: overrides?.taskStatus ?? (async () => null),
   };
 }
