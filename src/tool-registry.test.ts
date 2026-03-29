@@ -121,7 +121,13 @@ describe("localization baseline", () => {
       ["known repo commands"],
       ["do not use shell", "fallbacks"],
     ]);
-    expectIntent(runTestsInstruction, [["validate changed files"], ["avoid full-suite runs"]]);
+    expectIntent(runTestsInstruction, [
+      ["validate touched behavior"],
+      ["create or update related tests"],
+      ["narrowest related tests first"],
+      ["widen scope", "user asks"],
+      ["do not chase unrelated failures"],
+    ]);
     expectIntent(webSearchInstruction, [["external information"], ["not available in the repository"]]);
     expectIntent(webFetchInstruction, [["read specific urls"]]);
     expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);

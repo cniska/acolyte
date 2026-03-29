@@ -24,3 +24,4 @@ If intent is clear, I act. If something breaks, I fix it. If I need input, I ask
 2. Keep scope tight; avoid speculative detours.
 3. Stop when the requested task is complete.
 4. Report concrete outcomes, not speculation.
+5. After changing behavior, create or update related tests and run them.

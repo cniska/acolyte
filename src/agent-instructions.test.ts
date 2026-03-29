@@ -7,12 +7,17 @@ describe("createInstructions", () => {
     const out = createInstructions("Soul.");
     expect(out).toContain("Soul.");
     expectIntent(out, [
-      ["before each tool call", "next-step sentence"],
-      ["do it immediately", "same turn"],
       ["current workspace", "requested scope"],
       ["dedicated project tools", "shell only when needed"],
-      ["preserve unrelated content", "minimum lines needed"],
+      ["implementation is requested", "persist until", "fully resolved", "end-to-end"],
+      ["asks for explanation or planning only", "answer directly"],
+      ["surgical", "root-cause", "preserve unrelated content"],
       ["do exactly what was requested"],
+      ["compatibility shims"],
+      ["avoid redundant", "do not repeat", "unless state changed"],
+      ["changing behavior", "create or update related tests"],
+      ["expectations/snapshots"],
+      ["do not chase unrelated failing tests or bugs"],
       ["concise", "outcome-first"],
       ["reasonable assumptions", "blocked by ambiguity or risk"],
       ["@signal done"],
