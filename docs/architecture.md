@@ -10,6 +10,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
 - **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
+- **Lifecycle commands** — lifecycle-owned side effects that run between generation and pure evaluation
 - **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
 - **Tools** — typed definitions with categories, permissions, schemas, and output contracts
 - **Guards** — behavioral checks that run before every tool call
@@ -79,11 +80,11 @@ resolve → prepare → generate → evaluate → finalize
 - **resolve:** pick mode and model (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
 - **generate:** run model + tool calls
-- **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state
+- **evaluate:** accept valid signals, run lifecycle commands, then apply pure evaluators to decide accept/retry/regenerate (bounded)
 - **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
 - **finalize:** persist outputs and emit final response
 
-- **regeneration:** evaluators may request regeneration, bounded by caps
+- **regeneration:** lifecycle commands and evaluators may request regeneration, bounded by caps
 - **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory
 - **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
 - **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task
@@ -126,7 +127,7 @@ Memory Engine
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, command/evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
 - **runtime config:** loaded from user/project config
 - **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs
 - **task trace:** RPC emits task-state transitions with stable `task_id`:

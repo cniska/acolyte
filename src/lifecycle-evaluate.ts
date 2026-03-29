@@ -63,7 +63,12 @@ export function recoveryActionForError(
 
 async function triggerRegeneration(
   ctx: RunContext,
-  action: { feedback?: RunContext["lifecycleState"]["feedback"][number]; mode?: RunContext["mode"]; cycleLimit?: number; keepResult?: boolean },
+  action: {
+    feedback?: RunContext["lifecycleState"]["feedback"][number];
+    mode?: RunContext["mode"];
+    cycleLimit?: number;
+    keepResult?: boolean;
+  },
   source: { kind: "command" | "evaluator"; id: string },
   deps: PhaseEvaluateDeps,
   shouldYield: LifecycleInput["shouldYield"],
