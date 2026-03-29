@@ -150,7 +150,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       "When the change must stay inside one named helper, declaration, or block, prefer `withinSymbol` with the enclosing name.",
       "If `code-edit` reports no AST matches, refine the rename scope or rule against the latest file-read text for that same file instead of broadening the rewrite to unrelated matches.",
       "The `code-edit` result already includes a diff preview.",
-      "If that preview shows the requested bounded change, stop immediately instead of re-reading, searching, reviewing, or calling another write tool on that same file in work mode.",
+      "If that preview shows the requested bounded change, stop immediately instead of re-reading, searching, reviewing, or calling another write tool on that same file in this turn.",
       "Prefer `file-edit` for single-location text edits and repeated plain-text replacements within one file.",
     ].join(" "),
     inputSchema: z.object({

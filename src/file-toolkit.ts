@@ -240,7 +240,7 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       "Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style.",
       "When changing multiple places in one file, use several small exact edits in one call rather than one oversized `find` block that spans distant locations.",
       "The `file-edit` result already includes a diff preview.",
-      "If that preview shows the requested bounded change, stop instead of re-reading, searching, reviewing, or editing that same file again in work mode.",
+      "If that preview shows the requested bounded change, stop instead of re-reading, searching, reviewing, or editing that same file again in this turn.",
       "For bounded 'each'/'every'/'all' replacements in one named file, use the latest file text to collect all visible requested occurrences into the same `file-edit` call whenever possible.",
       "If the same requested literal appears in multiple visible locations, include every visible location in that one call rather than editing only the first contiguous block.",
       "Completion means no requested matches remain in that file, not just that one edit succeeded.",

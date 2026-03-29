@@ -5,13 +5,13 @@ Shipped, user-visible capabilities.
 ## CLI
 
 - interactive chat
-- one-shot run mode with `--model` and `--file` flags
+- one-shot run command with `--model` and `--file` flags
 - one-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag
 - session resume and session listing
 - configurable locale via `config set locale <tag>`
 - fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills
-- model picker that queries provider APIs for available models, with per-mode selection (`/model work|verify <id>`)
-- automatic server startup/reuse for chat and run mode
+- model picker that queries provider APIs for available models (`/model <id>`)
+- automatic server startup/reuse for chat and run command
 - server control commands (`start`, `stop`, `restart`, `ps`, `status`)
 - status guidance when daemon server is not running
 - managed vs unmanaged server state visibility in CLI status/stop flows
@@ -25,9 +25,9 @@ Shipped, user-visible capabilities.
 
 ## Agent execution
 
-- lifecycle-driven execution with work/verify behavior
+- lifecycle-driven execution with explicit resolve/prepare/generate/evaluate/finalize phases
 - explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed
-- automatic code review via verify mode after write operations
+- automatic code review after write operations
 - tool-guarded execution for safer autonomous runs
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation

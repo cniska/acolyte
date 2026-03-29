@@ -17,54 +17,6 @@ describe("rpc protocol schema", () => {
     expect(parsed.success).toBe(true);
   });
 
-  test("accepts chat.start verify scope override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1b",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          verifyScope: "global",
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  test("accepts chat.start verify scope disable override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1bb",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          verifyScope: "none",
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  test("accepts chat.start with modeModels override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1c",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          modeModels: { work: "gpt-5-mini" },
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
   test("accepts chat.done server messages", () => {
     const parsed = rpcServerMessageSchema.safeParse({
       id: "rpc_1",

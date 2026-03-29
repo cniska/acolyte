@@ -15,7 +15,6 @@ function createRunDeps(): { deps: RunDeps; calls: { errors: string[]; dims: stri
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
-    createMessage: (_role: string, _content: string) => ({}) as never,
     printDim: (line: string) => calls.dims.push(line),
     printError: (msg: string) => calls.errors.push(msg),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 0 }) as never,

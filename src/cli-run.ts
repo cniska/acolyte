@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { appConfig as appConfigType } from "./app-config";
-import type { createMessage as createMessageType } from "./chat-session";
 import { parseRepeatableFlag, parseRequiredFlag } from "./cli-args";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import { formatRunSummary } from "./cli-format";
@@ -11,9 +10,6 @@ import { t } from "./i18n";
 import { type ResourceId, userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./storage";
-
-const RUN_MODE_SYSTEM_PROMPT =
-  "Run mode: act decisively — make reasonable defaults instead of asking clarifying questions. Answer concisely (prefer <=5 lines). No option menus.";
 
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),
@@ -31,7 +27,6 @@ type RunModeDeps = {
   ensureLocalServer: typeof ensureLocalServerType;
   hasHelpFlag: (args: string[]) => boolean;
   handlePrompt: typeof handlePromptType;
-  createMessage: typeof createMessageType;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
@@ -75,7 +70,6 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     ensureLocalServer,
     hasHelpFlag,
     handlePrompt,
-    createMessage,
     printDim,
     printError,
     readResolvedConfigSync,
@@ -107,7 +101,6 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(parsed.model ?? appModel);
-  session.messages.push(createMessage("system", RUN_MODE_SYSTEM_PROMPT));
   const daemon = await ensureLocalServer({
     port: serverPort,
     apiKey: serverApiKey,

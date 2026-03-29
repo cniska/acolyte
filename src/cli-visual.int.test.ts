@@ -278,7 +278,7 @@ describe("cli visual regression", () => {
           dedent(`
           Providers:          openai
           Model:              gpt-5-mini
-          Protocol version:   2
+          Protocol version:   ${PROTOCOL_VERSION}
           Capabilities:       stream.sse, error.structured
           Permissions:        write
           Service:            http://localhost:6767
@@ -300,7 +300,7 @@ describe("cli visual regression", () => {
         await run(["config", "set", "port", port]);
         const out = await run(["status", "--json"]);
         const parsed = JSON.parse(out) as { protocol_version: string };
-        expect(parsed.protocol_version).toBe("2");
+        expect(parsed.protocol_version).toBe(PROTOCOL_VERSION);
       });
     });
   });

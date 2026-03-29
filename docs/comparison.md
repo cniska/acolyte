@@ -100,7 +100,7 @@ After generation, evaluators inspect the result and may trigger:
 
 - Regeneration with a different tool strategy
 - Mode transitions through the full work → verify → work/done code-review loop
-- Scoped test execution via the `test-run` tool during work mode
+- Scoped test execution via the `test-run` tool during generation
 
 The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.
 

@@ -32,7 +32,6 @@ function createRunDeps(): {
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     hasHelpFlag: (args) => args.includes("--help"),
     handlePrompt: async () => true,
-    createMessage: (role, content) => ({ role, content }) as never,
     printDim: (message) => calls.dims.push(message),
     printError: (message) => calls.errors.push(message),
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
@@ -80,18 +79,5 @@ describe("cli-run", () => {
     expect(tokenLine).toContain("input 300");
     expect(tokenLine).toContain("output 130");
     expect(tokenLine).toContain("3 calls");
-  });
-
-  test("runMode does not disable verifier", async () => {
-    const { deps } = createRunDeps();
-    let seenOptions: { resourceId?: string; workspace?: string; verifyScope?: string } | undefined;
-    deps.handlePrompt = async (_prompt, _session, _client, options) => {
-      seenOptions = options as typeof seenOptions;
-      return true;
-    };
-
-    await runMode(["do something"], deps);
-
-    expect(seenOptions?.verifyScope).toBeUndefined();
   });
 });

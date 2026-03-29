@@ -14,15 +14,17 @@ export function createRpcRequestId(): RpcRequestId {
   return rpcRequestIdSchema.parse(`rpc_${createId()}`);
 }
 
-const chatRequestSchema = z.object({
-  message: z.string().max(100_000),
-  history: z.array(z.unknown()).max(500),
-  model: z.string().max(200),
-  sessionId: sessionIdSchema.optional(),
-  resourceId: resourceIdSchema.optional(),
-  useMemory: z.boolean().optional(),
-  workspace: z.string().max(4096).optional(),
-});
+const chatRequestSchema = z
+  .object({
+    message: z.string().max(100_000),
+    history: z.array(z.unknown()).max(500),
+    model: z.string().max(200),
+    sessionId: sessionIdSchema.optional(),
+    resourceId: resourceIdSchema.optional(),
+    useMemory: z.boolean().optional(),
+    workspace: z.string().max(4096).optional(),
+  })
+  .strict();
 
 export const rpcClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ id: rpcRequestIdSchema, type: z.literal("status.get") }),
