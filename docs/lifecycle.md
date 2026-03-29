@@ -43,7 +43,8 @@ resolve → prepare → generate → evaluate → finalize
 - `lifecycleState` is internal, task-scoped runtime state owned by the lifecycle
 - it currently carries:
   - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
-  - `verifyOutcome`: structured review result used across `keepResult` restore boundaries
+  - `reviewCandidate`: preserved work-mode candidate under review in verify mode
+  - `reviewResult`: structured review verdict (`clean`, `issues`, or `blocked`) for the current candidate
   - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
 - lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction
 - lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context

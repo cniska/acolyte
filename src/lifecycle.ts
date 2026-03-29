@@ -118,7 +118,8 @@ function createRunContext(
     promptUsage: params.prepared.promptUsage,
     lifecycleState: {
       feedback: [],
-      verifyOutcome: undefined,
+      reviewCandidate: undefined,
+      reviewResult: undefined,
       repeatedFailure: undefined,
     },
     observedTools: new Set(),
@@ -130,6 +131,13 @@ function createRunContext(
     lastUsageEmitChars: 0,
     generationAttempt: 0,
     regenerationCount: 0,
+    regenerationCounts: {
+      "guard-recovery": 0,
+      lint: 0,
+      verify: 0,
+      "tool-recovery": 0,
+      "repeated-failure": 0,
+    },
     regenerationLimitHit: false,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),

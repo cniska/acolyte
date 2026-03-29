@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Agent, AgentMode } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
@@ -111,17 +112,30 @@ export type PhasePrepareResult = {
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
-export type SavedRegenerationState = {
+export type ReviewCandidate = {
   result: GenerateResult | undefined;
   currentError: LifecycleError | undefined;
 };
 
-export type VerifyOutcome = {
-  text: string;
+export const reviewOutcomeStatusSchema = z.enum(["clean", "issues", "blocked"]);
+export type ReviewOutcomeStatus = z.infer<typeof reviewOutcomeStatusSchema>;
+
+export type ReviewResult = {
+  status: ReviewOutcomeStatus;
+  details?: string;
   error?: LifecycleError;
 };
 
 export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "repeated-failure";
+
+export const regenerationReasonSchema = z.enum([
+  "guard-recovery",
+  "lint",
+  "verify",
+  "tool-recovery",
+  "repeated-failure",
+]);
+export type RegenerationReason = z.infer<typeof regenerationReasonSchema>;
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
@@ -146,7 +160,8 @@ export type Effect = {
 
 export type LifecycleState = {
   feedback: LifecycleFeedback[];
-  verifyOutcome?: VerifyOutcome;
+  reviewCandidate?: ReviewCandidate;
+  reviewResult?: ReviewResult;
   repeatedFailure?: {
     signature: string;
     count: number;
@@ -193,6 +208,7 @@ export type RunContext = {
   lastUsageEmitChars: number;
   generationAttempt: number;
   regenerationCount: number;
+  regenerationCounts: Record<RegenerationReason, number>;
   regenerationLimitHit: boolean;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;

@@ -11,8 +11,8 @@ import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
 describe("verifyCycleEvaluator", () => {
-  test("declares work-only applicability", () => {
-    expect(verifyCycleEvaluator.modes).toEqual(["work"]);
+  test("declares work and verify applicability", () => {
+    expect(verifyCycleEvaluator.modes).toEqual(["work", "verify"]);
   });
 
   test("enters verify mode when write tools used", () => {
@@ -26,7 +26,6 @@ describe("verifyCycleEvaluator", () => {
     expect(action.type).toBe("regenerate");
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
-      expect(action.keepResult).toBe(true);
     }
   });
 
@@ -69,6 +68,64 @@ describe("verifyCycleEvaluator", () => {
     const ctx = createRunContext({ result: undefined });
     expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
   });
+
+  test("returns done in verify mode when review is clean", () => {
+    const ctx = createRunContext({
+      mode: "verify",
+      result: { text: "Updated x.", toolCalls: [], signal: "done" },
+      lifecycleState: {
+        feedback: [],
+        reviewCandidate: undefined,
+        reviewResult: { status: "clean" },
+        repeatedFailure: undefined,
+      },
+    });
+    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
+
+  test("returns regenerate to work when review finds issues", () => {
+    const ctx = createRunContext({
+      mode: "verify",
+      result: { text: "Updated x.", toolCalls: [], signal: "done" },
+      lifecycleState: {
+        feedback: [],
+        reviewCandidate: undefined,
+        reviewResult: {
+          status: "issues",
+          details: "Missing null check in src/a.ts.",
+        },
+        repeatedFailure: undefined,
+      },
+    });
+    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({
+      type: "regenerate",
+      feedback: {
+        source: "verify",
+        mode: "work",
+        summary: "Code review found issues to fix.",
+        details: "Missing null check in src/a.ts.",
+        instruction: "Fix the review findings, then continue.",
+      },
+      mode: "work",
+    });
+  });
+
+  test("returns done in verify mode when review is blocked", () => {
+    const ctx = createRunContext({
+      mode: "verify",
+      result: { text: "Need generated types to review this safely.", toolCalls: [], signal: "blocked" },
+      lifecycleState: {
+        feedback: [],
+        reviewCandidate: undefined,
+        reviewResult: {
+          status: "blocked",
+          details: "Need generated types to review this safely.",
+        },
+        repeatedFailure: undefined,
+      },
+    });
+    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+  });
 });
 
 describe("guardRecoveryEvaluator", () => {
@@ -85,7 +142,8 @@ describe("guardRecoveryEvaluator", () => {
             instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
           },
         ],
-        verifyOutcome: undefined,
+        reviewCandidate: undefined,
+        reviewResult: undefined,
       },
     });
 
@@ -115,7 +173,8 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted fix.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        verifyOutcome: undefined,
+        reviewCandidate: undefined,
+        reviewResult: undefined,
         repeatedFailure: {
           signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 2,
@@ -140,7 +199,8 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted read.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        verifyOutcome: undefined,
+        reviewCandidate: undefined,
+        reviewResult: undefined,
         repeatedFailure: {
           signature: "guard-blocked:tool-error:none:E_GUARD_BLOCKED",
           count: 2,
@@ -164,7 +224,8 @@ describe("repeatedFailureEvaluator", () => {
       result: { text: "Attempted fix.", toolCalls: [] },
       lifecycleState: {
         feedback: [],
-        verifyOutcome: undefined,
+        reviewCandidate: undefined,
+        reviewResult: undefined,
         repeatedFailure: {
           signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
           count: 3,

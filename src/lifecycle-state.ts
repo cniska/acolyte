@@ -15,8 +15,10 @@ function taskHasWrites(ctx: RunContext): boolean {
   return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName));
 }
 
-export function clearVerifyOutcomeForFeedback(ctx: RunContext, feedbackSource?: string): void {
-  if (feedbackSource === "verify") ctx.lifecycleState.verifyOutcome = undefined;
+export function clearReviewStateForFeedback(ctx: RunContext, feedbackSource?: string): void {
+  if (feedbackSource !== "verify") return;
+  ctx.lifecycleState.reviewCandidate = undefined;
+  ctx.lifecycleState.reviewResult = undefined;
 }
 
 export function updateRepeatedFailureState(ctx: RunContext): void {

@@ -1,6 +1,14 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { Effect, EffectAction, LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
+import type {
+  Effect,
+  EffectAction,
+  LifecycleInput,
+  RegenerationReason,
+  ReviewCandidate,
+  ReviewResult,
+  RunContext,
+} from "./lifecycle-contract";
 import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
@@ -11,7 +19,7 @@ import {
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
+import { acceptedLifecycleSignal, clearReviewStateForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
 const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
@@ -36,16 +44,48 @@ const defaultPhaseEvaluateDeps: PhaseEvaluateDeps = {
   evaluators: EVALUATORS,
 };
 
-function snapshotState(ctx: RunContext): SavedRegenerationState {
+function createReviewCandidate(ctx: RunContext): ReviewCandidate {
   return {
-    result: ctx.result,
-    currentError: ctx.currentError,
+    result: ctx.result
+      ? {
+          text: ctx.result.text,
+          toolCalls: [...ctx.result.toolCalls],
+          ...(ctx.result.signal ? { signal: ctx.result.signal } : {}),
+        }
+      : undefined,
+    currentError: ctx.currentError ? { ...ctx.currentError } : undefined,
   };
 }
 
-function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
-  ctx.result = saved.result;
-  ctx.currentError = saved.currentError;
+function restoreReviewCandidate(ctx: RunContext, candidate: ReviewCandidate): void {
+  ctx.result = candidate.result;
+  ctx.currentError = candidate.currentError;
+  setMode(ctx, "work", "review-candidate");
+}
+
+function captureReviewResult(ctx: RunContext): ReviewResult {
+  const details = ctx.result?.text.trim() || undefined;
+  if (ctx.currentError) {
+    return {
+      status: "blocked",
+      ...(details ? { details } : {}),
+      error: ctx.currentError,
+    };
+  }
+
+  switch (ctx.result?.signal) {
+    case "no_op":
+      return { status: "clean" };
+    case "done":
+      return { status: "issues", ...(details ? { details } : {}) };
+    case "blocked":
+      return { status: "blocked", ...(details ? { details } : {}) };
+    default:
+      return {
+        status: "blocked",
+        details: details ?? "Verify mode did not return a review verdict.",
+      };
+  }
 }
 
 export function recoveryActionForError(
@@ -55,44 +95,75 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
+function regenerationReasonForAction(
+  action: {
+    feedback?: RunContext["lifecycleState"]["feedback"][number];
+  },
+  source: { kind: "effect" | "evaluator"; id: string },
+): RegenerationReason {
+  const feedbackSource = action.feedback?.source;
+  if (feedbackSource === "lint") return "lint";
+  if (feedbackSource === "verify") return "verify";
+  if (feedbackSource === "tool-recovery") return "tool-recovery";
+  if (feedbackSource === "repeated-failure") return "repeated-failure";
+  return source.id === "guard-recovery" ? "guard-recovery" : "verify";
+}
+
 async function triggerRegeneration(
   ctx: RunContext,
   action: {
     feedback?: RunContext["lifecycleState"]["feedback"][number];
     mode?: RunContext["mode"];
     cycleLimit?: number;
-    keepResult?: boolean;
   },
   source: { kind: "effect" | "evaluator"; id: string },
   deps: PhaseEvaluateDeps,
   shouldYield: LifecycleInput["shouldYield"],
 ): Promise<boolean> {
+  const regenerationReason = regenerationReasonForAction(action, source);
   if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
     ctx.regenerationLimitHit = true;
     ctx.debug("lifecycle.eval.skipped", {
       [source.kind]: source.id,
       reason: "regeneration_cap",
+      regeneration_reason: regenerationReason,
       regeneration_count: ctx.regenerationCount,
       regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
     });
     return false;
   }
 
-  const saved = action.keepResult ? snapshotState(ctx) : undefined;
+  const reasonCount = ctx.regenerationCounts[regenerationReason];
+  const reasonCap = ctx.policy.maxRegenerationsPerReason[regenerationReason];
+  if (reasonCount >= reasonCap) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      [source.kind]: source.id,
+      reason: "regeneration_reason_cap",
+      regeneration_reason: regenerationReason,
+      regeneration_reason_count: reasonCount,
+      regeneration_reason_cap: reasonCap,
+    });
+    return false;
+  }
+
+  const reviewCandidate = action.mode === "verify" ? createReviewCandidate(ctx) : undefined;
   if (action.mode) setMode(ctx, action.mode, source.id);
 
   ctx.regenerationCount += 1;
+  ctx.regenerationCounts[regenerationReason] += 1;
   ctx.debug("lifecycle.eval.decision", {
     [source.kind]: source.id,
     action: "regenerate",
     mode: ctx.mode,
     cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-    keep_result: Boolean(action.keepResult),
     feedback_source: action.feedback?.source ?? null,
+    regeneration_reason: regenerationReason,
     regeneration_count: ctx.regenerationCount,
+    regeneration_reason_count: ctx.regenerationCounts[regenerationReason],
   });
 
-  clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
+  clearReviewStateForFeedback(ctx, action.feedback?.source);
   if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
   await deps.phaseGenerate(ctx, {
@@ -101,15 +172,14 @@ async function triggerRegeneration(
   });
   if (deps.shouldYieldNow(ctx, shouldYield)) return true;
 
-  if (saved && ctx.mode === "verify") {
-    const verifySignal = ctx.result?.signal;
-    ctx.lifecycleState.verifyOutcome = {
-      text: ctx.result?.text ?? "",
-      error: verifySignal === "done" || verifySignal === "no_op" ? undefined : ctx.currentError,
-    };
+  if (reviewCandidate && ctx.mode === "verify") {
+    ctx.lifecycleState.reviewCandidate = reviewCandidate;
+    ctx.lifecycleState.reviewResult = captureReviewResult(ctx);
   }
 
-  if (saved) restoreState(ctx, saved);
+  if (reviewCandidate && ctx.lifecycleState.reviewResult?.status === "clean") {
+    restoreReviewCandidate(ctx, reviewCandidate);
+  }
   return true;
 }
 

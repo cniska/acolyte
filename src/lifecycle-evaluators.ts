@@ -12,7 +12,6 @@ export type EvalAction =
       feedback?: LifecycleFeedback;
       mode?: AgentMode;
       cycleLimit?: number;
-      keepResult?: boolean;
     };
 
 export type EvaluatorContext = {
@@ -111,12 +110,36 @@ export const repeatedFailureEvaluator: Evaluator = {
 
 export const verifyCycleEvaluator: Evaluator = {
   id: "verify-cycle",
-  modes: ["work"],
+  modes: ["work", "verify"],
   evaluate(ctx) {
     if (!ctx.result) return { type: "done" };
     if (ctx.request.verifyScope === "none") return { type: "done" };
+    if (ctx.mode === "verify") {
+      const reviewResult = ctx.lifecycleState.reviewResult;
+      if (!reviewResult) return { type: "done" };
+      ctx.debug("lifecycle.eval.verify_cycle", {
+        status: reviewResult.status,
+        has_error: Boolean(reviewResult.error),
+        verify_scope: ctx.request.verifyScope ?? null,
+      });
+      if (reviewResult.status !== "issues") return { type: "done" };
+
+      return {
+        type: "regenerate",
+        feedback: {
+          source: "verify",
+          mode: "work",
+          summary: "Code review found issues to fix.",
+          ...(reviewResult.details ? { details: reviewResult.details } : {}),
+          instruction: "Fix the review findings, then continue.",
+        },
+        mode: "work",
+      };
+    }
+
     const usedWriteTools = WRITE_TOOLS.some((tool) => ctx.observedTools.has(tool));
-    const verified = haveChangesBeenVerified(ctx.session, ctx.taskId);
+    const verified =
+      haveChangesBeenVerified(ctx.session, ctx.taskId) || ctx.lifecycleState.reviewResult?.status === "clean";
     ctx.debug("lifecycle.eval.verify_cycle", {
       used_write_tools: usedWriteTools,
       verified,
@@ -133,7 +156,6 @@ export const verifyCycleEvaluator: Evaluator = {
       },
       mode: "verify",
       cycleLimit: ctx.policy.verifyMaxSteps,
-      keepResult: true,
     };
   },
 };
