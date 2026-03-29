@@ -83,6 +83,11 @@ function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
   return Array.from(out);
 }
 
+function renderTaskBoundary(paths: string[]): string | undefined {
+  if (paths.length === 0) return undefined;
+  return ["Task boundary:", ...paths.map((path) => `- ${path}`)].join("\n");
+}
+
 type BoundedLiteralReplacement = {
   path: string;
   literal: string;
@@ -256,6 +261,7 @@ export const verifyEvaluator: Evaluator = {
         verify_scope: ctx.request.verifyScope ?? null,
       });
       if (!(ctx.initialMode === "work" && usedWriteTools && !verified)) return { type: "done" };
+      const writePaths = writePathsForCurrentTask(ctx);
 
       return {
         type: "regenerate",
@@ -263,6 +269,9 @@ export const verifyEvaluator: Evaluator = {
           source: "verify",
           mode: "verify",
           summary: "Review the changes for correctness.",
+          details: renderTaskBoundary(writePaths),
+          instruction:
+            "Review only the edited files above. Start with one code-scan call over those paths. Use test-run only if code-scan is insufficient.",
         },
         mode: "verify",
         cycleLimit: ctx.policy.verifyMaxSteps,

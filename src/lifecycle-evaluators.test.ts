@@ -146,9 +146,13 @@ describe("boundedLiteralCompletenessEvaluator", () => {
 });
 
 describe("verifyEvaluator", () => {
-  test("enters verify mode when write tools used", () => {
+  test("enters verify mode with edited-file boundary when write tools used", () => {
+    const session = createSessionContext("task_verify");
+    recordCall(session, "file-edit", { path: "src/provider-config.ts" });
     const ctx = createRunContext({
+      taskId: "task_verify",
       initialMode: "work",
+      session,
       workspace: "/tmp/test",
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
@@ -158,6 +162,14 @@ describe("verifyEvaluator", () => {
     if (action.type === "regenerate") {
       expect(action.mode).toBe("verify");
       expect(action.keepResult).toBe(true);
+      expect(action.feedback).toEqual({
+        source: "verify",
+        mode: "verify",
+        summary: "Review the changes for correctness.",
+        details: "Task boundary:\n- src/provider-config.ts",
+        instruction:
+          "Review only the edited files above. Start with one code-scan call over those paths. Use test-run only if code-scan is insufficient.",
+      });
     }
   });
 
