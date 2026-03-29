@@ -65,8 +65,8 @@ acolyte config set logFormat json
 |---|---|
 | `port` | daemon server port (default: 6767) |
 | `locale` | UI language (default: `en`) |
-| `model` | default model |
-| `temperature` | default generation temperature (`0.0` to `2.0`) |
+| `model` | model |
+| `temperature` | generation temperature (`0.0` to `2.0`) |
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |
 | `googleBaseUrl` | Google AI API base URL |

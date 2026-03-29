@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { appConfig, setDefaultModel } from "./app-config";
+import { appConfig, setModel } from "./app-config";
 import { alignCols, formatCompactNumber } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
@@ -263,7 +263,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       } else {
         await setConfigValue("model", model, { scope: "project" });
       }
-      setDefaultModel(model);
+      setModel(model);
       const nextSession: Session = {
         ...ctx.currentSession,
         model,

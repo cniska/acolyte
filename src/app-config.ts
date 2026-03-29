@@ -64,6 +64,6 @@ export const appConfig = {
   },
 } as const;
 
-export function setDefaultModel(model: string): void {
+export function setModel(model: string): void {
   (appConfig as { model: string }).model = model;
 }

@@ -440,7 +440,7 @@ describe("chat-commands", () => {
     );
   });
 
-  test("dispatchSlashCommand updates default model via /model <id>", async () => {
+  test("dispatchSlashCommand updates model via /model <id>", async () => {
     const previousModel = appConfig.model;
     const writes: Array<{ key: string; value: string; scope: ConfigScope }> = [];
     try {

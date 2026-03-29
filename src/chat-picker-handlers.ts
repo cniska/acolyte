@@ -1,4 +1,4 @@
-import { setDefaultModel } from "./app-config";
+import { setModel } from "./app-config";
 import { unreachable } from "./assert";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -104,7 +104,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         if (!nextModel) return;
         try {
           await writeConfig("model", nextModel, "project");
-          setDefaultModel(nextModel);
+          setModel(nextModel);
           const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
           input.setCurrentSession(nextSession);
           input.setRows((current) => [
