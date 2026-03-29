@@ -24,6 +24,7 @@ describe("createModeInstructions", () => {
     expect(out).toContain("Act as an independent code reviewer.");
     expect(out).toContain("Review the changes with ONE `code-scan` call");
     expect(out).toContain("Do not `file-read` edited files in verify mode");
+    expect(out).toContain("If targeted tests already ran after the last edit");
     expect(out).toContain("For bounded 'each'/'every'/'all' replacements in one edited file");
     expect(out).toContain("If the verification pass is clean, stop.");
   });
@@ -68,7 +69,9 @@ describe("createInstructions", () => {
     expect(out).toContain("Prefer explicit operation objects.");
     expect(out).toContain("Use `file-edit` for text edits.");
     expect(out).toContain("If that preview shows the requested bounded change, stop immediately.");
-    expect(out).toContain("Use `test-run` to validate changes with the test files you modified.");
+    expect(out).toContain(
+      "Use `test-run` to validate changes with specific test files or direct source-file counterparts.",
+    );
     expect(out).toContain("The lifecycle runs detected lint and format commands automatically after your edits.");
     expect(out).toContain("Do NOT run build commands in work mode unless the user explicitly asked for it.");
     expect(out).toContain(

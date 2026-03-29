@@ -168,8 +168,30 @@ describe("verifyEvaluator", () => {
         summary: "Review the changes for correctness.",
         details: "Task boundary:\n- src/provider-config.ts",
         instruction:
-          "Review only the edited files above. Start with one code-scan call over those paths. Use test-run only if code-scan is insufficient.",
+          "Review only the edited files above. Start with one code-scan call over those paths. Do not reread those edited files after the scan. Reuse any targeted test evidence that already ran after the last edit, and do not rerun the same test files in verify mode. If code-scan is insufficient, use test-run only for different changed tests or direct source counterparts.",
       });
+    }
+  });
+
+  test("includes existing targeted validation in verify feedback", () => {
+    const session = createSessionContext("task_verify");
+    recordCall(session, "file-edit", { path: "src/provider-config.ts" });
+    recordCall(session, "test-run", { files: ["src/provider-config.test.ts"] });
+    const ctx = createRunContext({
+      taskId: "task_verify",
+      initialMode: "work",
+      session,
+      workspace: "/tmp/test",
+      result: { text: "Done.", toolCalls: [] },
+      observedTools: new Set(["file-edit", "test-run"]),
+    });
+
+    const action = verifyEvaluator.evaluate(ctx);
+    expect(action.type).toBe("regenerate");
+    if (action.type === "regenerate") {
+      expect(action.feedback?.details).toBe(
+        "Task boundary:\n- src/provider-config.ts\n\nTargeted validation already ran after the last edit:\n- src/provider-config.test.ts",
+      );
     }
   });
 

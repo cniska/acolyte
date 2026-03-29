@@ -88,6 +88,41 @@ function renderTaskBoundary(paths: string[]): string | undefined {
   return ["Task boundary:", ...paths.map((path) => `- ${path}`)].join("\n");
 }
 
+function targetedValidationTargetsAfterLastWrite(ctx: EvaluatorContext): string[] {
+  const calls = scopedCallLog(ctx.session, ctx.taskId);
+  let lastWriteIdx = -1;
+  for (let i = calls.length - 1; i >= 0; i--) {
+    if (WRITE_TOOL_SET.has(calls[i]?.toolName ?? "")) {
+      lastWriteIdx = i;
+      break;
+    }
+  }
+
+  const targets = new Set<string>();
+  for (const entry of calls.slice(lastWriteIdx + 1)) {
+    if (entry.toolName !== "test-run") continue;
+    const files = Array.isArray(entry.args.files) ? entry.args.files : [];
+    for (const value of files) {
+      if (typeof value !== "string") continue;
+      const trimmed = value.trim();
+      if (trimmed.length > 0) targets.add(trimmed);
+    }
+  }
+  return Array.from(targets);
+}
+
+function renderExistingValidation(ctx: EvaluatorContext): string | undefined {
+  const files = targetedValidationTargetsAfterLastWrite(ctx);
+  if (files.length === 0) return undefined;
+  return ["Targeted validation already ran after the last edit:", ...files.map((path) => `- ${path}`)].join("\n");
+}
+
+function joinDetails(...parts: Array<string | undefined>): string | undefined {
+  const present = parts.filter((part): part is string => Boolean(part && part.length > 0));
+  if (present.length === 0) return undefined;
+  return present.join("\n\n");
+}
+
 type BoundedLiteralReplacement = {
   path: string;
   literal: string;
@@ -269,9 +304,9 @@ export const verifyEvaluator: Evaluator = {
           source: "verify",
           mode: "verify",
           summary: "Review the changes for correctness.",
-          details: renderTaskBoundary(writePaths),
+          details: joinDetails(renderTaskBoundary(writePaths), renderExistingValidation(ctx)),
           instruction:
-            "Review only the edited files above. Start with one code-scan call over those paths. Use test-run only if code-scan is insufficient.",
+            "Review only the edited files above. Start with one code-scan call over those paths. Do not reread those edited files after the scan. Reuse any targeted test evidence that already ran after the last edit, and do not rerun the same test files in verify mode. If code-scan is insufficient, use test-run only for different changed tests or direct source counterparts.",
         },
         mode: "verify",
         cycleLimit: ctx.policy.verifyMaxSteps,
