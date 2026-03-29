@@ -18,7 +18,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
     description:
       "Run the project's test runner against specific files. The test command is auto-detected from the workspace.",
     instruction:
-      "Use `test-run` to validate changes by running tests for the files you modified. Always scope to specific test files rather than running the full suite.",
+      "Use `test-run` to validate changed files. Pass relevant test files and avoid full-suite runs unless requested.",
     inputSchema: z.object({
       files: z.array(z.string().min(1)).min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),

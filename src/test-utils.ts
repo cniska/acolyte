@@ -104,6 +104,19 @@ export function dedent(
     .join("\n");
 }
 
+export function normalizeIntentText(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+export function expectIntent(text: string, checks: string[][]): void {
+  const value = normalizeIntentText(text);
+  for (const fragments of checks) {
+    for (const fragment of fragments) {
+      expect(value).toContain(normalizeIntentText(fragment));
+    }
+  }
+}
+
 function toJSONDeep(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value !== "object") return value;

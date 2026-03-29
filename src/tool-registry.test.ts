@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { expectIntent } from "./test-utils";
 import { renderToolOutputPart } from "./tool-output-content";
 import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
 
@@ -77,36 +78,53 @@ describe("localization baseline", () => {
     expect(renderToolOutputPart({ kind: "no-output" })).toBe("(No output)");
   });
 
-  test("file tool instructions prefer direct reads before editing a chosen file", () => {
+  test("tool instructions encode behavioral intent by tool type", () => {
     const readInstruction = toolDefinitionsById["file-read"]?.instruction ?? "";
     const editInstruction = toolDefinitionsById["file-edit"]?.instruction ?? "";
     const editCodeInstruction = toolDefinitionsById["code-edit"]?.instruction ?? "";
     const searchInstruction = toolDefinitionsById["file-search"]?.instruction ?? "";
+    const findInstruction = toolDefinitionsById["file-find"]?.instruction ?? "";
+    const createInstruction = toolDefinitionsById["file-create"]?.instruction ?? "";
+    const deleteInstruction = toolDefinitionsById["file-delete"]?.instruction ?? "";
     const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
     const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
     const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
     const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
     const runCommandInstruction = toolDefinitionsById["shell-run"]?.instruction ?? "";
+    const runTestsInstruction = toolDefinitionsById["test-run"]?.instruction ?? "";
+    const webSearchInstruction = toolDefinitionsById["web-search"]?.instruction ?? "";
+    const webFetchInstruction = toolDefinitionsById["web-fetch"]?.instruction ?? "";
+    const checklistCreateInstruction = toolDefinitionsById["checklist-create"]?.instruction ?? "";
+    const checklistUpdateInstruction = toolDefinitionsById["checklist-update"]?.instruction ?? "";
 
-    expect(readInstruction).toContain("Use `file-read` before editing.");
-    expect(readInstruction).toContain("when editing named files, read the file right before");
-    expect(editInstruction).toContain("latest direct `file-read` of that file");
-    expect(editInstruction).toContain("Batch multiple edits to the same file");
-    expect(editInstruction).toContain("Use `code-edit` only for structural AST-aware refactors");
-    expect(editCodeInstruction).toContain("Use `code-edit` for AST-aware refactors and structural rewrites.");
-    expect(editCodeInstruction).toContain("set `target` explicitly to `local` or `member`");
-    expect(searchInstruction).toContain("narrow scope with `paths`");
-    expect(searchInstruction).toContain("edit from that evidence");
-    expect(searchInstruction).toContain(
-      "use `find` snippets from current `file-read` text or scoped `file-search` hits only",
-    );
-    expect(gitStatusInstruction).toContain("repository-wide state matters");
-    expect(gitStatusInstruction).toContain("already understood file-scoped task");
-    expect(gitDiffInstruction).toContain("repository diff context matters");
-    expect(gitDiffInstruction).toContain("trust write-tool previews");
-    expect(gitLogInstruction).toContain("for history, not current uncommitted edits");
-    expect(gitShowInstruction).toContain("for history, not current uncommitted edits");
-    expect(runCommandInstruction).toContain("Use `shell-run` for known repository commands");
-    expect(runCommandInstruction).toContain("Do not use shell for file read/search/edit fallbacks");
+    expectIntent(readInstruction, [
+      ["file-read", "before", "file-edit", "code-edit"],
+      ["re-read", "target file", "before editing"],
+    ]);
+    expectIntent(findInstruction, [["file-find", "locate files"], ["patterns", "array"], ["batch"]]);
+    expectIntent(createInstruction, [["file-create", "full content"]]);
+    expectIntent(deleteInstruction, [["file-delete"], ["paths", "array"], ["batch"]]);
+    expectIntent(editInstruction, [
+      ["latest direct", "file-read"],
+      ["batch same-file edits"],
+      ["diff preview", "bounded changes", "stop"],
+      ["code-edit", "structural", "refactors"],
+    ]);
+    expectIntent(editCodeInstruction, [["ast-aware refactors"], ["target", "local", "member"], ["withinsymbol"]]);
+    expectIntent(searchInstruction, [["text/regex"], ["narrow scope", "paths"], ["edit from that evidence"]]);
+    expectIntent(gitStatusInstruction, [["repo-wide state"], ["file-scoped edits"]]);
+    expectIntent(gitDiffInstruction, [["git-level diff context"], ["write-tool previews"]]);
+    expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);
+    expectIntent(gitShowInstruction, [["committed history"], ["uncommitted edits"]]);
+    expectIntent(runCommandInstruction, [
+      ["explicit user commands"],
+      ["known repo commands"],
+      ["do not use shell", "fallbacks"],
+    ]);
+    expectIntent(runTestsInstruction, [["validate changed files"], ["avoid full-suite runs"]]);
+    expectIntent(webSearchInstruction, [["external information"], ["not available in the repository"]]);
+    expectIntent(webFetchInstruction, [["read specific urls"]]);
+    expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);
+    expectIntent(checklistUpdateInstruction, [["checklist-update"], ["status"], ["checklist-create"]]);
   });
 });

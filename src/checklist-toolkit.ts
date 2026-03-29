@@ -48,7 +48,7 @@ function createCreateChecklistTool(
     category: "meta",
     description: "Create an inline task checklist visible to the user. All items start as pending.",
     instruction:
-      "Use `checklist-create` once at the start of multi-step tasks to show the user a progress checklist. Define all steps upfront. Use `checklist-update` to change item statuses as you work.",
+      "Use `checklist-create` once for multi-step tasks. Define all steps upfront, then use `checklist-update` as progress changes.",
     inputSchema: createChecklistInputSchema,
     outputSchema: createChecklistOutputSchema,
     execute: async (toolInput, toolCallId) => {
@@ -78,7 +78,7 @@ function createUpdateChecklistTool(
     category: "meta",
     description: "Update the status of a single checklist item.",
     instruction:
-      "Use `checklist-update` to mark a checklist item as `in_progress`, `done`, or `failed`. Requires a prior `checklist-create` call for the same groupId.",
+      "Use `checklist-update` to set item status (`in_progress`, `done`, `failed`) after `checklist-create` for the same groupId.",
     inputSchema: updateChecklistInputSchema,
     outputSchema: updateChecklistOutputSchema,
     execute: async (toolInput, toolCallId) => {

@@ -7,7 +7,7 @@ import {
   runMemoryPipeline,
   selectMemoryEntries,
 } from "./memory-pipeline";
-import { createMemorySource } from "./test-utils";
+import { createMemorySource, expectIntent } from "./test-utils";
 
 describe("memory pipeline", () => {
   test("returns empty result when budget is disabled", async () => {
@@ -62,16 +62,14 @@ describe("memory pipeline", () => {
       { sourceId: "stored", content: "prefer bun", tokenEstimate: 3 },
       { sourceId: "distill", content: "Current task: fix tests", tokenEstimate: 5 },
     ]);
-    expect(prompt.startsWith("Memory context:")).toBe(true);
-    expect(prompt).toContain("- prefer bun");
-    expect(prompt).toContain("- Current task: fix tests");
+    expectIntent(prompt, [["memory context:"], ["- prefer bun"], ["- current task: fix tests"]]);
   });
 
   test("formatMemoryContextPrompt indents multiline entries", () => {
     const prompt = formatMemoryContextPrompt([
       { sourceId: "distill", content: "line one\nline two", tokenEstimate: 5 },
     ]);
-    expect(prompt).toContain("- line one\n  line two");
+    expectIntent(prompt, [["- line one", "line two"]]);
   });
 
   test("formatMemoryContextPrompt returns empty for empty entries", () => {

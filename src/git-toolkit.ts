@@ -95,8 +95,7 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
     labelKey: "tool.label.git_status",
     category: "search",
     description: "Show working tree status (short format with branch) for the current repository.",
-    instruction:
-      "Use `git-status` when repository-wide state matters, not to re-check an already understood file-scoped task.",
+    instruction: "Use `git-status` when repo-wide state matters. Skip it for already-understood file-scoped edits.",
     outputSchema: z.object({
       kind: z.literal("git-status"),
       output: z.string(),
@@ -127,7 +126,7 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     category: "search",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     instruction:
-      "Use `git-diff` when repository diff context matters. For bounded named-file edits, trust write-tool previews unless the user asked for git-level verification.",
+      "Use `git-diff` when git-level diff context matters. For bounded file edits, rely on write-tool previews unless the user asks for git verification.",
     outputSchema: z.object({
       kind: z.literal("git-diff"),
       path: z.string().optional(),
@@ -162,8 +161,7 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
     labelKey: "tool.label.git_log",
     category: "search",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
-    instruction:
-      "Use `git-log` to inspect committed history, optionally scoped by path. It is for history, not current uncommitted edits.",
+    instruction: "Use `git-log` for committed history (optionally scoped by path), not for uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-log"),
       path: z.string().optional(),
@@ -199,7 +197,7 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     category: "search",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
     instruction:
-      "Use `git-show` to inspect committed history for a ref, optionally scoped by path. It is for history, not current uncommitted edits.",
+      "Use `git-show` for committed history at a ref (optionally scoped by path), not for uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-show"),
       ref: z.string().optional(),
@@ -295,8 +293,7 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
     labelKey: "tool.label.git_commit",
     category: "write",
     description: "Create a git commit with a required subject line and optional body lines.",
-    instruction:
-      "Use `git-commit` to create the final Conventional Commit after verify passes. Set `message` to the subject line. Never commit unless the user explicitly asks you to.",
+    instruction: "Use `git-commit` only when the user explicitly asks. Set `message` to the subject line.",
     outputSchema: z.object({
       kind: z.literal("git-commit"),
       message: z.string().min(1),

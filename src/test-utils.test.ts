@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { dedent, dedentString, expectToThrowJSON, testUuid } from "./test-utils";
+import { dedent, dedentString, expectIntent, expectToThrowJSON, normalizeIntentText, testUuid } from "./test-utils";
 
 describe("test utils", () => {
   describe("dedentString", () => {
@@ -66,6 +66,21 @@ describe("test utils", () => {
 
     test("throws when callback does not throw", () => {
       expect(() => expectToThrowJSON(() => {})).toThrow("Expected function to throw");
+    });
+  });
+
+  describe("intent helpers", () => {
+    test("normalizeIntentText lowers case and collapses whitespace", () => {
+      expect(normalizeIntentText("  A   B\nC\tD  ")).toBe("a b c d");
+    });
+
+    test("expectIntent matches fragment groups regardless of spacing/case", () => {
+      expect(() =>
+        expectIntent("Use FILE-READ before file-edit.\nThen stop.", [
+          ["file-read", "file-edit"],
+          ["then", "stop"],
+        ]),
+      ).not.toThrow();
     });
   });
 
