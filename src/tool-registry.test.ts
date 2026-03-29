@@ -124,7 +124,7 @@ describe("localization baseline", () => {
     expectIntent(runTestsInstruction, [
       ["validate touched behavior"],
       ["create or update related tests"],
-      ["narrowest related tests first"],
+      ["narrowest related tests"],
       ["widen scope", "user asks"],
       ["do not chase unrelated failures"],
     ]);
