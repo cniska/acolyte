@@ -28,6 +28,8 @@ This rule is enforced across tool entry paths, including CLI tool mode (`acolyte
 
 Path checks are fail-closed and use resolved-path validation (`realpath`) so symlink escapes are blocked. For paths that do not exist yet, validation resolves the nearest existing parent and enforces the same boundary.
 
+For `shell-run`, Acolyte executes argv (`cmd` + `args`) without shell evaluation. The command path and path-like arguments are validated against the workspace sandbox, and execution runs with a restricted environment allowlist. This is command-level enforcement, not kernel-level process isolation, and it does not constrain filesystem access performed internally by the executed binary.
+
 No special temp-root exception exists in sandbox enforcement.
 
 ## Sandbox violations

@@ -99,7 +99,7 @@ describe("tool-cache", () => {
     const cache = createToolCache(CACHEABLE);
     cache.set("file-read", { paths: [{ path: "a.ts" }] }, { result: "a" });
     cache.set("file-search", { pattern: "x" }, { result: "b" });
-    cache.invalidateForWrite("shell-run", { command: "rm -rf node_modules" });
+    cache.invalidateForWrite("shell-run", { cmd: "rm", args: ["-rf", "node_modules"] });
     expect(cache.stats().size).toBe(0);
   });
 

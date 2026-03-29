@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import {
@@ -421,6 +422,20 @@ describe("searchFiles", () => {
     const result = await searchFiles(WORKSPACE, ["needle"], 20, [dir]);
     expect(result).toContain("inside.ts:1:");
     expect(result).not.toContain(outside.split("/").at(-1) ?? "");
+  });
+
+  test("accepts canonical absolute paths inside a symlinked workspace root", async () => {
+    const root = await mkdtemp(join(tmpdir(), "acolyte-search-sandbox-"));
+    tempDirs.push(root);
+    const realWorkspace = join(root, "real-workspace");
+    const linkWorkspace = join(root, "workspace-link");
+    const filePath = join(realWorkspace, "inside.ts");
+    await mkdir(realWorkspace, { recursive: true });
+    await writeFile(filePath, 'export const inside = "needle";\n', "utf8");
+    await symlink(realWorkspace, linkWorkspace);
+
+    const result = await searchFiles(linkWorkspace, ["needle"], 20, [filePath]);
+    expect(result).toContain("inside.ts:1:");
   });
 });
 

@@ -5,9 +5,9 @@ import { toolsForAgent } from "./tool-registry";
 describe("tool error wrapper integration", () => {
   test("preserves guard-blocked code from guarded execution", async () => {
     const { tools } = toolsForAgent({ workspace: process.cwd() });
-    await tools.runCommand.execute({ command: "echo verify" }, "test-call-1");
+    await tools.runCommand.execute({ cmd: "echo", args: ["verify"] }, "test-call-1");
     try {
-      await tools.runCommand.execute({ command: "echo verify" }, "test-call-2");
+      await tools.runCommand.execute({ cmd: "echo", args: ["verify"] }, "test-call-2");
       throw new Error("expected duplicate verify guard to block");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);

@@ -450,7 +450,7 @@ describe("cli visual regression", () => {
 
         Examples:
           acolyte tool file-find "src/**/*.ts"
-          acolyte tool shell-run "bun run verify"
+          acolyte tool shell-run bun run verify
       `),
     },
     {

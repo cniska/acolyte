@@ -1,7 +1,7 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { type GitignoreContext, isIgnoredByPatterns, loadGitignoreContext } from "./gitignore";
-import { ensurePathWithinSandbox } from "./workspace-sandbox";
+import { ensurePathWithinSandbox, resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const DIFF_CONTEXT_RADIUS = 2;
 
@@ -154,25 +154,22 @@ function normalizeRelPath(value: string): string {
     .replace(/\/+$/, "");
 }
 
-function isWithinWorkspacePath(absPath: string, workspace: string): boolean {
-  return absPath === workspace || absPath.startsWith(`${workspace}/`);
-}
-
 export async function resolveSearchScopeFiles(workspace: string, paths: string[] | undefined): Promise<string[]> {
   const allFiles = await collectWorkspaceFiles(workspace);
+  const sandboxRoot = resolveWorkspaceSandboxRoot(workspace);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   if (normalizedPaths.length === 0) return allFiles;
   const include = new Set<string>();
   for (const rawPath of normalizedPaths) {
     const absPath = ensurePathWithinSandbox(rawPath, workspace);
-    if (!isWithinWorkspacePath(absPath, workspace)) throw new Error("Search paths must be within the workspace");
     let entryStat: Awaited<ReturnType<typeof stat>>;
     try {
       entryStat = await stat(absPath);
     } catch {
       continue;
     }
-    const relPath = normalizeRelPath(relative(workspace, absPath));
+    const canonicalPath = await realpath(absPath);
+    const relPath = normalizeRelPath(relative(sandboxRoot, canonicalPath));
     if (entryStat.isFile()) {
       if (relPath.length > 0) include.add(relPath);
       continue;

@@ -108,7 +108,7 @@ describe("repeatedFailureEvaluator", () => {
 
   test("tracks different shell-run failures as different repeated-failure streaks", () => {
     const session = createSessionContext("task_repeat");
-    recordCall(session, "shell-run", { command: "bun test src/a.test.ts" });
+    recordCall(session, "shell-run", shellRunArgs("bun test src/a.test.ts"));
 
     const ctx = createRunContext({
       taskId: "task_repeat",
@@ -125,7 +125,7 @@ describe("repeatedFailureEvaluator", () => {
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
 
-    recordCall(session, "shell-run", { command: "bun test src/b.test.ts" });
+    recordCall(session, "shell-run", shellRunArgs("bun test src/b.test.ts"));
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
     expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");

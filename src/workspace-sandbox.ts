@@ -8,7 +8,6 @@ const SANDBOX_VIOLATION_MESSAGES = {
   unresolvedPath: "Sandbox violation: cannot resolve path within workspace sandbox",
   resolvedOutside: "Sandbox violation: path resolves outside workspace sandbox",
   outside: "Sandbox violation: path is outside workspace sandbox",
-  pathTraversal: "Sandbox violation: command contains path traversal outside workspace sandbox",
   homePath: "Sandbox violation: command references home path outside workspace sandbox",
 } as const;
 

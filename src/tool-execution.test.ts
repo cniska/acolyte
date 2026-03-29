@@ -52,7 +52,7 @@ describe("per-tool timeout", () => {
     session.toolTimeoutMs = 50;
     const result = await guardedExecute(
       "shell-run",
-      { command: "npm test", timeoutMs: 300 },
+      { cmd: "npm", args: ["test"], timeoutMs: 300 },
       session,
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
       { timeoutMs: 300 },

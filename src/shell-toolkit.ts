@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
-import { parseExitCode, runShellCommand } from "./shell-ops";
+import { formatShellCommand, parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -13,11 +13,12 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
     labelKey: "tool.label.shell_run",
     category: "execute",
     description:
-      "Run a shell command in the repository and capture stdout/stderr. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
+      "Run a command in the repository and capture stdout/stderr without shell evaluation. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
     instruction:
-      "Use `shell-run` for explicit user commands or known repo commands (build/test/verify). Do not use shell for file read/search/edit fallbacks; use file/code tools. Avoid rerunning unchanged commands unless requested.",
+      "Use `shell-run` for known repository commands such as documented build/test/verify steps, or when the user explicitly asked you to run a command. Provide a binary in `cmd` and arguments in `args`; shell operators/pipes/redirections are not supported. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`) — use `file-read`, `file-search`, `file-find`, `file-edit`, or `code-edit`. For explicit named-file bounded tasks, do not run commands after the edit just to double-check the result unless the user asked for verification.",
     inputSchema: z.object({
-      command: z.string().min(1),
+      cmd: z.string().min(1),
+      args: z.array(z.string()).optional(),
       timeoutMs: z.number().int().min(500).max(120000).optional(),
     }),
     outputSchema: z.object({
@@ -33,12 +34,13 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
         toolCallId,
         toolInput,
         async (callId) => {
+          const displayCommand = formatShellCommand({ cmd: toolInput.cmd, args: toolInput.args ?? [] });
           input.onOutput({
             toolName: "shell-run",
             content: {
               kind: "tool-header",
               labelKey: "tool.label.shell_run",
-              detail: compactDetail(toolInput.command),
+              detail: compactDetail(displayCommand),
             },
             toolCallId: callId,
           });
@@ -66,7 +68,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           };
           const rawResult = await runShellCommand(
             input.workspace,
-            toolInput.command,
+            { cmd: toolInput.cmd, args: toolInput.args ?? [] },
             toolInput.timeoutMs ?? 60_000,
             ({ stream, text }) => {
               if (stream === "stdout") {
@@ -93,7 +95,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           const result = compactToolOutput(rawResult, deps.outputBudget.run);
           return {
             kind: "shell-run",
-            command: toolInput.command,
+            command: displayCommand,
             exitCode: parseExitCode(rawResult),
             output: result,
           };

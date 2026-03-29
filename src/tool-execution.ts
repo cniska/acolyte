@@ -49,7 +49,8 @@ function sandboxDebugFields(toolId: string, args: Record<string, unknown>): Reco
   const fields: Record<string, unknown> = { tool: toolId };
   if (typeof args.path === "string") fields.path = args.path;
   if (Array.isArray(args.paths)) fields.paths = args.paths;
-  if (typeof args.command === "string") fields.command = args.command;
+  if (typeof args.cmd === "string") fields.cmd = args.cmd;
+  if (Array.isArray(args.args)) fields.args = args.args;
   return fields;
 }
 
