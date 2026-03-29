@@ -126,7 +126,8 @@ export type ReviewResult = {
   error?: LifecycleError;
 };
 
-export type FeedbackSource = "guard" | "lint" | "verify" | "tool-recovery" | "repeated-failure";
+export const feedbackSourceSchema = z.enum(["guard", "lint", "verify", "tool-recovery", "repeated-failure"]);
+export type FeedbackSource = z.infer<typeof feedbackSourceSchema>;
 
 export const regenerationReasonSchema = z.enum([
   "guard-recovery",

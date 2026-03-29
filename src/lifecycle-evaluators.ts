@@ -14,7 +14,7 @@ import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
 
-export type EvalAction = { type: "done" } | RegenerateAction;
+export type EvaluatorAction = { type: "done" } | RegenerateAction;
 
 type EvaluatorLifecycleState = {
   readonly feedback: readonly LifecycleFeedback[];
@@ -33,7 +33,7 @@ export type EvaluatorDebug = {
 };
 
 export type EvaluatorResult = {
-  action: EvalAction;
+  action: EvaluatorAction;
   patch?: EvaluatorPatch;
   debug?: EvaluatorDebug;
 };
