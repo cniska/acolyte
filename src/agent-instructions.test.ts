@@ -57,8 +57,9 @@ describe("createModeInstructions", () => {
     const out = createModeInstructions("verify");
     expect(out).toContain("Review the changes");
     expect(out).toContain("Choose the lightest sufficient verification");
-    expect(out).toContain("Report any issues found");
-    expect(out).toContain("Do not fix them");
+    expect(out).toContain("If the review is clean, respond with `@signal no_op`");
+    expect(out).toContain("If you find issues, list only the concrete findings");
+    expect(out).toContain("Do not fix issues in verify mode");
   });
 
   test("work mode does not include verification instructions", () => {

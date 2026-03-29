@@ -41,6 +41,7 @@ export type SessionFlags = {
   guardStats?: { blocked: number; flagSet: number };
   consecutiveBlocks?: number;
   consecutiveGuardBlockLimit?: number;
+  allowPostEditFollowup?: boolean;
 };
 
 export type SessionContext = {
@@ -503,6 +504,10 @@ const postEditRedundancyGuard: ToolGuard = {
   tools: ["file-delete", "file-edit"],
   check({ args, session, report, toolName }) {
     if (toolName === "file-edit") {
+      if (session.flags.allowPostEditFollowup) {
+        session.flags.allowPostEditFollowup = false;
+        return;
+      }
       const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
       if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
       report("blocked", targetPath);

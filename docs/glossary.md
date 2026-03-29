@@ -63,6 +63,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
-| Verify Cycle | Post-write review sequence that transitions work into verify mode for code review |
+| Verify Cycle | Post-write review sequence that transitions work into verify mode, accepts a clean review, or returns to work with review findings |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, commands, and line width |

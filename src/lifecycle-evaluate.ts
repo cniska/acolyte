@@ -88,6 +88,18 @@ function captureReviewResult(ctx: RunContext): ReviewResult {
   }
 }
 
+function prepareRegenerationBoundary(
+  ctx: RunContext,
+  action: {
+    feedback?: RunContext["lifecycleState"]["feedback"][number];
+    mode?: RunContext["mode"];
+  },
+): void {
+  if (action.feedback?.source === "verify" && action.mode === "work") {
+    ctx.session.flags.allowPostEditFollowup = true;
+  }
+}
+
 export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
   policy: LifecyclePolicy = defaultLifecyclePolicy,
@@ -148,6 +160,7 @@ async function triggerRegeneration(
   }
 
   const reviewCandidate = action.mode === "verify" ? createReviewCandidate(ctx) : undefined;
+  prepareRegenerationBoundary(ctx, action);
   if (action.mode) setMode(ctx, action.mode, source.id);
 
   ctx.regenerationCount += 1;

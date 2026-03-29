@@ -73,7 +73,7 @@ resolve → prepare → generate → evaluate → finalize
 - **evaluate**: inspect output, decide accept or regenerate
 - **finalize**: persist results and emit the response
 
-Evaluators run after generation and can return a `regenerate` action. The verify-cycle evaluator transitions to verify mode for code review whenever the model used write tools, causing the lifecycle to re-run the generate phase under the new mode. The lint evaluator regenerates when lint errors are found in edited files.
+Evaluators run after generation and can return a `regenerate` action. The verify-cycle evaluator owns the full code-review loop: it transitions into verify mode after write work, accepts a clean review verdict, and sends the lifecycle back to work when review findings need fixes. The lint evaluator regenerates when lint errors are found in edited files.
 
 Most other agents use flat tool loops or implicit state machines.
 
@@ -99,7 +99,7 @@ Others rely primarily on prompt instructions or user confirmation.
 After generation, evaluators inspect the result and may trigger:
 
 - Regeneration with a different tool strategy
-- Mode transitions (work → verify) for code review
+- Mode transitions through the full work → verify → work/done code-review loop
 - Scoped test execution via the `test-run` tool during work mode
 
 The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.

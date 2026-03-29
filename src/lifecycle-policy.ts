@@ -1,14 +1,20 @@
 import {
   CONSECUTIVE_GUARD_BLOCK_LIMIT,
   INITIAL_MAX_STEPS,
+  MAX_GUARD_RECOVERY_REGENERATIONS_PER_REQUEST,
+  MAX_LINT_REGENERATIONS_PER_REQUEST,
   MAX_NUDGES_PER_GENERATION,
   MAX_REGENERATIONS_PER_REQUEST,
+  MAX_REPEATED_FAILURE_REGENERATIONS_PER_REQUEST,
+  MAX_TOOL_RECOVERY_REGENERATIONS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
+  MAX_VERIFY_REGENERATIONS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
   TOTAL_MAX_STEPS,
   VERIFY_MAX_STEPS,
 } from "./lifecycle-constants";
+import type { RegenerationReason } from "./lifecycle-contract";
 import type { WorkspaceCommand } from "./workspace-profile";
 
 export type LifecyclePolicy = {
@@ -18,6 +24,7 @@ export type LifecyclePolicy = {
   verifyMaxSteps: number;
   maxUnknownErrorsPerRequest: number;
   maxRegenerationsPerRequest: number;
+  maxRegenerationsPerReason: Record<RegenerationReason, number>;
   maxNudgesPerGeneration: number;
   /** Per-tool execution timeout in ms. */
   toolTimeoutMs: number;
@@ -36,6 +43,13 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   verifyMaxSteps: VERIFY_MAX_STEPS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   maxRegenerationsPerRequest: MAX_REGENERATIONS_PER_REQUEST,
+  maxRegenerationsPerReason: {
+    "guard-recovery": MAX_GUARD_RECOVERY_REGENERATIONS_PER_REQUEST,
+    lint: MAX_LINT_REGENERATIONS_PER_REQUEST,
+    verify: MAX_VERIFY_REGENERATIONS_PER_REQUEST,
+    "tool-recovery": MAX_TOOL_RECOVERY_REGENERATIONS_PER_REQUEST,
+    "repeated-failure": MAX_REPEATED_FAILURE_REGENERATIONS_PER_REQUEST,
+  },
   maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
   consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT,
