@@ -6,7 +6,7 @@ Acolyte is a terminal-first AI coding agent: local-first, observable, extensible
 
 Extension points:
 - New post-generation behavior → `Evaluator` in `lifecycle-evaluators.ts`, add to `EVALUATORS`
-- New lifecycle-owned side effect → `LifecycleCommand` in `lifecycle-commands.ts`, add to `COMMANDS`
+- New lifecycle-owned side effect → `LifecycleEffect` in `lifecycle-effects.ts`, add to `EFFECTS`
 - New tool guard → `ToolGuard` in `tool-guards.ts`, add to `GUARDS`
 - New tool → appropriate `*-toolkit.ts`; all tools flow through `runTool`
 - New ecosystem → `EcosystemDetector` in `workspace-detectors.ts`, add to `ECOSYSTEM_DETECTORS`

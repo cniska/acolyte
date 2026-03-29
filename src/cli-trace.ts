@@ -43,8 +43,8 @@ const traceEventSchema = z.enum([
   "lifecycle.guard",
   "lifecycle.signal.accepted",
   "lifecycle.skill.context",
-  "lifecycle.command.format",
-  "lifecycle.command.lint",
+  "lifecycle.effect.format",
+  "lifecycle.effect.lint",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
   "lifecycle.eval.guard_recovery",
@@ -99,10 +99,10 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.guard": ["guard", "tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal", "mode"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
-  "lifecycle.command.format": ["files"],
-  "lifecycle.command.lint": ["files"],
-  "lifecycle.eval.decision": ["command", "evaluator", "action", "regeneration_count"],
-  "lifecycle.eval.skipped": ["command", "evaluator", "reason"],
+  "lifecycle.effect.format": ["files"],
+  "lifecycle.effect.lint": ["files"],
+  "lifecycle.eval.decision": ["effect", "evaluator", "action", "regeneration_count"],
+  "lifecycle.eval.skipped": ["effect", "evaluator", "reason"],
   "lifecycle.eval.guard_recovery": ["mode"],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
   "lifecycle.eval.verify_cycle": ["used_write_tools", "verified", "verify_scope"],
@@ -262,7 +262,7 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
         flushPending();
         rows.push({
           kind: "separator",
-          text: `── regenerate (${line.fields.command ?? line.fields.evaluator ?? ""}) ──`,
+          text: `── regenerate (${line.fields.effect ?? line.fields.evaluator ?? ""}) ──`,
         });
       }
       continue;
@@ -272,7 +272,7 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `── skipped ${line.fields.command ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── skipped ${line.fields.effect ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }

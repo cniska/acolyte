@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runFormatIfConfigured, runLintIfConfigured } from "./lifecycle-commands";
+import { runFormatIfConfigured, runLintIfConfigured } from "./lifecycle-effects";
 import { createRunContext } from "./test-utils";
 
 describe("runFormatIfConfigured", () => {

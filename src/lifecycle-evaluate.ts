@@ -1,13 +1,13 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import { formatCommand, lintCommand } from "./lifecycle-commands";
 import type {
-  LifecycleCommand,
-  LifecycleCommandAction,
+  LifecycleEffect,
+  LifecycleEffectAction,
   LifecycleInput,
   RunContext,
   SavedRegenerationState,
 } from "./lifecycle-contract";
+import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
   guardRecoveryEvaluator,
@@ -19,7 +19,7 @@ import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
-const COMMANDS: LifecycleCommand[] = [formatCommand, lintCommand];
+const EFFECTS: LifecycleEffect[] = [formatEffect, lintEffect];
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
@@ -31,14 +31,14 @@ const EVALUATORS: Evaluator[] = [
 type PhaseEvaluateDeps = {
   phaseGenerate: typeof phaseGenerate;
   shouldYieldNow: typeof shouldYieldNow;
-  commands: readonly LifecycleCommand[];
+  effects: readonly LifecycleEffect[];
   evaluators: readonly Evaluator[];
 };
 
 const defaultPhaseEvaluateDeps: PhaseEvaluateDeps = {
   phaseGenerate,
   shouldYieldNow,
-  commands: COMMANDS,
+  effects: EFFECTS,
   evaluators: EVALUATORS,
 };
 
@@ -69,7 +69,7 @@ async function triggerRegeneration(
     cycleLimit?: number;
     keepResult?: boolean;
   },
-  source: { kind: "command" | "evaluator"; id: string },
+  source: { kind: "effect" | "evaluator"; id: string },
   deps: PhaseEvaluateDeps,
   shouldYield: LifecycleInput["shouldYield"],
 ): Promise<boolean> {
@@ -160,14 +160,14 @@ export async function phaseEvaluate(
     }
 
     let regenerated = false;
-    for (const command of deps.commands) {
+    for (const effect of deps.effects) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
-      const action: LifecycleCommandAction = command.run(ctx);
+      const action: LifecycleEffectAction = effect.run(ctx);
       if (action.type === "done") {
-        ctx.debug("lifecycle.eval.decision", { command: command.id, action: "done" });
+        ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
         continue;
       }
-      regenerated = await triggerRegeneration(ctx, action, { kind: "command", id: command.id }, deps, shouldYield);
+      regenerated = await triggerRegeneration(ctx, action, { kind: "effect", id: effect.id }, deps, shouldYield);
       break;
     }
 

@@ -23,20 +23,20 @@ describe("recoveryActionForError", () => {
 });
 
 describe("phaseEvaluate", () => {
-  test("runs lifecycle commands before evaluators", async () => {
+  test("runs lifecycle effects before evaluators", async () => {
     const events: string[] = [];
     const ctx = createRunContext({
       result: { text: "done", toolCalls: [] },
       debug: (event, fields) => {
         if (event === "lifecycle.eval.decision") {
-          events.push(`${String(fields?.command ?? fields?.evaluator)}:${String(fields?.action)}`);
+          events.push(`${String(fields?.effect ?? fields?.evaluator)}:${String(fields?.action)}`);
         }
       },
     });
 
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
-      commands: [
+      effects: [
         { id: "format", run: () => ({ type: "done" }) },
         { id: "lint", run: () => ({ type: "done" }) },
       ],
@@ -55,13 +55,13 @@ describe("phaseEvaluate", () => {
     expect(events).toContain("guard-recovery:regenerate");
   });
 
-  test("regenerates from lint command before running evaluators", async () => {
+  test("regenerates from lint effect before running evaluators", async () => {
     const decisions: string[] = [];
     const ctx = createRunContext({
       result: { text: "done", toolCalls: [] },
       debug: (event, fields) => {
         if (event === "lifecycle.eval.decision") {
-          decisions.push(`${String(fields?.command ?? fields?.evaluator)}:${String(fields?.action)}`);
+          decisions.push(`${String(fields?.effect ?? fields?.evaluator)}:${String(fields?.action)}`);
         }
       },
     });
@@ -69,7 +69,7 @@ describe("phaseEvaluate", () => {
     let generateOptions: GenerateOptions | undefined;
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
-      commands: [
+      effects: [
         { id: "format", run: () => ({ type: "done" }) },
         {
           id: "lint",

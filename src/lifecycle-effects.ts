@@ -1,4 +1,4 @@
-import type { LifecycleCommand, LifecycleCommandAction, RunContext } from "./lifecycle-contract";
+import type { LifecycleEffect, LifecycleEffectAction, RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { type CommandResult, runCommandWithFiles } from "./workspace-profile";
@@ -25,25 +25,25 @@ function writePathsForCurrentTask(ctx: RunContext): string[] {
 export function runFormatIfConfigured(
   ctx: RunContext,
   runWithFiles: typeof runCommandWithFiles = runCommandWithFiles,
-): LifecycleCommandAction {
+): LifecycleEffectAction {
   if (ctx.mode !== "work" || !ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
   const paths = writePathsForCurrentTask(ctx);
   if (paths.length === 0) return { type: "done" };
   runWithFiles(ctx.workspace, ctx.policy.formatCommand, paths);
-  ctx.debug("lifecycle.command.format", { files: paths.length });
+  ctx.debug("lifecycle.effect.format", { files: paths.length });
   return { type: "done" };
 }
 
 export function runLintIfConfigured(
   ctx: RunContext,
   runWithFiles: typeof runCommandWithFiles = runCommandWithFiles,
-): LifecycleCommandAction {
+): LifecycleEffectAction {
   if (ctx.mode !== "work" || !ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
   const paths = writePathsForCurrentTask(ctx);
   if (paths.length === 0) return { type: "done" };
   const result = runWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
   if (!result.hasErrors) return { type: "done" };
-  ctx.debug("lifecycle.command.lint", { files: paths.length });
+  ctx.debug("lifecycle.effect.lint", { files: paths.length });
   return {
     type: "regenerate",
     feedback: {
@@ -56,12 +56,12 @@ export function runLintIfConfigured(
   };
 }
 
-export const formatCommand: LifecycleCommand = {
+export const formatEffect: LifecycleEffect = {
   id: "format",
   run: (ctx) => runFormatIfConfigured(ctx),
 };
 
-export const lintCommand: LifecycleCommand = {
+export const lintEffect: LifecycleEffect = {
   id: "lint",
   run: (ctx) => runLintIfConfigured(ctx),
 };

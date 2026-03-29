@@ -477,25 +477,25 @@ describe("traceMode", () => {
     expect(text).toContain("lifecycle.tool.cache");
   });
 
-  test("task subcommand --verbose shows lifecycle command events with fields", async () => {
+  test("task subcommand --verbose shows lifecycle effect events with fields", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
       taskId: "task_1",
-      event: "lifecycle.command.format",
+      event: "lifecycle.effect.format",
       fields: { files: "2" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
-      event: "lifecycle.command.lint",
+      event: "lifecycle.effect.lint",
       fields: { files: "2" },
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1", "--verbose"], deps);
     const text = output();
-    expect(text).toContain("lifecycle.command.format");
-    expect(text).toContain("lifecycle.command.lint");
+    expect(text).toContain("lifecycle.effect.format");
+    expect(text).toContain("lifecycle.effect.lint");
     expect(text).toContain("files");
     expect(text).toContain("2");
   });
