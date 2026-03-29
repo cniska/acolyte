@@ -477,7 +477,7 @@ describe("traceMode", () => {
     expect(text).toContain("lifecycle.tool.cache");
   });
 
-  test("task subcommand --verbose shows lifecycle effect events with fields", async () => {
+  test("task subcommand --verbose shows effect events with fields", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",

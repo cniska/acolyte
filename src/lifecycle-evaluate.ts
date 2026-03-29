@@ -1,12 +1,6 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type {
-  LifecycleEffect,
-  LifecycleEffectAction,
-  LifecycleInput,
-  RunContext,
-  SavedRegenerationState,
-} from "./lifecycle-contract";
+import type { Effect, EffectAction, LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
 import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
@@ -19,7 +13,7 @@ import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
-const EFFECTS: LifecycleEffect[] = [formatEffect, lintEffect];
+const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
@@ -31,7 +25,7 @@ const EVALUATORS: Evaluator[] = [
 type PhaseEvaluateDeps = {
   phaseGenerate: typeof phaseGenerate;
   shouldYieldNow: typeof shouldYieldNow;
-  effects: readonly LifecycleEffect[];
+  effects: readonly Effect[];
   evaluators: readonly Evaluator[];
 };
 
@@ -163,7 +157,7 @@ export async function phaseEvaluate(
     for (const effect of deps.effects) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
       if (!effect.modes.includes(ctx.mode)) continue;
-      const action: LifecycleEffectAction = effect.run(ctx);
+      const action: EffectAction = effect.run(ctx);
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
         continue;

@@ -131,17 +131,17 @@ export type LifecycleFeedback = {
   instruction?: string;
 };
 
-export type LifecycleEffectAction =
+export type EffectAction =
   | { type: "done" }
   | {
       type: "regenerate";
       feedback?: LifecycleFeedback;
     };
 
-export type LifecycleEffect = {
+export type Effect = {
   id: string;
   modes: readonly AgentMode[];
-  run: (ctx: RunContext) => LifecycleEffectAction;
+  run: (ctx: RunContext) => EffectAction;
 };
 
 export type LifecycleState = {

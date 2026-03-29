@@ -23,7 +23,7 @@ describe("recoveryActionForError", () => {
 });
 
 describe("phaseEvaluate", () => {
-  test("runs lifecycle effects before evaluators", async () => {
+  test("runs effects before evaluators", async () => {
     const events: string[] = [];
     const ctx = createRunContext({
       result: { text: "done", toolCalls: [] },

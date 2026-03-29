@@ -11,12 +11,12 @@ resolve → prepare → generate → evaluate → finalize
 - **resolve**: pick mode and policy from request intent
 - **prepare**: build base agent input, tools, session context, and policy state
 - **generate**: run model + tool loop for one attempt; the model may also emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
-- **evaluate**: accept a valid lifecycle signal, run lifecycle-owned effects, then apply pure evaluators and choose `done` or bounded regeneration
+- **evaluate**: accept a valid lifecycle signal, run effects, then apply pure evaluators and choose `done` or bounded regeneration
 - **finalize**: emit final response and lifecycle summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`, signaling the TUI to show a waiting indicator until the user replies
 
 ## Regeneration model
 
-- lifecycle effects and evaluators can request regeneration
+- effects and evaluators can request regeneration
 - regeneration uses task-scoped `lifecycleState` to carry internal feedback and review outcome between attempts
 - generation input is rebuilt from immutable base input plus pending mode-scoped lifecycle feedback
 - selected guard blocks may also be translated into lifecycle feedback before the next attempt
@@ -24,12 +24,19 @@ resolve → prepare → generate → evaluate → finalize
 - regeneration is bounded by lifecycle policy caps
 - yield checks only occur at safe checkpoints between lifecycle decisions
 
-## Lifecycle effects
+## Effects
 
-- lifecycle effects own automatic side effects initiated by the lifecycle rather than the model
+- effects own automatic side effects initiated by the lifecycle rather than the model
+- they declare the modes they apply to, and `phaseEvaluate` filters them before execution
 - they run after signal acceptance and before pure evaluators
 - current examples include format and lint checks driven by detected workspace commands
 - effects may request regeneration directly and attach lifecycle feedback when the side effect exposes actionable runtime guidance
+
+## Evaluators
+
+- evaluators are pure post-generation decision units
+- they declare the modes they apply to, and `phaseEvaluate` filters them before evaluation
+- evaluators should not own lifecycle side effects; they inspect runtime state and return `done` or `regenerate`
 
 ## Lifecycle state
 
@@ -61,7 +68,7 @@ resolve → prepare → generate → evaluate → finalize
 - `src/lifecycle.ts` — Main orchestrator that coordinates all phases.
 - `src/lifecycle-constants.ts` — Configuration constants for step limits, timeouts, and thresholds.
 - `src/lifecycle-contract.ts` — Type definitions for lifecycle events, inputs, and runtime contexts.
-- `src/lifecycle-effects.ts` — Lifecycle-owned effect runners such as format and lint.
+- `src/lifecycle-effects.ts` — Lifecycle-owned side-effects such as format and lint.
 - `src/lifecycle-evaluate.ts` — Evaluation phase orchestration across effect execution, recovery, and verification.
 - `src/lifecycle-evaluators.ts` — Pure post-generation evaluators including tool recovery.
 - `src/lifecycle-finalize.ts` — Finalization phase including token accounting and tool statistics.

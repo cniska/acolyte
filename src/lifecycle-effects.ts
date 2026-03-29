@@ -1,4 +1,4 @@
-import type { LifecycleEffect, LifecycleEffectAction, RunContext } from "./lifecycle-contract";
+import type { Effect, EffectAction, RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { renderCommandResult, runCommandWithFiles } from "./workspace-profile";
@@ -16,10 +16,10 @@ function writePathsForCurrentTask(ctx: RunContext): string[] {
   return Array.from(out);
 }
 
-export const formatEffect: LifecycleEffect = {
+export const formatEffect: Effect = {
   id: "format",
   modes: ["work"],
-  run: (ctx): LifecycleEffectAction => {
+  run: (ctx): EffectAction => {
     if (!ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
@@ -29,10 +29,10 @@ export const formatEffect: LifecycleEffect = {
   },
 };
 
-export const lintEffect: LifecycleEffect = {
+export const lintEffect: Effect = {
   id: "lint",
   modes: ["work"],
-  run: (ctx): LifecycleEffectAction => {
+  run: (ctx): EffectAction => {
     if (!ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };

@@ -10,7 +10,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
 - **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
-- **Lifecycle effects** — lifecycle-owned side effects that run between generation and pure evaluation
+- **Effects** — lifecycle-owned side effects that run between generation and pure evaluation
 - **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
 - **Tools** — typed definitions with categories, permissions, schemas, and output contracts
 - **Guards** — behavioral checks that run before every tool call
@@ -80,11 +80,12 @@ resolve → prepare → generate → evaluate → finalize
 - **resolve:** pick mode and model (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
 - **generate:** run model + tool calls
-- **evaluate:** accept valid signals, run lifecycle effects, then apply pure evaluators to decide accept/retry/regenerate (bounded)
+- **evaluate:** accept valid signals, run effects, then apply pure evaluators to decide accept/retry/regenerate (bounded)
+- **mode applicability:** guards, effects, and evaluators declare their applicable modes; orchestrators enforce those boundaries centrally
 - **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
 - **finalize:** persist outputs and emit final response
 
-- **regeneration:** lifecycle effects and evaluators may request regeneration, bounded by caps
+- **regeneration:** effects and evaluators may request regeneration, bounded by caps
 - **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory
 - **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
 - **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task
