@@ -4,6 +4,8 @@ import { createInstructions, createModeInstructions } from "./agent-instructions
 describe("createModeInstructions", () => {
   test("work mode includes key tool instructions", () => {
     const out = createModeInstructions("work");
+    expect(out).toContain("## Mode Instructions");
+    expect(out).toContain("## Tool Instructions");
     expect(out).toContain("Use `file-read`");
     expect(out).toContain("Use `file-edit`");
     expect(out).toContain("Use `code-edit`");
@@ -36,9 +38,9 @@ describe("createInstructions", () => {
   test("includes base instructions for all modes", () => {
     const out = createInstructions("Soul.", "work");
     expect(out).toContain("Soul.");
-    const modeIndex = out.indexOf("If the target path is explicit");
-    const baseIndex = out.indexOf("Write ONE short direct sentence before acting.");
-    const toolIndex = out.indexOf("Use `file-find` to locate");
+    const modeIndex = out.indexOf("## Mode Instructions");
+    const baseIndex = out.indexOf("## Global Rules");
+    const toolIndex = out.indexOf("## Tool Instructions");
     expect(modeIndex).toBeGreaterThan(-1);
     expect(baseIndex).toBeGreaterThan(-1);
     expect(toolIndex).toBeGreaterThan(-1);

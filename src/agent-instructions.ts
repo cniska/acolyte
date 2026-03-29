@@ -33,6 +33,11 @@ const BASE_INSTRUCTIONS = [
   "After `@signal blocked`, write ONE short sentence stating what is missing and why it is needed.",
 ];
 
+function formatSection(title: string, content: string): string {
+  if (content.length === 0) return "";
+  return `## ${title}\n${content}`;
+}
+
 function createModePreamble(mode: AgentMode): string {
   return agentModes[mode].preamble.map((p) => `- ${p}`).join("\n");
 }
@@ -55,18 +60,22 @@ function createWorkspaceInstructionBlock(workspace?: string): string {
 }
 
 export function createModeInstructions(mode: AgentMode, workspace?: string): string {
-  const sections = [createModePreamble(mode), createToolInstructions(mode), createWorkspaceInstructionBlock(workspace)];
-  return sections.filter((section) => section.length > 0).join("\n");
+  const sections = [
+    formatSection("Mode Instructions", createModePreamble(mode)),
+    formatSection("Tool Instructions", createToolInstructions(mode)),
+    formatSection("Workspace", createWorkspaceInstructionBlock(workspace)),
+  ];
+  return sections.filter((section) => section.length > 0).join("\n\n");
 }
 
 export function createInstructions(soulPrompt: string, mode: AgentMode, workspace?: string): string {
   const baseInstructions = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const sections = [
     soulPrompt,
-    createModePreamble(mode),
-    baseInstructions,
-    createToolInstructions(mode),
-    createWorkspaceInstructionBlock(workspace),
+    formatSection("Mode Instructions", createModePreamble(mode)),
+    formatSection("Global Rules", baseInstructions),
+    formatSection("Tool Instructions", createToolInstructions(mode)),
+    formatSection("Workspace", createWorkspaceInstructionBlock(workspace)),
   ];
   return sections.filter((section) => section.length > 0).join("\n\n");
 }
