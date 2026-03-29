@@ -147,13 +147,19 @@ export type LifecycleFeedback = {
 
 export type LifecycleFeedbackInput = Omit<LifecycleFeedback, "mode">;
 
-export type EffectAction =
-  | { type: "done" }
-  | {
-      type: "regenerate";
-      reason: RegenerationReason;
-      feedback?: LifecycleFeedbackInput;
-    };
+export type LifecycleTransition = {
+  to: AgentMode;
+};
+
+export type RegenerateAction = {
+  type: "regenerate";
+  reason: RegenerationReason;
+  feedback?: LifecycleFeedbackInput;
+  transition?: LifecycleTransition;
+  cycleLimit?: number;
+};
+
+export type EffectAction = { type: "done" } | RegenerateAction;
 
 export type Effect = {
   id: string;

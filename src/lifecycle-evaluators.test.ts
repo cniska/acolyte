@@ -22,10 +22,10 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    const action = verifyCycleEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.mode).toBe("verify");
+    const outcome = verifyCycleEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.transition).toEqual({ to: "verify" });
     }
   });
 
@@ -37,7 +37,7 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 
   test("returns done when verify already ran", () => {
@@ -51,7 +51,7 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-edit"]),
     });
-    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 
   test("returns done when no write tools used", () => {
@@ -61,12 +61,12 @@ describe("verifyCycleEvaluator", () => {
       result: { text: "Done.", toolCalls: [] },
       observedTools: new Set(["file-read", "file-search"]),
     });
-    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 
   test("returns done when no result", () => {
     const ctx = createRunContext({ result: undefined });
-    expect(verifyCycleEvaluator.evaluate(ctx).type).toBe("done");
+    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 
   test("returns done in verify mode when review is clean", () => {
@@ -80,7 +80,7 @@ describe("verifyCycleEvaluator", () => {
         repeatedFailure: undefined,
       },
     });
-    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
   });
 
   test("returns regenerate to work when review finds issues", () => {
@@ -97,7 +97,7 @@ describe("verifyCycleEvaluator", () => {
         repeatedFailure: undefined,
       },
     });
-    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({
+    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({
       type: "regenerate",
       reason: "verify",
       feedback: {
@@ -106,7 +106,7 @@ describe("verifyCycleEvaluator", () => {
         details: "Missing null check in src/a.ts.",
         instruction: "Fix the review findings, then continue.",
       },
-      mode: "work",
+      transition: { to: "work" },
     });
   });
 
@@ -124,7 +124,7 @@ describe("verifyCycleEvaluator", () => {
         repeatedFailure: undefined,
       },
     });
-    expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
   });
 });
 
@@ -147,7 +147,7 @@ describe("guardRecoveryEvaluator", () => {
       },
     });
 
-    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate", reason: "guard-recovery" });
+    expect(guardRecoveryEvaluator.evaluate(ctx).action).toEqual({ type: "regenerate", reason: "guard-recovery" });
   });
 
   test("returns done when no pending guard feedback exists", () => {
@@ -156,7 +156,7 @@ describe("guardRecoveryEvaluator", () => {
       result: { text: "Attempted read.", toolCalls: [] },
     });
 
-    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+    expect(guardRecoveryEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
   });
 });
 
@@ -183,14 +183,15 @@ describe("repeatedFailureEvaluator", () => {
       },
     });
 
-    const action = repeatedFailureEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.summary).toBe("The same runtime failure has repeated.");
-      expect(action.feedback?.details).toContain("command exited with code 1");
-      expect(action.feedback?.instruction).toContain("Change approach");
+    const outcome = repeatedFailureEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.summary).toBe("The same runtime failure has repeated.");
+      expect(outcome.action.feedback?.details).toContain("command exited with code 1");
+      expect(outcome.action.feedback?.instruction).toContain("Change approach");
     }
-    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
+    expect(outcome.patch).toEqual({ repeatedFailureStatus: "surfaced" });
+    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("pending");
   });
 
   test("returns done for repeated guard-blocked failures", () => {
@@ -209,7 +210,7 @@ describe("repeatedFailureEvaluator", () => {
       },
     });
 
-    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+    expect(repeatedFailureEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
   });
 
   test("returns done after the repeated failure streak was already surfaced", () => {
@@ -234,7 +235,7 @@ describe("repeatedFailureEvaluator", () => {
       },
     });
 
-    expect(repeatedFailureEvaluator.evaluate(ctx)).toEqual({ type: "done" });
+    expect(repeatedFailureEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
   });
 
   test("tracks different shell-run failures as different repeated-failure streaks", () => {
@@ -285,13 +286,13 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your file-edit snippet matched multiple locations.");
-      expect(action.feedback?.details).toContain("Find text matched 3 locations");
-      expect(action.feedback?.instruction).toContain("src/priority.ts");
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("Your file-edit snippet matched multiple locations.");
+      expect(outcome.action.feedback?.details).toContain("Find text matched 3 locations");
+      expect(outcome.action.feedback?.instruction).toContain("src/priority.ts");
     }
   });
 
@@ -313,15 +314,15 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
-      expect(action.feedback?.details).toContain("No AST matches found");
-      expect(action.feedback?.details).toContain("Suggested next tool: file-read");
-      expect(action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
-      expect(action.feedback?.instruction).toContain("Refine the pattern");
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("Your AST pattern did not match the current file.");
+      expect(outcome.action.feedback?.details).toContain("No AST matches found");
+      expect(outcome.action.feedback?.details).toContain("Suggested next tool: file-read");
+      expect(outcome.action.feedback?.details).toContain("Suggested paths: src/code-ops.ts");
+      expect(outcome.action.feedback?.instruction).toContain("Refine the pattern");
     }
   });
 
@@ -344,15 +345,15 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Attempted rename.", toolCalls: [] },
     });
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("This scoped rename matches both local and member symbols.");
-      expect(action.feedback?.details).toContain('target: "local"');
-      expect(action.feedback?.details).toContain("Suggested next tool: code-edit");
-      expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
-      expect(action.feedback?.instruction).toContain('target: "member"');
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("This scoped rename matches both local and member symbols.");
+      expect(outcome.action.feedback?.details).toContain('target: "local"');
+      expect(outcome.action.feedback?.details).toContain("Suggested next tool: code-edit");
+      expect(outcome.action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
+      expect(outcome.action.feedback?.instruction).toContain('target: "member"');
     }
   });
 
@@ -375,15 +376,15 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Attempted scan.", toolCalls: [] },
     });
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("code-scan only works on supported code files.");
-      expect(action.feedback?.details).toContain("notes.yaml");
-      expect(action.feedback?.details).toContain("Suggested next tool: file-search");
-      expect(action.feedback?.details).toContain("Suggested paths: notes.yaml");
-      expect(action.feedback?.instruction).toContain("file-search");
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("code-scan only works on supported code files.");
+      expect(outcome.action.feedback?.details).toContain("notes.yaml");
+      expect(outcome.action.feedback?.details).toContain("Suggested next tool: file-search");
+      expect(outcome.action.feedback?.details).toContain("Suggested paths: notes.yaml");
+      expect(outcome.action.feedback?.instruction).toContain("file-search");
     }
   });
 
@@ -409,14 +410,14 @@ describe("toolRecoveryEvaluator", () => {
       result: { text: "Attempted search.", toolCalls: [] },
     });
 
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your file-search scope resolved to no searchable files.");
-      expect(action.feedback?.details).toContain("E_SEARCH_FILES_EMPTY_SCOPE");
-      expect(action.feedback?.details).toContain("Suggested next tool: file-find");
-      expect(action.feedback?.instruction).toContain("file-find");
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("Your file-search scope resolved to no searchable files.");
+      expect(outcome.action.feedback?.details).toContain("E_SEARCH_FILES_EMPTY_SCOPE");
+      expect(outcome.action.feedback?.details).toContain("Suggested next tool: file-find");
+      expect(outcome.action.feedback?.instruction).toContain("file-find");
     }
   });
 
@@ -440,15 +441,15 @@ describe("toolRecoveryEvaluator", () => {
       result: { text: "Attempted search.", toolCalls: [] },
     });
 
-    const action = toolRecoveryEvaluator.evaluate(ctx);
-    expect(action.type).toBe("regenerate");
-    if (action.type === "regenerate") {
-      expect(action.feedback?.source).toBe("tool-recovery");
-      expect(action.feedback?.summary).toBe("Your file-search query found no matches in the scoped file.");
-      expect(action.feedback?.details).toContain("E_SEARCH_FILES_NO_MATCH");
-      expect(action.feedback?.details).toContain("Suggested next tool: file-read");
-      expect(action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
-      expect(action.feedback?.instruction).toContain("file-read");
+    const outcome = toolRecoveryEvaluator.evaluate(ctx);
+    expect(outcome.action.type).toBe("regenerate");
+    if (outcome.action.type === "regenerate") {
+      expect(outcome.action.feedback?.source).toBe("tool-recovery");
+      expect(outcome.action.feedback?.summary).toBe("Your file-search query found no matches in the scoped file.");
+      expect(outcome.action.feedback?.details).toContain("E_SEARCH_FILES_NO_MATCH");
+      expect(outcome.action.feedback?.details).toContain("Suggested next tool: file-read");
+      expect(outcome.action.feedback?.details).toContain("Suggested paths: src/provider-config.ts");
+      expect(outcome.action.feedback?.instruction).toContain("file-read");
     }
   });
 
@@ -462,7 +463,7 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Attempted edit.", toolCalls: [] },
     });
-    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 
   test("returns done after a later successful write for disambiguate-match recovery", () => {
@@ -488,6 +489,6 @@ describe("toolRecoveryEvaluator", () => {
       },
       result: { text: "Applied the change.", toolCalls: [] },
     });
-    expect(toolRecoveryEvaluator.evaluate(ctx).type).toBe("done");
+    expect(toolRecoveryEvaluator.evaluate(ctx).action.type).toBe("done");
   });
 });

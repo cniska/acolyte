@@ -44,7 +44,7 @@ describe("phaseEvaluate", () => {
         {
           id: "guard-recovery",
           modes: ["work"],
-          evaluate: () => ({ type: "regenerate", reason: "guard-recovery" }),
+          evaluate: () => ({ action: { type: "regenerate", reason: "guard-recovery" } }),
         },
       ],
       phaseGenerate: async () => {
@@ -149,6 +149,49 @@ describe("phaseEvaluate", () => {
     expect(events).toEqual([]);
   });
 
+  test("applies evaluator patches centrally", async () => {
+    const ctx = createRunContext({
+      result: { text: "done", toolCalls: [] },
+      currentError: {
+        message: "shell-run failed: command exited with code 1",
+        category: "other",
+        code: "E_COMMAND_FAILED",
+        tool: "shell-run",
+        source: "tool-error",
+      },
+      lifecycleState: {
+        feedback: [],
+        reviewCandidate: undefined,
+        reviewResult: undefined,
+        repeatedFailure: {
+          signature: "other:tool-error:shell-run:E_COMMAND_FAILED",
+          count: 2,
+          status: "pending",
+        },
+      },
+    });
+
+    await phaseEvaluate(ctx, undefined, {
+      shouldYieldNow: () => false,
+      effects: [],
+      evaluators: [
+        {
+          id: "repeated-failure",
+          modes: ["work"],
+          evaluate: () => ({
+            action: { type: "done" },
+            patch: { repeatedFailureStatus: "surfaced" },
+          }),
+        },
+      ],
+      phaseGenerate: async () => {
+        throw new Error("phaseGenerate should not run");
+      },
+    });
+
+    expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
+  });
+
   test("restores the work result after a clean verify pass", async () => {
     const ctx = createRunContext({
       mode: "verify",
@@ -163,7 +206,9 @@ describe("phaseEvaluate", () => {
           id: "review",
           modes: ["verify"],
           evaluate: () =>
-            ctx.result?.signal === "done" ? { type: "regenerate", reason: "verify", mode: "verify" } : { type: "done" },
+            ctx.result?.signal === "done"
+              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
+              : { action: { type: "done" } },
         },
       ],
       phaseGenerate: async () => {
@@ -194,7 +239,9 @@ describe("phaseEvaluate", () => {
           id: "review",
           modes: ["verify"],
           evaluate: () =>
-            ctx.result?.signal === "done" ? { type: "regenerate", reason: "verify", mode: "verify" } : { type: "done" },
+            ctx.result?.signal === "done"
+              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
+              : { action: { type: "done" } },
         },
       ],
       phaseGenerate: async () => {
@@ -257,10 +304,12 @@ describe("phaseEvaluate", () => {
           id: "verify-cycle",
           modes: ["work"],
           evaluate: () => ({
-            type: "regenerate",
-            reason: "verify",
-            feedback: { source: "verify", summary: "Review the changes." },
-            mode: "verify",
+            action: {
+              type: "regenerate",
+              reason: "verify",
+              feedback: { source: "verify", summary: "Review the changes." },
+              transition: { to: "verify" },
+            },
           }),
         },
       ],

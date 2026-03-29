@@ -3,9 +3,8 @@ import { t } from "./i18n";
 import type {
   Effect,
   EffectAction,
-  LifecycleFeedbackInput,
   LifecycleInput,
-  RegenerationReason,
+  RegenerateAction,
   ReviewCandidate,
   ReviewResult,
   RunContext,
@@ -13,6 +12,7 @@ import type {
 import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
+  type EvaluatorPatch,
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
@@ -93,16 +93,19 @@ function captureReviewResult(ctx: RunContext): ReviewResult {
   }
 }
 
-function prepareRegenerationBoundary(
-  ctx: RunContext,
-  action: {
-    reason: RegenerationReason;
-    feedback?: LifecycleFeedbackInput;
-    mode?: RunContext["mode"];
-  },
-): void {
-  if (action.reason === "verify" && action.mode === "work") {
+function prepareRegenerationBoundary(ctx: RunContext, action: RegenerateAction): void {
+  if (action.reason === "verify" && action.transition?.to === "work") {
     ctx.session.flags.reviewAction = "request-changes";
+  }
+}
+
+function applyEvaluatorPatch(ctx: RunContext, patch?: EvaluatorPatch): void {
+  if (!patch) return;
+  if (patch.repeatedFailureStatus && ctx.lifecycleState.repeatedFailure) {
+    ctx.lifecycleState.repeatedFailure = {
+      ...ctx.lifecycleState.repeatedFailure,
+      status: patch.repeatedFailureStatus,
+    };
   }
 }
 
@@ -115,12 +118,7 @@ export function recoveryActionForError(
 
 async function triggerRegeneration(
   ctx: RunContext,
-  action: {
-    reason: RegenerationReason;
-    feedback?: LifecycleFeedbackInput;
-    mode?: RunContext["mode"];
-    cycleLimit?: number;
-  },
+  action: RegenerateAction,
   source: { kind: "effect" | "evaluator"; id: string },
   deps: PhaseEvaluateDeps,
   shouldYield: LifecycleInput["shouldYield"],
@@ -152,9 +150,11 @@ async function triggerRegeneration(
     return false;
   }
 
-  const reviewCandidate = action.mode === "verify" ? createReviewCandidate(ctx) : undefined;
+  const transitionTarget = action.transition?.to;
+  const feedbackMode = transitionTarget ?? ctx.mode;
+  const reviewCandidate = transitionTarget === "verify" ? createReviewCandidate(ctx) : undefined;
   prepareRegenerationBoundary(ctx, action);
-  if (action.mode) setMode(ctx, action.mode, source.id);
+  if (transitionTarget) setMode(ctx, transitionTarget, source.id);
 
   ctx.regenerationCount += 1;
   ctx.regenerationCounts[regenerationReason] += 1;
@@ -170,7 +170,7 @@ async function triggerRegeneration(
   });
 
   clearReviewStateForRegenerationReason(ctx, action.reason);
-  if (action.feedback) ctx.lifecycleState.feedback.push({ ...action.feedback, mode: ctx.mode });
+  if (action.feedback) ctx.lifecycleState.feedback.push({ ...action.feedback, mode: feedbackMode });
 
   await deps.phaseGenerate(ctx, {
     cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
@@ -247,7 +247,10 @@ export async function phaseEvaluate(
     for (const evaluator of deps.evaluators) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
       if (!evaluator.modes.includes(ctx.mode)) continue;
-      const action = evaluator.evaluate(ctx);
+      const outcome = evaluator.evaluate(ctx);
+      if (outcome.debug) ctx.debug(outcome.debug.event, outcome.debug.fields);
+      applyEvaluatorPatch(ctx, outcome.patch);
+      const action = outcome.action;
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
         continue;

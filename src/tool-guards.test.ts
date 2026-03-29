@@ -47,6 +47,17 @@ describe("step-budget guard", () => {
     expect(session.flags.cycleStepCount).toBe(1);
   });
 
+  test("does not consume cycle step budget when a later guard blocks", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepLimit = 10;
+    session.flags.cycleStepCount = 0;
+    recordCall(session, "file-read", { paths: [{ path: "a.ts" }] });
+    expect(() => runGuards({ toolName: "file-read", args: { paths: [{ path: "a.ts" }] }, session })).toThrow(
+      /Duplicate file-read call detected/,
+    );
+    expect(session.flags.cycleStepCount).toBe(0);
+  });
+
   test("resetCycleStepCount resets counter and optionally sets limit", () => {
     const session = createSessionContext();
     session.flags.cycleStepCount = 42;

@@ -36,7 +36,14 @@ resolve → prepare → generate → evaluate → finalize
 
 - evaluators are pure post-generation decision units
 - they declare the modes they apply to, and `phaseEvaluate` filters them before evaluation
-- evaluators should not own lifecycle side effects; they inspect runtime state and return `done` or `regenerate`
+- evaluators should not own lifecycle side effects; they inspect runtime state and return decisions, optional debug data, and small lifecycle patches
+- `phaseEvaluate` applies evaluator patches, emits evaluator debug events, and applies requested transitions centrally
+
+## Guards
+
+- guards are pure pre-tool policy units
+- they inspect session/tool state and return allow/block decisions plus optional small session patches
+- `runGuards()` applies guard patches, emits guard events, and owns consecutive-block bookkeeping centrally
 
 ## Lifecycle state
 

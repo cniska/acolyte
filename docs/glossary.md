@@ -28,8 +28,8 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Embedding | Provider-generated vector representation of a distill record used for semantic recall |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
-| Evaluator | Post-generation rule that accepts output or requests regeneration |
-| Guard | Pre-tool execution rule that may block a call |
+| Evaluator | Pure post-generation policy unit that returns lifecycle decisions and optional small patches |
+| Guard | Pure pre-tool policy unit that may block a call or request a small session patch |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery |
 | Lifecycle Feedback | Task-scoped runtime feedback carried into the next matching lifecycle attempt |
 | Effect | Lifecycle-owned side-effect unit that runs before pure evaluators in the evaluate phase |
