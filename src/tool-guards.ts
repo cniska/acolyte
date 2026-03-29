@@ -41,7 +41,7 @@ export type SessionFlags = {
   guardStats?: { blocked: number; flagSet: number };
   consecutiveBlocks?: number;
   consecutiveGuardBlockLimit?: number;
-  allowPostEditFollowup?: boolean;
+  reviewAction?: "request-changes";
 };
 
 export type SessionContext = {
@@ -504,12 +504,12 @@ const postEditRedundancyGuard: ToolGuard = {
   tools: ["file-delete", "file-edit"],
   check({ args, session, report, toolName }) {
     if (toolName === "file-edit") {
-      if (session.flags.allowPostEditFollowup) {
-        session.flags.allowPostEditFollowup = false;
-        return;
-      }
       const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
       if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
+      if (session.flags.reviewAction === "request-changes") {
+        session.flags.reviewAction = undefined;
+        return;
+      }
       report("blocked", targetPath);
       throw new Error(
         `File "${targetPath}" was already edited successfully in this task, and there is no new file evidence for another edit. ` +

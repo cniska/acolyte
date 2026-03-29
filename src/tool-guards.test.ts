@@ -429,10 +429,10 @@ describe("post-edit-redundancy guard", () => {
     ).not.toThrow();
   });
 
-  test("allows one same-file follow-up edit after review findings", () => {
+  test("allows one same-file follow-up edit after review requests changes", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["file-edit"]);
-    session.flags.allowPostEditFollowup = true;
+    session.flags.reviewAction = "request-changes";
     recordCall(session, "file-edit", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
 
     expect(() =>
@@ -442,7 +442,7 @@ describe("post-edit-redundancy guard", () => {
         session,
       }),
     ).not.toThrow();
-    expect(session.flags.allowPostEditFollowup).toBe(false);
+    expect(session.flags.reviewAction).toBeUndefined();
   });
 
   test("allows same-file edit after workspace-wide search", () => {

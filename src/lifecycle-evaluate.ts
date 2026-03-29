@@ -96,7 +96,7 @@ function prepareRegenerationBoundary(
   },
 ): void {
   if (action.feedback?.source === "verify" && action.mode === "work") {
-    ctx.session.flags.allowPostEditFollowup = true;
+    ctx.session.flags.reviewAction = "request-changes";
   }
 }
 
