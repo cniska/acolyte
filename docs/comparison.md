@@ -88,7 +88,7 @@ Autonomous coding agents frequently enter degenerate loops:
 - Repeated searches
 - Verification cycles with no changes
 
-Acolyte uses behavioral guards that run before every tool call. Guards cover step budgets, duplicate/redundant calls, file churn, ping-pong loops, and lifecycle command enforcement. See `src/tool-guards.ts` for the full set.
+Acolyte uses behavioral guards that run before every tool call. Guards cover step budgets, duplicate/redundant calls, file churn, ping-pong loops, and lifecycle effect enforcement. See `src/tool-guards.ts` for the full set.
 
 Only OpenClaw and OpenHands ship comparable runtime safeguards.
 
