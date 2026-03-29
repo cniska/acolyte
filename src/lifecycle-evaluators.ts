@@ -47,7 +47,6 @@ export type EvaluatorContext = {
 
 export type Evaluator = {
   id: string;
-  modes: readonly AgentMode[];
   evaluate: (ctx: EvaluatorContext) => EvaluatorResult;
 };
 
@@ -79,7 +78,6 @@ function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
 
 export const guardRecoveryEvaluator: Evaluator = {
   id: "guard-recovery",
-  modes: ["work", "verify"],
   evaluate(ctx) {
     if (!ctx.result) return { action: { type: "done" } };
     if (ctx.currentError?.category !== "guard-blocked") return { action: { type: "done" } };
@@ -99,7 +97,6 @@ export const guardRecoveryEvaluator: Evaluator = {
 
 export const repeatedFailureEvaluator: Evaluator = {
   id: "repeated-failure",
-  modes: ["work", "verify"],
   evaluate(ctx) {
     const repeatedFailure = ctx.lifecycleState.repeatedFailure;
     if (!ctx.result || !ctx.currentError || !repeatedFailure) return { action: { type: "done" } };
@@ -135,7 +132,6 @@ export const repeatedFailureEvaluator: Evaluator = {
 
 export const toolRecoveryEvaluator: Evaluator = {
   id: "tool-recovery",
-  modes: ["work"],
   evaluate(ctx) {
     if (!ctx.result) return { action: { type: "done" } };
     const currentError = ctx.currentError;

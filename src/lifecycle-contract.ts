@@ -164,7 +164,6 @@ export type EffectAction = { type: "done" } | RegenerateAction;
 
 export type Effect = {
   id: string;
-  modes: readonly AgentMode[];
   run: (ctx: RunContext) => EffectAction;
 };
 

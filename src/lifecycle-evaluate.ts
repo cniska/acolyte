@@ -230,7 +230,6 @@ export async function phaseEvaluate(
     let regenerated = false;
     for (const effect of deps.effects) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
-      if (!effect.modes.includes(ctx.mode)) continue;
       const action: EffectAction = effect.run(ctx);
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
@@ -244,7 +243,6 @@ export async function phaseEvaluate(
 
     for (const evaluator of deps.evaluators) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
-      if (!evaluator.modes.includes(ctx.mode)) continue;
       const outcome = evaluator.evaluate(ctx);
       if (outcome.debug) ctx.debug(outcome.debug.event, outcome.debug.fields);
       applyEvaluatorPatch(ctx, outcome.patch);

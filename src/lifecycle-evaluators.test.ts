@@ -261,10 +261,6 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
-  test("declares work-only applicability", () => {
-    expect(toolRecoveryEvaluator.modes).toEqual(["work"]);
-  });
-
   test("returns regenerate when file-search empty-scope exposes structured recovery", () => {
     const ctx = createRunContext({
       initialMode: "work",

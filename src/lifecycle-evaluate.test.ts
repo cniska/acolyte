@@ -37,13 +37,12 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
-        { id: "lint", modes: ["work"], run: () => ({ type: "done" }) },
+        { id: "format", run: () => ({ type: "done" }) },
+        { id: "lint", run: () => ({ type: "done" }) },
       ],
       evaluators: [
         {
           id: "guard-recovery",
-          modes: ["work"],
           evaluate: () => ({ action: { type: "regenerate", reason: "guard-recovery" } }),
         },
       ],
@@ -71,10 +70,9 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
+        { id: "format", run: () => ({ type: "done" }) },
         {
           id: "lint",
-          modes: ["work"],
           run: () => ({
             type: "regenerate",
             reason: "lint",
@@ -88,7 +86,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "guard-recovery",
-          modes: ["work"],
           evaluate: () => {
             throw new Error("evaluators should not run after command regeneration");
           },
@@ -107,46 +104,6 @@ describe("phaseEvaluate", () => {
       summary: "Lint errors detected in files you edited.",
     });
     expect(generateOptions).toEqual({ cycleLimit: ctx.policy.initialMaxSteps, timeoutMs: ctx.policy.stepTimeoutMs });
-  });
-
-  test("skips effects and evaluators whose modes do not include the active mode", async () => {
-    const events: string[] = [];
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "done", toolCalls: [] },
-      debug: (event, fields) => {
-        if (event === "lifecycle.eval.decision") {
-          events.push(`${String(fields?.effect ?? fields?.evaluator)}:${String(fields?.action)}`);
-        }
-      },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [
-        {
-          id: "work-only-effect",
-          modes: ["work"],
-          run: () => {
-            throw new Error("work-only effect should be skipped in verify mode");
-          },
-        },
-      ],
-      evaluators: [
-        {
-          id: "work-only-evaluator",
-          modes: ["work"],
-          evaluate: () => {
-            throw new Error("work-only evaluator should be skipped in verify mode");
-          },
-        },
-      ],
-      phaseGenerate: async () => {
-        throw new Error("phaseGenerate should not run");
-      },
-    });
-
-    expect(events).toEqual([]);
   });
 
   test("applies evaluator patches centrally", async () => {
@@ -175,7 +132,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "repeated-failure",
-          modes: ["work"],
           evaluate: () => ({
             action: { type: "done" },
             patch: { repeatedFailureStatus: "surfaced" },
@@ -202,7 +158,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "review",
-          modes: ["verify"],
           evaluate: () =>
             ctx.result?.signal === "done"
               ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
@@ -235,7 +190,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "review",
-          modes: ["verify"],
           evaluate: () =>
             ctx.result?.signal === "done"
               ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
@@ -300,7 +254,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "verify-cycle",
-          modes: ["work"],
           evaluate: () => ({
             action: {
               type: "regenerate",

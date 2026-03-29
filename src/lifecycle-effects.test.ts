@@ -21,10 +21,6 @@ function ctxWithWrites(overrides: Parameters<typeof createRunContext>[0] = {}) {
 }
 
 describe("formatEffect", () => {
-  test("declares work-only applicability", () => {
-    expect(formatEffect.modes).toEqual(["work"]);
-  });
-
   test("returns done when workspace is undefined", () => {
     const ctx = ctxWithWrites({ workspace: undefined });
     expect(formatEffect.run(ctx)).toEqual({ type: "done" });
@@ -52,10 +48,6 @@ describe("formatEffect", () => {
 });
 
 describe("lintEffect", () => {
-  test("declares work-only applicability", () => {
-    expect(lintEffect.modes).toEqual(["work"]);
-  });
-
   test("returns done when workspace is undefined", () => {
     const ctx = ctxWithWrites({ workspace: undefined });
     expect(lintEffect.run(ctx)).toEqual({ type: "done" });
