@@ -52,7 +52,6 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "code",
     labelKey: "tool.label.code_scan",
     category: "search",
-    permissions: ["read"],
     description:
       "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries.",
     instruction: [
@@ -131,7 +130,6 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "code",
     labelKey: "tool.label.code_edit",
     category: "write",
-    permissions: ["read", "write"],
     description:
       'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `file-edit`.',
     instruction: [

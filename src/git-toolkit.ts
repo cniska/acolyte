@@ -94,7 +94,6 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
     toolkit: "git",
     labelKey: "tool.label.git_status",
     category: "search",
-    permissions: ["read"],
     description: "Show working tree status (short format with branch) for the current repository.",
     instruction:
       "Use `git-status` when repository-wide state matters, not to re-check an already understood file-scoped task.",
@@ -126,7 +125,6 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     toolkit: "git",
     labelKey: "tool.label.git_diff",
     category: "search",
-    permissions: ["read"],
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     instruction:
       "Use `git-diff` when repository diff context matters. For bounded named-file edits, trust write-tool previews unless the user asked for git-level verification.",
@@ -163,7 +161,6 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "git",
     labelKey: "tool.label.git_log",
     category: "search",
-    permissions: ["read"],
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
     instruction:
       "Use `git-log` to inspect committed history, optionally scoped by path. It is for history, not current uncommitted edits.",
@@ -200,7 +197,6 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
     toolkit: "git",
     labelKey: "tool.label.git_show",
     category: "search",
-    permissions: ["read"],
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
     instruction:
       "Use `git-show` to inspect committed history for a ref, optionally scoped by path. It is for history, not current uncommitted edits.",
@@ -250,7 +246,6 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "git",
     labelKey: "tool.label.git_add",
     category: "write",
-    permissions: ["write"],
     description:
       "Stage tracked/untracked files. Prefer explicit `paths` scoped to files edited in the current task. Use `all=true` only when explicitly needed.",
     instruction: "Use `git-add` to stage edited files before commit. Prefer explicit paths over `all=true`.",
@@ -299,7 +294,6 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
     toolkit: "git",
     labelKey: "tool.label.git_commit",
     category: "write",
-    permissions: ["write"],
     description: "Create a git commit with a required subject line and optional body lines.",
     instruction:
       "Use `git-commit` to create the final Conventional Commit after verify passes. Set `message` to the subject line. Never commit unless the user explicitly asks you to.",

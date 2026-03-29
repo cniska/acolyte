@@ -15,7 +15,6 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "test",
     labelKey: "tool.label.test_run",
     category: "execute",
-    permissions: ["execute"],
     description:
       "Run the project's test runner against specific files. The test command is auto-detected from the workspace.",
     instruction:

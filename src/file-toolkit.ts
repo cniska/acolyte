@@ -53,7 +53,6 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_find",
     category: "search",
-    permissions: ["read"],
     description:
       "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `file-search` instead.",
     instruction:
@@ -106,7 +105,6 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_search",
     category: "search",
-    permissions: ["read"],
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `file-find` instead.",
     instruction: [
@@ -176,7 +174,6 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_read",
     category: "read",
-    permissions: ["read"],
     description:
       "Read one or more text files. Pass `paths` as an array of {path} objects. Never re-read a file you already have.",
     instruction:
@@ -229,7 +226,6 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_edit",
     category: "write",
-    permissions: ["read", "write"],
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `file-read` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `file-create`. For code renames or structural edits use `code-edit`.",
     instruction: [
@@ -286,7 +282,6 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_create",
     category: "write",
-    permissions: ["write"],
     description:
       "Create a new file with full content. For editing existing files, use `file-edit` or `code-edit` instead.",
     instruction: "For new files, call `file-create` with full content directly.",
@@ -335,7 +330,6 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_delete",
     category: "write",
-    permissions: ["write"],
     description: "Delete a file from the repository.",
     instruction:
       "Use `file-delete` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",

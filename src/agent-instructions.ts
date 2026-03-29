@@ -1,4 +1,4 @@
-import { toolDefinitionsById, toolIdsForGrants } from "./tool-registry";
+import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
 const CORE_INSTRUCTIONS = [
@@ -13,7 +13,7 @@ const CORE_INSTRUCTIONS = [
   "End every final response with one signal line: `@signal done`, `@signal no_op`, or `@signal blocked`; if blocked, add one concise next line stating what is missing, why it is needed, and what you will do once you have it.",
 ];
 
-const TOOL_IDS = toolIdsForGrants(["read", "write", "execute", "network"]);
+const TOOL_IDS = toolIds();
 
 function createRuntimeInstructions(workspace?: string): string {
   const lines: string[] = [];

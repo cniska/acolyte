@@ -1,12 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToolOutputPart } from "./tool-output-content";
-import {
-  hasPermissions,
-  toolDefinitionsById,
-  toolIdsByCategory,
-  toolIdsForGrants,
-  toolsForAgent,
-} from "./tool-registry";
+import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
 
 describe("toolsets", () => {
   test("returns all tools", () => {
@@ -38,46 +32,16 @@ describe("toolsets", () => {
   });
 });
 
-describe("hasPermissions", () => {
-  test("returns true when grants satisfy all requirements", () => {
-    expect(hasPermissions(["read", "write", "execute"], ["read", "write"])).toBe(true);
-    expect(hasPermissions(["read"], ["read"])).toBe(true);
-  });
-
-  test("returns false when grants are insufficient", () => {
-    expect(hasPermissions(["read"], ["write"])).toBe(false);
-    expect(hasPermissions(["read", "execute"], ["write"])).toBe(false);
-  });
-});
-
-describe("toolIdsForGrants", () => {
-  test("plan grants return read and network tools", () => {
-    const ids = toolIdsForGrants(["read", "network"]);
-    expect(ids).toContain("file-read");
-    expect(ids).toContain("file-find");
-    expect(ids).toContain("web-search");
-    expect(ids).not.toContain("file-edit");
-    expect(ids).not.toContain("shell-run");
-    expect(ids).not.toContain("git-add");
-  });
-
-  test("work grants return all tools", () => {
-    const ids = toolIdsForGrants(["read", "write", "execute", "network"]);
+describe("toolIds", () => {
+  test("returns all registered tool ids in sorted order", () => {
+    const ids = toolIds();
+    expect(ids).toEqual([...ids].sort());
     expect(ids).toContain("file-read");
     expect(ids).toContain("file-edit");
     expect(ids).toContain("shell-run");
     expect(ids).toContain("web-search");
     expect(ids).toContain("git-add");
-  });
-
-  test("verify grants return read and execute tools", () => {
-    const ids = toolIdsForGrants(["read", "execute"]);
-    expect(ids).toContain("file-read");
-    expect(ids).toContain("shell-run");
-    expect(ids).toContain("code-scan");
-    expect(ids).not.toContain("file-edit");
-    expect(ids).not.toContain("web-search");
-    expect(ids).not.toContain("git-add");
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
