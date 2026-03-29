@@ -1,4 +1,5 @@
 import type { LifecycleCommand, LifecycleCommandAction, RunContext } from "./lifecycle-contract";
+import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { type CommandResult, runCommandWithFiles } from "./workspace-profile";
 
@@ -10,8 +11,7 @@ function renderCommandOutput(result: CommandResult): string {
 
 function writePathsForCurrentTask(ctx: RunContext): string[] {
   const out = new Set<string>();
-  for (const entry of ctx.session.callLog) {
-    if (entry.taskId !== ctx.taskId) continue;
+  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
     if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
     const path = entry.args?.path;
     if (typeof path !== "string") continue;

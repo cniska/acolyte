@@ -99,8 +99,8 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.guard": ["guard", "tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal", "mode"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
-  "lifecycle.eval.decision": ["evaluator", "action", "regeneration_count"],
-  "lifecycle.eval.skipped": ["evaluator", "reason"],
+  "lifecycle.eval.decision": ["command", "evaluator", "action", "regeneration_count"],
+  "lifecycle.eval.skipped": ["command", "evaluator", "reason"],
   "lifecycle.eval.lint": ["files"],
   "lifecycle.eval.guard_recovery": ["mode"],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
@@ -260,7 +260,10 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
     if (event === "lifecycle.eval.decision") {
       if (line.fields.action === "regenerate") {
         flushPending();
-        rows.push({ kind: "separator", text: `── regenerate (${line.fields.evaluator ?? ""}) ──` });
+        rows.push({
+          kind: "separator",
+          text: `── regenerate (${line.fields.command ?? line.fields.evaluator ?? ""}) ──`,
+        });
       }
       continue;
     }
@@ -269,7 +272,7 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── skipped ${line.fields.command ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }

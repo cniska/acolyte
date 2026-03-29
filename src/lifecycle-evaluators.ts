@@ -4,13 +4,6 @@ import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleSt
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
-import { type CommandResult, runCommandWithFiles } from "./workspace-profile";
-
-function renderCommandOutput(result: CommandResult): string {
-  if (!result.stderr) return result.stdout;
-  if (!result.stdout) return result.stderr;
-  return `stdout:\n${result.stdout}\n\nstderr:\n${result.stderr}`;
-}
 
 export type EvalAction =
   | { type: "done" }
@@ -67,55 +60,6 @@ function hasRecoveredFromLastEditFileFailure(ctx: EvaluatorContext): boolean {
     .slice(lastFailIdx + 1)
     .some((entry) => WRITE_TOOL_SET.has(entry.toolName) && entry.status !== "failed");
 }
-
-function writePathsForCurrentTask(ctx: EvaluatorContext): string[] {
-  const out = new Set<string>();
-  for (const entry of scopedCallLog(ctx.session, ctx.taskId)) {
-    if (!WRITE_TOOL_SET.has(entry.toolName)) continue;
-    const path = entry.args?.path;
-    if (typeof path !== "string") continue;
-    const trimmed = path.trim();
-    if (trimmed.length === 0) continue;
-    out.add(trimmed);
-  }
-  return Array.from(out);
-}
-
-export const formatEvaluator: Evaluator = {
-  id: "format",
-  evaluate(ctx) {
-    if (ctx.mode !== "work" || !ctx.workspace) return { type: "done" };
-    if (!ctx.policy.formatCommand) return { type: "done" };
-    const paths = writePathsForCurrentTask(ctx);
-    if (paths.length === 0) return { type: "done" };
-    runCommandWithFiles(ctx.workspace, ctx.policy.formatCommand, paths);
-    ctx.debug("lifecycle.eval.format", { files: paths.length });
-    return { type: "done" };
-  },
-};
-
-export const lintEvaluator: Evaluator = {
-  id: "lint",
-  evaluate(ctx) {
-    if (ctx.mode !== "work" || !ctx.workspace) return { type: "done" };
-    if (!ctx.policy.lintCommand) return { type: "done" };
-    const paths = writePathsForCurrentTask(ctx);
-    if (paths.length === 0) return { type: "done" };
-    const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
-    if (!result.hasErrors) return { type: "done" };
-    ctx.debug("lifecycle.eval.lint", { files: paths.length });
-    return {
-      type: "regenerate",
-      feedback: {
-        source: "lint",
-        mode: "work",
-        summary: "Lint errors detected in files you edited.",
-        details: renderCommandOutput(result),
-        instruction: "Fix the issues above, then stop.",
-      },
-    };
-  },
-};
 
 export const guardRecoveryEvaluator: Evaluator = {
   id: "guard-recovery",

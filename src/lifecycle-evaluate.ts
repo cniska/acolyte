@@ -1,11 +1,16 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
+import { formatCommand, lintCommand } from "./lifecycle-commands";
+import type {
+  LifecycleCommand,
+  LifecycleCommandAction,
+  LifecycleInput,
+  RunContext,
+  SavedRegenerationState,
+} from "./lifecycle-contract";
 import {
   type Evaluator,
-  formatEvaluator,
   guardRecoveryEvaluator,
-  lintEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
   verifyEvaluator,
@@ -14,14 +19,28 @@ import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
 
+const COMMANDS: LifecycleCommand[] = [formatCommand, lintCommand];
+
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
-  formatEvaluator,
-  lintEvaluator,
   verifyEvaluator,
   repeatedFailureEvaluator,
 ];
+
+type PhaseEvaluateDeps = {
+  phaseGenerate: typeof phaseGenerate;
+  shouldYieldNow: typeof shouldYieldNow;
+  commands: readonly LifecycleCommand[];
+  evaluators: readonly Evaluator[];
+};
+
+const defaultPhaseEvaluateDeps: PhaseEvaluateDeps = {
+  phaseGenerate,
+  shouldYieldNow,
+  commands: COMMANDS,
+  evaluators: EVALUATORS,
+};
 
 function snapshotState(ctx: RunContext): SavedRegenerationState {
   return {
@@ -42,9 +61,66 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
+async function triggerRegeneration(
+  ctx: RunContext,
+  action: { feedback?: RunContext["lifecycleState"]["feedback"][number]; mode?: RunContext["mode"]; cycleLimit?: number; keepResult?: boolean },
+  source: { kind: "command" | "evaluator"; id: string },
+  deps: PhaseEvaluateDeps,
+  shouldYield: LifecycleInput["shouldYield"],
+): Promise<boolean> {
+  if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      [source.kind]: source.id,
+      reason: "regeneration_cap",
+      regeneration_count: ctx.regenerationCount,
+      regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
+    });
+    return false;
+  }
+
+  const saved = action.keepResult ? snapshotState(ctx) : undefined;
+  if (action.mode) setMode(ctx, action.mode, source.id);
+
+  ctx.regenerationCount += 1;
+  ctx.debug("lifecycle.eval.decision", {
+    [source.kind]: source.id,
+    action: "regenerate",
+    mode: ctx.mode,
+    cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
+    keep_result: Boolean(action.keepResult),
+    feedback_source: action.feedback?.source ?? null,
+    regeneration_count: ctx.regenerationCount,
+  });
+
+  clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
+  if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
+
+  await deps.phaseGenerate(ctx, {
+    cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
+    timeoutMs: ctx.policy.stepTimeoutMs,
+  });
+  if (deps.shouldYieldNow(ctx, shouldYield)) return true;
+
+  if (saved && ctx.mode === "verify") {
+    const verifySignal = ctx.result?.signal;
+    ctx.lifecycleState.verifyOutcome = {
+      text: ctx.result?.text ?? "",
+      error: verifySignal === "done" || verifySignal === "no_op" ? undefined : ctx.currentError,
+    };
+  }
+
+  if (saved) restoreState(ctx, saved);
+  return true;
+}
+
+export async function phaseEvaluate(
+  ctx: RunContext,
+  shouldYield: LifecycleInput["shouldYield"],
+  deps: PhaseEvaluateDeps = defaultPhaseEvaluateDeps,
+) {
   while (ctx.result) {
-    if (shouldYieldNow(ctx, shouldYield)) break;
+    if (deps.shouldYieldNow(ctx, shouldYield)) break;
     const lifecycleSignal = acceptedLifecycleSignal(ctx);
     if (lifecycleSignal) {
       ctx.currentError = undefined;
@@ -79,58 +155,27 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
     }
 
     let regenerated = false;
-    for (const evaluator of EVALUATORS) {
-      if (shouldYieldNow(ctx, shouldYield)) break;
+    for (const command of deps.commands) {
+      if (deps.shouldYieldNow(ctx, shouldYield)) break;
+      const action: LifecycleCommandAction = command.run(ctx);
+      if (action.type === "done") {
+        ctx.debug("lifecycle.eval.decision", { command: command.id, action: "done" });
+        continue;
+      }
+      regenerated = await triggerRegeneration(ctx, action, { kind: "command", id: command.id }, deps, shouldYield);
+      break;
+    }
+
+    if (regenerated) continue;
+
+    for (const evaluator of deps.evaluators) {
+      if (deps.shouldYieldNow(ctx, shouldYield)) break;
       const action = evaluator.evaluate(ctx);
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
         continue;
       }
-
-      if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
-        ctx.regenerationLimitHit = true;
-        ctx.debug("lifecycle.eval.skipped", {
-          evaluator: evaluator.id,
-          reason: "regeneration_cap",
-          regeneration_count: ctx.regenerationCount,
-          regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
-        });
-        continue;
-      }
-
-      const saved = action.keepResult ? snapshotState(ctx) : undefined;
-      if (action.mode) setMode(ctx, action.mode, evaluator.id);
-
-      ctx.regenerationCount += 1;
-      ctx.debug("lifecycle.eval.decision", {
-        evaluator: evaluator.id,
-        action: "regenerate",
-        mode: ctx.mode,
-        cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        keep_result: Boolean(action.keepResult),
-        feedback_source: action.feedback?.source ?? null,
-        regeneration_count: ctx.regenerationCount,
-      });
-
-      clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
-      if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
-
-      await phaseGenerate(ctx, {
-        cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        timeoutMs: ctx.policy.stepTimeoutMs,
-      });
-      if (shouldYieldNow(ctx, shouldYield)) break;
-
-      if (saved && ctx.mode === "verify") {
-        const verifySignal = ctx.result?.signal;
-        ctx.lifecycleState.verifyOutcome = {
-          text: ctx.result?.text ?? "",
-          error: verifySignal === "done" || verifySignal === "no_op" ? undefined : ctx.currentError,
-        };
-      }
-
-      if (saved) restoreState(ctx, saved);
-      regenerated = true;
+      regenerated = await triggerRegeneration(ctx, action, { kind: "evaluator", id: evaluator.id }, deps, shouldYield);
       break;
     }
     if (!regenerated) break;
