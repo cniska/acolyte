@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -45,6 +45,13 @@ function run(message: string) {
     soulPrompt: "",
     workspace,
   });
+}
+
+async function writeExecutableScript(name: string, body: string): Promise<string> {
+  const path = join(workspace, name);
+  await writeFile(path, body, "utf8");
+  await chmod(path, 0o755);
+  return path;
 }
 
 describe("lifecycle integration", () => {
@@ -196,5 +203,103 @@ describe("lifecycle integration", () => {
 
     expect(phases).toContain("work:tool-call");
     expect(phases).not.toContain("verify:done");
+  });
+
+  test("format effect runs configured command for written files", async () => {
+    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
+    const formatLog = join(workspace, "format.log");
+    const formatScript = await writeExecutableScript(
+      "format-effect.sh",
+      `#!/bin/sh
+printf '%s\n' "$@" > "${formatLog}"
+`,
+    );
+
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 6;" }],
+            }),
+          },
+        ]);
+      }
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 6.\n\n@signal done");
+    });
+
+    await runLifecycle({
+      request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false, verifyScope: "none" },
+      soulPrompt: "",
+      workspace,
+      lifecyclePolicy: {
+        formatCommand: { bin: "/bin/sh", args: [formatScript] },
+      },
+    });
+
+    expect(turnCount).toBe(2);
+    expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
+  });
+
+  test("lint effect regenerates with lifecycle feedback", async () => {
+    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
+    const lintState = join(workspace, ".lint-effect-state");
+    const lintScript = await writeExecutableScript(
+      "lint-effect.sh",
+      `#!/bin/sh
+if [ ! -f "${lintState}" ]; then
+  touch "${lintState}"
+  printf 'src/a.ts:1:1 lint error\n'
+  exit 1
+fi
+exit 0
+`,
+    );
+
+    const requests: string[] = [];
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      requests.push(ctx.sourceText);
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 7;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 2) {
+        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
+      }
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Addressed lint feedback.\n\n@signal done");
+    });
+
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false, verifyScope: "none" },
+      soulPrompt: "",
+      workspace,
+      lifecyclePolicy: {
+        lintCommand: { bin: "/bin/sh", args: [lintScript] },
+      },
+    });
+
+    expect(turnCount).toBe(3);
+    expect(requests[2]).toContain("lifecycle feedback (lint)");
+    expect(requests[2]).toContain("lint errors detected in files you edited");
+    expect(reply.output).toContain("Addressed lint feedback.");
   });
 });
