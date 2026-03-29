@@ -102,7 +102,6 @@ describe("verifyCycleEvaluator", () => {
       reason: "verify",
       feedback: {
         source: "verify",
-        mode: "work",
         summary: "Code review found issues to fix.",
         details: "Missing null check in src/a.ts.",
         instruction: "Fix the review findings, then continue.",

@@ -3,7 +3,7 @@ import type { VerifyScope } from "./api";
 import type {
   LifecycleError,
   LifecycleEventName,
-  LifecycleFeedback,
+  LifecycleFeedbackInput,
   LifecycleState,
   RegenerationReason,
 } from "./lifecycle-contract";
@@ -16,7 +16,7 @@ export type EvalAction =
   | {
       type: "regenerate";
       reason: RegenerationReason;
-      feedback?: LifecycleFeedback;
+      feedback?: LifecycleFeedbackInput;
       mode?: AgentMode;
       cycleLimit?: number;
     };
@@ -107,7 +107,6 @@ export const repeatedFailureEvaluator: Evaluator = {
       reason: "repeated-failure",
       feedback: {
         source: "repeated-failure",
-        mode: ctx.mode,
         summary: "The same runtime failure has repeated.",
         details: ctx.currentError.message,
         instruction: "Do not retry the same failing move. Change approach before continuing.",
@@ -136,7 +135,6 @@ export const verifyCycleEvaluator: Evaluator = {
         reason: "verify",
         feedback: {
           source: "verify",
-          mode: "work",
           summary: "Code review found issues to fix.",
           ...(reviewResult.details ? { details: reviewResult.details } : {}),
           instruction: "Fix the review findings, then continue.",
@@ -160,7 +158,6 @@ export const verifyCycleEvaluator: Evaluator = {
       reason: "verify",
       feedback: {
         source: "verify",
-        mode: "verify",
         summary: "Review the changes for correctness.",
       },
       mode: "verify",
@@ -196,7 +193,6 @@ export const toolRecoveryEvaluator: Evaluator = {
       reason: "tool-recovery",
       feedback: {
         source: "tool-recovery",
-        mode: "work",
         summary: recovery.summary,
         details: formatToolRecovery(currentError.message, recovery),
         instruction: recovery.instruction,

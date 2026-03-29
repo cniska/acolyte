@@ -44,7 +44,6 @@ export const lintEffect: Effect = {
       reason: "lint",
       feedback: {
         source: "lint",
-        mode: "work",
         summary: "Lint errors detected in files you edited.",
         details: renderCommandResult(result),
         instruction: "Fix the issues above, then stop.",

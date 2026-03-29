@@ -80,7 +80,6 @@ describe("phaseEvaluate", () => {
             reason: "lint",
             feedback: {
               source: "lint",
-              mode: "work",
               summary: "Lint errors detected in files you edited.",
             },
           }),
@@ -102,7 +101,11 @@ describe("phaseEvaluate", () => {
     });
 
     expect(decisions).toEqual(["format:done", "lint:regenerate"]);
-    expect(ctx.lifecycleState.feedback.at(-1)?.source).toBe("lint");
+    expect(ctx.lifecycleState.feedback.at(-1)).toEqual({
+      source: "lint",
+      mode: "work",
+      summary: "Lint errors detected in files you edited.",
+    });
     expect(generateOptions).toEqual({ cycleLimit: ctx.policy.initialMaxSteps, timeoutMs: ctx.policy.stepTimeoutMs });
   });
 
@@ -256,7 +259,7 @@ describe("phaseEvaluate", () => {
           evaluate: () => ({
             type: "regenerate",
             reason: "verify",
-            feedback: { source: "verify", mode: "verify", summary: "Review the changes." },
+            feedback: { source: "verify", summary: "Review the changes." },
             mode: "verify",
           }),
         },

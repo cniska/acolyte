@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import type {
   Effect,
   EffectAction,
+  LifecycleFeedbackInput,
   LifecycleInput,
   RegenerationReason,
   ReviewCandidate,
@@ -96,7 +97,7 @@ function prepareRegenerationBoundary(
   ctx: RunContext,
   action: {
     reason: RegenerationReason;
-    feedback?: RunContext["lifecycleState"]["feedback"][number];
+    feedback?: LifecycleFeedbackInput;
     mode?: RunContext["mode"];
   },
 ): void {
@@ -116,7 +117,7 @@ async function triggerRegeneration(
   ctx: RunContext,
   action: {
     reason: RegenerationReason;
-    feedback?: RunContext["lifecycleState"]["feedback"][number];
+    feedback?: LifecycleFeedbackInput;
     mode?: RunContext["mode"];
     cycleLimit?: number;
   },
@@ -169,7 +170,7 @@ async function triggerRegeneration(
   });
 
   clearReviewStateForRegenerationReason(ctx, action.reason);
-  if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
+  if (action.feedback) ctx.lifecycleState.feedback.push({ ...action.feedback, mode: ctx.mode });
 
   await deps.phaseGenerate(ctx, {
     cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,

@@ -145,12 +145,14 @@ export type LifecycleFeedback = {
   instruction?: string;
 };
 
+export type LifecycleFeedbackInput = Omit<LifecycleFeedback, "mode">;
+
 export type EffectAction =
   | { type: "done" }
   | {
       type: "regenerate";
       reason: RegenerationReason;
-      feedback?: LifecycleFeedback;
+      feedback?: LifecycleFeedbackInput;
     };
 
 export type Effect = {
