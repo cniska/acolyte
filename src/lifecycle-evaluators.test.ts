@@ -99,6 +99,7 @@ describe("verifyCycleEvaluator", () => {
     });
     expect(verifyCycleEvaluator.evaluate(ctx)).toEqual({
       type: "regenerate",
+      reason: "verify",
       feedback: {
         source: "verify",
         mode: "work",
@@ -147,7 +148,7 @@ describe("guardRecoveryEvaluator", () => {
       },
     });
 
-    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate" });
+    expect(guardRecoveryEvaluator.evaluate(ctx)).toEqual({ type: "regenerate", reason: "guard-recovery" });
   });
 
   test("returns done when no pending guard feedback exists", () => {

@@ -1,6 +1,12 @@
 import type { AgentMode } from "./agent-contract";
 import type { VerifyScope } from "./api";
-import type { LifecycleError, LifecycleEventName, LifecycleFeedback, LifecycleState } from "./lifecycle-contract";
+import type {
+  LifecycleError,
+  LifecycleEventName,
+  LifecycleFeedback,
+  LifecycleState,
+  RegenerationReason,
+} from "./lifecycle-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import { haveChangesBeenVerified, type SessionContext, scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET, WRITE_TOOLS } from "./tool-registry";
@@ -9,6 +15,7 @@ export type EvalAction =
   | { type: "done" }
   | {
       type: "regenerate";
+      reason: RegenerationReason;
       feedback?: LifecycleFeedback;
       mode?: AgentMode;
       cycleLimit?: number;
@@ -72,7 +79,7 @@ export const guardRecoveryEvaluator: Evaluator = {
     );
     if (!hasPendingFeedback) return { type: "done" };
     ctx.debug("lifecycle.eval.guard_recovery", { mode: ctx.mode, error: ctx.currentError.message });
-    return { type: "regenerate" };
+    return { type: "regenerate", reason: "guard-recovery" };
   },
 };
 
@@ -97,6 +104,7 @@ export const repeatedFailureEvaluator: Evaluator = {
 
     return {
       type: "regenerate",
+      reason: "repeated-failure",
       feedback: {
         source: "repeated-failure",
         mode: ctx.mode,
@@ -119,13 +127,13 @@ export const verifyCycleEvaluator: Evaluator = {
       if (!reviewResult) return { type: "done" };
       ctx.debug("lifecycle.eval.verify_cycle", {
         status: reviewResult.status,
-        has_error: Boolean(reviewResult.error),
         verify_scope: ctx.request.verifyScope ?? null,
       });
       if (reviewResult.status !== "issues") return { type: "done" };
 
       return {
         type: "regenerate",
+        reason: "verify",
         feedback: {
           source: "verify",
           mode: "work",
@@ -149,6 +157,7 @@ export const verifyCycleEvaluator: Evaluator = {
 
     return {
       type: "regenerate",
+      reason: "verify",
       feedback: {
         source: "verify",
         mode: "verify",
@@ -184,6 +193,7 @@ export const toolRecoveryEvaluator: Evaluator = {
     });
     return {
       type: "regenerate",
+      reason: "tool-recovery",
       feedback: {
         source: "tool-recovery",
         mode: "work",

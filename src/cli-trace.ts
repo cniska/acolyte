@@ -119,7 +119,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   ],
   "lifecycle.eval.guard_recovery": ["mode"],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
-  "lifecycle.eval.verify_cycle": ["status", "used_write_tools", "verified", "verify_scope", "has_error"],
+  "lifecycle.eval.verify_cycle": ["status", "used_write_tools", "verified", "verify_scope"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",

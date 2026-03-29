@@ -44,7 +44,7 @@ describe("phaseEvaluate", () => {
         {
           id: "guard-recovery",
           modes: ["work"],
-          evaluate: () => ({ type: "regenerate" }),
+          evaluate: () => ({ type: "regenerate", reason: "guard-recovery" }),
         },
       ],
       phaseGenerate: async () => {
@@ -77,6 +77,7 @@ describe("phaseEvaluate", () => {
           modes: ["work"],
           run: () => ({
             type: "regenerate",
+            reason: "lint",
             feedback: {
               source: "lint",
               mode: "work",
@@ -158,7 +159,8 @@ describe("phaseEvaluate", () => {
         {
           id: "review",
           modes: ["verify"],
-          evaluate: () => (ctx.result?.signal === "done" ? { type: "regenerate", mode: "verify" } : { type: "done" }),
+          evaluate: () =>
+            ctx.result?.signal === "done" ? { type: "regenerate", reason: "verify", mode: "verify" } : { type: "done" },
         },
       ],
       phaseGenerate: async () => {
@@ -188,7 +190,8 @@ describe("phaseEvaluate", () => {
         {
           id: "review",
           modes: ["verify"],
-          evaluate: () => (ctx.result?.signal === "done" ? { type: "regenerate", mode: "verify" } : { type: "done" }),
+          evaluate: () =>
+            ctx.result?.signal === "done" ? { type: "regenerate", reason: "verify", mode: "verify" } : { type: "done" },
         },
       ],
       phaseGenerate: async () => {
@@ -252,6 +255,7 @@ describe("phaseEvaluate", () => {
           modes: ["work"],
           evaluate: () => ({
             type: "regenerate",
+            reason: "verify",
             feedback: { source: "verify", mode: "verify", summary: "Review the changes." },
             mode: "verify",
           }),

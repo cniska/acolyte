@@ -1,4 +1,4 @@
-import type { LifecycleSignal, RunContext } from "./lifecycle-contract";
+import type { LifecycleSignal, RegenerationReason, RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
 
@@ -15,8 +15,8 @@ function taskHasWrites(ctx: RunContext): boolean {
   return scopedCallLog(ctx.session, ctx.taskId).some((entry) => WRITE_TOOL_SET.has(entry.toolName));
 }
 
-export function clearReviewStateForFeedback(ctx: RunContext, feedbackSource?: string): void {
-  if (feedbackSource !== "verify") return;
+export function clearReviewStateForRegenerationReason(ctx: RunContext, regenerationReason?: RegenerationReason): void {
+  if (regenerationReason !== "verify") return;
   ctx.lifecycleState.reviewCandidate = undefined;
   ctx.lifecycleState.reviewResult = undefined;
 }

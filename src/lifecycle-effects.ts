@@ -41,6 +41,7 @@ export const lintEffect: Effect = {
     ctx.debug("lifecycle.effect.lint", { files: paths.length });
     return {
       type: "regenerate",
+      reason: "lint",
       feedback: {
         source: "lint",
         mode: "work",

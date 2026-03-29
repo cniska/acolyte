@@ -19,7 +19,11 @@ import {
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import { acceptedLifecycleSignal, clearReviewStateForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
+import {
+  acceptedLifecycleSignal,
+  clearReviewStateForRegenerationReason,
+  updateRepeatedFailureState,
+} from "./lifecycle-state";
 
 const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
@@ -91,11 +95,12 @@ function captureReviewResult(ctx: RunContext): ReviewResult {
 function prepareRegenerationBoundary(
   ctx: RunContext,
   action: {
+    reason: RegenerationReason;
     feedback?: RunContext["lifecycleState"]["feedback"][number];
     mode?: RunContext["mode"];
   },
 ): void {
-  if (action.feedback?.source === "verify" && action.mode === "work") {
+  if (action.reason === "verify" && action.mode === "work") {
     ctx.session.flags.reviewAction = "request-changes";
   }
 }
@@ -107,23 +112,10 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-function regenerationReasonForAction(
-  action: {
-    feedback?: RunContext["lifecycleState"]["feedback"][number];
-  },
-  source: { kind: "effect" | "evaluator"; id: string },
-): RegenerationReason {
-  const feedbackSource = action.feedback?.source;
-  if (feedbackSource === "lint") return "lint";
-  if (feedbackSource === "verify") return "verify";
-  if (feedbackSource === "tool-recovery") return "tool-recovery";
-  if (feedbackSource === "repeated-failure") return "repeated-failure";
-  return source.id === "guard-recovery" ? "guard-recovery" : "verify";
-}
-
 async function triggerRegeneration(
   ctx: RunContext,
   action: {
+    reason: RegenerationReason;
     feedback?: RunContext["lifecycleState"]["feedback"][number];
     mode?: RunContext["mode"];
     cycleLimit?: number;
@@ -132,7 +124,7 @@ async function triggerRegeneration(
   deps: PhaseEvaluateDeps,
   shouldYield: LifecycleInput["shouldYield"],
 ): Promise<boolean> {
-  const regenerationReason = regenerationReasonForAction(action, source);
+  const regenerationReason = action.reason;
   if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
     ctx.regenerationLimitHit = true;
     ctx.debug("lifecycle.eval.skipped", {
@@ -176,7 +168,7 @@ async function triggerRegeneration(
     regeneration_reason_count: ctx.regenerationCounts[regenerationReason],
   });
 
-  clearReviewStateForFeedback(ctx, action.feedback?.source);
+  clearReviewStateForRegenerationReason(ctx, action.reason);
   if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
   await deps.phaseGenerate(ctx, {

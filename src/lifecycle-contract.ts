@@ -149,6 +149,7 @@ export type EffectAction =
   | { type: "done" }
   | {
       type: "regenerate";
+      reason: RegenerationReason;
       feedback?: LifecycleFeedback;
     };
 
