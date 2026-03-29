@@ -28,7 +28,6 @@ export type ToolCallRecord = {
   toolName: string;
   args: Record<string, unknown>;
   taskId?: string;
-  mode?: string;
   resultHash?: string;
   status: ToolCallStatus;
 };
@@ -46,7 +45,6 @@ export type SessionFlags = {
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
-  mode?: string;
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
@@ -59,7 +57,6 @@ export type SessionContext = {
 type GuardSession = {
   readonly callLog: readonly ToolCallRecord[];
   readonly taskId?: string;
-  readonly mode?: string;
   readonly flags: Readonly<SessionFlags>;
   readonly writeTools: ReadonlySet<string>;
   readonly cache?: Pick<ToolCache, "isCacheable">;
@@ -120,13 +117,6 @@ export function scopedCallLog(session: Pick<GuardSession, "callLog" | "taskId">,
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function haveChangesBeenVerified(
-  session: Pick<GuardSession, "callLog" | "taskId">,
-  taskId: string | undefined,
-): boolean {
-  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "shell-run" && entry.mode === "verify");
-}
-
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -145,17 +135,9 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
   return scope.length === 1 && scope[0] === WORKSPACE_SCOPE;
 }
 
-function callsSinceLastVerify(session: GuardSession): ToolCallRecord[] {
-  const calls = scopedCallLog(session);
-  for (let i = calls.length - 1; i >= 0; i -= 1) {
-    if (calls[i]?.toolName === "shell-run" && calls[i]?.mode === "verify") return calls.slice(i + 1);
-  }
-  return calls;
-}
-
-function editedPathsSinceLastVerify(session: GuardSession): string[] {
+function editedPathsForSession(session: GuardSession): string[] {
   const paths = new Set<string>();
-  for (const entry of callsSinceLastVerify(session)) {
+  for (const entry of scopedCallLog(session)) {
     if (entry.status === "failed") continue;
     if (!isWriteTool(session, entry.toolName)) continue;
     if (typeof entry.args.path !== "string") continue;
@@ -313,8 +295,8 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    const sinceLastVerify = callsSinceLastVerify(session);
-    for (const entry of sinceLastVerify) {
+    const callLog = scopedCallLog(session);
+    for (const entry of callLog) {
       if (entry.toolName === "file-read") {
         for (const readPath of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(readPath).readCount += 1;
@@ -331,8 +313,8 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (toolName === "file-read" && editCount > 0 && session.mode !== "verify") {
-        if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
+      if (toolName === "file-read" && editCount > 0) {
+        if (hasReadSinceLastEditOf(callLog, session, target)) {
           return blockGuard(
             `File "${target}" was already re-read after the last edit. Use the content you already have.`,
             target,
@@ -513,7 +495,7 @@ const postEditRedundancyGuard: ToolGuard = {
           .filter((value) => value.length > 0)
       : [];
     if (targetPaths.length === 0) return allowGuard();
-    const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
+    const editedPaths = editedPathsForSession(session).map((entry) => normalizePath(entry.toLowerCase()));
     for (const path of targetPaths) {
       if (path !== "__edited_workspace__" && !editedPaths.includes(path)) continue;
       if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
@@ -767,5 +749,5 @@ export function recordCall(
   resultHash?: string,
   status: ToolCallStatus = "succeeded",
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, status });
+  session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status });
 }
