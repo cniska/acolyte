@@ -1,38 +1,112 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { LifecycleInput, RunContext, SavedRegenerationState } from "./lifecycle-contract";
+import type {
+  Effect,
+  EffectAction,
+  LifecycleInput,
+  RegenerateAction,
+  ReviewCandidate,
+  ReviewResult,
+  RunContext,
+} from "./lifecycle-contract";
+import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
-  formatEvaluator,
+  type EvaluatorPatch,
   guardRecoveryEvaluator,
-  lintEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyEvaluator,
+  verifyCycleEvaluator,
 } from "./lifecycle-evaluators";
 import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import { acceptedLifecycleSignal, clearVerifyOutcomeForFeedback, updateRepeatedFailureState } from "./lifecycle-state";
+import {
+  acceptedLifecycleSignal,
+  clearReviewStateForRegenerationReason,
+  updateRepeatedFailureState,
+} from "./lifecycle-state";
+
+const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
 const EVALUATORS: Evaluator[] = [
   guardRecoveryEvaluator,
   toolRecoveryEvaluator,
-  formatEvaluator,
-  lintEvaluator,
-  verifyEvaluator,
+  verifyCycleEvaluator,
   repeatedFailureEvaluator,
 ];
 
-function snapshotState(ctx: RunContext): SavedRegenerationState {
+type PhaseEvaluateDeps = {
+  phaseGenerate: typeof phaseGenerate;
+  shouldYieldNow: typeof shouldYieldNow;
+  effects: readonly Effect[];
+  evaluators: readonly Evaluator[];
+};
+
+const defaultPhaseEvaluateDeps: PhaseEvaluateDeps = {
+  phaseGenerate,
+  shouldYieldNow,
+  effects: EFFECTS,
+  evaluators: EVALUATORS,
+};
+
+function createReviewCandidate(ctx: RunContext): ReviewCandidate {
   return {
-    result: ctx.result,
-    currentError: ctx.currentError,
+    result: ctx.result
+      ? {
+          text: ctx.result.text,
+          toolCalls: [...ctx.result.toolCalls],
+          ...(ctx.result.signal ? { signal: ctx.result.signal } : {}),
+        }
+      : undefined,
+    currentError: ctx.currentError ? { ...ctx.currentError } : undefined,
   };
 }
 
-function restoreState(ctx: RunContext, saved: SavedRegenerationState): void {
-  ctx.result = saved.result;
-  ctx.currentError = saved.currentError;
+function restoreReviewCandidate(ctx: RunContext, candidate: ReviewCandidate): void {
+  ctx.result = candidate.result;
+  ctx.currentError = candidate.currentError;
+  setMode(ctx, "work", "review-candidate");
+}
+
+function captureReviewResult(ctx: RunContext): ReviewResult {
+  const details = ctx.result?.text.trim() || undefined;
+  if (ctx.currentError) {
+    return {
+      status: "blocked",
+      ...(details ? { details } : {}),
+      error: ctx.currentError,
+    };
+  }
+
+  switch (ctx.result?.signal) {
+    case "no_op":
+      return { status: "clean" };
+    case "done":
+      return { status: "issues", ...(details ? { details } : {}) };
+    case "blocked":
+      return { status: "blocked", ...(details ? { details } : {}) };
+    default:
+      return {
+        status: "blocked",
+        details: details ?? "Verify mode did not return a review verdict.",
+      };
+  }
+}
+
+function prepareRegenerationBoundary(ctx: RunContext, action: RegenerateAction): void {
+  if (action.reason === "verify" && action.transition?.to === "work") {
+    ctx.session.flags.reviewAction = "request-changes";
+  }
+}
+
+function applyEvaluatorPatch(ctx: RunContext, patch?: EvaluatorPatch): void {
+  if (!patch) return;
+  if (patch.repeatedFailureStatus && ctx.lifecycleState.repeatedFailure) {
+    ctx.lifecycleState.repeatedFailure = {
+      ...ctx.lifecycleState.repeatedFailure,
+      status: patch.repeatedFailureStatus,
+    };
+  }
 }
 
 export function recoveryActionForError(
@@ -42,9 +116,86 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
+async function triggerRegeneration(
+  ctx: RunContext,
+  action: RegenerateAction,
+  source: { kind: "effect" | "evaluator"; id: string },
+  deps: PhaseEvaluateDeps,
+  shouldYield: LifecycleInput["shouldYield"],
+): Promise<boolean> {
+  const regenerationReason = action.reason;
+  if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      [source.kind]: source.id,
+      reason: "regeneration_cap",
+      regeneration_reason: regenerationReason,
+      regeneration_count: ctx.regenerationCount,
+      regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
+    });
+    return false;
+  }
+
+  const reasonCount = ctx.regenerationCounts[regenerationReason];
+  const reasonCap = ctx.policy.maxRegenerationsPerReason[regenerationReason];
+  if (reasonCount >= reasonCap) {
+    ctx.regenerationLimitHit = true;
+    ctx.debug("lifecycle.eval.skipped", {
+      [source.kind]: source.id,
+      reason: "regeneration_reason_cap",
+      regeneration_reason: regenerationReason,
+      regeneration_reason_count: reasonCount,
+      regeneration_reason_cap: reasonCap,
+    });
+    return false;
+  }
+
+  const transitionTarget = action.transition?.to;
+  const feedbackMode = transitionTarget ?? ctx.mode;
+  const reviewCandidate = transitionTarget === "verify" ? createReviewCandidate(ctx) : undefined;
+  prepareRegenerationBoundary(ctx, action);
+  if (transitionTarget) setMode(ctx, transitionTarget, source.id);
+
+  ctx.regenerationCount += 1;
+  ctx.regenerationCounts[regenerationReason] += 1;
+  ctx.debug("lifecycle.eval.decision", {
+    [source.kind]: source.id,
+    action: "regenerate",
+    mode: ctx.mode,
+    cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
+    feedback_source: action.feedback?.source ?? null,
+    regeneration_reason: regenerationReason,
+    regeneration_count: ctx.regenerationCount,
+    regeneration_reason_count: ctx.regenerationCounts[regenerationReason],
+  });
+
+  clearReviewStateForRegenerationReason(ctx, action.reason);
+  if (action.feedback) ctx.lifecycleState.feedback.push({ ...action.feedback, mode: feedbackMode });
+
+  await deps.phaseGenerate(ctx, {
+    cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
+    timeoutMs: ctx.policy.stepTimeoutMs,
+  });
+  if (deps.shouldYieldNow(ctx, shouldYield)) return true;
+
+  if (reviewCandidate && ctx.mode === "verify") {
+    ctx.lifecycleState.reviewCandidate = reviewCandidate;
+    ctx.lifecycleState.reviewResult = captureReviewResult(ctx);
+  }
+
+  if (reviewCandidate && ctx.lifecycleState.reviewResult?.status === "clean") {
+    restoreReviewCandidate(ctx, reviewCandidate);
+  }
+  return true;
+}
+
+export async function phaseEvaluate(
+  ctx: RunContext,
+  shouldYield: LifecycleInput["shouldYield"],
+  deps: PhaseEvaluateDeps = defaultPhaseEvaluateDeps,
+) {
   while (ctx.result) {
-    if (shouldYieldNow(ctx, shouldYield)) break;
+    if (deps.shouldYieldNow(ctx, shouldYield)) break;
     const lifecycleSignal = acceptedLifecycleSignal(ctx);
     if (lifecycleSignal) {
       ctx.currentError = undefined;
@@ -79,58 +230,32 @@ export async function phaseEvaluate(ctx: RunContext, shouldYield: LifecycleInput
     }
 
     let regenerated = false;
-    for (const evaluator of EVALUATORS) {
-      if (shouldYieldNow(ctx, shouldYield)) break;
-      const action = evaluator.evaluate(ctx);
+    for (const effect of deps.effects) {
+      if (deps.shouldYieldNow(ctx, shouldYield)) break;
+      if (!effect.modes.includes(ctx.mode)) continue;
+      const action: EffectAction = effect.run(ctx);
+      if (action.type === "done") {
+        ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
+        continue;
+      }
+      regenerated = await triggerRegeneration(ctx, action, { kind: "effect", id: effect.id }, deps, shouldYield);
+      break;
+    }
+
+    if (regenerated) continue;
+
+    for (const evaluator of deps.evaluators) {
+      if (deps.shouldYieldNow(ctx, shouldYield)) break;
+      if (!evaluator.modes.includes(ctx.mode)) continue;
+      const outcome = evaluator.evaluate(ctx);
+      if (outcome.debug) ctx.debug(outcome.debug.event, outcome.debug.fields);
+      applyEvaluatorPatch(ctx, outcome.patch);
+      const action = outcome.action;
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { evaluator: evaluator.id, action: "done" });
         continue;
       }
-
-      if (ctx.regenerationCount >= ctx.policy.maxRegenerationsPerRequest) {
-        ctx.regenerationLimitHit = true;
-        ctx.debug("lifecycle.eval.skipped", {
-          evaluator: evaluator.id,
-          reason: "regeneration_cap",
-          regeneration_count: ctx.regenerationCount,
-          regeneration_cap: ctx.policy.maxRegenerationsPerRequest,
-        });
-        continue;
-      }
-
-      const saved = action.keepResult ? snapshotState(ctx) : undefined;
-      if (action.mode) setMode(ctx, action.mode, evaluator.id);
-
-      ctx.regenerationCount += 1;
-      ctx.debug("lifecycle.eval.decision", {
-        evaluator: evaluator.id,
-        action: "regenerate",
-        mode: ctx.mode,
-        cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        keep_result: Boolean(action.keepResult),
-        feedback_source: action.feedback?.source ?? null,
-        regeneration_count: ctx.regenerationCount,
-      });
-
-      clearVerifyOutcomeForFeedback(ctx, action.feedback?.source);
-      if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
-
-      await phaseGenerate(ctx, {
-        cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
-        timeoutMs: ctx.policy.stepTimeoutMs,
-      });
-      if (shouldYieldNow(ctx, shouldYield)) break;
-
-      if (saved && ctx.mode === "verify") {
-        const verifySignal = ctx.result?.signal;
-        ctx.lifecycleState.verifyOutcome = {
-          text: ctx.result?.text ?? "",
-          error: verifySignal === "done" || verifySignal === "no_op" ? undefined : ctx.currentError,
-        };
-      }
-
-      if (saved) restoreState(ctx, saved);
-      regenerated = true;
+      regenerated = await triggerRegeneration(ctx, action, { kind: "evaluator", id: evaluator.id }, deps, shouldYield);
       break;
     }
     if (!regenerated) break;

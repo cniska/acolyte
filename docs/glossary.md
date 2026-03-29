@@ -28,10 +28,11 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Embedding | Provider-generated vector representation of a distill record used for semantic recall |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
-| Evaluator | Post-generation rule that accepts output or requests regeneration |
-| Guard | Pre-tool execution rule that may block a call |
+| Evaluator | Pure post-generation policy unit that returns lifecycle decisions and optional small patches |
+| Guard | Pure pre-tool policy unit that may block a call or request a small session patch |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery |
 | Lifecycle Feedback | Task-scoped runtime feedback carried into the next matching lifecycle attempt |
+| Effect | Lifecycle-owned side-effect unit that runs before pure evaluators in the evaluate phase |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
 | Lifecycle State | Internal task-scoped runtime state carried between lifecycle attempts |
@@ -62,6 +63,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
-| Verify Cycle | Post-write review sequence that switches to verify mode and then returns to work mode |
+| Verify Cycle | Post-write review sequence that transitions work into verify mode, accepts a clean review, or returns to work with review findings |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, commands, and line width |

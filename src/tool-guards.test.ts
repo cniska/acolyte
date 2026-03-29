@@ -47,6 +47,17 @@ describe("step-budget guard", () => {
     expect(session.flags.cycleStepCount).toBe(1);
   });
 
+  test("does not consume cycle step budget when a later guard blocks", () => {
+    const session = createSessionContext();
+    session.flags.cycleStepLimit = 10;
+    session.flags.cycleStepCount = 0;
+    recordCall(session, "file-read", { paths: [{ path: "a.ts" }] });
+    expect(() => runGuards({ toolName: "file-read", args: { paths: [{ path: "a.ts" }] }, session })).toThrow(
+      /Duplicate file-read call detected/,
+    );
+    expect(session.flags.cycleStepCount).toBe(0);
+  });
+
   test("resetCycleStepCount resets counter and optionally sets limit", () => {
     const session = createSessionContext();
     session.flags.cycleStepCount = 42;
@@ -67,6 +78,18 @@ describe("step-budget guard", () => {
 });
 
 describe("redundant-verify guard", () => {
+  test("declares verify-only applicability", () => {
+    const events: GuardEvent[] = [];
+    const session = createSessionContext();
+    session.onGuard = (event) => events.push(event);
+    recordCall(session, "shell-run", { command: "bun run verify" });
+
+    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).toThrow(
+      /Duplicate shell-run call detected/,
+    );
+    expect(events.every((event) => event.guardId !== "redundant-verify")).toBe(true);
+  });
+
   test("allows first verify run", () => {
     const session = createSessionContext();
     session.mode = "verify";
@@ -415,6 +438,22 @@ describe("post-edit-redundancy guard", () => {
         session,
       }),
     ).not.toThrow();
+  });
+
+  test("allows one same-file follow-up edit after review requests changes", () => {
+    const session = createSessionContext();
+    session.writeTools = new Set(["file-edit"]);
+    session.flags.reviewAction = "request-changes";
+    recordCall(session, "file-edit", { path: "src/clamp.ts", edits: [{ find: "a", replace: "b" }] });
+
+    expect(() =>
+      runGuards({
+        toolName: "file-edit",
+        args: { path: "src/clamp.ts", edits: [{ find: "b", replace: "c" }] },
+        session,
+      }),
+    ).not.toThrow();
+    expect(session.flags.reviewAction).toBeUndefined();
   });
 
   test("allows same-file edit after workspace-wide search", () => {

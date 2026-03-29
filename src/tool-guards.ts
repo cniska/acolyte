@@ -1,3 +1,4 @@
+import type { AgentMode } from "./agent-contract";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -40,6 +41,7 @@ export type SessionFlags = {
   guardStats?: { blocked: number; flagSet: number };
   consecutiveBlocks?: number;
   consecutiveGuardBlockLimit?: number;
+  reviewAction?: "request-changes";
 };
 
 export type SessionContext = {
@@ -55,29 +57,52 @@ export type SessionContext = {
   workspaceProfile?: WorkspaceProfile;
 };
 
+type GuardSession = {
+  readonly callLog: readonly ToolCallRecord[];
+  readonly taskId?: string;
+  readonly mode?: string;
+  readonly flags: Readonly<SessionFlags>;
+  readonly writeTools: ReadonlySet<string>;
+  readonly cache?: Pick<ToolCache, "isCacheable">;
+  readonly workspaceProfile?: WorkspaceProfile;
+};
+
 const FILE_CHURN_MIN_COMBINED = 12;
 const FILE_CHURN_MIN_READS = 5;
 const FILE_CHURN_MIN_EDITS = 5;
 const FILE_READ_ONLY_CHURN_MIN = 4;
 const DISCOVERY_LOOP_MIN_CALLS = 4;
 
-export type GuardReport = (action: "blocked" | "flag_set", detail?: string) => void;
-
 export type GuardInput = {
   toolName: string;
   args: Record<string, unknown>;
-  session: SessionContext;
-  report: GuardReport;
+  session: GuardSession;
 };
+
+export type GuardPatch = {
+  cycleStepCount?: number;
+  reviewAction?: SessionFlags["reviewAction"] | null;
+};
+
+export type GuardResult = { type: "allow"; patch?: GuardPatch } | { type: "block"; detail?: string; message: string };
+
+function allowGuard(patch?: GuardPatch): GuardResult {
+  return patch ? { type: "allow", patch } : { type: "allow" };
+}
+
+function blockGuard(message: string, detail?: string): GuardResult {
+  return detail ? { type: "block", message, detail } : { type: "block", message };
+}
 
 export type ToolGuard = {
   id: string;
   description: string;
+  modes: readonly AgentMode[];
   tools?: readonly string[];
-  check: (input: GuardInput) => void;
+  check: (input: GuardInput) => GuardResult;
 };
 
-function isWriteTool(session: SessionContext, toolName: string): boolean {
+function isWriteTool(session: Pick<GuardSession, "writeTools">, toolName: string): boolean {
   return session.writeTools.has(toolName);
 }
 
@@ -91,13 +116,16 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
   };
 }
 
-export function scopedCallLog(session: SessionContext, taskId?: string): ToolCallRecord[] {
+export function scopedCallLog(session: Pick<GuardSession, "callLog" | "taskId">, taskId?: string): ToolCallRecord[] {
   const id = taskId ?? session.taskId;
-  if (!id) return session.callLog;
+  if (!id) return [...session.callLog];
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function haveChangesBeenVerified(session: SessionContext, taskId: string | undefined): boolean {
+export function haveChangesBeenVerified(
+  session: Pick<GuardSession, "callLog" | "taskId">,
+  taskId: string | undefined,
+): boolean {
   return scopedCallLog(session, taskId).some((entry) => entry.toolName === "shell-run" && entry.mode === "verify");
 }
 
@@ -119,7 +147,7 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
   return scope.length === 1 && scope[0] === WORKSPACE_SCOPE;
 }
 
-function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
+function callsSinceLastVerify(session: GuardSession): ToolCallRecord[] {
   const calls = scopedCallLog(session);
   for (let i = calls.length - 1; i >= 0; i -= 1) {
     if (calls[i]?.toolName === "shell-run" && calls[i]?.mode === "verify") return calls.slice(i + 1);
@@ -127,7 +155,7 @@ function callsSinceLastVerify(session: SessionContext): ToolCallRecord[] {
   return calls;
 }
 
-function editedPathsSinceLastVerify(session: SessionContext): string[] {
+function editedPathsSinceLastVerify(session: GuardSession): string[] {
   const paths = new Set<string>();
   for (const entry of callsSinceLastVerify(session)) {
     if (entry.status === "failed") continue;
@@ -143,7 +171,7 @@ type RedundantQueryKind = "narrower" | "scope-narrowing";
 
 function redundantQueryKind(input: {
   toolName: string;
-  session: SessionContext;
+  session: Pick<GuardSession, "callLog" | "taskId">;
   currentPatterns: readonly string[];
   currentScope: readonly string[];
   extractPatterns: (args: Record<string, unknown>) => string[];
@@ -182,7 +210,7 @@ function normalizeGuardArgValue(value: unknown): unknown {
   return value;
 }
 
-function readCountForPath(session: SessionContext, path: string): number {
+function readCountForPath(session: Pick<GuardSession, "callLog" | "taskId">, path: string): number {
   let count = 0;
   for (const entry of scopedCallLog(session)) {
     if (entry.toolName !== "file-read") continue;
@@ -201,7 +229,7 @@ function scanTouchesPath(args: Record<string, unknown>, path: string): boolean {
   return rawPaths.some((entry) => typeof entry === "string" && normalizePath(entry.trim().toLowerCase()) === path);
 }
 
-function hasFreshEvidenceSinceLastSuccessfulEdit(session: SessionContext, path: string): boolean {
+function hasFreshEvidenceSinceLastSuccessfulEdit(session: GuardSession, path: string): boolean {
   const calls = scopedCallLog(session);
   for (let i = calls.length - 1; i >= 0; i -= 1) {
     const entry = calls[i];
@@ -227,24 +255,30 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
-  check({ args, toolName, session, report }) {
-    if (session.cache?.isCacheable(toolName)) return;
+  modes: ["work", "verify"],
+  check({ args, toolName, session }) {
+    if (session.cache?.isCacheable(toolName)) return allowGuard();
     const calls = scopedCallLog(session);
     const lookback = calls.slice(-DUPLICATE_CALL_LOOKBACK);
     for (let i = lookback.length - 1; i >= 0; i -= 1) {
       const prior = lookback[i];
       if (prior.toolName === toolName && guardArgsEqual(prior.args, args)) {
-        report("blocked", "duplicate-call");
-        throw new Error(
+        return blockGuard(
           `Duplicate ${toolName} call detected with unchanged arguments. Reuse previous result or change inputs.`,
+          "duplicate-call",
         );
       }
-      if (isWriteTool(session, prior.toolName)) return;
+      if (isWriteTool(session, prior.toolName)) return allowGuard();
     }
+    return allowGuard();
   },
 };
 
-function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionContext, path: string): boolean {
+function hasReadSinceLastEditOf(
+  callLog: ToolCallRecord[],
+  session: Pick<GuardSession, "writeTools">,
+  path: string,
+): boolean {
   for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
     if (!entry) continue;
@@ -265,15 +299,16 @@ function hasReadSinceLastEditOf(callLog: ToolCallRecord[], session: SessionConte
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
+  modes: ["work", "verify"],
   tools: ["file-read", "file-edit"],
-  check({ args, session, toolName, report }) {
+  check({ args, session, toolName }) {
     const targetPaths =
       toolName === "file-edit"
         ? typeof args.path === "string" && args.path.trim().length > 0
           ? [normalizePath(args.path.trim())]
           : []
         : extractReadPaths(args, { normalize: true });
-    if (targetPaths.length === 0) return;
+    if (targetPaths.length === 0) return allowGuard();
     const pathCounts = new Map<string, { readCount: number; editCount: number }>();
     const countsForPath = (path: string): { readCount: number; editCount: number } => {
       const existing = pathCounts.get(path);
@@ -302,17 +337,17 @@ const fileChurnGuard: ToolGuard = {
 
       if (toolName === "file-read" && editCount > 0 && session.mode !== "verify") {
         if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
-          report("blocked", target);
-          throw new Error(
+          return blockGuard(
             `File "${target}" was already re-read after the last edit. Use the content you already have.`,
+            target,
           );
         }
       }
 
       if (toolName === "file-read" && editCount === 0 && readCount >= FILE_READ_ONLY_CHURN_MIN) {
-        report("blocked", target);
-        throw new Error(
+        return blockGuard(
           `File "${target}" has been read ${readCount} times without edits. Use the content you already have or move on.`,
+          target,
         );
       }
 
@@ -320,12 +355,13 @@ const fileChurnGuard: ToolGuard = {
       if (combined < FILE_CHURN_MIN_COMBINED || readCount < FILE_CHURN_MIN_READS || editCount < FILE_CHURN_MIN_EDITS)
         continue;
 
-      report("blocked", target);
-      throw new Error(
+      return blockGuard(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
           "Use one consolidated edit or code-edit, then run verify.",
+        target,
       );
     }
+    return allowGuard();
   },
 };
 
@@ -335,17 +371,19 @@ type RedundantDiscoveryConfig = {
   tool: string;
   extractPatterns: (args: Record<string, unknown>) => string[];
   loopMessage: string;
-  preCheck?: (input: GuardInput) => void;
+  preCheck?: (input: GuardInput) => GuardResult;
 };
 
 function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGuard {
   return {
     id: config.id,
     description: config.description,
+    modes: ["work", "verify"],
     tools: [config.tool],
     check(input) {
-      const { toolName, args, session, report } = input;
-      config.preCheck?.(input);
+      const { toolName, args, session } = input;
+      const preCheck = config.preCheck?.(input);
+      if (preCheck && preCheck.type === "block") return preCheck;
 
       const currentPatterns = config.extractPatterns(args);
       const currentScope = extractSearchScope(args);
@@ -358,15 +396,15 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
         extractScope: extractSearchScope,
       });
       if (redundant === "scope-narrowing") {
-        report("blocked", "redundant-scope-narrowing");
-        throw new Error(
+        return blockGuard(
           `Redundant scoped ${config.tool} call detected. Prior workspace call already covers these patterns.`,
+          "redundant-scope-narrowing",
         );
       }
       if (redundant === "narrower") {
-        report("blocked", "narrower-than-prior");
-        throw new Error(
+        return blockGuard(
           `Redundant narrower ${config.tool} call detected. Current patterns are already covered by a prior call in the same scope.`,
+          "narrower-than-prior",
         );
       }
 
@@ -383,10 +421,9 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
         }
       }
 
-      if (discoveryCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return;
+      if (discoveryCount < DISCOVERY_LOOP_MIN_CALLS || readCount > 0 || writeCount > 0) return allowGuard();
 
-      report("blocked", String(discoveryCount));
-      throw new Error(config.loopMessage);
+      return blockGuard(config.loopMessage, String(discoveryCount));
     },
   };
 }
@@ -398,33 +435,33 @@ const redundantSearchGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractSearchPatterns,
   loopMessage:
     "Repeated file-search loop detected without reads/writes. Stop synonym searching and conclude from current evidence.",
-  preCheck({ args, session, report }) {
+  preCheck({ args, session }) {
     const currentScope = extractSearchScope(args);
-    if (currentScope.length !== 1 || currentScope[0] === WORKSPACE_SCOPE) return;
+    if (currentScope.length !== 1 || currentScope[0] === WORKSPACE_SCOPE) return allowGuard();
     const targetPath = currentScope[0];
-    if (!targetPath) return;
+    if (!targetPath) return allowGuard();
 
     for (const entry of scopedCallLog(session)) {
-      if (entry.status !== "failed" && isWriteTool(session, entry.toolName)) return;
+      if (entry.status !== "failed" && isWriteTool(session, entry.toolName)) return allowGuard();
     }
 
     const calls = scopedCallLog(session);
     const prior = calls[calls.length - 1];
-    if (!prior || prior.toolName !== "file-read") return;
+    if (!prior || prior.toolName !== "file-read") return allowGuard();
     if (extractReadPaths(prior.args, { normalize: true }).includes(targetPath)) {
-      report("blocked", targetPath);
-      throw new Error(
+      return blockGuard(
         `File "${targetPath}" was already read directly in full. Do not search the same file before editing; ` +
           "use the text you already have to make the change.",
+        targetPath,
       );
     }
 
-    if (readCountForPath(session, targetPath) < 2) return;
+    if (readCountForPath(session, targetPath) < 2) return allowGuard();
 
-    report("blocked", `${targetPath}:repeat-read`);
-    throw new Error(
+    return blockGuard(
       `File "${targetPath}" was already read multiple times in this task. Do not search the same file again; ` +
         "use the reads you already have or edit a bounded range directly.",
+      `${targetPath}:repeat-read`,
     );
   },
 });
@@ -436,7 +473,7 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   extractPatterns: extractFindPatterns,
   loopMessage:
     "Repeated file-find loop detected without reads/writes. Stop broad discovery and read the best candidate file(s) directly.",
-  preCheck({ args, session, report }) {
+  preCheck({ args, session }) {
     const currentScope = extractSearchScope(args);
     for (const entry of scopedCallLog(session)) {
       if (entry.toolName !== "file-find") continue;
@@ -446,21 +483,24 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
       const narrowingScope = isWorkspaceScope(priorScope) && !isWorkspaceScope(currentScope);
       if (!sameScope && !narrowingScope) continue;
       if (includesUniversalFindPattern(priorPatterns)) {
-        report("blocked", "covered-by-universal-find");
-        throw new Error("Redundant file-find call detected. Prior universal find already covers this scope.");
+        return blockGuard(
+          "Redundant file-find call detected. Prior universal find already covers this scope.",
+          "covered-by-universal-find",
+        );
       }
     }
+    return allowGuard();
   },
 });
 
 const redundantVerifyGuard: ToolGuard = {
   id: "redundant-verify",
   description: "Block redundant verify runs when no writes happened since the last one.",
+  modes: ["verify"],
   tools: ["shell-run"],
-  check({ args, session, report }) {
-    if (session.mode !== "verify") return;
+  check({ args, session }) {
     const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-    if (!command) return;
+    if (!command) return allowGuard();
 
     const calls = scopedCallLog(session);
     const lastMatchingVerifyRunIndex = (() => {
@@ -474,7 +514,7 @@ const redundantVerifyGuard: ToolGuard = {
       return -1;
     })();
 
-    if (lastMatchingVerifyRunIndex < 0) return;
+    if (lastMatchingVerifyRunIndex < 0) return allowGuard();
 
     let wroteAfterLastVerify = false;
     for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i++) {
@@ -485,24 +525,31 @@ const redundantVerifyGuard: ToolGuard = {
       }
     }
     if (!wroteAfterLastVerify) {
-      report("blocked", "no-writes-since-last-verify");
-      throw new Error("verify already ran this turn and no writes happened since; avoid redundant verify reruns.");
+      return blockGuard(
+        "verify already ran this turn and no writes happened since; avoid redundant verify reruns.",
+        "no-writes-since-last-verify",
+      );
     }
+    return allowGuard();
   },
 };
 
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
+  modes: ["work"],
   tools: ["file-delete", "file-edit"],
-  check({ args, session, report, toolName }) {
+  check({ args, session, toolName }) {
     if (toolName === "file-edit") {
       const targetPath = typeof args.path === "string" ? normalizePath(args.path.trim().toLowerCase()) : "";
-      if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return;
-      report("blocked", targetPath);
-      throw new Error(
+      if (!targetPath || hasFreshEvidenceSinceLastSuccessfulEdit(session, targetPath)) return allowGuard();
+      if (session.flags.reviewAction === "request-changes") {
+        return allowGuard({ reviewAction: null });
+      }
+      return blockGuard(
         `File "${targetPath}" was already edited successfully in this task, and there is no new file evidence for another edit. ` +
           "Use the diff you already have or read the file again before another edit.",
+        targetPath,
       );
     }
 
@@ -512,38 +559,41 @@ const postEditRedundancyGuard: ToolGuard = {
           .map((value) => normalizePath(value.trim().toLowerCase()))
           .filter((value) => value.length > 0)
       : [];
-    if (targetPaths.length === 0) return;
+    if (targetPaths.length === 0) return allowGuard();
     const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
     for (const path of targetPaths) {
       if (path !== "__edited_workspace__" && !editedPaths.includes(path)) continue;
       if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
-      report("blocked", path);
-      throw new Error(
+      return blockGuard(
         `file-delete is trying to remove "${path}" after it was already edited in this task. ` +
           "Keep the file and revise it in place instead of deleting it.",
+        path,
       );
     }
+    return allowGuard();
   },
 };
 
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
-  check({ session, report }) {
+  modes: ["work", "verify"],
+  check({ session }) {
     const cycleLimit = session.flags.cycleStepLimit ?? DEFAULT_CYCLE_STEP_LIMIT;
     const cycleCount = session.flags.cycleStepCount ?? 0;
     const totalLimit = session.flags.totalStepLimit ?? DEFAULT_TOTAL_STEP_LIMIT;
     const totalCount = session.callLog.length;
 
     if (totalCount >= totalLimit) {
-      report("blocked", "total-limit");
-      throw new Error(`Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`);
+      return blockGuard(`Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`, "total-limit");
     }
     if (cycleCount >= cycleLimit) {
-      report("blocked", "cycle-limit");
-      throw new Error(`Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`);
+      return blockGuard(
+        `Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`,
+        "cycle-limit",
+      );
     }
-    session.flags.cycleStepCount = cycleCount + 1;
+    return allowGuard({ cycleStepCount: cycleCount + 1 });
   },
 };
 
@@ -558,15 +608,16 @@ const PING_PONG_MIN_ALTERNATIONS = 2;
 const pingPongGuard: ToolGuard = {
   id: "ping-pong",
   description: "Block alternating tool call patterns that indicate the model is stuck.",
-  check({ toolName, args, session, report }) {
+  modes: ["work", "verify"],
+  check({ toolName, args, session }) {
     const calls = scopedCallLog(session);
     // Filter to non-write-tool calls only — write tools are expected between read ops
     const readCalls = calls.filter((c) => !isWriteTool(session, c.toolName));
-    if (readCalls.length < 3) return;
+    if (readCalls.length < 3) return allowGuard();
 
     const window = readCalls.slice(-(PING_PONG_WINDOW - 1));
     const lastCall = window[window.length - 1];
-    if (!lastCall || lastCall.toolName === toolName) return;
+    if (!lastCall || lastCall.toolName === toolName) return allowGuard();
 
     const otherTool = lastCall.toolName;
     const otherArgs = lastCall.args;
@@ -581,12 +632,13 @@ const pingPongGuard: ToolGuard = {
     }
 
     if (alternations >= PING_PONG_MIN_ALTERNATIONS) {
-      report("blocked", `${toolName}<->${otherTool}`);
-      throw new Error(
+      return blockGuard(
         `Ping-pong loop detected: alternating between ${toolName} and ${otherTool} with unchanged arguments. ` +
           "Break the cycle by trying a different approach or different arguments.",
+        `${toolName}<->${otherTool}`,
       );
     }
+    return allowGuard();
   },
 };
 
@@ -595,8 +647,9 @@ const STALE_RESULT_THRESHOLD = 3;
 const staleResultGuard: ToolGuard = {
   id: "stale-result",
   description: "Block tool calls that repeatedly return the same result, indicating no progress.",
-  check({ toolName, args, session, report }) {
-    if (isWriteTool(session, toolName)) return;
+  modes: ["work", "verify"],
+  check({ toolName, args, session }) {
+    if (isWriteTool(session, toolName)) return allowGuard();
 
     const calls = scopedCallLog(session);
     let sameResultStreak = 0;
@@ -621,19 +674,21 @@ const staleResultGuard: ToolGuard = {
     }
 
     if (sameResultStreak >= STALE_RESULT_THRESHOLD) {
-      report("blocked", `${toolName}:${sameResultStreak}-same-results`);
-      throw new Error(
+      return blockGuard(
         `${toolName} has returned the same result ${sameResultStreak} times with these arguments. ` +
           "The state has not changed. Try a different approach or different arguments.",
+        `${toolName}:${sameResultStreak}-same-results`,
       );
     }
+    return allowGuard();
   },
 };
 
 const circuitBreakerGuard: ToolGuard = {
   id: "circuit-breaker",
   description: "Stop the model after too many consecutive guard blocks.",
-  check({ session, report }) {
+  modes: ["work", "verify"],
+  check({ session }) {
     const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
     const blockLimit = session.flags.consecutiveGuardBlockLimit;
     invariant(
@@ -641,12 +696,13 @@ const circuitBreakerGuard: ToolGuard = {
       "session.flags.consecutiveGuardBlockLimit must be a positive number",
     );
     if (consecutiveBlocks >= blockLimit) {
-      report("blocked", `${consecutiveBlocks}-consecutive`);
-      throw new Error(
+      return blockGuard(
         `${consecutiveBlocks} consecutive tool calls have been blocked. ` +
           "Stop and tell the user what you are trying to do.",
+        `${consecutiveBlocks}-consecutive`,
       );
     }
+    return allowGuard();
   },
 };
 
@@ -666,16 +722,17 @@ const GIT_WRITE_COMMANDS: { pattern: RegExp; tool: string }[] = [
 const shellBypassGuard: ToolGuard = {
   id: "shell-bypass",
   description: "Block shell commands that bypass dedicated tools.",
+  modes: ["work", "verify"],
   tools: ["shell-run"],
-  check({ args, report }) {
+  check({ args }) {
     const command = typeof args.command === "string" ? args.command : "";
-    if (!command) return;
+    if (!command) return allowGuard();
     for (const { pattern, tool } of GIT_WRITE_COMMANDS) {
       if (pattern.test(command)) {
-        report("blocked", tool);
-        throw new Error(`This git operation is blocked via shell-run. Use the dedicated ${tool} tool instead.`);
+        return blockGuard(`This git operation is blocked via shell-run. Use the dedicated ${tool} tool instead.`, tool);
       }
     }
+    return allowGuard();
   },
 };
 
@@ -695,20 +752,23 @@ function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): b
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
   description: "Block lint/format/test commands — use dedicated tools or let the lifecycle handle them.",
+  modes: ["work", "verify"],
   tools: ["shell-run"],
-  check({ args, session, report }) {
+  check({ args, session }) {
     const profile = session.workspaceProfile;
-    if (!profile) return;
+    if (!profile) return allowGuard();
     const command = typeof args.command === "string" ? args.command : "";
-    if (!command) return;
+    if (!command) return allowGuard();
     if (commandMatchesProfile(command, profile)) {
-      report("blocked", command);
-      throw new Error("Lint and format commands run automatically after your edits. Do not run them manually.");
+      return blockGuard(
+        "Lint and format commands run automatically after your edits. Do not run them manually.",
+        command,
+      );
     }
     if (commandMatchesTestRunner(command, profile)) {
-      report("blocked", command);
-      throw new Error("Use the test-run tool instead of running test commands directly.");
+      return blockGuard("Use the test-run tool instead of running test commands directly.", command);
     }
+    return allowGuard();
   },
 };
 
@@ -727,14 +787,30 @@ const GUARDS: ToolGuard[] = [
   lifecycleCommandGuard,
 ];
 
-export function runGuards(input: Omit<GuardInput, "report">): void {
+function applyGuardPatch(session: SessionContext, patch: GuardPatch): void {
+  if (patch.cycleStepCount !== undefined) session.flags.cycleStepCount = patch.cycleStepCount;
+  if (patch.reviewAction !== undefined) session.flags.reviewAction = patch.reviewAction ?? undefined;
+}
+
+export function runGuards(input: { toolName: string; args: Record<string, unknown>; session: SessionContext }): void {
+  const patches: GuardPatch[] = [];
   for (const guard of GUARDS) {
+    const mode = input.session.mode === "verify" ? "verify" : "work";
+    if (!guard.modes.includes(mode)) continue;
     if (guard.tools && !guard.tools.includes(input.toolName)) continue;
-    const report: GuardReport = (action, detail) => {
-      input.session.onGuard?.({ guardId: guard.id, toolName: input.toolName, action, detail });
-    };
-    guard.check({ ...input, report });
+    const result = guard.check(input);
+    if (result.type === "block") {
+      input.session.onGuard?.({
+        guardId: guard.id,
+        toolName: input.toolName,
+        action: "blocked",
+        detail: result.detail,
+      });
+      throw new Error(result.message);
+    }
+    if (result.patch) patches.push(result.patch);
   }
+  for (const patch of patches) applyGuardPatch(input.session, patch);
   // Any guard that throws increments consecutiveBlocks (in guardedExecute catch).
   // If we reach here, no guard blocked — reset the counter.
   input.session.flags.consecutiveBlocks = 0;

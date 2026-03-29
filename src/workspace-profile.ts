@@ -5,6 +5,12 @@ export type WorkspaceCommand = { readonly bin: string; readonly args: readonly s
 
 export type CommandResult = { hasErrors: boolean; stdout: string; stderr: string };
 
+export function renderCommandResult(result: CommandResult): string {
+  if (!result.stderr) return result.stdout;
+  if (!result.stdout) return result.stderr;
+  return `stdout:\n${result.stdout}\n\nstderr:\n${result.stderr}`;
+}
+
 export function runCommand(workspace: string, command: WorkspaceCommand, timeoutMs = 30_000): CommandResult {
   const { bin, args } = command;
   try {

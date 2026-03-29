@@ -10,10 +10,11 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
 - **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
+- **Effects** — lifecycle-owned side effects that run between generation and pure evaluation
 - **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
 - **Tools** — typed definitions with categories, permissions, schemas, and output contracts
-- **Guards** — behavioral checks that run before every tool call
-- **Evaluators** — post-generation inspectors that decide accept or re-generate
+- **Guards** — pre-tool policy units that inspect runtime state and decide allow or block
+- **Evaluators** — post-generation policy units that decide accept or re-generate
 - **Skills** — declarative prompt extensions with metadata and tool restrictions
 - **Memory sources** — pluggable memory tiers (session, project, user) with pipeline stages
 - **Protocol** — typed RPC messages with request correlation and lifecycle envelopes
@@ -64,7 +65,7 @@ accept → queue → run → complete|fail|cancel
 lifecycle → guard → cache → toolkit → registry
 ```
 
-- **guard:** pre-execution safety/redundancy checks and post-execution call recording
+- **guard:** pure pre-execution safety/redundancy checks; `runGuards()` applies their patches and events centrally
 - **cache:** per-task reuse layer for read-only and search tool results
 - **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
 - **registry:** toolkit registration, permission filtering, and agent-facing tool surface
@@ -79,11 +80,13 @@ resolve → prepare → generate → evaluate → finalize
 - **resolve:** pick mode and model (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
 - **generate:** run model + tool calls
-- **evaluate:** decide accept/retry/regenerate (bounded) and update task-scoped lifecycle state
+- **evaluate:** accept valid signals, run effects, then apply pure evaluators to decide accept/retry/regenerate (bounded)
+- **mode applicability:** guards, effects, and evaluators declare their applicable modes; orchestrators enforce those boundaries centrally
+- **orchestration ownership:** `runGuards()` and `phaseEvaluate()` own runtime mutation, debug emission, counters, and mode transitions; guards and evaluators return data only
 - **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
 - **finalize:** persist outputs and emit final response
 
-- **regeneration:** evaluators may request regeneration, bounded by caps
+- **regeneration:** effects and evaluators may request regeneration, bounded by caps
 - **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory
 - **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
 - **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task
@@ -126,7 +129,7 @@ Memory Engine
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, effect/evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
 - **runtime config:** loaded from user/project config
 - **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs
 - **task trace:** RPC emits task-state transitions with stable `task_id`:

@@ -43,12 +43,12 @@ const traceEventSchema = z.enum([
   "lifecycle.guard",
   "lifecycle.signal.accepted",
   "lifecycle.skill.context",
+  "lifecycle.effect.format",
+  "lifecycle.effect.lint",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
-  "lifecycle.eval.lint",
   "lifecycle.eval.guard_recovery",
   "lifecycle.eval.repeated_failure",
-  "lifecycle.eval.format",
   "lifecycle.eval.verify_cycle",
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
@@ -99,13 +99,27 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.guard": ["guard", "tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal", "mode"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
-  "lifecycle.eval.decision": ["evaluator", "action", "regeneration_count"],
-  "lifecycle.eval.skipped": ["evaluator", "reason"],
-  "lifecycle.eval.lint": ["files"],
+  "lifecycle.effect.format": ["files"],
+  "lifecycle.effect.lint": ["files"],
+  "lifecycle.eval.decision": [
+    "effect",
+    "evaluator",
+    "action",
+    "regeneration_reason",
+    "regeneration_count",
+    "regeneration_reason_count",
+  ],
+  "lifecycle.eval.skipped": [
+    "effect",
+    "evaluator",
+    "reason",
+    "regeneration_reason",
+    "regeneration_reason_count",
+    "regeneration_reason_cap",
+  ],
   "lifecycle.eval.guard_recovery": ["mode"],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
-  "lifecycle.eval.format": ["files"],
-  "lifecycle.eval.verify_cycle": ["used_write_tools", "verified", "verify_scope"],
+  "lifecycle.eval.verify_cycle": ["status", "used_write_tools", "verified", "verify_scope"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",
@@ -260,7 +274,10 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
     if (event === "lifecycle.eval.decision") {
       if (line.fields.action === "regenerate") {
         flushPending();
-        rows.push({ kind: "separator", text: `── regenerate (${line.fields.evaluator ?? ""}) ──` });
+        rows.push({
+          kind: "separator",
+          text: `── regenerate (${line.fields.effect ?? line.fields.evaluator ?? ""}) ──`,
+        });
       }
       continue;
     }
@@ -269,7 +286,7 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `── skipped ${line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── skipped ${line.fields.effect ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }
