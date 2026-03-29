@@ -493,47 +493,6 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   },
 });
 
-const redundantVerifyGuard: ToolGuard = {
-  id: "redundant-verify",
-  description: "Block redundant verify runs when no writes happened since the last one.",
-  modes: ["verify"],
-  tools: ["shell-run"],
-  check({ args, session }) {
-    const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-    if (!command) return allowGuard();
-
-    const calls = scopedCallLog(session);
-    const lastMatchingVerifyRunIndex = (() => {
-      for (let i = calls.length - 1; i >= 0; i -= 1) {
-        const entry = calls[i];
-        if (entry?.toolName !== "shell-run" || entry.mode !== "verify") continue;
-        const priorCommand =
-          typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-        if (priorCommand === command) return i;
-      }
-      return -1;
-    })();
-
-    if (lastMatchingVerifyRunIndex < 0) return allowGuard();
-
-    let wroteAfterLastVerify = false;
-    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i++) {
-      const tool = calls[i]?.toolName;
-      if (tool && isWriteTool(session, tool)) {
-        wroteAfterLastVerify = true;
-        break;
-      }
-    }
-    if (!wroteAfterLastVerify) {
-      return blockGuard(
-        "verify already ran this turn and no writes happened since; avoid redundant verify reruns.",
-        "no-writes-since-last-verify",
-      );
-    }
-    return allowGuard();
-  },
-};
-
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
@@ -781,7 +740,6 @@ const GUARDS: ToolGuard[] = [
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,
-  redundantVerifyGuard,
   postEditRedundancyGuard,
   shellBypassGuard,
   lifecycleCommandGuard,

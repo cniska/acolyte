@@ -51,23 +51,6 @@ describe("createLifecycleFeedbackForGuard", () => {
     });
   });
 
-  test("forces verify mode for redundant-verify feedback", () => {
-    const feedback = createLifecycleFeedbackForGuard(
-      createGuardEvent({
-        guardId: "redundant-verify",
-        toolName: "shell-run",
-        detail: "no-writes-since-last-verify",
-      }),
-      "work",
-    );
-    expect(feedback).toEqual({
-      source: "guard",
-      mode: "verify",
-      summary: "This verify command already ran and no writes happened since then.",
-      instruction: "Do not rerun the same verification command until work mode changes the code.",
-    });
-  });
-
   test("maps post-edit file-delete to work-scoped lifecycle feedback", () => {
     const feedback = createLifecycleFeedbackForGuard(
       createGuardEvent({
