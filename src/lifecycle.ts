@@ -1,5 +1,6 @@
 import { createErrorStats } from "./error-handling";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import { EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
@@ -11,6 +12,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
+import { WRITE_TOOL_SET } from "./tool-registry";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
@@ -119,6 +121,19 @@ function createRunContext(
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
+  };
+
+  session.onToolResult = ({ toolId, args }) => {
+    if (!WRITE_TOOL_SET.has(toolId)) return undefined;
+    const path = typeof args.path === "string" ? args.path.trim() : "";
+    if (!path) return undefined;
+    const paths = [path];
+    let lintOutput: string | undefined;
+    for (const effect of EFFECTS) {
+      const result = effect.run(ctx, paths);
+      if (result.lintOutput) lintOutput = result.lintOutput;
+    }
+    return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
   };
 
   return ctx;

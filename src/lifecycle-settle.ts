@@ -1,19 +1,8 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type { Effect, LifecycleInput, RunContext } from "./lifecycle-contract";
-import { formatEffect, lintEffect } from "./lifecycle-effects";
+import type { LifecycleInput, RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
 import { acceptedLifecycleSignal } from "./lifecycle-state";
-
-const EFFECTS: Effect[] = [formatEffect, lintEffect];
-
-type PhaseSettleDeps = {
-  effects: readonly Effect[];
-};
-
-const defaultPhaseSettleDeps: PhaseSettleDeps = {
-  effects: EFFECTS,
-};
 
 export function recoveryActionForError(
   input: { errorCode?: string; unknownErrorCount: number },
@@ -22,11 +11,7 @@ export function recoveryActionForError(
   return resolveRecoveryAction(input, policy.maxUnknownErrorsPerRequest);
 }
 
-export async function phaseSettle(
-  ctx: RunContext,
-  shouldYield: LifecycleInput["shouldYield"],
-  deps: PhaseSettleDeps = defaultPhaseSettleDeps,
-) {
+export async function phaseSettle(ctx: RunContext, shouldYield: LifecycleInput["shouldYield"]) {
   if (!ctx.result) return;
   if (shouldYield?.()) return;
 
@@ -56,16 +41,6 @@ export async function phaseSettle(
         text: t("lifecycle.stopped_unknown_errors"),
         toolCalls: [],
       };
-    }
-    return;
-  }
-
-  for (const effect of deps.effects) {
-    if (shouldYield?.()) break;
-    const result = effect.run(ctx);
-    ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
-    if (result.lintOutput) {
-      ctx.debug("lifecycle.effect.lint.output", { output: result.lintOutput });
     }
   }
 }

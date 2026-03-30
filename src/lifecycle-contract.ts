@@ -115,7 +115,7 @@ export type EffectResult = { type: "done"; lintOutput?: string };
 
 export type Effect = {
   id: string;
-  run: (ctx: RunContext) => EffectResult;
+  run: (ctx: RunContext, paths: string[]) => EffectResult;
 };
 
 export type LifecycleInput = {
