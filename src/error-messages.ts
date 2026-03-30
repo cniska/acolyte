@@ -60,10 +60,6 @@ const PROMPT_ERROR_RULES: readonly PromptErrorRule[] = [
     message: () => t("error.prompt.server_timed_out"),
   },
   {
-    matches: (lower) => lower.includes("shell command execution is disabled in read mode"),
-    message: () => t("error.prompt.write_blocked"),
-  },
-  {
     matches: (lower) =>
       lower.includes("server unavailable") ||
       lower.includes("connection refused") ||

@@ -62,10 +62,9 @@ function createWebSearchTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "web",
     labelKey: "tool.label.web_search",
     category: "network",
-    permissions: ["network"],
     description:
       "Search the public web for recent information and return top results. Use for questions not answerable from the repo.",
-    instruction: "Use `web-search` for external information lookup.",
+    instruction: "Use `web-search` for external information not available in the repository.",
     inputSchema: z.object({
       query: z.string().min(1),
       maxResults: z.number().int().min(1).max(10).optional(),
@@ -105,10 +104,9 @@ function createWebFetchTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "web",
     labelKey: "tool.label.web_fetch",
     category: "network",
-    permissions: ["network"],
     description:
       "Fetch a public URL and return extracted text content. Use to read docs, API references, or linked resources by URL.",
-    instruction: "Use `web-fetch` to read web pages, docs, or API references.",
+    instruction: "Use `web-fetch` to read specific URLs (docs, API refs, linked resources).",
     inputSchema: z.object({
       url: z.string().min(1),
       maxChars: z.number().int().min(500).max(12000).optional(),

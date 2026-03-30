@@ -1,85 +1,33 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { appConfig, setModeModel } from "./app-config";
-import { readResolvedConfigSync } from "./config";
-import { resolveModeModel } from "./lifecycle-resolve";
+import { appConfig } from "./app-config";
+import { resolveModel } from "./lifecycle-resolve";
 
-function resetAppConfigForTest(): void {
-  const defaults = readResolvedConfigSync({ homeDir: "/__acolyte_test_reset__", cwd: "/__acolyte_test_reset__" });
-  (appConfig as { model: string }).model = defaults.model;
-  (appConfig as { models: Record<string, string | undefined> }).models = {};
-  Object.assign(appConfig.server, {
-    port: defaults.port,
-    transportMode: defaults.transportMode,
-    replyTimeoutMs: defaults.replyTimeoutMs,
-  });
-  Object.assign(appConfig.openai, { baseUrl: defaults.openaiBaseUrl });
-  Object.assign(appConfig.anthropic, { baseUrl: defaults.anthropicBaseUrl });
-  Object.assign(appConfig.google, { baseUrl: defaults.googleBaseUrl });
-}
+const SAVED_OPENAI_KEY = appConfig.openai.apiKey;
 
 beforeEach(() => {
-  resetAppConfigForTest();
+  (appConfig.openai as { apiKey: string | undefined }).apiKey = SAVED_OPENAI_KEY;
 });
 
-function withOpenaiKey(key: string | undefined): void {
-  (appConfig.openai as { apiKey: string | undefined }).apiKey = key;
-}
-
-function clearModeModels(): void {
-  (appConfig as { models: typeof appConfig.models }).models = {};
-}
-
-describe("resolveModeModel", () => {
-  beforeEach(() => {
-    clearModeModels();
-  });
-
-  test("returns requestModel when no mode-specific model configured", () => {
-    withOpenaiKey("sk-test");
-    const result = resolveModeModel("work", "openai/gpt-5-mini");
+describe("resolveModel", () => {
+  test("returns request model when configured and provider is available", () => {
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = "sk-test";
+    const result = resolveModel("openai/gpt-5-mini");
     expect(result.model).toBe("openai/gpt-5-mini");
   });
 
-  test("prefers explicit requestModel over appConfig mode model", () => {
-    withOpenaiKey("sk-test");
-    setModeModel("verify", "openai/gpt-5-mini");
-    const result = resolveModeModel("verify", "openai/gpt-5");
-    expect(result.model).toBe("openai/gpt-5");
-  });
-
-  test("request modeModels override takes highest priority", () => {
-    withOpenaiKey("sk-test");
-    setModeModel("work", "openai/gpt-5");
-    const result = resolveModeModel("work", "openai/gpt-5", { work: "openai/gpt-5-mini" });
-    expect(result.model).toBe("openai/gpt-5-mini");
-  });
-
-  test("empty modeModels override falls through to next tier", () => {
-    withOpenaiKey("sk-test");
-    const result = resolveModeModel("work", "openai/gpt-5-mini", { work: "  " });
-    expect(result.model).toBe("openai/gpt-5-mini");
-  });
-
-  test("falls back to appConfig mode model when request model is empty", () => {
-    withOpenaiKey("sk-test");
-    setModeModel("work", "openai/gpt-5-mini");
-    const result = resolveModeModel("work", "   ");
-    expect(result.model).toBe("openai/gpt-5-mini");
-  });
-
-  test("throws E_MODEL_NOT_CONFIGURED when all sources empty", () => {
-    expect(() => resolveModeModel("work", "")).toThrow();
+  test("throws E_MODEL_NOT_CONFIGURED when request model is empty", () => {
+    expect(() => resolveModel("")).toThrow();
     try {
-      resolveModeModel("work", "");
+      resolveModel("");
     } catch (error) {
       expect((error as { code: string }).code).toBe("E_MODEL_NOT_CONFIGURED");
     }
   });
 
   test("throws E_MODEL_PROVIDER_UNAVAILABLE when provider unavailable", () => {
-    withOpenaiKey(undefined);
+    (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
     try {
-      resolveModeModel("work", "openai/gpt-5-mini");
+      resolveModel("openai/gpt-5-mini");
       expect.unreachable("should have thrown");
     } catch (error) {
       expect((error as { code: string }).code).toBe("E_MODEL_PROVIDER_UNAVAILABLE");

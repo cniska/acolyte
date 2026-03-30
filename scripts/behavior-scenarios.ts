@@ -424,28 +424,6 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
     issues.push(`bounded single-file scenario should use at most 2 file-edit calls, saw ${sameFileEditCalls}`);
   }
 
-  const verifyModeIndex = traceLines.findIndex(
-    (line) => line.includes("event=lifecycle.mode.changed") && line.includes("to=verify"),
-  );
-  const firstVerifyCommandIndex = traceLines.findIndex(
-    (line) => line.includes("event=lifecycle.tool.call") && line.includes("tool=shell-run"),
-  );
-  if (verifyModeIndex >= 0 && firstVerifyCommandIndex > verifyModeIndex) {
-    const verifyPrelude = traceLines.slice(verifyModeIndex + 1, firstVerifyCommandIndex);
-    const badVerifyPrelude = verifyPrelude.some(
-      (line) =>
-        line.includes("event=lifecycle.tool.call") &&
-        (line.includes("tool=file-read") ||
-          line.includes("tool=file-search") ||
-          line.includes("tool=code-scan") ||
-          line.includes("tool=git-diff")) &&
-        line.includes("src/lifecycle-state.ts"),
-    );
-    if (badVerifyPrelude) {
-      issues.push("verify mode should run the verify command before rereading or diffing src/lifecycle-state.ts");
-    }
-  }
-
   return issues;
 }
 

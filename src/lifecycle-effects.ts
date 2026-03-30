@@ -18,7 +18,6 @@ function writePathsForCurrentTask(ctx: RunContext): string[] {
 
 export const formatEffect: Effect = {
   id: "format",
-  modes: ["work"],
   run: (ctx): EffectAction => {
     if (!ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
@@ -31,7 +30,6 @@ export const formatEffect: Effect = {
 
 export const lintEffect: Effect = {
   id: "lint",
-  modes: ["work"],
   run: (ctx): EffectAction => {
     if (!ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);

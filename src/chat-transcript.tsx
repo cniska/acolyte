@@ -1,5 +1,4 @@
 import React from "react";
-import type { AgentMode } from "./agent-contract";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
@@ -11,11 +10,6 @@ import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/styles";
-
-const MODE_PENDING_TEXT: Record<AgentMode, string> = {
-  work: t("agent.status.working"),
-  verify: t("agent.status.verifying"),
-};
 
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: "❯ ",
@@ -262,9 +256,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     if (!pendingState) return "";
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
     if (pendingState.kind === "running") {
-      const stage = MODE_PENDING_TEXT[pendingState.mode];
-      const model = pendingState.model ?? "";
-      const details = [timeText, model, tokenText].filter((part) => part.length > 0).join(" · ");
+      const stage = t("agent.status.working");
+      const toolText =
+        pendingState.toolCalls && pendingState.toolCalls > 0 ? t("unit.tool", { count: pendingState.toolCalls }) : "";
+      const details = [timeText, toolText, tokenText].filter((part) => part.length > 0).join(" · ");
       return details.length > 0 ? `${stage} (${details})` : stage;
     }
     if (pendingState.kind === "queued") {

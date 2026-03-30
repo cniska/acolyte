@@ -1,14 +1,6 @@
 import { type RecoveryAction, recoveryActionForError as resolveRecoveryAction } from "./error-handling";
 import { t } from "./i18n";
-import type {
-  Effect,
-  EffectAction,
-  LifecycleInput,
-  RegenerateAction,
-  ReviewCandidate,
-  ReviewResult,
-  RunContext,
-} from "./lifecycle-contract";
+import type { Effect, EffectAction, LifecycleInput, RegenerateAction, RunContext } from "./lifecycle-contract";
 import { formatEffect, lintEffect } from "./lifecycle-effects";
 import {
   type Evaluator,
@@ -16,24 +8,14 @@ import {
   guardRecoveryEvaluator,
   repeatedFailureEvaluator,
   toolRecoveryEvaluator,
-  verifyCycleEvaluator,
 } from "./lifecycle-evaluators";
-import { phaseGenerate, setMode, shouldYieldNow } from "./lifecycle-generate";
+import { phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
 import { defaultLifecyclePolicy, type LifecyclePolicy } from "./lifecycle-policy";
-import {
-  acceptedLifecycleSignal,
-  clearReviewStateForRegenerationReason,
-  updateRepeatedFailureState,
-} from "./lifecycle-state";
+import { acceptedLifecycleSignal, updateRepeatedFailureState } from "./lifecycle-state";
 
 const EFFECTS: Effect[] = [formatEffect, lintEffect];
 
-const EVALUATORS: Evaluator[] = [
-  guardRecoveryEvaluator,
-  toolRecoveryEvaluator,
-  verifyCycleEvaluator,
-  repeatedFailureEvaluator,
-];
+const EVALUATORS: Evaluator[] = [guardRecoveryEvaluator, toolRecoveryEvaluator, repeatedFailureEvaluator];
 
 type PhaseEvaluateDeps = {
   phaseGenerate: typeof phaseGenerate;
@@ -48,56 +30,6 @@ const defaultPhaseEvaluateDeps: PhaseEvaluateDeps = {
   effects: EFFECTS,
   evaluators: EVALUATORS,
 };
-
-function createReviewCandidate(ctx: RunContext): ReviewCandidate {
-  return {
-    result: ctx.result
-      ? {
-          text: ctx.result.text,
-          toolCalls: [...ctx.result.toolCalls],
-          ...(ctx.result.signal ? { signal: ctx.result.signal } : {}),
-        }
-      : undefined,
-    currentError: ctx.currentError ? { ...ctx.currentError } : undefined,
-  };
-}
-
-function restoreReviewCandidate(ctx: RunContext, candidate: ReviewCandidate): void {
-  ctx.result = candidate.result;
-  ctx.currentError = candidate.currentError;
-  setMode(ctx, "work", "review-candidate");
-}
-
-function captureReviewResult(ctx: RunContext): ReviewResult {
-  const details = ctx.result?.text.trim() || undefined;
-  if (ctx.currentError) {
-    return {
-      status: "blocked",
-      ...(details ? { details } : {}),
-      error: ctx.currentError,
-    };
-  }
-
-  switch (ctx.result?.signal) {
-    case "no_op":
-      return { status: "clean" };
-    case "done":
-      return { status: "issues", ...(details ? { details } : {}) };
-    case "blocked":
-      return { status: "blocked", ...(details ? { details } : {}) };
-    default:
-      return {
-        status: "blocked",
-        details: details ?? "Verify mode did not return a review verdict.",
-      };
-  }
-}
-
-function prepareRegenerationBoundary(ctx: RunContext, action: RegenerateAction): void {
-  if (action.reason === "verify" && action.transition?.to === "work") {
-    ctx.session.flags.reviewAction = "request-changes";
-  }
-}
 
 function applyEvaluatorPatch(ctx: RunContext, patch?: EvaluatorPatch): void {
   if (!patch) return;
@@ -150,18 +82,11 @@ async function triggerRegeneration(
     return false;
   }
 
-  const transitionTarget = action.transition?.to;
-  const feedbackMode = transitionTarget ?? ctx.mode;
-  const reviewCandidate = transitionTarget === "verify" ? createReviewCandidate(ctx) : undefined;
-  prepareRegenerationBoundary(ctx, action);
-  if (transitionTarget) setMode(ctx, transitionTarget, source.id);
-
   ctx.regenerationCount += 1;
   ctx.regenerationCounts[regenerationReason] += 1;
   ctx.debug("lifecycle.eval.decision", {
     [source.kind]: source.id,
     action: "regenerate",
-    mode: ctx.mode,
     cycle_limit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
     feedback_source: action.feedback?.source ?? null,
     regeneration_reason: regenerationReason,
@@ -169,24 +94,13 @@ async function triggerRegeneration(
     regeneration_reason_count: ctx.regenerationCounts[regenerationReason],
   });
 
-  clearReviewStateForRegenerationReason(ctx, action.reason);
-  if (action.feedback) ctx.lifecycleState.feedback.push({ ...action.feedback, mode: feedbackMode });
+  if (action.feedback) ctx.lifecycleState.feedback.push(action.feedback);
 
   await deps.phaseGenerate(ctx, {
     cycleLimit: action.cycleLimit ?? ctx.policy.initialMaxSteps,
     timeoutMs: ctx.policy.stepTimeoutMs,
   });
-  if (deps.shouldYieldNow(ctx, shouldYield)) return true;
-
-  if (reviewCandidate && ctx.mode === "verify") {
-    ctx.lifecycleState.reviewCandidate = reviewCandidate;
-    ctx.lifecycleState.reviewResult = captureReviewResult(ctx);
-  }
-
-  if (reviewCandidate && ctx.lifecycleState.reviewResult?.status === "clean") {
-    restoreReviewCandidate(ctx, reviewCandidate);
-  }
-  return true;
+  return !deps.shouldYieldNow(ctx, shouldYield);
 }
 
 export async function phaseEvaluate(
@@ -201,7 +115,6 @@ export async function phaseEvaluate(
       ctx.currentError = undefined;
       ctx.debug("lifecycle.signal.accepted", {
         signal: lifecycleSignal,
-        mode: ctx.mode,
         tool_calls: ctx.result.toolCalls.length,
       });
     }
@@ -232,7 +145,6 @@ export async function phaseEvaluate(
     let regenerated = false;
     for (const effect of deps.effects) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
-      if (!effect.modes.includes(ctx.mode)) continue;
       const action: EffectAction = effect.run(ctx);
       if (action.type === "done") {
         ctx.debug("lifecycle.eval.decision", { effect: effect.id, action: "done" });
@@ -246,7 +158,6 @@ export async function phaseEvaluate(
 
     for (const evaluator of deps.evaluators) {
       if (deps.shouldYieldNow(ctx, shouldYield)) break;
-      if (!evaluator.modes.includes(ctx.mode)) continue;
       const outcome = evaluator.evaluate(ctx);
       if (outcome.debug) ctx.debug(outcome.debug.event, outcome.debug.fields);
       applyEvaluatorPatch(ctx, outcome.patch);

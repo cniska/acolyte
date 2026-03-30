@@ -15,11 +15,10 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "test",
     labelKey: "tool.label.test_run",
     category: "execute",
-    permissions: ["execute"],
     description:
       "Run the project's test runner against specific files. The test command is auto-detected from the workspace.",
     instruction:
-      "Use `test-run` to validate changes by running tests for the files you modified. Always scope to specific test files rather than running the full suite.",
+      "Use `test-run` to validate touched behavior. Create or update related tests first when behavior changes. Start with the narrowest related tests, then widen scope only when failures suggest broader impact or the user asks. Do not chase unrelated failures.",
     inputSchema: z.object({
       files: z.array(z.string().min(1)).min(1),
       timeoutMs: z.number().int().min(500).max(120000).optional(),

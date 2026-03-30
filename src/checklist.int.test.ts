@@ -11,7 +11,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -46,7 +46,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           // set-checklist creates with all pending
           options.onEvent({
             type: "checklist",
@@ -89,7 +89,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_a",
@@ -122,7 +122,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -162,7 +162,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -205,7 +205,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",
@@ -228,7 +228,7 @@ describe("checklist integration", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "checklist",
             groupId: "grp_1",

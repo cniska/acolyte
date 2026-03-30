@@ -89,14 +89,12 @@ describe("chat-commands", () => {
     const [row] = statusRows({
       providers: ["openai"],
       model: "gpt-5-mini",
-      permissions: "write",
     });
     const content = row?.content;
     expect(isCommandOutput(content) && content.header).toBe("Status");
     const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
     expect(pairs).toContainEqual(["Providers", "openai"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
-    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("statusRows returns empty array when payload has no visible fields", () => {
@@ -442,7 +440,7 @@ describe("chat-commands", () => {
     );
   });
 
-  test("dispatchSlashCommand updates default model via /model <id>", async () => {
+  test("dispatchSlashCommand updates model via /model <id>", async () => {
     const previousModel = appConfig.model;
     const writes: Array<{ key: string; value: string; scope: ConfigScope }> = [];
     try {
@@ -452,42 +450,12 @@ describe("chat-commands", () => {
         },
       });
       expect(stop).toBe(true);
-      expect(rows.some((row) => row.content === "Changed default model to gpt-5.2.")).toBe(true);
+      expect(rows.some((row) => row.content === "Changed model to gpt-5.2.")).toBe(true);
       expect(writes).toEqual([{ key: "model", value: "gpt-5.2", scope: "project" }]);
       expect(appConfig.model).toBe("gpt-5.2");
     } finally {
       (appConfig as { model: string }).model = previousModel;
     }
-  });
-
-  test("dispatchSlashCommand updates mode model via /model <mode> <id>", async () => {
-    const previousModeModel = appConfig.models.verify;
-    const writes: Array<{ key: string; value: string; scope: ConfigScope }> = [];
-    try {
-      const { rows, stop } = await runCommand("/model verify gpt-5-nano", {
-        persistModelConfig: async (key, value, scope) => {
-          writes.push({ key, value, scope });
-        },
-      });
-      expect(stop).toBe(true);
-      expect(rows.some((row) => row.content === "Changed verify mode model to gpt-5-nano.")).toBe(true);
-      expect(writes).toEqual([{ key: "models.verify", value: "gpt-5-nano", scope: "project" }]);
-      expect(appConfig.models.verify).toBe("gpt-5-nano");
-    } finally {
-      const mutableModels = appConfig.models as Record<string, string>;
-      if (previousModeModel) {
-        mutableModels.verify = previousModeModel;
-      } else {
-        delete mutableModels.verify;
-      }
-    }
-  });
-
-  test("dispatchSlashCommand opens mode-scoped model picker with /model <mode>", async () => {
-    const result = await runCommand("/model verify");
-    expect(result.stop).toBe(true);
-    expect(result.openedModel).toBe(true);
-    expect(result.openedModelMode).toBe("verify");
   });
 
   test("dispatchSlashCommand /new resets rows to new-session status", async () => {

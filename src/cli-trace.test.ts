@@ -367,23 +367,17 @@ describe("traceMode", () => {
     store.write({
       timestamp: "2026-01-01T00:00:00.001Z",
       taskId: "task_1",
-      event: "lifecycle.classify",
-      fields: { mode: "work", model: "m", provider: "openai" },
-    });
-    store.write({
-      timestamp: "2026-01-01T00:00:00.002Z",
-      taskId: "task_1",
       event: "lifecycle.prepare",
       fields: { mode: "work", model: "m", history_messages: "2" },
     });
     store.write({
-      timestamp: "2026-01-01T00:00:00.003Z",
+      timestamp: "2026-01-01T00:00:00.002Z",
       taskId: "task_1",
       event: "lifecycle.start",
       fields: { mode: "work", model: "m" },
     });
     store.write({
-      timestamp: "2026-01-01T00:00:00.004Z",
+      timestamp: "2026-01-01T00:00:00.003Z",
       taskId: "task_1",
       event: "lifecycle.generate.start",
       fields: { model: "m", mode: "work" },
@@ -404,7 +398,6 @@ describe("traceMode", () => {
     await traceMode(["task", "task_1"], deps);
     const text = output();
     expect(text).not.toContain("workspace.profile");
-    expect(text).not.toContain("classify");
     expect(text).not.toContain("prepare");
     expect(text).not.toContain("generate.start");
     expect(text).not.toContain("generate.done");

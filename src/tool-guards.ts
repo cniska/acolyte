@@ -1,4 +1,3 @@
-import type { AgentMode } from "./agent-contract";
 import { invariant } from "./assert";
 import { CONSECUTIVE_GUARD_BLOCK_LIMIT, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import {
@@ -29,7 +28,6 @@ export type ToolCallRecord = {
   toolName: string;
   args: Record<string, unknown>;
   taskId?: string;
-  mode?: string;
   resultHash?: string;
   status: ToolCallStatus;
 };
@@ -47,7 +45,6 @@ export type SessionFlags = {
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
-  mode?: string;
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
@@ -60,7 +57,6 @@ export type SessionContext = {
 type GuardSession = {
   readonly callLog: readonly ToolCallRecord[];
   readonly taskId?: string;
-  readonly mode?: string;
   readonly flags: Readonly<SessionFlags>;
   readonly writeTools: ReadonlySet<string>;
   readonly cache?: Pick<ToolCache, "isCacheable">;
@@ -97,7 +93,6 @@ function blockGuard(message: string, detail?: string): GuardResult {
 export type ToolGuard = {
   id: string;
   description: string;
-  modes: readonly AgentMode[];
   tools?: readonly string[];
   check: (input: GuardInput) => GuardResult;
 };
@@ -122,13 +117,6 @@ export function scopedCallLog(session: Pick<GuardSession, "callLog" | "taskId">,
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function haveChangesBeenVerified(
-  session: Pick<GuardSession, "callLog" | "taskId">,
-  taskId: string | undefined,
-): boolean {
-  return scopedCallLog(session, taskId).some((entry) => entry.toolName === "shell-run" && entry.mode === "verify");
-}
-
 function sameArray(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -147,17 +135,9 @@ function isWorkspaceScope(scope: readonly string[]): boolean {
   return scope.length === 1 && scope[0] === WORKSPACE_SCOPE;
 }
 
-function callsSinceLastVerify(session: GuardSession): ToolCallRecord[] {
-  const calls = scopedCallLog(session);
-  for (let i = calls.length - 1; i >= 0; i -= 1) {
-    if (calls[i]?.toolName === "shell-run" && calls[i]?.mode === "verify") return calls.slice(i + 1);
-  }
-  return calls;
-}
-
-function editedPathsSinceLastVerify(session: GuardSession): string[] {
+function editedPathsForSession(session: GuardSession): string[] {
   const paths = new Set<string>();
-  for (const entry of callsSinceLastVerify(session)) {
+  for (const entry of scopedCallLog(session)) {
     if (entry.status === "failed") continue;
     if (!isWriteTool(session, entry.toolName)) continue;
     if (typeof entry.args.path !== "string") continue;
@@ -255,7 +235,6 @@ const DUPLICATE_CALL_LOOKBACK = 3;
 const duplicateCallGuard: ToolGuard = {
   id: "duplicate-call",
   description: "Block near-duplicate tool calls with no state-changing tool in between.",
-  modes: ["work", "verify"],
   check({ args, toolName, session }) {
     if (session.cache?.isCacheable(toolName)) return allowGuard();
     const calls = scopedCallLog(session);
@@ -299,7 +278,6 @@ function hasReadSinceLastEditOf(
 const fileChurnGuard: ToolGuard = {
   id: "file-churn",
   description: "Block excessive read/edit churn on the same file to force a strategy change.",
-  modes: ["work", "verify"],
   tools: ["file-read", "file-edit"],
   check({ args, session, toolName }) {
     const targetPaths =
@@ -317,8 +295,8 @@ const fileChurnGuard: ToolGuard = {
       pathCounts.set(path, created);
       return created;
     };
-    const sinceLastVerify = callsSinceLastVerify(session);
-    for (const entry of sinceLastVerify) {
+    const callLog = scopedCallLog(session);
+    for (const entry of callLog) {
       if (entry.toolName === "file-read") {
         for (const readPath of extractReadPaths(entry.args, { normalize: true })) {
           countsForPath(readPath).readCount += 1;
@@ -335,8 +313,8 @@ const fileChurnGuard: ToolGuard = {
     for (const target of targetPaths) {
       const { readCount, editCount } = countsForPath(target);
 
-      if (toolName === "file-read" && editCount > 0 && session.mode !== "verify") {
-        if (hasReadSinceLastEditOf(sinceLastVerify, session, target)) {
+      if (toolName === "file-read" && editCount > 0) {
+        if (hasReadSinceLastEditOf(callLog, session, target)) {
           return blockGuard(
             `File "${target}" was already re-read after the last edit. Use the content you already have.`,
             target,
@@ -357,7 +335,7 @@ const fileChurnGuard: ToolGuard = {
 
       return blockGuard(
         `Repeated read/edit loop detected for "${target}". Stop incremental tweaks. ` +
-          "Use one consolidated edit or code-edit, then run verify.",
+          "Use one consolidated edit or code-edit, then run targeted validation.",
         target,
       );
     }
@@ -378,7 +356,6 @@ function createRedundantDiscoveryGuard(config: RedundantDiscoveryConfig): ToolGu
   return {
     id: config.id,
     description: config.description,
-    modes: ["work", "verify"],
     tools: [config.tool],
     check(input) {
       const { toolName, args, session } = input;
@@ -493,51 +470,9 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   },
 });
 
-const redundantVerifyGuard: ToolGuard = {
-  id: "redundant-verify",
-  description: "Block redundant verify runs when no writes happened since the last one.",
-  modes: ["verify"],
-  tools: ["shell-run"],
-  check({ args, session }) {
-    const command = typeof args.command === "string" ? args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-    if (!command) return allowGuard();
-
-    const calls = scopedCallLog(session);
-    const lastMatchingVerifyRunIndex = (() => {
-      for (let i = calls.length - 1; i >= 0; i -= 1) {
-        const entry = calls[i];
-        if (entry?.toolName !== "shell-run" || entry.mode !== "verify") continue;
-        const priorCommand =
-          typeof entry.args.command === "string" ? entry.args.command.trim().toLowerCase().replace(/\s+/g, " ") : "";
-        if (priorCommand === command) return i;
-      }
-      return -1;
-    })();
-
-    if (lastMatchingVerifyRunIndex < 0) return allowGuard();
-
-    let wroteAfterLastVerify = false;
-    for (let i = lastMatchingVerifyRunIndex + 1; i < calls.length; i++) {
-      const tool = calls[i]?.toolName;
-      if (tool && isWriteTool(session, tool)) {
-        wroteAfterLastVerify = true;
-        break;
-      }
-    }
-    if (!wroteAfterLastVerify) {
-      return blockGuard(
-        "verify already ran this turn and no writes happened since; avoid redundant verify reruns.",
-        "no-writes-since-last-verify",
-      );
-    }
-    return allowGuard();
-  },
-};
-
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
-  modes: ["work"],
   tools: ["file-delete", "file-edit"],
   check({ args, session, toolName }) {
     if (toolName === "file-edit") {
@@ -560,7 +495,7 @@ const postEditRedundancyGuard: ToolGuard = {
           .filter((value) => value.length > 0)
       : [];
     if (targetPaths.length === 0) return allowGuard();
-    const editedPaths = editedPathsSinceLastVerify(session).map((entry) => normalizePath(entry.toLowerCase()));
+    const editedPaths = editedPathsForSession(session).map((entry) => normalizePath(entry.toLowerCase()));
     for (const path of targetPaths) {
       if (path !== "__edited_workspace__" && !editedPaths.includes(path)) continue;
       if (path === "__edited_workspace__" && editedPaths.length === 0) continue;
@@ -577,7 +512,6 @@ const postEditRedundancyGuard: ToolGuard = {
 const stepBudgetGuard: ToolGuard = {
   id: "step-budget",
   description: "Enforce per-cycle and total step limits.",
-  modes: ["work", "verify"],
   check({ session }) {
     const cycleLimit = session.flags.cycleStepLimit ?? DEFAULT_CYCLE_STEP_LIMIT;
     const cycleCount = session.flags.cycleStepCount ?? 0;
@@ -608,7 +542,6 @@ const PING_PONG_MIN_ALTERNATIONS = 2;
 const pingPongGuard: ToolGuard = {
   id: "ping-pong",
   description: "Block alternating tool call patterns that indicate the model is stuck.",
-  modes: ["work", "verify"],
   check({ toolName, args, session }) {
     const calls = scopedCallLog(session);
     // Filter to non-write-tool calls only — write tools are expected between read ops
@@ -647,7 +580,6 @@ const STALE_RESULT_THRESHOLD = 3;
 const staleResultGuard: ToolGuard = {
   id: "stale-result",
   description: "Block tool calls that repeatedly return the same result, indicating no progress.",
-  modes: ["work", "verify"],
   check({ toolName, args, session }) {
     if (isWriteTool(session, toolName)) return allowGuard();
 
@@ -687,7 +619,6 @@ const staleResultGuard: ToolGuard = {
 const circuitBreakerGuard: ToolGuard = {
   id: "circuit-breaker",
   description: "Stop the model after too many consecutive guard blocks.",
-  modes: ["work", "verify"],
   check({ session }) {
     const consecutiveBlocks = session.flags.consecutiveBlocks ?? 0;
     const blockLimit = session.flags.consecutiveGuardBlockLimit;
@@ -722,7 +653,6 @@ const GIT_WRITE_COMMANDS: { pattern: RegExp; tool: string }[] = [
 const shellBypassGuard: ToolGuard = {
   id: "shell-bypass",
   description: "Block shell commands that bypass dedicated tools.",
-  modes: ["work", "verify"],
   tools: ["shell-run"],
   check({ args }) {
     const command = typeof args.command === "string" ? args.command : "";
@@ -752,7 +682,6 @@ function commandMatchesTestRunner(command: string, profile: WorkspaceProfile): b
 const lifecycleCommandGuard: ToolGuard = {
   id: "lifecycle-command",
   description: "Block lint/format/test commands — use dedicated tools or let the lifecycle handle them.",
-  modes: ["work", "verify"],
   tools: ["shell-run"],
   check({ args, session }) {
     const profile = session.workspaceProfile;
@@ -781,7 +710,6 @@ const GUARDS: ToolGuard[] = [
   fileChurnGuard,
   redundantFindGuard,
   redundantSearchGuard,
-  redundantVerifyGuard,
   postEditRedundancyGuard,
   shellBypassGuard,
   lifecycleCommandGuard,
@@ -795,8 +723,6 @@ function applyGuardPatch(session: SessionContext, patch: GuardPatch): void {
 export function runGuards(input: { toolName: string; args: Record<string, unknown>; session: SessionContext }): void {
   const patches: GuardPatch[] = [];
   for (const guard of GUARDS) {
-    const mode = input.session.mode === "verify" ? "verify" : "work";
-    if (!guard.modes.includes(mode)) continue;
     if (guard.tools && !guard.tools.includes(input.toolName)) continue;
     const result = guard.check(input);
     if (result.type === "block") {
@@ -823,5 +749,5 @@ export function recordCall(
   resultHash?: string,
   status: ToolCallStatus = "succeeded",
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, mode: session.mode, resultHash, status });
+  session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status });
 }

@@ -53,11 +53,10 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_find",
     category: "search",
-    permissions: ["read"],
     description:
       "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `file-search` instead.",
     instruction:
-      "Use `file-find` to locate files by name or path pattern. Always pass `patterns` as an array (e.g. [`api.ts`, `store.ts`]).",
+      "Use `file-find` to locate files by name/path pattern. Pass `patterns` as an array and batch related lookups.",
     inputSchema: z.object({
       patterns: z.array(z.string().min(1)).min(1),
       maxResults: z.number().int().min(1).max(200).optional(),
@@ -106,17 +105,13 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_search",
     category: "search",
-    permissions: ["read"],
     description:
       "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `file-find` instead.",
     instruction: [
-      "Use `file-search` to search file contents by text or regex.",
-      "Batch related queries via `patterns` and scope with `paths` when you know the target area.",
-      "If the needed text is already visible in `file-read`, edit from that evidence instead of searching the same file again.",
-      "For one named file with a repeated literal replacement, do not use `file-search`; read the file once and make one consolidated `file-edit` call.",
-      "For a multi-file rename or repeated replacement, if a named file has separated occurrences you have not yet anchored to exact snippets, run one scoped `file-search` on that file before `file-edit` so you can batch small exact edits instead of guessing a larger `find` block.",
-      "When building a `file-edit` call, every `find` snippet must come from the current `file-read` text or scoped `file-search` hits for that file; do not invent old lines that are not present.",
-      "When fixing a visible path or link, keep the local reference style from the target file.",
+      "Use `file-search` for text/regex content search.",
+      "Narrow scope with `paths` and batch related queries in `patterns`.",
+      "If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
+      "Build `file-edit` calls from current `file-read` text or scoped `file-search` hits.",
     ].join(" "),
     inputSchema: z
       .object({
@@ -178,11 +173,10 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_read",
     category: "read",
-    permissions: ["read"],
     description:
       "Read one or more text files. Pass `paths` as an array of {path} objects. Never re-read a file you already have.",
     instruction:
-      "Use `file-read` to inspect code before editing. Batch reads while discovering scope; once you are editing named targets, read each target separately right before its edit, then continue directly to `file-edit` or `code-edit`.",
+      "Use `file-read` before `file-edit` or `code-edit`. Batch discovery reads; for named edits, re-read the target file immediately before editing.",
     inputSchema: z.object({
       paths: z.array(z.object({ path: z.string().min(1) })).min(1),
     }),
@@ -231,23 +225,15 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_edit",
     category: "write",
-    permissions: ["read", "write"],
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `file-read` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `file-create`. For code renames or structural edits use `code-edit`.",
     instruction: [
-      "Use `file-edit` for text edits.",
-      "For small visible changes, prefer {find, replace} where `find` is the exact changed line or the smallest unique snippet from the latest direct `file-read` of that file.",
-      "Keep anchors tight, keep line-range edits to the changed lines when possible, and preserve nearby path or link style.",
-      "When changing multiple places in one file, use several small exact edits in one call rather than one oversized `find` block that spans distant locations.",
-      "The `file-edit` result already includes a diff preview.",
-      "If that preview shows the requested bounded change, stop instead of re-reading, searching, reviewing, or editing that same file again in work mode.",
-      "For bounded 'each'/'every'/'all' replacements in one named file, use the latest file text to collect all visible requested occurrences into the same `file-edit` call whenever possible.",
-      "If the same requested literal appears in multiple visible locations, include every visible location in that one call rather than editing only the first contiguous block.",
-      "Completion means no requested matches remain in that file, not just that one edit succeeded.",
-      "For larger block changes use {startLine, endLine, replace} with 1-based line numbers from the latest direct `file-read`; `replace` is only the new text for that region.",
-      "Batch multiple edits to the same file into one call.",
-      "If the change is a repeated plain-text rewrite in one known file, keep using one consolidated `file-edit` call.",
-      "Switch to `code-edit` only for real AST-aware refactors or structural code rewrites.",
+      "Use `file-edit` for bounded text edits.",
+      "Use exact {find, replace} snippets from the latest direct `file-read` of that file.",
+      "Keep edits tight and batch same-file edits in one call.",
+      "For larger blocks use {startLine, endLine, replace} with 1-based lines from the latest `file-read`.",
+      "Use the diff preview to confirm bounded changes and stop.",
+      "Use `code-edit` for structural AST-aware refactors.",
     ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
@@ -293,7 +279,6 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_create",
     category: "write",
-    permissions: ["write"],
     description:
       "Create a new file with full content. For editing existing files, use `file-edit` or `code-edit` instead.",
     instruction: "For new files, call `file-create` with full content directly.",
@@ -342,10 +327,8 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "file",
     labelKey: "tool.label.file_delete",
     category: "write",
-    permissions: ["write"],
     description: "Delete a file from the repository.",
-    instruction:
-      "Use `file-delete` to remove files from the repository. Pass `paths` as an array and batch related deletes in one call.",
+    instruction: "Use `file-delete` to remove files. Pass `paths` as an array and batch related deletes.",
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
     }),

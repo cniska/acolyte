@@ -33,7 +33,7 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger re-generation or mode transitions without manual intervention.
+Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger bounded re-generation without manual intervention.
 
 ### Tool guards
 

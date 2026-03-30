@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { setTokenEncoder } from "./agent-input";
 import { createMemoryRegistry, resolveMemorySources } from "./memory-registry";
-import { createMemorySource } from "./test-utils";
+import { createMemorySource, expectIntent } from "./test-utils";
 
 // Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
 beforeAll(() => setTokenEncoder({ encode: (input: string) => ({ length: Math.ceil(input.length / 4) }) }));
@@ -34,10 +34,7 @@ describe("memory registry", () => {
       createMemorySource("second", ["gamma"]),
     ]);
     const result = await registry.load({}, 10_000);
-    expect(result.prompt).toContain("- alpha");
-    expect(result.prompt).toContain("- beta");
-    expect(result.prompt).toContain("- gamma");
-    expect(result.prompt.startsWith("Memory context:")).toBe(true);
+    expectIntent(result.prompt, [["memory context:"], ["- alpha"], ["- beta"], ["- gamma"]]);
   });
 
   test("respects token budget and truncates", async () => {
@@ -45,7 +42,7 @@ describe("memory registry", () => {
     const registry = createMemoryRegistry([createMemorySource("big", [longEntry, "short"])]);
     const result = await registry.load({}, 50);
     expect(result.prompt).not.toContain(longEntry);
-    expect(result.prompt).toContain("short");
+    expectIntent(result.prompt, [["short"]]);
   });
 
   test("first source gets priority over second", async () => {
@@ -54,7 +51,7 @@ describe("memory registry", () => {
       createMemorySource("low", ["less important"]),
     ]);
     const result = await registry.load({}, 4);
-    expect(result.prompt).toContain("important fact");
+    expectIntent(result.prompt, [["important fact"]]);
     expect(result.prompt).not.toContain("less important");
   });
 
@@ -85,7 +82,7 @@ describe("memory registry", () => {
       async (entries) => ({ entries: [entries[1]], tokenEstimate: entries[1].tokenEstimate }),
     );
     const result = await registry.load({}, 10_000);
-    expect(result.prompt).toContain("second");
+    expectIntent(result.prompt, [["second"]]);
     expect(result.prompt).not.toContain("first");
   });
 
@@ -94,7 +91,7 @@ describe("memory registry", () => {
       { sourceId: "custom", content: "normalized", tokenEstimate: 2 },
     ]);
     const result = await registry.load({}, 10_000);
-    expect(result.prompt).toContain("normalized");
+    expectIntent(result.prompt, [["normalized"]]);
     expect(result.prompt).not.toContain("ignored");
   });
 
@@ -107,7 +104,7 @@ describe("memory registry", () => {
       ],
     );
     const result = await registry.load({}, 4);
-    expect(result.prompt).toContain("Current task: finish memory");
+    expectIntent(result.prompt, [["current task: finish memory"]]);
     expect(result.prompt).not.toContain("general note");
     expect(result.continuationSelected).toBe(true);
     expect(result.continuation.currentTask).toBe("finish memory");
@@ -122,7 +119,7 @@ describe("memory registry", () => {
       ],
     );
     const result = await registry.load({}, 8);
-    expect(result.prompt).toContain("Current task: new");
+    expectIntent(result.prompt, [["current task: new"]]);
     expect(result.prompt).not.toContain("Current task: old");
     expect(result.continuation.currentTask).toBe("new");
   });
@@ -139,7 +136,7 @@ describe("memory registry", () => {
       ],
     );
     const result = await registry.load({}, 4);
-    expect(result.prompt).toContain("Current task: older");
+    expectIntent(result.prompt, [["current task: older"]]);
     expect(result.prompt).not.toContain("Current task: freshest");
     expect(result.continuation.currentTask).toBe("older");
   });
@@ -162,15 +159,14 @@ describe("memory registry", () => {
       ],
     );
     const result = await registry.load({}, 20);
-    expect(result.prompt).toContain("- same");
-    expect(result.prompt).toContain("- different");
+    expectIntent(result.prompt, [["- same"], ["- different"]]);
     expect((result.prompt.match(/- same/g) ?? []).length).toBe(1);
   });
 
   test("load ignores blank entries from sources", async () => {
     const registry = createMemoryRegistry([createMemorySource("stored", ["", " ", "kept"])]);
     const result = await registry.load({}, 20);
-    expect(result.prompt).toContain("- kept");
+    expectIntent(result.prompt, [["- kept"]]);
     expect(result.prompt).not.toContain("-  ");
   });
 });

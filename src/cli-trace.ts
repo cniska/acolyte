@@ -26,10 +26,7 @@ const traceEventSchema = z.enum([
   "chat.request.completed",
   "lifecycle.workspace.profile",
   "lifecycle.start",
-  "lifecycle.classify",
   "lifecycle.prepare",
-  "lifecycle.mode.changed",
-  "lifecycle.agent.reconfigured",
   "lifecycle.generate.start",
   "lifecycle.generate.done",
   "lifecycle.generate.error",
@@ -49,7 +46,6 @@ const traceEventSchema = z.enum([
   "lifecycle.eval.skipped",
   "lifecycle.eval.guard_recovery",
   "lifecycle.eval.repeated_failure",
-  "lifecycle.eval.verify_cycle",
   "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
 ]);
@@ -81,12 +77,9 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     "test_command",
     "line_width",
   ],
-  "lifecycle.start": ["mode", "model"],
-  "lifecycle.classify": ["mode", "model", "provider"],
-  "lifecycle.prepare": ["mode", "model", "history_messages"],
-  "lifecycle.mode.changed": ["from", "to", "trigger"],
-  "lifecycle.agent.reconfigured": ["from_mode", "to_mode", "from_model", "to_model"],
-  "lifecycle.generate.start": ["model", "mode"],
+  "lifecycle.start": ["model"],
+  "lifecycle.prepare": ["model", "history_messages"],
+  "lifecycle.generate.start": ["model"],
   "lifecycle.generate.done": ["model", "tool_calls", "text_chars"],
   "lifecycle.generate.error": ["model", "error"],
   "lifecycle.error": ["source", "kind", "code", "category", "tool"],
@@ -97,7 +90,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.tool.error": ["tool", "error"],
   "lifecycle.tool.output": ["tool"],
   "lifecycle.guard": ["guard", "tool", "action", "detail"],
-  "lifecycle.signal.accepted": ["signal", "mode"],
+  "lifecycle.signal.accepted": ["signal"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
   "lifecycle.effect.format": ["files"],
   "lifecycle.effect.lint": ["files"],
@@ -117,9 +110,8 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     "regeneration_reason_count",
     "regeneration_reason_cap",
   ],
-  "lifecycle.eval.guard_recovery": ["mode"],
+  "lifecycle.eval.guard_recovery": [],
   "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
-  "lifecycle.eval.verify_cycle": ["status", "used_write_tools", "verified", "verify_scope"],
   "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
   "lifecycle.summary": [
     "model_calls",
@@ -260,14 +252,6 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       const ms = line.fields.duration_ms;
       pending.status = ms && Number(ms) >= 120_000 ? `TIMEOUT ${Math.round(Number(ms) / 1000)}s` : ms ? `${ms}ms` : "";
       flushPending();
-      continue;
-    }
-
-    if (event === "lifecycle.agent.reconfigured") {
-      flushPending();
-      const mode = line.fields.to_mode ?? "?";
-      const model = line.fields.to_model;
-      rows.push({ kind: "separator", text: model ? `── ${mode}  model=${model} ──` : `── ${mode} ──` });
       continue;
     }
 

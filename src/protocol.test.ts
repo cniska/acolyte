@@ -3,10 +3,10 @@ import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 
 describe("protocol metadata", () => {
   test("exposes stable protocol version", () => {
-    expect(PROTOCOL_VERSION).toBe("2");
+    expect(PROTOCOL_VERSION).toBe("3");
   });
 
   test("formats server capabilities as deterministic csv", () => {
-    expect(formatServerCapabilities()).toBe("error.structured, permissions.mode, stream.sse, workspace.path");
+    expect(formatServerCapabilities()).toBe("error.structured, stream.sse, workspace.path");
   });
 });

@@ -37,13 +37,12 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
-        { id: "lint", modes: ["work"], run: () => ({ type: "done" }) },
+        { id: "format", run: () => ({ type: "done" }) },
+        { id: "lint", run: () => ({ type: "done" }) },
       ],
       evaluators: [
         {
           id: "guard-recovery",
-          modes: ["work"],
           evaluate: () => ({ action: { type: "regenerate", reason: "guard-recovery" } }),
         },
       ],
@@ -71,10 +70,9 @@ describe("phaseEvaluate", () => {
     await phaseEvaluate(ctx, undefined, {
       shouldYieldNow: () => false,
       effects: [
-        { id: "format", modes: ["work"], run: () => ({ type: "done" }) },
+        { id: "format", run: () => ({ type: "done" }) },
         {
           id: "lint",
-          modes: ["work"],
           run: () => ({
             type: "regenerate",
             reason: "lint",
@@ -88,7 +86,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "guard-recovery",
-          modes: ["work"],
           evaluate: () => {
             throw new Error("evaluators should not run after command regeneration");
           },
@@ -103,50 +100,9 @@ describe("phaseEvaluate", () => {
     expect(decisions).toEqual(["format:done", "lint:regenerate"]);
     expect(ctx.lifecycleState.feedback.at(-1)).toEqual({
       source: "lint",
-      mode: "work",
       summary: "Lint errors detected in files you edited.",
     });
     expect(generateOptions).toEqual({ cycleLimit: ctx.policy.initialMaxSteps, timeoutMs: ctx.policy.stepTimeoutMs });
-  });
-
-  test("skips effects and evaluators whose modes do not include the active mode", async () => {
-    const events: string[] = [];
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "done", toolCalls: [] },
-      debug: (event, fields) => {
-        if (event === "lifecycle.eval.decision") {
-          events.push(`${String(fields?.effect ?? fields?.evaluator)}:${String(fields?.action)}`);
-        }
-      },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [
-        {
-          id: "work-only-effect",
-          modes: ["work"],
-          run: () => {
-            throw new Error("work-only effect should be skipped in verify mode");
-          },
-        },
-      ],
-      evaluators: [
-        {
-          id: "work-only-evaluator",
-          modes: ["work"],
-          evaluate: () => {
-            throw new Error("work-only evaluator should be skipped in verify mode");
-          },
-        },
-      ],
-      phaseGenerate: async () => {
-        throw new Error("phaseGenerate should not run");
-      },
-    });
-
-    expect(events).toEqual([]);
   });
 
   test("applies evaluator patches centrally", async () => {
@@ -175,7 +131,6 @@ describe("phaseEvaluate", () => {
       evaluators: [
         {
           id: "repeated-failure",
-          modes: ["work"],
           evaluate: () => ({
             action: { type: "done" },
             patch: { repeatedFailureStatus: "surfaced" },
@@ -190,91 +145,13 @@ describe("phaseEvaluate", () => {
     expect(ctx.lifecycleState.repeatedFailure?.status).toBe("surfaced");
   });
 
-  test("restores the work result after a clean verify pass", async () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [],
-      evaluators: [
-        {
-          id: "review",
-          modes: ["verify"],
-          evaluate: () =>
-            ctx.result?.signal === "done"
-              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
-              : { action: { type: "done" } },
-        },
-      ],
-      phaseGenerate: async () => {
-        ctx.result = { text: "", toolCalls: [], signal: "no_op" };
-        ctx.currentError = undefined;
-      },
-    });
-
-    expect(ctx.result).toEqual({ text: "Updated x.", toolCalls: [], signal: "done" });
-    expect(ctx.lifecycleState.reviewCandidate).toEqual({
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      currentError: undefined,
-    });
-    expect(ctx.lifecycleState.reviewResult).toEqual({ status: "clean" });
-  });
-
-  test("preserves a blocked verify result instead of restoring the work result", async () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-    });
-
-    await phaseEvaluate(ctx, undefined, {
-      shouldYieldNow: () => false,
-      effects: [],
-      evaluators: [
-        {
-          id: "review",
-          modes: ["verify"],
-          evaluate: () =>
-            ctx.result?.signal === "done"
-              ? { action: { type: "regenerate", reason: "verify", transition: { to: "verify" } } }
-              : { action: { type: "done" } },
-        },
-      ],
-      phaseGenerate: async () => {
-        ctx.result = {
-          text: "Need generated artifacts before I can review this change.",
-          toolCalls: [],
-          signal: "blocked",
-        };
-        ctx.currentError = undefined;
-      },
-    });
-
-    expect(ctx.result).toEqual({
-      text: "Need generated artifacts before I can review this change.",
-      toolCalls: [],
-      signal: "blocked",
-    });
-    expect(ctx.lifecycleState.reviewCandidate).toEqual({
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      currentError: undefined,
-    });
-    expect(ctx.lifecycleState.reviewResult).toEqual({
-      status: "blocked",
-      details: "Need generated artifacts before I can review this change.",
-    });
-  });
-
   test("stops regeneration when a reason-specific budget is exhausted", async () => {
     const ctx = createRunContext({
       result: { text: "done", toolCalls: [] },
       regenerationCounts: {
         "guard-recovery": 0,
         lint: 0,
-        verify: 1,
-        "tool-recovery": 0,
+        "tool-recovery": 1,
         "repeated-failure": 0,
       },
       policy: {
@@ -282,15 +159,14 @@ describe("phaseEvaluate", () => {
         maxRegenerationsPerReason: {
           "guard-recovery": 2,
           lint: 1,
-          verify: 1,
-          "tool-recovery": 2,
+          "tool-recovery": 1,
           "repeated-failure": 1,
         },
       },
       debug: (event, fields) => {
         if (event !== "lifecycle.eval.skipped") return;
         expect(fields?.reason).toBe("regeneration_reason_cap");
-        expect(fields?.regeneration_reason).toBe("verify");
+        expect(fields?.regeneration_reason).toBe("tool-recovery");
       },
     });
 
@@ -299,20 +175,18 @@ describe("phaseEvaluate", () => {
       effects: [],
       evaluators: [
         {
-          id: "verify-cycle",
-          modes: ["work"],
+          id: "tool-recovery",
           evaluate: () => ({
             action: {
               type: "regenerate",
-              reason: "verify",
-              feedback: { source: "verify", summary: "Review the changes." },
-              transition: { to: "verify" },
+              reason: "tool-recovery",
+              feedback: { source: "tool-recovery", summary: "Review the changes." },
             },
           }),
         },
       ],
       phaseGenerate: async () => {
-        throw new Error("phaseGenerate should not run after the verify budget is exhausted");
+        throw new Error("phaseGenerate should not run after the reason budget is exhausted");
       },
     });
 

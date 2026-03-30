@@ -8,7 +8,7 @@ resolve → prepare → generate → evaluate → finalize
 
 ## Phase contracts
 
-- **resolve**: pick mode and policy from request intent
+- **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
 - **generate**: run model + tool loop for one attempt; the model may also emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
 - **evaluate**: accept a valid lifecycle signal, run effects, then apply pure evaluators and choose `done` or bounded regeneration
@@ -18,7 +18,7 @@ resolve → prepare → generate → evaluate → finalize
 
 - effects and evaluators can request regeneration
 - regeneration uses task-scoped `lifecycleState` to carry internal feedback and review outcome between attempts
-- generation input is rebuilt from immutable base input plus pending mode-scoped lifecycle feedback
+- generation input is rebuilt from immutable base input plus pending lifecycle feedback
 - selected guard blocks may also be translated into lifecycle feedback before the next attempt
 - a valid lifecycle signal can end the loop cleanly before recovery logic reopens the turn
 - regeneration is bounded by lifecycle policy caps
@@ -27,7 +27,6 @@ resolve → prepare → generate → evaluate → finalize
 ## Effects
 
 - effects own automatic side effects initiated by the lifecycle rather than the model
-- they declare the modes they apply to, and `phaseEvaluate` filters them before execution
 - they run after signal acceptance and before pure evaluators
 - current examples include format and lint checks driven by detected workspace commands
 - effects may request regeneration directly and attach lifecycle feedback when the side effect exposes actionable runtime guidance
@@ -35,7 +34,6 @@ resolve → prepare → generate → evaluate → finalize
 ## Evaluators
 
 - evaluators are pure post-generation decision units
-- they declare the modes they apply to, and `phaseEvaluate` filters them before evaluation
 - evaluators should not own lifecycle side effects; they inspect runtime state and return decisions, optional debug data, and small lifecycle patches
 - `phaseEvaluate` applies evaluator patches, emits evaluator debug events, and applies requested transitions centrally
 
@@ -49,9 +47,7 @@ resolve → prepare → generate → evaluate → finalize
 
 - `lifecycleState` is internal, task-scoped runtime state owned by the lifecycle
 - it currently carries:
-  - `feedback`: pending runtime feedback consumed by the next matching-mode attempt
-  - `reviewCandidate`: preserved work-mode candidate under review in verify mode
-  - `reviewResult`: structured review verdict (`clean`, `issues`, or `blocked`) for the current candidate
+  - `feedback`: pending runtime feedback consumed by the next attempt
   - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
 - lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction
 - lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context
@@ -84,7 +80,7 @@ resolve → prepare → generate → evaluate → finalize
 - `src/lifecycle-guard-feedback.ts` — Guard-event-to-feedback translation.
 - `src/lifecycle-policy.ts` — Lifecycle policy configuration and constraints.
 - `src/lifecycle-prepare.ts` — Preparation phase including input validation and token estimation.
-- `src/lifecycle-resolve.ts` — Initial mode and model selection for the request.
+- `src/lifecycle-resolve.ts` — Initial model resolution for the request.
 - `src/lifecycle-signal.ts` — Extraction and parsing of agent signals from output.
 - `src/lifecycle-state.ts` — State validation and transitions through the lifecycle.
 - `src/workspace-profile.ts` — Workspace profile types, caching, and instruction generation.

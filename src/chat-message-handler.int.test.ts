@@ -88,7 +88,6 @@ describe("chat message handler guards", () => {
         status: async () => ({
           providers: ["openai"],
           model: "gpt-5-mini",
-          permissions: "write",
         }),
       }),
     });
@@ -106,7 +105,6 @@ describe("chat message handler guards", () => {
     const pairs = statusContent?.sections[0] ?? [];
     expect(pairs).toContainEqual(["Providers", "openai"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
-    expect(pairs).toContainEqual(["Permissions", "write"]);
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {

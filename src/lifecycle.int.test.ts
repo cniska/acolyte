@@ -10,7 +10,6 @@ import {
   pickFunctionToolName,
   startFakeProviderServer,
 } from "../scripts/fake-provider-server";
-import type { AgentMode } from "./agent-contract";
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 
@@ -46,11 +45,6 @@ function run(message: string) {
     soulPrompt: "",
     workspace,
   });
-}
-
-function requestMode(ctx: FakeProviderRequestContext): AgentMode {
-  const hasFileEditTool = ctx.body.tools?.some((tool) => tool?.type === "function" && tool.name?.includes("edit"));
-  return hasFileEditTool ? "work" : "verify";
 }
 
 async function writeExecutableScript(name: string, body: string): Promise<string> {
@@ -144,7 +138,7 @@ describe("lifecycle integration", () => {
     expect(phases).toContain("work:blocked");
   });
 
-  test("verifyScope none skips verify even with write tools", async () => {
+  test("write tools remain single-pass without a verify stage", async () => {
     let turnCount = 0;
     const phases: string[] = [];
 
@@ -170,7 +164,7 @@ describe("lifecycle integration", () => {
     });
 
     await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
     });
@@ -211,127 +205,6 @@ describe("lifecycle integration", () => {
     expect(phases).not.toContain("verify:done");
   });
 
-  test("clean review ends the verify cycle without returning to work", async () => {
-    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    const phases: string[] = [];
-    let workEdits = 0;
-
-    setupFakeProvider((ctx) => {
-      const mode = requestMode(ctx);
-
-      if (mode === "work" && workEdits === 0) {
-        workEdits += 1;
-        phases.push("work:edit");
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 8;" }],
-            }),
-          },
-        ]);
-      }
-
-      if (mode === "work") {
-        phases.push("work:done");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 8.\n\n@signal done");
-      }
-
-      phases.push("verify:clean");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "@signal no_op");
-    });
-
-    const reply = await run("update x to 8");
-
-    expect(phases).toEqual(["work:edit", "work:done", "verify:clean"]);
-    expect(reply.output).toBe("Updated x to 8.");
-  });
-
-  test("review findings send the lifecycle back to work for fixes", async () => {
-    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    const phases: string[] = [];
-    let step = 0;
-
-    setupFakeProvider((ctx) => {
-      step += 1;
-
-      if (step === 1) {
-        phases.push("work:initial-edit");
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 9" }],
-            }),
-          },
-        ]);
-      }
-
-      if (step === 2) {
-        phases.push("work:initial-done");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 9.\n\n@signal done");
-      }
-
-      if (step === 3) {
-        phases.push("verify:issues");
-        return createMessagePayload(
-          ctx.model,
-          ctx.responseCounter,
-          "Add a semicolon after the export.\n\n@signal done",
-        );
-      }
-
-      if (step === 4) {
-        phases.push("work:fix-edit");
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 9", replace: "export const x = 9;" }],
-            }),
-          },
-        ]);
-      }
-
-      if (step === 5) {
-        phases.push("work:fix-done");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Fixed the review finding.\n\n@signal done");
-      }
-
-      if (step === 6) {
-        phases.push("verify:clean");
-        return createMessagePayload(ctx.model, ctx.responseCounter, "@signal no_op");
-      }
-
-      phases.push("verify:clean");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "@signal no_op");
-    });
-
-    const reply = await run("update x to 9");
-
-    expect(phases).toEqual([
-      "work:initial-edit",
-      "work:initial-done",
-      "verify:issues",
-      "work:fix-edit",
-      "work:fix-done",
-      "verify:clean",
-    ]);
-    expect(reply.output).toBe("Fixed the review finding.");
-  });
-
   test("format effect runs configured command for written files", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const formatLog = join(workspace, "format.log");
@@ -363,7 +236,7 @@ printf '%s\n' "$@" > "${formatLog}"
     });
 
     await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
@@ -416,7 +289,7 @@ exit 0
     });
 
     const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false, verifyScope: "none" },
+      request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false },
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {

@@ -10,14 +10,7 @@ import { createShellToolkit } from "./shell-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
-import type {
-  ChecklistListener,
-  ToolCategory,
-  ToolDefinition,
-  ToolkitDeps,
-  ToolkitInput,
-  ToolPermission,
-} from "./tool-contract";
+import type { ChecklistListener, ToolCategory, ToolDefinition, ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createWebToolkit } from "./web-toolkit";
@@ -106,7 +99,6 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,
       `tool ${tool.id} missing instruction`,
     );
-    invariant(Array.isArray(tool.permissions), `tool ${tool.id} missing permissions`);
     byId[tool.id] = tool as AnyToolDefinition;
   }
   return byId;
@@ -114,13 +106,8 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
 
 export const toolDefinitionsById = asToolDefinitionsById(collectTools(resolve(process.cwd()), createSessionContext()));
 
-export function hasPermissions(granted: readonly ToolPermission[], required: readonly ToolPermission[]): boolean {
-  return required.every((p) => granted.includes(p));
-}
-
-export function toolIdsForGrants(grants: readonly ToolPermission[]): string[] {
+export function toolIds(): string[] {
   return Object.values(toolDefinitionsById)
-    .filter((tool) => hasPermissions(grants, tool.permissions))
     .map((tool) => tool.id)
     .sort();
 }

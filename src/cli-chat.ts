@@ -54,7 +54,7 @@ export async function attachFileToSession(session: Session, filePath: string): P
 
 export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const store = await readStore();
-  const defaultModel = appConfig.model;
+  const model = appConfig.model;
   const resolved = resolveResumeTarget(store, options);
   if (resolved?.kind === "not_found") {
     printError(t("chat.resume.not_found", { prefix: resolved.prefix }));
@@ -69,7 +69,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     return;
   }
   const isResumed = resolved?.kind === "ok";
-  const session = isResumed ? resolved.session : createSession(defaultModel);
+  const session = isResumed ? resolved.session : createSession(model);
   if (!isResumed) {
     // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
     store.sessions.unshift(session);

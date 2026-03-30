@@ -10,7 +10,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
@@ -32,7 +32,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    expect(calls.pendingStates[0]).toEqual({ kind: "running", mode: "work" });
+    expect(calls.pendingStates[0]).toEqual({ kind: "running" });
     expect(calls.pendingStates.at(-1)).toBeNull();
     expect(rows.some((row) => row.kind === "tool")).toBe(true);
     expect(
@@ -192,7 +192,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("first");
     expect(calls.pendingTransitions).toEqual([true]);
-    expect(calls.pendingStates).toContainEqual({ kind: "running", mode: "work" });
+    expect(calls.pendingStates).toContainEqual({ kind: "running" });
     await Bun.sleep(800);
     expect(calls.pendingTransitions).toEqual([true, false]);
   });
@@ -468,7 +468,7 @@ describe("chat message handler stream behavior", () => {
       status: async () => ({}),
       replyStream: async (_input, options) => {
         replyCount += 1;
-        options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+        options.onEvent({ type: "status", state: { kind: "running" } });
         options.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
         return { state: "done" as const, model: "gpt-5-mini", output: `reply-${replyCount}` };
       },
@@ -547,7 +547,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           options.onEvent({ type: "text-delta", text: "I will run the command." });
           options.onEvent({
             type: "tool-call",
@@ -585,7 +585,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running", mode: "work" } });
+          options.onEvent({ type: "status", state: { kind: "running" } });
           // Two tool calls in the same batch, different toolCallIds
           options.onEvent({
             type: "tool-call",

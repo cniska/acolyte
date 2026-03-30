@@ -11,8 +11,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
 - **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
 - **Effects** — lifecycle-owned side effects that run between generation and pure evaluation
-- **Modes** — explicit operating behaviors (work, verify) with per-mode model routing
-- **Tools** — typed definitions with categories, permissions, schemas, and output contracts
+- **Tools** — typed definitions with categories, schemas, and output contracts
 - **Guards** — pre-tool policy units that inspect runtime state and decide allow or block
 - **Evaluators** — post-generation policy units that decide accept or re-generate
 - **Skills** — declarative prompt extensions with metadata and tool restrictions
@@ -68,7 +67,7 @@ lifecycle → guard → cache → toolkit → registry
 - **guard:** pure pre-execution safety/redundancy checks; `runGuards()` applies their patches and events centrally
 - **cache:** per-task reuse layer for read-only and search tool results
 - **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
-- **registry:** toolkit registration, permission filtering, and agent-facing tool surface
+- **registry:** toolkit registration and agent-facing tool surface
 - **details:** see [Tooling](./tooling.md)
 
 ## Lifecycle flow
@@ -77,12 +76,11 @@ lifecycle → guard → cache → toolkit → registry
 resolve → prepare → generate → evaluate → finalize
 ```
 
-- **resolve:** pick mode and model (sync, not a full phase)
+- **resolve:** pick model and policy (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
 - **generate:** run model + tool calls
 - **evaluate:** accept valid signals, run effects, then apply pure evaluators to decide accept/retry/regenerate (bounded)
-- **mode applicability:** guards, effects, and evaluators declare their applicable modes; orchestrators enforce those boundaries centrally
-- **orchestration ownership:** `runGuards()` and `phaseEvaluate()` own runtime mutation, debug emission, counters, and mode transitions; guards and evaluators return data only
+- **orchestration ownership:** `runGuards()` and `phaseEvaluate()` own runtime mutation, debug emission, and counters; guards and evaluators return data only
 - **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
 - **finalize:** persist outputs and emit final response
 
@@ -93,11 +91,6 @@ resolve → prepare → generate → evaluate → finalize
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step
 - **task metrics:** evaluator and summary metrics are scoped by `task_id`
 - **details:** see [Lifecycle](./lifecycle.md)
-
-## Modes
-
-- explicit operating behaviors are modeled as `work` and `verify`
-- **details:** see [Modes](./modes.md)
 
 ## Memory engine
 

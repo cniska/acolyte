@@ -67,13 +67,13 @@ Every request flows through five phases, each implemented as its own module with
 resolve → prepare → generate → evaluate → finalize
 ```
 
-- **resolve**: pick mode (work/verify) and model
+- **resolve**: pick model and policy
 - **prepare**: wire tools, session context, and guards
 - **generate**: run the model with tool calls
 - **evaluate**: inspect output, decide accept or regenerate
 - **finalize**: persist results and emit the response
 
-Evaluators run after generation and can return a `regenerate` action. The verify-cycle evaluator owns the full code-review loop: it transitions into verify mode after write work, accepts a clean review verdict, and sends the lifecycle back to work when review findings need fixes. The lint evaluator regenerates when lint errors are found in edited files.
+Evaluators run after generation and can return a `regenerate` action. Lint and runtime recovery evaluators trigger bounded follow-up attempts when the previous attempt produced actionable failures.
 
 Most other agents use flat tool loops or implicit state machines.
 
@@ -99,10 +99,10 @@ Others rely primarily on prompt instructions or user confirmation.
 After generation, evaluators inspect the result and may trigger:
 
 - Regeneration with a different tool strategy
-- Mode transitions through the full work → verify → work/done code-review loop
-- Scoped test execution via the `test-run` tool during work mode
+- Regeneration with lifecycle feedback from lint/guard/tool-recovery evaluators
+- Scoped test execution via the `test-run` tool during generation
 
-The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite. Verify mode focuses on code review — scanning edited files with AST pattern matching.
+The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite.
 
 Goose has a `RetryManager` that checks shell command success.
 
@@ -155,7 +155,7 @@ The `acolyte trace` command converts daemon logs into timelines:
 timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=file-edit path=src/foo.ts
 timestamp=... task_id=task_abc123 event=lifecycle.tool.result tool=file-edit duration_ms=45 is_error=false
 timestamp=... task_id=task_abc123 event=lifecycle.guard guard=file-churn tool=file-read action=blocked
-timestamp=... task_id=task_abc123 event=lifecycle.eval.decision evaluator=verify-cycle action=regenerate
+timestamp=... task_id=task_abc123 event=lifecycle.eval.decision evaluator=tool-recovery action=regenerate
 timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=2 read=3 search=1 write=1 guard_blocked=1
 ```
 

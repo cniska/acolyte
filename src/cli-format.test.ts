@@ -99,13 +99,9 @@ describe("cli-format", () => {
     expect(formatPromptError("Remote server stream timed out after 120000ms")).toBe(
       "Server request timed out. Retry or reduce request scope.",
     );
-    expect(formatPromptError("Shell command execution is disabled in read mode")).toBe(
-      "Write action blocked in read mode. Run /permissions write and retry.",
-    );
     expect(formatPromptError("The socket connection was closed unexpectedly.")).toBe(
       "Server unavailable. Start the server and retry.",
     );
-    expect(formatPromptError("Remote server error (502): boom")).toBe("Remote server error (502): boom");
   });
 
   test("formatAssistantReplyOutput indents multiline assistant output", () => {

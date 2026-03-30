@@ -77,8 +77,8 @@ describe("step-budget guard", () => {
   });
 });
 
-describe("redundant-verify guard", () => {
-  test("declares verify-only applicability", () => {
+describe("shell-run duplicate guard", () => {
+  test("blocks duplicate shell-run commands", () => {
     const events: GuardEvent[] = [];
     const session = createSessionContext();
     session.onGuard = (event) => events.push(event);
@@ -87,43 +87,33 @@ describe("redundant-verify guard", () => {
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).toThrow(
       /Duplicate shell-run call detected/,
     );
-    expect(events.every((event) => event.guardId !== "redundant-verify")).toBe(true);
+    expect(events.some((event) => event.guardId === "duplicate-call")).toBe(true);
   });
 
-  test("allows first verify run", () => {
+  test("allows first shell-run call", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("blocks duplicate verify-mode command when no writes happened since previous run", () => {
+  test("blocks duplicate shell-run command when no writes happened since previous run", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     recordCall(session, "shell-run", { command: "npm test" });
     expect(() => runGuards({ toolName: "shell-run", args: { command: "npm test" }, session })).toThrow(
-      /Duplicate shell-run call detected|verify already ran this turn/,
+      /Duplicate shell-run call detected/,
     );
   });
 
-  test("allows a different command in verify mode", () => {
+  test("allows a different shell-run command", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     recordCall(session, "shell-run", { command: "npm test" });
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 
-  test("allows verify rerun after a write", () => {
+  test("allows shell-run rerun after a write", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     session.writeTools = new Set(["file-edit", "shell-run"]);
     recordCall(session, "shell-run", { command: "bun run verify" });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
-  });
-
-  test("does not block outside verify mode", () => {
-    const session = createSessionContext();
-    session.mode = "work";
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
   });
 });
@@ -191,12 +181,11 @@ describe("file-churn guard", () => {
     );
   });
 
-  test("allows rereading an edited file in verify mode", () => {
+  test("allows rereading an edited file after an edit", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["file-edit"]);
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
-    session.mode = "verify";
     expect(() =>
       runGuards({ toolName: "file-read", args: { paths: [{ path: "src/foo.ts" }] }, session }),
     ).not.toThrow();
@@ -224,11 +213,9 @@ describe("file-churn guard", () => {
     );
   });
 
-  test("still blocks heavy churn even when verify already ran", () => {
+  test("still blocks heavy churn even when a verify command already ran", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     recordCall(session, "shell-run", { command: "bun run verify" });
-    session.mode = "work";
     for (let i = 0; i < 8; i++) {
       recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "file-edit", { path: "src/foo.ts" });
@@ -238,11 +225,9 @@ describe("file-churn guard", () => {
     );
   });
 
-  test("still blocks immediate duplicate edit calls after verify", () => {
+  test("still blocks immediate duplicate edit calls after a verify command", () => {
     const session = createSessionContext();
-    session.mode = "verify";
     recordCall(session, "shell-run", { command: "bun run verify" });
-    session.mode = "work";
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
@@ -758,36 +743,25 @@ describe("shell-bypass guard", () => {
 describe("lifecycle-command guard", () => {
   test("blocks test command", () => {
     const session = createSessionContext();
-    session.mode = "work";
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun test" }, session })).toThrow(/test-run/);
   });
 
   test("blocks lint command", () => {
     const session = createSessionContext();
-    session.mode = "work";
     session.workspaceProfile = { lintCommand: { bin: "bunx", args: ["biome", "check"] } };
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bunx biome check" }, session })).toThrow(
       /automatically/,
     );
   });
 
-  test("blocks test command in verify mode", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun test" }, session })).toThrow(/test-run/);
-  });
-
   test("allows commands when no workspace profile", () => {
     const session = createSessionContext();
-    session.mode = "work";
     expect(() => runGuards({ toolName: "shell-run", args: { command: "bun test" }, session })).not.toThrow();
   });
 
-  test("allows unrelated commands in work mode", () => {
+  test("allows unrelated commands", () => {
     const session = createSessionContext();
-    session.mode = "work";
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
     expect(() => runGuards({ toolName: "shell-run", args: { command: "echo hello" }, session })).not.toThrow();
   });

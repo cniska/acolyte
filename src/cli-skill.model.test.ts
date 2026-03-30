@@ -76,22 +76,4 @@ describe("cli-skill --model flag", () => {
 
     process.exitCode = prevExit;
   });
-
-  test("skillMode does not disable verifier", async () => {
-    const { deps } = createSkillDeps();
-    let seenOptions: { resourceId?: string; workspace?: string; verifyScope?: string } | undefined;
-    deps.handlePrompt = async (_prompt, _session, _client, options) => {
-      seenOptions = options as typeof seenOptions;
-      return true;
-    };
-
-    const prevExit = process.exitCode;
-    process.exitCode = 0;
-
-    await skillMode(["skill-name", "do something"], deps);
-
-    expect(seenOptions?.verifyScope).toBeUndefined();
-
-    process.exitCode = prevExit;
-  });
 });

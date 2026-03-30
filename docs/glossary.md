@@ -42,7 +42,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Memory Source | Pluggable provider that contributes memory entries and optional commit behavior |
 | Memory Source Strategy | Configured memory source IDs and order used by the Memory Engine |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
-| Mode | Explicit operating profile for a request (`work`, `verify`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
 | Observation | Distill record tier for round-level facts |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
@@ -63,6 +62,5 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
-| Verify Cycle | Post-write review sequence that transitions work into verify mode, accepts a clean review, or returns to work with review findings |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, commands, and line width |

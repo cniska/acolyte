@@ -1,7 +1,6 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
-import { agentModes } from "./agent-modes";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -22,9 +21,7 @@ import type {
   RunContext,
   StreamChunk,
 } from "./lifecycle-contract";
-import { resolveModeModel } from "./lifecycle-resolve";
 import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
-import { formatModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
@@ -108,57 +105,16 @@ export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): bo
   return true;
 }
 
-export function createModeAgent(input: {
+export function createRunAgent(input: {
   soulPrompt: string;
-  mode: RunContext["mode"];
   workspace: string | undefined;
   model: string;
   tools: Toolset;
 }): Agent {
-  const allowedTools = new Set(agentModes[input.mode].tools);
-  const filteredTools: Record<string, ToolDefinition> = {};
-  for (const [key, tool] of Object.entries(input.tools as Record<string, ToolDefinition>)) {
-    if (allowedTools.has(tool.id)) filteredTools[key] = tool;
-  }
   return createAgent({
     model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.mode, input.workspace),
-    tools: filteredTools,
-  });
-}
-
-export function setMode(ctx: RunContext, mode: RunContext["mode"], trigger?: string): void {
-  if (ctx.mode === mode) return;
-  const from = ctx.mode;
-  ctx.mode = mode;
-  ctx.session.mode = mode;
-  ctx.debug("lifecycle.mode.changed", { from, to: mode, trigger: trigger ?? null });
-  ctx.emit({ type: "status", state: { kind: "running", mode, model: formatModel(ctx.model) } });
-}
-
-function ensureAgentForMode(ctx: RunContext): void {
-  if (ctx.agentForMode === ctx.mode) return;
-
-  const resolved = resolveModeModel(ctx.mode, ctx.request.model, ctx.request.modeModels);
-  const nextModel = resolved.model;
-
-  const previousMode = ctx.agentForMode;
-  const previousModel = ctx.model;
-  ctx.model = nextModel;
-  ctx.agentForMode = ctx.mode;
-  ctx.agent = createModeAgent({
-    soulPrompt: ctx.soulPrompt,
-    mode: ctx.mode,
-    workspace: ctx.workspace,
-    model: ctx.model,
-    tools: ctx.tools,
-  });
-  ctx.debug("lifecycle.agent.reconfigured", {
-    from_mode: previousMode,
-    to_mode: ctx.mode,
-    from_model: previousModel,
-    to_model: ctx.model,
-    provider: resolved.provider,
+    instructions: createInstructions(input.soulPrompt, input.workspace),
+    tools: input.tools as Record<string, ToolDefinition>,
   });
 }
 
@@ -174,32 +130,27 @@ function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedbac
   return [baseAgentInput, ...activeFeedback.map(createLifecycleFeedbackText)].join("\n\n");
 }
 
-export function consumeLifecycleFeedback(
-  state: Pick<LifecycleState, "feedback">,
-  mode: RunContext["mode"],
-): LifecycleFeedback[] {
-  const activeFeedback = state.feedback.filter((feedback) => feedback.mode === mode);
+export function consumeLifecycleFeedback(state: Pick<LifecycleState, "feedback">): LifecycleFeedback[] {
+  const activeFeedback = [...state.feedback];
   if (activeFeedback.length === 0) return [];
-  state.feedback = state.feedback.filter((feedback) => feedback.mode !== mode);
+  state.feedback = [];
   return activeFeedback;
 }
 
 export function createGenerationInput(
-  ctx: Pick<RunContext, "baseAgentInput" | "mode"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
+  ctx: Pick<RunContext, "baseAgentInput"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
 ): string {
-  const activeFeedback = ctx.lifecycleState.feedback.filter((feedback) => feedback.mode === ctx.mode);
-  return createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  return createGenerationInputFromFeedback(ctx.baseAgentInput, ctx.lifecycleState.feedback);
 }
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
-  ensureAgentForMode(ctx);
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
-  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState, ctx.mode);
+  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState);
   const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
-  ctx.emit({ type: "status", state: { kind: "running", mode: ctx.mode, model: formatModel(ctx.model) } });
+  ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
     type: "usage",
     inputTokens: emitInputTokens(ctx),
@@ -207,7 +158,6 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
-    mode: ctx.mode,
     cycle_limit: opts.cycleLimit ?? null,
   });
 
@@ -254,7 +204,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
 
   try {
     resetTimeout();
-    const temperature = ctx.temperatures?.[ctx.mode] ?? appConfig.temperatures[ctx.mode];
+    const temperature = ctx.temperature ?? appConfig.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),
@@ -373,7 +323,7 @@ function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
     case "text-delta": {
       const p = chunk.payload;
       if (typeof p?.text === "string" && p.text.length > 0) {
-        if (ctx.mode !== "verify") ctx.emit({ type: "text-delta", text: p.text });
+        ctx.emit({ type: "text-delta", text: p.text });
         emitStreamingUsage(ctx, p.text.length);
       }
       break;

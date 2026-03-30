@@ -10,7 +10,7 @@ lifecycle → guard → cache → toolkit → registry
 
 - **guard**: pre-execution checks and post-execution call recording
 - **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
-- **registry**: permission filtering and agent-facing tool surface
+- **registry**: tool registration and agent-facing tool surface
 
 ## Guarded execution
 
@@ -72,7 +72,7 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 - `src/file-toolkit.ts` — File operations (read, write, find, search, edit).
 - `src/code-toolkit.ts` — Code manipulation for scanning and editing source files.
 - `src/git-toolkit.ts` — Git operations (status, diff, log, show, add, commit).
-- `src/tool-registry.ts` — Tool registration, permission filtering, and agent-facing surface.
+- `src/tool-registry.ts` — Tool registration and agent-facing surface.
 - `src/tool-guards.ts` — Pre-execution guards including limits and path validation.
 - `src/tool-cache.ts` — Per-task result caching with stable key generation.
 

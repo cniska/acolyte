@@ -17,54 +17,6 @@ describe("rpc protocol schema", () => {
     expect(parsed.success).toBe(true);
   });
 
-  test("accepts chat.start verify scope override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1b",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          verifyScope: "global",
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  test("accepts chat.start verify scope disable override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1bb",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          verifyScope: "none",
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  test("accepts chat.start with modeModels override", () => {
-    const parsed = rpcClientMessageSchema.safeParse({
-      id: "rpc_1c",
-      type: "chat.start",
-      payload: {
-        request: {
-          message: "hi",
-          history: [],
-          model: "gpt-5-mini",
-          modeModels: { work: "gpt-5-mini" },
-        },
-      },
-    });
-    expect(parsed.success).toBe(true);
-  });
-
   test("accepts chat.done server messages", () => {
     const parsed = rpcServerMessageSchema.safeParse({
       id: "rpc_1",
@@ -107,10 +59,9 @@ describe("rpc protocol schema", () => {
         ok: true,
         providers: ["openai"],
         model: "gpt-5-mini",
-        "model.work": "claude-3-5-haiku",
+        active_skill: "review",
         protocol_version: "v1",
-        capabilities: "chat,permissions",
-        permissions: "write",
+        capabilities: "chat",
         service: "http://localhost:6767",
         memory: "file (2 entries)",
         tasks_total: 3,
@@ -164,10 +115,9 @@ describe("rpc protocol schema", () => {
 
   test("uses language-neutral rpc identifiers", () => {
     const identifierPattern = /^[a-z][a-z0-9]*(?:[.-][a-z][a-z0-9]*)+$/;
-    const clientTypes = ["status.get", "permissions.set", "chat.start", "chat.abort", "task.status"] as const;
+    const clientTypes = ["status.get", "chat.start", "chat.abort", "task.status"] as const;
     const serverTypes = [
       "status.result",
-      "permissions.result",
       "chat.event",
       "chat.accepted",
       "chat.queued",

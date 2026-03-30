@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentMode } from "./agent-contract";
 import type { CommandContext } from "./chat-commands";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
@@ -103,6 +102,19 @@ export function dedent(
     .split("\n")
     .map((line) => (line.length === 0 ? line : `${pad}${line}`))
     .join("\n");
+}
+
+export function normalizeIntentText(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+export function expectIntent(text: string, checks: string[][]): void {
+  const value = normalizeIntentText(text);
+  for (const fragments of checks) {
+    for (const fragment of fragments) {
+      expect(value).toContain(normalizeIntentText(fragment));
+    }
+  }
 }
 
 function toJSONDeep(value: unknown): unknown {
@@ -263,7 +275,7 @@ export function createClient(overrides?: {
     });
   return {
     replyStream,
-    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini", permissions: "write" })),
+    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini" })),
     taskStatus: overrides?.taskStatus ?? (async () => null),
   };
 }
@@ -427,7 +439,6 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
 export type CommandContextSpies = {
   rows: ChatRow[];
   openedModel: boolean;
-  openedModelMode?: AgentMode;
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
 };
@@ -440,10 +451,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     soulPrompt: "",
     emit: () => {},
     debug: () => {},
-    initialMode: "work",
     tools: {} as RunContext["tools"],
-    mode: "work",
-    agentForMode: "work",
     model: "gpt-5-mini",
     session: createSessionContext(),
     agent: {} as RunContext["agent"],
@@ -473,7 +481,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     regenerationCounts: {
       "guard-recovery": 0,
       lint: 0,
-      verify: 0,
       "tool-recovery": 0,
       "repeated-failure": 0,
     },
@@ -517,9 +524,8 @@ export function createCommandContext(
     exit: () => {},
     openSkillsPanel: async () => {},
     openResumePanel: () => {},
-    openModelPanel: (mode?: AgentMode) => {
+    openModelPanel: () => {
       spies.openedModel = true;
-      spies.openedModelMode = mode;
     },
     clearTranscript: () => {
       spies.rows = [];

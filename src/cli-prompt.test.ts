@@ -3,6 +3,7 @@ import { createMessage } from "./chat-session";
 import { handlePrompt } from "./cli-prompt";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
+import { expectIntent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-content";
 
 function createTestSession(): Session {
@@ -82,10 +83,7 @@ describe("cli-prompt", () => {
       await handlePrompt("run pipeline", session, client);
 
       const output = printed.join("");
-      expect(output).toContain("Build pipeline (1/3)");
-      expect(output).toContain("● lint");
-      expect(output).toContain("◐ test");
-      expect(output).toContain("○ deploy");
+      expectIntent(output, [["build pipeline", "1/3"], ["lint"], ["test"], ["deploy"]]);
     } finally {
       process.stdout.write = originalWrite;
     }

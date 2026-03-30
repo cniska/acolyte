@@ -1,29 +1,25 @@
-import type { AgentMode } from "./agent-contract";
-import { agentModes } from "./agent-modes";
-import { toolDefinitionsById } from "./tool-registry";
+import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
-const BASE_INSTRUCTIONS = [
-  "Before taking action (tool call, command, or edit), write exactly one sentence stating what you will do next.",
-  "Then execute directly; avoid extra process narration.",
-  "Execute tool calls immediately in the same turn — do not describe what you will do without doing it.",
-  "Keep tool calls and file changes within the current workspace and the requested scope.",
-  "Prefer dedicated project tools; use shell only when no dedicated tool exists.",
-  "Prefer targeted, surgical edits. Preserve unrelated content and surrounding structure, and change only the minimal lines needed.",
-  "Do exactly the requested change. Do not add opportunistic comments, refactors, cleanup, or extra edge-case handling unless the request or concrete evidence requires it.",
-  "Preserve local conventions in the file you are editing. Match nearby style and path forms instead of inventing a new one.",
-  "When fixing an existing path or link, keep the file's local relative/absolute reference style unless the user explicitly asked to normalize it.",
-  "Keep responses concise and outcome-first; expand only when asked.",
-  "Never summarize, recap, or list what you did. The user can see your actions directly.",
-  "Make reasonable assumptions to keep momentum; ask only when blocked by ambiguity or risk.",
-  "When lint or format checks fail, run the project auto-fix command (if available) before attempting manual repairs.",
-  "When the task is complete or needs no changes, end the final response with `@signal done` or `@signal no_op` on its own line. When you cannot proceed without information only the user can provide, use `@signal blocked` — this stops execution; the user must reply before work continues. On the next line, write a concise message stating: what is missing, why it is needed, and what you will do once you have the answer.",
+const CORE_INSTRUCTIONS = [
+  "Stay in this workspace and this scope.",
+  "Prefer dedicated project tools; use shell only when it helps.",
+  "If implementation intent is clear, do the work and stay with it until the task is complete.",
+  "If the user asks for explanation or planning only, answer directly and wait for an implementation request.",
+  "Make the smallest root-cause change that matches local conventions.",
+  "Skip unrelated or speculative detours.",
+  "Avoid repeating tool calls without new information.",
+  "After changing behavior, run related validation first. If validation is blocked or unavailable, say what was skipped and why.",
+  "Keep responses concise and outcome-first.",
+  "Make reasonable assumptions to keep momentum; ask only when ambiguity or risk truly blocks progress.",
+  "End every final response with exactly one signal line: `@signal done`, `@signal no_op`, or `@signal blocked`. If blocked, add one concise next line with what is missing and what you will do once it is provided.",
 ];
 
-export function createModeInstructions(mode: AgentMode, workspace?: string): string {
-  const { tools, preamble } = agentModes[mode];
-  const lines: string[] = preamble.map((p) => `- ${p}`);
-  for (const toolId of tools) {
+const TOOL_IDS = toolIds();
+
+function createRuntimeInstructions(workspace?: string): string {
+  const lines: string[] = [];
+  for (const toolId of TOOL_IDS) {
     const tool = toolDefinitionsById[toolId];
     if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }
@@ -34,8 +30,8 @@ export function createModeInstructions(mode: AgentMode, workspace?: string): str
   return lines.join("\n");
 }
 
-export function createInstructions(soulPrompt: string, mode: AgentMode, workspace?: string): string {
-  const baseInstructions = BASE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
-  const modeInstructions = createModeInstructions(mode, workspace);
-  return `${soulPrompt}\n\n${baseInstructions}\n\n${modeInstructions}`;
+export function createInstructions(soulPrompt: string, workspace?: string): string {
+  const coreInstructions = CORE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
+  const runtimeInstructions = createRuntimeInstructions(workspace);
+  return `${soulPrompt}\n\n${coreInstructions}\n\n${runtimeInstructions}`;
 }

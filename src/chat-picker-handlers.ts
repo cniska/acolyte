@@ -1,5 +1,4 @@
-import type { AgentMode } from "./agent-contract";
-import { setDefaultModel, setModeModel } from "./app-config";
+import { setModel } from "./app-config";
 import { unreachable } from "./assert";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -33,7 +32,7 @@ export type CreatePickerHandlersInput = {
 export function createPickerHandlers(input: CreatePickerHandlersInput): {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => Promise<void>;
+  openModelPanel: () => Promise<void>;
   handlePickerSelect: (state: PickerState) => Promise<void>;
 } {
   const openSkillsPanel = async (): Promise<void> => {
@@ -62,7 +61,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
     input.setShowHelp(false);
   };
 
-  const openModelPanel = async (mode?: AgentMode): Promise<void> => {
+  const openModelPanel = async (): Promise<void> => {
     input.setPicker({
       kind: "model",
       items: [],
@@ -70,11 +69,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       query: "",
       index: 0,
       scrollOffset: 0,
-      targetMode: mode,
       loading: true,
     });
     input.setShowHelp(false);
-    const picker = await createModelPicker(mode);
+    const picker = await createModelPicker();
     input.setPicker(picker);
   };
 
@@ -105,24 +103,14 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
         const nextModel = state.filtered[state.index]?.value;
         if (!nextModel) return;
         try {
-          const targetMode = state.targetMode;
-          if (targetMode) {
-            await writeConfig(`models.${targetMode}`, nextModel, "project");
-            setModeModel(targetMode, nextModel);
-            input.setRows((current) => [
-              ...current,
-              createRow("system", t("chat.model.changed.mode", { mode: targetMode, model: formatModel(nextModel) })),
-            ]);
-          } else {
-            await writeConfig("model", nextModel, "project");
-            setDefaultModel(nextModel);
-            const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
-            input.setCurrentSession(nextSession);
-            input.setRows((current) => [
-              ...current,
-              createRow("system", t("chat.model.changed.default", { model: formatModel(nextModel) })),
-            ]);
-          }
+          await writeConfig("model", nextModel, "project");
+          setModel(nextModel);
+          const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
+          input.setCurrentSession(nextSession);
+          input.setRows((current) => [
+            ...current,
+            createRow("system", t("chat.model.changed", { model: formatModel(nextModel) })),
+          ]);
         } catch (error) {
           input.setRows((current) => [
             ...current,

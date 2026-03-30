@@ -14,7 +14,6 @@ describe("phasePrepare", () => {
       workspace: undefined,
       taskId: "task_test0001",
       soulPrompt: "",
-      initialMode: "work",
       model: "gpt-5-mini",
       policy,
       debug: () => {},

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { AgentMode } from "./agent-contract";
-import { appConfig, setDefaultModel, setModeModel } from "./app-config";
+import { appConfig, setModel } from "./app-config";
 import { alignCols, formatCompactNumber } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
@@ -142,7 +141,7 @@ export type CommandContext = {
   exit: () => void;
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
-  openModelPanel: (mode?: AgentMode) => void | Promise<void>;
+  openModelPanel: () => void | Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   startAssistantTurn?: (userText: string) => Promise<void>;
@@ -170,30 +169,12 @@ function scopeLabel(scope: MemoryContextScope): string {
 }
 
 const modelIdSchema = z.string().trim().min(1).regex(/^\S+$/);
-const agentModeSchema = z.enum(["work", "verify"]);
 
-type ModelSelection =
-  | { kind: "default"; model: string }
-  | { kind: "mode"; mode: z.infer<typeof agentModeSchema>; model: string };
-
-function parseModelSelectionCommand(resolvedText: string): ModelSelection | null {
+function parseModelCommand(resolvedText: string): string | null {
   const parts = resolvedText.trim().split(/\s+/);
-  if (parts[0] !== "/model") return null;
-  if (parts.length === 2) {
-    const mode = agentModeSchema.safeParse(parts[1]);
-    if (mode.success) return null;
-    const parsed = modelIdSchema.safeParse(parts[1]);
-    if (!parsed.success) return null;
-    return { kind: "default", model: parsed.data };
-  }
-  if (parts.length === 3) {
-    const mode = agentModeSchema.safeParse(parts[1]);
-    if (!mode.success) return null;
-    const parsed = modelIdSchema.safeParse(parts[2]);
-    if (!parsed.success) return null;
-    return { kind: "mode", mode: mode.data, model: parsed.data };
-  }
-  return null;
+  if (parts[0] !== "/model" || parts.length !== 2) return null;
+  const parsed = modelIdSchema.safeParse(parts[1]);
+  return parsed.success ? parsed.data : null;
 }
 
 export async function dispatchSlashCommand(ctx: CommandContext): Promise<CommandResult> {
@@ -271,56 +252,27 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   }
 
   if (resolvedText.startsWith("/model ")) {
-    const parts = resolvedText.trim().split(/\s+/);
-    if (parts.length === 2) {
-      const mode = agentModeSchema.safeParse(parts[1]);
-      if (mode.success) {
-        ctx.openModelPanel(mode.data);
-        return { stop: true, userText: text };
-      }
-    }
-
-    const selection = parseModelSelectionCommand(resolvedText);
-    if (!selection) {
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", formatUsage("/model <id> | /model <work|verify> <id>")),
-      ]);
+    const model = parseModelCommand(resolvedText);
+    if (!model) {
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/model <id>"))]);
       return { stop: true, userText: text };
     }
     try {
-      if (selection.kind === "mode") {
-        const key = `models.${selection.mode}`;
-        if (ctx.persistModelConfig) {
-          await ctx.persistModelConfig(key, selection.model, "project");
-        } else {
-          await setConfigValue(key, selection.model, { scope: "project" });
-        }
-        setModeModel(selection.mode, selection.model);
-        ctx.setRows((current) => [
-          ...current,
-          createRow(
-            "system",
-            t("chat.model.changed.mode", { mode: selection.mode, model: formatModel(selection.model) }),
-          ),
-        ]);
-        return { stop: true, userText: text };
-      }
       if (ctx.persistModelConfig) {
-        await ctx.persistModelConfig("model", selection.model, "project");
+        await ctx.persistModelConfig("model", model, "project");
       } else {
-        await setConfigValue("model", selection.model, { scope: "project" });
+        await setConfigValue("model", model, { scope: "project" });
       }
-      setDefaultModel(selection.model);
+      setModel(model);
       const nextSession: Session = {
         ...ctx.currentSession,
-        model: selection.model,
+        model,
         updatedAt: nowIso(),
       };
       ctx.setCurrentSession(nextSession);
       ctx.setRows((current) => [
         ...current,
-        createRow("system", t("chat.model.changed.default", { model: formatModel(selection.model) })),
+        createRow("system", t("chat.model.changed", { model: formatModel(model) })),
       ]);
     } catch (error) {
       ctx.setRows((current) => [

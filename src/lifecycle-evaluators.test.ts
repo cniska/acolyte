@@ -1,126 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import {
-  guardRecoveryEvaluator,
-  repeatedFailureEvaluator,
-  toolRecoveryEvaluator,
-  verifyCycleEvaluator,
-} from "./lifecycle-evaluators";
+import { guardRecoveryEvaluator, repeatedFailureEvaluator, toolRecoveryEvaluator } from "./lifecycle-evaluators";
 import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
-
-describe("verifyCycleEvaluator", () => {
-  test("declares work and verify applicability", () => {
-    expect(verifyCycleEvaluator.modes).toEqual(["work", "verify"]);
-  });
-
-  test("enters verify mode when write tools used", () => {
-    const ctx = createRunContext({
-      initialMode: "work",
-      workspace: "/tmp/test",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["file-edit"]),
-    });
-    const outcome = verifyCycleEvaluator.evaluate(ctx);
-    expect(outcome.action.type).toBe("regenerate");
-    if (outcome.action.type === "regenerate") {
-      expect(outcome.action.transition).toEqual({ to: "verify" });
-    }
-  });
-
-  test("returns done when request disables verification", () => {
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "fix", history: [], verifyScope: "none" },
-      initialMode: "work",
-      workspace: "/tmp/test",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["file-edit"]),
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
-  });
-
-  test("returns done when verify already ran", () => {
-    const session = createSessionContext();
-    session.mode = "verify";
-    recordCall(session, "shell-run", { command: "bun run verify" });
-    const ctx = createRunContext({
-      initialMode: "work",
-      session,
-      workspace: "/tmp/test",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["file-edit"]),
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
-  });
-
-  test("returns done when no write tools used", () => {
-    const ctx = createRunContext({
-      initialMode: "work",
-      workspace: "/tmp/test",
-      result: { text: "Done.", toolCalls: [] },
-      observedTools: new Set(["file-read", "file-search"]),
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
-  });
-
-  test("returns done when no result", () => {
-    const ctx = createRunContext({ result: undefined });
-    expect(verifyCycleEvaluator.evaluate(ctx).action.type).toBe("done");
-  });
-
-  test("returns done in verify mode when review is clean", () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      lifecycleState: {
-        feedback: [],
-        reviewResult: { status: "clean" },
-      },
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
-  });
-
-  test("returns regenerate to work when review finds issues", () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Updated x.", toolCalls: [], signal: "done" },
-      lifecycleState: {
-        feedback: [],
-        reviewResult: {
-          status: "issues",
-          details: "Missing null check in src/a.ts.",
-        },
-      },
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({
-      type: "regenerate",
-      reason: "verify",
-      feedback: {
-        source: "verify",
-        summary: "Code review found issues to fix.",
-        details: "Missing null check in src/a.ts.",
-        instruction: "Fix the review findings, then continue.",
-      },
-      transition: { to: "work" },
-    });
-  });
-
-  test("returns done in verify mode when review is blocked", () => {
-    const ctx = createRunContext({
-      mode: "verify",
-      result: { text: "Need generated types to review this safely.", toolCalls: [], signal: "blocked" },
-      lifecycleState: {
-        feedback: [],
-        reviewResult: {
-          status: "blocked",
-          details: "Need generated types to review this safely.",
-        },
-      },
-    });
-    expect(verifyCycleEvaluator.evaluate(ctx).action).toEqual({ type: "done" });
-  });
-});
 
 describe("guardRecoveryEvaluator", () => {
   test("returns regenerate when guard-blocked error has pending guard feedback", () => {
@@ -131,7 +14,6 @@ describe("guardRecoveryEvaluator", () => {
         feedback: [
           {
             source: "guard",
-            mode: "work",
             summary: "The previous file-read call already used these arguments.",
             instruction: "Reuse the earlier result or change approach instead of repeating the same call.",
           },
@@ -256,7 +138,6 @@ describe("toolRecoveryEvaluator", () => {
     session.callLog = [{ toolName: "file-edit", args: { path: "src/priority.ts" }, status: "failed" }];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      initialMode: "work",
       session,
       observedTools: new Set(["file-read", "file-edit"]),
       currentError: {
@@ -284,7 +165,6 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns regenerate when code-edit exposes structured recovery", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editCodeNoMatch,
         tool: "code-edit",
@@ -314,7 +194,6 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns regenerate when code-edit rename target is ambiguous", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editCodeNoMatch,
         tool: "code-edit",
@@ -345,7 +224,6 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns regenerate when code-scan exposes structured recovery", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
         tool: "code-scan",
@@ -374,13 +252,8 @@ describe("toolRecoveryEvaluator", () => {
     }
   });
 
-  test("declares work-only applicability", () => {
-    expect(toolRecoveryEvaluator.modes).toEqual(["work"]);
-  });
-
   test("returns regenerate when file-search empty-scope exposes structured recovery", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesEmptyScope,
         tool: "file-search",
@@ -409,7 +282,6 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns regenerate when file-search no-match exposes structured recovery", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.searchFilesNoMatch,
         tool: "file-search",
@@ -441,7 +313,6 @@ describe("toolRecoveryEvaluator", () => {
 
   test("returns done when there is no structured tool recovery", () => {
     const ctx = createRunContext({
-      initialMode: "work",
       currentError: {
         code: TOOL_ERROR_CODES.editFileFindTooLarge,
         tool: "file-edit",
@@ -461,7 +332,6 @@ describe("toolRecoveryEvaluator", () => {
     ];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Rename symbol everywhere", history: [] },
-      initialMode: "work",
       session,
       currentError: {
         tool: "file-edit",

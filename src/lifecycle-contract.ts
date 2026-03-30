@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Agent, AgentMode } from "./agent-contract";
+import type { Agent } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCode } from "./error-contract";
@@ -91,14 +91,13 @@ export type StreamChunk =
   | { type: "tool-result"; payload: ToolResultPayload }
   | { type: "tool-error"; payload: ToolErrorPayload }
   | { type: "model-usage"; payload: ModelUsagePayload };
-export type ModeResolution = { model: string; provider: string };
+export type ModelResolution = { model: string; provider: string };
 export type PhasePrepareInput = {
   request: ChatRequest;
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
   memoryTokens?: number;
-  initialMode: AgentMode;
   model: string;
   policy: LifecyclePolicy;
   debug: RunContext["debug"];
@@ -112,51 +111,23 @@ export type PhasePrepareResult = {
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
-export type ReviewCandidate = {
-  result: GenerateResult | undefined;
-  currentError: LifecycleError | undefined;
-};
-
-export const reviewOutcomeStatusSchema = z.enum(["clean", "issues", "blocked"]);
-export type ReviewOutcomeStatus = z.infer<typeof reviewOutcomeStatusSchema>;
-
-export type ReviewResult = {
-  status: ReviewOutcomeStatus;
-  details?: string;
-  error?: LifecycleError;
-};
-
-export const feedbackSourceSchema = z.enum(["guard", "lint", "verify", "tool-recovery", "repeated-failure"]);
+export const feedbackSourceSchema = z.enum(["guard", "lint", "tool-recovery", "repeated-failure"]);
 export type FeedbackSource = z.infer<typeof feedbackSourceSchema>;
 
-export const regenerationReasonSchema = z.enum([
-  "guard-recovery",
-  "lint",
-  "verify",
-  "tool-recovery",
-  "repeated-failure",
-]);
+export const regenerationReasonSchema = z.enum(["guard-recovery", "lint", "tool-recovery", "repeated-failure"]);
 export type RegenerationReason = z.infer<typeof regenerationReasonSchema>;
 
 export type LifecycleFeedback = {
   source: FeedbackSource;
-  mode: AgentMode;
   summary: string;
   details?: string;
   instruction?: string;
 };
 
-export type LifecycleFeedbackInput = Omit<LifecycleFeedback, "mode">;
-
-export type LifecycleTransition = {
-  to: AgentMode;
-};
-
 export type RegenerateAction = {
   type: "regenerate";
   reason: RegenerationReason;
-  feedback?: LifecycleFeedbackInput;
-  transition?: LifecycleTransition;
+  feedback?: LifecycleFeedback;
   cycleLimit?: number;
 };
 
@@ -164,14 +135,11 @@ export type EffectAction = { type: "done" } | RegenerateAction;
 
 export type Effect = {
   id: string;
-  modes: readonly AgentMode[];
   run: (ctx: RunContext) => EffectAction;
 };
 
 export type LifecycleState = {
   feedback: LifecycleFeedback[];
-  reviewCandidate?: ReviewCandidate;
-  reviewResult?: ReviewResult;
   repeatedFailure?: {
     signature: string;
     count: number;
@@ -198,7 +166,6 @@ export type RunContext = {
   readonly soulPrompt: string;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
-  readonly initialMode: AgentMode;
   readonly tools: Toolset;
   readonly session: SessionContext;
   readonly baseAgentInput: string;
@@ -207,8 +174,6 @@ export type RunContext = {
   lifecycleState: LifecycleState;
   model: string;
   agent: Agent;
-  agentForMode: AgentMode;
-  mode: AgentMode;
   observedTools: Set<string>;
   modelCallCount: number;
   inputTokensAccum: number;
@@ -225,7 +190,7 @@ export type RunContext = {
   result?: GenerateResult;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
-  temperatures?: Partial<Record<AgentMode, number>>;
+  temperature?: number;
 };
 
 type GuardStats = { blocked: number; flagSet: number };
