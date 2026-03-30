@@ -164,7 +164,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     debugSink({
       event: event as LifecycleEventName,
       sequence: ++debugSequence,
-      phaseAttempt: 1,
       ts: new Date().toISOString(),
       fields,
     });

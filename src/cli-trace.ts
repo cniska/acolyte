@@ -25,7 +25,6 @@ const traceEventSchema = z.enum([
   "chat.request.started",
   "chat.request.completed",
   "lifecycle.workspace.profile",
-  "lifecycle.workspace.sandbox",
   "lifecycle.start",
   "lifecycle.prepare",
   "lifecycle.generate.start",
@@ -38,7 +37,6 @@ const traceEventSchema = z.enum([
   "lifecycle.tool.result",
   "lifecycle.tool.error",
   "lifecycle.tool.output",
-  "lifecycle.sandbox.violation",
   "lifecycle.guard",
   "lifecycle.signal.accepted",
   "lifecycle.skill.context",
@@ -77,20 +75,18 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     "test_command",
     "line_width",
   ],
-  "lifecycle.workspace.sandbox": ["sandbox_root"],
   "lifecycle.start": ["model"],
   "lifecycle.prepare": ["model", "history_messages"],
   "lifecycle.generate.start": ["model"],
   "lifecycle.generate.done": ["model", "tool_calls", "text_chars"],
   "lifecycle.generate.error": ["model", "error"],
   "lifecycle.error": ["source", "kind", "code", "category", "tool"],
-  "lifecycle.yield": ["generation_attempt"],
-  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "cmd", "args"],
+  "lifecycle.yield": [],
+  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "command"],
   "lifecycle.tool.cache": ["tool", "hit", "hits", "misses", "size"],
   "lifecycle.tool.result": ["tool", "duration_ms", "is_error"],
   "lifecycle.tool.error": ["tool", "error"],
   "lifecycle.tool.output": ["tool"],
-  "lifecycle.sandbox.violation": ["tool", "path", "paths", "cmd", "args"],
   "lifecycle.guard": ["guard", "tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
@@ -161,27 +157,13 @@ function parsePaths(raw: string): string[] {
   }
 }
 
-function parseArgs(raw: string): string[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is string => typeof entry === "string");
-  } catch {
-    return [];
-  }
-}
-
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
 function extractToolArg(fields: Record<string, string>): string {
   if (fields.path) return fields.path;
-  if (fields.cmd) {
-    const args = fields.args ? parseArgs(fields.args) : [];
-    const rendered = [fields.cmd, ...args].join(" ").trim();
-    return truncate(rendered, 40);
-  }
+  if (fields.command) return truncate(fields.command, 40);
   if (fields.pattern) return `"${fields.pattern}"`;
   if (fields.paths) return parsePaths(fields.paths).join(", ");
   return "";
