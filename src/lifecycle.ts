@@ -117,7 +117,6 @@ function createRunContext(
     promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
-    generationAttempt: 0,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
@@ -165,7 +164,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     debugSink({
       event: event as LifecycleEventName,
       sequence: ++debugSequence,
-      phaseAttempt: (ctxRef?.generationAttempt ?? 0) + 1,
+      phaseAttempt: 1,
       ts: new Date().toISOString(),
       fields,
     });

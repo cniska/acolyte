@@ -476,7 +476,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
-    generationAttempt: 0,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,

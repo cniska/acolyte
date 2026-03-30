@@ -85,9 +85,7 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
 export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {
   if (!shouldYield) return false;
   if (!shouldYield()) return false;
-  ctx.debug("lifecycle.yield", {
-    generation_attempt: ctx.generationAttempt,
-  });
+  ctx.debug("lifecycle.yield", {});
   if (!ctx.result?.text.trim()) {
     ctx.result = {
       text: "Yielding to a newer pending message.",
@@ -113,7 +111,6 @@ export function createRunAgent(input: {
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
   resetCycleStepCount(ctx.session, opts.cycleLimit);
-  ctx.generationAttempt += 1;
   const prompt = ctx.baseAgentInput;
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running" } });

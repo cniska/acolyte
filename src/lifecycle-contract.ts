@@ -155,7 +155,6 @@ export type RunContext = {
   promptBreakdownTotals: PromptBreakdownTotals;
   streamingChars: number;
   lastUsageEmitChars: number;
-  generationAttempt: number;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
