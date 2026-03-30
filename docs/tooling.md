@@ -22,20 +22,7 @@ All tool calls run through guarded execution paths to ensure:
 
 ## Workspace sandbox
 
-Tool filesystem access is enforced by the workspace sandbox boundary. Paths are
-validated against the active workspace root using resolved-path checks
-(`realpath`), including nearest-existing-parent validation for new file paths.
-Any attempt to cross that boundary fails closed with a structured
-`sandbox_violation` error.
-
-For `shell-run`, sandbox enforcement uses argv execution (`cmd` + `args`)
-without shell evaluation. Command paths and path-like arguments are validated
-against the workspace sandbox, and the process runs with a restricted
-environment allowlist. This is command-level enforcement, not kernel-level
-process isolation, and it does not constrain filesystem access performed
-internally by the executed binary.
-
-For workspace root and profile detection behavior, see [Workspace](./workspace.md).
+Tool filesystem access is scoped to the workspace root. See [Workspace](./workspace.md) for enforcement details.
 
 ## File discovery
 
