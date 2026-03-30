@@ -82,19 +82,6 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
   }).error;
 }
 
-export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {
-  if (!shouldYield) return false;
-  if (!shouldYield()) return false;
-  ctx.debug("lifecycle.yield", {});
-  if (!ctx.result?.text.trim()) {
-    ctx.result = {
-      text: "Yielding to a newer pending message.",
-      toolCalls: ctx.result?.toolCalls ?? [],
-    };
-  }
-  return true;
-}
-
 export function createRunAgent(input: {
   soulPrompt: string;
   workspace: string | undefined;

@@ -2,7 +2,7 @@ import { createErrorStats } from "./error-handling";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { createRunAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
+import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
@@ -24,7 +24,6 @@ export type LifecycleDeps = {
   phasePrepare: typeof phasePrepare;
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
-  shouldYieldNow: typeof shouldYieldNow;
   phaseSettle: typeof phaseSettle;
   phaseFinalize: typeof phaseFinalize;
 };
@@ -35,7 +34,6 @@ const defaultLifecycleDeps: LifecycleDeps = {
   phasePrepare,
   createRunAgent,
   phaseGenerate,
-  shouldYieldNow,
   phaseSettle,
   phaseFinalize,
 };
@@ -238,7 +236,13 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   });
 
   if (!ctx.result) return deps.phaseFinalize(ctx);
-  if (deps.shouldYieldNow(ctx, input.shouldYield)) return deps.phaseFinalize(ctx);
+  if (input.shouldYield?.()) {
+    ctx.debug("lifecycle.yield", {});
+    if (!ctx.result.text.trim()) {
+      ctx.result = { text: "Yielding to a newer pending message.", toolCalls: ctx.result.toolCalls };
+    }
+    return deps.phaseFinalize(ctx);
+  }
 
   await deps.phaseSettle(ctx, input.shouldYield);
 

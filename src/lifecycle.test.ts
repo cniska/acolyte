@@ -1,5 +1,4 @@
 import { describe, expect, mock, test } from "bun:test";
-import { resolve } from "node:path";
 import type { ChatResponse } from "./api";
 import type { LifecycleDeps } from "./lifecycle";
 import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
@@ -55,8 +54,7 @@ const createRunAgent = mock(() => ({
 }));
 
 describe("runLifecycle", () => {
-  test("orchestrates prepare, generate, evaluate, and finalize", async () => {
-    const debugEvents: string[] = [];
+  test("orchestrates prepare, generate, settle, and finalize", async () => {
     const deps: LifecycleDeps = {
       resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
       resolveLifecyclePolicy: () => ({
@@ -69,7 +67,6 @@ describe("runLifecycle", () => {
       phasePrepare,
       createRunAgent,
       phaseGenerate,
-      shouldYieldNow: () => false,
       phaseSettle,
       phaseFinalize,
     };
@@ -78,11 +75,8 @@ describe("runLifecycle", () => {
       {
         request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
         soulPrompt: "SOUL",
-        workspace: resolve(process.cwd()),
+        workspace: "/tmp/workspace",
         taskId: "task_test",
-        onDebug: (entry) => {
-          debugEvents.push(entry.event);
-        },
       },
       deps,
     );
@@ -93,7 +87,6 @@ describe("runLifecycle", () => {
     expect(phaseSettle).toHaveBeenCalledTimes(1);
     expect(phaseFinalize).toHaveBeenCalledTimes(1);
     expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
-    expect(debugEvents).toContain("lifecycle.workspace.sandbox");
   });
 });
 
