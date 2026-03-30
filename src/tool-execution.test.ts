@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
-import { LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import { guardedExecute, withToolError } from "./tool-execution";
 import { createSessionContext } from "./tool-guards";
 
@@ -52,11 +52,30 @@ describe("per-tool timeout", () => {
     session.toolTimeoutMs = 50;
     const result = await guardedExecute(
       "shell-run",
-      { command: "npm test", timeoutMs: 300 },
+      { cmd: "npm", args: ["test"], timeoutMs: 300 },
       session,
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
       { timeoutMs: 300 },
     );
     expect(result).toBe("done");
+  });
+
+  test("emits debug event when a tool fails with sandbox violation", async () => {
+    const session = createSessionContext();
+    const debugEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
+    session.onDebug = (event, data) => {
+      debugEvents.push({ event, data });
+    };
+
+    await expect(
+      guardedExecute("file-read", { path: "/etc/hosts" }, session, async () =>
+        Promise.reject(Object.assign(new Error("blocked"), { code: TOOL_ERROR_CODES.sandboxViolation })),
+      ),
+    ).rejects.toThrow("blocked");
+
+    expect(debugEvents).toContainEqual({
+      event: "lifecycle.sandbox.violation",
+      data: { tool: "file-read", path: "/etc/hosts" },
+    });
   });
 });

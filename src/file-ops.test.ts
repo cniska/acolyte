@@ -1,7 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { TOOL_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import {
   deleteTextFile,
   editFile,
@@ -24,37 +25,47 @@ afterAll(async () => {
 
 describe("path guards", () => {
   test("readFileContent blocks paths outside workspace", async () => {
-    await expect(readFileContent(WORKSPACE, "/etc/hosts")).rejects.toThrow("restricted to the workspace or /tmp");
+    await expect(readFileContent(WORKSPACE, "/etc/hosts")).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("editFile blocks paths outside workspace", async () => {
     await expect(
       editFile({ workspace: WORKSPACE, path: "/etc/hosts", edits: [{ find: "a", replace: "b" }] }),
-    ).rejects.toThrow("restricted to the workspace or /tmp");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("writeTextFile blocks paths outside workspace", async () => {
-    await expect(writeTextFile({ workspace: WORKSPACE, path: "/etc/acolyte.txt", content: "x" })).rejects.toThrow(
-      "restricted to the workspace or /tmp",
+    await expect(writeTextFile({ workspace: WORKSPACE, path: "/etc/acolyte.txt", content: "x" })).rejects.toMatchObject(
+      {
+        code: TOOL_ERROR_CODES.sandboxViolation,
+        kind: ERROR_KINDS.sandboxViolation,
+      },
     );
   });
 
   test("deleteTextFile blocks paths outside workspace", async () => {
-    await expect(deleteTextFile({ workspace: WORKSPACE, path: "/etc/hosts" })).rejects.toThrow(
-      "restricted to the workspace or /tmp",
-    );
+    await expect(deleteTextFile({ workspace: WORKSPACE, path: "/etc/hosts" })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
-  test("readFileContent allows /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-read-${testUuid()}.txt`;
+  test("readFileContent allows workspace files", async () => {
+    const filePath = join(WORKSPACE, `acolyte-test-read-${testUuid()}.txt`);
     tempFiles.push(filePath);
-    await writeFile(filePath, "hello from tmp", "utf8");
+    await writeFile(filePath, "hello from workspace", "utf8");
     const output = await readFileContent(WORKSPACE, filePath);
-    expect(output).toContain("hello from tmp");
+    expect(output).toContain("hello from workspace");
   });
 
   test("readFileContent rejects files exceeding maxLines", async () => {
-    const filePath = `/tmp/acolyte-test-large-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-large-${testUuid()}.txt`);
     tempFiles.push(filePath);
     const lines = Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n");
     await writeFile(filePath, lines, "utf8");
@@ -62,7 +73,7 @@ describe("path guards", () => {
   });
 
   test("readFileContent allows files at exactly maxLines", async () => {
-    const filePath = `/tmp/acolyte-test-exact-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-exact-${testUuid()}.txt`);
     tempFiles.push(filePath);
     const lines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n");
     await writeFile(filePath, lines, "utf8");
@@ -71,16 +82,16 @@ describe("path guards", () => {
   });
 
   test("readFileContents rejects batch when any file exceeds maxLines", async () => {
-    const small = `/tmp/acolyte-test-small-${testUuid()}.txt`;
-    const large = `/tmp/acolyte-test-large-${testUuid()}.txt`;
+    const small = join(WORKSPACE, `acolyte-test-small-${testUuid()}.txt`);
+    const large = join(WORKSPACE, `acolyte-test-large-${testUuid()}.txt`);
     tempFiles.push(small, large);
     await writeFile(small, "ok", "utf8");
     await writeFile(large, Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n"), "utf8");
     await expect(readFileContents(WORKSPACE, [small, large], 10)).rejects.toThrow(/too large/);
   });
 
-  test("editFile allows /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-edit-${testUuid()}.txt`;
+  test("editFile allows workspace files", async () => {
+    const filePath = join(WORKSPACE, `acolyte-test-edit-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     const output = await editFile({
@@ -106,7 +117,7 @@ describe("editFile", () => {
   });
 
   test("rejects multi-match find text", async () => {
-    const filePath = `/tmp/acolyte-test-multi-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-multi-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "foo bar foo baz foo", "utf8");
     await expect(
@@ -115,7 +126,7 @@ describe("editFile", () => {
   });
 
   test("rejects missing find text with a structured error code", async () => {
-    const filePath = `/tmp/acolyte-test-not-found-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-not-found-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     await expect(
@@ -124,7 +135,7 @@ describe("editFile", () => {
   });
 
   test("emits structured recovery metadata for bounded edit failures", async () => {
-    const filePath = `/tmp/acolyte-test-recovery-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-recovery-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta", "utf8");
     await expect(
@@ -141,7 +152,7 @@ describe("editFile", () => {
   });
 
   test("allows a tiny whole-file snippet when it is only a few lines", async () => {
-    const filePath = `/tmp/acolyte-test-small-snippet-${crypto.randomUUID()}.md`;
+    const filePath = join(WORKSPACE, `acolyte-test-small-snippet-${crypto.randomUUID()}.md`);
     tempFiles.push(filePath);
     await writeFile(filePath, "# Demo\n\n## Documentation\n- [Contributing](CONTRIBUTING.md)\n", "utf8");
 
@@ -161,7 +172,7 @@ describe("editFile", () => {
   });
 
   test("rejects long find snippets even when they are unique", async () => {
-    const filePath = `/tmp/acolyte-test-long-snippet-${crypto.randomUUID()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-long-snippet-${crypto.randomUUID()}.txt`);
     tempFiles.push(filePath);
     const content = Array.from({ length: 10 }, (_, index) => `line-${index + 1}`).join("\n");
     await writeFile(filePath, `${content}\n`, "utf8");
@@ -184,7 +195,7 @@ describe("editFile", () => {
   });
 
   test("rejects oversized replace blocks for find-based edits", async () => {
-    const filePath = `/tmp/acolyte-test-large-replace-${crypto.randomUUID()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-large-replace-${crypto.randomUUID()}.ts`);
     tempFiles.push(filePath);
     const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
     await writeFile(filePath, `${content}\n`, "utf8");
@@ -204,7 +215,7 @@ describe("editFile", () => {
   });
 
   test("rejects batched find edits that rewrite too much of the file", async () => {
-    const filePath = `/tmp/acolyte-test-batch-rewrite-${crypto.randomUUID()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-batch-rewrite-${crypto.randomUUID()}.ts`);
     tempFiles.push(filePath);
     const content = Array.from({ length: 40 }, (_, index) => `line-${index + 1}`).join("\n");
     await writeFile(filePath, `${content}\n`, "utf8");
@@ -222,7 +233,7 @@ describe("editFile", () => {
   });
 
   test("rejects replace text that duplicates content after edit point", async () => {
-    const filePath = `/tmp/acolyte-test-dup-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-dup-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\nline6", "utf8");
     await expect(
@@ -235,7 +246,7 @@ describe("editFile", () => {
   });
 
   test("line-range basic replacement", async () => {
-    const filePath = `/tmp/acolyte-test-lr-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
     const result = await editFile({
@@ -249,7 +260,7 @@ describe("editFile", () => {
   });
 
   test("line-range rejects startLine > endLine", async () => {
-    const filePath = `/tmp/acolyte-test-lr2-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr2-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     await expect(
@@ -258,7 +269,7 @@ describe("editFile", () => {
   });
 
   test("line-range clamps endLine beyond file", async () => {
-    const filePath = `/tmp/acolyte-test-lr3-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr3-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\n", "utf8");
     await editFile({ workspace: WORKSPACE, path: filePath, edits: [{ startLine: 1, endLine: 10, replace: "x" }] });
@@ -267,7 +278,7 @@ describe("editFile", () => {
   });
 
   test("line-range rejects line numbers < 1", async () => {
-    const filePath = `/tmp/acolyte-test-lr4-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr4-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\n", "utf8");
     await expect(
@@ -276,7 +287,7 @@ describe("editFile", () => {
   });
 
   test("mixed find/replace and line-range", async () => {
-    const filePath = `/tmp/acolyte-test-lr5-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr5-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "aaa\nbbb\nccc\nddd\neee\n", "utf8");
     const result = await editFile({
@@ -293,7 +304,7 @@ describe("editFile", () => {
   });
 
   test("line-range overlapping ranges rejected", async () => {
-    const filePath = `/tmp/acolyte-test-lr6-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr6-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "a\nb\nc\nd\ne\n", "utf8");
     await expect(
@@ -309,7 +320,7 @@ describe("editFile", () => {
   });
 
   test("line-range full-file replacement", async () => {
-    const filePath = `/tmp/acolyte-test-lr7-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr7-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\nline4\nline5\n", "utf8");
     const result = await editFile({
@@ -323,7 +334,7 @@ describe("editFile", () => {
   });
 
   test("line-range rejects whole-file clear edits", async () => {
-    const filePath = `/tmp/acolyte-test-lr8-${testUuid()}.txt`;
+    const filePath = join(WORKSPACE, `acolyte-test-lr8-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "line1\nline2\nline3\n", "utf8");
     await expect(
@@ -367,8 +378,8 @@ describe("searchFiles", () => {
 });
 
 describe("writeTextFile", () => {
-  test("creates /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-write-${testUuid()}.txt`;
+  test("creates workspace files", async () => {
+    const filePath = join(WORKSPACE, `acolyte-test-write-${testUuid()}.txt`);
     tempFiles.push(filePath);
     const result = await writeTextFile({ workspace: WORKSPACE, path: filePath, content: "hello" });
     expect(result).toContain("bytes=5");
@@ -376,8 +387,8 @@ describe("writeTextFile", () => {
 });
 
 describe("deleteTextFile", () => {
-  test("deletes /tmp files", async () => {
-    const filePath = `/tmp/acolyte-test-delete-${testUuid()}.txt`;
+  test("deletes workspace files", async () => {
+    const filePath = join(WORKSPACE, `acolyte-test-delete-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
     const result = await deleteTextFile({ workspace: WORKSPACE, path: filePath });
@@ -411,6 +422,20 @@ describe("searchFiles", () => {
     const result = await searchFiles(WORKSPACE, ["needle"], 20, [dir]);
     expect(result).toContain("inside.ts:1:");
     expect(result).not.toContain(outside.split("/").at(-1) ?? "");
+  });
+
+  test("accepts canonical absolute paths inside a symlinked workspace root", async () => {
+    const root = await mkdtemp(join(tmpdir(), "acolyte-search-sandbox-"));
+    tempDirs.push(root);
+    const realWorkspace = join(root, "real-workspace");
+    const linkWorkspace = join(root, "workspace-link");
+    const filePath = join(realWorkspace, "inside.ts");
+    await mkdir(realWorkspace, { recursive: true });
+    await writeFile(filePath, 'export const inside = "needle";\n', "utf8");
+    await symlink(realWorkspace, linkWorkspace);
+
+    const result = await searchFiles(linkWorkspace, ["needle"], 20, [filePath]);
+    expect(result).toContain("inside.ts:1:");
   });
 });
 

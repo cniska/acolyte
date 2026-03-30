@@ -470,6 +470,13 @@ const redundantFindGuard = createRedundantDiscoveryGuard({
   },
 });
 
+function shellRunCommandString(args: Record<string, unknown>): string {
+  const cmd = typeof args.cmd === "string" ? args.cmd.trim() : "";
+  if (!cmd) return "";
+  const argv = Array.isArray(args.args) ? args.args.filter((entry): entry is string => typeof entry === "string") : [];
+  return formatWorkspaceCommand({ bin: cmd, args: argv });
+}
+
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",
@@ -655,7 +662,7 @@ const shellBypassGuard: ToolGuard = {
   description: "Block shell commands that bypass dedicated tools.",
   tools: ["shell-run"],
   check({ args }) {
-    const command = typeof args.command === "string" ? args.command : "";
+    const command = shellRunCommandString(args);
     if (!command) return allowGuard();
     for (const { pattern, tool } of GIT_WRITE_COMMANDS) {
       if (pattern.test(command)) {
@@ -686,7 +693,7 @@ const lifecycleCommandGuard: ToolGuard = {
   check({ args, session }) {
     const profile = session.workspaceProfile;
     if (!profile) return allowGuard();
-    const command = typeof args.command === "string" ? args.command : "";
+    const command = shellRunCommandString(args);
     if (!command) return allowGuard();
     if (commandMatchesProfile(command, profile)) {
       return blockGuard(

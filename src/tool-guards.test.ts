@@ -2,6 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
 import { createSessionContext, type GuardEvent, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
 
+function shellRunArgs(command: string): { cmd: string; args: string[] } {
+  const tokens = command
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  return { cmd: tokens[0] ?? "", args: tokens.slice(1) };
+}
+
 describe("guard events", () => {
   test("emits GuardEvent payload when a guard blocks", () => {
     const events: GuardEvent[] = [];
@@ -82,9 +90,9 @@ describe("shell-run duplicate guard", () => {
     const events: GuardEvent[] = [];
     const session = createSessionContext();
     session.onGuard = (event) => events.push(event);
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "shell-run", shellRunArgs("bun run verify"));
 
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).toThrow(
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun run verify"), session })).toThrow(
       /Duplicate shell-run call detected/,
     );
     expect(events.some((event) => event.guardId === "duplicate-call")).toBe(true);
@@ -92,29 +100,29 @@ describe("shell-run duplicate guard", () => {
 
   test("allows first shell-run call", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun run verify"), session })).not.toThrow();
   });
 
   test("blocks duplicate shell-run command when no writes happened since previous run", () => {
     const session = createSessionContext();
-    recordCall(session, "shell-run", { command: "npm test" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "npm test" }, session })).toThrow(
+    recordCall(session, "shell-run", shellRunArgs("npm test"));
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("npm test"), session })).toThrow(
       /Duplicate shell-run call detected/,
     );
   });
 
   test("allows a different shell-run command", () => {
     const session = createSessionContext();
-    recordCall(session, "shell-run", { command: "npm test" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
+    recordCall(session, "shell-run", shellRunArgs("npm test"));
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun run verify"), session })).not.toThrow();
   });
 
   test("allows shell-run rerun after a write", () => {
     const session = createSessionContext();
     session.writeTools = new Set(["file-edit", "shell-run"]);
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "shell-run", shellRunArgs("bun run verify"));
     recordCall(session, "file-edit", { path: "src/foo.ts" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun run verify" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun run verify"), session })).not.toThrow();
   });
 });
 
@@ -215,7 +223,7 @@ describe("file-churn guard", () => {
 
   test("still blocks heavy churn even when a verify command already ran", () => {
     const session = createSessionContext();
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "shell-run", shellRunArgs("bun run verify"));
     for (let i = 0; i < 8; i++) {
       recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
       recordCall(session, "file-edit", { path: "src/foo.ts" });
@@ -227,7 +235,7 @@ describe("file-churn guard", () => {
 
   test("still blocks immediate duplicate edit calls after a verify command", () => {
     const session = createSessionContext();
-    recordCall(session, "shell-run", { command: "bun run verify" });
+    recordCall(session, "shell-run", shellRunArgs("bun run verify"));
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
     recordCall(session, "file-edit", { path: "src/foo.ts" });
     recordCall(session, "file-read", { paths: [{ path: "src/foo.ts" }] });
@@ -528,8 +536,8 @@ describe("duplicate-call guard", () => {
 
   test("treats whitespace-only arg changes as duplicates", () => {
     const session = createSessionContext();
-    recordCall(session, "shell-run", { command: "bun run verify" });
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "  bun run verify  " }, session })).toThrow(
+    recordCall(session, "shell-run", shellRunArgs("bun run verify"));
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("  bun run verify  "), session })).toThrow(
       /Duplicate shell-run call detected/,
     );
   });
@@ -701,21 +709,21 @@ describe("circuit-breaker guard", () => {
 describe("shell-bypass guard", () => {
   test("blocks git commit via shell-run", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "git commit -m 'test'" }, session })).toThrow(
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("git commit -m 'test'"), session })).toThrow(
       /use the dedicated git-commit tool/i,
     );
   });
 
   test("blocks git add via shell-run", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "git add -A" }, session })).toThrow(
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("git add -A"), session })).toThrow(
       /use the dedicated git-add tool/i,
     );
   });
 
   test("blocks git push via shell-run", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "git push origin main" }, session })).toThrow(
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("git push origin main"), session })).toThrow(
       /blocked via shell-run/i,
     );
   });
@@ -723,20 +731,20 @@ describe("shell-bypass guard", () => {
   test("blocks chained git commands via shell-run", () => {
     const session = createSessionContext();
     expect(() =>
-      runGuards({ toolName: "shell-run", args: { command: "git add . && git commit -m 'fix'" }, session }),
+      runGuards({ toolName: "shell-run", args: shellRunArgs("git add . && git commit -m 'fix'"), session }),
     ).toThrow(/use the dedicated/i);
   });
 
   test("allows non-git shell commands", () => {
     const session = createSessionContext();
     expect(() =>
-      runGuards({ toolName: "shell-run", args: { command: "bun test src/foo.test.ts" }, session }),
+      runGuards({ toolName: "shell-run", args: shellRunArgs("bun test src/foo.test.ts"), session }),
     ).not.toThrow();
   });
 
   test("allows git read commands via shell-run", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "git status" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("git status"), session })).not.toThrow();
   });
 });
 
@@ -744,26 +752,26 @@ describe("lifecycle-command guard", () => {
   test("blocks test command", () => {
     const session = createSessionContext();
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun test" }, session })).toThrow(/test-run/);
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun test"), session })).toThrow(/test-run/);
   });
 
   test("blocks lint command", () => {
     const session = createSessionContext();
     session.workspaceProfile = { lintCommand: { bin: "bunx", args: ["biome", "check"] } };
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bunx biome check" }, session })).toThrow(
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bunx biome check"), session })).toThrow(
       /automatically/,
     );
   });
 
   test("allows commands when no workspace profile", () => {
     const session = createSessionContext();
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "bun test" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("bun test"), session })).not.toThrow();
   });
 
   test("allows unrelated commands", () => {
     const session = createSessionContext();
     session.workspaceProfile = { testCommand: { bin: "bun", args: ["test", "$FILES"] } };
-    expect(() => runGuards({ toolName: "shell-run", args: { command: "echo hello" }, session })).not.toThrow();
+    expect(() => runGuards({ toolName: "shell-run", args: shellRunArgs("echo hello"), session })).not.toThrow();
   });
 });
 

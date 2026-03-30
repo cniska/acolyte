@@ -14,7 +14,8 @@ import { TOOL_ERROR_CODES } from "./error-contract";
 import { escapeRegex } from "./string-utils";
 import { createToolError } from "./tool-error";
 import type { EditCodeRecoveryKind, ToolRecovery } from "./tool-recovery";
-import { createDiff, displayPathForDiff, ensurePathWithinAllowedRoots, IGNORED_DIRS } from "./tool-utils";
+import { createDiff, displayPathForDiff, IGNORED_DIRS } from "./tool-utils";
+import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecovery {
   switch (kind) {
@@ -571,7 +572,7 @@ export async function editCode(input: {
   path: string;
   edits: EditCodeEdit[];
 }): Promise<EditCodeResult> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
+  const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const pathStats = await stat(absPath);
 
   if (pathStats.isDirectory()) {
@@ -688,7 +689,7 @@ export async function scanCode(input: {
   let scanned = 0;
 
   const scanPath = async (rawPath: string) => {
-    const absPath = ensurePathWithinAllowedRoots(rawPath, input.workspace);
+    const absPath = ensurePathWithinSandbox(rawPath, input.workspace);
     const info = await stat(absPath);
 
     if (info.isFile()) {

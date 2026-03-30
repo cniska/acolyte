@@ -15,7 +15,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
-            args: { command: "echo hi" },
+            args: { cmd: "echo", args: ["hi"] },
           });
           options.onEvent({
             type: "tool-output",
@@ -553,7 +553,7 @@ describe("chat message handler stream behavior", () => {
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
-            args: { command: "echo hi" },
+            args: { cmd: "echo", args: ["hi"] },
           });
           options.onEvent({
             type: "tool-output",

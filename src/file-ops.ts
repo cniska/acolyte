@@ -12,10 +12,10 @@ import {
   createDiff,
   createUnifiedDeleteDiff,
   displayPathForDiff,
-  ensurePathWithinAllowedRoots,
   isBinaryExtension,
   resolveSearchScopeFiles,
 } from "./tool-utils";
+import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
@@ -191,7 +191,7 @@ export async function searchFiles(
 }
 
 export async function readFileContent(workspace: string, path: string, maxLines?: number): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(path, workspace);
+  const absPath = ensurePathWithinSandbox(path, workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
   if (maxLines !== undefined && lines.length > maxLines) {
@@ -217,7 +217,7 @@ export async function editFile(input: {
   edits: FileEdit[];
   dryRun?: boolean;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
+  const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
 
@@ -368,7 +368,7 @@ export async function writeTextFile(input: {
   content: string;
   overwrite?: boolean;
 }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
+  const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const overwrite = input.overwrite ?? true;
   let previousContent: string | null = null;
 
@@ -394,7 +394,7 @@ export async function writeTextFile(input: {
 }
 
 export async function deleteTextFile(input: { workspace: string; path: string; dryRun?: boolean }): Promise<string> {
-  const absPath = ensurePathWithinAllowedRoots(input.path, input.workspace);
+  const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const previousContent = await readFile(absPath, "utf8");
   const dryRun = input.dryRun ?? false;
   if (!dryRun) await unlink(absPath);

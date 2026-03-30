@@ -13,6 +13,5 @@ describe("workspace self-detection", () => {
     expect(profile.lintCommand).toEqual({ bin: "bunx", args: ["biome", "check"] });
     expect(profile.formatCommand).toEqual({ bin: "bunx", args: ["biome", "check", "--write"] });
     expect(profile.testCommand).toEqual({ bin: "bun", args: ["test", "$FILES"] });
-    expect(profile.lineWidth).toBe(120);
   });
 });

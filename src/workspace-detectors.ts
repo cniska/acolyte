@@ -31,13 +31,6 @@ export function readText(workspace: string, name: string): string | null {
   }
 }
 
-function detectLineWidthFromEditorconfig(workspace: string): number | null {
-  const text = readText(workspace, ".editorconfig");
-  if (!text) return null;
-  const match = text.match(/max_line_length\s*=\s*(\d+)/);
-  return match ? Number(match[1]) : null;
-}
-
 function packageRunner(pm: string): WorkspaceCommand {
   switch (pm) {
     case "bun":
@@ -60,7 +53,6 @@ export type EcosystemDetector = {
   detectLintCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectFormatCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectTestCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
-  detectLineWidth?: (workspace: string) => number | null;
 };
 
 function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProfile | null {
@@ -69,8 +61,7 @@ function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProf
   const lintCommand = eco.detectLintCommand?.(ctx) ?? undefined;
   const formatCommand = eco.detectFormatCommand?.(ctx) ?? undefined;
   const testCommand = eco.detectTestCommand?.(ctx) ?? undefined;
-  const lineWidth = eco.detectLineWidth?.(workspace) ?? undefined;
-  return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, testCommand, lineWidth };
+  return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, testCommand };
 }
 
 const typescriptDetector: EcosystemDetector = {
@@ -151,30 +142,6 @@ const typescriptDetector: EcosystemDetector = {
     }
     return null;
   },
-
-  detectLineWidth(workspace) {
-    for (const name of ["biome.json", "biome.jsonc"]) {
-      const raw = readJson(workspace, name);
-      if (!raw) continue;
-      const width = (raw as { formatter?: { lineWidth?: unknown } }).formatter?.lineWidth;
-      if (typeof width === "number" && width > 0) return width;
-    }
-    for (const name of ["deno.json", "deno.jsonc"]) {
-      const raw = readJson(workspace, name);
-      if (!raw) continue;
-      const width = (raw as { fmt?: { lineWidth?: unknown } }).fmt?.lineWidth;
-      if (typeof width === "number" && width > 0) return width;
-    }
-    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
-    if (editorconfigWidth) return editorconfigWidth;
-    for (const name of [".prettierrc", ".prettierrc.json"]) {
-      const raw = readJson(workspace, name);
-      if (!raw) continue;
-      const width = (raw as { printWidth?: unknown }).printWidth;
-      if (typeof width === "number" && width > 0) return width;
-    }
-    return null;
-  },
 };
 
 const pythonDetector: EcosystemDetector = {
@@ -224,12 +191,6 @@ const pythonDetector: EcosystemDetector = {
       return { bin: "pytest", args: ["$FILES"] };
     return null;
   },
-
-  detectLineWidth(workspace) {
-    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
-    if (editorconfigWidth) return editorconfigWidth;
-    return null;
-  },
 };
 
 const goDetector: EcosystemDetector = {
@@ -242,12 +203,6 @@ const goDetector: EcosystemDetector = {
   },
   detectFormatCommand: () => ({ bin: "gofmt", args: ["-w"] }),
   detectTestCommand: () => ({ bin: "go", args: ["test", "$FILES"] }),
-
-  detectLineWidth(workspace) {
-    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
-    if (editorconfigWidth) return editorconfigWidth;
-    return null;
-  },
 };
 
 const rustDetector: EcosystemDetector = {
@@ -256,12 +211,6 @@ const rustDetector: EcosystemDetector = {
   detectLintCommand: () => ({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings"] }),
   detectFormatCommand: () => ({ bin: "cargo", args: ["fmt"] }),
   detectTestCommand: () => ({ bin: "cargo", args: ["test", "--", "$FILES"] }),
-
-  detectLineWidth(workspace) {
-    const editorconfigWidth = detectLineWidthFromEditorconfig(workspace);
-    if (editorconfigWidth) return editorconfigWidth;
-    return null;
-  },
 };
 
 export const ECOSYSTEM_DETECTORS: readonly EcosystemDetector[] = [

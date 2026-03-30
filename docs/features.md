@@ -32,7 +32,7 @@ Shipped, user-visible capabilities.
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
 - two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
-- workspace profile detection for ecosystem, package manager, lint, format, test commands, and line width
+- workspace profile detection for ecosystem, package manager, lint, format, and test commands
 - automatic formatting of edited files via detected formatter
 - automatic linting of edited files via detected linter
 - ecosystem-aware scoped test runner (`test-run`) with auto-detected test command
@@ -61,7 +61,7 @@ Shipped, user-visible capabilities.
 
 ## Safety and control
 
-- workspace and temp-root path guardrails
+- workspace sandbox boundary enforcement for tool filesystem access
 - cooperative interruption and queued message handling over RPC
 
 ## Diagnostics

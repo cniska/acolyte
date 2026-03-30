@@ -38,8 +38,8 @@ describe("createInstructions", () => {
       ["file-create", "full content"],
       ["file-find", "name/path pattern"],
       ["file-search", "text/regex"],
-      ["shell-run", "explicit user commands", "known repo commands"],
-      ["do not use shell", "file read/search/edit fallbacks"],
+      ["shell-run", "user explicitly asked", "known repository commands"],
+      ["do not use it for file read/search/edit fallbacks"],
     ]);
   });
 

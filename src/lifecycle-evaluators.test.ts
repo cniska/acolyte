@@ -5,6 +5,14 @@ import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
+function shellRunArgs(command: string): { cmd: string; args: string[] } {
+  const tokens = command
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  return { cmd: tokens[0] ?? "", args: tokens.slice(1) };
+}
+
 describe("guardRecoveryEvaluator", () => {
   test("returns regenerate when guard-blocked error has pending guard feedback", () => {
     const ctx = createRunContext({
@@ -108,7 +116,7 @@ describe("repeatedFailureEvaluator", () => {
 
   test("tracks different shell-run failures as different repeated-failure streaks", () => {
     const session = createSessionContext("task_repeat");
-    recordCall(session, "shell-run", { command: "bun test src/a.test.ts" });
+    recordCall(session, "shell-run", shellRunArgs("bun test src/a.test.ts"));
 
     const ctx = createRunContext({
       taskId: "task_repeat",
@@ -125,7 +133,7 @@ describe("repeatedFailureEvaluator", () => {
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
 
-    recordCall(session, "shell-run", { command: "bun test src/b.test.ts" });
+    recordCall(session, "shell-run", shellRunArgs("bun test src/b.test.ts"));
     updateRepeatedFailureState(ctx);
     expect(ctx.lifecycleState.repeatedFailure?.count).toBe(1);
     expect(ctx.lifecycleState.repeatedFailure?.signature).toContain("src/b.test.ts");

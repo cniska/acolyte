@@ -63,4 +63,4 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
-| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, commands, and line width |
+| Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

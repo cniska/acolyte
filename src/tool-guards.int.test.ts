@@ -117,7 +117,7 @@ describe("guard regression integration", () => {
               id: "fc_duplicate_1",
               callId: "call_duplicate_1",
               name: toolName,
-              args: JSON.stringify({ command: "echo duplicate-guard-check" }),
+              args: JSON.stringify({ cmd: "echo", args: ["duplicate-guard-check"] }),
             },
           ]);
         }
@@ -129,7 +129,7 @@ describe("guard regression integration", () => {
               id: "fc_duplicate_2",
               callId: "call_duplicate_2",
               name: toolName,
-              args: JSON.stringify({ command: "echo duplicate-guard-check" }),
+              args: JSON.stringify({ cmd: "echo", args: ["duplicate-guard-check"] }),
             },
           ]);
         }

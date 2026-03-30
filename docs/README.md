@@ -17,6 +17,7 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 ## Core concepts
 
 - [Architecture](./architecture.md) — system map of runtime flow and boundaries
+- [Workspace](./workspace.md) — workspace root, sandbox, and profile behavior
 - [Errors](./errors.md) — error contracts, runtime classes, and recovery boundaries
 - [Lifecycle](./lifecycle.md) — one request through a bounded phase loop
 - [TUI](./tui.md) — custom React reconciler for terminal rendering

@@ -117,9 +117,9 @@ describe("localization baseline", () => {
     expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);
     expectIntent(gitShowInstruction, [["committed history"], ["uncommitted edits"]]);
     expectIntent(runCommandInstruction, [
-      ["explicit user commands"],
-      ["known repo commands"],
-      ["do not use shell", "fallbacks"],
+      ["user explicitly asked"],
+      ["known repository commands"],
+      ["do not use it for file read/search/edit fallbacks"],
     ]);
     expectIntent(runTestsInstruction, [
       ["validate touched behavior"],

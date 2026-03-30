@@ -11,6 +11,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
 - **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
 - **Effects** — lifecycle-owned side effects that run between generation and pure evaluation
+- **Workspace sandbox** — canonical workspace-root boundary for tool filesystem access
 - **Tools** — typed definitions with categories, schemas, and output contracts
 - **Guards** — pre-tool policy units that inspect runtime state and decide allow or block
 - **Evaluators** — post-generation policy units that decide accept or re-generate
@@ -68,6 +69,7 @@ lifecycle → guard → cache → toolkit → registry
 - **cache:** per-task reuse layer for read-only and search tool results
 - **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
 - **registry:** toolkit registration and agent-facing tool surface
+- **workspace sandbox:** canonical path boundary checks for tool file access and symlink-escape prevention
 - **details:** see [Tooling](./tooling.md)
 
 ## Lifecycle flow

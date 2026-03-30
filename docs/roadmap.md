@@ -22,7 +22,7 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 - Multi-provider support (OpenAI, Anthropic, Google)
 - SQLite-backed cross-task tool cache
 - Structured model-to-user handoff for blocked signals (`awaiting-input` state)
-- Workspace profile detection for ecosystem, lint, format, test runner, package manager, and line width
+- Workspace profile detection for ecosystem, lint, format, test runner, and package manager
 - Format → lint evaluator chain from detected workspace commands
 - Ecosystem-aware scoped test runner with auto-detected test command
 - Pluggable ecosystem detectors for TypeScript, Python, Go, Rust

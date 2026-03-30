@@ -37,7 +37,8 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
       }
 
       const resolvedArgs = testCommand.args.flatMap((arg) => (arg === "$FILES" ? toolInput.files : [arg]));
-      const command = formatWorkspaceCommand({ bin: testCommand.bin, args: resolvedArgs });
+      const commandSpec = { cmd: testCommand.bin, args: resolvedArgs };
+      const command = formatWorkspaceCommand({ bin: commandSpec.cmd, args: commandSpec.args });
 
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         onOutput({
@@ -48,7 +49,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
         const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
         const rawResult = await runShellCommand(
           input.workspace,
-          command,
+          commandSpec,
           toolInput.timeoutMs ?? 60_000,
           ({ stream, text }) => {
             for (const line of text.split("\n").filter(Boolean)) {

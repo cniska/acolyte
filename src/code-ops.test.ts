@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { editCode, scanCode } from "./code-ops";
-import { TOOL_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
@@ -22,11 +22,14 @@ describe("editCode", () => {
         path: "/etc/hosts",
         edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
       }),
-    ).rejects.toThrow("restricted to the workspace or /tmp");
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("replaces pattern matches with metavariable capture", async () => {
-    const filePath = `/tmp/acolyte-test-ast-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\n', "utf8");
     const result = await editCode({
@@ -41,7 +44,7 @@ describe("editCode", () => {
   });
 
   test("scopes replacements with within", async () => {
-    const filePath = `/tmp/acolyte-test-ast-within-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-within-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -80,7 +83,7 @@ describe("editCode", () => {
   });
 
   test("scopes replacements with withinSymbol", async () => {
-    const filePath = `/tmp/acolyte-test-ast-within-symbol-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-within-symbol-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -118,7 +121,7 @@ describe("editCode", () => {
   });
 
   test("supports structured rename edits with withinSymbol", async () => {
-    const filePath = `/tmp/acolyte-test-ast-rename-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-rename-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -156,7 +159,7 @@ describe("editCode", () => {
   });
 
   test("scoped local rename handles arrow function parameters", async () => {
-    const filePath = `/tmp/acolyte-test-ast-arrow-param-rename-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-arrow-param-rename-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -181,7 +184,7 @@ describe("editCode", () => {
   });
 
   test("scoped local rename rewrites shorthand references without renaming object properties", async () => {
-    const filePath = `/tmp/acolyte-test-ast-local-rename-scope-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-local-rename-scope-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -211,7 +214,7 @@ describe("editCode", () => {
   });
 
   test("supports structured rename edits within a class declaration", async () => {
-    const filePath = `/tmp/acolyte-test-ast-class-rename-${testUuid()}.js`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-class-rename-${testUuid()}.js`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -248,7 +251,7 @@ describe("editCode", () => {
   });
 
   test("scoped member rename updates declared methods and this-method calls only", async () => {
-    const filePath = `/tmp/acolyte-test-ast-class-method-rename-${testUuid()}.js`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-class-method-rename-${testUuid()}.js`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -279,7 +282,7 @@ describe("editCode", () => {
   });
 
   test("ambiguous scoped rename can target the member explicitly", async () => {
-    const filePath = `/tmp/acolyte-test-ast-ambiguous-member-rename-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-ambiguous-member-rename-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -309,7 +312,7 @@ describe("editCode", () => {
   });
 
   test("ambiguous scoped rename can target the local symbol explicitly", async () => {
-    const filePath = `/tmp/acolyte-test-ast-ambiguous-local-rename-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-ambiguous-local-rename-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -338,7 +341,7 @@ describe("editCode", () => {
   });
 
   test("ambiguous scoped rename fails with recovery when target is omitted", async () => {
-    const filePath = `/tmp/acolyte-test-ast-ambiguous-rename-auto-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-ambiguous-rename-auto-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -368,7 +371,7 @@ describe("editCode", () => {
   });
 
   test("scoped rename fails when explicit target has no matches in scope", async () => {
-    const filePath = `/tmp/acolyte-test-ast-invalid-target-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-invalid-target-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -395,7 +398,7 @@ describe("editCode", () => {
   });
 
   test("scoped local rename rewrites shorthand destructuring bindings", async () => {
-    const filePath = `/tmp/acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-local-rename-destructure-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -414,7 +417,7 @@ describe("editCode", () => {
   });
 
   test("rename matches exact identifiers only", async () => {
-    const filePath = `/tmp/acolyte-test-ast-rename-exact-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-rename-exact-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -441,7 +444,7 @@ describe("editCode", () => {
   });
 
   test("supports structured replace patterns with context and selector", async () => {
-    const filePath = `/tmp/acolyte-test-ast-pattern-object-${testUuid()}.js`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-pattern-object-${testUuid()}.js`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -478,7 +481,7 @@ describe("editCode", () => {
   });
 
   test("supports recursive rule objects for replacements", async () => {
-    const filePath = `/tmp/acolyte-test-ast-rule-object-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-rule-object-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -506,7 +509,7 @@ describe("editCode", () => {
   });
 
   test("supports nested all/any/inside rule combinations", async () => {
-    const filePath = `/tmp/acolyte-test-ast-nested-rules-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-nested-rules-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -555,7 +558,7 @@ describe("editCode", () => {
   });
 
   test("supports relational stopBy rule objects", async () => {
-    const filePath = `/tmp/acolyte-test-ast-stop-by-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-stop-by-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -600,7 +603,7 @@ describe("editCode", () => {
   });
 
   test("throws when no matches found", async () => {
-    const filePath = `/tmp/acolyte-test-ast-nomatch-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-nomatch-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     await expect(
@@ -616,7 +619,7 @@ describe("editCode", () => {
   });
 
   test("formats no-match errors with readable rule summaries", async () => {
-    const filePath = `/tmp/acolyte-test-ast-readable-error-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-readable-error-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     await expect(
@@ -637,7 +640,7 @@ describe("editCode", () => {
   });
 
   test("applies edits across directory", async () => {
-    const dirPath = `/tmp/acolyte-test-ast-dir-${testUuid()}`;
+    const dirPath = join(WORKSPACE, `acolyte-test-ast-dir-${testUuid()}`);
     tempDirs.push(dirPath);
     await mkdir(dirPath, { recursive: true });
     await writeFile(join(dirPath, "a.ts"), "const x = oldName();\n", "utf8");
@@ -658,7 +661,7 @@ describe("editCode", () => {
   });
 
   test("rejects unsupported non-code files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-md-${testUuid()}.md`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-md-${testUuid()}.md`);
     tempFiles.push(filePath);
     await writeFile(filePath, "# Title\n", "utf8");
     await expect(
@@ -674,7 +677,7 @@ describe("editCode", () => {
   });
 
   test("rejects unknown single-file extensions without falling back", async () => {
-    const filePath = `/tmp/acolyte-test-ast-yaml-${testUuid()}.yaml`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-yaml-${testUuid()}.yaml`);
     tempFiles.push(filePath);
     await writeFile(filePath, "foo: bar\n", "utf8");
     await expect(
@@ -690,7 +693,7 @@ describe("editCode", () => {
   });
 
   test("rejects replacement metavariables that are not present in the pattern", async () => {
-    const filePath = `/tmp/acolyte-test-ast-missing-meta-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-missing-meta-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\n', "utf8");
     await expect(
@@ -706,7 +709,7 @@ describe("editCode", () => {
   });
 
   test("supports variadic metavariables in replacements", async () => {
-    const filePath = `/tmp/acolyte-test-ast-variadic-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-variadic-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, "sum(a, b);\nsum(c);\n", "utf8");
     const result = await editCode({
@@ -722,7 +725,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Python files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-py-${testUuid()}.py`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-py-${testUuid()}.py`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
     const result = await editCode({
@@ -737,7 +740,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Rust files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-rs-${testUuid()}.rs`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-rs-${testUuid()}.rs`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
     const result = await editCode({
@@ -752,7 +755,7 @@ describe("editCode", () => {
   });
 
   test("replaces in Go files", async () => {
-    const filePath = `/tmp/acolyte-test-ast-go-${testUuid()}.go`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-go-${testUuid()}.go`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
     const result = await editCode({
@@ -767,7 +770,7 @@ describe("editCode", () => {
   });
 
   test("includes affectedSymbols in result", async () => {
-    const filePath = `/tmp/acolyte-test-ast-affected-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-ast-affected-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -789,13 +792,14 @@ describe("editCode", () => {
 
 describe("scanCode", () => {
   test("blocks paths outside workspace", async () => {
-    await expect(scanCode({ workspace: WORKSPACE, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toThrow(
-      "restricted to the workspace or /tmp",
-    );
+    await expect(scanCode({ workspace: WORKSPACE, paths: ["/etc/hosts"], pattern: "const $X" })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("rejects unsupported single-file types", async () => {
-    const filePath = `/tmp/acolyte-test-scan-unsupported-${testUuid()}.yaml`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-unsupported-${testUuid()}.yaml`);
     tempFiles.push(filePath);
     await writeFile(filePath, "foo: bar\n", "utf8");
     await expect(scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "const $X" })).rejects.toMatchObject({
@@ -805,7 +809,7 @@ describe("scanCode", () => {
   });
 
   test("finds matches with metavariable captures", async () => {
-    const filePath = `/tmp/acolyte-test-scan-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
@@ -816,7 +820,7 @@ describe("scanCode", () => {
   });
 
   test("returns no matches when pattern is absent", async () => {
-    const filePath = `/tmp/acolyte-test-scan-nomatch-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-nomatch-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
@@ -826,7 +830,7 @@ describe("scanCode", () => {
   });
 
   test("scans a directory recursively", async () => {
-    const dirPath = `/tmp/acolyte-test-scan-dir-${testUuid()}`;
+    const dirPath = join(WORKSPACE, `acolyte-test-scan-dir-${testUuid()}`);
     tempDirs.push(dirPath);
     await mkdir(join(dirPath, "sub"), { recursive: true });
     await writeFile(join(dirPath, "a.ts"), 'console.log("a");\n', "utf8");
@@ -837,7 +841,7 @@ describe("scanCode", () => {
   });
 
   test("respects maxResults limit", async () => {
-    const filePath = `/tmp/acolyte-test-scan-limit-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-limit-${testUuid()}.ts`);
     tempFiles.push(filePath);
     const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
     await writeFile(filePath, lines, "utf8");
@@ -851,7 +855,7 @@ describe("scanCode", () => {
   });
 
   test("batches multiple patterns", async () => {
-    const filePath = `/tmp/acolyte-test-scan-batch-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-batch-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
     const result = await scanCode({
@@ -866,7 +870,7 @@ describe("scanCode", () => {
   });
 
   test("includes enclosingSymbol for match inside a function", async () => {
-    const filePath = `/tmp/acolyte-test-scan-enclosing-fn-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-enclosing-fn-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -878,7 +882,7 @@ describe("scanCode", () => {
   });
 
   test("includes enclosingSymbol for match inside a class", async () => {
-    const filePath = `/tmp/acolyte-test-scan-enclosing-class-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-enclosing-class-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(
       filePath,
@@ -891,7 +895,7 @@ describe("scanCode", () => {
   });
 
   test("enclosingSymbol is undefined at top-level", async () => {
-    const filePath = `/tmp/acolyte-test-scan-enclosing-top-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-enclosing-top-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, "console.log('top-level');\n", "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: "console.log($ARG)" });
@@ -899,7 +903,7 @@ describe("scanCode", () => {
   });
 
   test("includes enclosingSymbol for match inside a TypeScript type alias", async () => {
-    const filePath = `/tmp/acolyte-test-scan-enclosing-type-${testUuid()}.ts`;
+    const filePath = join(WORKSPACE, `acolyte-test-scan-enclosing-type-${testUuid()}.ts`);
     tempFiles.push(filePath);
     await writeFile(filePath, 'type Status = "active" | "inactive";\n', "utf8");
     const result = await scanCode({ workspace: WORKSPACE, paths: [filePath], pattern: '"active"' });

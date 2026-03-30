@@ -1,11 +1,10 @@
-import { readdir, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { readdir, realpath, stat } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { type GitignoreContext, isIgnoredByPatterns, loadGitignoreContext } from "./gitignore";
+import { ensurePathWithinSandbox, resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const DIFF_CONTEXT_RADIUS = 2;
 
-const TEMP_ROOTS = Array.from(new Set([resolve(tmpdir()), resolve("/tmp"), resolve("/private/tmp")]));
 const GIT_ENV_KEYS = [
   "GIT_ALTERNATE_OBJECT_DIRECTORIES",
   "GIT_COMMON_DIR",
@@ -21,30 +20,6 @@ const GIT_ENV_KEYS = [
   "GIT_PREFIX",
   "GIT_WORK_TREE",
 ] as const;
-
-function resolveAgentPath(pathInput: string, workspace: string): string {
-  return resolve(workspace, pathInput);
-}
-
-function isWithinWorkspace(pathInput: string, workspace: string): boolean {
-  const absPath = resolveAgentPath(pathInput, workspace);
-  return absPath === workspace || absPath.startsWith(`${workspace}/`);
-}
-
-function isWithinTempRoot(pathInput: string, workspace: string): boolean {
-  const absPath = resolveAgentPath(pathInput, workspace);
-  return TEMP_ROOTS.some((root) => absPath === root || absPath.startsWith(`${root}/`));
-}
-
-export function isAllowedPath(pathInput: string, workspace: string): boolean {
-  return isWithinWorkspace(pathInput, workspace) || isWithinTempRoot(pathInput, workspace);
-}
-
-export function ensurePathWithinAllowedRoots(pathInput: string, workspace: string): string {
-  const absPath = resolveAgentPath(pathInput, workspace);
-  if (!isAllowedPath(absPath, workspace)) throw new Error("Path is restricted to the workspace or /tmp");
-  return absPath;
-}
 
 export async function runCommand(
   cmd: string[],
@@ -179,25 +154,22 @@ function normalizeRelPath(value: string): string {
     .replace(/\/+$/, "");
 }
 
-function isWithinWorkspacePath(absPath: string, workspace: string): boolean {
-  return absPath === workspace || absPath.startsWith(`${workspace}/`);
-}
-
 export async function resolveSearchScopeFiles(workspace: string, paths: string[] | undefined): Promise<string[]> {
   const allFiles = await collectWorkspaceFiles(workspace);
+  const sandboxRoot = resolveWorkspaceSandboxRoot(workspace);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   if (normalizedPaths.length === 0) return allFiles;
   const include = new Set<string>();
   for (const rawPath of normalizedPaths) {
-    const absPath = ensurePathWithinAllowedRoots(rawPath, workspace);
-    if (!isWithinWorkspacePath(absPath, workspace)) throw new Error("Search paths must be within the workspace");
+    const absPath = ensurePathWithinSandbox(rawPath, workspace);
     let entryStat: Awaited<ReturnType<typeof stat>>;
     try {
       entryStat = await stat(absPath);
     } catch {
       continue;
     }
-    const relPath = normalizeRelPath(relative(workspace, absPath));
+    const canonicalPath = await realpath(absPath);
+    const relPath = normalizeRelPath(relative(sandboxRoot, canonicalPath));
     if (entryStat.isFile()) {
       if (relPath.length > 0) include.add(relPath);
       continue;
