@@ -248,7 +248,7 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
-  test("lint effect runs without regeneration", async () => {
+  test("lint effect runs as single pass", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const lintScript = await writeExecutableScript(
       "lint-effect.sh",

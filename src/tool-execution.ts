@@ -35,17 +35,6 @@ export function hashResultValue(value: unknown): string | undefined {
   return hasher.digest("hex").slice(0, 16);
 }
 
-export function runTool(
-  session: SessionContext,
-  toolId: string,
-  toolCallId: string,
-  args: object,
-  execute: (toolCallId: string) => Promise<unknown>,
-  options?: { timeoutMs?: number },
-): Promise<unknown> {
-  return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(toolCallId), options));
-}
-
 function formatRecoveryHints(recovery: ToolRecovery | undefined): string {
   if (!recovery) return "";
   const parts: string[] = [];
@@ -82,61 +71,68 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-export async function guardedExecute<T>(
-  toolId: string,
-  args: object,
+export async function runTool(
   session: SessionContext,
-  task: () => Promise<T>,
+  toolId: string,
+  toolCallId: string,
+  args: object,
+  execute: (toolCallId: string) => Promise<unknown>,
   options?: { timeoutMs?: number },
-): Promise<T> {
-  const budgetError = checkStepBudget(session);
-  if (budgetError) {
-    const error = new Error(budgetError) as Error & { code: string; kind: string };
-    error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
-    error.kind = ERROR_KINDS.budgetExhausted;
-    throw error;
-  }
-
-  const argsRecord = args as Record<string, unknown>;
-  const cache = session.cache;
-  const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
-  invariant(
-    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
-    "timeoutMs must be a positive number",
-  );
-
-  if (cache?.isCacheable(toolId)) {
-    const cached = cache.get(toolId, argsRecord);
-    if (cached) {
-      session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-      recordCall(session, toolId, argsRecord, hashResultValue(cached.result), "succeeded");
-      return cached.result as T;
+): Promise<unknown> {
+  return withToolError(toolId, async () => {
+    const budgetError = checkStepBudget(session);
+    if (budgetError) {
+      const error = new Error(budgetError) as Error & { code: string; kind: string };
+      error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+      error.kind = ERROR_KINDS.budgetExhausted;
+      throw error;
     }
-    session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
-  }
 
-  let taskFailed = false;
-  let taskResult: unknown;
-  try {
-    taskResult = await withTimeout(task, timeoutMs, toolId);
-    if (cache?.isCacheable(toolId)) {
-      cache.set(toolId, argsRecord, { result: taskResult });
-      cache.populateSubEntries(toolId, argsRecord, taskResult);
-    }
-    return taskResult as T;
-  } catch (error) {
-    taskFailed = true;
-    throw error;
-  } finally {
-    recordCall(
-      session,
-      toolId,
-      argsRecord,
-      taskFailed ? undefined : hashResultValue(taskResult),
-      taskFailed ? "failed" : "succeeded",
+    const argsRecord = args as Record<string, unknown>;
+    const cache = session.cache;
+    const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
+    invariant(
+      typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
+      "timeoutMs must be a positive number",
     );
-    if (cache && !cache.isCacheable(toolId) && !taskFailed) {
-      cache.invalidateForWrite(toolId, argsRecord);
+
+    if (cache?.isCacheable(toolId)) {
+      const cached = cache.get(toolId, argsRecord);
+      if (cached) {
+        session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
+        recordCall(session, toolId, argsRecord, hashResultValue(cached.result), "succeeded");
+        return cached.result;
+      }
+      session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
     }
-  }
+
+    let taskFailed = false;
+    let taskResult: unknown;
+    try {
+      taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
+      if (cache?.isCacheable(toolId)) {
+        cache.set(toolId, argsRecord, { result: taskResult });
+        cache.populateSubEntries(toolId, argsRecord, taskResult);
+      }
+      const feedback = session.onToolResult?.({ toolId, args: argsRecord, result: taskResult });
+      if (feedback?.append && typeof taskResult === "object" && taskResult !== null) {
+        (taskResult as Record<string, unknown>).lifecycleFeedback = feedback.append;
+      }
+      return taskResult;
+    } catch (error) {
+      taskFailed = true;
+      throw error;
+    } finally {
+      recordCall(
+        session,
+        toolId,
+        argsRecord,
+        taskFailed ? undefined : hashResultValue(taskResult),
+        taskFailed ? "failed" : "succeeded",
+      );
+      if (cache && !cache.isCacheable(toolId) && !taskFailed) {
+        cache.invalidateForWrite(toolId, argsRecord);
+      }
+    }
+  });
 }

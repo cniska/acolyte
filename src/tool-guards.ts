@@ -21,6 +21,9 @@ export type SessionFlags = {
   totalStepLimit?: number;
 };
 
+export type ToolResultContext = { toolId: string; args: Record<string, unknown>; result: unknown };
+export type ToolResultFeedback = { append?: string };
+
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
@@ -29,6 +32,7 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   cache?: ToolCache;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
+  onToolResult?: (ctx: ToolResultContext) => ToolResultFeedback | undefined;
   workspaceProfile?: WorkspaceProfile;
 };
 
