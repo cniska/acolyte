@@ -86,7 +86,6 @@ function createRunContext(
   },
 ): RunContext {
   const session = params.prepared.session;
-  const previousOnGuard = session.onGuard;
   const agent = params.createRunAgent({
     soulPrompt: input.soulPrompt,
     workspace: input.workspace,
@@ -122,10 +121,6 @@ function createRunContext(
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
-  };
-
-  session.onGuard = (event) => {
-    previousOnGuard?.(event);
   };
 
   return ctx;

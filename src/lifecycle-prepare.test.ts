@@ -7,7 +7,6 @@ describe("phasePrepare", () => {
     const policy = {
       ...defaultLifecyclePolicy,
       toolTimeoutMs: 1_234,
-      consecutiveGuardBlockLimit: 7,
     };
     const prepared = phasePrepare({
       request: { model: "gpt-5-mini", message: "test", history: [] },
@@ -21,6 +20,5 @@ describe("phasePrepare", () => {
       onChecklist: () => {},
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
-    expect(prepared.session.flags.consecutiveGuardBlockLimit).toBe(7);
   });
 });

@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { createSessionContext, recordCall, resetCycleStepCount, runGuards } from "./tool-guards";
+import { checkStepBudget, createSessionContext, recordCall, resetCycleStepCount } from "./tool-guards";
 
-describe("step-budget guard", () => {
+describe("step budget", () => {
   test("blocks when cycle step count reaches cycle limit", () => {
     const session = createSessionContext();
     session.flags.cycleStepLimit = 2;
     session.flags.cycleStepCount = 2;
-    expect(() => runGuards({ toolName: "file-read", args: {}, session })).toThrow(/Cycle step budget exhausted/);
+    expect(checkStepBudget(session)).toContain("Cycle step budget exhausted");
   });
 
   test("blocks when total call log reaches total limit", () => {
@@ -16,14 +16,14 @@ describe("step-budget guard", () => {
     for (let i = 0; i < 3; i++) {
       recordCall(session, "file-read", {});
     }
-    expect(() => runGuards({ toolName: "file-read", args: {}, session })).toThrow(/Total step budget exhausted/);
+    expect(checkStepBudget(session)).toContain("Total step budget exhausted");
   });
 
   test("increments cycle step count on each allowed call", () => {
     const session = createSessionContext();
     session.flags.cycleStepLimit = 10;
     session.flags.cycleStepCount = 0;
-    runGuards({ toolName: "file-read", args: { paths: [{ path: "a.ts" }] }, session });
+    expect(checkStepBudget(session)).toBeUndefined();
     expect(session.flags.cycleStepCount).toBe(1);
   });
 

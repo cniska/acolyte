@@ -1,7 +1,7 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { ToolError } from "./tool-error";
-import { recordCall, runGuards, type SessionContext } from "./tool-guards";
+import { checkStepBudget, recordCall, type SessionContext } from "./tool-guards";
 import type { ToolRecovery } from "./tool-recovery";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
@@ -34,6 +34,7 @@ export function hashResultValue(value: unknown): string | undefined {
   hasher.update(str);
   return hasher.digest("hex").slice(0, 16);
 }
+
 export function runTool(
   session: SessionContext,
   toolId: string,
@@ -45,22 +46,25 @@ export function runTool(
   return withToolError(toolId, () => guardedExecute(toolId, args, session, () => execute(toolCallId), options));
 }
 
-function sandboxDebugFields(toolId: string, args: Record<string, unknown>): Record<string, unknown> {
-  const fields: Record<string, unknown> = { tool: toolId };
-  if (typeof args.path === "string") fields.path = args.path;
-  if (Array.isArray(args.paths)) fields.paths = args.paths;
-  if (typeof args.cmd === "string") fields.cmd = args.cmd;
-  if (Array.isArray(args.args)) fields.args = args.args;
-  return fields;
+function formatRecoveryHints(recovery: ToolRecovery | undefined): string {
+  if (!recovery) return "";
+  const parts: string[] = [];
+  if (recovery.instruction) parts.push(recovery.instruction);
+  if (recovery.nextTool) parts.push(`Try: ${recovery.nextTool}`);
+  if (recovery.targetPaths?.length) parts.push(`Paths: ${recovery.targetPaths.join(", ")}`);
+  return parts.length > 0 ? ` Recovery: ${parts.join(". ")}.` : "";
 }
 
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (error) {
-    const wrapped = new Error(
-      `${toolId} failed: ${error instanceof Error ? error.message : String(error)}`,
-    ) as Error & {
+    const rec =
+      typeof error === "object" && error !== null && "recovery" in error
+        ? (error as { recovery?: ToolRecovery }).recovery
+        : undefined;
+    const baseMessage = error instanceof Error ? error.message : String(error);
+    const wrapped = new Error(`${toolId} failed: ${baseMessage}${formatRecoveryHints(rec)}`) as Error & {
       code?: string;
       kind?: string;
       recovery?: ToolRecovery;
@@ -73,9 +77,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
       const kind = (error as { kind?: unknown }).kind;
       if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
     }
-    if (typeof error === "object" && error !== null && "recovery" in error) {
-      wrapped.recovery = (error as { recovery?: ToolRecovery }).recovery;
-    }
+    if (rec) wrapped.recovery = rec;
     throw wrapped;
   }
 }
@@ -87,16 +89,14 @@ export async function guardedExecute<T>(
   task: () => Promise<T>,
   options?: { timeoutMs?: number },
 ): Promise<T> {
-  try {
-    runGuards({ toolName: toolId, args: args as Record<string, unknown>, session });
-  } catch (error) {
-    session.flags.consecutiveBlocks = (session.flags.consecutiveBlocks ?? 0) + 1;
-    const wrapped = error instanceof Error ? error : new Error(typeof error === "string" ? error : "Guard blocked");
-    const coded = wrapped as Error & { code?: string; kind?: string };
-    if (typeof coded.code !== "string" || coded.code.length === 0) coded.code = LIFECYCLE_ERROR_CODES.guardBlocked;
-    if (typeof coded.kind !== "string" || coded.kind.length === 0) coded.kind = ERROR_KINDS.guardBlocked;
-    throw coded;
+  const budgetError = checkStepBudget(session);
+  if (budgetError) {
+    const error = new Error(budgetError) as Error & { code: string; kind: string };
+    error.code = LIFECYCLE_ERROR_CODES.guardBlocked;
+    error.kind = ERROR_KINDS.guardBlocked;
+    throw error;
   }
+
   const argsRecord = args as Record<string, unknown>;
   const cache = session.cache;
   const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
@@ -105,8 +105,6 @@ export async function guardedExecute<T>(
     "timeoutMs must be a positive number",
   );
 
-  // Cache hit returns early with its own recordCall — the finally block only
-  // runs on cache miss, so recordCall is never invoked twice for the same call.
   if (cache?.isCacheable(toolId)) {
     const cached = cache.get(toolId, argsRecord);
     if (cached) {
@@ -128,11 +126,6 @@ export async function guardedExecute<T>(
     return taskResult as T;
   } catch (error) {
     taskFailed = true;
-    const code =
-      typeof error === "object" && error !== null && "code" in error ? (error as { code?: unknown }).code : undefined;
-    if (code === TOOL_ERROR_CODES.sandboxViolation) {
-      session.onDebug?.("lifecycle.sandbox.violation", sandboxDebugFields(toolId, argsRecord));
-    }
     throw error;
   } finally {
     recordCall(
