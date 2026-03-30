@@ -270,56 +270,30 @@ describe("traceMode", () => {
     expect(text).toContain("post-edit-redundancy");
   });
 
-  test("compact output shows regeneration separators and hides eval done", async () => {
+  test("compact output hides eval done events", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
       taskId: "task_1",
       event: "lifecycle.start",
-      fields: { mode: "work", model: "m" },
-    });
-    store.write({
-      timestamp: "2026-01-01T00:00:00.100Z",
-      taskId: "task_1",
-      event: "lifecycle.tool.call",
-      fields: { tool: "file-read", path: "src/a.ts" },
-    });
-    store.write({
-      timestamp: "2026-01-01T00:00:00.200Z",
-      taskId: "task_1",
-      event: "lifecycle.tool.result",
-      fields: { tool: "file-read", duration_ms: "100", is_error: "false" },
+      fields: { model: "m" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
       taskId: "task_1",
       event: "lifecycle.eval.decision",
-      fields: { evaluator: "guard-recovery", action: "done" },
-    });
-    store.write({
-      timestamp: "2026-01-01T00:00:01.001Z",
-      taskId: "task_1",
-      event: "lifecycle.eval.decision",
-      fields: { evaluator: "verify-cycle", action: "regenerate", regeneration_count: "1" },
+      fields: { effect: "format", action: "done" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:02.000Z",
       taskId: "task_1",
       event: "lifecycle.summary",
-      fields: {
-        model_calls: "2",
-        tool_calls: "1",
-        read_calls: "1",
-        regeneration_count: "1",
-        has_error: "false",
-      },
+      fields: { model_calls: "1", tool_calls: "0", has_error: "false" },
     });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
     const text = output();
-    expect(text).toContain("regenerate (verify-cycle)");
     expect(text).not.toContain("action=done");
-    expect(text).toContain("regenerations=1");
   });
 
   test("compact output renders summary footer", async () => {
@@ -340,8 +314,7 @@ describe("traceMode", () => {
         read_calls: "2",
         search_calls: "1",
         write_calls: "2",
-        regeneration_count: "0",
-        guard_blocked_count: "1",
+        budget_exhausted_count: "1",
         has_error: "true",
       },
     });
@@ -352,7 +325,7 @@ describe("traceMode", () => {
     expect(text).toContain("tools=5");
     expect(text).toContain("read=2");
     expect(text).toContain("write=2");
-    expect(text).toContain("guard_blocked=1");
+    expect(text).toContain("budget_exhausted=1");
     expect(text).toContain("status=error");
   });
 

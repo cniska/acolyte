@@ -19,7 +19,7 @@ export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CO
 export const LIFECYCLE_ERROR_CODES = {
   timeout: "E_TIMEOUT",
   fileNotFound: "E_FILE_NOT_FOUND",
-  guardBlocked: "E_GUARD_BLOCKED",
+  budgetExhausted: "E_BUDGET_EXHAUSTED",
   unknown: "E_UNKNOWN",
 } as const;
 export type LifecycleErrorCode = (typeof LIFECYCLE_ERROR_CODES)[keyof typeof LIFECYCLE_ERROR_CODES];
@@ -30,7 +30,7 @@ export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
   timeout: "timeout",
   fileNotFound: "file_not_found",
-  guardBlocked: "guard_blocked",
+  budgetExhausted: "budget_exhausted",
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];

@@ -19,7 +19,6 @@ export type SessionFlags = {
   cycleStepCount?: number;
   cycleStepLimit?: number;
   totalStepLimit?: number;
-  guardStats?: { blocked: number; flagSet: number };
 };
 
 export type SessionContext = {

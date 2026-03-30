@@ -44,11 +44,9 @@ const traceEventSchema = z.enum([
   "lifecycle.skill.context",
   "lifecycle.effect.format",
   "lifecycle.effect.lint",
+  "lifecycle.effect.lint.output",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
-  "lifecycle.eval.guard_recovery",
-  "lifecycle.eval.repeated_failure",
-  "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
 ]);
 
@@ -98,25 +96,9 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
   "lifecycle.effect.format": ["files"],
   "lifecycle.effect.lint": ["files"],
-  "lifecycle.eval.decision": [
-    "effect",
-    "evaluator",
-    "action",
-    "regeneration_reason",
-    "regeneration_count",
-    "regeneration_reason_count",
-  ],
-  "lifecycle.eval.skipped": [
-    "effect",
-    "evaluator",
-    "reason",
-    "regeneration_reason",
-    "regeneration_reason_count",
-    "regeneration_reason_cap",
-  ],
-  "lifecycle.eval.guard_recovery": [],
-  "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
-  "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
+  "lifecycle.eval.decision": ["effect", "action"],
+  "lifecycle.eval.skipped": ["reason"],
+  "lifecycle.effect.lint.output": ["output"],
   "lifecycle.summary": [
     "model_calls",
     { key: "tool_calls", label: "total_tool_calls" },
@@ -124,9 +106,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     { key: "search_calls", label: "search" },
     { key: "write_calls", label: "write" },
     { key: "pre_write_discovery_calls", label: "pre_write_discovery" },
-    { key: "regeneration_count", label: "regenerations" },
-    { key: "guard_blocked_count", label: "guard_blocked" },
-    { key: "guard_flag_set_count", label: "guard_flag_set" },
+    { key: "budget_exhausted_count", label: "budget_exhausted" },
     "has_error",
   ],
 };
@@ -223,10 +203,8 @@ function compactSummary(fields: Record<string, string>): string {
   if (fields.search_calls && fields.search_calls !== "0") breakdown.push(`search=${fields.search_calls}`);
   if (fields.write_calls && fields.write_calls !== "0") breakdown.push(`write=${fields.write_calls}`);
   if (breakdown.length > 0) parts[parts.length - 1] += ` (${breakdown.join(" ")})`;
-  if (fields.regeneration_count && fields.regeneration_count !== "0")
-    parts.push(`regenerations=${fields.regeneration_count}`);
-  if (fields.guard_blocked_count && fields.guard_blocked_count !== "0")
-    parts.push(`guard_blocked=${fields.guard_blocked_count}`);
+  if (fields.budget_exhausted_count && fields.budget_exhausted_count !== "0")
+    parts.push(`budget_exhausted=${fields.budget_exhausted_count}`);
   parts.push(`status=${fields.has_error === "true" ? "error" : "ok"}`);
   return parts.join("  ");
 }
@@ -273,22 +251,13 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       continue;
     }
 
-    if (event === "lifecycle.eval.decision") {
-      if (line.fields.action === "regenerate") {
-        flushPending();
-        rows.push({
-          kind: "separator",
-          text: `── regenerate (${line.fields.effect ?? line.fields.evaluator ?? ""}) ──`,
-        });
-      }
-      continue;
-    }
+    if (event === "lifecycle.eval.decision") continue;
 
     if (event === "lifecycle.eval.skipped") {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `── skipped ${line.fields.effect ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── stopped (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }

@@ -92,8 +92,8 @@ export async function guardedExecute<T>(
   const budgetError = checkStepBudget(session);
   if (budgetError) {
     const error = new Error(budgetError) as Error & { code: string; kind: string };
-    error.code = LIFECYCLE_ERROR_CODES.guardBlocked;
-    error.kind = ERROR_KINDS.guardBlocked;
+    error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+    error.kind = ERROR_KINDS.budgetExhausted;
     throw error;
   }
 

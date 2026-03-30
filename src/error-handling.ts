@@ -7,7 +7,7 @@ import type { StreamError } from "./stream-error";
 import { extractToolErrorCode } from "./tool-error";
 import { parseToolRecovery, type ToolRecovery } from "./tool-recovery";
 
-export type ErrorCategory = "timeout" | "file-not-found" | "guard-blocked" | "other";
+export type ErrorCategory = "timeout" | "file-not-found" | "budget-exhausted" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type AppError<TCode extends string = string, TMeta = unknown> = CodedError<TCode, TMeta>;
 export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
@@ -21,7 +21,7 @@ export type SerializedToolError = {
     recovery?: ToolRecovery;
   };
 };
-export const ERROR_CATEGORIES = ["timeout", "file-not-found", "guard-blocked", "other"] as const;
+export const ERROR_CATEGORIES = ["timeout", "file-not-found", "budget-exhausted", "other"] as const;
 export const errorIdSchema = domainIdSchema("err");
 export type ErrorId = z.infer<typeof errorIdSchema>;
 
@@ -46,8 +46,8 @@ export function categoryFromErrorCode(code?: string): ErrorCategory | undefined 
       return "timeout";
     case LIFECYCLE_ERROR_CODES.fileNotFound:
       return "file-not-found";
-    case LIFECYCLE_ERROR_CODES.guardBlocked:
-      return "guard-blocked";
+    case LIFECYCLE_ERROR_CODES.budgetExhausted:
+      return "budget-exhausted";
     case LIFECYCLE_ERROR_CODES.unknown:
       return "other";
     default:
@@ -61,8 +61,8 @@ export function categoryFromErrorKind(kind?: string): ErrorCategory | undefined 
       return "timeout";
     case ERROR_KINDS.fileNotFound:
       return "file-not-found";
-    case ERROR_KINDS.guardBlocked:
-      return "guard-blocked";
+    case ERROR_KINDS.budgetExhausted:
+      return "budget-exhausted";
     case ERROR_KINDS.unknown:
       return "other";
     default:
@@ -76,8 +76,8 @@ export function errorKindFromCategory(category: ErrorCategory): ErrorKind {
       return ERROR_KINDS.timeout;
     case "file-not-found":
       return ERROR_KINDS.fileNotFound;
-    case "guard-blocked":
-      return ERROR_KINDS.guardBlocked;
+    case "budget-exhausted":
+      return ERROR_KINDS.budgetExhausted;
     case "other":
       return ERROR_KINDS.unknown;
     default:
@@ -91,8 +91,8 @@ export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
       return LIFECYCLE_ERROR_CODES.timeout;
     case "file-not-found":
       return LIFECYCLE_ERROR_CODES.fileNotFound;
-    case "guard-blocked":
-      return LIFECYCLE_ERROR_CODES.guardBlocked;
+    case "budget-exhausted":
+      return LIFECYCLE_ERROR_CODES.budgetExhausted;
     case "other":
       return LIFECYCLE_ERROR_CODES.unknown;
     default:

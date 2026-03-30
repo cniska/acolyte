@@ -1,5 +1,4 @@
 import {
-  CONSECUTIVE_GUARD_BLOCK_LIMIT,
   INITIAL_MAX_STEPS,
   MAX_NUDGES_PER_GENERATION,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
@@ -16,7 +15,6 @@ export type LifecyclePolicy = {
   maxUnknownErrorsPerRequest: number;
   maxNudgesPerGeneration: number;
   toolTimeoutMs: number;
-  consecutiveGuardBlockLimit: number;
   formatCommand?: WorkspaceCommand;
   lintCommand?: WorkspaceCommand;
 };
@@ -28,7 +26,6 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
-  consecutiveGuardBlockLimit: CONSECUTIVE_GUARD_BLOCK_LIMIT,
 };
 
 export function resolveLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

@@ -38,9 +38,9 @@ describe("acceptedLifecycleSignal", () => {
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
   });
 
-  test("rejects done after a guard-blocked error", () => {
+  test("rejects done after a budget-exhausted error", () => {
     const ctx = createRunContext({
-      currentError: { message: "duplicate tool call blocked", category: "guard-blocked" },
+      currentError: { message: "duplicate tool call blocked", category: "budget-exhausted" },
       result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
     });
     expect(acceptedLifecycleSignal(ctx)).toBeUndefined();

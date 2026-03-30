@@ -163,9 +163,3 @@ export type RunContext = {
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   temperature?: number;
 };
-
-type GuardStats = { blocked: number; flagSet: number };
-
-export function guardStatsFromSession(session: SessionContext): GuardStats {
-  return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
-}

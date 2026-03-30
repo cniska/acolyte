@@ -270,24 +270,24 @@ describe("error handling helpers", () => {
   test("category/code mapping is stable for lifecycle codes", () => {
     expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.timeout)).toBe("timeout");
     expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.fileNotFound)).toBe("file-not-found");
-    expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.guardBlocked)).toBe("guard-blocked");
+    expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.budgetExhausted)).toBe("budget-exhausted");
     expect(categoryFromErrorCode(LIFECYCLE_ERROR_CODES.unknown)).toBe("other");
 
     expect(errorCodeFromCategory("timeout")).toBe(LIFECYCLE_ERROR_CODES.timeout);
     expect(errorCodeFromCategory("file-not-found")).toBe(LIFECYCLE_ERROR_CODES.fileNotFound);
-    expect(errorCodeFromCategory("guard-blocked")).toBe(LIFECYCLE_ERROR_CODES.guardBlocked);
+    expect(errorCodeFromCategory("budget-exhausted")).toBe(LIFECYCLE_ERROR_CODES.budgetExhausted);
     expect(errorCodeFromCategory("other")).toBe(LIFECYCLE_ERROR_CODES.unknown);
   });
 
   test("category/kind mapping is stable", () => {
     expect(categoryFromErrorKind("timeout")).toBe("timeout");
     expect(categoryFromErrorKind("file_not_found")).toBe("file-not-found");
-    expect(categoryFromErrorKind("guard_blocked")).toBe("guard-blocked");
+    expect(categoryFromErrorKind("budget_exhausted")).toBe("budget-exhausted");
     expect(categoryFromErrorKind("unknown")).toBe("other");
 
     expect(errorKindFromCategory("timeout")).toBe("timeout");
     expect(errorKindFromCategory("file-not-found")).toBe("file_not_found");
-    expect(errorKindFromCategory("guard-blocked")).toBe("guard_blocked");
+    expect(errorKindFromCategory("budget-exhausted")).toBe("budget_exhausted");
     expect(errorKindFromCategory("other")).toBe("unknown");
   });
 
@@ -343,13 +343,13 @@ describe("error handling helpers", () => {
     expect(createErrorStats()).toEqual({
       timeout: 0,
       "file-not-found": 0,
-      "guard-blocked": 0,
+      "budget-exhausted": 0,
       other: 0,
     });
     expect(createErrorStats(2)).toEqual({
       timeout: 2,
       "file-not-found": 2,
-      "guard-blocked": 2,
+      "budget-exhausted": 2,
       other: 2,
     });
   });

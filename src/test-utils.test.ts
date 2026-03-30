@@ -50,7 +50,7 @@ describe("test utils", () => {
   describe("expectToThrowJSON", () => {
     test("normalizes thrown objects with toJSON", () => {
       const err = {
-        code: "guard-blocked",
+        code: "budget-exhausted",
         message: "blocked",
         toJSON() {
           return { code: this.code, message: this.message };
@@ -59,7 +59,7 @@ describe("test utils", () => {
       expectToThrowJSON(() => {
         throw err;
       }).toDeepEqual({
-        code: "guard-blocked",
+        code: "budget-exhausted",
         message: "blocked",
       });
     });

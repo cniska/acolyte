@@ -153,7 +153,7 @@ describe("chat-message-handler-stream", () => {
     expect(toolIndex).toBeLessThan(statusIndex);
   });
 
-  test("removes guard-blocked tool rows", () => {
+  test("removes budget-exhausted tool rows", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
@@ -169,7 +169,7 @@ describe("chat-message-handler-stream", () => {
       toolName: "shell-run",
       isError: true,
       errorCode: "E_GUARD_BLOCKED",
-      error: { category: "guard-blocked" },
+      error: { category: "budget-exhausted" },
     });
     expect(rows).toHaveLength(0);
     state.dispose();
