@@ -15,8 +15,9 @@ interface Project {
 
 const PROJECTS: Project[] = [
   { name: "acolyte", url: "https://github.com/cniska/acolyte.git", lang: "typescript" },
-  { name: "aider", url: "https://github.com/Aider-AI/aider.git", lang: "python" },
   { name: "opencode", url: "https://github.com/anomalyco/opencode.git", lang: "typescript" },
+  { name: "crush", url: "https://github.com/charmbracelet/crush.git", lang: "go" },
+  { name: "aider", url: "https://github.com/Aider-AI/aider.git", lang: "python" },
   { name: "pi", url: "https://github.com/badlogic/pi-mono.git", lang: "typescript" },
   { name: "goose", url: "https://github.com/block/goose.git", lang: "rust" },
   { name: "openhands", url: "https://github.com/All-Hands-AI/OpenHands.git", lang: "python" },
