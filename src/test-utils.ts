@@ -439,7 +439,6 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
 export type CommandContextSpies = {
   rows: ChatRow[];
   openedModel: boolean;
-  openedModelMode?: string;
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
 };
