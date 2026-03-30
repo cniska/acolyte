@@ -109,7 +109,6 @@ function createRunContext(
     baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
-    lifecycleState: {},
     observedTools: new Set(),
     modelCallCount: 0,
     inputTokensAccum: 0,

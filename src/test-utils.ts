@@ -468,7 +468,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
-    lifecycleState: {},
     observedTools: new Set(),
     modelCallCount: 1,
     inputTokensAccum: 0,

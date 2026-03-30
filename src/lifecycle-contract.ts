@@ -118,8 +118,6 @@ export type Effect = {
   run: (ctx: RunContext) => EffectResult;
 };
 
-export type LifecycleState = Record<string, never>;
-
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
@@ -144,7 +142,6 @@ export type RunContext = {
   readonly baseAgentInput: string;
   readonly policy: LifecyclePolicy;
   readonly promptUsage: PromptUsage;
-  lifecycleState: LifecycleState;
   model: string;
   agent: Agent;
   observedTools: Set<string>;
