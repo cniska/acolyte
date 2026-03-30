@@ -5,6 +5,8 @@ import { ensurePathWithinSandbox, sandboxViolationError } from "./workspace-sand
 const BLOCKED_EXECUTABLES = new Set(["shutdown", "reboot", "mkfs", "dd"]);
 const SAFE_ENV_KEYS = [
   "PATH",
+  "HOME",
+  "USERPROFILE",
   "LANG",
   "LC_ALL",
   "LC_CTYPE",
@@ -54,6 +56,7 @@ function isPathLikeToken(token: string): boolean {
   if (token.startsWith("/") || token.startsWith("./") || token.startsWith("../")) return true;
   if (token.startsWith(".\\") || token.startsWith("..\\")) return true;
   if (looksLikeWindowsAbsolutePath(token)) return true;
+  if (token.startsWith("-")) return false;
   return token.includes("/") || token.includes("\\");
 }
 

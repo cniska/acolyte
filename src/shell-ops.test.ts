@@ -61,6 +61,12 @@ describe("runShellCommand", () => {
     });
   });
 
+  test("allows flag arguments containing slashes", async () => {
+    const output = await runShellCommand(WORKSPACE, { cmd: "echo", args: ["--format=json/pretty"] });
+    expect(output).toContain("exit_code=0");
+    expect(output).toContain("--format=json/pretty");
+  });
+
   test("does not evaluate shell operators", async () => {
     const output = await runShellCommand(WORKSPACE, { cmd: "echo", args: ["hello", "&&", "echo", "nope"] });
     expect(output).toContain("exit_code=0");
@@ -85,6 +91,20 @@ describe("runShellCommand", () => {
     } finally {
       await rm(linkPath, { force: true });
     }
+  });
+
+  test("blocks tilde command path", async () => {
+    await expect(runShellCommand(WORKSPACE, { cmd: "~/bin/evil" })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
+  });
+
+  test("blocks tilde in assigned value", async () => {
+    await expect(runShellCommand(WORKSPACE, { cmd: "env", args: ["OUT=~/secret"] })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
   });
 
   test("blocks path-like assigned values in arguments", async () => {
