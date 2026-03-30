@@ -378,7 +378,7 @@ describe("searchFiles", () => {
 });
 
 describe("writeTextFile", () => {
-  test("creates /tmp files", async () => {
+  test("creates workspace files", async () => {
     const filePath = join(WORKSPACE, `acolyte-test-write-${testUuid()}.txt`);
     tempFiles.push(filePath);
     const result = await writeTextFile({ workspace: WORKSPACE, path: filePath, content: "hello" });
@@ -387,7 +387,7 @@ describe("writeTextFile", () => {
 });
 
 describe("deleteTextFile", () => {
-  test("deletes /tmp files", async () => {
+  test("deletes workspace files", async () => {
     const filePath = join(WORKSPACE, `acolyte-test-delete-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
