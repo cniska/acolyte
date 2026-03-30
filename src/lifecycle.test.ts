@@ -27,13 +27,6 @@ const phaseGenerate = mock(async (ctx: { result?: unknown }) => {
   ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
 });
 
-const phaseSettle = mock(
-  async (ctx: { session: { flags: { totalStepLimit?: number } }; result?: { text: string } }) => {
-    expect(ctx.session.flags.totalStepLimit).toBe(12);
-    expect(ctx.result?.text).toBe("Generated output");
-  },
-);
-
 const phaseFinalize = mock(
   (ctx: { result?: { text: string } }): ChatResponse => ({
     state: "done",
@@ -54,7 +47,7 @@ const createRunAgent = mock(() => ({
 }));
 
 describe("runLifecycle", () => {
-  test("orchestrates prepare, generate, settle, and finalize", async () => {
+  test("orchestrates phases", async () => {
     const deps: LifecycleDeps = {
       resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
       resolveLifecyclePolicy: () => ({
@@ -67,7 +60,6 @@ describe("runLifecycle", () => {
       phasePrepare,
       createRunAgent,
       phaseGenerate,
-      phaseSettle,
       phaseFinalize,
     };
 
@@ -84,7 +76,6 @@ describe("runLifecycle", () => {
     expect(phasePrepare).toHaveBeenCalledTimes(1);
     expect(createRunAgent).toHaveBeenCalledTimes(1);
     expect(phaseGenerate).toHaveBeenCalledTimes(1);
-    expect(phaseSettle).toHaveBeenCalledTimes(1);
     expect(phaseFinalize).toHaveBeenCalledTimes(1);
     expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
   });

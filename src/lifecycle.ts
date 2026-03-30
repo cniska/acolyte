@@ -1,4 +1,5 @@
-import { createErrorStats } from "./error-handling";
+import { createErrorStats, recoveryActionForError } from "./error-handling";
+import { t } from "./i18n";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
@@ -6,7 +7,7 @@ import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
-import { phaseSettle } from "./lifecycle-settle";
+import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
@@ -24,7 +25,6 @@ export type LifecycleDeps = {
   phasePrepare: typeof phasePrepare;
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
-  phaseSettle: typeof phaseSettle;
   phaseFinalize: typeof phaseFinalize;
 };
 
@@ -34,7 +34,6 @@ const defaultLifecycleDeps: LifecycleDeps = {
   phasePrepare,
   createRunAgent,
   phaseGenerate,
-  phaseSettle,
   phaseFinalize,
 };
 
@@ -121,20 +120,52 @@ function createRunContext(
     toolOutputHandler: null,
   };
 
-  session.onToolResult = ({ toolId, args }) => {
-    if (!WRITE_TOOL_SET.has(toolId)) return undefined;
-    const path = typeof args.path === "string" ? args.path.trim() : "";
-    if (!path) return undefined;
-    const paths = [path];
-    let lintOutput: string | undefined;
-    for (const effect of EFFECTS) {
-      const result = effect.run(ctx, paths);
-      if (result.lintOutput) lintOutput = result.lintOutput;
-    }
-    return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
-  };
+  session.onToolResult = (toolResult) => runEffects(ctx, toolResult);
 
   return ctx;
+}
+
+function runEffects(
+  ctx: RunContext,
+  { toolId, args }: { toolId: string; args: Record<string, unknown> },
+): { append: string } | undefined {
+  if (!WRITE_TOOL_SET.has(toolId)) return undefined;
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!path) return undefined;
+  const paths = [path];
+  let lintOutput: string | undefined;
+  for (const effect of EFFECTS) {
+    const result = effect.run(ctx, paths);
+    if (result.lintOutput) lintOutput = result.lintOutput;
+  }
+  return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
+}
+
+function acceptResult(ctx: RunContext): void {
+  const lifecycleSignal = acceptedLifecycleSignal(ctx);
+  if (lifecycleSignal) {
+    ctx.currentError = undefined;
+    ctx.debug("lifecycle.signal.accepted", {
+      signal: lifecycleSignal,
+      tool_calls: ctx.result?.toolCalls.length ?? 0,
+    });
+  }
+
+  const action = recoveryActionForError(
+    { errorCode: ctx.currentError?.code, unknownErrorCount: ctx.errorStats.other },
+    ctx.policy.maxUnknownErrorsPerRequest,
+  );
+  if (action === "stop-unknown-budget") {
+    ctx.debug("lifecycle.eval.skipped", {
+      reason: "unknown_error_budget",
+      unknown_error_count: ctx.errorStats.other,
+      unknown_error_cap: ctx.policy.maxUnknownErrorsPerRequest,
+      last_error_code: ctx.currentError?.code ?? null,
+    });
+    if (ctx.result && !ctx.result.text.trim()) {
+      ctx.result = { text: t("lifecycle.stopped_unknown_errors"), toolCalls: [] };
+    }
+  }
 }
 
 function attachToolOutputHandler(ctx: RunContext) {
@@ -244,7 +275,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     return deps.phaseFinalize(ctx);
   }
 
-  await deps.phaseSettle(ctx, input.shouldYield);
+  acceptResult(ctx);
 
   // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {
