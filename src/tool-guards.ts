@@ -477,11 +477,6 @@ function shellRunCommandString(args: Record<string, unknown>): string {
   return formatWorkspaceCommand({ bin: cmd, args: argv });
 }
 
-function normalizeShellCommand(command: string): string {
-  return command.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-
 const postEditRedundancyGuard: ToolGuard = {
   id: "post-edit-redundancy",
   description: "Block redundant follow-up actions on files already edited in this task.",

@@ -5,6 +5,14 @@ import { updateRepeatedFailureState } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-guards";
 
+function shellRunArgs(command: string): { cmd: string; args: string[] } {
+  const tokens = command
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  return { cmd: tokens[0] ?? "", args: tokens.slice(1) };
+}
+
 describe("guardRecoveryEvaluator", () => {
   test("returns regenerate when guard-blocked error has pending guard feedback", () => {
     const ctx = createRunContext({
