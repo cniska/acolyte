@@ -1,5 +1,4 @@
-import { lstatSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename } from "node:path";
 import { z } from "zod";
 import { ensurePathWithinSandbox, sandboxViolationError } from "./workspace-sandbox";
 
@@ -41,15 +40,6 @@ function formatDisplayToken(token: string): string {
   return `'${token.replace(/'/g, `'\\''`)}'`;
 }
 
-function pathExists(pathInput: string): boolean {
-  try {
-    lstatSync(pathInput);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function formatShellCommand(input: ShellCommandInput): string {
   const args = input.args ?? [];
   return [formatDisplayToken(input.cmd), ...args.map((arg) => formatDisplayToken(arg))].join(" ").trim();
@@ -81,22 +71,24 @@ function normalizeExecutableName(cmd: string): string {
 function ensureTokenWithinSandbox(token: string, workspace: string): void {
   if (!token) return;
   if (token.startsWith("~")) throw sandboxViolationError("homePath");
-  if (isPathLikeToken(token)) {
-    ensurePathWithinSandbox(token, workspace);
-    return;
-  }
 
+  // Check KEY=VALUE assignments before path-like detection so that tokens like
+  // "OUT=/etc/passwd" are parsed as an assignment, not treated as a bare path.
   const assignedValue = maybeExtractAssignedValue(token);
-  if (assignedValue) {
+  if (assignedValue !== undefined) {
     if (assignedValue.startsWith("~")) throw sandboxViolationError("homePath");
     if (isPathLikeToken(assignedValue)) ensurePathWithinSandbox(assignedValue, workspace);
     return;
   }
 
-  const workspacePath = resolve(workspace, token);
-  if (pathExists(workspacePath)) {
+  if (isPathLikeToken(token)) {
     ensurePathWithinSandbox(token, workspace);
+    return;
   }
+
+  // Bare tokens: check unconditionally so workspace-resident symlinks pointing
+  // outside the sandbox are caught even when the token has no path separators.
+  ensurePathWithinSandbox(token, workspace);
 }
 
 function ensureCommandScopedToWorkspace(input: ShellCommandInput, workspace: string): void {

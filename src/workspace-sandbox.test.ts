@@ -56,6 +56,26 @@ describe("workspace-sandbox", () => {
     });
   });
 
+  test("resolves through a symlinked workspace root", async () => {
+    const root = dirs.createDir("acolyte-sandbox-symlink-root-");
+    const realWorkspace = join(root, "real");
+    const linkedWorkspace = join(root, "linked");
+    await mkdir(realWorkspace, { recursive: true });
+    await symlink(realWorkspace, linkedWorkspace);
+
+    const file = join(realWorkspace, "a.txt");
+    await writeFile(file, "ok\n", "utf8");
+
+    // Files accessible through the symlinked root are allowed
+    expect(ensurePathWithinSandbox("a.txt", linkedWorkspace)).toBe(join(linkedWorkspace, "a.txt"));
+
+    // Paths outside both the real and linked root are still blocked
+    expectToThrowJSON(() => ensurePathWithinSandbox("/etc/hosts", linkedWorkspace)).toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
+  });
+
   test("blocks symlink escapes for new files under symlinked directories", async () => {
     const root = dirs.createDir("acolyte-sandbox-parent-");
     const workspace = join(root, "workspace");

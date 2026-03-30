@@ -87,6 +87,13 @@ describe("runShellCommand", () => {
     }
   });
 
+  test("blocks path-like assigned values in arguments", async () => {
+    await expect(runShellCommand(WORKSPACE, { cmd: "env", args: ["OUT=/etc/passwd"] })).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
+  });
+
   test("allows nested relative paths within workspace", async () => {
     const dir = await mkdtemp(join(tmpdir(), "acolyte-shell-sandbox-"));
     const workspaceDir = join(dir, "workspace");
