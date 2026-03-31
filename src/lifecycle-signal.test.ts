@@ -1,21 +1,21 @@
 import { describe, expect, test } from "bun:test";
-import { acceptedLifecycleSignal } from "./lifecycle-state";
+import { resolveSignal } from "./lifecycle";
 import { createRunContext } from "./test-utils";
 import { createSessionContext, recordCall } from "./tool-session";
 
-describe("acceptedLifecycleSignal", () => {
+describe("resolveSignal", () => {
   test("accepts done when no contradiction exists", () => {
     const ctx = createRunContext({
       result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
     });
-    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+    expect(resolveSignal(ctx)).toBe("done");
   });
 
   test("accepts blocked when no contradiction exists", () => {
     const ctx = createRunContext({
       result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
     });
-    expect(acceptedLifecycleSignal(ctx)).toBe("blocked");
+    expect(resolveSignal(ctx)).toBe("blocked");
   });
 
   test("rejects no_op after writes happened", () => {
@@ -27,7 +27,7 @@ describe("acceptedLifecycleSignal", () => {
       session,
       result: { text: "No changes were needed.", toolCalls: [], signal: "no_op" },
     });
-    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("rejects any signal when a current error exists", () => {
@@ -35,7 +35,7 @@ describe("acceptedLifecycleSignal", () => {
       currentError: { message: "verify failed", category: "other" },
       result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
     });
-    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("rejects done after a budget-exhausted error", () => {
@@ -43,6 +43,6 @@ describe("acceptedLifecycleSignal", () => {
       currentError: { message: "duplicate tool call blocked", category: "budget-exhausted" },
       result: { text: "Finished the requested change.", toolCalls: [], signal: "done" },
     });
-    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 });

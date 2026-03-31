@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { TOOL_ERROR_CODES } from "./error-contract";
+import { resolveSignal } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
-import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 
 describe("phaseGenerate", () => {
@@ -65,7 +65,7 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(ctx.currentError?.tool).toBe("file-edit");
-    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("clears a file-edit error after a later successful write recovery", async () => {
@@ -127,7 +127,7 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(ctx.currentError).toBeUndefined();
-    expect(acceptedLifecycleSignal(ctx)).toBe("done");
+    expect(resolveSignal(ctx)).toBe("done");
   });
 
   test("does not clear a file-edit error after a different write tool succeeds", async () => {
@@ -189,7 +189,7 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(ctx.currentError?.tool).toBe("file-edit");
-    expect(acceptedLifecycleSignal(ctx)).toBeUndefined();
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("fails fast when fullOutput rejects outside the reader chain", async () => {

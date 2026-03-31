@@ -1,19 +1,26 @@
-import { createErrorStats, recoveryActionForError } from "./error-handling";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
-import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
+import type {
+  LifecycleEventName,
+  LifecycleInput,
+  LifecycleSignal,
+  RunContext,
+  ToolOutputEvent,
+} from "./lifecycle-contract";
 import { EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
-import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
@@ -141,8 +148,18 @@ function runEffects(
   return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
 }
 
+export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
+  const signal = ctx.result?.signal;
+  if (!signal) return undefined;
+  if (ctx.currentError) return undefined;
+  if (signal === "no_op" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
+    return undefined;
+  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;
+  return undefined;
+}
+
 function acceptResult(ctx: RunContext): void {
-  const lifecycleSignal = acceptedLifecycleSignal(ctx);
+  const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
     ctx.currentError = undefined;
     ctx.debug("lifecycle.signal.accepted", {
@@ -151,11 +168,10 @@ function acceptResult(ctx: RunContext): void {
     });
   }
 
-  const action = recoveryActionForError(
-    { errorCode: ctx.currentError?.code, unknownErrorCount: ctx.errorStats.other },
-    ctx.policy.maxUnknownErrorsPerRequest,
-  );
-  if (action === "stop-unknown-budget") {
+  const errorBudgetExhausted =
+    ctx.currentError?.code === LIFECYCLE_ERROR_CODES.unknown &&
+    ctx.errorStats.other >= ctx.policy.maxUnknownErrorsPerRequest;
+  if (errorBudgetExhausted) {
     ctx.debug("lifecycle.eval.skipped", {
       reason: "unknown_error_budget",
       unknown_error_count: ctx.errorStats.other,

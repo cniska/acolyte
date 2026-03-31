@@ -9,7 +9,6 @@ import {
   errorCodeFromCategory,
   errorKindFromCategory,
   parseError,
-  recoveryActionForError,
 } from "./error-handling";
 
 describe("error handling helpers", () => {
@@ -65,38 +64,6 @@ describe("error handling helpers", () => {
     expect(errorKindFromCategory("file-not-found")).toBe("file_not_found");
     expect(errorKindFromCategory("budget-exhausted")).toBe("budget_exhausted");
     expect(errorKindFromCategory("other")).toBe("unknown");
-  });
-
-  test("recoveryActionForError uses unknown budget only", () => {
-    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
-    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
-      "stop-unknown-budget",
-    );
-    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileMultiMatch, unknownErrorCount: 0 }, 2)).toBe(
-      "none",
-    );
-    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindNotFound, unknownErrorCount: 2 }, 2)).toBe(
-      "none",
-    );
-    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileBatchTooLarge, unknownErrorCount: 2 }, 2)).toBe(
-      "none",
-    );
-    expect(recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileFindTooLarge, unknownErrorCount: 2 }, 2)).toBe(
-      "none",
-    );
-    expect(
-      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileReplaceTooLarge, unknownErrorCount: 2 }, 2),
-    ).toBe("none");
-    expect(
-      recoveryActionForError({ errorCode: TOOL_ERROR_CODES.editFileLineRangeTooLarge, unknownErrorCount: 2 }, 2),
-    ).toBe("none");
-  });
-
-  test("recoveryActionForError returns action based on error budget", () => {
-    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.timeout, unknownErrorCount: 0 }, 2)).toBe("none");
-    expect(recoveryActionForError({ errorCode: LIFECYCLE_ERROR_CODES.unknown, unknownErrorCount: 2 }, 2)).toBe(
-      "stop-unknown-budget",
-    );
   });
 
   test("createStreamError returns normalized structured payload", () => {

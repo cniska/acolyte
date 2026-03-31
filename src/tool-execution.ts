@@ -59,7 +59,7 @@ export async function runTool(
   session: SessionContext,
   toolId: string,
   toolCallId: string,
-  args: object,
+  args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<unknown>,
   options?: { timeoutMs?: number },
 ): Promise<unknown> {

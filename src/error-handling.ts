@@ -11,7 +11,6 @@ export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type AppError<TCode extends string = string, TMeta = unknown> = CodedError<TCode, TMeta>;
 export type ParsedError = { message: string; code?: string; kind?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
-export type RecoveryAction = "stop-unknown-budget" | "none";
 export type SerializedToolError = {
   error: {
     message: string;
@@ -103,15 +102,6 @@ export function parseError(value: unknown): ParseErrorResult {
   if (value instanceof Error) return { ok: true, value: parseErrorInstance(value) };
   if (typeof value === "object" && value !== null) return parseErrorObject(value);
   return { ok: false, error: "invalid_error_payload" };
-}
-
-export function recoveryActionForError(
-  input: { errorCode?: string; unknownErrorCount: number },
-  unknownErrorBudget: number,
-): RecoveryAction {
-  if (input.errorCode === LIFECYCLE_ERROR_CODES.unknown && input.unknownErrorCount >= unknownErrorBudget)
-    return "stop-unknown-budget";
-  return "none";
 }
 
 export function serializeToolError(value: unknown): SerializedToolError {
