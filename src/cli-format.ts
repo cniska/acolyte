@@ -142,7 +142,7 @@ export function formatRunSummary(
   return `${label}: ${durationSec}s, ${formatCompactNumber(totals.total)} tokens (input ${formatCompactNumber(totals.input)}, output ${formatCompactNumber(totals.output)}), ${t("unit.call", { count: totals.modelCalls })}`;
 }
 
-export function formatAssistantReplyOutput(content: string, wrapWidth = 100): string {
+export function formatAgentReplyOutput(content: string, wrapWidth = 100): string {
   const wrapped = wrapAssistantContent(content, wrapWidth);
   const lines = wrapped.split("\n");
   if (lines.length === 0) return "•";

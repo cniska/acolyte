@@ -2,7 +2,7 @@ import { stdout as output } from "node:process";
 import { createWorkspaceSpecifier } from "./api";
 import { createMessage } from "./chat-session";
 import { formatChecklist } from "./checklist-format";
-import { formatAssistantReplyOutput, printIndentedDim } from "./cli-format";
+import { formatAgentReplyOutput, printIndentedDim } from "./cli-format";
 import type { Client } from "./client-contract";
 import { nowIso } from "./datetime";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -19,71 +19,63 @@ function setSessionTitle(session: Session, inputText: string): void {
   if (title.length > 0) session.title = title;
 }
 
-function missingAssistantStreamTail(streamed: string, finalOutput: string): string {
+function missingAgentStreamTail(streamed: string, finalOutput: string): string {
   if (streamed.length === 0) return finalOutput;
   if (finalOutput === streamed) return "";
   if (finalOutput.startsWith(streamed)) return finalOutput.slice(streamed.length);
   return "";
 }
 
-function createAssistantStreamRenderer(): {
-  onAssistantDelta: (delta: string) => void;
+function createAgentStreamRenderer(): {
+  onDelta: (delta: string) => void;
   renderReply: (replyOutput: string, hasPrintedProgress: boolean) => Promise<void>;
   streamedText: () => string;
 } {
-  let assistantStreamStarted = false;
-  let assistantStreamText = "";
-  let assistantLineBuffer = "";
+  let agentStreamStarted = false;
+  let agentStreamText = "";
+  let atLineStart = true;
 
-  const flushAssistantLine = (line: string): void => {
-    if (!assistantStreamStarted) {
-      printOutput(`• ${line}`);
-      assistantStreamStarted = true;
-      return;
+  const writeRaw = (text: string): void => {
+    if (text.length === 0) return;
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (atLineStart) {
+        const prefix = agentStreamStarted ? "  " : "• ";
+        process.stdout.write(prefix);
+        agentStreamStarted = true;
+      }
+      const newlineIndex = remaining.indexOf("\n");
+      if (newlineIndex === -1) {
+        process.stdout.write(remaining);
+        atLineStart = false;
+        break;
+      }
+      process.stdout.write(`${remaining.slice(0, newlineIndex)}\n`);
+      remaining = remaining.slice(newlineIndex + 1);
+      atLineStart = true;
     }
-    printOutput(`  ${line}`);
-  };
-
-  const flushBufferedLines = (): void => {
-    if (assistantLineBuffer.length === 0) return;
-    flushAssistantLine(assistantLineBuffer);
-    assistantLineBuffer = "";
   };
 
   return {
-    onAssistantDelta: (delta) => {
+    onDelta: (delta) => {
       if (delta.length === 0) return;
-      assistantStreamText += delta;
-      assistantLineBuffer += delta;
-      while (true) {
-        const newlineIndex = assistantLineBuffer.indexOf("\n");
-        if (newlineIndex === -1) break;
-        const line = assistantLineBuffer.slice(0, newlineIndex);
-        assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
-        flushAssistantLine(line);
-      }
+      agentStreamText += delta;
+      writeRaw(delta);
     },
     renderReply: async (replyOutput, hasPrintedProgress) => {
+      if (!atLineStart) process.stdout.write("\n");
       printOutput("");
       if (hasPrintedProgress) printOutput("");
-      const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-      flushBufferedLines();
-      const missingTail = missingAssistantStreamTail(assistantStreamText, replyOutput);
+      const missingTail = missingAgentStreamTail(agentStreamText, replyOutput);
       if (missingTail.length > 0) {
-        assistantLineBuffer += missingTail;
-        while (true) {
-          const newlineIndex = assistantLineBuffer.indexOf("\n");
-          if (newlineIndex === -1) break;
-          const line = assistantLineBuffer.slice(0, newlineIndex);
-          assistantLineBuffer = assistantLineBuffer.slice(newlineIndex + 1);
-          flushAssistantLine(line);
-        }
-        flushBufferedLines();
-      } else if (!assistantStreamStarted) {
-        await streamText(formatAssistantReplyOutput(replyOutput, wrapWidth));
+        writeRaw(missingTail);
+        if (!atLineStart) process.stdout.write("\n");
+      } else if (!agentStreamStarted) {
+        const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
+        await streamText(formatAgentReplyOutput(replyOutput, wrapWidth));
       }
     },
-    streamedText: () => assistantStreamText,
+    streamedText: () => agentStreamText,
   };
 }
 
@@ -99,7 +91,7 @@ export async function handlePrompt(
 
   try {
     printOutput(`❯ ${prompt}`);
-    const assistantRenderer = createAssistantStreamRenderer();
+    const agentRenderer = createAgentStreamRenderer();
     const toolOutput = createToolOutputState();
     const snapshotByCallId = new Map<string, string>();
     let hasPrintedToolProgress = false;
@@ -117,7 +109,7 @@ export async function handlePrompt(
         onEvent: (event) => {
           switch (event.type) {
             case "text-delta":
-              assistantRenderer.onAssistantDelta(event.text);
+              agentRenderer.onDelta(event.text);
               break;
             case "tool-output": {
               const update = toolOutput.push(event);
@@ -174,7 +166,7 @@ export async function handlePrompt(
     if (reply.error) {
       printError(reply.error);
     } else {
-      await assistantRenderer.renderReply(reply.output, hasPrintedToolProgress);
+      await agentRenderer.renderReply(reply.output, hasPrintedToolProgress);
     }
     const assistantMessage = createMessage("assistant", reply.output);
     session.messages.push(

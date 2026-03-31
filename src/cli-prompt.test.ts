@@ -89,6 +89,39 @@ describe("cli-prompt", () => {
     }
   });
 
+  test("text-delta renders before subsequent tool-output", async () => {
+    const printed: string[] = [];
+    const originalWrite = process.stdout.write;
+    process.stdout.write = ((chunk: string) => {
+      printed.push(chunk);
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const events: StreamEvent[] = [
+        { type: "text-delta", text: "Reading the file." },
+        {
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "file-read",
+          content: { kind: "tool-header" as const, labelKey: "tool.file_read.header", detail: "src/a.ts" },
+        },
+      ];
+
+      const session = createTestSession();
+      const client = createStreamingClient(events);
+      await handlePrompt("read a.ts", session, client);
+
+      const output = printed.join("");
+      const textPos = output.indexOf("Reading the file.");
+      const toolPos = output.indexOf("src/a.ts");
+      expect(textPos).toBeGreaterThanOrEqual(0);
+      expect(toolPos).toBeGreaterThan(textPos);
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+  });
+
   test("tool-output events with growing numWidth do not reprint earlier diffs", async () => {
     const printed: string[] = [];
     const originalWrite = process.stdout.write;
