@@ -1,18 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+  clearSharedRateLimiters,
   createRateLimiter,
-  defaultRateLimiterConfig,
+  createRateLimitFetch,
   isRateLimitError,
   type RateLimiterConfig,
   retryAfterMs,
+  sharedRateLimiter,
 } from "./rate-limiter";
 
-const FAST: RateLimiterConfig = {
-  maxRequestsPerMinute: 3,
-  maxTokensPerMinute: 0,
-  backoffBaseMs: 100,
-  backoffMaxMs: 1_000,
-};
+const FAST: RateLimiterConfig = { backoffBaseMs: 100, backoffMaxMs: 1_000 };
 
 describe("isRateLimitError", () => {
   test("detects 429 status", () => {
@@ -50,27 +47,43 @@ describe("retryAfterMs", () => {
 });
 
 describe("createRateLimiter", () => {
-  test("allows calls within limit", async () => {
+  test("beforeCall resolves immediately with no prior state", async () => {
     const limiter = createRateLimiter(FAST);
     const start = Date.now();
     await limiter.beforeCall();
-    await limiter.beforeCall();
-    await limiter.beforeCall();
-    expect(Date.now() - start).toBeLessThan(100);
+    expect(Date.now() - start).toBeLessThan(50);
   });
 
-  test("delays when token usage exceeds limit", async () => {
-    const limiter = createRateLimiter({
-      maxRequestsPerMinute: 100,
-      maxTokensPerMinute: 1_000,
-      backoffBaseMs: 100,
-      backoffMaxMs: 1_000,
+  test("onResponse updates state from Anthropic headers", () => {
+    const limiter = createRateLimiter(FAST);
+    const headers = new Headers({
+      "anthropic-ratelimit-requests-remaining": "10",
+      "anthropic-ratelimit-tokens-remaining": "5000",
     });
-    await limiter.beforeCall();
-    limiter.recordUsage(900);
-    await limiter.beforeCall();
-    limiter.recordUsage(200);
-    // Next call should block — 1100 tokens in window exceeds 1000 limit
+    limiter.onResponse(headers);
+    expect(limiter.state().requestsRemaining).toBe(10);
+    expect(limiter.state().tokensRemaining).toBe(5000);
+  });
+
+  test("onResponse updates state from OpenAI headers", () => {
+    const limiter = createRateLimiter(FAST);
+    const headers = new Headers({
+      "x-ratelimit-remaining-requests": "25",
+      "x-ratelimit-remaining-tokens": "80000",
+    });
+    limiter.onResponse(headers);
+    expect(limiter.state().requestsRemaining).toBe(25);
+    expect(limiter.state().tokensRemaining).toBe(80000);
+  });
+
+  test("delays when requests remaining is exhausted", async () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(
+      new Headers({
+        "anthropic-ratelimit-requests-remaining": "0",
+        "anthropic-ratelimit-requests-reset": "1s",
+      }),
+    );
     const delayed = limiter.beforeCall();
     const result = await Promise.race([
       delayed.then(() => "completed"),
@@ -79,18 +92,15 @@ describe("createRateLimiter", () => {
     expect(result).toBe("waited");
   });
 
-  test("delays when calls exceed limit", async () => {
-    const limiter = createRateLimiter({
-      maxRequestsPerMinute: 2,
-      maxTokensPerMinute: 0,
-      backoffBaseMs: 100,
-      backoffMaxMs: 1_000,
-    });
-    await limiter.beforeCall();
-    await limiter.beforeCall();
-    // Third call should block since limit is 2 per minute
+  test("delays when tokens remaining is exhausted", async () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(
+      new Headers({
+        "anthropic-ratelimit-tokens-remaining": "0",
+        "anthropic-ratelimit-tokens-reset": "2s",
+      }),
+    );
     const delayed = limiter.beforeCall();
-    // Cancel via racing with a short timeout to avoid actually waiting 60s
     const result = await Promise.race([
       delayed.then(() => "completed"),
       new Promise<string>((resolve) => setTimeout(() => resolve("waited"), 50)),
@@ -126,26 +136,43 @@ describe("createRateLimiter", () => {
     expect(second.delayMs).toBeGreaterThanOrEqual(first.delayMs);
   });
 
-  test("reset clears consecutive failure count", () => {
+  test("onResponse resets consecutive failure count", () => {
     const limiter = createRateLimiter(FAST);
     limiter.onError({ status: 429 });
     limiter.onError({ status: 429 });
     limiter.onError({ status: 429 });
-    limiter.reset();
+    limiter.onResponse(new Headers());
     const result = limiter.onError({ status: 429 });
     expect(result.delayMs).toBeLessThanOrEqual(FAST.backoffBaseMs);
   });
 });
 
-describe("defaultRateLimiterConfig", () => {
-  test("returns per-provider defaults", () => {
-    const anthropic = defaultRateLimiterConfig("anthropic");
-    expect(anthropic.maxRequestsPerMinute).toBe(50);
+describe("createRateLimitFetch", () => {
+  test("passes response through and calls onResponse", async () => {
+    const limiter = createRateLimiter(FAST);
+    const mockResponse = new Response("ok", {
+      headers: { "x-ratelimit-remaining-requests": "42" },
+    });
+    const mockFetch = async () => mockResponse;
+    const wrappedFetch = createRateLimitFetch(limiter, mockFetch);
+    const result = await wrappedFetch("https://example.com");
+    expect(result).toBe(mockResponse);
+    expect(limiter.state().requestsRemaining).toBe(42);
+  });
+});
 
-    const openai = defaultRateLimiterConfig("openai");
-    expect(openai.maxRequestsPerMinute).toBe(60);
+describe("sharedRateLimiter", () => {
+  test("returns same instance for same provider", () => {
+    clearSharedRateLimiters();
+    const a = sharedRateLimiter("anthropic");
+    const b = sharedRateLimiter("anthropic");
+    expect(a).toBe(b);
+  });
 
-    const google = defaultRateLimiterConfig("google");
-    expect(google.maxRequestsPerMinute).toBe(60);
+  test("returns different instances for different providers", () => {
+    clearSharedRateLimiters();
+    const a = sharedRateLimiter("anthropic");
+    const o = sharedRateLimiter("openai");
+    expect(a).not.toBe(o);
   });
 });

@@ -20,7 +20,7 @@ import {
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
-import { createRateLimiter, defaultRateLimiterConfig } from "./rate-limiter";
+import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
@@ -46,10 +46,8 @@ export function createAgentStream(
   model: LanguageModelV3,
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
-  qualifiedModel: string,
+  rateLimiter: RateLimiter,
 ): Agent["stream"] {
-  const provider = providerFromModel(qualifiedModel);
-  const rateLimiter = createRateLimiter(defaultRateLimiterConfig(provider));
   const toolsByName = new Map<string, ToolDefinition>();
   for (const tool of Object.values(tools)) {
     toolsByName.set(tool.id, tool);
@@ -121,12 +119,12 @@ export function createAgentStream(
           emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, lifecycleTextState);
           if (part.type === "finish") {
             finishReason = part.finishReason;
-            const inputTokens = part.usage?.inputTokens?.total ?? 0;
-            const outputTokens = part.usage?.outputTokens?.total ?? 0;
-            rateLimiter.recordUsage(inputTokens + outputTokens);
             streamController.enqueue({
               type: "model-usage",
-              payload: { inputTokens, outputTokens },
+              payload: {
+                inputTokens: part.usage?.inputTokens?.total,
+                outputTokens: part.usage?.outputTokens?.total,
+              },
             });
           }
         }
@@ -366,9 +364,11 @@ export function createAgent(input: {
   tools?: Record<string, ToolDefinition>;
 }): Agent {
   const qualifiedModel = normalizeModel(input.model);
-  const modelInstance = createModel(qualifiedModel);
+  const provider = providerFromModel(qualifiedModel);
+  const rateLimiter = sharedRateLimiter(provider);
+  const modelInstance = createModel(qualifiedModel, undefined, rateLimiter);
   const tools = input.tools ?? {};
-  const stream = createAgentStream(modelInstance, input.instructions, tools, qualifiedModel);
+  const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter);
   return {
     id: input.id ?? "agent",
     name: input.name ?? "Agent",

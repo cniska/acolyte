@@ -10,7 +10,8 @@ import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
 import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
 import { createModel } from "./model-factory";
-import { normalizeModel } from "./provider-config";
+import { normalizeModel, providerFromModel } from "./provider-config";
+import { sharedRateLimiter } from "./rate-limiter";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
@@ -204,7 +205,8 @@ export type DistillRunner = (systemPrompt: string, userContent: string) => Promi
 const defaultDistillConfig = (): DistillConfig => appConfig.distill;
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
-  const model = createModel(normalizeModel(appConfig.distill.model));
+  const qualifiedModel = normalizeModel(appConfig.distill.model);
+  const model = createModel(qualifiedModel, undefined, sharedRateLimiter(providerFromModel(qualifiedModel)));
   const result = await model.doGenerate({
     prompt: [
       { role: "system", content: systemPrompt },
