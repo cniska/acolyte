@@ -20,29 +20,26 @@ Naming conventions and core terms used across Acolyte code and docs.
 
 | Term | Definition |
 |---|---|
-| Base Agent Input | Immutable prompt input created during `prepare` and reused as the base for each generation attempt |
+| Agent | The model instance that owns task judgment and decides how to complete work within host-provided structure |
+| Assistant | The message role used by LLM providers for model responses |
 | Checklist | Inline progress display for multi-step tasks, defined by `checklist-create` and updated by `checklist-update` |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
 | Continuation State | Persisted "Current task" and "Next step" cues carried into later turns |
 | Distill | Memory source family that extracts and consolidates knowledge into records at project, user, or session scope |
-| Embedding | Provider-generated vector representation of a distill record used for semantic recall |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
+| Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
+| Embedding | Provider-generated vector representation of a distill record used for semantic recall |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
-| Evaluator | Pure post-generation policy unit that returns lifecycle decisions and optional small patches |
-| Guard | Pure pre-tool policy unit that may block a call or request a small session patch |
-| Host | Runtime environment around the model that provides tools, lifecycle structure, memory, guards, and recovery |
-| Lifecycle Feedback | Task-scoped runtime feedback carried into the next matching lifecycle attempt |
-| Effect | Lifecycle-owned side-effect unit that runs before pure evaluators in the evaluate phase |
+| Host | Runtime environment around the model that provides tools, lifecycle structure, effects, and memory |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
-| Lifecycle State | Internal task-scoped runtime state carried between lifecycle attempts |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal memory flow from ingest through commit |
 | Memory Policy | Centralized limits and defaults for memory behavior |
 | Memory Source | Pluggable provider that contributes memory entries and optional commit behavior |
 | Memory Source Strategy | Configured memory source IDs and order used by the Memory Engine |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
-| Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
+| Model | The LLM instance that the agent wraps; the host provides structure, the model provides judgment |
 | Observation | Distill record tier for round-level facts |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
 | Provider | Model backend selected for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`) |
@@ -56,11 +53,11 @@ Naming conventions and core terms used across Acolyte code and docs.
 | SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
-| Step Budget | Guard that limits per-cycle and total tool calls to prevent runaway loops |
+| Step Budget | Per-cycle and total tool-call limit enforced before each tool execution |
+| System Prompt | The assembled prompt passed to the model, built from soul, instructions, and workspace context |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
-| Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

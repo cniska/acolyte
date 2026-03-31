@@ -6,7 +6,7 @@ import { createId } from "./short-id";
 import { createToolOutputState, type ToolOutputPart } from "./tool-output-content";
 
 export type MessageStreamState = {
-  onAssistantDelta: (delta: string) => void;
+  onDelta: (delta: string) => void;
   onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
   onToolResult: (entry: {
     toolCallId: string;
@@ -17,8 +17,8 @@ export type MessageStreamState = {
   }) => void;
   onChecklist: (entry: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
   onProgressError: (error: string) => void;
-  streamedAssistantText: () => string;
-  /** Flush remaining content and return IDs of all streaming assistant rows (for replacement by final turn rows). */
+  streamedText: () => string;
+  /** Flush remaining content and return IDs of all streaming agent rows (for replacement by final turn rows). */
   finalize: () => string[];
   dispose: () => void;
 };
@@ -28,12 +28,12 @@ const STREAM_FLUSH_MS = 50;
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 }): MessageStreamState {
-  // --- assistant streaming state ---
+  // --- agent streaming state ---
   let activeRowId: string | null = null;
-  let activeContent = "";
+  let agentContent = "";
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Every assistant row ID we've created. Collected at finalize for caller to remove. */
-  const assistantRowIds: string[] = [];
+  /** Every agent row ID we've created. Collected at finalize for caller to remove. */
+  const agentRowIds: string[] = [];
 
   // --- tool output state ---
   const toolRowIdByCallId = new Map<string, string>();
@@ -51,29 +51,29 @@ export function createMessageStreamState(input: {
 
   function flush(): void {
     cancelFlushTimer();
-    if (activeContent.trim().length === 0) return;
+    if (agentContent.trim().length === 0) return;
     input.setRows((current) => {
       if (!activeRowId) {
         activeRowId = `row_${createId()}`;
-        assistantRowIds.push(activeRowId);
-        return [...current, { id: activeRowId, kind: "assistant", content: activeContent }];
+        agentRowIds.push(activeRowId);
+        return [...current, { id: activeRowId, kind: "assistant", content: agentContent }];
       }
-      return current.map((row) => (row.id === activeRowId ? { ...row, content: activeContent } : row));
+      return current.map((row) => (row.id === activeRowId ? { ...row, content: agentContent } : row));
     });
   }
 
-  /** Flush pending content and detach from the current assistant row. */
-  function sealAssistantRow(): void {
+  /** Flush pending content and detach from the current agent row. */
+  function sealAgentRow(): void {
     cancelFlushTimer();
     flush();
     activeRowId = null;
-    activeContent = "";
+    agentContent = "";
   }
 
   return {
-    onAssistantDelta: (delta) => {
+    onDelta: (delta) => {
       if (delta.length === 0) return;
-      activeContent += delta;
+      agentContent += delta;
       if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
     },
 
@@ -83,14 +83,25 @@ export function createMessageStreamState(input: {
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
-        // New tool call: seal any in-progress assistant row (keeps it visible), then append tool row.
-        sealAssistantRow();
+        // New tool call: seal any in-progress agent row and append tool row in one atomic update.
+        cancelFlushTimer();
+        const pendingContent = agentContent;
+        const pendingRowId = activeRowId;
+        activeRowId = null;
+        agentContent = "";
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
-        input.setRows((current) => [
-          ...current,
-          { id: rowId, kind: "tool" as const, content: { parts: update.items } },
-        ]);
+        input.setRows((current) => {
+          let rows = current;
+          if (pendingContent && pendingRowId) {
+            rows = rows.map((row) => (row.id === pendingRowId ? { ...row, content: pendingContent } : row));
+          } else if (pendingContent) {
+            const id = `row_${createId()}`;
+            agentRowIds.push(id);
+            rows = [...rows, { id, kind: "assistant" as const, content: pendingContent }];
+          }
+          return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
+        });
         return;
       }
       // Existing tool call: update in place.
@@ -129,7 +140,7 @@ export function createMessageStreamState(input: {
       const content = { groupId: entry.groupId, groupTitle: entry.groupTitle, items: entry.items };
       const existingRowId = checklistRowIdByGroupId.get(entry.groupId);
       if (!existingRowId) {
-        sealAssistantRow();
+        sealAgentRow();
         const rowId = `row_${createId()}`;
         checklistRowIdByGroupId.set(entry.groupId, rowId);
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
@@ -146,17 +157,17 @@ export function createMessageStreamState(input: {
       });
     },
 
-    streamedAssistantText: () => activeContent,
+    streamedText: () => agentContent,
 
     finalize: () => {
-      sealAssistantRow();
+      sealAgentRow();
       const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
       if (checklistIds.size > 0) {
         input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
       }
-      const ids = [...assistantRowIds];
-      assistantRowIds.length = 0;
+      const ids = [...agentRowIds];
+      agentRowIds.length = 0;
       return ids;
     },
 
@@ -164,11 +175,11 @@ export function createMessageStreamState(input: {
       cancelFlushTimer();
       const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
-      const idsToRemove = [...assistantRowIds];
+      const idsToRemove = [...agentRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;
-      activeContent = "";
-      assistantRowIds.length = 0;
+      agentContent = "";
+      agentRowIds.length = 0;
       const removeSet = new Set([...idsToRemove, ...checklistIds]);
       if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));

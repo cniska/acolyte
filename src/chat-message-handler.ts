@@ -127,7 +127,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
               break;
             case "text-delta":
-              streamState.onAssistantDelta(event.text);
+              streamState.onDelta(event.text);
               break;
             case "tool-output":
               streamState.onOutput(event);
@@ -172,7 +172,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           return;
         }
       }
-      const partialContent = streamState.streamedAssistantText().trim();
+      const partialContent = streamState.streamedText().trim();
       if (partialContent.length > 0) {
         const partialMessage = input.createMessage("assistant", partialContent);
         input.currentSession.messages.push(partialMessage);

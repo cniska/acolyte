@@ -15,13 +15,13 @@ function createRowsHarness(): {
 }
 
 describe("chat-message-handler-stream", () => {
-  test("accumulates assistant deltas and exposes via streamedAssistantText", () => {
+  test("accumulates agent deltas and exposes via streamedText", () => {
     const { setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    state.onAssistantDelta("hello");
-    state.onAssistantDelta(" world");
-    expect(state.streamedAssistantText()).toBe("hello world");
+    state.onDelta("hello");
+    state.onDelta(" world");
+    expect(state.streamedText()).toBe("hello world");
     state.dispose();
   });
 
@@ -29,13 +29,13 @@ describe("chat-message-handler-stream", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    state.onAssistantDelta("hello");
+    state.onDelta("hello");
     // Force flush via timer
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(1);
     const rowId = state.finalize();
     expect(rowId).toBeTruthy();
-    expect(state.streamedAssistantText()).toBe("");
+    expect(state.streamedText()).toBe("");
     state.dispose();
   });
 
@@ -87,12 +87,32 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("finalize keeps tool rows and returns only assistant row ids", async () => {
+  test("agent text row appears before tool row when text arrives first", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    // Simulate: assistant text → tool call → more assistant text
-    state.onAssistantDelta("thinking...");
+    // Agent emits text, then a tool call arrives — text should be flushed before the tool row.
+    state.onDelta("Reading the file.");
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "src/a.ts" },
+    });
+
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const agentIndex = rows.findIndex((r) => r.kind === "assistant");
+    const toolIndex = rows.findIndex((r) => r.kind === "tool");
+    expect(agentIndex).toBeGreaterThanOrEqual(0);
+    expect(toolIndex).toBeGreaterThan(agentIndex);
+    state.dispose();
+  });
+
+  test("finalize keeps tool rows and returns only agent row ids", async () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // Simulate: agent text → tool call → more agent text
+    state.onDelta("thinking...");
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(1);
     expect(rows[0]?.kind).toBe("assistant");
@@ -105,12 +125,12 @@ describe("chat-message-handler-stream", () => {
     expect(rows).toHaveLength(2);
     expect(rows[1]?.kind).toBe("tool");
 
-    state.onAssistantDelta("done now");
+    state.onDelta("done now");
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(3);
 
     const streamingIds = state.finalize();
-    // finalize should return only assistant row ids, not tool row ids
+    // finalize should return only agent row ids, not tool row ids
     const toolRows = rows.filter((r) => r.kind === "tool");
     expect(toolRows).toHaveLength(1);
     for (const toolRow of toolRows) {
