@@ -27,7 +27,6 @@ type CaptureErrorMeta = {
   tool?: string;
   code?: string;
   kind?: string;
-  recovery?: NonNullable<RunContext["currentError"]>["recovery"];
 };
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
@@ -58,7 +57,7 @@ function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta)
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
-  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool, recovery: meta?.recovery };
+  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
@@ -242,138 +241,110 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
-function didResolveToolRecovery(
-  recovery: NonNullable<RunContext["currentError"]>["recovery"],
-  started: { toolName: string; targetPaths?: string[] },
-): boolean {
-  if (!recovery?.resolvesOn || recovery.resolvesOn.length === 0) return false;
-  const targets = started.targetPaths ?? [];
-  return recovery.resolvesOn.some((resolution) => {
-    if (resolution.tool !== started.toolName) return false;
-    if (!resolution.targetPaths || resolution.targetPaths.length === 0) return true;
-    return resolution.targetPaths.every((targetPath) => targets.includes(targetPath));
-  });
-}
-
-function clearResolvedToolError(ctx: RunContext, started: { toolName: string; targetPaths?: string[] }): void {
+function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
   const failedTool = ctx.currentError.tool;
   if (!failedTool) return;
   if (failedTool === started.toolName) {
     ctx.currentError = undefined;
-    return;
   }
-  if (!didResolveToolRecovery(ctx.currentError.recovery, started)) return;
-  ctx.currentError = undefined;
 }
 
-type ChunkHandler = (ctx: RunContext, chunk: StreamChunk) => void;
-
-const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
-  "step-start"(ctx) {
-    ctx.emit({ type: "text-delta", text: "\n" });
-  },
-
-  "text-delta"(ctx, chunk) {
-    if (chunk.type !== "text-delta") return;
-    const text = chunk.payload?.text;
-    if (typeof text === "string" && text.length > 0) {
-      ctx.emit({ type: "text-delta", text });
-      emitStreamingUsage(ctx, text.length);
+function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
+  switch (chunk.type) {
+    case "text-delta": {
+      const p = chunk.payload;
+      if (typeof p?.text === "string" && p.text.length > 0) {
+        ctx.emit({ type: "text-delta", text: p.text });
+        emitStreamingUsage(ctx, p.text.length);
+      }
+      break;
     }
-  },
-
-  "reasoning-delta"(ctx, chunk) {
-    if (chunk.type !== "reasoning-delta") return;
-    const text = chunk.payload?.text;
-    if (typeof text === "string" && text.length > 0) {
-      ctx.emit({ type: "reasoning", text });
-      emitStreamingUsage(ctx, text.length);
+    case "reasoning-delta": {
+      const p = chunk.payload;
+      if (typeof p?.text === "string" && p.text.length > 0) {
+        ctx.emit({ type: "reasoning", text: p.text });
+        emitStreamingUsage(ctx, p.text.length);
+      }
+      break;
     }
-  },
+    case "tool-call": {
+      const p = chunk.payload;
+      if (p?.toolCallId && p?.toolName) {
+        const toolName = p.toolName;
+        ctx.observedTools.add(toolName);
+        const args = (p.args ?? {}) as Record<string, unknown>;
+        ctx.toolCallStartedAt.set(p.toolCallId, {
+          toolName,
+          startedAtMs: Date.now(),
+          targetPaths: extractToolTargetPaths(args, toolName),
+        });
+        ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
 
-  "tool-call"(ctx, chunk) {
-    if (chunk.type !== "tool-call") return;
-    const p = chunk.payload;
-    if (!p?.toolCallId || !p?.toolName) return;
-    const toolName = p.toolName;
-    ctx.observedTools.add(toolName);
-    const args = (p.args ?? {}) as Record<string, unknown>;
-    ctx.toolCallStartedAt.set(p.toolCallId, {
-      toolName,
-      startedAtMs: Date.now(),
-      targetPaths: extractToolTargetPaths(args, toolName),
-    });
-    ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
-    ctx.emit({ type: "tool-call", toolCallId: p.toolCallId, toolName, args });
-  },
-
-  "tool-result"(ctx, chunk) {
-    if (chunk.type !== "tool-result") return;
-    const p = chunk.payload;
-    if (!p?.toolCallId || !p?.toolName) return;
-    const toolName = p.toolName;
-    const started = ctx.toolCallStartedAt.get(p.toolCallId);
-    const resultRecord =
-      typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
-    const isError = Boolean(resultRecord && "error" in resultRecord);
-    if (isError) {
-      const parsed = parseError(resultRecord?.error);
+        ctx.emit({ type: "tool-call", toolCallId: p.toolCallId, toolName, args });
+      }
+      break;
+    }
+    case "tool-result": {
+      const p = chunk.payload;
+      if (p?.toolCallId && p?.toolName) {
+        const toolName = p.toolName;
+        const started = ctx.toolCallStartedAt.get(p.toolCallId);
+        const resultRecord =
+          typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
+        const isError = Boolean(resultRecord && "error" in resultRecord);
+        if (isError) {
+          const parsed = parseError(resultRecord?.error);
+          const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
+          const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
+          captureError(ctx, errorInfo.message, {
+            source: "tool-result",
+            tool: toolName,
+            code: resultCode ?? errorInfo.code,
+            kind: errorInfo.kind,
+          });
+          ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
+        } else {
+          clearResolvedToolError(ctx, started ?? { toolName });
+        }
+        completeToolCall(ctx, p.toolCallId, toolName);
+        emitToolResult(ctx, p.toolCallId, toolName, isError);
+      }
+      break;
+    }
+    case "tool-error": {
+      const p = chunk.payload;
+      const raw = p?.error ?? p?.message;
+      const parsed = parseError(raw);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
-      const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
+      const payloadCode = typeof p?.code === "string" ? p.code : undefined;
+      const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
+      const toolName = p?.toolName ?? "unknown";
       captureError(ctx, errorInfo.message, {
-        source: "tool-result",
+        source: "tool-error",
         tool: toolName,
-        code: resultCode ?? errorInfo.code,
-        kind: errorInfo.kind,
-        recovery: errorInfo.recovery,
+        code: payloadCode ?? errorInfo.code,
+        kind: payloadKind ?? errorInfo.kind,
       });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
-    } else {
-      clearResolvedToolError(ctx, started ?? { toolName });
+      if (p?.toolCallId && p?.toolName) {
+        completeToolCall(ctx, p.toolCallId, p.toolName);
+        emitToolResult(ctx, p.toolCallId, p.toolName, true);
+      }
+      break;
     }
-    completeToolCall(ctx, p.toolCallId, toolName);
-    emitToolResult(ctx, p.toolCallId, toolName, isError);
-  },
-
-  "tool-error"(ctx, chunk) {
-    if (chunk.type !== "tool-error") return;
-    const p = chunk.payload;
-    const raw = p?.error ?? p?.message;
-    const parsed = parseError(raw);
-    const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
-    const payloadCode = typeof p?.code === "string" ? p.code : undefined;
-    const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
-    const toolName = p?.toolName ?? "unknown";
-    captureError(ctx, errorInfo.message, {
-      source: "tool-error",
-      tool: toolName,
-      code: payloadCode ?? errorInfo.code,
-      kind: payloadKind ?? errorInfo.kind,
-      recovery: errorInfo.recovery,
-    });
-    ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
-    if (p?.toolCallId && p?.toolName) {
-      completeToolCall(ctx, p.toolCallId, p.toolName);
-      emitToolResult(ctx, p.toolCallId, p.toolName, true);
+    case "model-usage": {
+      const p = chunk.payload;
+      if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
+      if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
+      ctx.modelCallCount += 1;
+      ctx.emit({
+        type: "usage",
+        inputTokens: ctx.inputTokensAccum,
+        outputTokens: ctx.outputTokensAccum,
+      });
+      break;
     }
-  },
-
-  "model-usage"(ctx, chunk) {
-    if (chunk.type !== "model-usage") return;
-    const p = chunk.payload;
-    if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
-    if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
-    ctx.modelCallCount += 1;
-    ctx.emit({
-      type: "usage",
-      inputTokens: ctx.inputTokensAccum,
-      outputTokens: ctx.outputTokensAccum,
-    });
-  },
-};
-
-function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
-  CHUNK_HANDLERS[chunk.type](ctx, chunk);
+  }
 }

@@ -2,7 +2,6 @@ import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall, type SessionContext } from "./tool-guards";
-import type { ToolRecovery } from "./tool-recovery";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -35,28 +34,14 @@ export function hashResultValue(value: unknown): string | undefined {
   return hasher.digest("hex").slice(0, 16);
 }
 
-function formatRecoveryHints(recovery: ToolRecovery | undefined): string {
-  if (!recovery) return "";
-  const parts: string[] = [];
-  if (recovery.instruction) parts.push(recovery.instruction);
-  if (recovery.nextTool) parts.push(`Try: ${recovery.nextTool}`);
-  if (recovery.targetPaths?.length) parts.push(`Paths: ${recovery.targetPaths.join(", ")}`);
-  return parts.length > 0 ? ` Recovery: ${parts.join(". ")}.` : "";
-}
-
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (error) {
-    const rec =
-      typeof error === "object" && error !== null && "recovery" in error
-        ? (error as { recovery?: ToolRecovery }).recovery
-        : undefined;
     const baseMessage = error instanceof Error ? error.message : String(error);
-    const wrapped = new Error(`${toolId} failed: ${baseMessage}${formatRecoveryHints(rec)}`) as Error & {
+    const wrapped = new Error(`${toolId} failed: ${baseMessage}`) as Error & {
       code?: string;
       kind?: string;
-      recovery?: ToolRecovery;
     };
     if (typeof error === "object" && error !== null && "code" in error) {
       const code = (error as { code?: unknown }).code;
@@ -66,7 +51,6 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
       const kind = (error as { kind?: unknown }).kind;
       if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
     }
-    if (rec) wrapped.recovery = rec;
     throw wrapped;
   }
 }

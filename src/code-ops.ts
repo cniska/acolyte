@@ -13,63 +13,8 @@ import type {
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { escapeRegex } from "./string-utils";
 import { createToolError } from "./tool-error";
-import type { EditCodeRecoveryKind, ToolRecovery } from "./tool-recovery";
 import { createDiff, displayPathForDiff, IGNORED_DIRS } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
-
-function editCodeRecovery(path: string, kind: EditCodeRecoveryKind): ToolRecovery {
-  switch (kind) {
-    case "use-supported-file":
-      return {
-        tool: "code-edit",
-        kind,
-        summary: "code-edit only works on supported code files.",
-        instruction: `Switch to a supported code file for code-edit when changing '${path}', or use file-edit if this is a plain-text rewrite.`,
-        nextTool: "file-edit",
-        targetPaths: [path],
-      };
-    case "refine-pattern":
-      return {
-        tool: "code-edit",
-        kind,
-        summary: "Your AST pattern did not match the current file.",
-        instruction: `Keep the change in '${path}' and refine the ast-grep pattern to match the actual syntax in the latest file-read output. For a helper-scoped variable rename, prefer a structured rename edit like { op: "rename", from, to, withinSymbol } instead of broadening to a larger pattern. Do not switch to plain-text snippets unless you are changing to file-edit.`,
-        nextTool: "file-read",
-        targetPaths: [path],
-      };
-    case "clarify-rename-target":
-      return {
-        tool: "code-edit",
-        kind,
-        summary: "This scoped rename matches both local and member symbols.",
-        instruction: `Keep the change in '${path}' and retry the rename with an explicit target. Use target: "local" to rename the local symbol, or target: "member" to rename the declared member and its this.member references.`,
-        nextTool: "code-edit",
-        targetPaths: [path],
-      };
-    case "fix-replacement":
-      return {
-        tool: "code-edit",
-        kind,
-        summary: "Your code-edit replacement shape is invalid for this pattern.",
-        instruction: `Keep the change in '${path}' and fix the replacement to use only metavariables captured by the pattern. If the rewrite needs variadic or plain-text editing, switch to file-edit.`,
-        nextTool: "code-edit",
-        targetPaths: [path],
-      };
-    default:
-      return kind satisfies never;
-  }
-}
-
-function scanCodeRecovery(path: string): ToolRecovery {
-  return {
-    tool: "code-scan",
-    kind: "use-supported-file",
-    summary: "code-scan only works on supported code files.",
-    instruction: `Use code-scan on a supported code file or directory when scanning '${path}', or switch to file-search for plain-text lookup.`,
-    nextTool: "file-search",
-    targetPaths: [path],
-  };
-}
 
 let dynamicLangsRegistered = false;
 
@@ -488,8 +433,6 @@ async function editCodeFile(
         throw createToolError(
           TOOL_ERROR_CODES.editCodeNoMatch,
           `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-          undefined,
-          editCodeRecovery(absPath, "refine-pattern"),
         );
       }
       continue;
@@ -499,8 +442,6 @@ async function editCodeFile(
         throw createToolError(
           TOOL_ERROR_CODES.editCodeNoMatch,
           `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-          undefined,
-          editCodeRecovery(absPath, "clarify-rename-target"),
         );
       }
       continue;
@@ -513,8 +454,6 @@ async function editCodeFile(
         throw createToolError(
           TOOL_ERROR_CODES.editCodeNoMatch,
           `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
-          undefined,
-          editCodeRecovery(absPath, "refine-pattern"),
         );
       }
       continue;
@@ -535,8 +474,6 @@ async function editCodeFile(
         throw createToolError(
           TOOL_ERROR_CODES.editCodeReplacementMetaMismatch,
           `Replacement references metavariables not present in pattern: ${unknownReplacementMetavars.join(", ")}`,
-          undefined,
-          editCodeRecovery(absPath, "fix-replacement"),
         );
       }
     }
@@ -584,20 +521,13 @@ export async function editCode(input: {
     throw createToolError(
       TOOL_ERROR_CODES.editCodeUnsupportedFile,
       `code-edit requires a supported code file, got: ${input.path}`,
-      undefined,
-      editCodeRecovery(input.path, "use-supported-file"),
     );
   }
 
   await ensureDynamicLanguages();
   const result = await editCodeFile(absPath, input.workspace, input.edits, true);
   if (!result) {
-    throw createToolError(
-      TOOL_ERROR_CODES.editCodeNoMatch,
-      `No AST matches found in ${input.path}`,
-      undefined,
-      editCodeRecovery(input.path, "refine-pattern"),
-    );
+    throw createToolError(TOOL_ERROR_CODES.editCodeNoMatch, `No AST matches found in ${input.path}`);
   }
 
   const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${result.matches}`];
@@ -629,12 +559,7 @@ async function editCodeDirectory(workspace: string, dirPath: string, edits: Edit
   }
 
   if (totalMatches === 0) {
-    throw createToolError(
-      TOOL_ERROR_CODES.editCodeNoMatch,
-      `No AST matches found in directory: ${dirPath}`,
-      undefined,
-      editCodeRecovery(dirPath, "refine-pattern"),
-    );
+    throw createToolError(TOOL_ERROR_CODES.editCodeNoMatch, `No AST matches found in directory: ${dirPath}`);
   }
 
   const diff = diffs.join("\n");
@@ -697,8 +622,6 @@ export async function scanCode(input: {
         throw createToolError(
           TOOL_ERROR_CODES.scanCodeUnsupportedFile,
           `code-scan requires a supported code file, got: ${rawPath}`,
-          undefined,
-          scanCodeRecovery(rawPath),
         );
       }
       const content = await readFile(absPath, "utf8");

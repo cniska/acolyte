@@ -8,7 +8,6 @@ import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { ChecklistListener } from "./tool-contract";
 import type { SessionContext } from "./tool-guards";
 import type { ToolOutputPart } from "./tool-output-content";
-import type { ToolRecovery } from "./tool-recovery";
 import type { Toolset } from "./tool-registry";
 
 export type LifecycleError = {
@@ -17,7 +16,6 @@ export type LifecycleError = {
   category?: ErrorCategory;
   source?: ErrorSource;
   tool?: string;
-  recovery?: ToolRecovery;
 };
 
 export type LifecycleEventName = `lifecycle.${string}`;

@@ -67,7 +67,7 @@ describe("runLifecycle", () => {
       {
         request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
         soulPrompt: "SOUL",
-        workspace: "/tmp/workspace",
+        workspace: process.cwd(),
         taskId: "task_test",
       },
       deps,

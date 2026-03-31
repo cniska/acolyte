@@ -5,12 +5,11 @@ import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } fr
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
 import { extractToolErrorCode } from "./tool-error";
-import { parseToolRecovery, type ToolRecovery } from "./tool-recovery";
 
 export type ErrorCategory = "timeout" | "file-not-found" | "budget-exhausted" | "other";
 export type ErrorSource = "generate" | "tool-result" | "tool-error" | "server";
 export type AppError<TCode extends string = string, TMeta = unknown> = CodedError<TCode, TMeta>;
-export type ParsedError = { message: string; code?: string; kind?: string; recovery?: ToolRecovery };
+export type ParsedError = { message: string; code?: string; kind?: string };
 export type ParseErrorResult = { ok: true; value: ParsedError } | { ok: false; error: "invalid_error_payload" };
 export type RecoveryAction = "stop-unknown-budget" | "none";
 export type SerializedToolError = {
@@ -18,7 +17,6 @@ export type SerializedToolError = {
     message: string;
     code?: string;
     kind?: string;
-    recovery?: ToolRecovery;
   };
 };
 export const ERROR_CATEGORIES = ["timeout", "file-not-found", "budget-exhausted", "other"] as const;
@@ -119,26 +117,21 @@ export function recoveryActionForError(
 export function serializeToolError(value: unknown): SerializedToolError {
   const parsed = parseError(value);
   if (!parsed.ok) return { error: { message: "Tool error" } };
-  const { message, code, kind, recovery } = parsed.value;
+  const { message, code, kind } = parsed.value;
   return {
     error: {
       message,
       ...(code ? { code } : {}),
       ...(kind ? { kind } : {}),
-      ...(recovery ? { recovery } : {}),
     },
   };
 }
 
-function parseMessageFields(
-  message: string,
-  overrides?: { code?: unknown; kind?: unknown; recovery?: unknown },
-): ParsedError {
+function parseMessageFields(message: string, overrides?: { code?: unknown; kind?: unknown }): ParsedError {
   return {
     message,
     code: typeof overrides?.code === "string" ? overrides.code : extractToolErrorCode(message),
     kind: typeof overrides?.kind === "string" ? overrides.kind : undefined,
-    recovery: parseToolRecovery(overrides?.recovery),
   };
 }
 
@@ -146,12 +139,11 @@ function parseErrorInstance(error: Error): ParsedError {
   return parseMessageFields(error.message, {
     code: "code" in error ? error.code : undefined,
     kind: "kind" in error ? error.kind : undefined,
-    recovery: "recovery" in error ? error.recovery : undefined,
   });
 }
 
 function parseErrorObject(value: object): ParseErrorResult {
-  const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown; recovery?: unknown };
+  const rec = value as { message?: unknown; error?: unknown; code?: unknown; kind?: unknown };
   if (typeof rec.message === "string") return { ok: true, value: parseMessageFields(rec.message, rec) };
   if (typeof rec.error === "string") return { ok: true, value: parseMessageFields(rec.error, rec) };
   if (rec.error === undefined) return { ok: false, error: "invalid_error_payload" };
@@ -163,7 +155,6 @@ function parseErrorObject(value: object): ParseErrorResult {
       ...nested.value,
       code: typeof rec.code === "string" ? rec.code : nested.value.code,
       kind: typeof rec.kind === "string" ? rec.kind : nested.value.kind,
-      recovery: parseToolRecovery(rec.recovery) ?? nested.value.recovery,
     },
   };
 }
