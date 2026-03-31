@@ -3,26 +3,22 @@
 Tool execution is layered and contract-driven:
 
 ```text
-lifecycle → guard → cache → toolkit → registry
+lifecycle → budget → cache → toolkit → registry
 ```
 
 ## Layers
 
-- **guard**: pre-execution checks and post-execution call recording
+- **budget**: step-budget check (`checkStepBudget()`) inlined into tool execution
 - **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
 - **registry**: tool registration and agent-facing tool surface
 
-## Guarded execution
+## Tool execution
 
-All tool calls run through guarded execution paths to ensure:
+All tool calls run through the execution layer which ensures:
 
-- policy enforcement
+- step-budget enforcement
 - consistent error shaping
-- call recording for evaluators/debug
-
-## Workspace sandbox
-
-Tool filesystem access is scoped to the workspace root. See [Workspace](./workspace.md) for enforcement details.
+- call recording for effects/debug
 
 ## File discovery
 
@@ -49,12 +45,12 @@ This reduces redundant I/O and avoids re-sending identical tool results to the m
 
 Tools are divided into two categories with fundamentally different design constraints.
 
-**Query tools** (`file-read`, `file-find`, `file-search`, `code-scan`) are read-only and exploratory. Their contracts should be simple and discoverable — the caller is asking *“show me what’s there.”* Input schemas should reflect the user's mental model of searching, not the engine's internal capabilities.
+**Query tools** (`file-read`, `file-find`, `file-search`, `code-scan`) are read-only and exploratory. Their contracts should be simple and discoverable — the caller is asking *"show me what's there."* Input schemas should reflect the user's mental model of searching, not the engine's internal capabilities.
 
 **Mutation tools** (`file-edit`, `file-create`, `file-delete`, `code-edit`) change workspace state. Their contracts can be more expressive because precise targeting matters — the cost of a wrong match is a bad edit.
 
-The key principle: **do not unify query and mutation contracts just because they share an implementation.**  
-A scan tool and an edit tool may both use ast-grep internally, but their input models serve different purposes and should be designed independently. Leaking mutation rule language into query tools couples them unnecessarily and complicates the caller’s mental model.
+The key principle: **do not unify query and mutation contracts just because they share an implementation.**
+A scan tool and an edit tool may both use ast-grep internally, but their input models serve different purposes and should be designed independently. Leaking mutation rule language into query tools couples them unnecessarily and complicates the caller's mental model.
 
 Practical implications:
 
@@ -67,7 +63,6 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 ## Extension seams
 
 - add tools by extending toolkit modules
-- add guard behavior in `src/tool-guards.ts`
 - keep tool contracts stable and enforce with schema-first inputs
 
 ## Key files
@@ -77,8 +72,8 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 - `src/code-toolkit.ts` — Code manipulation for scanning and editing source files.
 - `src/git-toolkit.ts` — Git operations (status, diff, log, show, add, commit).
 - `src/tool-registry.ts` — Tool registration and agent-facing surface.
-- `src/tool-guards.ts` — Pre-execution guards including limits and redundancy controls.
-- `src/workspace-sandbox.ts` — Canonical workspace sandbox boundary and path enforcement.
+- `src/tool-guards.ts` — Session context, call recording, and step-budget check.
+- `src/tool-execution.ts` — Tool execution with budget enforcement and error shaping.
 - `src/tool-cache.ts` — Per-task result caching with stable key generation.
 
 ## Further reading

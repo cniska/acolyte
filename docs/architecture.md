@@ -8,13 +8,9 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 
 - **Sessions** — persistent conversation context with history and state
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
-- **Lifecycle phases** — resolve, prepare, generate, evaluate, finalize as separate modules
-- **Lifecycle state** — task-scoped internal retry/support state owned by the lifecycle
-- **Effects** — lifecycle-owned side effects that run between generation and pure evaluation
-- **Workspace sandbox** — canonical workspace-root boundary for tool filesystem access
+- **Lifecycle phases** — resolve, prepare, generate, settle, finalize as separate modules
+- **Effects** — lifecycle-owned side effects that run during the settle phase
 - **Tools** — typed definitions with categories, schemas, and output contracts
-- **Guards** — pre-tool policy units that inspect runtime state and decide allow or block
-- **Evaluators** — post-generation policy units that decide accept or re-generate
 - **Skills** — declarative prompt extensions with metadata and tool restrictions
 - **Memory sources** — pluggable memory tiers (session, project, user) with pipeline stages
 - **Protocol** — typed RPC messages with request correlation and lifecycle envelopes
@@ -62,36 +58,30 @@ accept → queue → run → complete|fail|cancel
 ## Tool layering
 
 ```text
-lifecycle → guard → cache → toolkit → registry
+lifecycle → budget → cache → toolkit → registry
 ```
 
-- **guard:** pure pre-execution safety/redundancy checks; `runGuards()` applies their patches and events centrally
+- **budget:** step-budget check inlined into tool execution
 - **cache:** per-task reuse layer for read-only and search tool results
-- **toolkit:** domain tool definitions with guarded execution (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
+- **toolkit:** domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
 - **registry:** toolkit registration and agent-facing tool surface
-- **workspace sandbox:** canonical path boundary checks for tool file access and symlink-escape prevention
 - **details:** see [Tooling](./tooling.md)
 
 ## Lifecycle flow
 
 ```text
-resolve → prepare → generate → evaluate → finalize
+resolve → prepare → generate → settle → finalize
 ```
 
 - **resolve:** pick model and policy (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
-- **generate:** run model + tool calls
-- **evaluate:** accept valid signals, run effects, then apply pure evaluators to decide accept/retry/regenerate (bounded)
-- **orchestration ownership:** `runGuards()` and `phaseEvaluate()` own runtime mutation, debug emission, and counters; guards and evaluators return data only
-- **completion signaling:** generation may emit `done`/`no_op`/`blocked`; evaluate accepts valid signals
+- **generate:** run model + tool calls (one pass, no regeneration)
+- **settle:** accept valid lifecycle signal, run format/lint effects
 - **finalize:** persist outputs and emit final response
 
-- **regeneration:** effects and evaluators may request regeneration, bounded by caps
-- **lifecycle state:** internal task-scoped retry/support state; never persisted to session or memory
 - **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
-- **host/model boundary:** host provides runtime structure and feedback; model decides how to complete the task
+- **host/model boundary:** host provides runtime structure; model decides how to complete the task
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step
-- **task metrics:** evaluator and summary metrics are scoped by `task_id`
 - **details:** see [Lifecycle](./lifecycle.md)
 
 ## Memory engine
@@ -118,13 +108,13 @@ Memory Engine
 
 ## Contracts
 
-- **error handling:** tools emit failures/error codes; lifecycle owns retry/regeneration policy
-- **guarding:** guards run before tool execution, can block calls, and are reported through lifecycle events
+- **error handling:** tools emit failures/error codes; lifecycle surfaces them for the model to decide
+- **step budget:** inlined into tool execution; blocks calls when budget is exhausted
 - **protocol:** transport contract is transport-agnostic; see `docs/protocol.md`
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, effect/evaluator decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
+- **observability:** lifecycle emits ordered debug events per request (calls, tool results, effect decisions, summaries, errors). Events are dual-written to logfmt (`~/.acolyte/daemons/server.log`) and SQLite (`~/.acolyte/trace.db`); the CLI queries SQLite for indexed trace lookups
 - **runtime config:** loaded from user/project config
 - **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs
 - **task trace:** RPC emits task-state transitions with stable `task_id`:

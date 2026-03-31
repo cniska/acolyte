@@ -1,58 +1,35 @@
 # Lifecycle
 
-Lifecycle executes one request through a bounded phase loop:
+Lifecycle executes one request through a single-pass phase sequence:
 
 ```text
-resolve → prepare → generate → evaluate → finalize
+resolve → prepare → generate → settle → finalize
 ```
 
 ## Phase contracts
 
 - **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
-- **generate**: run model + tool loop for one attempt; the model may also emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
-- **evaluate**: accept a valid lifecycle signal, run effects, then apply pure evaluators and choose `done` or bounded regeneration
+- **generate**: run model + tool loop; the model may also emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
+- **settle**: accept a valid lifecycle signal, run format/lint effects; lint errors surface in the tool result for the model to decide
 - **finalize**: emit final response and lifecycle summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`, signaling the TUI to show a waiting indicator until the user replies
 
-## Regeneration model
+## Single-pass execution
 
-- effects and evaluators can request regeneration
-- regeneration uses task-scoped `lifecycleState` to carry internal feedback and review outcome between attempts
-- generation input is rebuilt from immutable base input plus pending lifecycle feedback
-- selected guard blocks may also be translated into lifecycle feedback before the next attempt
-- a valid lifecycle signal can end the loop cleanly before recovery logic reopens the turn
-- regeneration is bounded by lifecycle policy caps
-- yield checks only occur at safe checkpoints between lifecycle decisions
+One generation pass runs, effects execute, the signal is accepted, and the lifecycle completes. There is no regeneration loop, no feedback injection, and no retry logic at the lifecycle level.
 
 ## Effects
 
 - effects own automatic side effects initiated by the lifecycle rather than the model
-- they run after signal acceptance and before pure evaluators
+- they run during settle after signal acceptance
 - current examples include format and lint checks driven by detected workspace commands
-- effects may request regeneration directly and attach lifecycle feedback when the side effect exposes actionable runtime guidance
+- lint errors are surfaced in the tool result for the model to decide on; they do not trigger regeneration
 
-## Evaluators
+## Step budget
 
-- evaluators are pure post-generation decision units
-- evaluators should not own lifecycle side effects; they inspect runtime state and return decisions, optional debug data, and small lifecycle patches
-- `phaseEvaluate` applies evaluator patches, emits evaluator debug events, and applies requested transitions centrally
-
-## Guards
-
-- guards are pure pre-tool policy units
-- they inspect session/tool state and return allow/block decisions plus optional small session patches
-- `runGuards()` applies guard patches, emits guard events, and owns consecutive-block bookkeeping centrally
-
-## Lifecycle state
-
-- `lifecycleState` is internal, task-scoped runtime state owned by the lifecycle
-- it currently carries:
-  - `feedback`: pending runtime feedback consumed by the next attempt
-  - `repeatedFailure`: task-scoped failure streak state used to surface one recovery nudge per repeated failure signature
-- lifecycle may also accept a task-scoped lifecycle signal from generation when current runtime state has no contradiction
-- lifecycle may translate selected guard blocks into feedback, so the next attempt can recover with clearer runtime context
-- `lifecycleState` is not persisted to session history or memory sources
-- `lifecycleState` supports the model with concrete runtime outcomes; it does not plan tasks or decide how issues should be resolved
+- `checkStepBudget()` is inlined into tool execution and enforces per-cycle and total tool-call limits
+- when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
+- this is the only pre-tool policy check; there is no guard abstraction
 
 ## Memory integration point
 
@@ -73,11 +50,9 @@ resolve → prepare → generate → evaluate → finalize
 - `src/lifecycle-constants.ts` — Configuration constants for step limits, timeouts, and thresholds.
 - `src/lifecycle-contract.ts` — Type definitions for lifecycle events, inputs, and runtime contexts.
 - `src/lifecycle-effects.ts` — Lifecycle-owned side-effects such as format and lint.
-- `src/lifecycle-evaluate.ts` — Evaluation phase orchestration across effect execution, recovery, and verification.
-- `src/lifecycle-evaluators.ts` — Pure post-generation evaluators including tool recovery.
+- `src/lifecycle-settle.ts` — Settle phase: signal acceptance and effect execution.
 - `src/lifecycle-finalize.ts` — Finalization phase including token accounting and tool statistics.
 - `src/lifecycle-generate.ts` — Generation phase with agent creation and yield detection.
-- `src/lifecycle-guard-feedback.ts` — Guard-event-to-feedback translation.
 - `src/lifecycle-policy.ts` — Lifecycle policy configuration and constraints.
 - `src/lifecycle-prepare.ts` — Preparation phase including input validation and token estimation.
 - `src/lifecycle-resolve.ts` — Initial model resolution for the request.
@@ -86,4 +61,4 @@ resolve → prepare → generate → evaluate → finalize
 - `src/workspace-profile.ts` — Workspace profile types, caching, and instruction generation.
 - `src/workspace-detectors.ts` — Ecosystem detectors for TypeScript, Python, Go, Rust.
 - `src/lifecycle-usage.ts` — Token usage tracking and prompt breakdown totals.
-- `src/tool-recovery.ts` — Tool recovery contract carried from tool errors into evaluators.
+- `src/tool-recovery.ts` — Tool recovery contract carried from tool errors into the settle phase.

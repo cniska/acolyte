@@ -29,7 +29,7 @@ Claude Code, Cursor, and Copilot are included for context but excluded from code
 
 | Project | Language | Description | Source lines | Files | Dependencies |
 |---|---|---|---|---|---|
-| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, guards, evaluators, and AST code tools | 25,284 | 193 | 12 + 6 |
+| **Acolyte** | TypeScript | CLI-first AI coding agent with lifecycle, post-write effects, and AST code tools | 25,284 | 193 | 12 + 6 |
 | **Codex** | Rust | Terminal AI coding agent from OpenAI with multi-platform support | 535,898 | 1,175 | 233 + 58 |
 | **Aider** | Python | AI pair programming in your terminal | 25,943 | 105 | 35 + 17 |
 | **Plandex** | Go | AI coding agent for large multi-file tasks in the terminal | 74,573 | 333 | 54 + 0 |
@@ -120,7 +120,7 @@ Measures test lines relative to source lines across all projects.
 | Test lines | 21,516 | 108,359 | 12,427 | 2,517 | 45,822 | 39,923 | 82,509 | 49,490 | 147,973 | 7,504 | 658,266 |
 | Test / source ratio | **0.85** | 0.20 | 0.48 | 0.03 | 0.21 | 0.39 | 0.36 | 0.24 | **1.18** | 0.06 | 0.82 |
 
-Acolyte maintains a high test ratio because lifecycle phases, guards, and tools are independent modules with clean interfaces.
+Acolyte maintains a high test ratio because lifecycle phases and tools are independent modules with clean interfaces.
 
 Test types include:
 
@@ -170,7 +170,7 @@ Across the benchmarked projects, Acolyte demonstrates:
 - High automated test coverage
 - Clear lifecycle boundaries across independently testable modules
 
-These characteristics reflect a deliberately small, strongly typed architecture — built so that lifecycle phases, guards, and tools behave predictably and can be independently verified.
+These characteristics reflect a deliberately small, strongly typed architecture — built so that lifecycle phases and tools behave predictably and can be independently verified.
 
 ## Summary
 

@@ -26,7 +26,7 @@ Error handling in Acolyte is split by boundary, not bundled into one module.
 ## Lifecycle boundary
 
 - Lifecycle consumes tool recovery generically.
-- Lifecycle does not hardcode tool-specific retry policy in evaluators.
+- Lifecycle does not hardcode tool-specific retry policy.
 - Tool-specific recovery semantics stay with the tool and its recovery contract.
 
 ## Design rule

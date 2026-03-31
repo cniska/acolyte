@@ -4,7 +4,7 @@ Use the smallest test type that gives strong confidence.
 
 ## Test types
 
-- unit: pure logic and contracts (guards, parsing, evaluators, schemas)
+- unit: pure logic and contracts (parsing, effects, schemas)
 - integration: real server/lifecycle/tool wiring with fake provider model calls
 - visual: stable TUI rendering and interaction snapshots
 - performance: trend detection for latency regressions, not correctness
