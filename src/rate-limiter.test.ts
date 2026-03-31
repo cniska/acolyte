@@ -46,6 +46,29 @@ describe("retryAfterMs", () => {
   });
 });
 
+describe("parseResetMs via onResponse", () => {
+  test("parses ISO timestamp reset header", () => {
+    const limiter = createRateLimiter(FAST);
+    const futureIso = new Date(Date.now() + 30_000).toISOString();
+    limiter.onResponse(new Headers({ "anthropic-ratelimit-requests-reset": futureIso }));
+    const reset = limiter.state().requestsResetMs;
+    expect(reset).toBeGreaterThan(20_000);
+    expect(reset).toBeLessThanOrEqual(30_000);
+  });
+
+  test("parses duration reset header", () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(new Headers({ "x-ratelimit-reset-requests": "6m0s" }));
+    expect(limiter.state().requestsResetMs).toBe(360_000);
+  });
+
+  test("parses seconds-only duration", () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(new Headers({ "x-ratelimit-reset-tokens": "1.5s" }));
+    expect(limiter.state().tokensResetMs).toBe(1_500);
+  });
+});
+
 describe("createRateLimiter", () => {
   test("beforeCall resolves immediately with no prior state", async () => {
     const limiter = createRateLimiter(FAST);
