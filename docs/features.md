@@ -31,6 +31,7 @@ Shipped, user-visible capabilities.
 - tool-guarded execution for safer autonomous runs
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
+- provider rate limit awareness with sliding window pacing and exponential backoff
 - two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
 - workspace profile detection for ecosystem, package manager, lint, format, and test commands
 - automatic formatting of edited files via detected formatter

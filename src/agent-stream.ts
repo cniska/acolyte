@@ -19,7 +19,8 @@ import {
 } from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
-import { normalizeModel } from "./provider-config";
+import { normalizeModel, providerFromModel } from "./provider-config";
+import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
@@ -45,6 +46,7 @@ export function createAgentStream(
   model: LanguageModelV3,
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
+  rateLimiter: RateLimiter,
 ): Agent["stream"] {
   const toolsByName = new Map<string, ToolDefinition>();
   for (const tool of Object.values(tools)) {
@@ -77,16 +79,29 @@ export function createAgentStream(
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
-        const streamResult = await model.doStream({
-          prompt: messages,
-          temperature: options.temperature,
-          tools: functionTools.length > 0 ? functionTools : undefined,
-          toolChoice: options.toolChoice
-            ? { type: options.toolChoice }
-            : functionTools.length > 0
-              ? { type: "auto" }
-              : undefined,
-        });
+        await rateLimiter.beforeCall();
+        let streamResult: Awaited<ReturnType<typeof model.doStream>>;
+        try {
+          streamResult = await model.doStream({
+            prompt: messages,
+            temperature: options.temperature,
+            tools: functionTools.length > 0 ? functionTools : undefined,
+            toolChoice: options.toolChoice
+              ? { type: options.toolChoice }
+              : functionTools.length > 0
+                ? { type: "auto" }
+                : undefined,
+          });
+          rateLimiter.reset();
+        } catch (error) {
+          const recovery = rateLimiter.onError(error);
+          if (recovery.shouldRetry) {
+            log.debug("agent-stream.rate_limit.retry", { delay_ms: recovery.delayMs, iteration: loopIteration });
+            await new Promise((resolve) => setTimeout(resolve, recovery.delayMs));
+            continue;
+          }
+          throw error;
+        }
 
         const pendingToolCalls: Array<{
           toolCallId: string;
@@ -348,9 +363,12 @@ export function createAgent(input: {
   name?: string;
   tools?: Record<string, ToolDefinition>;
 }): Agent {
-  const modelInstance = createModel(normalizeModel(input.model));
+  const qualifiedModel = normalizeModel(input.model);
+  const provider = providerFromModel(qualifiedModel);
+  const rateLimiter = sharedRateLimiter(provider);
+  const modelInstance = createModel(qualifiedModel, rateLimiter);
   const tools = input.tools ?? {};
-  const stream = createAgentStream(modelInstance, input.instructions, tools);
+  const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter);
   return {
     id: input.id ?? "agent",
     name: input.name ?? "Agent",
