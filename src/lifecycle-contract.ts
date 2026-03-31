@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Agent } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
@@ -112,41 +111,15 @@ export type PhasePrepareResult = {
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
-export const feedbackSourceSchema = z.enum(["guard", "lint", "tool-recovery", "repeated-failure"]);
-export type FeedbackSource = z.infer<typeof feedbackSourceSchema>;
 
-export const regenerationReasonSchema = z.enum(["guard-recovery", "lint", "tool-recovery", "repeated-failure"]);
-export type RegenerationReason = z.infer<typeof regenerationReasonSchema>;
-
-export type LifecycleFeedback = {
-  source: FeedbackSource;
-  summary: string;
-  details?: string;
-  instruction?: string;
-};
-
-export type RegenerateAction = {
-  type: "regenerate";
-  reason: RegenerationReason;
-  feedback?: LifecycleFeedback;
-  cycleLimit?: number;
-};
-
-export type EffectAction = { type: "done" } | RegenerateAction;
+export type EffectResult = { type: "done"; lintOutput?: string };
 
 export type Effect = {
   id: string;
-  run: (ctx: RunContext) => EffectAction;
+  run: (ctx: RunContext) => EffectResult;
 };
 
-export type LifecycleState = {
-  feedback: LifecycleFeedback[];
-  repeatedFailure?: {
-    signature: string;
-    count: number;
-    status: "pending" | "surfaced";
-  };
-};
+export type LifecycleState = Record<string, never>;
 
 export type LifecycleInput = {
   request: ChatRequest;
@@ -183,9 +156,6 @@ export type RunContext = {
   streamingChars: number;
   lastUsageEmitChars: number;
   generationAttempt: number;
-  regenerationCount: number;
-  regenerationCounts: Record<RegenerationReason, number>;
-  regenerationLimitHit: boolean;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;

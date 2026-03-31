@@ -240,7 +240,7 @@ printf '%s\n' "$@" > "${formatLog}"
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
-        formatCommand: { bin: "/bin/sh", args: [formatScript, "$FILES"] },
+        formatCommand: { bin: "/bin/sh", args: [formatScript] },
       },
     });
 
@@ -248,68 +248,19 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
-  test("separates iteration texts with newline in streamed output", async () => {
+  test("lint effect runs without regeneration", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    let turnCount = 0;
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-read", ["read"]);
-        return createToolCallsPayload(
-          ctx.model,
-          ctx.responseCounter,
-          [
-            {
-              id: `fc_${ctx.responseCounter}`,
-              callId: `call_${ctx.responseCounter}`,
-              name: toolName,
-              args: JSON.stringify({ paths: [{ path: join(workspace, "a.ts") }] }),
-            },
-          ],
-          "Reading the file.",
-        );
-      }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Done reading.\n\n@signal done");
-    });
-
-    const textDeltas: string[] = [];
-    const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "read a.ts", history: [], useMemory: false },
-      soulPrompt: "",
-      workspace,
-      onEvent: (event) => {
-        if (event.type === "text-delta" && event.text) textDeltas.push(event.text);
-      },
-    });
-
-    expect(turnCount).toBe(2);
-    const streamedText = textDeltas.join("");
-    expect(reply.output).toContain("Reading the file.");
-    expect(reply.output).toContain("Done reading.");
-    // The two iteration texts must be separated by a newline, not concatenated directly
-    expect(streamedText).toContain("Reading the file.\nDone reading.");
-  });
-
-  test("lint effect regenerates with lifecycle feedback", async () => {
-    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    const lintState = join(workspace, ".lint-effect-state");
     const lintScript = await writeExecutableScript(
       "lint-effect.sh",
       `#!/bin/sh
-if [ ! -f "${lintState}" ]; then
-  touch "${lintState}"
-  printf 'src/a.ts:1:1 lint error\n'
-  exit 1
-fi
-exit 0
+printf 'src/a.ts:1:1 lint error\n'
+exit 1
 `,
     );
 
-    const requests: string[] = [];
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
-      requests.push(ctx.sourceText);
       if (turnCount === 1) {
         const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
@@ -324,10 +275,7 @@ exit 0
           },
         ]);
       }
-      if (turnCount === 2) {
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
-      }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Addressed lint feedback.\n\n@signal done");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
     });
 
     const reply = await runLifecycle({
@@ -339,9 +287,7 @@ exit 0
       },
     });
 
-    expect(turnCount).toBe(3);
-    expect(requests[2]).toContain("lifecycle feedback (lint)");
-    expect(requests[2]).toContain("lint errors detected in files you edited");
-    expect(reply.output).toContain("Addressed lint feedback.");
+    expect(turnCount).toBe(2);
+    expect(reply.output).toContain("Updated x to 7.");
   });
 });

@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import type { RunContext } from "./lifecycle-contract";
-import {
-  consumeLifecycleFeedback,
-  createGenerationInput,
-  createLifecycleFeedbackText,
-  phaseGenerate,
-} from "./lifecycle-generate";
+import { phaseGenerate } from "./lifecycle-generate";
 import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
 
@@ -371,89 +366,5 @@ describe("phaseGenerate", () => {
 
     expect(ctx.currentError?.message).toBe("invalid_api_key");
     expect(ctx.currentError?.source).toBe("generate");
-  });
-});
-
-describe("createGenerationInput", () => {
-  test("returns base input when there is no feedback", () => {
-    const input = createGenerationInput({
-      baseAgentInput: "USER: fix it",
-      lifecycleState: { feedback: [] },
-    });
-    expect(input).toBe("USER: fix it");
-  });
-
-  test("appends all pending feedback in order", () => {
-    const input = createGenerationInput({
-      baseAgentInput: "USER: fix it",
-      lifecycleState: {
-        feedback: [
-          { source: "lint", summary: "Lint errors detected" },
-          { source: "tool-recovery", summary: "Use a bounded edit next" },
-        ],
-      },
-    });
-    expect(input).toContain("USER: fix it");
-    expect(input).toContain("Lifecycle feedback (lint)");
-    expect(input).toContain("Lint errors detected");
-    expect(input).toContain("Lifecycle feedback (tool-recovery)");
-    expect(input).toContain("Use a bounded edit next");
-  });
-});
-
-describe("createLifecycleFeedbackText", () => {
-  test("renders summary, details, and instruction in a single lifecycle-owned format", () => {
-    const text = createLifecycleFeedbackText({
-      source: "lint",
-      summary: "Lint errors detected in files you edited.",
-      details: "src/a.ts:1:1 error unexpected any",
-      instruction: "Fix the issues above, then stop.",
-    });
-
-    expect(text).toContain("SYSTEM: Lifecycle feedback (lint):");
-    expect(text).toContain("Lint errors detected in files you edited.");
-    expect(text).toContain("src/a.ts:1:1 error unexpected any");
-    expect(text).toContain("Fix the issues above, then stop.");
-  });
-});
-
-describe("consumeLifecycleFeedback", () => {
-  test("returns and clears all pending feedback", () => {
-    const state = {
-      feedback: [
-        { source: "lint" as const, summary: "Lint errors detected" },
-        { source: "tool-recovery" as const, summary: "Use a bounded edit next" },
-      ],
-    };
-
-    const consumed = consumeLifecycleFeedback(state);
-
-    expect(consumed).toEqual([
-      { source: "lint", summary: "Lint errors detected" },
-      { source: "tool-recovery", summary: "Use a bounded edit next" },
-    ]);
-    expect(state.feedback).toEqual([]);
-  });
-
-  test("does not leak consumed feedback into later prompt creation", () => {
-    const state = {
-      feedback: [{ source: "lint" as const, summary: "Lint errors detected" }],
-    };
-
-    expect(
-      createGenerationInput({
-        baseAgentInput: "USER: fix it",
-        lifecycleState: state,
-      }),
-    ).toContain("Lint errors detected");
-
-    consumeLifecycleFeedback(state);
-
-    expect(
-      createGenerationInput({
-        baseAgentInput: "USER: fix it",
-        lifecycleState: state,
-      }),
-    ).toBe("USER: fix it");
   });
 });

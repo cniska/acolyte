@@ -13,14 +13,7 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import type {
-  GenerateOptions,
-  GenerateResult,
-  LifecycleFeedback,
-  LifecycleState,
-  RunContext,
-  StreamChunk,
-} from "./lifecycle-contract";
+import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
 import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
@@ -94,7 +87,6 @@ export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): bo
   if (!shouldYield()) return false;
   ctx.debug("lifecycle.yield", {
     generation_attempt: ctx.generationAttempt,
-    regeneration_count: ctx.regenerationCount,
   });
   if (!ctx.result?.text.trim()) {
     ctx.result = {
@@ -118,37 +110,11 @@ export function createRunAgent(input: {
   });
 }
 
-export function createLifecycleFeedbackText(feedback: LifecycleFeedback): string {
-  const lines = [`SYSTEM: Lifecycle feedback (${feedback.source}):`, feedback.summary];
-  if (feedback.details) lines.push("", feedback.details);
-  if (feedback.instruction) lines.push("", feedback.instruction);
-  return lines.join("\n");
-}
-
-function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedback: LifecycleFeedback[]): string {
-  if (activeFeedback.length === 0) return baseAgentInput;
-  return [baseAgentInput, ...activeFeedback.map(createLifecycleFeedbackText)].join("\n\n");
-}
-
-export function consumeLifecycleFeedback(state: Pick<LifecycleState, "feedback">): LifecycleFeedback[] {
-  const activeFeedback = [...state.feedback];
-  if (activeFeedback.length === 0) return [];
-  state.feedback = [];
-  return activeFeedback;
-}
-
-export function createGenerationInput(
-  ctx: Pick<RunContext, "baseAgentInput"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
-): string {
-  return createGenerationInputFromFeedback(ctx.baseAgentInput, ctx.lifecycleState.feedback);
-}
-
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   ctx.generationAttempt += 1;
-  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState);
-  const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  const prompt = ctx.baseAgentInput;
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({

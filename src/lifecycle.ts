@@ -1,12 +1,11 @@
 import { createErrorStats } from "./error-handling";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
-import { phaseEvaluate } from "./lifecycle-evaluate";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
-import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
+import { phaseSettle } from "./lifecycle-settle";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitMemorySources } from "./memory-registry";
@@ -24,7 +23,7 @@ export type LifecycleDeps = {
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
   shouldYieldNow: typeof shouldYieldNow;
-  phaseEvaluate: typeof phaseEvaluate;
+  phaseSettle: typeof phaseSettle;
   phaseFinalize: typeof phaseFinalize;
 };
 
@@ -35,7 +34,7 @@ const defaultLifecycleDeps: LifecycleDeps = {
   createRunAgent,
   phaseGenerate,
   shouldYieldNow,
-  phaseEvaluate,
+  phaseSettle,
   phaseFinalize,
 };
 
@@ -111,7 +110,7 @@ function createRunContext(
     baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
-    lifecycleState: { feedback: [] },
+    lifecycleState: {},
     observedTools: new Set(),
     modelCallCount: 0,
     inputTokensAccum: 0,
@@ -120,14 +119,6 @@ function createRunContext(
     streamingChars: 0,
     lastUsageEmitChars: 0,
     generationAttempt: 0,
-    regenerationCount: 0,
-    regenerationCounts: {
-      "guard-recovery": 0,
-      lint: 0,
-      "tool-recovery": 0,
-      "repeated-failure": 0,
-    },
-    regenerationLimitHit: false,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
@@ -135,9 +126,6 @@ function createRunContext(
 
   session.onGuard = (event) => {
     previousOnGuard?.(event);
-    const feedback = createLifecycleFeedbackForGuard(event);
-    if (!feedback) return;
-    ctx.lifecycleState.feedback.push(feedback);
   };
 
   return ctx;
@@ -245,7 +233,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   if (!ctx.result) return deps.phaseFinalize(ctx);
   if (deps.shouldYieldNow(ctx, input.shouldYield)) return deps.phaseFinalize(ctx);
 
-  await deps.phaseEvaluate(ctx, input.shouldYield);
+  await deps.phaseSettle(ctx, input.shouldYield);
 
   // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {

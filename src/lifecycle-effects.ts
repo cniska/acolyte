@@ -1,4 +1,4 @@
-import type { Effect, EffectAction, RunContext } from "./lifecycle-contract";
+import type { Effect, EffectResult, RunContext } from "./lifecycle-contract";
 import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { renderCommandResult, runCommandWithFiles } from "./workspace-profile";
@@ -18,7 +18,7 @@ function writePathsForCurrentTask(ctx: RunContext): string[] {
 
 export const formatEffect: Effect = {
   id: "format",
-  run: (ctx): EffectAction => {
+  run: (ctx): EffectResult => {
     if (!ctx.workspace || !ctx.policy.formatCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
@@ -30,22 +30,13 @@ export const formatEffect: Effect = {
 
 export const lintEffect: Effect = {
   id: "lint",
-  run: (ctx): EffectAction => {
+  run: (ctx): EffectResult => {
     if (!ctx.workspace || !ctx.policy.lintCommand) return { type: "done" };
     const paths = writePathsForCurrentTask(ctx);
     if (paths.length === 0) return { type: "done" };
     const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
     if (!result.hasErrors) return { type: "done" };
     ctx.debug("lifecycle.effect.lint", { files: paths.length });
-    return {
-      type: "regenerate",
-      reason: "lint",
-      feedback: {
-        source: "lint",
-        summary: "Lint errors detected in files you edited.",
-        details: renderCommandResult(result),
-        instruction: "Fix the issues above, then stop.",
-      },
-    };
+    return { type: "done", lintOutput: renderCommandResult(result) };
   },
 };
