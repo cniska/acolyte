@@ -1,5 +1,4 @@
 import type { z } from "zod";
-import { unreachable } from "./assert";
 import { CodedError } from "./coded-error";
 import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { domainIdSchema } from "./id-contract";
@@ -37,64 +36,27 @@ export function createErrorStats(initialValue = 0): Record<ErrorCategory, number
   >;
 }
 
+const ERROR_MAP: readonly { category: ErrorCategory; code: ErrorCode; kind: ErrorKind }[] = [
+  { category: "timeout", code: LIFECYCLE_ERROR_CODES.timeout, kind: ERROR_KINDS.timeout },
+  { category: "file-not-found", code: LIFECYCLE_ERROR_CODES.fileNotFound, kind: ERROR_KINDS.fileNotFound },
+  { category: "budget-exhausted", code: LIFECYCLE_ERROR_CODES.budgetExhausted, kind: ERROR_KINDS.budgetExhausted },
+  { category: "other", code: LIFECYCLE_ERROR_CODES.unknown, kind: ERROR_KINDS.unknown },
+];
+
 export function categoryFromErrorCode(code?: string): ErrorCategory | undefined {
-  switch (code) {
-    case LIFECYCLE_ERROR_CODES.timeout:
-      return "timeout";
-    case LIFECYCLE_ERROR_CODES.fileNotFound:
-      return "file-not-found";
-    case LIFECYCLE_ERROR_CODES.budgetExhausted:
-      return "budget-exhausted";
-    case LIFECYCLE_ERROR_CODES.unknown:
-      return "other";
-    default:
-      return undefined;
-  }
+  return ERROR_MAP.find((e) => e.code === code)?.category;
 }
 
 export function categoryFromErrorKind(kind?: string): ErrorCategory | undefined {
-  switch (kind) {
-    case ERROR_KINDS.timeout:
-      return "timeout";
-    case ERROR_KINDS.fileNotFound:
-      return "file-not-found";
-    case ERROR_KINDS.budgetExhausted:
-      return "budget-exhausted";
-    case ERROR_KINDS.unknown:
-      return "other";
-    default:
-      return undefined;
-  }
+  return ERROR_MAP.find((e) => e.kind === kind)?.category;
 }
 
 export function errorKindFromCategory(category: ErrorCategory): ErrorKind {
-  switch (category) {
-    case "timeout":
-      return ERROR_KINDS.timeout;
-    case "file-not-found":
-      return ERROR_KINDS.fileNotFound;
-    case "budget-exhausted":
-      return ERROR_KINDS.budgetExhausted;
-    case "other":
-      return ERROR_KINDS.unknown;
-    default:
-      return unreachable(category);
-  }
+  return ERROR_MAP.find((e) => e.category === category)?.kind ?? ERROR_KINDS.unknown;
 }
 
 export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
-  switch (category) {
-    case "timeout":
-      return LIFECYCLE_ERROR_CODES.timeout;
-    case "file-not-found":
-      return LIFECYCLE_ERROR_CODES.fileNotFound;
-    case "budget-exhausted":
-      return LIFECYCLE_ERROR_CODES.budgetExhausted;
-    case "other":
-      return LIFECYCLE_ERROR_CODES.unknown;
-    default:
-      return unreachable(category);
-  }
+  return ERROR_MAP.find((e) => e.category === category)?.code ?? LIFECYCLE_ERROR_CODES.unknown;
 }
 
 export function parseError(value: unknown): ParseErrorResult {

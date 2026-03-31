@@ -72,7 +72,6 @@ export async function runTool(
       throw error;
     }
 
-    const argsRecord = args as Record<string, unknown>;
     const cache = session.cache;
     const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
     invariant(
@@ -81,10 +80,10 @@ export async function runTool(
     );
 
     if (cache?.isCacheable(toolId)) {
-      const cached = cache.get(toolId, argsRecord);
+      const cached = cache.get(toolId, args);
       if (cached) {
         session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-        recordCall(session, toolId, argsRecord, hashResultValue(cached.result), "succeeded");
+        recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded");
         return cached.result;
       }
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
@@ -95,10 +94,10 @@ export async function runTool(
     try {
       taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
       if (cache?.isCacheable(toolId)) {
-        cache.set(toolId, argsRecord, { result: taskResult });
-        cache.populateSubEntries(toolId, argsRecord, taskResult);
+        cache.set(toolId, args, { result: taskResult });
+        cache.populateSubEntries(toolId, args, taskResult);
       }
-      const feedback = session.onToolResult?.({ toolId, args: argsRecord, result: taskResult });
+      const feedback = session.onToolResult?.({ toolId, args: args, result: taskResult });
       if (feedback?.append && typeof taskResult === "object" && taskResult !== null) {
         (taskResult as Record<string, unknown>).lifecycleFeedback = feedback.append;
       }
@@ -110,12 +109,12 @@ export async function runTool(
       recordCall(
         session,
         toolId,
-        argsRecord,
+        args,
         taskFailed ? undefined : hashResultValue(taskResult),
         taskFailed ? "failed" : "succeeded",
       );
       if (cache && !cache.isCacheable(toolId) && !taskFailed) {
-        cache.invalidateForWrite(toolId, argsRecord);
+        cache.invalidateForWrite(toolId, args);
       }
     }
   });
