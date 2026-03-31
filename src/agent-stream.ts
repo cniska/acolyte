@@ -365,10 +365,10 @@ export function createAgent(input: {
   name?: string;
   tools?: Record<string, ToolDefinition>;
 }): Agent {
-  const qualified = normalizeModel(input.model);
-  const modelInstance = createModel(qualified);
+  const qualifiedModel = normalizeModel(input.model);
+  const modelInstance = createModel(qualifiedModel);
   const tools = input.tools ?? {};
-  const stream = createAgentStream(modelInstance, input.instructions, tools, qualified);
+  const stream = createAgentStream(modelInstance, input.instructions, tools, qualifiedModel);
   return {
     id: input.id ?? "agent",
     name: input.name ?? "Agent",
