@@ -19,7 +19,8 @@ import {
 } from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
-import { normalizeModel } from "./provider-config";
+import { normalizeModel, providerFromModel } from "./provider-config";
+import { createRateLimiter, defaultRateLimiterConfig } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
@@ -45,7 +46,10 @@ export function createAgentStream(
   model: LanguageModelV3,
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
+  qualifiedModel?: string,
 ): Agent["stream"] {
+  const provider = qualifiedModel ? providerFromModel(qualifiedModel) : "openai";
+  const rateLimiter = createRateLimiter(defaultRateLimiterConfig(provider));
   const toolsByName = new Map<string, ToolDefinition>();
   for (const tool of Object.values(tools)) {
     toolsByName.set(tool.id, tool);
@@ -77,6 +81,7 @@ export function createAgentStream(
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
+        await rateLimiter.beforeCall();
         const streamResult = await model.doStream({
           prompt: messages,
           temperature: options.temperature,
@@ -87,6 +92,7 @@ export function createAgentStream(
               ? { type: "auto" }
               : undefined,
         });
+        rateLimiter.reset();
 
         const pendingToolCalls: Array<{
           toolCallId: string;
@@ -348,9 +354,10 @@ export function createAgent(input: {
   name?: string;
   tools?: Record<string, ToolDefinition>;
 }): Agent {
-  const modelInstance = createModel(normalizeModel(input.model));
+  const qualified = normalizeModel(input.model);
+  const modelInstance = createModel(qualified);
   const tools = input.tools ?? {};
-  const stream = createAgentStream(modelInstance, input.instructions, tools);
+  const stream = createAgentStream(modelInstance, input.instructions, tools, qualified);
   return {
     id: input.id ?? "agent",
     name: input.name ?? "Agent",
