@@ -15,7 +15,7 @@ import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { ToolkitDeps } from "./tool-contract";
-import { createSessionContext } from "./tool-guards";
+import { createSessionContext } from "./tool-session";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
@@ -468,7 +468,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
-    lifecycleState: { feedback: [] },
     observedTools: new Set(),
     modelCallCount: 1,
     inputTokensAccum: 0,
@@ -476,15 +475,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
-    generationAttempt: 0,
-    regenerationCount: 0,
-    regenerationCounts: {
-      "guard-recovery": 0,
-      lint: 0,
-      "tool-recovery": 0,
-      "repeated-failure": 0,
-    },
-    regenerationLimitHit: false,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,

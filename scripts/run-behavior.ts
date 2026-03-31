@@ -26,15 +26,12 @@ const behaviorTraceSummarySchema = z.object({
   writeCalls: z.number().int().nonnegative().optional(),
   preWriteDiscoveryCalls: z.number().int().nonnegative().optional(),
   lifecycleSignal: z.string().min(1).optional(),
-  regenerationCount: z.number().int().nonnegative().optional(),
-  regenerationLimitHit: z.boolean().optional(),
-  guardBlockedCount: z.number().int().nonnegative().optional(),
-  guardFlagSetCount: z.number().int().nonnegative().optional(),
+  budgetBlockedCount: z.number().int().nonnegative().optional(),
   hasError: z.boolean().optional(),
   lastErrorCategory: z.string().min(1).optional(),
   timeoutErrorCount: z.number().int().nonnegative().optional(),
   fileNotFoundErrorCount: z.number().int().nonnegative().optional(),
-  guardBlockedErrorCount: z.number().int().nonnegative().optional(),
+  budgetBlockedErrorCount: z.number().int().nonnegative().optional(),
   otherErrorCount: z.number().int().nonnegative().optional(),
 });
 
@@ -155,21 +152,16 @@ export function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSum
         "git-add",
         "git-commit",
       ]),
-      regenerationCount: taskLines.filter(
-        (line) => line.includes("event=lifecycle.eval.decision") && line.includes("action=regenerate"),
-      ).length,
       lifecycleSignal: parseField(
         [...taskLines].reverse().find((line) => line.includes("event=lifecycle.signal.accepted")) ?? "",
         "signal",
       ),
-      regenerationLimitHit: parseBooleanField(taskLines[taskLines.length - 1] ?? "", "regeneration_limit_hit"),
-      guardBlockedCount: countMatching(taskLines, "event=lifecycle.guard"),
-      guardFlagSetCount: 0,
+      budgetBlockedCount: countMatching(taskLines, "budget_exhausted"),
       hasError: countMatching(taskLines, "event=lifecycle.error") > 0,
       lastErrorCategory: undefined,
       timeoutErrorCount: undefined,
       fileNotFoundErrorCount: undefined,
-      guardBlockedErrorCount: undefined,
+      budgetBlockedErrorCount: undefined,
       otherErrorCount: undefined,
     });
   }
@@ -183,15 +175,12 @@ export function summarizeTrace(lines: string[]): z.infer<typeof behaviorTraceSum
     writeCalls: parseIntField(summaryLine, "write_calls"),
     preWriteDiscoveryCalls: parseIntField(summaryLine, "pre_write_discovery_calls"),
     lifecycleSignal: parseField(summaryLine, "lifecycle_signal"),
-    regenerationCount: parseIntField(summaryLine, "regeneration_count"),
-    regenerationLimitHit: parseBooleanField(summaryLine, "regeneration_limit_hit"),
-    guardBlockedCount: parseIntField(summaryLine, "guard_blocked_count"),
-    guardFlagSetCount: parseIntField(summaryLine, "guard_flag_set_count"),
+    budgetBlockedCount: parseIntField(summaryLine, "budget_blocked_count"),
     hasError: parseBooleanField(summaryLine, "has_error"),
     lastErrorCategory: parseField(summaryLine, "last_error_category"),
     timeoutErrorCount: parseIntField(summaryLine, "timeout_error_count"),
     fileNotFoundErrorCount: parseIntField(summaryLine, "file_not_found_error_count"),
-    guardBlockedErrorCount: parseIntField(summaryLine, "guard_blocked_error_count"),
+    budgetBlockedErrorCount: parseIntField(summaryLine, "budget_blocked_error_count"),
     otherErrorCount: parseIntField(summaryLine, "other_error_count"),
   });
 }
@@ -215,17 +204,9 @@ export function analyzeBehavior(run: {
     score -= 0.2;
     reasons.push("lifecycle reported an error");
   }
-  if ((trace?.guardBlockedCount ?? 0) > 0) {
-    score -= Math.min(0.2, (trace?.guardBlockedCount ?? 0) * 0.05);
-    reasons.push(`guard blocks: ${trace?.guardBlockedCount}`);
-  }
-  if ((trace?.regenerationCount ?? 0) > 0) {
-    score -= Math.min(0.2, (trace?.regenerationCount ?? 0) * 0.1);
-    reasons.push(`regenerations: ${trace?.regenerationCount}`);
-  }
-  if (trace?.regenerationLimitHit) {
-    score -= 0.2;
-    reasons.push("regeneration cap hit");
+  if ((trace?.budgetBlockedCount ?? 0) > 0) {
+    score -= Math.min(0.2, (trace?.budgetBlockedCount ?? 0) * 0.1);
+    reasons.push(`budget exhausted: ${trace?.budgetBlockedCount}`);
   }
   if ((trace?.preWriteDiscoveryCalls ?? 0) > 2) {
     score -= Math.min(0.15, ((trace?.preWriteDiscoveryCalls ?? 0) - 2) * 0.05);
@@ -239,10 +220,6 @@ export function analyzeBehavior(run: {
     score -= Math.min(0.1, ((trace?.writeCalls ?? 0) - (run.expectedChangeCount + 1)) * 0.03);
     reasons.push(`extra writes beyond expected scope: ${trace?.writeCalls}`);
   }
-  if ((trace?.guardFlagSetCount ?? 0) > 0) {
-    score -= Math.min(0.1, (trace?.guardFlagSetCount ?? 0) * 0.03);
-    reasons.push(`guard flags: ${trace?.guardFlagSetCount}`);
-  }
   if ((trace?.timeoutErrorCount ?? 0) > 0) {
     score -= Math.min(0.15, (trace?.timeoutErrorCount ?? 0) * 0.1);
     reasons.push(`timeout errors: ${trace?.timeoutErrorCount}`);
@@ -251,9 +228,9 @@ export function analyzeBehavior(run: {
     score -= Math.min(0.1, (trace?.fileNotFoundErrorCount ?? 0) * 0.05);
     reasons.push(`file-not-found errors: ${trace?.fileNotFoundErrorCount}`);
   }
-  if ((trace?.guardBlockedErrorCount ?? 0) > 0) {
-    score -= Math.min(0.1, (trace?.guardBlockedErrorCount ?? 0) * 0.05);
-    reasons.push(`guard-blocked errors: ${trace?.guardBlockedErrorCount}`);
+  if ((trace?.budgetBlockedErrorCount ?? 0) > 0) {
+    score -= Math.min(0.1, (trace?.budgetBlockedErrorCount ?? 0) * 0.05);
+    reasons.push(`budget-blocked errors: ${trace?.budgetBlockedErrorCount}`);
   }
   if ((trace?.otherErrorCount ?? 0) > 0) {
     score -= Math.min(0.1, (trace?.otherErrorCount ?? 0) * 0.05);
@@ -419,7 +396,7 @@ function printRun(run: BehaviorRun): void {
   console.log(`score: ${run.analysis.score.toFixed(2)} (${run.analysis.verdict})`);
   if (run.trace) {
     console.log(
-      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} signal=${run.trace.lifecycleSignal ?? "?"} regenerations=${run.trace.regenerationCount ?? "?"} regen_limit_hit=${run.trace.regenerationLimitHit ?? "?"} guard_blocked=${run.trace.guardBlockedCount ?? "?"} guard_flags=${run.trace.guardFlagSetCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
+      `trace: task=${run.trace.taskId ?? "unknown"} model_calls=${run.trace.modelCalls ?? "?"} total_tools=${run.trace.totalToolCalls ?? "?"} unique_tools=${run.trace.uniqueToolCount ?? "?"} read=${run.trace.readCalls ?? "?"} search=${run.trace.searchCalls ?? "?"} write=${run.trace.writeCalls ?? "?"} pre_write_discovery=${run.trace.preWriteDiscoveryCalls ?? "?"} signal=${run.trace.lifecycleSignal ?? "?"} budget_blocked=${run.trace.budgetBlockedCount ?? "?"} has_error=${run.trace.hasError ?? "?"}`,
     );
   }
   console.log(`analysis: ${run.analysis.reasons.join("; ")}`);

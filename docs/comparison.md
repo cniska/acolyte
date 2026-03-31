@@ -28,10 +28,10 @@ High-level capability comparison across all projects.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Multi-provider | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Lifecycle pipeline | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
-| Behavioral guards | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial |
-| Auto verification | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
+| Post-write effects | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
 | Workspace detection | ✓ | ✗ | partial | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
+| Workspace sandboxing | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
 | Observable execution | ✓ | partial | partial | ✗ | partial | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Daemon architecture | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ |
 
@@ -61,46 +61,34 @@ The optional TUI is a custom React terminal renderer built on `react-reconciler`
 
 Acolyte separates the agent lifecycle into explicit phases with strict contracts between them.
 
-Every request flows through five phases, each implemented as its own module with its own tests:
+Every request flows through four phases, each implemented as its own module with its own tests:
 
 ```
-resolve → prepare → generate → evaluate → finalize
+resolve → prepare → generate → finalize
 ```
 
 - **resolve**: pick model and policy
-- **prepare**: wire tools, session context, and guards
-- **generate**: run the model with tool calls
-- **evaluate**: inspect output, decide accept or regenerate
-- **finalize**: persist results and emit the response
+- **prepare**: wire tools and session context
+- **generate**: run the model with tool calls (single pass, effects apply per-tool-result)
+- **finalize**: accept lifecycle signal, persist results, emit the response
 
-Evaluators run after generation and can return a `regenerate` action. Lint and runtime recovery evaluators trigger bounded follow-up attempts when the previous attempt produced actionable failures.
+The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on.
 
 Most other agents use flat tool loops or implicit state machines.
 
 Goose comes closest with `prepare → generate → categorize → execute`, but the phases are orchestrated inside a single streaming loop.
 
-## Tool guards
+## Step budget
 
-Autonomous coding agents frequently enter degenerate loops:
+A step budget inlined into tool execution enforces per-cycle and total tool-call limits to prevent runaway loops. When the budget is exhausted, the tool call is blocked. This is a lightweight runtime safeguard rather than a pluggable guard system.
 
-- Repeated edits
-- Redundant file reads
-- Repeated searches
-- Verification cycles with no changes
+## Post-write effects
 
-Acolyte uses behavioral guards that run before every tool call. Guards cover step budgets, duplicate/redundant calls, file churn, ping-pong loops, and lifecycle effect enforcement. See `src/tool-guards.ts` for the full set.
+After generation, format and lint effects run automatically on written files:
 
-Only OpenClaw and OpenHands ship comparable runtime safeguards.
-
-Others rely primarily on prompt instructions or user confirmation.
-
-## Auto-verification
-
-After generation, evaluators inspect the result and may trigger:
-
-- Regeneration with a different tool strategy
-- Regeneration with lifecycle feedback from lint/guard/tool-recovery evaluators
-- Scoped test execution via the `test-run` tool during generation
+- format applies the detected workspace formatter
+- lint runs the detected workspace linter; errors surface in the tool result for the model to decide on
+- scoped test execution is available via the `test-run` tool during generation
 
 The model uses an ecosystem-aware `test-run` tool to validate changes against specific test files rather than running the full test suite.
 
@@ -122,6 +110,17 @@ Acolyte auto-detects project tooling from workspace config files at lifecycle st
 | Continue | IDE-provided workspace context |
 | Goose | Package manager detection via Rust crate |
 | Others | No workspace detection |
+
+## Workspace sandboxing
+
+Acolyte enforces a workspace sandbox that prevents tool operations outside the resolved workspace root. All file paths are validated against the sandbox boundary using `realpath`-based resolution before any read, write, or delete operation.
+
+| Project | Sandboxing approach |
+|---|---|
+| **Acolyte** | Path validation against resolved workspace root |
+| Codex | Network-disabled sandbox with writable directory restrictions |
+| OpenHands | Docker container isolation |
+| Others | No sandboxing |
 
 ## Developer experience
 
@@ -145,8 +144,7 @@ IDE-based agents such as Cline and Continue primarily operate through extensions
 Every lifecycle event emits structured debug logs describing:
 
 - Tool calls
-- Guard decisions
-- Evaluator actions
+- Effect decisions
 - Task state transitions
 
 The `acolyte trace` command converts daemon logs into timelines:
@@ -154,9 +152,8 @@ The `acolyte trace` command converts daemon logs into timelines:
 ```
 timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=file-edit path=src/foo.ts
 timestamp=... task_id=task_abc123 event=lifecycle.tool.result tool=file-edit duration_ms=45 is_error=false
-timestamp=... task_id=task_abc123 event=lifecycle.guard guard=file-churn tool=file-read action=blocked
-timestamp=... task_id=task_abc123 event=lifecycle.eval.decision evaluator=tool-recovery action=regenerate
-timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=2 read=3 search=1 write=1 guard_blocked=1
+timestamp=... task_id=task_abc123 event=lifecycle.eval.decision effect=lint action=done
+timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 search=1 write=1
 ```
 
 These traces allow developers to debug agent behavior step-by-step.
@@ -190,7 +187,7 @@ accepted → queued → running → completed | failed | cancelled
 
 Tasks are durable entities with stable IDs and explicit state transitions.
 
-Guards, evaluators, and tool call logs are isolated per task.
+Tool call logs and lifecycle events are isolated per task.
 
 The RPC protocol exposes task transitions so clients can show real-time progress.
 
@@ -214,7 +211,6 @@ Core systems expose minimal, well-defined extension points:
 
 - Lifecycle policies
 - Tool registration
-- Guard hooks
 - Memory strategies
 - Skill metadata
 - Configuration layers

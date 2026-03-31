@@ -152,10 +152,11 @@ export async function handlePrompt(
               break;
             }
             case "tool-result": {
-              const guardBlocked =
+              const budgetExhausted =
                 event.isError === true &&
-                (event.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || event.error?.category === "guard-blocked");
-              if (guardBlocked) toolOutput.delete(event.toolCallId);
+                (event.errorCode === LIFECYCLE_ERROR_CODES.budgetExhausted ||
+                  event.error?.category === "budget-exhausted");
+              if (budgetExhausted) toolOutput.delete(event.toolCallId);
               break;
             }
           }

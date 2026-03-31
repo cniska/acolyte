@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { LogLine, TaskSummary } from "./log-parser";
 
-const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence", "phase_attempt"]);
+const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence"]);
 
 export type TraceEntry = {
   timestamp: string;
@@ -13,7 +13,6 @@ export type TraceEntry = {
   sessionId?: string;
   event?: string;
   sequence?: number;
-  phaseAttempt?: number;
   fields: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -34,7 +33,6 @@ function initSchema(db: Database): void {
       session_id TEXT,
       event TEXT,
       sequence INTEGER,
-      phase_attempt INTEGER,
       fields_json TEXT NOT NULL DEFAULT '{}'
     )
   `);
@@ -49,7 +47,6 @@ type TraceRow = {
   session_id: string | null;
   event: string | null;
   sequence: number | null;
-  phase_attempt: number | null;
   fields_json: string;
 };
 
@@ -77,7 +74,6 @@ function rowToLogLine(row: TraceRow): LogLine {
   if (row.request_id) fields.request_id = row.request_id;
   if (row.session_id) fields.session_id = row.session_id;
   if (row.sequence != null) fields.sequence = String(row.sequence);
-  if (row.phase_attempt != null) fields.phase_attempt = String(row.phase_attempt);
   return {
     raw: "",
     timestamp: row.timestamp,
@@ -106,7 +102,7 @@ function fieldsToJson(fields: Record<string, string | number | boolean | null | 
   return JSON.stringify(clean);
 }
 
-const SELECT_COLUMNS = "timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json";
+const SELECT_COLUMNS = "timestamp, task_id, request_id, session_id, event, sequence, fields_json";
 
 const LIST_BY_TASK_SQL = `SELECT ${SELECT_COLUMNS} FROM trace_events WHERE task_id = ? ORDER BY id ASC`;
 
@@ -140,10 +136,10 @@ export function createTraceStore(dbPath?: string): TraceStore {
 
   const writeStmt = db.prepare<
     void,
-    [string, string | null, string | null, string | null, string | null, number | null, number | null, string]
+    [string, string | null, string | null, string | null, string | null, number | null, string]
   >(
-    `INSERT INTO trace_events (timestamp, task_id, request_id, session_id, event, sequence, phase_attempt, fields_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO trace_events (timestamp, task_id, request_id, session_id, event, sequence, fields_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const queries = prepareReadQueries(db);
 
@@ -156,7 +152,6 @@ export function createTraceStore(dbPath?: string): TraceStore {
         entry.sessionId ?? null,
         entry.event ?? null,
         entry.sequence ?? null,
-        entry.phaseAttempt ?? null,
         fieldsToJson(entry.fields),
       );
     },

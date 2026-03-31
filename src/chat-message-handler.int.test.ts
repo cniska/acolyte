@@ -16,7 +16,7 @@ import {
   testUuid,
 } from "./test-utils";
 
-describe("chat message handler guards", () => {
+describe("chat message handler", () => {
   test("resolveNaturalRememberDirective parses user and project forms", () => {
     expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
       scope: "user",

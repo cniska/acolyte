@@ -31,8 +31,8 @@ Default: if a layer carries no policy, invariants, or boundary isolation, remove
 
 ### 3. Boundary and contract integrity
 
-- lifecycle phase boundaries and evaluator-driven behavior
-- tool architecture (toolkits, registry, guarded execution)
+- lifecycle phase boundaries and effect-driven settle behavior
+- tool architecture (toolkits, registry, step-budget execution)
 - contracts and schemas as source of truth (Zod + inferred types)
 - transport and protocol consistency
 - DI convention: `*Deps` for config, `*Input` for runtime, defaults from `appConfig`

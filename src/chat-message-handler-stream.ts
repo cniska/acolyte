@@ -117,10 +117,10 @@ export function createMessageStreamState(input: {
     },
 
     onToolResult: (entry) => {
-      const guardBlocked =
+      const budgetExhausted =
         entry.isError &&
-        (entry.errorCode === LIFECYCLE_ERROR_CODES.guardBlocked || entry.error?.category === "guard-blocked");
-      if (guardBlocked) {
+        (entry.errorCode === LIFECYCLE_ERROR_CODES.budgetExhausted || entry.error?.category === "budget-exhausted");
+      if (budgetExhausted) {
         const rowId = toolRowIdByCallId.get(entry.toolCallId);
         toolRowIdByCallId.delete(entry.toolCallId);
         toolOutput.delete(entry.toolCallId);

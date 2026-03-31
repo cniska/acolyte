@@ -11,8 +11,8 @@ import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type { ChecklistListener, ToolCategory, ToolDefinition, ToolkitDeps, ToolkitInput } from "./tool-contract";
-import { createSessionContext, type SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
+import { createSessionContext, type SessionContext } from "./tool-session";
 import { createWebToolkit } from "./web-toolkit";
 
 // biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here

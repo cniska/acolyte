@@ -23,7 +23,7 @@ afterAll(async () => {
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
-describe("path guards", () => {
+describe("path validation", () => {
   test("readFileContent blocks paths outside workspace", async () => {
     await expect(readFileContent(WORKSPACE, "/etc/hosts")).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.sandboxViolation,
@@ -142,12 +142,6 @@ describe("editFile", () => {
       editFile({ workspace: WORKSPACE, path: filePath, edits: [{ find: "gamma", replace: "delta" }] }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editFileFindNotFound,
-      recovery: {
-        tool: "file-edit",
-        kind: "refresh-snippet",
-        nextTool: "file-read",
-        targetPaths: [filePath],
-      },
     });
   });
 
@@ -185,12 +179,6 @@ describe("editFile", () => {
       }),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.editFileFindTooLarge,
-      recovery: {
-        tool: "file-edit",
-        kind: "shrink-edit",
-        nextTool: "file-read",
-        targetPaths: [filePath],
-      },
     });
   });
 
@@ -348,31 +336,18 @@ describe("editFile", () => {
 });
 
 describe("searchFiles", () => {
-  test("returns structured recovery when scoped paths resolve to no files", async () => {
+  test("rejects when scoped paths resolve to no files", async () => {
     await expect(searchFiles(WORKSPACE, ["alias"], 20, ["src/does-not-exist"])).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesEmptyScope,
-      recovery: {
-        tool: "file-search",
-        kind: "broaden-scope",
-        nextTool: "file-find",
-        resolvesOn: [{ tool: "file-find" }],
-      },
     });
   });
 
-  test("returns structured recovery when a scoped file has no matches", async () => {
+  test("rejects when a scoped file has no matches", async () => {
     const filePath = join(WORKSPACE, `tmp-search-no-match-${testUuid()}.txt`);
     tempFiles.push(filePath);
     await writeFile(filePath, "alpha beta\n", "utf8");
     await expect(searchFiles(WORKSPACE, ["gamma"], 20, [filePath])).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesNoMatch,
-      recovery: {
-        tool: "file-search",
-        kind: "switch-to-read",
-        nextTool: "file-read",
-        targetPaths: [filePath],
-        resolvesOn: [{ tool: "file-read", targetPaths: [filePath] }],
-      },
     });
   });
 });

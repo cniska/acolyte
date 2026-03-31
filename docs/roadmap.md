@@ -8,7 +8,7 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 
 ## Shipped
 
-- 5-phase lifecycle with streaming tool calls, guards, and automatic code review
+- 4-phase lifecycle with streaming tool calls and post-write effects
 - Context distillation with 3-tier persistent memory (session/project/user)
 - Semantic recall with provider embeddings and cosine similarity ranking
 - SQLite-backed storage for distill records, embeddings, and lifecycle traces
@@ -22,8 +22,8 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 - Multi-provider support (OpenAI, Anthropic, Google)
 - SQLite-backed cross-task tool cache
 - Structured model-to-user handoff for blocked signals (`awaiting-input` state)
-- Workspace profile detection for ecosystem, lint, format, test runner, and package manager
-- Format → lint evaluator chain from detected workspace commands
+- Workspace profile detection for ecosystem, lint, format, test runner, package manager, and line width
+- Format and lint post-write effects from detected workspace commands
 - Ecosystem-aware scoped test runner with auto-detected test command
 - Pluggable ecosystem detectors for TypeScript, Python, Go, Rust
 - Inline task checklist for multi-step tasks

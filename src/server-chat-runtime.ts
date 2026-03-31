@@ -50,7 +50,6 @@ export function logLifecycleDebugEntry(params: {
   sessionId?: string;
   event: string;
   sequence: number;
-  phaseAttempt: number;
   eventTs: string;
   fields?: Record<string, unknown>;
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
@@ -64,7 +63,6 @@ export function logLifecycleDebugEntry(params: {
     session_id: params.sessionId ?? null,
     event: params.event,
     sequence: params.sequence,
-    phase_attempt: params.phaseAttempt,
     event_ts: params.eventTs,
     ...logFields,
   });
@@ -79,7 +77,6 @@ export function logLifecycleDebugEntry(params: {
         sessionId: params.sessionId,
         event: params.event,
         sequence: params.sequence,
-        phaseAttempt: params.phaseAttempt,
         fields: logFields,
       });
     } catch {
@@ -206,7 +203,6 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           session_id: chatRequest.sessionId ?? null,
           event,
           sequence: 0,
-          phase_attempt: 0,
           event_ts: new Date().toISOString(),
           ...(fields ?? {}),
         });
@@ -237,7 +233,6 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           sessionId: chatRequest.sessionId,
           event: entry.event,
           sequence: entry.sequence,
-          phaseAttempt: entry.phaseAttempt,
           eventTs: entry.ts,
           fields: entry.fields,
         });

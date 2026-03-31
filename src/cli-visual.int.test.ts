@@ -516,9 +516,7 @@ describe("cli visual regression", () => {
           search_calls: "0",
           write_calls: "0",
           pre_write_discovery_calls: "0",
-          regeneration_count: "0",
-          guard_blocked_count: "0",
-          guard_flag_set_count: "0",
+          budget_exhausted_count: "0",
           has_error: "false",
         },
       });

@@ -59,16 +59,12 @@ describe("lifecycle integration", () => {
     if (fake) fake.stop();
   });
 
-  test("@signal done with write tools skips verify without verify command", async () => {
-    const phases: string[] = [];
-
+  test("@signal done completes after write tools", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
-
       if (turnCount === 1) {
         const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
             id: `fc_${ctx.responseCounter}`,
@@ -81,41 +77,29 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-
-      phases.push("work:done");
       return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
     });
 
-    await run("update x to 2");
-
-    expect(phases).toContain("work:tool-call");
-    expect(phases).toContain("work:done");
-    expect(phases).not.toContain("verify:done");
+    const reply = await run("update x to 2");
+    expect(turnCount).toBe(2);
+    expect(reply.output).toContain("Updated x to 2.");
   });
 
-  test("@signal no_op without write tools does not trigger verify", async () => {
-    const phases: string[] = [];
-
+  test("@signal no_op completes without write tools", async () => {
     setupFakeProvider((ctx) => {
-      phases.push("work:done");
       return createMessagePayload(ctx.model, ctx.responseCounter, "Nothing to do.\n\n@signal no_op");
     });
 
     const reply = await run("hello");
-
-    expect(phases).toEqual(["work:done"]);
     expect(reply.output).toContain("Nothing to do.");
   });
 
-  test("@signal blocked with write tools skips verify without verify command", async () => {
+  test("@signal blocked returns awaiting-input state", async () => {
     let turnCount = 0;
-    const phases: string[] = [];
-
     setupFakeProvider((ctx) => {
       turnCount += 1;
       if (turnCount === 1) {
         const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        phases.push("work:tool-call");
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
             id: `fc_${ctx.responseCounter}`,
@@ -128,84 +112,14 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      phases.push("work:blocked");
       return createMessagePayload(ctx.model, ctx.responseCounter, "Cannot proceed.\n\n@signal blocked");
     });
 
-    await run("update x to 3");
-
-    expect(phases).toContain("work:tool-call");
-    expect(phases).toContain("work:blocked");
+    const reply = await run("update x to 3");
+    expect(reply.state).toBe("awaiting-input");
   });
 
-  test("write tools remain single-pass without a verify stage", async () => {
-    let turnCount = 0;
-    const phases: string[] = [];
-
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        phases.push("work:tool-call");
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
-            }),
-          },
-        ]);
-      }
-      phases.push("work:done");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Done.\n\n@signal done");
-    });
-
-    await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x", history: [], useMemory: false },
-      soulPrompt: "",
-      workspace,
-    });
-
-    expect(phases).toContain("work:tool-call");
-    expect(phases).toContain("work:done");
-    expect(phases).not.toContain("verify:done");
-  });
-
-  test("no signal with write tools skips verify without verify command", async () => {
-    let turnCount = 0;
-    const phases: string[] = [];
-
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        phases.push("work:tool-call");
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 5;" }],
-            }),
-          },
-        ]);
-      }
-      phases.push("work:text");
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated the file.");
-    });
-
-    await run("update x to 5");
-
-    expect(phases).toContain("work:tool-call");
-    expect(phases).not.toContain("verify:done");
-  });
-
-  test("format effect runs configured command for written files", async () => {
+  test("format effect runs on written files", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const formatLog = join(workspace, "format.log");
     const formatScript = await writeExecutableScript(
@@ -248,68 +162,19 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
-  test("separates iteration texts with newline in streamed output", async () => {
+  test("lint effect surfaces errors without regeneration", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    let turnCount = 0;
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-read", ["read"]);
-        return createToolCallsPayload(
-          ctx.model,
-          ctx.responseCounter,
-          [
-            {
-              id: `fc_${ctx.responseCounter}`,
-              callId: `call_${ctx.responseCounter}`,
-              name: toolName,
-              args: JSON.stringify({ paths: [{ path: join(workspace, "a.ts") }] }),
-            },
-          ],
-          "Reading the file.",
-        );
-      }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Done reading.\n\n@signal done");
-    });
-
-    const textDeltas: string[] = [];
-    const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "read a.ts", history: [], useMemory: false },
-      soulPrompt: "",
-      workspace,
-      onEvent: (event) => {
-        if (event.type === "text-delta" && event.text) textDeltas.push(event.text);
-      },
-    });
-
-    expect(turnCount).toBe(2);
-    const streamedText = textDeltas.join("");
-    expect(reply.output).toContain("Reading the file.");
-    expect(reply.output).toContain("Done reading.");
-    // The two iteration texts must be separated by a newline, not concatenated directly
-    expect(streamedText).toContain("Reading the file.\nDone reading.");
-  });
-
-  test("lint effect regenerates with lifecycle feedback", async () => {
-    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    const lintState = join(workspace, ".lint-effect-state");
     const lintScript = await writeExecutableScript(
       "lint-effect.sh",
       `#!/bin/sh
-if [ ! -f "${lintState}" ]; then
-  touch "${lintState}"
-  printf 'src/a.ts:1:1 lint error\n'
-  exit 1
-fi
-exit 0
+printf 'src/a.ts:1:1 lint error\n'
+exit 1
 `,
     );
 
-    const requests: string[] = [];
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
-      requests.push(ctx.sourceText);
       if (turnCount === 1) {
         const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
@@ -324,10 +189,7 @@ exit 0
           },
         ]);
       }
-      if (turnCount === 2) {
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
-      }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Addressed lint feedback.\n\n@signal done");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
     });
 
     const reply = await runLifecycle({
@@ -335,13 +197,11 @@ exit 0
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
-        lintCommand: { bin: "/bin/sh", args: [lintScript] },
+        lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] },
       },
     });
 
-    expect(turnCount).toBe(3);
-    expect(requests[2]).toContain("lifecycle feedback (lint)");
-    expect(requests[2]).toContain("lint errors detected in files you edited");
-    expect(reply.output).toContain("Addressed lint feedback.");
+    expect(turnCount).toBe(2);
+    expect(reply.output).toContain("Updated x to 7.");
   });
 });

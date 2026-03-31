@@ -1,6 +1,6 @@
 # Why Acolyte?
 
-> **TL;DR** Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it prevents drift, stops redundant work, verifies its own output, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control. Behavioral guards, a 5-phase lifecycle pipeline, auto-verification, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
+> **TL;DR** Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it trusts the model to make good decisions, runs automatic post-write effects, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control. A 4-phase lifecycle pipeline, post-write format/lint effects, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
 
 ## Why open source?
 
@@ -10,8 +10,8 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 
 - **provider choice**: use OpenAI, Anthropic, Google, or any OpenAI-compatible endpoint — switch models per task without switching tools
 - **self-hosted**: run everything on your own infrastructure with no data leaving your network
-- **customizable agent behavior**: lifecycle phases, guards, evaluators, and memory strategies are all configurable — not locked behind a closed product surface
-- **transparent execution**: every tool call, guard decision, and evaluator action is observable in structured logs — no black box
+- **customizable agent behavior**: lifecycle phases, effects, and memory strategies are all configurable — not locked behind a closed product surface
+- **transparent execution**: every tool call and effect decision is observable in structured logs — no black box
 - **no vendor lock-in**: your sessions, memory, and configuration are local files you own
 
 Acolyte is for developers who want reliable, observable agent behavior, not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
@@ -21,8 +21,8 @@ Acolyte is for developers who want reliable, observable agent behavior, not a bl
 | Feature | What Acolyte does |
 |---|---|
 | Architecture | Headless daemon with typed RPC — CLI, editors, and custom clients share the same protocol |
-| Lifecycle | 5-phase pipeline (resolve → prepare → generate → evaluate → finalize) in separate, testable modules |
-| Tool guards | Behavioral guards that detect and block degenerate patterns at runtime |
+| Lifecycle | 4-phase pipeline (resolve → prepare → generate → finalize) in separate, testable modules |
+| Post-write effects | Automatic format and lint after writes; lint errors surface for the model to decide on |
 | Memory | Context distillation extracts facts from conversations into 3-tier persistent storage |
 | Context budgeting | Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation |
 | Developer experience | Custom React TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
@@ -33,11 +33,7 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. Evaluators inspect output after generation and can trigger bounded re-generation without manual intervention.
-
-### Tool guards
-
-Behavioral guards run before every tool call: step budgets, duplicate detection, file churn limits, redundant search/find blocking, and delete-rewrite prevention. Guards are pluggable. Add custom guards without touching the pipeline.
+Every request flows through five explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget inlined into tool execution prevents runaway loops.
 
 ### Memory
 

@@ -1,10 +1,10 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
-import { guardStatsFromSession, type RunContext } from "./lifecycle-contract";
+import type { RunContext } from "./lifecycle-contract";
 import { totalPromptBreakdownTokens } from "./lifecycle-usage";
-import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 
 function resolvePromptBreakdown(ctx: RunContext) {
   if (totalPromptBreakdownTokens(ctx.promptBreakdownTotals) > 0) return ctx.promptBreakdownTotals;
@@ -31,7 +31,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
 
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
-  const guardStats = guardStatsFromSession(ctx.session);
   const totalToolCalls = callLog.length;
   const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;
   const searchCalls = callLog.filter((entry) => SEARCH_TOOL_SET.has(entry.toolName)).length;
@@ -57,17 +56,14 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     write_calls: writeCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
     lifecycle_signal: ctx.result?.signal ?? null,
-    regeneration_count: ctx.regenerationCount,
-    regeneration_limit_hit: ctx.regenerationLimitHit,
-    guard_blocked_count: guardStats.blocked,
-    guard_flag_set_count: guardStats.flagSet,
+    budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
     active_skill: ctx.promptUsage.activeSkillName ?? null,
     skill_instruction_chars: ctx.promptUsage.skillInstructionChars ?? null,
     last_error_code: ctx.currentError?.code ?? null,
     last_error_category: ctx.currentError?.category ?? null,
     timeout_error_count: ctx.errorStats.timeout,
     file_not_found_error_count: ctx.errorStats["file-not-found"],
-    guard_blocked_error_count: ctx.errorStats["guard-blocked"],
+    budget_blocked_count: ctx.errorStats["budget-exhausted"],
     other_error_count: ctx.errorStats.other,
   });
 

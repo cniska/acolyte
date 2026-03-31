@@ -13,28 +13,20 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import type {
-  GenerateOptions,
-  GenerateResult,
-  LifecycleFeedback,
-  LifecycleState,
-  RunContext,
-  StreamChunk,
-} from "./lifecycle-contract";
+import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
 import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
+import { resetCycleStepCount } from "./tool-session";
 
 type CaptureErrorMeta = {
   source?: ErrorSource;
   tool?: string;
   code?: string;
   kind?: string;
-  recovery?: NonNullable<RunContext["currentError"]>["recovery"];
 };
 
 function formatToolArgs(args: Record<string, unknown>): Record<string, string | number | boolean> {
@@ -65,7 +57,7 @@ function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta)
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
-  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool, recovery: meta?.recovery };
+  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
@@ -89,22 +81,6 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
   }).error;
 }
 
-export function shouldYieldNow(ctx: RunContext, shouldYield?: () => boolean): boolean {
-  if (!shouldYield) return false;
-  if (!shouldYield()) return false;
-  ctx.debug("lifecycle.yield", {
-    generation_attempt: ctx.generationAttempt,
-    regeneration_count: ctx.regenerationCount,
-  });
-  if (!ctx.result?.text.trim()) {
-    ctx.result = {
-      text: "Yielding to a newer pending message.",
-      toolCalls: ctx.result?.toolCalls ?? [],
-    };
-  }
-  return true;
-}
-
 export function createRunAgent(input: {
   soulPrompt: string;
   workspace: string | undefined;
@@ -118,37 +94,10 @@ export function createRunAgent(input: {
   });
 }
 
-export function createLifecycleFeedbackText(feedback: LifecycleFeedback): string {
-  const lines = [`SYSTEM: Lifecycle feedback (${feedback.source}):`, feedback.summary];
-  if (feedback.details) lines.push("", feedback.details);
-  if (feedback.instruction) lines.push("", feedback.instruction);
-  return lines.join("\n");
-}
-
-function createGenerationInputFromFeedback(baseAgentInput: string, activeFeedback: LifecycleFeedback[]): string {
-  if (activeFeedback.length === 0) return baseAgentInput;
-  return [baseAgentInput, ...activeFeedback.map(createLifecycleFeedbackText)].join("\n\n");
-}
-
-export function consumeLifecycleFeedback(state: Pick<LifecycleState, "feedback">): LifecycleFeedback[] {
-  const activeFeedback = [...state.feedback];
-  if (activeFeedback.length === 0) return [];
-  state.feedback = [];
-  return activeFeedback;
-}
-
-export function createGenerationInput(
-  ctx: Pick<RunContext, "baseAgentInput"> & { lifecycleState: Pick<LifecycleState, "feedback"> },
-): string {
-  return createGenerationInputFromFeedback(ctx.baseAgentInput, ctx.lifecycleState.feedback);
-}
-
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
   resetCycleStepCount(ctx.session, opts.cycleLimit);
-  ctx.generationAttempt += 1;
-  const activeFeedback = consumeLifecycleFeedback(ctx.lifecycleState);
-  const prompt = createGenerationInputFromFeedback(ctx.baseAgentInput, activeFeedback);
+  const prompt = ctx.baseAgentInput;
   addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
@@ -292,30 +241,14 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
-function didResolveToolRecovery(
-  recovery: NonNullable<RunContext["currentError"]>["recovery"],
-  started: { toolName: string; targetPaths?: string[] },
-): boolean {
-  if (!recovery?.resolvesOn || recovery.resolvesOn.length === 0) return false;
-  const targets = started.targetPaths ?? [];
-  return recovery.resolvesOn.some((resolution) => {
-    if (resolution.tool !== started.toolName) return false;
-    if (!resolution.targetPaths || resolution.targetPaths.length === 0) return true;
-    return resolution.targetPaths.every((targetPath) => targets.includes(targetPath));
-  });
-}
-
-function clearResolvedToolError(ctx: RunContext, started: { toolName: string; targetPaths?: string[] }): void {
+function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
   const failedTool = ctx.currentError.tool;
   if (!failedTool) return;
   if (failedTool === started.toolName) {
     ctx.currentError = undefined;
-    return;
   }
-  if (!didResolveToolRecovery(ctx.currentError.recovery, started)) return;
-  ctx.currentError = undefined;
 }
 
 type ChunkHandler = (ctx: RunContext, chunk: StreamChunk) => void;
@@ -377,7 +310,6 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
         tool: toolName,
         code: resultCode ?? errorInfo.code,
         kind: errorInfo.kind,
-        recovery: errorInfo.recovery,
       });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     } else {
@@ -401,7 +333,6 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       tool: toolName,
       code: payloadCode ?? errorInfo.code,
       kind: payloadKind ?? errorInfo.kind,
-      recovery: errorInfo.recovery,
     });
     ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     if (p?.toolCallId && p?.toolName) {

@@ -281,7 +281,7 @@ async function createBoundedReturnFixWorkspace(workspace: string): Promise<void>
     "src/lifecycle-state.ts",
     [
       'import type { RunContext } from "./lifecycle-contract";',
-      'import { scopedCallLog } from "./tool-guards";',
+      'import { scopedCallLog } from "./tool-session";',
       'import { WRITE_TOOL_SET } from "./tool-registry";',
       "",
       "export function acceptedLifecycleSignal(ctx: RunContext): string | undefined {",

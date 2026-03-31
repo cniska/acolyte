@@ -13,7 +13,6 @@ function entry(overrides: Partial<TraceEntry> = {}): TraceEntry {
     sessionId: overrides.sessionId ?? "sess_1",
     event: overrides.event ?? "lifecycle.start",
     sequence: overrides.sequence ?? 1,
-    phaseAttempt: overrides.phaseAttempt ?? 0,
     fields: overrides.fields ?? { model: "gpt-5-mini", mode: "work" },
   };
 }

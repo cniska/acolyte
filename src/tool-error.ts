@@ -1,19 +1,15 @@
 import { CodedError } from "./coded-error";
 import type { ErrorKind } from "./error-contract";
-import type { ToolRecovery } from "./tool-recovery";
 
 export class ToolError extends CodedError<string, undefined, ErrorKind> {
-  recovery?: ToolRecovery;
-
-  constructor(code: string, message: string, kind?: ErrorKind, recovery?: ToolRecovery) {
+  constructor(code: string, message: string, kind?: ErrorKind) {
     super(code, message, kind ? { kind } : undefined);
     this.name = "ToolError";
-    this.recovery = recovery;
   }
 }
 
-export function createToolError(code: string, message: string, kind?: ErrorKind, recovery?: ToolRecovery): ToolError {
-  return new ToolError(code, message, kind, recovery);
+export function createToolError(code: string, message: string, kind?: ErrorKind): ToolError {
+  return new ToolError(code, message, kind);
 }
 
 export function encodeToolError(code: string, message: string): string {

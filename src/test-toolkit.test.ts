@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolkitDeps } from "./test-utils";
-import { createSessionContext } from "./tool-guards";
+import { createSessionContext } from "./tool-session";
 
 type TestResult = { kind: string; command: string; exitCode?: number; output: string };
 

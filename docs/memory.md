@@ -96,17 +96,17 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Key files
 
-- `src/memory.ts` — Top-level memory operations (list, add, remove).
-- `src/memory-contract.ts` — Type definitions for entries, scopes, and distill records.
-- `src/memory-pipeline.ts` — Staged pipeline (ingest, normalize, select, inject, commit).
-- `src/memory-registry.ts` — Source composition, strategy injection, and pipeline orchestration.
-- `src/memory-source-distill.ts` — Distill memory source with observer and reflector agents.
-- `src/memory-source-stored.ts` — Stored markdown memory source.
-- `src/memory-distill-prompts.ts` — Observer and reflector prompt templates.
-- `src/memory-distill-store.ts` — SQLite-based distill record and embedding persistence.
-- `src/memory-embedding.ts` — Provider embedding API wrapper and cosine similarity.
-- `src/memory-store.ts` — Memory store interface for list, add, and remove.
+- `src/memory.ts` — top-level memory operations (list, add, remove)
+- `src/memory-contract.ts` — type definitions for entries, scopes, and distill records
+- `src/memory-pipeline.ts` — staged pipeline (ingest, normalize, select, inject, commit)
+- `src/memory-registry.ts` — source composition, strategy injection, and pipeline orchestration
+- `src/memory-source-distill.ts` — distill memory source with observer and reflector agents
+- `src/memory-source-stored.ts` — stored markdown memory source
+- `src/memory-distill-prompts.ts` — observer and reflector prompt templates
+- `src/memory-distill-store.ts` — SQLite-based distill record and embedding persistence
+- `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
+- `src/memory-store.ts` — memory store interface for list, add, and remove
 
 ## Further reading
 
-[Nothing Forgotten](https://crisu.me/blog/nothing-forgotten) — Why context compaction is the wrong approach to AI memory.
+[Nothing Forgotten](https://crisu.me/blog/nothing-forgotten) — why context compaction is the wrong approach to AI memory

@@ -25,7 +25,6 @@ const traceEventSchema = z.enum([
   "chat.request.started",
   "chat.request.completed",
   "lifecycle.workspace.profile",
-  "lifecycle.workspace.sandbox",
   "lifecycle.start",
   "lifecycle.prepare",
   "lifecycle.generate.start",
@@ -38,17 +37,14 @@ const traceEventSchema = z.enum([
   "lifecycle.tool.result",
   "lifecycle.tool.error",
   "lifecycle.tool.output",
-  "lifecycle.sandbox.violation",
-  "lifecycle.guard",
+  "lifecycle.budget",
   "lifecycle.signal.accepted",
   "lifecycle.skill.context",
   "lifecycle.effect.format",
   "lifecycle.effect.lint",
+  "lifecycle.effect.lint.output",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
-  "lifecycle.eval.guard_recovery",
-  "lifecycle.eval.repeated_failure",
-  "lifecycle.eval.tool_recovery",
   "lifecycle.summary",
 ]);
 
@@ -79,44 +75,26 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     "test_command",
     "line_width",
   ],
-  "lifecycle.workspace.sandbox": ["sandbox_root"],
   "lifecycle.start": ["model"],
   "lifecycle.prepare": ["model", "history_messages"],
   "lifecycle.generate.start": ["model"],
   "lifecycle.generate.done": ["model", "tool_calls", "text_chars"],
   "lifecycle.generate.error": ["model", "error"],
   "lifecycle.error": ["source", "kind", "code", "category", "tool"],
-  "lifecycle.yield": ["generation_attempt"],
-  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "cmd", "args"],
+  "lifecycle.yield": [],
+  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "command"],
   "lifecycle.tool.cache": ["tool", "hit", "hits", "misses", "size"],
   "lifecycle.tool.result": ["tool", "duration_ms", "is_error"],
   "lifecycle.tool.error": ["tool", "error"],
   "lifecycle.tool.output": ["tool"],
-  "lifecycle.sandbox.violation": ["tool", "path", "paths", "cmd", "args"],
-  "lifecycle.guard": ["guard", "tool", "action", "detail"],
+  "lifecycle.budget": ["tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
   "lifecycle.effect.format": ["files"],
   "lifecycle.effect.lint": ["files"],
-  "lifecycle.eval.decision": [
-    "effect",
-    "evaluator",
-    "action",
-    "regeneration_reason",
-    "regeneration_count",
-    "regeneration_reason_count",
-  ],
-  "lifecycle.eval.skipped": [
-    "effect",
-    "evaluator",
-    "reason",
-    "regeneration_reason",
-    "regeneration_reason_count",
-    "regeneration_reason_cap",
-  ],
-  "lifecycle.eval.guard_recovery": [],
-  "lifecycle.eval.repeated_failure": ["signature", "count", "code", "category"],
-  "lifecycle.eval.tool_recovery": ["recovery_tool", "recovery_kind"],
+  "lifecycle.eval.decision": ["effect", "action"],
+  "lifecycle.eval.skipped": ["reason"],
+  "lifecycle.effect.lint.output": ["output"],
   "lifecycle.summary": [
     "model_calls",
     { key: "tool_calls", label: "total_tool_calls" },
@@ -124,9 +102,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
     { key: "search_calls", label: "search" },
     { key: "write_calls", label: "write" },
     { key: "pre_write_discovery_calls", label: "pre_write_discovery" },
-    { key: "regeneration_count", label: "regenerations" },
-    { key: "guard_blocked_count", label: "guard_blocked" },
-    { key: "guard_flag_set_count", label: "guard_flag_set" },
+    { key: "budget_exhausted_count", label: "budget_exhausted" },
     "has_error",
   ],
 };
@@ -181,27 +157,13 @@ function parsePaths(raw: string): string[] {
   }
 }
 
-function parseArgs(raw: string): string[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is string => typeof entry === "string");
-  } catch {
-    return [];
-  }
-}
-
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
 function extractToolArg(fields: Record<string, string>): string {
   if (fields.path) return fields.path;
-  if (fields.cmd) {
-    const args = fields.args ? parseArgs(fields.args) : [];
-    const rendered = [fields.cmd, ...args].join(" ").trim();
-    return truncate(rendered, 40);
-  }
+  if (fields.command) return truncate(fields.command, 40);
   if (fields.pattern) return `"${fields.pattern}"`;
   if (fields.paths) return parsePaths(fields.paths).join(", ");
   return "";
@@ -223,10 +185,8 @@ function compactSummary(fields: Record<string, string>): string {
   if (fields.search_calls && fields.search_calls !== "0") breakdown.push(`search=${fields.search_calls}`);
   if (fields.write_calls && fields.write_calls !== "0") breakdown.push(`write=${fields.write_calls}`);
   if (breakdown.length > 0) parts[parts.length - 1] += ` (${breakdown.join(" ")})`;
-  if (fields.regeneration_count && fields.regeneration_count !== "0")
-    parts.push(`regenerations=${fields.regeneration_count}`);
-  if (fields.guard_blocked_count && fields.guard_blocked_count !== "0")
-    parts.push(`guard_blocked=${fields.guard_blocked_count}`);
+  if (fields.budget_exhausted_count && fields.budget_exhausted_count !== "0")
+    parts.push(`budget_exhausted=${fields.budget_exhausted_count}`);
   parts.push(`status=${fields.has_error === "true" ? "error" : "ok"}`);
   return parts.join("  ");
 }
@@ -260,8 +220,8 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       continue;
     }
 
-    if (event === "lifecycle.guard" && pending) {
-      pending.status = `BLOCKED  ${line.fields.guard ?? ""}`;
+    if (event === "lifecycle.budget" && pending) {
+      pending.status = `BLOCKED  budget`;
       flushPending();
       continue;
     }
@@ -273,22 +233,13 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       continue;
     }
 
-    if (event === "lifecycle.eval.decision") {
-      if (line.fields.action === "regenerate") {
-        flushPending();
-        rows.push({
-          kind: "separator",
-          text: `── regenerate (${line.fields.effect ?? line.fields.evaluator ?? ""}) ──`,
-        });
-      }
-      continue;
-    }
+    if (event === "lifecycle.eval.decision") continue;
 
     if (event === "lifecycle.eval.skipped") {
       flushPending();
       rows.push({
         kind: "separator",
-        text: `── skipped ${line.fields.effect ?? line.fields.evaluator ?? ""} (${line.fields.reason ?? ""}) ──`,
+        text: `── stopped (${line.fields.reason ?? ""}) ──`,
       });
       continue;
     }

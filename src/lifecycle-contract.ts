@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Agent } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
@@ -7,10 +6,9 @@ import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { ChecklistListener } from "./tool-contract";
-import type { SessionContext } from "./tool-guards";
 import type { ToolOutputPart } from "./tool-output-content";
-import type { ToolRecovery } from "./tool-recovery";
 import type { Toolset } from "./tool-registry";
+import type { SessionContext } from "./tool-session";
 
 export type LifecycleError = {
   message: string;
@@ -18,7 +16,6 @@ export type LifecycleError = {
   category?: ErrorCategory;
   source?: ErrorSource;
   tool?: string;
-  recovery?: ToolRecovery;
 };
 
 export type LifecycleEventName = `lifecycle.${string}`;
@@ -26,7 +23,6 @@ export type LifecycleEventName = `lifecycle.${string}`;
 export type LifecycleDebugEvent = {
   event: LifecycleEventName;
   sequence: number;
-  phaseAttempt: number;
   ts: string;
   fields?: Record<string, unknown>;
 };
@@ -112,40 +108,12 @@ export type PhasePrepareResult = {
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
-export const feedbackSourceSchema = z.enum(["guard", "lint", "tool-recovery", "repeated-failure"]);
-export type FeedbackSource = z.infer<typeof feedbackSourceSchema>;
 
-export const regenerationReasonSchema = z.enum(["guard-recovery", "lint", "tool-recovery", "repeated-failure"]);
-export type RegenerationReason = z.infer<typeof regenerationReasonSchema>;
-
-export type LifecycleFeedback = {
-  source: FeedbackSource;
-  summary: string;
-  details?: string;
-  instruction?: string;
-};
-
-export type RegenerateAction = {
-  type: "regenerate";
-  reason: RegenerationReason;
-  feedback?: LifecycleFeedback;
-  cycleLimit?: number;
-};
-
-export type EffectAction = { type: "done" } | RegenerateAction;
+export type EffectResult = { type: "done"; lintOutput?: string };
 
 export type Effect = {
   id: string;
-  run: (ctx: RunContext) => EffectAction;
-};
-
-export type LifecycleState = {
-  feedback: LifecycleFeedback[];
-  repeatedFailure?: {
-    signature: string;
-    count: number;
-    status: "pending" | "surfaced";
-  };
+  run: (ctx: RunContext, paths: string[]) => EffectResult;
 };
 
 export type LifecycleInput = {
@@ -172,7 +140,6 @@ export type RunContext = {
   readonly baseAgentInput: string;
   readonly policy: LifecyclePolicy;
   readonly promptUsage: PromptUsage;
-  lifecycleState: LifecycleState;
   model: string;
   agent: Agent;
   observedTools: Set<string>;
@@ -182,10 +149,6 @@ export type RunContext = {
   promptBreakdownTotals: PromptBreakdownTotals;
   streamingChars: number;
   lastUsageEmitChars: number;
-  generationAttempt: number;
-  regenerationCount: number;
-  regenerationCounts: Record<RegenerationReason, number>;
-  regenerationLimitHit: boolean;
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
@@ -193,9 +156,3 @@ export type RunContext = {
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   temperature?: number;
 };
-
-type GuardStats = { blocked: number; flagSet: number };
-
-export function guardStatsFromSession(session: SessionContext): GuardStats {
-  return { blocked: session.flags.guardStats?.blocked ?? 0, flagSet: session.flags.guardStats?.flagSet ?? 0 };
-}

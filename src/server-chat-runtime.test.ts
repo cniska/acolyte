@@ -16,7 +16,6 @@ describe("server chat runtime", () => {
       sessionId: "sess_1",
       event: "lifecycle.memory.commit_done",
       sequence: 8,
-      phaseAttempt: 2,
       eventTs: "2026-03-06T10:00:01.000Z",
       fields: {
         project_promoted_facts: 1,
@@ -40,7 +39,6 @@ describe("server chat runtime", () => {
       sessionId: "sess_dual",
       event: "lifecycle.start",
       sequence: 1,
-      phaseAttempt: 0,
       eventTs: "2026-03-20T12:00:00.000Z",
       fields: { model: "gpt-5", mode: "work" },
       logInfo: () => {},

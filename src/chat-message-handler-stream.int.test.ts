@@ -282,7 +282,7 @@ describe("chat message handler stream behavior", () => {
     );
   });
 
-  test("suppresses guard-blocked tool attempts", async () => {
+  test("suppresses budget-exhausted tool attempts", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
@@ -294,7 +294,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
-            error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+            error: { code: "E_GUARD_BLOCKED", category: "budget-exhausted" },
           },
         ],
         reply: async () => ({
@@ -323,7 +323,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
-            error: { code: "E_GUARD_BLOCKED", category: "guard-blocked" },
+            error: { code: "E_GUARD_BLOCKED", category: "budget-exhausted" },
           },
           { type: "tool-call", toolCallId: "call_ok", toolName: "file-edit", args: { path: "b.ts" } },
           {

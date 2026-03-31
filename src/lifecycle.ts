@@ -1,9 +1,16 @@
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
-import { phaseEvaluate } from "./lifecycle-evaluate";
+import { t } from "./i18n";
+import type {
+  LifecycleEventName,
+  LifecycleInput,
+  LifecycleSignal,
+  RunContext,
+  ToolOutputEvent,
+} from "./lifecycle-contract";
+import { EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
-import { createRunAgent, phaseGenerate, shouldYieldNow } from "./lifecycle-generate";
-import { createLifecycleFeedbackForGuard } from "./lifecycle-guard-feedback";
+import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
@@ -12,6 +19,8 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
+import { WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
@@ -23,8 +32,6 @@ export type LifecycleDeps = {
   phasePrepare: typeof phasePrepare;
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
-  shouldYieldNow: typeof shouldYieldNow;
-  phaseEvaluate: typeof phaseEvaluate;
   phaseFinalize: typeof phaseFinalize;
 };
 
@@ -34,8 +41,6 @@ const defaultLifecycleDeps: LifecycleDeps = {
   phasePrepare,
   createRunAgent,
   phaseGenerate,
-  shouldYieldNow,
-  phaseEvaluate,
   phaseFinalize,
 };
 
@@ -87,7 +92,6 @@ function createRunContext(
   },
 ): RunContext {
   const session = params.prepared.session;
-  const previousOnGuard = session.onGuard;
   const agent = params.createRunAgent({
     soulPrompt: input.soulPrompt,
     workspace: input.workspace,
@@ -111,7 +115,6 @@ function createRunContext(
     baseAgentInput: params.prepared.baseAgentInput,
     policy: params.policy,
     promptUsage: params.prepared.promptUsage,
-    lifecycleState: { feedback: [] },
     observedTools: new Set(),
     modelCallCount: 0,
     inputTokensAccum: 0,
@@ -119,28 +122,66 @@ function createRunContext(
     promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
     streamingChars: 0,
     lastUsageEmitChars: 0,
-    generationAttempt: 0,
-    regenerationCount: 0,
-    regenerationCounts: {
-      "guard-recovery": 0,
-      lint: 0,
-      "tool-recovery": 0,
-      "repeated-failure": 0,
-    },
-    regenerationLimitHit: false,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
   };
 
-  session.onGuard = (event) => {
-    previousOnGuard?.(event);
-    const feedback = createLifecycleFeedbackForGuard(event);
-    if (!feedback) return;
-    ctx.lifecycleState.feedback.push(feedback);
-  };
+  session.onToolResult = (toolResult) => runEffects(ctx, toolResult);
 
   return ctx;
+}
+
+function runEffects(
+  ctx: RunContext,
+  { toolId, args }: { toolId: string; args: Record<string, unknown> },
+): { append: string } | undefined {
+  if (!WRITE_TOOL_SET.has(toolId)) return undefined;
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!path) return undefined;
+  const paths = [path];
+  let lintOutput: string | undefined;
+  for (const effect of EFFECTS) {
+    const result = effect.run(ctx, paths);
+    if (result.lintOutput) lintOutput = result.lintOutput;
+  }
+  return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
+}
+
+export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
+  const signal = ctx.result?.signal;
+  if (!signal) return undefined;
+  if (ctx.currentError) return undefined;
+  if (signal === "no_op" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
+    return undefined;
+  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;
+  return undefined;
+}
+
+function acceptResult(ctx: RunContext): void {
+  const lifecycleSignal = resolveSignal(ctx);
+  if (lifecycleSignal) {
+    ctx.currentError = undefined;
+    ctx.debug("lifecycle.signal.accepted", {
+      signal: lifecycleSignal,
+      tool_calls: ctx.result?.toolCalls.length ?? 0,
+    });
+  }
+
+  const errorBudgetExhausted =
+    ctx.currentError?.code === LIFECYCLE_ERROR_CODES.unknown &&
+    ctx.errorStats.other >= ctx.policy.maxUnknownErrorsPerRequest;
+  if (errorBudgetExhausted) {
+    ctx.debug("lifecycle.eval.skipped", {
+      reason: "unknown_error_budget",
+      unknown_error_count: ctx.errorStats.other,
+      unknown_error_cap: ctx.policy.maxUnknownErrorsPerRequest,
+      last_error_code: ctx.currentError?.code ?? null,
+    });
+    if (ctx.result && !ctx.result.text.trim()) {
+      ctx.result = { text: t("lifecycle.stopped_unknown_errors"), toolCalls: [] };
+    }
+  }
 }
 
 function attachToolOutputHandler(ctx: RunContext) {
@@ -182,7 +223,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     debugSink({
       event: event as LifecycleEventName,
       sequence: ++debugSequence,
-      phaseAttempt: (ctxRef?.generationAttempt ?? 0) + 1,
       ts: new Date().toISOString(),
       fields,
     });
@@ -243,9 +283,15 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   });
 
   if (!ctx.result) return deps.phaseFinalize(ctx);
-  if (deps.shouldYieldNow(ctx, input.shouldYield)) return deps.phaseFinalize(ctx);
+  if (input.shouldYield?.()) {
+    ctx.debug("lifecycle.yield", {});
+    if (!ctx.result.text.trim()) {
+      ctx.result = { text: "Yielding to a newer pending message.", toolCalls: ctx.result.toolCalls };
+    }
+    return deps.phaseFinalize(ctx);
+  }
 
-  await deps.phaseEvaluate(ctx, input.shouldYield);
+  acceptResult(ctx);
 
   // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {

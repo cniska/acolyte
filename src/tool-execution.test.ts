@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
-import { guardedExecute, withToolError } from "./tool-execution";
-import { createSessionContext } from "./tool-guards";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { runTool, withToolError } from "./tool-execution";
+import { createSessionContext } from "./tool-session";
 
 describe("withToolError", () => {
   test("prefixes thrown errors with tool id", async () => {
@@ -30,7 +30,7 @@ describe("per-tool timeout", () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 50;
     try {
-      await guardedExecute("slow-tool", {}, session, () => new Promise((resolve) => setTimeout(resolve, 500)));
+      await runTool(session, "slow-tool", "call_1", {}, () => new Promise((resolve) => setTimeout(resolve, 500)));
       invariant(false, "expected timeout");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -43,39 +43,21 @@ describe("per-tool timeout", () => {
   test("resolves normally when tool completes within limit", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
-    const result = await guardedExecute("fast-tool", {}, session, async () => "done");
+    const result = await runTool(session, "fast-tool", "call_1", {}, async () => "done");
     expect(result).toBe("done");
   });
 
   test("uses explicit timeout override when provided", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 50;
-    const result = await guardedExecute(
-      "shell-run",
-      { cmd: "npm", args: ["test"], timeoutMs: 300 },
+    const result = await runTool(
       session,
+      "shell-run",
+      "call_1",
+      { command: "npm test" },
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
       { timeoutMs: 300 },
     );
     expect(result).toBe("done");
-  });
-
-  test("emits debug event when a tool fails with sandbox violation", async () => {
-    const session = createSessionContext();
-    const debugEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
-    session.onDebug = (event, data) => {
-      debugEvents.push({ event, data });
-    };
-
-    await expect(
-      guardedExecute("file-read", { path: "/etc/hosts" }, session, async () =>
-        Promise.reject(Object.assign(new Error("blocked"), { code: TOOL_ERROR_CODES.sandboxViolation })),
-      ),
-    ).rejects.toThrow("blocked");
-
-    expect(debugEvents).toContainEqual({
-      event: "lifecycle.sandbox.violation",
-      data: { tool: "file-read", path: "/etc/hosts" },
-    });
   });
 });

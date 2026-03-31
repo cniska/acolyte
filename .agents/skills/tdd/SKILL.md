@@ -35,7 +35,7 @@ If a test needs real fs/process/network behavior, use `*.int.test.ts` instead of
 ## Acolyte checks
 
 - Fix the implementation when behavior and tests diverge. Update expectations only when explicitly requested.
-- Route behavior through canonical seams: `runTool`, evaluators, guards, detectors, and typed contracts.
+- Route behavior through canonical seams: `runTool`, effects, detectors, and typed contracts.
 - New payloads, config, and model-facing data stay validated through Zod.
 - Preserve the `@signal` contract when touching lifecycle or model output handling.
 - In chat-layer code, use approved effect helpers instead of direct `useEffect`.

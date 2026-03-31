@@ -2,35 +2,25 @@
 
 Error handling in Acolyte is split by boundary, not bundled into one module.
 
-## Layers
-
-- `src/error-contract.ts` — shared error codes and error kinds
-- `src/coded-error.ts` — generic runtime base for coded errors
-- `src/tool-error.ts` — tool-specific runtime error with optional `ToolRecovery`
-- `src/tool-recovery.ts` — tool-owned recovery contract and parser
-- `src/error-handling.ts` — generic parsing and normalization of runtime errors
-
 ## Contract model
 
-- Error codes and kinds are generic contracts shared across tools, lifecycle, and transport-facing parsing.
-- `ToolRecovery` is a separate contract for stable, tool-owned recovery guidance.
-- Recovery is optional and only used when a tool can state a concrete next step without host-side guessing.
-- Recovery may also declare which successful follow-up tool result resolves the failure.
+Error codes and kinds are generic contracts shared across tools, lifecycle, and transport-facing parsing. Tools include recovery guidance directly in error messages. The model reads the error and decides what to do.
 
 ## Runtime model
 
-- Runtime code throws coded errors, not untyped string failures, when the failure should carry structured meaning.
-- `ToolError` extends `CodedError` and may include `ToolRecovery`.
-- Generic app/runtime failures may still be normalized into coded errors when they need stable handling downstream.
+Runtime code throws coded errors, not untyped string failures, when the failure should carry structured meaning. `ToolError` extends `CodedError` with a code and optional kind. Generic app/runtime failures may still be normalized into coded errors when they need stable handling downstream.
 
 ## Lifecycle boundary
 
-- Lifecycle consumes tool recovery generically.
-- Lifecycle does not hardcode tool-specific retry policy in evaluators.
-- Tool-specific recovery semantics stay with the tool and its recovery contract.
+Lifecycle consumes tool errors generically through error categories. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code. The model sees all tool errors and makes recovery decisions.
 
 ## Design rule
 
-- Keep generic error contracts separate from tool-specific recovery contracts.
-- Keep runtime error classes separate from parsing/normalization logic.
-- When behavior belongs in a tool failure contract, move it there instead of adding lifecycle heuristics.
+Keep error contracts minimal. Error messages should be descriptive enough for the model to act on. Keep runtime error classes separate from parsing/normalization logic.
+
+## Key files
+
+- `src/error-contract.ts` — shared error codes and error kinds
+- `src/coded-error.ts` — generic runtime base for coded errors
+- `src/tool-error.ts` — tool-specific runtime error
+- `src/error-handling.ts` — generic parsing and normalization of runtime errors
