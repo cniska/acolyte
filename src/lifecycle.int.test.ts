@@ -154,7 +154,7 @@ printf '%s\n' "$@" > "${formatLog}"
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
-        formatCommand: { bin: "/bin/sh", args: [formatScript] },
+        formatCommand: { bin: "/bin/sh", args: [formatScript, "$FILES"] },
       },
     });
 
@@ -197,7 +197,7 @@ exit 1
       soulPrompt: "",
       workspace,
       lifecyclePolicy: {
-        lintCommand: { bin: "/bin/sh", args: [lintScript] },
+        lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] },
       },
     });
 

@@ -19,8 +19,8 @@ import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { resetCycleStepCount } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
+import { resetCycleStepCount } from "./tool-session";
 
 type CaptureErrorMeta = {
   source?: ErrorSource;

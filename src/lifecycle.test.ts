@@ -3,8 +3,8 @@ import type { ChatResponse } from "./api";
 import type { LifecycleDeps } from "./lifecycle";
 import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
-import { createSessionContext } from "./tool-guards";
 import type { Toolset } from "./tool-registry";
+import { createSessionContext } from "./tool-session";
 
 const phasePrepare = mock(() => ({
   session: createSessionContext(),

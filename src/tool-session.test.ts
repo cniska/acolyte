@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { checkStepBudget, createSessionContext, recordCall, resetCycleStepCount } from "./tool-guards";
+import { checkStepBudget, createSessionContext, recordCall, resetCycleStepCount } from "./tool-session";
 
 describe("step budget", () => {
   test("blocks when cycle step count reaches cycle limit", () => {

@@ -1,6 +1,6 @@
 import type { LifecycleSignal, RunContext } from "./lifecycle-contract";
-import { scopedCallLog } from "./tool-guards";
 import { WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 
 export function acceptedLifecycleSignal(ctx: RunContext): LifecycleSignal | undefined {
   const signal = ctx.result?.signal;

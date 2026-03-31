@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
-import type { SessionContext } from "./tool-guards";
 import type { ToolOutputListener } from "./tool-output-format";
+import type { SessionContext } from "./tool-session";
 
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 

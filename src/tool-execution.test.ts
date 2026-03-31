@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { runTool, withToolError } from "./tool-execution";
-import { createSessionContext } from "./tool-guards";
+import { createSessionContext } from "./tool-session";
 
 describe("withToolError", () => {
   test("prefixes thrown errors with tool id", async () => {

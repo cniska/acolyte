@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { acceptedLifecycleSignal } from "./lifecycle-state";
 import { createRunContext } from "./test-utils";
-import { createSessionContext, recordCall } from "./tool-guards";
+import { createSessionContext, recordCall } from "./tool-session";
 
 describe("acceptedLifecycleSignal", () => {
   test("accepts done when no contradiction exists", () => {

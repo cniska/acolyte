@@ -3,8 +3,8 @@ import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import type { RunContext } from "./lifecycle-contract";
 import { totalPromptBreakdownTokens } from "./lifecycle-usage";
-import { scopedCallLog } from "./tool-guards";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 
 function resolvePromptBreakdown(ctx: RunContext) {
   if (totalPromptBreakdownTokens(ctx.promptBreakdownTotals) > 0) return ctx.promptBreakdownTotals;

@@ -15,7 +15,7 @@ import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { ToolkitDeps } from "./tool-contract";
-import { createSessionContext } from "./tool-guards";
+import { createSessionContext } from "./tool-session";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];

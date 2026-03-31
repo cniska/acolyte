@@ -6,9 +6,9 @@ import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { ChecklistListener } from "./tool-contract";
-import type { SessionContext } from "./tool-guards";
 import type { ToolOutputPart } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
+import type { SessionContext } from "./tool-session";
 
 export type LifecycleError = {
   message: string;

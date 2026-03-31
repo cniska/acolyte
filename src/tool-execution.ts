@@ -1,7 +1,7 @@
 import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { ToolError } from "./tool-error";
-import { checkStepBudget, recordCall, type SessionContext } from "./tool-guards";
+import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
