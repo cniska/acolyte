@@ -72,7 +72,7 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 - `src/code-toolkit.ts` — Code manipulation for scanning and editing source files.
 - `src/git-toolkit.ts` — Git operations (status, diff, log, show, add, commit).
 - `src/tool-registry.ts` — Tool registration and agent-facing surface.
-- `src/tool-guards.ts` — Session context, call recording, and step-budget check.
+- `src/tool-session.ts` — session context, call recording, and step-budget check
 - `src/tool-execution.ts` — Tool execution with budget enforcement and error shaping.
 - `src/tool-cache.ts` — Per-task result caching with stable key generation.
 
