@@ -31,6 +31,7 @@ High-level capability comparison across all projects.
 | Post-write effects | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
 | Workspace detection | ✓ | ✗ | partial | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
+| Workspace sandboxing | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
 | Observable execution | ✓ | partial | partial | ✗ | partial | ✗ | partial | partial | ✗ | ✗ | ✗ |
 | Daemon architecture | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ |
 
@@ -60,17 +61,16 @@ The optional TUI is a custom React terminal renderer built on `react-reconciler`
 
 Acolyte separates the agent lifecycle into explicit phases with strict contracts between them.
 
-Every request flows through five phases, each implemented as its own module with its own tests:
+Every request flows through four phases, each implemented as its own module with its own tests:
 
 ```
-resolve → prepare → generate → settle → finalize
+resolve → prepare → generate → finalize
 ```
 
 - **resolve**: pick model and policy
 - **prepare**: wire tools and session context
-- **generate**: run the model with tool calls (single pass)
-- **settle**: accept lifecycle signal, run format/lint effects
-- **finalize**: persist results and emit the response
+- **generate**: run the model with tool calls (single pass, effects apply per-tool-result)
+- **finalize**: accept lifecycle signal, persist results, emit the response
 
 The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on.
 
@@ -110,6 +110,17 @@ Acolyte auto-detects project tooling from workspace config files at lifecycle st
 | Continue | IDE-provided workspace context |
 | Goose | Package manager detection via Rust crate |
 | Others | No workspace detection |
+
+## Workspace sandboxing
+
+Acolyte enforces a workspace sandbox that prevents tool operations outside the resolved workspace root. All file paths are validated against the sandbox boundary using `realpath`-based resolution before any read, write, or delete operation.
+
+| Project | Sandboxing approach |
+|---|---|
+| **Acolyte** | Path validation against resolved workspace root |
+| Codex | Network-disabled sandbox with writable directory restrictions |
+| OpenHands | Docker container isolation |
+| Others | No sandboxing |
 
 ## Developer experience
 

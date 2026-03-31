@@ -4,33 +4,29 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 
 ## Overview
 
-- [Why Acolyte](./why-acolyte.md) — what makes Acolyte different
-- [Comparison](./comparison.md) — detailed comparison with other agents
-- [Benchmarks](./benchmarks.md) — measured code quality comparisons
+- [Why Acolyte](./why-acolyte.md) — observable execution and full developer control over AI coding
+- [Comparison](./comparison.md) — how Acolyte compares to other AI coding agents
+- [Benchmarks](./benchmarks.md) — measured code quality comparisons across agents
 - [Soul](./soul.md) — product persona and operating principles
 
-## Start here
+## Architecture
 
-- [Configuration](./configuration.md) — user and project scope configuration settings
-- [CLI](./cli.md) — primary interface for working with Acolyte
-
-## Core concepts
-
-- [Architecture](./architecture.md) — system map of runtime flow and boundaries
-- [Workspace](./workspace.md) — workspace root, sandbox, and profile behavior
+- [Architecture](./architecture.md) — headless daemon with typed RPC connecting CLI, editors, and custom clients
+- [Workspace](./workspace.md) — workspace root resolution, sandboxing, and profile behavior
+- [Lifecycle](./lifecycle.md) — how each task flows through resolve, prepare, generate, and finalize
 - [Errors](./errors.md) — error contracts, runtime classes, and recovery boundaries
-- [Lifecycle](./lifecycle.md) — one request through a bounded phase loop
-- [TUI](./tui.md) — custom React reconciler for terminal rendering
-- [Tooling](./tooling.md) — layered and contract-driven tool execution
-- [Sessions and tasks](./sessions-tasks.md) — separate runtime concerns of sessions and tasks
-- [Memory](./memory.md) — invisible and reliable context carrying forward
-- [Glossary](./glossary.md) — naming conventions and core terminology
+
+## Runtime
+
+- [TUI](./tui.md) — React terminal UI with fuzzy search, autocomplete, model picker, and code editing
+- [Tooling](./tooling.md) — layered tool execution with contracts and effects
+- [Sessions and tasks](./sessions-tasks.md) — isolated, resumable session state and task execution
+- [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
 
 ## Reference
 
-- [Contributing](../CONTRIBUTING.md) — contributor workflow and PR expectations
+- [CLI](./cli.md) — commands for chat, run, server, memory, config, logs, and trace
+- [Configuration](./configuration.md) — settings for models, providers, memory, permissions, and runtime behavior
 - [Protocol](./protocol.md) — transport-facing contract between client and server
-- [Localization](./localization.md) — separates translatable copy from protocol contracts
-- [Testing](./testing.md) — test strategy and conventions
-- [Features](./features.md) — shipped user-visible capabilities
-- [Roadmap](./roadmap.md) — planned features and milestones
+- [Localization](./localization.md) — translatable copy separated from protocol contracts
+- [Glossary](./glossary.md) — core terminology for sessions, tasks, phases, and effects

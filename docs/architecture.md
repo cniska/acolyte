@@ -8,8 +8,8 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 
 - **Sessions** — persistent conversation context with history and state
 - **Tasks** — state-machined units of work with stable IDs and per-task scoping
-- **Lifecycle phases** — resolve, prepare, generate, settle, finalize as separate modules
-- **Effects** — lifecycle-owned side effects that run during the settle phase
+- **Lifecycle phases** — resolve, prepare, generate, finalize as separate modules
+- **Effects** — lifecycle-owned side effects applied per-tool-result via callback
 - **Tools** — typed definitions with categories, schemas, and output contracts
 - **Skills** — declarative prompt extensions with metadata and tool restrictions
 - **Memory sources** — pluggable memory tiers (session, project, user) with pipeline stages
@@ -70,14 +70,13 @@ lifecycle → budget → cache → toolkit → registry
 ## Lifecycle flow
 
 ```text
-resolve → prepare → generate → settle → finalize
+resolve → prepare → generate → finalize
 ```
 
 - **resolve:** pick model and policy (sync, not a full phase)
 - **prepare:** build inputs, context, and tools
-- **generate:** run model + tool calls (one pass, no regeneration)
-- **settle:** accept valid lifecycle signal, run format/lint effects
-- **finalize:** persist outputs and emit final response
+- **generate:** run model + tool calls (one pass, effects applied per-tool-result)
+- **finalize:** accept lifecycle signal, persist outputs, emit final response
 
 - **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
 - **host/model boundary:** host provides runtime structure; model decides how to complete the task
@@ -121,7 +120,3 @@ Memory Engine
 ```text
 accepted → queued → running → completed|failed|cancelled
 ```
-
-## Further reading
-
-[Know the Ground](https://crisu.me/blog/know-the-ground) — Why the host should detect formatters, linters, and test runners from config files.

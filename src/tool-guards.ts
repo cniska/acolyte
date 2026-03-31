@@ -1,9 +1,6 @@
-import { TOOL_TIMEOUT_MS } from "./lifecycle-constants";
+import { INITIAL_MAX_STEPS, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
-
-const DEFAULT_CYCLE_STEP_LIMIT = 80;
-const DEFAULT_TOTAL_STEP_LIMIT = 200;
 
 export type ToolCallStatus = "succeeded" | "failed";
 
@@ -58,9 +55,9 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
 }
 
 export function checkStepBudget(session: SessionContext): string | undefined {
-  const cycleLimit = session.flags.cycleStepLimit ?? DEFAULT_CYCLE_STEP_LIMIT;
+  const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
   const cycleCount = session.flags.cycleStepCount ?? 0;
-  const totalLimit = session.flags.totalStepLimit ?? DEFAULT_TOTAL_STEP_LIMIT;
+  const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
   const totalCount = session.callLog.length;
 
   if (totalCount >= totalLimit) {

@@ -1,5 +1,3 @@
-// Human-facing display caps for tool progress and CLI rendering.
-// These do not affect tool execution or agent-visible result payloads.
 export const TOOL_PROGRESS_LIMITS = {
   files: 5,
   inlineFiles: 3,

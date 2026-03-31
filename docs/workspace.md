@@ -60,3 +60,14 @@ Workspace and sandbox behavior is visible in lifecycle debug/trace events:
 - `lifecycle.workspace.profile`
 - `lifecycle.workspace.sandbox`
 - `lifecycle.sandbox.violation`
+
+## Key files
+
+- `src/workspace-profile.ts` — profile type and resolution
+- `src/workspace-detectors.ts` — ecosystem detection from project files
+- `src/workspace-sandbox.ts` — path validation and sandbox enforcement
+
+## Further reading
+
+- [Know the Ground](https://crisu.me/blog/know-the-ground) — why the host should detect formatters, linters, and test runners from config files
+- [Draw the Line](https://crisu.me/blog/draw-the-line) — lightweight workspace-scoped sandbox enforcement without containers

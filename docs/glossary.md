@@ -28,7 +28,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Embedding | Provider-generated vector representation of a distill record used for semantic recall |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
-| Effect | Lifecycle-owned side-effect unit that runs during the settle phase |
+| Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, memory, and recovery |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |

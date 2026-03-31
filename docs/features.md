@@ -25,10 +25,10 @@ Shipped, user-visible capabilities.
 
 ## Agent execution
 
-- lifecycle-driven execution with explicit resolve/prepare/generate/evaluate/finalize phases
+- lifecycle-driven execution with explicit resolve/prepare/generate/finalize phases
 - explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed
-- automatic code review after write operations
-- tool-guarded execution for safer autonomous runs
+- automatic format and lint effects applied per-tool-result via lifecycle callback
+- step budget enforcement for cost protection
 - streaming progress output for tool activity with real-time token usage
 - proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
 - provider rate limit awareness with sliding window pacing and exponential backoff

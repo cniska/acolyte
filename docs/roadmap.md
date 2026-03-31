@@ -8,7 +8,7 @@ Built for safe autonomous execution of bounded tasks with the developer in contr
 
 ## Shipped
 
-- 5-phase lifecycle with streaming tool calls and post-write effects
+- 4-phase lifecycle with streaming tool calls and post-write effects
 - Context distillation with 3-tier persistent memory (session/project/user)
 - Semantic recall with provider embeddings and cosine similarity ranking
 - SQLite-backed storage for distill records, embeddings, and lifecycle traces
