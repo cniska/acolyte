@@ -237,13 +237,13 @@ describe("traceMode", () => {
     expect(text).not.toContain("ok");
   });
 
-  test("compact output shows BLOCKED with guard id", async () => {
+  test("compact output shows BLOCKED for budget exhaustion", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
       taskId: "task_1",
       event: "lifecycle.start",
-      fields: { mode: "work", model: "m" },
+      fields: { model: "m" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.100Z",
@@ -254,8 +254,8 @@ describe("traceMode", () => {
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
       taskId: "task_1",
-      event: "lifecycle.guard",
-      fields: { guard: "post-edit-redundancy", tool: "file-edit", action: "blocked", detail: "src/foo.ts" },
+      event: "lifecycle.budget",
+      fields: { tool: "file-edit", action: "blocked", detail: "cycle-limit" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
@@ -267,7 +267,7 @@ describe("traceMode", () => {
     await traceMode(["task", "task_1"], deps);
     const text = output();
     expect(text).toContain("BLOCKED");
-    expect(text).toContain("post-edit-redundancy");
+    expect(text).toContain("budget");
   });
 
   test("compact output hides eval done events", async () => {

@@ -37,7 +37,7 @@ const traceEventSchema = z.enum([
   "lifecycle.tool.result",
   "lifecycle.tool.error",
   "lifecycle.tool.output",
-  "lifecycle.guard",
+  "lifecycle.budget",
   "lifecycle.signal.accepted",
   "lifecycle.skill.context",
   "lifecycle.effect.format",
@@ -87,7 +87,7 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.tool.result": ["tool", "duration_ms", "is_error"],
   "lifecycle.tool.error": ["tool", "error"],
   "lifecycle.tool.output": ["tool"],
-  "lifecycle.guard": ["guard", "tool", "action", "detail"],
+  "lifecycle.budget": ["tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
   "lifecycle.effect.format": ["files"],
@@ -220,8 +220,8 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
       continue;
     }
 
-    if (event === "lifecycle.guard" && pending) {
-      pending.status = `BLOCKED  ${line.fields.guard ?? ""}`;
+    if (event === "lifecycle.budget" && pending) {
+      pending.status = `BLOCKED  budget`;
       flushPending();
       continue;
     }

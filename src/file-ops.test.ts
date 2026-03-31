@@ -23,7 +23,7 @@ afterAll(async () => {
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
-describe("path guards", () => {
+describe("path validation", () => {
   test("readFileContent blocks paths outside workspace", async () => {
     await expect(readFileContent(WORKSPACE, "/etc/hosts")).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.sandboxViolation,
