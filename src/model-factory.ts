@@ -9,24 +9,22 @@ import { createRateLimitFetch, type RateLimiter } from "./rate-limiter";
 
 export function createModel(
   qualifiedModel: string,
+  rateLimiter: RateLimiter,
   credentials?: ProviderCredentialsMap,
-  rateLimiter?: RateLimiter,
 ): LanguageModelV3 {
   const creds = credentials ?? defaultCredentials();
   const provider = providerFromModel(qualifiedModel);
   const slash = qualifiedModel.indexOf("/");
   const modelId = slash >= 0 ? qualifiedModel.slice(slash + 1) : qualifiedModel;
   const providerCreds = creds[provider] ?? {};
-  const fetchFn = rateLimiter
-    ? (createRateLimitFetch(rateLimiter, globalThis.fetch) as typeof globalThis.fetch)
-    : undefined;
+  const fetchFn = createRateLimitFetch(rateLimiter, globalThis.fetch) as typeof globalThis.fetch;
 
   switch (provider) {
     case "anthropic": {
       const anthropic = createAnthropic({
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-        ...(fetchFn ? { fetch: fetchFn } : {}),
+        fetch: fetchFn,
       });
       return anthropic(modelId);
     }
@@ -34,7 +32,7 @@ export function createModel(
       const google = createGoogleGenerativeAI({
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-        ...(fetchFn ? { fetch: fetchFn } : {}),
+        fetch: fetchFn,
       });
       return google(modelId);
     }
@@ -42,7 +40,7 @@ export function createModel(
       const openai = createOpenAI({
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-        ...(fetchFn ? { fetch: fetchFn } : {}),
+        fetch: fetchFn,
       });
       return openai(modelId);
     }

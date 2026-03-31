@@ -206,7 +206,7 @@ const defaultDistillConfig = (): DistillConfig => appConfig.distill;
 
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
   const qualifiedModel = normalizeModel(appConfig.distill.model);
-  const model = createModel(qualifiedModel, undefined, sharedRateLimiter(providerFromModel(qualifiedModel)));
+  const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   const result = await model.doGenerate({
     prompt: [
       { role: "system", content: systemPrompt },

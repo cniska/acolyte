@@ -366,7 +366,7 @@ export function createAgent(input: {
   const qualifiedModel = normalizeModel(input.model);
   const provider = providerFromModel(qualifiedModel);
   const rateLimiter = sharedRateLimiter(provider);
-  const modelInstance = createModel(qualifiedModel, undefined, rateLimiter);
+  const modelInstance = createModel(qualifiedModel, rateLimiter);
   const tools = input.tools ?? {};
   const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter);
   return {
