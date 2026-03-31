@@ -46,9 +46,9 @@ export function createAgentStream(
   model: LanguageModelV3,
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
-  qualifiedModel?: string,
+  qualifiedModel: string,
 ): Agent["stream"] {
-  const provider = qualifiedModel ? providerFromModel(qualifiedModel) : "openai";
+  const provider = providerFromModel(qualifiedModel);
   const rateLimiter = createRateLimiter(defaultRateLimiterConfig(provider));
   const toolsByName = new Map<string, ToolDefinition>();
   for (const tool of Object.values(tools)) {
@@ -82,17 +82,28 @@ export function createAgentStream(
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
         await rateLimiter.beforeCall();
-        const streamResult = await model.doStream({
-          prompt: messages,
-          temperature: options.temperature,
-          tools: functionTools.length > 0 ? functionTools : undefined,
-          toolChoice: options.toolChoice
-            ? { type: options.toolChoice }
-            : functionTools.length > 0
-              ? { type: "auto" }
-              : undefined,
-        });
-        rateLimiter.reset();
+        let streamResult: Awaited<ReturnType<typeof model.doStream>>;
+        try {
+          streamResult = await model.doStream({
+            prompt: messages,
+            temperature: options.temperature,
+            tools: functionTools.length > 0 ? functionTools : undefined,
+            toolChoice: options.toolChoice
+              ? { type: options.toolChoice }
+              : functionTools.length > 0
+                ? { type: "auto" }
+                : undefined,
+          });
+          rateLimiter.reset();
+        } catch (error) {
+          const recovery = rateLimiter.onError(error);
+          if (recovery.shouldRetry) {
+            log.debug("agent-stream.rate_limit.retry", { delay_ms: recovery.delayMs, iteration: loopIteration });
+            await new Promise((resolve) => setTimeout(resolve, recovery.delayMs));
+            continue;
+          }
+          throw error;
+        }
 
         const pendingToolCalls: Array<{
           toolCallId: string;

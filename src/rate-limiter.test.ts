@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { createRateLimiter, isRateLimitError, type RateLimiterConfig, retryAfterMs } from "./rate-limiter";
+import {
+  createRateLimiter,
+  defaultRateLimiterConfig,
+  isRateLimitError,
+  type RateLimiterConfig,
+  retryAfterMs,
+} from "./rate-limiter";
 
 const FAST: RateLimiterConfig = { maxRequestsPerMinute: 3, backoffBaseMs: 100, backoffMaxMs: 1_000 };
 
@@ -48,6 +54,20 @@ describe("createRateLimiter", () => {
     expect(Date.now() - start).toBeLessThan(100);
   });
 
+  test("delays when calls exceed limit", async () => {
+    const limiter = createRateLimiter({ maxRequestsPerMinute: 2, backoffBaseMs: 100, backoffMaxMs: 1_000 });
+    await limiter.beforeCall();
+    await limiter.beforeCall();
+    // Third call should block since limit is 2 per minute
+    const delayed = limiter.beforeCall();
+    // Cancel via racing with a short timeout to avoid actually waiting 60s
+    const result = await Promise.race([
+      delayed.then(() => "completed"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("waited"), 50)),
+    ]);
+    expect(result).toBe("waited");
+  });
+
   test("onError returns shouldRetry for rate limit errors", () => {
     const limiter = createRateLimiter(FAST);
     const result = limiter.onError({ status: 429 });
@@ -84,5 +104,18 @@ describe("createRateLimiter", () => {
     limiter.reset();
     const result = limiter.onError({ status: 429 });
     expect(result.delayMs).toBeLessThanOrEqual(FAST.backoffBaseMs);
+  });
+});
+
+describe("defaultRateLimiterConfig", () => {
+  test("returns per-provider defaults", () => {
+    const anthropic = defaultRateLimiterConfig("anthropic");
+    expect(anthropic.maxRequestsPerMinute).toBe(50);
+
+    const openai = defaultRateLimiterConfig("openai");
+    expect(openai.maxRequestsPerMinute).toBe(60);
+
+    const google = defaultRateLimiterConfig("google");
+    expect(google.maxRequestsPerMinute).toBe(60);
   });
 });
