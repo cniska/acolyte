@@ -75,6 +75,7 @@ export function createAgentStream(
       let lifecycleSignal: LifecycleSignal | undefined;
       while (true) {
         loopIteration++;
+        if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
         const streamResult = await model.doStream({
           prompt: messages,
@@ -121,10 +122,7 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        if (stepText.length > 0) {
-          if (fullText.length > 0 && !fullText.endsWith("\n") && !fullText.endsWith(" ")) fullText += "\n";
-          fullText += stepText;
-        }
+        if (stepText.length > 0) fullText += stepText;
 
         if (pendingToolCalls.length === 0) {
           if (nudgeCount < maxNudges && allToolCalls.length > 0 && !lifecycleSignal && stepText.trim().length > 0) {

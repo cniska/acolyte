@@ -85,6 +85,7 @@ export type ModelUsagePayload = {
   outputTokens?: number;
 };
 export type StreamChunk =
+  | { type: "step-start" }
   | { type: "text-delta"; payload: TextDeltaPayload }
   | { type: "reasoning-delta"; payload: TextDeltaPayload }
   | { type: "tool-call"; payload: ToolCallPayload }

@@ -153,22 +153,30 @@ export function createToolCallsPayload(
   model: string,
   idCounter: number,
   calls: ToolCallPayload[],
+  text?: string,
 ): Record<string, unknown> {
-  return responseBase(
-    model,
-    idCounter,
-    "",
-    calls.map((call) => ({
+  const output: Array<Record<string, unknown>> = [];
+  if (text) {
+    output.push({
+      id: `msg_${idCounter}`,
+      type: "message",
+      role: "assistant",
+      status: "completed",
+      content: [{ type: "output_text", text, annotations: [] }],
+    });
+  }
+  for (const call of calls) {
+    output.push({
       type: "function_call",
       id: call.id,
       call_id: call.callId,
       name: call.name,
       arguments: call.args,
       status: "completed",
-    })),
-    calls.length,
-    calls.length + 1,
-  );
+    });
+  }
+  const outTokens = calls.length + (text ? Math.ceil(text.length / 4) : 0);
+  return responseBase(model, idCounter, text ?? "", output, outTokens, outTokens + 1);
 }
 
 export function createMarkerScenarioHandler<Id extends string>(

@@ -248,6 +248,48 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
+  test("separates iteration texts with newline in streamed output", async () => {
+    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-read", ["read"]);
+        return createToolCallsPayload(
+          ctx.model,
+          ctx.responseCounter,
+          [
+            {
+              id: `fc_${ctx.responseCounter}`,
+              callId: `call_${ctx.responseCounter}`,
+              name: toolName,
+              args: JSON.stringify({ paths: [{ path: join(workspace, "a.ts") }] }),
+            },
+          ],
+          "Reading the file.",
+        );
+      }
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Done reading.\n\n@signal done");
+    });
+
+    const textDeltas: string[] = [];
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "read a.ts", history: [], useMemory: false },
+      soulPrompt: "",
+      workspace,
+      onEvent: (event) => {
+        if (event.type === "text-delta" && event.text) textDeltas.push(event.text);
+      },
+    });
+
+    expect(turnCount).toBe(2);
+    const streamedText = textDeltas.join("");
+    expect(reply.output).toContain("Reading the file.");
+    expect(reply.output).toContain("Done reading.");
+    // The two iteration texts must be separated by a newline, not concatenated directly
+    expect(streamedText).toContain("Reading the file.\nDone reading.");
+  });
+
   test("lint effect regenerates with lifecycle feedback", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const lintState = join(workspace, ".lint-effect-state");

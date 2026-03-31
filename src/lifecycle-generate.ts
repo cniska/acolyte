@@ -320,6 +320,9 @@ function clearResolvedToolError(ctx: RunContext, started: { toolName: string; ta
 
 function processStreamChunk(ctx: RunContext, chunk: StreamChunk): void {
   switch (chunk.type) {
+    case "step-start":
+      ctx.emit({ type: "text-delta", text: "\n" });
+      break;
     case "text-delta": {
       const p = chunk.payload;
       if (typeof p?.text === "string" && p.text.length > 0) {
