@@ -10,8 +10,8 @@ describe("workspace self-detection", () => {
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("typescript");
     expect(profile.packageManager).toBe("bun");
-    expect(profile.lintCommand).toEqual({ bin: "bunx", args: ["biome", "check"] });
-    expect(profile.formatCommand).toEqual({ bin: "bunx", args: ["biome", "check", "--write"] });
+    expect(profile.lintCommand).toEqual({ bin: "bunx", args: ["biome", "check", "$FILES"] });
+    expect(profile.formatCommand).toEqual({ bin: "bunx", args: ["biome", "check", "--write", "$FILES"] });
     expect(profile.testCommand).toEqual({ bin: "bun", args: ["test", "$FILES"] });
   });
 });

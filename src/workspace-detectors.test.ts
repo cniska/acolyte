@@ -85,7 +85,7 @@ describe("typescript detector", () => {
     const ws = makeWorkspace({ "biome.json": "{}", "package.json": '{"scripts":{}}', "yarn.lock": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.lintCommand?.bin).toBe("yarn");
-    expect(profile.lintCommand?.args).toEqual(["dlx", "biome", "check"]);
+    expect(profile.lintCommand?.args).toEqual(["dlx", "biome", "check", "$FILES"]);
   });
 
   test("detects biome from biome.jsonc with comments", () => {
@@ -109,13 +109,13 @@ describe("python detector", () => {
   test("detects flake8 from .flake8", () => {
     const ws = makeWorkspace({ ".flake8": "[flake8]\nmax-line-length = 120", "pyproject.toml": "" });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.lintCommand).toEqual({ bin: "flake8", args: [] });
+    expect(profile.lintCommand).toEqual({ bin: "flake8", args: ["$FILES"] });
   });
 
   test("detects black from pyproject.toml", () => {
     const ws = makeWorkspace({ "pyproject.toml": "[tool.black]\nline-length = 88" });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.formatCommand).toEqual({ bin: "black", args: ["."] });
+    expect(profile.formatCommand).toEqual({ bin: "black", args: ["$FILES"] });
   });
 
   test("detects uv as package manager", () => {
@@ -134,15 +134,15 @@ describe("python detector", () => {
     const ws = makeWorkspace({ "ruff.toml": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("python");
-    expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check"] });
-    expect(profile.formatCommand).toEqual({ bin: "ruff", args: ["format"] });
+    expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check", "$FILES"] });
+    expect(profile.formatCommand).toEqual({ bin: "ruff", args: ["format", "$FILES"] });
   });
 
   test("detects ruff from pyproject.toml with tool.ruff section", () => {
     const ws = makeWorkspace({ "pyproject.toml": "[tool.ruff]\nline-length = 120" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("python");
-    expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check"] });
+    expect(profile.lintCommand).toEqual({ bin: "ruff", args: ["check", "$FILES"] });
   });
 
   test("detects pytest as test command", () => {
@@ -156,15 +156,15 @@ describe("go detector", () => {
   test("detects golangci-lint when config exists", () => {
     const ws = makeWorkspace({ "go.mod": "module example.com/foo", ".golangci.yml": "" });
     const profile = resolveWorkspaceProfile(ws);
-    expect(profile.lintCommand).toEqual({ bin: "golangci-lint", args: ["run"] });
+    expect(profile.lintCommand).toEqual({ bin: "golangci-lint", args: ["run", "$FILES"] });
   });
 
   test("falls back to go vet without golangci-lint config", () => {
     const ws = makeWorkspace({ "go.mod": "module example.com/foo" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("go");
-    expect(profile.lintCommand).toEqual({ bin: "go", args: ["vet", "./..."] });
-    expect(profile.formatCommand).toEqual({ bin: "gofmt", args: ["-w"] });
+    expect(profile.lintCommand).toEqual({ bin: "go", args: ["vet", "$FILES"] });
+    expect(profile.formatCommand).toEqual({ bin: "gofmt", args: ["-w", "$FILES"] });
     expect(profile.testCommand).toEqual({ bin: "go", args: ["test", "$FILES"] });
   });
 });
@@ -174,8 +174,11 @@ describe("rust detector", () => {
     const ws = makeWorkspace({ "Cargo.toml": '[package]\nname = "foo"' });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.ecosystem).toBe("rust");
-    expect(profile.lintCommand).toEqual({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings"] });
-    expect(profile.formatCommand).toEqual({ bin: "cargo", args: ["fmt"] });
+    expect(profile.lintCommand).toEqual({
+      bin: "cargo",
+      args: ["clippy", "--all-targets", "--", "-D", "warnings", "$FILES"],
+    });
+    expect(profile.formatCommand).toEqual({ bin: "cargo", args: ["fmt", "--", "$FILES"] });
     expect(profile.testCommand).toEqual({ bin: "cargo", args: ["test", "--", "$FILES"] });
   });
 });

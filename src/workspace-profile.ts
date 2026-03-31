@@ -35,9 +35,14 @@ export function runCommand(workspace: string, command: WorkspaceCommand, timeout
   }
 }
 
+export function resolveCommandFiles(command: WorkspaceCommand, filePaths: string[]): WorkspaceCommand {
+  const args = command.args.flatMap((arg) => (arg === "$FILES" ? filePaths : [arg]));
+  return { bin: command.bin, args };
+}
+
 export function runCommandWithFiles(workspace: string, command: WorkspaceCommand, filePaths: string[]): CommandResult {
   if (filePaths.length === 0) return { hasErrors: false, stdout: "", stderr: "" };
-  return runCommand(workspace, { bin: command.bin, args: [...command.args, "--", ...filePaths] });
+  return runCommand(workspace, resolveCommandFiles(command, filePaths));
 }
 
 export type WorkspaceProfile = {

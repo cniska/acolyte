@@ -1,8 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import type { WorkspaceCommand } from "./workspace-profile";
-import { runCommand, runCommandWithFiles } from "./workspace-profile";
+import { resolveCommandFiles, runCommand, runCommandWithFiles } from "./workspace-profile";
 
-const BIOME: WorkspaceCommand = { bin: "bunx", args: ["biome", "check"] };
+const BIOME: WorkspaceCommand = { bin: "bunx", args: ["biome", "check", "$FILES"] };
+
+describe("resolveCommandFiles", () => {
+  test("expands $FILES placeholder with file paths", () => {
+    const cmd = resolveCommandFiles({ bin: "ruff", args: ["check", "$FILES"] }, ["a.py", "b.py"]);
+    expect(cmd).toEqual({ bin: "ruff", args: ["check", "a.py", "b.py"] });
+  });
+
+  test("preserves args when no $FILES placeholder", () => {
+    const cmd = resolveCommandFiles({ bin: "cargo", args: ["fmt"] }, ["a.rs"]);
+    expect(cmd).toEqual({ bin: "cargo", args: ["fmt"] });
+  });
+
+  test("handles empty file list", () => {
+    const cmd = resolveCommandFiles({ bin: "eslint", args: ["$FILES"] }, []);
+    expect(cmd).toEqual({ bin: "eslint", args: [] });
+  });
+});
 
 describe("runCommandWithFiles", () => {
   test("returns no errors for empty file list", () => {

@@ -5,7 +5,7 @@ import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract
 import { runTool } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
-import { formatWorkspaceCommand } from "./workspace-profile";
+import { formatWorkspaceCommand, resolveCommandFiles } from "./workspace-profile";
 
 function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
   const { session, onOutput } = input;
@@ -36,9 +36,9 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
         return { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." };
       }
 
-      const resolvedArgs = testCommand.args.flatMap((arg) => (arg === "$FILES" ? toolInput.files : [arg]));
-      const commandSpec = { cmd: testCommand.bin, args: resolvedArgs };
-      const command = formatWorkspaceCommand({ bin: commandSpec.cmd, args: commandSpec.args });
+      const resolved = resolveCommandFiles(testCommand, toolInput.files);
+      const commandSpec = { cmd: resolved.bin, args: [...resolved.args] };
+      const command = formatWorkspaceCommand(resolved);
 
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         onOutput({
