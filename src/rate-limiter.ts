@@ -2,14 +2,15 @@ import type { Provider } from "./provider-contract";
 
 export type RateLimiterConfig = {
   readonly maxRequestsPerMinute: number;
+  readonly maxTokensPerMinute: number;
   readonly backoffBaseMs: number;
   readonly backoffMaxMs: number;
 };
 
 const PROVIDER_DEFAULTS: Record<Provider, RateLimiterConfig> = {
-  anthropic: { maxRequestsPerMinute: 50, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
-  openai: { maxRequestsPerMinute: 60, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
-  google: { maxRequestsPerMinute: 60, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
+  anthropic: { maxRequestsPerMinute: 50, maxTokensPerMinute: 40_000, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
+  openai: { maxRequestsPerMinute: 60, maxTokensPerMinute: 150_000, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
+  google: { maxRequestsPerMinute: 60, maxTokensPerMinute: 100_000, backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
 };
 
 export function defaultRateLimiterConfig(provider: Provider): RateLimiterConfig {
@@ -43,29 +44,45 @@ function retryAfterMs(error: unknown): number | undefined {
 
 export type RateLimiter = {
   beforeCall(): Promise<void>;
+  recordUsage(tokens: number): void;
   onError(error: unknown): { shouldRetry: boolean; delayMs: number };
   reset(): void;
 };
 
+type TimestampedEntry = { time: number; tokens: number };
+
 export function createRateLimiter(config: RateLimiterConfig): RateLimiter {
-  const timestamps: number[] = [];
+  const entries: TimestampedEntry[] = [];
   let consecutiveFailures = 0;
 
   function pruneWindow() {
     const cutoff = Date.now() - 60_000;
-    while (timestamps.length > 0 && (timestamps[0] ?? 0) < cutoff) timestamps.shift();
+    while (entries.length > 0 && (entries[0]?.time ?? 0) < cutoff) entries.shift();
+  }
+
+  function windowTokens(): number {
+    let total = 0;
+    for (const entry of entries) total += entry.tokens;
+    return total;
   }
 
   return {
     async beforeCall() {
       pruneWindow();
-      if (timestamps.length >= config.maxRequestsPerMinute) {
-        const oldest = timestamps[0] ?? Date.now();
+      const atRequestLimit = entries.length >= config.maxRequestsPerMinute;
+      const atTokenLimit = config.maxTokensPerMinute > 0 && windowTokens() >= config.maxTokensPerMinute;
+      if (atRequestLimit || atTokenLimit) {
+        const oldest = entries[0]?.time ?? Date.now();
         const waitMs = Math.max(0, oldest + 60_000 - Date.now());
         if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, jitter(waitMs)));
         pruneWindow();
       }
-      timestamps.push(Date.now());
+      entries.push({ time: Date.now(), tokens: 0 });
+    },
+
+    recordUsage(tokens: number) {
+      const last = entries[entries.length - 1];
+      if (last) last.tokens = tokens;
     },
 
     onError(error: unknown): { shouldRetry: boolean; delayMs: number } {

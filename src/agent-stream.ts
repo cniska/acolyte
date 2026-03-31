@@ -121,12 +121,12 @@ export function createAgentStream(
           emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, lifecycleTextState);
           if (part.type === "finish") {
             finishReason = part.finishReason;
+            const inputTokens = part.usage?.inputTokens?.total ?? 0;
+            const outputTokens = part.usage?.outputTokens?.total ?? 0;
+            rateLimiter.recordUsage(inputTokens + outputTokens);
             streamController.enqueue({
               type: "model-usage",
-              payload: {
-                inputTokens: part.usage?.inputTokens?.total,
-                outputTokens: part.usage?.outputTokens?.total,
-              },
+              payload: { inputTokens, outputTokens },
             });
           }
         }

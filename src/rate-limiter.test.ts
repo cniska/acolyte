@@ -7,7 +7,12 @@ import {
   retryAfterMs,
 } from "./rate-limiter";
 
-const FAST: RateLimiterConfig = { maxRequestsPerMinute: 3, backoffBaseMs: 100, backoffMaxMs: 1_000 };
+const FAST: RateLimiterConfig = {
+  maxRequestsPerMinute: 3,
+  maxTokensPerMinute: 0,
+  backoffBaseMs: 100,
+  backoffMaxMs: 1_000,
+};
 
 describe("isRateLimitError", () => {
   test("detects 429 status", () => {
@@ -54,8 +59,33 @@ describe("createRateLimiter", () => {
     expect(Date.now() - start).toBeLessThan(100);
   });
 
+  test("delays when token usage exceeds limit", async () => {
+    const limiter = createRateLimiter({
+      maxRequestsPerMinute: 100,
+      maxTokensPerMinute: 1_000,
+      backoffBaseMs: 100,
+      backoffMaxMs: 1_000,
+    });
+    await limiter.beforeCall();
+    limiter.recordUsage(900);
+    await limiter.beforeCall();
+    limiter.recordUsage(200);
+    // Next call should block — 1100 tokens in window exceeds 1000 limit
+    const delayed = limiter.beforeCall();
+    const result = await Promise.race([
+      delayed.then(() => "completed"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("waited"), 50)),
+    ]);
+    expect(result).toBe("waited");
+  });
+
   test("delays when calls exceed limit", async () => {
-    const limiter = createRateLimiter({ maxRequestsPerMinute: 2, backoffBaseMs: 100, backoffMaxMs: 1_000 });
+    const limiter = createRateLimiter({
+      maxRequestsPerMinute: 2,
+      maxTokensPerMinute: 0,
+      backoffBaseMs: 100,
+      backoffMaxMs: 1_000,
+    });
     await limiter.beforeCall();
     await limiter.beforeCall();
     // Third call should block since limit is 2 per minute
