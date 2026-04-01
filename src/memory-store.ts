@@ -189,6 +189,20 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   };
 }
 
+let defaultInstance: MemoryStore | null = null;
+
+export function getDefaultMemoryStore(): MemoryStore {
+  if (!defaultInstance) {
+    defaultInstance = createSqliteMemoryStore();
+    log.debug("memory.store.opened");
+    migrateFromFilesystem(homedir(), defaultInstance).catch((error) => {
+      log.warn("memory.distill.migration_failed", { error: String(error) });
+    });
+    process.on("exit", () => defaultInstance?.close());
+  }
+  return defaultInstance;
+}
+
 // TODO(cniska): Drop legacy distill filesystem migration at v1.0.0.
 export async function migrateFromFilesystem(homeDir: string, store: MemoryStore): Promise<number> {
   const distillDir = join(homeDir, ".acolyte", "distill");
@@ -207,7 +221,10 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
       if (!file.endsWith(".json")) continue;
       try {
         const raw = await readFile(join(scopePath, file), "utf8");
-        const parsed = memoryRecordSchema.safeParse(JSON.parse(raw));
+        const json = JSON.parse(raw);
+        // TODO(cniska): Drop legacy tier→kind mapping at v1.0.0.
+        if (json.tier && !json.kind) json.kind = json.tier;
+        const parsed = memoryRecordSchema.safeParse(json);
         if (parsed.success) records.push(parsed.data);
       } catch {
         // Skip unreadable files.

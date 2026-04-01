@@ -127,6 +127,55 @@ describe("createSqliteMemoryStore", () => {
     expect(records[0]?.content).toBe("updated");
   });
 
+  test("list filters by kind", async () => {
+    const store = createStore();
+    await store.write({
+      id: "dst_obs001",
+      sessionId: "sess_abc123",
+      kind: "observation",
+      content: "an observation",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    });
+    await store.write({
+      id: "mem_stored01",
+      sessionId: "user_abc123",
+      kind: "stored",
+      content: "a stored memory",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 3,
+    });
+    const stored = await store.list({ kind: "stored" });
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.id).toBe("mem_stored01");
+    const observations = await store.list({ kind: "observation" });
+    expect(observations).toHaveLength(1);
+    expect(observations[0]?.id).toBe("dst_obs001");
+  });
+
+  test("list filters by scope and kind", async () => {
+    const store = createStore();
+    await store.write({
+      id: "mem_user01",
+      sessionId: "user_abc123",
+      kind: "stored",
+      content: "user memory",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    });
+    await store.write({
+      id: "dst_user01",
+      sessionId: "user_abc123",
+      kind: "observation",
+      content: "user observation",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    });
+    const stored = await store.list({ scope: "user_abc123", kind: "stored" });
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.id).toBe("mem_user01");
+  });
+
   test("ignores unsafe session ids", async () => {
     const store = createStore();
     const records = await store.list({ scope: "../escape" });
@@ -222,15 +271,16 @@ describe("migrateFromFilesystem", () => {
     const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
     mkdirSync(scopeDir, { recursive: true });
 
-    const record: MemoryRecord = {
+    // Legacy format uses "tier" not "kind"
+    const legacyRecord = {
       id: "dst_migr001",
       sessionId: "sess_abc123",
-      kind: "observation",
+      tier: "observation",
       content: "migrated fact",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 3,
     };
-    writeFileSync(join(scopeDir, `${record.id}.json`), JSON.stringify(record), "utf8");
+    writeFileSync(join(scopeDir, `${legacyRecord.id}.json`), JSON.stringify(legacyRecord), "utf8");
 
     const store = createSqliteMemoryStore(join(home, "test.db"));
     const count = await migrateFromFilesystem(home, store);
@@ -260,10 +310,11 @@ describe("migrateFromFilesystem", () => {
 
     writeFileSync(join(scopeDir, "dst_broken.json"), "not valid json", "utf8");
 
-    const validRecord: MemoryRecord = {
+    // Legacy format uses "tier" not "kind"
+    const validRecord = {
       id: "dst_valid001",
       sessionId: "sess_abc123",
-      kind: "observation",
+      tier: "observation",
       content: "valid record",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 3,

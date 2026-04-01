@@ -1,7 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import type { MemoryEntry, MemoryScope, MemoryStore, RemoveMemoryResult } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { createSqliteMemoryStore } from "./memory-store";
+import { getDefaultMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { createId } from "./short-id";
 
@@ -11,16 +11,6 @@ export interface MemoryOptions {
   scope?: MemoryScope | "all";
   workspace?: string;
   store?: MemoryStore;
-}
-
-let defaultStore: MemoryStore | null = null;
-
-function getDefaultStore(): MemoryStore {
-  if (!defaultStore) {
-    defaultStore = createSqliteMemoryStore();
-    process.on("exit", () => defaultStore?.close());
-  }
-  return defaultStore;
 }
 
 function scopeKeysForScope(scope: MemoryScope | "all", workspace?: string): string[] {
@@ -47,7 +37,7 @@ function toMemoryEntry(record: { id: string; sessionId: string; content: string;
 }
 
 export async function listMemories(options: MemoryOptions = {}): Promise<MemoryEntry[]> {
-  const { scope = "all", workspace, store = getDefaultStore() } = options;
+  const { scope = "all", workspace, store = getDefaultMemoryStore() } = options;
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
@@ -65,7 +55,7 @@ export async function addMemory(
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Memory content cannot be empty");
 
-  const { scope = "user", workspace, store = getDefaultStore() } = options;
+  const { scope = "user", workspace, store = getDefaultMemoryStore() } = options;
   const scopeKey =
     scope === "project" ? projectResourceIdFromWorkspace(workspace ?? process.cwd()) : defaultUserResourceId();
 
@@ -101,7 +91,7 @@ export async function removeMemoryByPrefix(
   if (matches.length > 1) return { kind: "ambiguous", prefix: trimmed, matches };
 
   const entry = matches[0];
-  const { store = getDefaultStore() } = options;
+  const { store = getDefaultMemoryStore() } = options;
   await store.remove(entry.id);
   return { kind: "removed", entry };
 }

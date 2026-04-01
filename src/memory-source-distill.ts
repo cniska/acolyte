@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
@@ -14,7 +13,7 @@ import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
 import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
-import { createSqliteMemoryStore, migrateFromFilesystem } from "./memory-store";
+import { getDefaultMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -33,13 +32,8 @@ let defaultSelectionStrategy: MemorySelectionStrategy | null = null;
 
 function getDefaultStore(): MemoryStore {
   if (!defaultStore) {
-    defaultStore = createSqliteMemoryStore();
-    log.debug("memory.store.opened");
+    defaultStore = getDefaultMemoryStore();
     defaultSelectionStrategy = createSemanticSelection(defaultStore);
-    migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
-      log.warn("memory.distill.migration_failed", { error: String(error) });
-    });
-    process.on("exit", () => defaultStore?.close());
   }
   return defaultStore;
 }
@@ -350,7 +344,7 @@ async function commitDistillForKey(
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
   const stale = [...observations, ...reflections];
-  for (const r of stale) ds.remove(r.id);
+  for (const r of stale) await ds.remove(r.id);
   log.debug("memory.distill.gc", { key, removed: stale.length });
 }
 
