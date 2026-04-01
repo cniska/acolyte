@@ -37,15 +37,15 @@ describe("sqlite memory store", () => {
   test("removeMemory removes a matching memory", async () => {
     const db = createDb();
     const entry = await addMemory("Disposable note", { scope: "user", store: db });
-    const result = await removeMemory(entry.id.slice(0, 12), { store: db });
+    const result = await removeMemory(entry.id, { store: db });
     expect(result.kind).toBe("removed");
     const all = await listMemories({ store: db });
     expect(all.some((item) => item.id === entry.id)).toBe(false);
   });
 
-  test("removeMemory returns not_found for unknown prefix", async () => {
+  test("removeMemory returns not_found for unknown id", async () => {
     const db = createDb();
     const result = await removeMemory("mem_missing", { store: db });
-    expect(result).toEqual({ kind: "not_found", prefix: "mem_missing" });
+    expect(result).toEqual({ kind: "not_found", id: "mem_missing" });
   });
 });

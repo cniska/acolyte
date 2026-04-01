@@ -4,17 +4,10 @@ import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
+import { type MemoryRecord, type MemoryStore, memoryRecordSchema, scopeFromKey } from "./memory-contract";
 
 export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
-}
-
-function scopeTypeFromKey(scopeKey: string): MemoryScope {
-  if (scopeKey.startsWith("sess_")) return "session";
-  if (scopeKey.startsWith("proj_")) return "project";
-  if (scopeKey.startsWith("user_")) return "user";
-  throw new Error(`Unknown scope key prefix: ${scopeKey}`);
 }
 
 // TODO(cniska): Drop migrateLegacySchema at v1.0.0.
@@ -146,7 +139,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     },
     async write(record, scope) {
       if (!safeScopeKey(record.scopeKey)) return;
-      const scopeType = scope ?? scopeTypeFromKey(record.scopeKey);
+      const scopeType = scope ?? scopeFromKey(record.scopeKey);
       writeStmt.run(
         record.id,
         scopeType,
@@ -239,7 +232,7 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
   }
 
   for (const record of records) {
-    await store.write(record, scopeTypeFromKey(record.scopeKey));
+    await store.write(record, scopeFromKey(record.scopeKey));
     migrated += 1;
   }
 

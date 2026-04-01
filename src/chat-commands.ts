@@ -292,18 +292,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     try {
       const removed = await memoryApi.removeMemory(prefix);
       if (removed.kind === "not_found") {
-        ctx.setRows((current) => [
-          ...current,
-          createRow("system", t("chat.memory.rm.not_found", { prefix: removed.prefix })),
-        ]);
-        return { stop: true, userText: text };
-      }
-      if (removed.kind === "ambiguous") {
-        const ids = removed.matches.map((item) => item.id).join(", ");
-        ctx.setRows((current) => [
-          ...current,
-          createRow("system", t("chat.memory.rm.ambiguous", { prefix: removed.prefix, ids })),
-        ]);
+        ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.not_found", { id: removed.id }))]);
         return { stop: true, userText: text };
       }
       ctx.setRows((current) => [

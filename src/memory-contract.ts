@@ -16,10 +16,7 @@ export interface MemoryEntry {
   readonly scope: MemoryScope;
 }
 
-export type RemoveMemoryResult =
-  | { kind: "removed"; entry: MemoryEntry }
-  | { kind: "not_found"; prefix: string }
-  | { kind: "ambiguous"; prefix: string; matches: MemoryEntry[] };
+export type RemoveMemoryResult = { kind: "removed"; entry: MemoryEntry } | { kind: "not_found"; id: string };
 
 export type MemoryLoadContext = {
   readonly sessionId?: string;
@@ -79,4 +76,11 @@ export interface MemoryStore {
   getEmbedding(id: string): Buffer | null;
   getEmbeddings(ids: string[]): Map<string, Buffer>;
   close(): void;
+}
+
+export function scopeFromKey(key: string): MemoryScope {
+  if (key.startsWith("sess_")) return "session";
+  if (key.startsWith("proj_")) return "project";
+  if (key.startsWith("user_")) return "user";
+  throw new Error(`Unknown scope key prefix: ${key}`);
 }

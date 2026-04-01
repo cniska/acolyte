@@ -1,8 +1,7 @@
 import { z } from "zod";
-import type { MemoryRecord, MemoryStore } from "./memory-contract";
-import { memoryScopeSchema } from "./memory-contract";
+import { type MemoryRecord, type MemoryStore, memoryScopeSchema, scopeFromKey } from "./memory-contract";
 import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
-import { addMemory, removeMemory, scopeFromKey } from "./memory-ops";
+import { addMemory, removeMemory } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -43,7 +42,7 @@ const memoryRemoveInputSchema = z.object({
 
 const memoryRemoveOutputSchema = z.object({
   kind: z.literal("memory-remove"),
-  result: z.enum(["removed", "not_found", "ambiguous"]),
+  result: z.enum(["removed", "not_found"]),
 });
 
 export async function searchMemories(

@@ -3,9 +3,33 @@ import { appConfig } from "./app-config";
 import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
-import type { MemoryScope } from "./memory-contract";
+import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
+import type { MemoryOptions } from "./memory-ops";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
+
+function createMemoryApi(overrides?: {
+  listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
+  addMemory?: (
+    content: string,
+    options?: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope },
+  ) => Promise<MemoryEntry>;
+  removeMemory?: (id: string, options?: MemoryOptions) => Promise<RemoveMemoryResult>;
+}) {
+  return {
+    listMemories: overrides?.listMemories ?? (async () => []),
+    addMemory:
+      overrides?.addMemory ??
+      (async () => ({
+        id: "mem_unused",
+        scope: "user" as const,
+        content: "unused",
+        createdAt: "2026-02-21T00:00:00.000Z",
+      })),
+    removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
+  };
+}
+
 import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
@@ -189,15 +213,7 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /memory with empty store", async () => {
-    const memoryApi = {
-      listMemories: async () => [],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    const memoryApi = createMemoryApi();
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
@@ -205,18 +221,12 @@ describe("chat-commands", () => {
 
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
     let receivedScope = "";
-    const memoryApi = {
-      listMemories: async (options?: { scope?: MemoryScope }) => {
+    const memoryApi = createMemoryApi({
+      listMemories: async (options) => {
         receivedScope = options?.scope ?? "";
         return [];
       },
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(receivedScope).toBe("user");
@@ -224,7 +234,7 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /memory with entries", async () => {
-    const memoryApi = {
+    const memoryApi = createMemoryApi({
       listMemories: async () => [
         {
           id: "mem_1",
@@ -239,13 +249,7 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:01.000Z",
         },
       ],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
     const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
@@ -255,7 +259,7 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles explicit /memory all scope", async () => {
-    const memoryApi = {
+    const memoryApi = createMemoryApi({
       listMemories: async () => [
         {
           id: "mem_1",
@@ -270,13 +274,7 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:01.000Z",
         },
       ],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory all", { memoryApi });
     expect(stop).toBe(true);
     const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Memory 2");
@@ -286,14 +284,7 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /memory rm success", async () => {
-    const memoryApi = {
-      listMemories: async () => [],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
+    const memoryApi = createMemoryApi({
       removeMemory: async () => ({
         kind: "removed" as const,
         entry: {
@@ -303,7 +294,7 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:00.000Z",
         },
       }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory rm mem_dead", { memoryApi });
     expect(stop).toBe(true);
     expect(
@@ -314,48 +305,16 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /memory rm not_found", async () => {
-    const memoryApi = {
-      listMemories: async () => [],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-      removeMemory: async () => ({ kind: "not_found" as const, prefix: "mem_zzz" }),
-    };
+    const memoryApi = createMemoryApi({
+      removeMemory: async () => ({ kind: "not_found" as const, id: "mem_zzz" }),
+    });
     const { rows, stop } = await runCommand("/memory rm mem_zzz", { memoryApi });
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "No memory found for id prefix: mem_zzz")).toBe(true);
-  });
-
-  test("dispatchSlashCommand handles /memory rm ambiguous prefix", async () => {
-    const memoryApi = {
-      listMemories: async () => [],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-      removeMemory: async () => ({
-        kind: "ambiguous" as const,
-        prefix: "mem_a",
-        matches: [
-          { id: "mem_abcd1111", scope: "user" as const, content: "one", createdAt: "2026-02-21T00:00:00.000Z" },
-          { id: "mem_abcd2222", scope: "project" as const, content: "two", createdAt: "2026-02-21T00:00:00.000Z" },
-        ],
-      }),
-    };
-    const { rows, stop } = await runCommand("/memory rm mem_a", { memoryApi });
-    expect(stop).toBe(true);
-    expect(
-      rows.some((row) => row.content === "Ambiguous memory id prefix: mem_a. Matches: mem_abcd1111, mem_abcd2222"),
-    ).toBe(true);
+    expect(rows.some((row) => row.content === "No memory found for id: mem_zzz")).toBe(true);
   });
 
   test("dispatchSlashCommand renders scoped /memory header", async () => {
-    const memoryApi = {
+    const memoryApi = createMemoryApi({
       listMemories: async () => [
         {
           id: "mem_1",
@@ -364,20 +323,14 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:00.000Z",
         },
       ],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory user", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "User memory 1")).toBe(true);
   });
 
   test("dispatchSlashCommand renders project-scoped /memory header", async () => {
-    const memoryApi = {
+    const memoryApi = createMemoryApi({
       listMemories: async () => [
         {
           id: "mem_1",
@@ -386,13 +339,7 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:00.000Z",
         },
       ],
-      addMemory: async () => ({
-        id: "mem_unused",
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-      }),
-    };
+    });
     const { rows, stop } = await runCommand("/memory project", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Project memory 1")).toBe(true);
@@ -413,9 +360,8 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
     let savedContent = "";
     let savedScope = "";
-    const memoryApi = {
-      listMemories: async () => [],
-      addMemory: async (content: string, options?: { scope?: MemoryScope }) => {
+    const memoryApi = createMemoryApi({
+      addMemory: async (content, options) => {
         const scope = options?.scope ?? "user";
         savedContent = content;
         savedScope = scope;
@@ -426,7 +372,7 @@ describe("chat-commands", () => {
           createdAt: "2026-02-21T00:00:02.000Z",
         };
       },
-    };
+    });
     const { rows, stop } = await runCommand("/remember --project use bun verify", { memoryApi });
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");

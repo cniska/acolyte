@@ -1,6 +1,12 @@
 import { estimateTokens } from "./agent-input";
 import { log } from "./log";
-import type { MemoryEntry, MemoryScope, MemoryStore, RemoveMemoryResult } from "./memory-contract";
+import {
+  type MemoryEntry,
+  type MemoryScope,
+  type MemoryStore,
+  type RemoveMemoryResult,
+  scopeFromKey,
+} from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getDefaultMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
@@ -22,10 +28,6 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
     keys.push(projectResourceIdFromWorkspace(ws));
   }
   return keys;
-}
-
-export function scopeFromKey(key: string): MemoryScope {
-  return key.startsWith("proj_") ? "project" : "user";
 }
 
 function toMemoryEntry(record: { id: string; scopeKey: string; content: string; createdAt: string }): MemoryEntry {
@@ -82,16 +84,14 @@ export async function addMemory(
   return toMemoryEntry(record);
 }
 
-export async function removeMemory(prefix: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {
-  const trimmed = prefix.trim();
-  if (!trimmed) throw new Error("Memory prefix cannot be empty");
+export async function removeMemory(id: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {
+  const trimmed = id.trim();
+  if (!trimmed) throw new Error("Memory id cannot be empty");
 
   const entries = await listMemories(options);
-  const matches = entries.filter((entry) => entry.id.startsWith(trimmed));
-  if (matches.length === 0) return { kind: "not_found", prefix: trimmed };
-  if (matches.length > 1) return { kind: "ambiguous", prefix: trimmed, matches };
+  const entry = entries.find((e) => e.id === trimmed);
+  if (!entry) return { kind: "not_found", id: trimmed };
 
-  const entry = matches[0];
   const { store = getDefaultMemoryStore() } = options;
   await store.remove(entry.id);
   log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
