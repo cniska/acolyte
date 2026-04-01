@@ -129,6 +129,7 @@ describe("phaseFinalize", () => {
       promptBreakdownTotals: {
         systemTokens: 80,
         toolTokens: 40,
+        memoryTokens: 0,
         messageTokens: 34,
       },
       result: { text: "done", toolCalls: [] },
@@ -142,6 +143,7 @@ describe("phaseFinalize", () => {
       usedTokens: 154,
       systemTokens: 80,
       toolTokens: 40,
+      memoryTokens: 0,
       messageTokens: 34,
     });
   });

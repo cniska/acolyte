@@ -11,6 +11,7 @@ function resolvePromptBreakdown(ctx: RunContext) {
   return {
     systemTokens: ctx.promptUsage.systemPromptTokens,
     toolTokens: ctx.promptUsage.toolTokens,
+    memoryTokens: 0,
     messageTokens: ctx.promptUsage.messageTokens,
   };
 }
@@ -85,6 +86,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       usedTokens: inputTokens,
       systemTokens: promptBreakdown.systemTokens,
       toolTokens: promptBreakdown.toolTokens,
+      memoryTokens: promptBreakdown.memoryTokens,
       messageTokens: promptBreakdown.messageTokens,
     },
   };

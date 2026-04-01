@@ -4,6 +4,7 @@ import type { PromptUsage } from "./lifecycle-contract";
 export type PromptBreakdownTotals = {
   systemTokens: number;
   toolTokens: number;
+  memoryTokens: number;
   messageTokens: number;
 };
 
@@ -11,6 +12,7 @@ export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
   return {
     systemTokens: 0,
     toolTokens: 0,
+    memoryTokens: 0,
     messageTokens: 0,
   };
 }
@@ -19,12 +21,13 @@ export function estimatePromptBreakdown(prompt: string, usage: PromptUsage): Pro
   return {
     systemTokens: usage.systemPromptTokens,
     toolTokens: usage.toolTokens,
+    memoryTokens: 0,
     messageTokens: estimateTokens(prompt),
   };
 }
 
 export function totalPromptBreakdownTokens(totals: PromptBreakdownTotals): number {
-  return totals.systemTokens + totals.toolTokens + totals.messageTokens;
+  return totals.systemTokens + totals.toolTokens + totals.memoryTokens + totals.messageTokens;
 }
 
 export function addPromptBreakdownTotals(
@@ -33,6 +36,7 @@ export function addPromptBreakdownTotals(
 ): PromptBreakdownTotals {
   current.systemTokens += next.systemTokens;
   current.toolTokens += next.toolTokens;
+  current.memoryTokens += next.memoryTokens;
   current.messageTokens += next.messageTokens;
   return current;
 }

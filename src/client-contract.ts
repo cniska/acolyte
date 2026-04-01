@@ -246,12 +246,14 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
       typeof (json.promptBreakdown as { usedTokens?: unknown }).usedTokens === "number" &&
       typeof (json.promptBreakdown as { systemTokens?: unknown }).systemTokens === "number" &&
       typeof (json.promptBreakdown as { toolTokens?: unknown }).toolTokens === "number" &&
+      typeof (json.promptBreakdown as { memoryTokens?: unknown }).memoryTokens === "number" &&
       typeof (json.promptBreakdown as { messageTokens?: unknown }).messageTokens === "number"
         ? {
             budgetTokens: (json.promptBreakdown as { budgetTokens: number }).budgetTokens,
             usedTokens: (json.promptBreakdown as { usedTokens: number }).usedTokens,
             systemTokens: (json.promptBreakdown as { systemTokens: number }).systemTokens,
             toolTokens: (json.promptBreakdown as { toolTokens: number }).toolTokens,
+            memoryTokens: (json.promptBreakdown as { memoryTokens: number }).memoryTokens,
             messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
           }
         : undefined,
