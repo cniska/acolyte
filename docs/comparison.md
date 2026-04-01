@@ -2,38 +2,37 @@
 
 Detailed feature comparison between Acolyte and other open-source AI agents. See [Why Acolyte](./why-acolyte.md) for a summary.
 
-Projects compared: [Codex](https://github.com/openai/codex), [Aider](https://github.com/Aider-AI/aider), [Plandex](https://github.com/plandex-ai/plandex), [OpenCode](https://github.com/anomalyco/opencode), [Pi](https://github.com/badlogic/pi-mono), [Continue](https://github.com/continuedev/continue), [Cline](https://github.com/cline/cline), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Goose](https://github.com/block/goose), [OpenClaw](https://github.com/openclaw/openclaw).
-
-The comparison spans different categories — not all projects are pure coding agents.
+Projects compared: [OpenCode](https://github.com/anomalyco/opencode), [Codex](https://github.com/openai/codex), [Crush](https://github.com/charmbracelet/crush), [Aider](https://github.com/Aider-AI/aider), [Goose](https://github.com/block/goose), [Cline](https://github.com/cline/cline), [Qwen Code](https://github.com/QwenLM/qwen-code), [OpenHands](https://github.com/All-Hands-AI/OpenHands), [Continue](https://github.com/continuedev/continue), [Plandex](https://github.com/plandex-ai/plandex), [Mistral Vibe](https://github.com/mistralai/mistral-vibe).
 
 | Project | Category |
 |---|---|
 | Acolyte | Terminal coding agent |
+| OpenCode | Terminal coding agent |
 | Codex | Terminal coding agent |
+| Crush | Terminal coding agent |
 | Aider | Terminal coding agent |
-| Plandex | Terminal coding agent |
-| OpenCode | Coding agent (TUI/web/desktop) |
-| Pi | Agent SDK harness |
-| Continue | IDE extension |
-| Cline | IDE extension |
+| Goose | Terminal coding agent |
+| Cline | IDE extension + CLI |
+| Qwen Code | Terminal coding agent |
 | OpenHands | Agent platform |
-| Goose | Developer productivity agent |
-| OpenClaw | Personal AI assistant |
+| Continue | IDE extension |
+| Plandex | Terminal coding agent |
+| Mistral Vibe | Terminal coding agent |
 
 ## Feature overview
 
 High-level capability comparison across all projects.
 
-| Capability | Acolyte | Codex | Aider | Plandex | OpenCode | Pi | Goose | OpenHands | Continue | Cline | OpenClaw |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Multi-provider | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Lifecycle pipeline | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
-| Post-write effects | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ |
-| Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
-| Workspace detection | ✓ | ✗ | partial | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ | ✗ |
-| Workspace sandboxing | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
-| Observable execution | ✓ | partial | partial | ✗ | partial | ✗ | partial | partial | ✗ | ✗ | ✗ |
-| Daemon architecture | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| Capability | Acolyte | OpenCode | Codex | Crush | Aider | Goose | Cline | Qwen Code | OpenHands | Continue | Plandex | Mistral Vibe |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Multi-provider | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Lifecycle pipeline | ✓ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
+| Post-write effects | ✓ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
+| Task state machine | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ | ✗ |
+| Workspace detection | ✓ | ✗ | ✗ | ✗ | partial | partial | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Workspace sandboxing | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
+| Observable execution | ✓ | partial | partial | partial | partial | partial | ✗ | partial | partial | ✗ | ✗ | partial |
+| Daemon architecture | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
 
 ## Architecture
 
@@ -42,16 +41,17 @@ How each project structures its runtime and where it runs.
 | Project | Architecture | Deployment model |
 |---|---|---|
 | **Acolyte** | Headless daemon + typed RPC clients | daemon |
-| Codex | Rust CLI with optional Node.js wrapper | single-process |
-| Aider | Pure CLI process | single-process |
-| Plandex | Go CLI agent with long-running planner | single-process |
 | OpenCode | HTTP/WebSocket server + TUI/desktop clients | server |
-| Pi | SDK with RPC as one mode | embedded |
-| Continue | VS Code / JetBrains extension + CLI | extension |
-| Cline | VS Code extension + CLI | extension |
-| OpenHands | Web platform with Docker sandboxing | platform |
+| Codex | Rust CLI with optional Node.js wrapper | single-process |
+| Crush | Go CLI with Bubble Tea TUI | single-process |
+| Aider | Pure CLI process | single-process |
 | Goose | Single-process with MCP extensions | single-process |
-| OpenClaw | Node.js gateway + WebSocket control plane | server |
+| Cline | VS Code extension + CLI | extension |
+| Qwen Code | CLI (Gemini CLI fork) + IDE extensions | single-process |
+| OpenHands | Web platform with Docker sandboxing | platform |
+| Continue | VS Code / JetBrains extension + CLI | extension |
+| Plandex | Go CLI agent with long-running planner | single-process |
+| Mistral Vibe | Python CLI with Devstral models | single-process |
 
 Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol.
 
@@ -199,7 +199,7 @@ Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative
 
 Skills live in `.agents/skills/` and are invoked via slash commands.
 
-OpenCode, Pi, and Cline also implement the SKILL.md standard.
+OpenCode, Crush, Cline, Qwen Code, and Mistral Vibe also implement the SKILL.md standard.
 
 Goose instead uses MCP-based extensions.
 
@@ -225,13 +225,12 @@ How each agent retains knowledge across sessions.
 |---|---|
 | **Acolyte** | Context distillation to 3-tier persistent memory with semantic recall |
 | OpenHands | Microagent recall + condenser pipeline |
-| OpenClaw | Vector search via LanceDB |
 | Goose | Session search via MCP |
 | Continue | Codebase embeddings (deprecated) |
 | Aider | Repository map + chat restore |
 | Cline | Task history persistence |
 | Plandex | Session-based planning memory |
-| Codex, OpenCode, Pi | No cross-session memory |
+| Codex, OpenCode, Crush, Qwen Code, Mistral Vibe | No cross-session memory |
 
 Most agents manage context through **compaction** (summarization or truncation).
 
@@ -258,16 +257,17 @@ How each agent manages the token window when context grows large.
 | Project | Token budgeting |
 |---|---|
 | **Acolyte** | Proactive budgeting with token measurement |
-| OpenHands | Condenser pipeline |
-| Goose | Summarization fallback |
 | OpenCode | LLM compaction |
-| Aider | Repo map ranking |
-| OpenClaw | Token counting |
-| Cline | Window truncation |
-| Pi | Branch summarization |
-| Continue | Retrieval parameters |
 | Codex | Conversation truncation |
+| Crush | Conversation truncation |
+| Aider | Repo map ranking |
+| Goose | Summarization fallback |
+| Cline | Window truncation |
+| Qwen Code | Conversation truncation |
+| OpenHands | Condenser pipeline |
+| Continue | Retrieval parameters |
 | Plandex | Conversation summarization on token limit |
+| Mistral Vibe | Conversation truncation |
 
 Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken).
 
