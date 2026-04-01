@@ -13,7 +13,6 @@ export type MemorySourceId = z.infer<typeof memorySourceIdSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
 const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
-const MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS = 32_000;
 const MAX_MEMORY_BUDGET_TOKENS = 8_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
@@ -39,7 +38,6 @@ export interface Config {
   temperature?: number;
   distillModel?: string;
   distillMessageThreshold?: number;
-  distillReflectionThresholdTokens?: number;
   distillMaxOutputTokens?: number;
   memoryBudgetTokens?: number;
   openaiBaseUrl?: string;
@@ -63,7 +61,6 @@ export interface ResolvedConfig {
   temperature?: number;
   distillModel: string;
   distillMessageThreshold: number;
-  distillReflectionThresholdTokens: number;
   distillMaxOutputTokens: number;
   memoryBudgetTokens: number;
   openaiBaseUrl: string;
@@ -105,10 +102,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     temperature: parseField(parseTemperatureSchema, input.temperature),
     distillModel: parseField(nonEmptyStringSchema, input.distillModel),
     distillMessageThreshold: parseField(parseIntegerSchema(1, 200), input.distillMessageThreshold),
-    distillReflectionThresholdTokens: parseField(
-      parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
-      input.distillReflectionThresholdTokens,
-    ),
     distillMaxOutputTokens: parseField(
       parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
       input.distillMaxOutputTokens,

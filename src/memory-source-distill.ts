@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import { log } from "./log";
 import type { MemoryCommitMetrics, MemoryRecord, MemorySource, MemoryStore } from "./memory-contract";
-import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
+import { OBSERVER_PROMPT } from "./memory-distill-prompts";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 
 import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
@@ -17,7 +17,6 @@ import { createId } from "./short-id";
 export type DistillConfig = {
   model: string;
   messageThreshold: number;
-  reflectionThresholdTokens: number;
   maxOutputTokens: number;
 };
 
@@ -63,11 +62,6 @@ function clampToTokenEstimate(content: string, maxTokens: number): string {
     clamped = clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO)).trim();
   }
   return clamped;
-}
-
-function needsReflectionRetry(reflected: string, sourceTokenEstimate: number, config: DistillConfig): boolean {
-  const reflectedTokens = estimateTokens(reflected);
-  return reflectedTokens >= sourceTokenEstimate || reflectedTokens > config.reflectionThresholdTokens;
 }
 
 function normalizeMemoryText(value: string): string {
@@ -138,7 +132,6 @@ function splitScopedObservation(observed: string): {
   };
 }
 
-export type DistillTokenUsage = { observeTokens: number; reflectTokens: number };
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 const defaultDistillConfig = (): DistillConfig => appConfig.distill;
@@ -184,76 +177,23 @@ function resolveDistillScopeKey(
   return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
-async function commitDistillForKey(
-  ds: MemoryStore,
-  key: string,
-  observed: string,
-  runner: DistillRunner,
-  config: DistillConfig,
-  policy: MemoryPolicy,
-): Promise<DistillTokenUsage> {
-  const result: DistillTokenUsage = { observeTokens: 0, reflectTokens: 0 };
+async function commitDistillForKey(ds: MemoryStore, key: string, observed: string): Promise<number> {
   const existingEntries = await ds.list({ scopeKey: key });
   const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
-  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed))
-    return result;
+  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return 0;
 
   const observation: MemoryRecord = {
     id: `mem_${createId()}`,
     scopeKey: key,
     kind: "observation",
     content: observed,
-
     createdAt: nowIso(),
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
   embedAndStore(ds, observation.id, key, observed);
-  result.observeTokens = observation.tokenEstimate;
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
-
-  const entries = [...existingEntries, observation];
-  const observations = entries.filter((e) => e.kind === "observation");
-  const reflections = entries.filter((e) => e.kind === "reflection");
-  const latestReflection = reflections[reflections.length - 1];
-  const pendingObservations = latestReflection
-    ? observations.filter((e) => e.createdAt > latestReflection.createdAt)
-    : observations;
-  const totalTokens = pendingObservations.reduce((sum, e) => sum + e.tokenEstimate, 0);
-  if (totalTokens < config.reflectionThresholdTokens) return result;
-
-  const allObservations = pendingObservations.map((o) => o.content).join("\n\n---\n\n");
-  let reflected = "";
-  for (let attempt = 0; attempt <= policy.reflectionRetryLimit; attempt += 1) {
-    const promptSuffix =
-      attempt === 0
-        ? ""
-        : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
-    const reflectedRaw = await runner(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
-    reflected = clampToTokenEstimate(reflectedRaw, config.maxOutputTokens);
-    if (!reflected.trim()) return result;
-    if (!needsReflectionRetry(reflected, totalTokens, config)) break;
-  }
-  if (needsReflectionRetry(reflected, totalTokens, config)) return result;
-
-  const reflection: MemoryRecord = {
-    id: `mem_${createId()}`,
-    scopeKey: key,
-    kind: "reflection",
-    content: reflected,
-    createdAt: nowIso(),
-    tokenEstimate: estimateTokens(reflected),
-  };
-  await ds.write(reflection);
-  embedAndStore(ds, reflection.id, key, reflected);
-  result.reflectTokens = reflection.tokenEstimate;
-  log.debug("memory.distill.reflection_written", { key, id: reflection.id, tokens: reflection.tokenEstimate });
-
-  // GC: remove all prior observations and reflections now consolidated into the new reflection.
-  const stale = [...observations, ...reflections];
-  for (const r of stale) await ds.remove(r.id);
-  log.debug("memory.distill.gc", { key, removed: stale.length });
-  return result;
+  return observation.tokenEstimate;
 }
 
 export function createDistillMemorySource(
@@ -286,15 +226,14 @@ export function createDistillMemorySource(
       const observerPromptTokens =
         estimateTokens(OBSERVER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
       if (commitScope !== "session") {
-        const usage = await commitDistillForKey(ds, key, observed, runner, config, policy);
+        const usage = await commitDistillForKey(ds, key, observed);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
         return {
           projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
           userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
           sessionScopedFacts: 0,
           droppedUntaggedFacts: 0,
-          observeTokens: observerPromptTokens + usage.observeTokens,
-          reflectTokens: usage.reflectTokens,
+          observeTokens: observerPromptTokens + usage,
         };
       }
 
@@ -312,27 +251,16 @@ export function createDistillMemorySource(
         malformedRejectStreak = 0;
       }
       let totalObserve = observerPromptTokens;
-      let totalReflect = 0;
       if (scoped.session) {
-        const u = await commitDistillForKey(ds, key, scoped.session, runner, config, policy);
-        totalObserve += u.observeTokens;
-        totalReflect += u.reflectTokens;
+        totalObserve += await commitDistillForKey(ds, key, scoped.session);
       }
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) {
-          const u = await commitDistillForKey(ds, projectKey, scoped.project, runner, config, policy);
-          totalObserve += u.observeTokens;
-          totalReflect += u.reflectTokens;
-        }
+        if (projectKey) totalObserve += await commitDistillForKey(ds, projectKey, scoped.project);
       }
       if (scoped.user) {
         const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) {
-          const u = await commitDistillForKey(ds, userKey, scoped.user, runner, config, policy);
-          totalObserve += u.observeTokens;
-          totalReflect += u.reflectTokens;
-        }
+        if (userKey) totalObserve += await commitDistillForKey(ds, userKey, scoped.user);
       }
       log.debug("memory.distill.commit_done", {
         key,
@@ -347,18 +275,9 @@ export function createDistillMemorySource(
         sessionScopedFacts: scoped.sessionCount,
         droppedUntaggedFacts: scoped.droppedUntaggedCount,
         observeTokens: totalObserve,
-        reflectTokens: totalReflect,
       };
     },
   };
 }
 
 export const distillMemorySource: MemorySource = createDistillMemorySource();
-export const distillProjectMemorySource: MemorySource = createDistillMemorySource(undefined, runDistillLLM, {
-  id: "distill_project",
-  commitScope: "none",
-});
-export const distillUserMemorySource: MemorySource = createDistillMemorySource(undefined, runDistillLLM, {
-  id: "distill_user",
-  commitScope: "none",
-});

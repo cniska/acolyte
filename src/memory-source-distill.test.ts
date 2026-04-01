@@ -1,14 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
+import { OBSERVER_PROMPT } from "./memory-distill-prompts";
 import { createDistillMemorySource, type DistillConfig } from "./memory-source-distill";
 
 const testDistillConfig: DistillConfig = {
   model: "test-model",
   messageThreshold: 1,
-  reflectionThresholdTokens: 50,
   maxOutputTokens: 200,
 };
+
+function createTestSource(
+  store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
+  runner?: (systemPrompt: string, userContent: string) => Promise<string>,
+  options?: { commitScope?: "session" | "project" | "user" | "none" },
+) {
+  return createDistillMemorySource(store, runner, { config: testDistillConfig, ...options });
+}
 
 function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
   const written: MemoryRecord[] = [];
@@ -46,7 +53,7 @@ describe("distillMemorySource", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(store);
+      const source = createTestSource(store);
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
@@ -57,7 +64,9 @@ describe("distillMemorySource", () => {
 
     test("skips when messages below threshold", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(store);
+      const source = createDistillMemorySource(store, undefined, {
+        config: { ...testDistillConfig, messageThreshold: 5 },
+      });
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         sessionId: "sess_test0001",
@@ -65,127 +74,6 @@ describe("distillMemorySource", () => {
         output: "hi",
       });
       expect(store.written).toHaveLength(0);
-    });
-
-    test("reflects only observations created since latest reflection", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs_old",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "old observation",
-          createdAt: "2026-03-04T10:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_ref_old",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "old reflection",
-          createdAt: "2026-03-04T10:30:00.000Z",
-          tokenEstimate: 3,
-        },
-      ]);
-      const reflectorInputs: string[] = [];
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt, input) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "@observe session\nnew observation";
-          if (systemPrompt === REFLECTOR_PROMPT) {
-            reflectorInputs.push(input);
-            return "new reflection";
-          }
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-
-      expect(reflectorInputs.length).toBeGreaterThan(0);
-      const latestReflectorInput = reflectorInputs[reflectorInputs.length - 1];
-      expect(latestReflectorInput).toContain("new observation");
-      expect(latestReflectorInput).not.toContain("old observation");
-    });
-
-    test("removes consolidated observations and old reflections after writing new reflection", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs_old",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "old observation that was before the reflection",
-          createdAt: "2026-03-04T10:00:00.000Z",
-          tokenEstimate: 10,
-        },
-        {
-          id: "mem_ref_old",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "old reflection",
-          createdAt: "2026-03-04T10:30:00.000Z",
-          tokenEstimate: 4,
-        },
-      ]);
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT)
-            return "@observe session\na new observation with enough tokens to exceed the reflection threshold for this test";
-          if (systemPrompt === REFLECTOR_PROMPT) return "compact";
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 5, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-
-      // New observation and reflection were written
-      expect(store.written.filter((e) => e.kind === "observation")).toHaveLength(1);
-      expect(store.written.filter((e) => e.kind === "reflection")).toHaveLength(1);
-      // Old observation (pre-reflection) and old reflection were GC'd
-      // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
-      expect(store.removed).toContain("mem_ref_old");
-      expect(store.removed.some((id) => id !== "mem_ref_old")).toBe(true);
-      // Only the new reflection remains in the store
-      const remaining = await store.list({ scopeKey: "sess_test0001" });
-      expect(remaining).toHaveLength(1);
-      expect(remaining[0]?.kind).toBe("reflection");
-    });
-
-    test("skips writing reflection when retry compression cannot reduce size", async () => {
-      const store = createMockStore();
-      let reflectionCalls = 0;
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "@observe session\ntiny observation";
-          if (systemPrompt === REFLECTOR_PROMPT) {
-            reflectionCalls += 1;
-            return "x".repeat(2_000);
-          }
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 1, maxOutputTokens: 100_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-
-      expect(reflectionCalls).toBe(3);
-      expect(store.written.filter((entry) => entry.kind === "observation")).toHaveLength(1);
-      expect(store.written.filter((entry) => entry.kind === "reflection")).toHaveLength(0);
     });
 
     test("skips consecutive duplicate observations", async () => {
@@ -199,14 +87,10 @@ describe("distillMemorySource", () => {
           tokenEstimate: 6,
         },
       ]);
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return " @observe session\n prefers   short answers ";
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
+      const source = createTestSource(store, async (systemPrompt) => {
+        if (systemPrompt === OBSERVER_PROMPT) return " @observe session\n prefers   short answers ";
+        return "";
+      });
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         sessionId: "sess_test0001",
@@ -218,19 +102,15 @@ describe("distillMemorySource", () => {
 
     test("drops untagged fact lines during session commit", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return [
-            "untagged fact should be dropped",
-            "Current task: also dropped without directive",
-            "@observe session",
-            "tagged fact is kept",
-          ].join("\n");
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
+      const source = createTestSource(store, async (systemPrompt) => {
+        if (systemPrompt !== OBSERVER_PROMPT) return "";
+        return [
+          "untagged fact should be dropped",
+          "Current task: also dropped without directive",
+          "@observe session",
+          "tagged fact is kept",
+        ].join("\n");
+      });
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         sessionId: "sess_test0001",
@@ -245,25 +125,21 @@ describe("distillMemorySource", () => {
 
     test("silently drops malformed scope tags and commits valid facts", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return [
-            "@observe project",
-            "valid project fact",
-            "@observe user",
-            "valid user fact",
-            "@observe proj",
-            "malformed tag dropped",
-            "@observe usr",
-            "malformed tag dropped",
-            "@observe session",
-            "valid session fact",
-          ].join("\n");
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
+      const source = createTestSource(store, async (systemPrompt) => {
+        if (systemPrompt !== OBSERVER_PROMPT) return "";
+        return [
+          "@observe project",
+          "valid project fact",
+          "@observe user",
+          "valid user fact",
+          "@observe proj",
+          "malformed tag dropped",
+          "@observe usr",
+          "malformed tag dropped",
+          "@observe session",
+          "valid session fact",
+        ].join("\n");
+      });
       if (!source.commit) throw new Error("expected commit handler");
       const metrics = await source.commit({
         sessionId: "sess_test0001",
@@ -287,8 +163,8 @@ describe("distillMemorySource", () => {
         store,
         async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
         {
+          config: testDistillConfig,
           commitScope: "project",
-          config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 },
         },
       );
       if (!source.commit) throw new Error("expected commit handler");
@@ -308,21 +184,17 @@ describe("distillMemorySource", () => {
 
     test("session commit promotes @observe project and @observe user lines to scoped stores", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return [
-            "@observe project",
-            "repo uses Bun",
-            "@observe user",
-            "prefers short answers",
-            "@observe session",
-            "fix failing tests",
-          ].join("\n");
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
+      const source = createTestSource(store, async (systemPrompt) => {
+        if (systemPrompt !== OBSERVER_PROMPT) return "";
+        return [
+          "@observe project",
+          "repo uses Bun",
+          "@observe user",
+          "prefers short answers",
+          "@observe session",
+          "fix failing tests",
+        ].join("\n");
+      });
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         sessionId: "sess_test0001",
@@ -344,29 +216,25 @@ describe("distillMemorySource", () => {
 
     test("returns scoped promotion and drop metrics for mixed observations", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return [
-            "@observe project",
-            "project fact one",
-            "@observe project",
-            "project fact two",
-            "@observe user",
-            "user fact one",
-            "@observe session",
-            "session fact one",
-            "Current task: keep continuation",
-            "@observe project",
-            "Next step: continuation forced to session",
-            "untagged dropped fact",
-            "@observe proj",
-            "malformed tag dropped",
-          ].join("\n");
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
+      const source = createTestSource(store, async (systemPrompt) => {
+        if (systemPrompt !== OBSERVER_PROMPT) return "";
+        return [
+          "@observe project",
+          "project fact one",
+          "@observe project",
+          "project fact two",
+          "@observe user",
+          "user fact one",
+          "@observe session",
+          "session fact one",
+          "Current task: keep continuation",
+          "@observe project",
+          "Next step: continuation forced to session",
+          "untagged dropped fact",
+          "@observe proj",
+          "malformed tag dropped",
+        ].join("\n");
+      });
       if (!source.commit) throw new Error("expected commit handler");
       const metrics = await source.commit({
         sessionId: "sess_test0001",
@@ -388,7 +256,6 @@ describe("distillMemorySource", () => {
     test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
       const fixtureConfig: DistillConfig = {
         ...testDistillConfig,
-        reflectionThresholdTokens: 999_999,
         maxOutputTokens: 10_000,
       };
       const fixtures = [

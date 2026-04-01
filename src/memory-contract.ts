@@ -42,7 +42,6 @@ export type MemoryCommitMetrics = {
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
   observeTokens?: number;
-  reflectTokens?: number;
 };
 
 export type MemorySource = {

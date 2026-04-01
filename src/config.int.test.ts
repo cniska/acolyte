@@ -181,7 +181,6 @@ describe("config store", () => {
         'transportMode = "rpc"',
         "temperature = 0.3",
         "distillMessageThreshold = 25",
-        "distillReflectionThresholdTokens = 9000",
         "distillMaxOutputTokens = 1500",
         "memoryBudgetTokens = 1500",
         "contextMaxTokens = 7000",

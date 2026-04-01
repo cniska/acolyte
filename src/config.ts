@@ -23,7 +23,6 @@ function createDefaultConfig() {
     logFormat: "logfmt" as LogFormat,
     transportMode: "rpc" as const,
     distillMessageThreshold: 20,
-    distillReflectionThresholdTokens: 8_000,
     distillMaxOutputTokens: 1_000,
     memoryBudgetTokens: 1_200,
     contextMaxTokens: 100_000,
@@ -121,8 +120,6 @@ function serializeToml(config: Config): string {
   if (config.distillModel) lines.push(`distillModel = ${JSON.stringify(config.distillModel)}`);
   if (typeof config.distillMessageThreshold === "number")
     lines.push(`distillMessageThreshold = ${config.distillMessageThreshold}`);
-  if (typeof config.distillReflectionThresholdTokens === "number")
-    lines.push(`distillReflectionThresholdTokens = ${config.distillReflectionThresholdTokens}`);
   if (typeof config.distillMaxOutputTokens === "number")
     lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
   if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
@@ -154,8 +151,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     temperature: config.temperature,
     distillModel: config.distillModel ?? model,
     distillMessageThreshold: config.distillMessageThreshold ?? defaults.distillMessageThreshold,
-    distillReflectionThresholdTokens:
-      config.distillReflectionThresholdTokens ?? defaults.distillReflectionThresholdTokens,
     distillMaxOutputTokens: config.distillMaxOutputTokens ?? defaults.distillMaxOutputTokens,
     memoryBudgetTokens: config.memoryBudgetTokens ?? defaults.memoryBudgetTokens,
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,

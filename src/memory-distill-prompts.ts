@@ -14,9 +14,3 @@ stable personal preferences that carry across projects
 in-progress state, temporary constraints, next steps
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
-
-export const REFLECTOR_PROMPT = `Consolidate these observations into a single fact list.
-
-Merge duplicates, resolve contradictions (newer wins), drop completed tasks. Keep specifics.
-
-One fact per line, grouped by theme. Plain text.`;

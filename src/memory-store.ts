@@ -40,6 +40,8 @@ function migrateLegacySchema(db: Database): void {
   if (hasLegacyTable || hasLegacyEmb) {
     db.run("UPDATE memories SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
     db.run("UPDATE memory_embeddings SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
+    db.run("DELETE FROM memory_embeddings WHERE id IN (SELECT id FROM memories WHERE kind = 'reflection')");
+    db.run("DELETE FROM memories WHERE kind = 'reflection'");
   }
 }
 

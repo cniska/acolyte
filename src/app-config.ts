@@ -28,7 +28,6 @@ export const appConfig = {
   distill: {
     model: fileConfig.distillModel,
     messageThreshold: fileConfig.distillMessageThreshold,
-    reflectionThresholdTokens: fileConfig.distillReflectionThresholdTokens,
     maxOutputTokens: fileConfig.distillMaxOutputTokens,
   },
   memory: {
