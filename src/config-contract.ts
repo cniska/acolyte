@@ -49,7 +49,6 @@ export interface Config {
   distillReflectionThresholdTokens?: number;
   distillMaxOutputTokens?: number;
   memoryBudgetTokens?: number;
-  memorySources?: MemorySourceId[];
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -74,7 +73,6 @@ export interface ResolvedConfig {
   distillReflectionThresholdTokens: number;
   distillMaxOutputTokens: number;
   memoryBudgetTokens: number;
-  memorySources: MemorySourceId[];
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
@@ -123,7 +121,6 @@ export function toConfig(input: Record<string, unknown>): Config {
       input.distillMaxOutputTokens,
     ),
     memoryBudgetTokens: parseField(parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
-    memorySources: parseField(parseMemorySourcesSchema, input.memorySources),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),

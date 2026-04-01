@@ -184,7 +184,6 @@ describe("config store", () => {
         "distillReflectionThresholdTokens = 9000",
         "distillMaxOutputTokens = 1500",
         "memoryBudgetTokens = 1500",
-        'memorySources = ["distill_session", "stored"]',
         "contextMaxTokens = 7000",
         "maxHistoryMessages = 50",
         "maxMessageTokens = 700",
@@ -203,7 +202,6 @@ describe("config store", () => {
     expect(loaded.logFormat).toBe("json");
     expect(loaded.transportMode).toBe("rpc");
     expect(loaded.temperature).toBe(0.3);
-    expect(loaded.memorySources).toEqual(["distill_session", "stored"]);
     expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
@@ -219,7 +217,6 @@ describe("config store", () => {
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.temperature).toBeUndefined();
-    expect(resolved.memorySources).toEqual(["stored", "distill_project", "distill_user", "distill_session"]);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
 

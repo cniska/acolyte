@@ -69,7 +69,7 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
   const budgetTokens = options.memoryBudgetTokens ?? appConfig.memory.budgetTokens;
   const debugBaseFields = {
     budgetTokens,
-    sourceStrategy: appConfig.memory.sources.join(","),
+    sourceStrategy: "distill_session",
   };
   if (options.useMemory === false) {
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "request_disabled" });

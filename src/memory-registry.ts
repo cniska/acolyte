@@ -1,22 +1,10 @@
-import { appConfig } from "./app-config";
-import type { MemorySourceId } from "./config-contract";
-import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext, MemorySource } from "./memory-contract";
-import {
-  formatMemoryContextPrompt,
-  type MemoryNormalizeStrategy,
-  type MemorySelectionStrategy,
-  normalizeMemoryEntries,
-  runMemoryCommitPipeline,
-  runMemoryPipeline,
-} from "./memory-pipeline";
+import type { MemoryCommitContext, MemoryCommitMetrics, MemoryLoadContext } from "./memory-contract";
+import { runMemoryCommitPipeline } from "./memory-pipeline";
 import {
   distillMemorySource,
   distillProjectMemorySource,
   distillUserMemorySource,
-  extractLastLineValue,
-  getDefaultSelectionStrategy,
 } from "./memory-source-distill";
-import { storedMemorySource } from "./memory-source-stored";
 
 export type MemoryRegistry = {
   load(
@@ -35,63 +23,15 @@ export type MemoryRegistry = {
   commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics>;
 };
 
-export const AVAILABLE_MEMORY_SOURCES: Record<MemorySourceId, MemorySource> = {
-  stored: storedMemorySource,
-  distill_user: distillUserMemorySource,
-  distill_project: distillProjectMemorySource,
-  distill_session: distillMemorySource,
-};
+const COMMIT_SOURCES = [distillMemorySource, distillProjectMemorySource, distillUserMemorySource];
 
-export const DEFAULT_MEMORY_SOURCE_IDS: readonly MemorySourceId[] = ["distill_session"];
-
-export function resolveMemorySources(ids: readonly MemorySourceId[]): readonly MemorySource[] {
-  const resolved = ids
-    .map((id) => AVAILABLE_MEMORY_SOURCES[id])
-    .filter((source, index, all) => all.indexOf(source) === index);
-  return resolved.length > 0 ? resolved : DEFAULT_MEMORY_SOURCE_IDS.map((id) => AVAILABLE_MEMORY_SOURCES[id]);
-}
-
-export type MemoryConfig = {
-  sources: readonly MemorySourceId[];
-};
-
-export const DEFAULT_MEMORY_SOURCES: readonly MemorySource[] = resolveMemorySources(appConfig.memory.sources);
-
-export function createMemoryRegistry(
-  sources: readonly MemorySource[] = DEFAULT_MEMORY_SOURCES,
-  normalizeEntries: MemoryNormalizeStrategy = normalizeMemoryEntries,
-  selectEntries?: MemorySelectionStrategy,
-): MemoryRegistry {
-  const extractContinuation = (
-    entries: readonly {
-      content: string;
-      isContinuation?: boolean;
-    }[],
-  ): { currentTask?: string; nextStep?: string } => {
-    const continuationText = entries
-      .filter((entry) => entry.isContinuation)
-      .map((entry) => entry.content)
-      .join("\n");
-    return {
-      currentTask: extractLastLineValue(continuationText, /^(?:[-*]\s*)?Current task:\s*(.+)$/gim),
-      nextStep: extractLastLineValue(continuationText, /^(?:[-*]\s*)?Next step:\s*(.+)$/gim),
-    };
-  };
-
+export function createMemoryRegistry(): MemoryRegistry {
   return {
-    async load(ctx, budgetTokens) {
-      const result = await runMemoryPipeline(sources, ctx, budgetTokens, normalizeEntries, selectEntries);
-      const continuation = extractContinuation(result.entries);
-      return {
-        prompt: formatMemoryContextPrompt(result.entries),
-        tokenEstimate: result.tokenEstimate,
-        entryCount: result.entries.length,
-        continuationSelected: result.entries.some((entry) => entry.isContinuation),
-        continuation,
-      };
+    async load() {
+      return { prompt: "", tokenEstimate: 0, entryCount: 0, continuationSelected: false, continuation: {} };
     },
     async commit(ctx) {
-      return await runMemoryCommitPipeline(sources, ctx);
+      return await runMemoryCommitPipeline(COMMIT_SOURCES, ctx);
     },
   };
 }
@@ -100,11 +40,7 @@ let defaultMemoryRegistry: MemoryRegistry | null = null;
 
 function getDefaultMemoryRegistry(): MemoryRegistry {
   if (!defaultMemoryRegistry) {
-    defaultMemoryRegistry = createMemoryRegistry(
-      DEFAULT_MEMORY_SOURCES,
-      normalizeMemoryEntries,
-      getDefaultSelectionStrategy() ?? undefined,
-    );
+    defaultMemoryRegistry = createMemoryRegistry();
   }
   return defaultMemoryRegistry;
 }

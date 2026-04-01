@@ -106,7 +106,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
   if (appConfig.google.apiKey) providers.push("google");
   const model = appConfig.model;
-  const memoryStatus = appConfig.memory.budgetTokens > 0 ? `enabled (${appConfig.memory.sources.join(", ")})` : "none";
+  const memoryStatus = appConfig.memory.budgetTokens > 0 ? "enabled (on-demand)" : "none";
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
   return {
