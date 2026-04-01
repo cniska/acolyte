@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { MemoryRecord } from "./memory-contract";
-import { createSqliteMemoryStore, migrateFromFilesystem } from "./memory-store";
+import { createSqliteMemoryStore, migrateFromFilesystem, migrateFromMarkdown } from "./memory-store";
 import { tempDb, tempDir } from "./test-utils";
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-memory-", createSqliteMemoryStore);
@@ -343,5 +343,42 @@ describe("migrateFromFilesystem", () => {
     const { existsSync } = await import("node:fs");
     expect(existsSync(join(home, ".acolyte", "distill"))).toBe(false);
     expect(existsSync(join(home, ".acolyte", "distill.bak"))).toBe(true);
+  });
+});
+
+describe("migrateFromMarkdown", () => {
+  test("migrates markdown memory files into SQLite store", async () => {
+    const home = createDir("acolyte-migrate-md-");
+    const cwd = createDir("acolyte-migrate-cwd-");
+    const userDir = join(home, ".acolyte", "memory", "user");
+    mkdirSync(userDir, { recursive: true });
+    writeFileSync(
+      join(userDir, "mem_abc123.md"),
+      "---\nid: mem_abc123\ncreatedAt: 2026-03-04T12:00:00.000Z\nscope: user\n---\nPrefer concise answers",
+      "utf8",
+    );
+
+    const store = createSqliteMemoryStore(join(home, "test.db"));
+    const count = await migrateFromMarkdown(home, cwd, store);
+    expect(count).toBe(1);
+
+    const records = await store.list({ kind: "stored" });
+    expect(records).toHaveLength(1);
+    expect(records[0]?.content).toBe("Prefer concise answers");
+    expect(records[0]?.id).toBe("mem_abc123");
+
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(userDir)).toBe(false);
+    expect(existsSync(`${userDir}.bak`)).toBe(true);
+    store.close();
+  });
+
+  test("returns 0 when no markdown memory directories exist", async () => {
+    const home = createDir("acolyte-migrate-md-");
+    const cwd = createDir("acolyte-migrate-cwd-");
+    const store = createSqliteMemoryStore(join(home, "test.db"));
+    const count = await migrateFromMarkdown(home, cwd, store);
+    expect(count).toBe(0);
+    store.close();
   });
 });

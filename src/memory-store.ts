@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { log } from "./log";
 import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
 
@@ -196,8 +196,12 @@ export function getDefaultMemoryStore(): MemoryStore {
   if (!defaultInstance) {
     defaultInstance = createSqliteMemoryStore();
     log.debug("memory.store.opened");
-    migrateFromFilesystem(homedir(), defaultInstance).catch((error) => {
+    const home = homedir();
+    migrateFromFilesystem(home, defaultInstance).catch((error) => {
       log.warn("memory.distill.migration_failed", { error: String(error) });
+    });
+    migrateFromMarkdown(home, process.cwd(), defaultInstance).catch((error) => {
+      log.warn("memory.markdown.migration_failed", { error: String(error) });
     });
     process.on("exit", () => defaultInstance?.close());
   }
@@ -223,7 +227,6 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
       try {
         const raw = await readFile(join(scopePath, file), "utf8");
         const json = JSON.parse(raw);
-        // TODO(cniska): Drop legacy field mapping at v1.0.0.
         if (json.tier && !json.kind) json.kind = json.tier;
         if (json.sessionId && !json.scopeKey) json.scopeKey = json.sessionId;
         const parsed = memoryRecordSchema.safeParse(json);
@@ -245,5 +248,67 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
   }
 
   log.info("memory.distill.migration_done", { migrated });
+  return migrated;
+}
+
+// TODO(cniska): Drop legacy markdown memory migration at v1.0.0.
+export async function migrateFromMarkdown(homeDir: string, cwd: string, store: MemoryStore): Promise<number> {
+  const dirs: { path: string; scope: "user" | "project"; scopeKey: string }[] = [
+    {
+      path: join(homeDir, ".acolyte", "memory", "user"),
+      scope: "user",
+      scopeKey: `user_${new Bun.CryptoHasher("sha1").update(resolve(homeDir)).digest("hex").slice(0, 12)}`,
+    },
+    {
+      path: join(cwd, ".acolyte", "memory", "project"),
+      scope: "project",
+      scopeKey: `proj_${new Bun.CryptoHasher("sha1").update(resolve(cwd)).digest("hex").slice(0, 12)}`,
+    },
+  ];
+
+  let migrated = 0;
+  for (const { path: dir, scope, scopeKey } of dirs) {
+    if (!existsSync(dir)) continue;
+    const files = await readdir(dir);
+    for (const file of files) {
+      if (!file.endsWith(".md")) continue;
+      try {
+        const raw = await readFile(join(dir, file), "utf8");
+        const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        if (!match) continue;
+        const meta: Record<string, string> = {};
+        for (const line of match[1].split("\n")) {
+          const idx = line.indexOf(":");
+          if (idx <= 0) continue;
+          meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+        }
+        const id = meta.id?.trim();
+        const createdAt = meta.createdAt?.trim();
+        const content = match[2].trim();
+        if (!id || !createdAt || !content) continue;
+
+        await store.write(
+          {
+            id,
+            scopeKey,
+            kind: "stored",
+            content,
+            createdAt,
+            tokenEstimate: Math.ceil(content.length / 4),
+          },
+          scope,
+        );
+        migrated += 1;
+      } catch {
+        // Skip unreadable files.
+      }
+    }
+    const backupPath = `${dir}.bak`;
+    if (!existsSync(backupPath)) {
+      await rename(dir, backupPath);
+    }
+  }
+
+  if (migrated > 0) log.info("memory.markdown.migration_done", { migrated });
   return migrated;
 }
