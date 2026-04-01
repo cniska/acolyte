@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.11.0 (2026-04-01)
+
+- docs: clean up benchmarks section headings (`2ac6df5d`)
+- refactor(skills): evolve plan skill into dialogue-driven design (`9f94d5a7`)
+- refactor(tools): namespace IDs and improve output (#70) (`52c7c838`)
+- chore(gitignore): ignore .claude (`9ac99957`)
+- refactor(lifecycle): separate effects from evaluators (#73) (`8a6e1eeb`)
+- refactor(core): remove modes (#78) (`4ff06723`)
+- feat(security): workspace sandbox (#79) (`8a2d1265`)
+- fix(stream): add step-start event for iteration boundaries (`c9487487`)
+- refactor(generate): use handler map for stream chunk processing (`0796f515`)
+- fix(cli): stream text deltas directly, remove line buffering (`13304620`)
+- fix(tui): atomic row update for text before tool output (`3076d377`)
+- refactor(workspace): use $FILES placeholder for format and lint commands (`3fcb4b1c`)
+- feat(providers): rate limit awareness (#87) (`70214a6c`)
+- refactor(lifecycle): single-pass execution (#80) (`5c90da17`)
+- feat(workspace): auto-install dependencies (#89) (`e78ba4f1`)
+- docs: tighten features, remove roadmap, update skill refs (`e856f749`)
+
+
 ## 0.10.0 (2026-03-26)
 
 - chore: simplify changelog format to raw commit messages (`56d9e091`)
