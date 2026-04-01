@@ -50,23 +50,35 @@ export type EcosystemDetector = {
   id: string;
   match: (workspace: string) => boolean;
   detectPackageManager?: (workspace: string) => string | null;
+  detectInstallCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectLintCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectFormatCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
   detectTestCommand?: (ctx: DetectContext) => WorkspaceCommand | null;
+  depsDir?: string;
 };
 
 function detectProfile(eco: EcosystemDetector, workspace: string): WorkspaceProfile | null {
   const packageManager = eco.detectPackageManager?.(workspace) ?? undefined;
   const ctx: DetectContext = { workspace, packageManager };
+  const installCommand = eco.detectInstallCommand?.(ctx) ?? undefined;
   const lintCommand = eco.detectLintCommand?.(ctx) ?? undefined;
   const formatCommand = eco.detectFormatCommand?.(ctx) ?? undefined;
   const testCommand = eco.detectTestCommand?.(ctx) ?? undefined;
-  return { ecosystem: eco.id, packageManager, lintCommand, formatCommand, testCommand };
+  return {
+    ecosystem: eco.id,
+    packageManager,
+    installCommand,
+    depsDir: eco.depsDir,
+    lintCommand,
+    formatCommand,
+    testCommand,
+  };
 }
 
 const typescriptDetector: EcosystemDetector = {
   id: "typescript",
   match: (workspace) => fileExists(workspace, "package.json") || fileExists(workspace, "deno.json"),
+  depsDir: "node_modules",
 
   detectPackageManager(workspace) {
     const pkg = readJson(workspace, "package.json");
@@ -78,6 +90,11 @@ const typescriptDetector: EcosystemDetector = {
     if (fileExists(workspace, "yarn.lock")) return "yarn";
     if (fileExists(workspace, "package-lock.json")) return "npm";
     return "npm";
+  },
+
+  detectInstallCommand(ctx) {
+    const pm = ctx.packageManager ?? "npm";
+    return { bin: pm, args: ["install"] };
   },
 
   detectLintCommand(ctx) {
@@ -148,12 +165,26 @@ const pythonDetector: EcosystemDetector = {
   id: "python",
   match: (workspace) =>
     fileExists(workspace, "pyproject.toml") || fileExists(workspace, "setup.py") || fileExists(workspace, "ruff.toml"),
+  depsDir: ".venv",
 
   detectPackageManager(workspace) {
     if (fileExists(workspace, "uv.lock")) return "uv";
     if (fileExists(workspace, "poetry.lock")) return "poetry";
     if (fileExists(workspace, "Pipfile.lock")) return "pipenv";
     return "pip";
+  },
+
+  detectInstallCommand(ctx) {
+    switch (ctx.packageManager) {
+      case "uv":
+        return { bin: "uv", args: ["sync"] };
+      case "poetry":
+        return { bin: "poetry", args: ["install"] };
+      case "pipenv":
+        return { bin: "pipenv", args: ["install"] };
+      default:
+        return { bin: "pip", args: ["install", "-e", "."] };
+    }
   },
 
   detectLintCommand(ctx) {
@@ -196,6 +227,7 @@ const pythonDetector: EcosystemDetector = {
 const goDetector: EcosystemDetector = {
   id: "go",
   match: (workspace) => fileExists(workspace, "go.mod"),
+  detectInstallCommand: () => ({ bin: "go", args: ["mod", "download"] }),
   detectLintCommand(ctx) {
     if (fileExists(ctx.workspace, ".golangci.yml") || fileExists(ctx.workspace, ".golangci.yaml"))
       return { bin: "golangci-lint", args: ["run", "$FILES"] };
@@ -208,6 +240,7 @@ const goDetector: EcosystemDetector = {
 const rustDetector: EcosystemDetector = {
   id: "rust",
   match: (workspace) => fileExists(workspace, "Cargo.toml"),
+  detectInstallCommand: () => ({ bin: "cargo", args: ["fetch"] }),
   detectLintCommand: () => ({ bin: "cargo", args: ["clippy", "--all-targets", "--", "-D", "warnings", "$FILES"] }),
   detectFormatCommand: () => ({ bin: "cargo", args: ["fmt", "--", "$FILES"] }),
   detectTestCommand: () => ({ bin: "cargo", args: ["test", "--", "$FILES"] }),

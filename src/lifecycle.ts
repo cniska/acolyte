@@ -8,7 +8,7 @@ import type {
   RunContext,
   ToolOutputEvent,
 } from "./lifecycle-contract";
-import { EFFECTS } from "./lifecycle-effects";
+import { POST_EFFECTS, PRE_EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { resolveLifecyclePolicy } from "./lifecycle-policy";
@@ -19,7 +19,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
-import { WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
@@ -127,12 +127,24 @@ function createRunContext(
     toolOutputHandler: null,
   };
 
-  session.onToolResult = (toolResult) => runEffects(ctx, toolResult);
+  session.onBeforeTool = (preCtx) => runPreEffects(ctx, preCtx);
+  session.onAfterTool = (toolResult) => runPostEffects(ctx, toolResult);
 
   return ctx;
 }
 
-function runEffects(
+function runPreEffects(
+  ctx: RunContext,
+  { toolId }: { toolId: string; args: Record<string, unknown> },
+): { append: string } | undefined {
+  if (DISCOVERY_TOOL_SET.has(toolId)) return undefined;
+  for (const effect of PRE_EFFECTS) {
+    effect.run(ctx);
+  }
+  return undefined;
+}
+
+function runPostEffects(
   ctx: RunContext,
   { toolId, args }: { toolId: string; args: Record<string, unknown> },
 ): { append: string } | undefined {
@@ -141,7 +153,7 @@ function runEffects(
   if (!path) return undefined;
   const paths = [path];
   let lintOutput: string | undefined;
-  for (const effect of EFFECTS) {
+  for (const effect of POST_EFFECTS) {
     const result = effect.run(ctx, paths);
     if (result.lintOutput) lintOutput = result.lintOutput;
   }
@@ -208,9 +220,10 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
-  if (profile.formatCommand || profile.lintCommand) {
+  if (profile.installCommand || profile.formatCommand || profile.lintCommand) {
     policy = {
       ...policy,
+      ...(!policy.installCommand && profile.installCommand ? { installCommand: profile.installCommand } : {}),
       ...(!policy.formatCommand && profile.formatCommand ? { formatCommand: profile.formatCommand } : {}),
       ...(!policy.lintCommand && profile.lintCommand ? { lintCommand: profile.lintCommand } : {}),
     };
@@ -232,6 +245,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     debug("lifecycle.workspace.profile", {
       ecosystem: profile.ecosystem,
       package_manager: profile.packageManager ?? null,
+      install_command: profile.installCommand ? formatWorkspaceCommand(profile.installCommand) : null,
       lint_command: profile.lintCommand ? formatWorkspaceCommand(profile.lintCommand) : null,
       format_command: profile.formatCommand ? formatWorkspaceCommand(profile.formatCommand) : null,
       test_command: profile.testCommand ? formatWorkspaceCommand(profile.testCommand) : null,

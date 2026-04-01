@@ -72,6 +72,8 @@ export async function runTool(
       throw error;
     }
 
+    const preOutput = session.onBeforeTool?.({ toolId, args });
+
     const cache = session.cache;
     const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
     invariant(
@@ -97,9 +99,10 @@ export async function runTool(
         cache.set(toolId, args, { result: taskResult });
         cache.populateSubEntries(toolId, args, taskResult);
       }
-      const feedback = session.onToolResult?.({ toolId, args: args, result: taskResult });
-      if (feedback?.append && typeof taskResult === "object" && taskResult !== null) {
-        (taskResult as Record<string, unknown>).lifecycleFeedback = feedback.append;
+      const postOutput = session.onAfterTool?.({ toolId, args: args, result: taskResult });
+      const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
+      if (append && typeof taskResult === "object" && taskResult !== null) {
+        (taskResult as Record<string, unknown>).lifecycleFeedback = append;
       }
       return taskResult;
     } catch (error) {

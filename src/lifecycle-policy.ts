@@ -15,6 +15,7 @@ export type LifecyclePolicy = {
   maxUnknownErrorsPerRequest: number;
   maxNudgesPerGeneration: number;
   toolTimeoutMs: number;
+  installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   lintCommand?: WorkspaceCommand;
 };
