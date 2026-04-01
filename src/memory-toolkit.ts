@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
 import { memoryScopeSchema } from "./memory-contract";
 import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
-import { addMemory, removeMemory, scopeFromKey } from "./memory-ops";
+import { addMemory, removeMemoryByPrefix, scopeFromKey } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -135,7 +135,7 @@ function createMemoryRemoveTool(_deps: ToolkitDeps, input: ToolkitInput) {
     outputSchema: memoryRemoveOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-remove", toolCallId, toolInput, async () => {
-        const result = await removeMemory(toolInput.id);
+        const result = await removeMemoryByPrefix(toolInput.id);
         return { kind: "memory-remove" as const, result: result.kind === "removed" ? "removed" : result.kind };
       });
     },

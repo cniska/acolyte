@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { addMemory, listMemories, removeMemory } from "../src/memory-ops";
+import { addMemory, listMemories, removeMemoryByPrefix } from "../src/memory-ops";
 
 const cwd = join(import.meta.dir, "..");
 const arg = process.argv[2];
@@ -27,7 +27,7 @@ if (!Array.isArray(facts) || facts.some((f) => typeof f !== "string")) {
 
 const existing = await listMemories({ scope: "project", workspace: cwd });
 for (const entry of existing) {
-  await removeMemory(entry.id, { workspace: cwd });
+  await removeMemoryByPrefix(entry.id, { workspace: cwd });
 }
 if (existing.length > 0) console.log(`Purged ${existing.length} existing project memories.`);
 
