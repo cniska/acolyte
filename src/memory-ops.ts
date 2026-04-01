@@ -101,5 +101,5 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope }),
   add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
-  remove: (prefix: string, scope?: MemoryScope) => removeMemory(prefix, { scope }),
+  remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope }),
 };

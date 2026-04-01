@@ -16,7 +16,7 @@
   "Workspace profile detection: ecosystem, package manager, format/lint/test commands inferred from project files. Used by lifecycle effects for format/lint runs on edited files.",
   "Memory pipeline: ingest → normalize → commit. Load is on-demand via memory toolkit (search/add/remove tools). All memories stored in unified SQLite table (memories) with scope, scope_key, and kind columns.",
   "Memory kinds: stored (explicit user/tool-created), observation (distill round-level facts), reflection (distill consolidated state). Embeddings in memory_embeddings table.",
-  "Distill promotion: observation lines tagged [project] promote to project scope, [user] to user scope. Untagged facts dropped. Session/continuation lines stay in session scope.",
+  "Distill: observer extracts facts after each request using @observe directives (@observe project, @observe user, @observe session). Each fact is stored individually with its own embedding.",
   "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Deduplication by normalized content.",
   "Test types: unit (*.test.ts), integration (*.int.test.ts), visual (*.tui.test.tsx), performance. Unit tests must avoid filesystem writes, subprocesses, and network calls.",
   "Verification: bun run verify runs lint + typecheck + test + audit. Always run before pushing.",

@@ -37,47 +37,33 @@ Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (d
 - Request-level off switch: `useMemory=false`
   - Skips memory commit for that request
   - Memory toolkit tools remain available (on-demand access is not gated)
-- `memory.budgetTokens`: legacy config, no longer used for injection
 
 ## Inspiration
 
-The observation/reflection model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory), which uses background Observer and Reflector agents to compress conversation history into a dense observation log. Acolyte adapts this idea into a 3-tier distill pipeline with explicit scope promotion instead of threshold-based compression.
+The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `@observe` directives and on-demand retrieval via the memory toolkit.
 
 ## Distill behavior
 
-- distill writes two record kinds:
-  - `observation`: round-level extracted facts
-  - `reflection`: consolidated cross-round state
-- commit scopes:
-  - `session` (active session continuity)
-  - `project` (workspace continuity across sessions)
-  - `user` (global user continuity across sessions)
-- promotion model:
-  - `distill_session` commit is automatic
-  - observation lines tagged `[project]` promote to project scope
-  - observation lines tagged `[user]` promote to user scope
-  - session/continuation lines stay in session scope
-  - untagged fact lines are dropped (strict tagged promotion, no fallback)
-  - malformed bracket tags (for example `[proj]`) are silently dropped and logged
-- load strategy:
-  - latest reflection first
-  - then post-reflection observations (fresh delta, newest first)
-- continuation state:
-  - preserve `Current task` and `Next step` when available
-  - continuation is sourced from typed fields (`currentTask`/`nextStep`)
+- the observer extracts facts from conversations, one per `@observe` directive
+- each fact is stored as an individual observation record with its own embedding
+- scope promotion via `@observe` directives:
+  - `@observe project` — project-scoped facts (architecture, tooling, conventions)
+  - `@observe user` — user-scoped facts (preferences that carry across projects)
+  - `@observe session` — session-scoped facts (in-progress state, temporary constraints)
+  - if a preference is project-scoped, use `@observe project` not `@observe user`
+  - untagged lines are dropped (strict directive promotion, no fallback)
+  - malformed directives (e.g. `@observe proj`) are silently dropped and logged
+- dedup: exact duplicate observations are skipped at write time
 
 ## Runtime guarantees
 
 - commit scheduling is best-effort background work at lifecycle finalize
 - commits are serialized per session per process through a keyed task queue seam
-- continuation state (`Current task`, `Next step`) is available through the memory toolkit when the model searches for it
 - agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget)
 - aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
-- repeated malformed-tag drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits with malformed tags
-- selection dedupes identical entry content to avoid wasting budget on repeats
-- normalization drops blank entries before selection
+- repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
 - distill record writes use SQLite with WAL mode for atomic persistence
 - semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the search query is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering
 
@@ -88,9 +74,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Extension seams
 
-- compose sources and strategies via `createMemoryRegistry()`
-- pipeline stage seams:
-  - `MemoryNormalizeStrategy`
+- compose sources via `createMemoryRegistry()`
 - keep lifecycle contract stable while swapping strategies/storage behind sources
 
 ## Memory toolkit
