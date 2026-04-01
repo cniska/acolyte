@@ -15,6 +15,7 @@ const phasePrepare = mock(() => ({
     inputBudgetTokens: 8000,
     systemPromptTokens: 0,
     toolTokens: 0,
+    memoryTokens: 0,
     messageTokens: 0,
     inputTruncated: false,
     includedHistoryMessages: 0,

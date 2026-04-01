@@ -63,18 +63,20 @@ describe("ChatResponse error field", () => {
 });
 
 describe("phaseFinalize", () => {
-  test("uses estimated prompt tokens when stream usage is unavailable", () => {
+  test("uses prompt breakdown totals for token accounting", () => {
     const ctx = createRunContext({
       promptUsage: {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
+        memoryTokens: 0,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,
         includedHistoryMessages: 3,
         totalHistoryMessages: 6,
       },
+      promptBreakdownTotals: { systemTokens: 48, toolTokens: 20, memoryTokens: 0, messageTokens: 12 },
       inputTokensAccum: 0,
       outputTokensAccum: 0,
       result: { text: "done", toolCalls: [] },
@@ -93,12 +95,14 @@ describe("phaseFinalize", () => {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
+        memoryTokens: 0,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,
         includedHistoryMessages: 3,
         totalHistoryMessages: 6,
       },
+      promptBreakdownTotals: { systemTokens: 48, toolTokens: 20, memoryTokens: 0, messageTokens: 12 },
       inputTokensAccum: 0,
       outputTokensAccum: 0,
       currentError: { message: "tool failed", category: "other" },
@@ -119,6 +123,7 @@ describe("phaseFinalize", () => {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
+        memoryTokens: 0,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,

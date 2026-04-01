@@ -83,6 +83,7 @@ describe("chat slash command visual regression", () => {
 
           System:             6.2k  39%
           Tools:              8.9k  56%
+          Memory:             0     0%
           Messages:           300   2%
     `),
     );

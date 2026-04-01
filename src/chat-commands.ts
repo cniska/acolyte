@@ -105,10 +105,8 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
       [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
-      if (tokens > 0) {
-        breakdownLabels.push(label);
-        breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
-      }
+      breakdownLabels.push(label);
+      breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
     }
     const breakdownAligned = alignCols(breakdownGrid);
     for (let i = 0; i < breakdownLabels.length; i++) {

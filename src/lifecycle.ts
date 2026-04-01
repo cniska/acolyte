@@ -1,3 +1,4 @@
+import { estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
@@ -16,6 +17,7 @@ import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
+import { OBSERVER_PROMPT } from "./memory-distill-prompts";
 import { commitMemorySources } from "./memory-registry";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
@@ -312,15 +314,21 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   // Fire-and-forget: memory commit errors are logged but do not affect the response.
   if (ctx.result && shouldCommitMemory(input)) {
+    const commitMessages = [
+      ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: ctx.request.message },
+    ];
+    // Estimate distill cost: observer prompt + input + estimated output
+    const distillInput = [...commitMessages, { role: "assistant", content: ctx.result.text }]
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n\n");
+    ctx.promptUsage.memoryTokens = estimateTokens(OBSERVER_PROMPT) + estimateTokens(distillInput);
     scheduleMemoryCommit(
       {
         sessionId: ctx.request.sessionId,
         resourceId: ctx.request.resourceId,
         workspace: ctx.workspace,
-        messages: [
-          ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
-          { role: "user", content: ctx.request.message },
-        ],
+        messages: commitMessages,
         output: ctx.result.text,
       },
       ctx.debug,

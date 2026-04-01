@@ -21,7 +21,7 @@ export function estimatePromptBreakdown(prompt: string, usage: PromptUsage): Pro
   return {
     systemTokens: usage.systemPromptTokens,
     toolTokens: usage.toolTokens,
-    memoryTokens: 0,
+    memoryTokens: usage.memoryTokens,
     messageTokens: estimateTokens(prompt),
   };
 }
