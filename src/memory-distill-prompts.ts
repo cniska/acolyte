@@ -15,7 +15,7 @@ in-progress state, temporary constraints, next steps
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
-export const REFLECTOR_PROMPT = `Consolidate these observations into a single knowledge document.
+export const REFLECTOR_PROMPT = `Consolidate these observations into a single fact list.
 
 Merge duplicates, resolve contradictions (newer wins), drop completed tasks. Keep specifics.
 
