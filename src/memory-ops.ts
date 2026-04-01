@@ -82,7 +82,7 @@ export async function addMemory(
   return toMemoryEntry(record);
 }
 
-export async function removeMemoryByPrefix(prefix: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {
+export async function removeMemory(prefix: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {
   const trimmed = prefix.trim();
   if (!trimmed) throw new Error("Memory prefix cannot be empty");
 
@@ -101,5 +101,5 @@ export async function removeMemoryByPrefix(prefix: string, options: MemoryOption
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope }),
   add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
-  remove: (prefix: string, scope?: MemoryScope) => removeMemoryByPrefix(prefix, { scope }),
+  remove: (prefix: string, scope?: MemoryScope) => removeMemory(prefix, { scope }),
 };

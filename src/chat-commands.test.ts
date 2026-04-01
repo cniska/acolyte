@@ -294,7 +294,7 @@ describe("chat-commands", () => {
         content: "unused",
         createdAt: "2026-02-21T00:00:00.000Z",
       }),
-      removeMemoryByPrefix: async () => ({
+      removeMemory: async () => ({
         kind: "removed" as const,
         entry: {
           id: "mem_deadbeef",
@@ -322,7 +322,7 @@ describe("chat-commands", () => {
         content: "unused",
         createdAt: "2026-02-21T00:00:00.000Z",
       }),
-      removeMemoryByPrefix: async () => ({ kind: "not_found" as const, prefix: "mem_zzz" }),
+      removeMemory: async () => ({ kind: "not_found" as const, prefix: "mem_zzz" }),
     };
     const { rows, stop } = await runCommand("/memory rm mem_zzz", { memoryApi });
     expect(stop).toBe(true);
@@ -338,7 +338,7 @@ describe("chat-commands", () => {
         content: "unused",
         createdAt: "2026-02-21T00:00:00.000Z",
       }),
-      removeMemoryByPrefix: async () => ({
+      removeMemory: async () => ({
         kind: "ambiguous" as const,
         prefix: "mem_a",
         matches: [

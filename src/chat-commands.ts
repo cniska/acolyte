@@ -8,7 +8,7 @@ import type { ConfigScope } from "./config-contract";
 import { formatRelativeTime, nowIso } from "./datetime";
 import { t } from "./i18n";
 import type { MemoryScope } from "./memory-contract";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory-ops";
+import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName } from "./skills";
@@ -149,7 +149,7 @@ export type CommandContext = {
   memoryApi?: {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
-    removeMemoryByPrefix?: typeof removeMemoryByPrefix;
+    removeMemory: typeof removeMemory;
   };
 };
 
@@ -181,7 +181,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   const memoryApi = {
     listMemories,
     addMemory,
-    removeMemoryByPrefix,
+    removeMemory,
     ...ctx.memoryApi,
   };
 
@@ -289,13 +289,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
     const prefix = parts[2];
-    const remove = memoryApi.removeMemoryByPrefix;
-    if (!remove) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.unavailable"))]);
-      return { stop: true, userText: text };
-    }
     try {
-      const removed = await remove(prefix);
+      const removed = await memoryApi.removeMemory(prefix);
       if (removed.kind === "not_found") {
         ctx.setRows((current) => [
           ...current,
