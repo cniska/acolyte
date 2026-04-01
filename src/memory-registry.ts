@@ -42,12 +42,7 @@ export const AVAILABLE_MEMORY_SOURCES: Record<MemorySourceId, MemorySource> = {
   distill_session: distillMemorySource,
 };
 
-export const DEFAULT_MEMORY_SOURCE_IDS: readonly MemorySourceId[] = [
-  "stored",
-  "distill_project",
-  "distill_user",
-  "distill_session",
-];
+export const DEFAULT_MEMORY_SOURCE_IDS: readonly MemorySourceId[] = ["distill_session"];
 
 export function resolveMemorySources(ids: readonly MemorySourceId[]): readonly MemorySource[] {
   const resolved = ids
