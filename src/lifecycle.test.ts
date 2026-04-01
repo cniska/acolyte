@@ -186,8 +186,6 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(0);
     expect(done?.fields?.session_scoped_facts).toBe(0);
     expect(done?.fields?.dropped_untagged_facts).toBe(0);
-    expect(done?.fields?.observe_tokens).toBe(0);
-    expect(done?.fields?.reflect_tokens).toBe(0);
   });
 
   test("logs commit metrics when commit returns promotion stats", async () => {

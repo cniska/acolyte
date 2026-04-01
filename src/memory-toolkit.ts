@@ -42,7 +42,7 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
     instruction:
       "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions.",
     inputSchema: z.object({
-      query: z.string().min(1),
+      query: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
       scope: memoryScopeSchema.extract(["user", "project"]).optional(),
       limit: z.number().int().min(1).max(20).optional(),
     }),
@@ -59,10 +59,17 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-search", toolCallId, toolInput, async () => {
-        const results = await searchMemories(toolInput.query, {
-          scope: toolInput.scope,
-          limit: toolInput.limit,
-        });
+        const queries = Array.isArray(toolInput.query) ? toolInput.query : [toolInput.query];
+        const seen = new Set<string>();
+        const results: MemoryRecord[] = [];
+        for (const q of queries) {
+          for (const r of await searchMemories(q, { scope: toolInput.scope, limit: toolInput.limit })) {
+            if (!seen.has(r.id)) {
+              seen.add(r.id);
+              results.push(r);
+            }
+          }
+        }
         return {
           kind: "memory-search" as const,
           results: results.map((r) => ({
