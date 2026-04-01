@@ -20,10 +20,7 @@ const PROJECTS: Project[] = [
   { name: "crush", url: "https://github.com/charmbracelet/crush.git", lang: "go" },
   { name: "aider", url: "https://github.com/Aider-AI/aider.git", lang: "python" },
   { name: "goose", url: "https://github.com/block/goose.git", lang: "rust" },
-  { name: "cline", url: "https://github.com/cline/cline.git", lang: "typescript" },
   { name: "qwen-code", url: "https://github.com/QwenLM/qwen-code.git", lang: "typescript" },
-  { name: "openhands", url: "https://github.com/All-Hands-AI/OpenHands.git", lang: "python" },
-  { name: "continue", url: "https://github.com/continuedev/continue.git", lang: "typescript" },
   { name: "plandex", url: "https://github.com/plandex-ai/plandex.git", lang: "go" },
   { name: "mistral-vibe", url: "https://github.com/mistralai/mistral-vibe.git", lang: "python" },
 ];
