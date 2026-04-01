@@ -185,6 +185,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       return new Map(rows.map((row) => [row.id, row.embedding]));
     },
     close() {
+      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
     },
   };
