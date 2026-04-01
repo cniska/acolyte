@@ -6,10 +6,8 @@
  * Usage:
  *   bun scripts/bootstrap-memory.ts
  */
-import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { addMemory, listMemories } from "../src/memory";
+import { addMemory, listMemories, removeMemory } from "../src/memory-ops";
 
 const cwd = join(import.meta.dir, "..");
 
@@ -49,15 +47,18 @@ const MEMORIES = [
   "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable.",
 ];
 
-const projectDir = join(cwd, ".acolyte", "memory", "project");
-if (existsSync(projectDir)) {
-  await rm(projectDir, { recursive: true });
-  console.log("Purged existing project memories.");
+// Purge existing project memories for idempotency
+const existing = await listMemories({ scope: "project", workspace: cwd });
+if (existing.length > 0) {
+  for (const entry of existing) {
+    await removeMemory(entry.id, { workspace: cwd });
+  }
+  console.log(`Purged ${existing.length} existing project memories.`);
 }
 
 for (const fact of MEMORIES) {
-  await addMemory(fact, { scope: "project", cwd });
+  await addMemory(fact, { scope: "project", workspace: cwd });
 }
 
-const entries = await listMemories({ scope: "project", cwd });
+const entries = await listMemories({ scope: "project", workspace: cwd });
 console.log(`Done. ${entries.length} project memories seeded.`);

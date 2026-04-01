@@ -1,24 +1,21 @@
 import { z } from "zod";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import type { MemoryEntry, MemoryScope } from "./memory-contract";
+import { type MemoryEntry, memoryScopeSchema } from "./memory-contract";
 import { cosineSimilarity, embedText } from "./memory-embedding";
+import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-const memoryScopeSchema = z.enum(["user", "project"]);
-const memoryScopeFilterSchema = z.enum(["user", "project", "all"]);
-
 const memorySearchInputSchema = z.object({
   query: z.string().min(1),
-  scope: memoryScopeFilterSchema.optional(),
+  scope: memoryScopeSchema.extract(["user", "project"]).optional(),
   limit: z.number().int().min(1).max(20).optional(),
 });
 
 const memoryResultSchema = z.object({
   id: z.string(),
   content: z.string(),
-  scope: memoryScopeSchema,
+  scope: memoryScopeSchema.extract(["user", "project"]),
   createdAt: z.string(),
 });
 
@@ -29,7 +26,7 @@ const memorySearchOutputSchema = z.object({
 
 const memoryAddInputSchema = z.object({
   content: z.string().min(1),
-  scope: memoryScopeSchema,
+  scope: memoryScopeSchema.extract(["user", "project"]),
 });
 
 const memoryAddOutputSchema = z.object({
@@ -76,7 +73,7 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
     outputSchema: memorySearchOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-search", toolCallId, toolInput, async () => {
-        const scope = (toolInput.scope ?? "all") as MemoryScope | "all";
+        const scope = toolInput.scope;
         const limit = toolInput.limit ?? 10;
         const entries = await listMemories({ scope });
         const ranked = await rankByRelevance(entries, toolInput.query, limit);
@@ -122,7 +119,7 @@ function createMemoryRemoveTool(_deps: ToolkitDeps, input: ToolkitInput) {
     outputSchema: memoryRemoveOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-remove", toolCallId, toolInput, async () => {
-        const result = await removeMemoryByPrefix(toolInput.id);
+        const result = await removeMemory(toolInput.id);
         return { kind: "memory-remove" as const, result: result.kind === "removed" ? "removed" : result.kind };
       });
     },
