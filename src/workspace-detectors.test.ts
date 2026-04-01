@@ -103,6 +103,25 @@ describe("typescript detector", () => {
     expect(profile.lintCommand?.bin).toBe("npx");
     expect(profile.formatCommand?.bin).toBe("npx");
   });
+
+  test("detects install command from package manager", () => {
+    const ws = makeWorkspace({ "package.json": '{"scripts":{}}', "bun.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "bun", args: ["install"] });
+    expect(profile.depsDir).toBe("node_modules");
+  });
+
+  test("detects npm install for npm projects", () => {
+    const ws = makeWorkspace({ "package.json": '{"scripts":{}}', "package-lock.json": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "npm", args: ["install"] });
+  });
+
+  test("detects pnpm install for pnpm projects", () => {
+    const ws = makeWorkspace({ "package.json": '{"packageManager":"pnpm@9.1.0","scripts":{}}' });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "pnpm", args: ["install"] });
+  });
 });
 
 describe("python detector", () => {
@@ -128,6 +147,25 @@ describe("python detector", () => {
     const ws = makeWorkspace({ "ruff.toml": "" });
     const profile = resolveWorkspaceProfile(ws);
     expect(profile.packageManager).toBe("pip");
+  });
+
+  test("detects uv sync as install command", () => {
+    const ws = makeWorkspace({ "pyproject.toml": "[tool.ruff]\n", "uv.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "uv", args: ["sync"] });
+    expect(profile.depsDir).toBe(".venv");
+  });
+
+  test("detects poetry install for poetry projects", () => {
+    const ws = makeWorkspace({ "pyproject.toml": "", "poetry.lock": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "poetry", args: ["install"] });
+  });
+
+  test("defaults to pip install for pip projects", () => {
+    const ws = makeWorkspace({ "ruff.toml": "" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "pip", args: ["install", "-e", "."] });
   });
 
   test("detects ruff lint and format from ruff.toml", () => {
@@ -167,6 +205,12 @@ describe("go detector", () => {
     expect(profile.formatCommand).toEqual({ bin: "gofmt", args: ["-w", "$FILES"] });
     expect(profile.testCommand).toEqual({ bin: "go", args: ["test", "$FILES"] });
   });
+
+  test("detects go mod download as install command", () => {
+    const ws = makeWorkspace({ "go.mod": "module example.com/foo" });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "go", args: ["mod", "download"] });
+  });
 });
 
 describe("rust detector", () => {
@@ -180,6 +224,12 @@ describe("rust detector", () => {
     });
     expect(profile.formatCommand).toEqual({ bin: "cargo", args: ["fmt", "--", "$FILES"] });
     expect(profile.testCommand).toEqual({ bin: "cargo", args: ["test", "--", "$FILES"] });
+  });
+
+  test("detects cargo fetch as install command", () => {
+    const ws = makeWorkspace({ "Cargo.toml": '[package]\nname = "foo"' });
+    const profile = resolveWorkspaceProfile(ws);
+    expect(profile.installCommand).toEqual({ bin: "cargo", args: ["fetch"] });
   });
 });
 

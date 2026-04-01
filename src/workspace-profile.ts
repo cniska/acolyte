@@ -48,6 +48,8 @@ export function runCommandWithFiles(workspace: string, command: WorkspaceCommand
 export type WorkspaceProfile = {
   ecosystem?: string;
   packageManager?: string;
+  installCommand?: WorkspaceCommand;
+  depsDir?: string;
   lintCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   testCommand?: WorkspaceCommand;
