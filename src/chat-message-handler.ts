@@ -16,7 +16,7 @@ import {
 import type { Client, PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { log } from "./log";
-import { addMemory } from "./memory";
+import { addMemory } from "./memory-ops";
 import { palette } from "./palette";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
