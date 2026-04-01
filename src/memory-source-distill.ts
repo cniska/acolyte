@@ -186,6 +186,7 @@ function splitScopedObservation(observed: string): {
   };
 }
 
+export type DistillTokenUsage = { observeTokens: number; reflectTokens: number };
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 const defaultDistillConfig = (): DistillConfig => appConfig.distill;
@@ -272,13 +273,15 @@ async function commitDistillForKey(
   runner: DistillRunner,
   config: DistillConfig,
   policy: MemoryPolicy,
-): Promise<void> {
+): Promise<DistillTokenUsage> {
+  const result: DistillTokenUsage = { observeTokens: 0, reflectTokens: 0 };
   const existingEntries = await ds.list({ scopeKey: key });
   const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
-  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return;
+  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed))
+    return result;
 
   const observation: MemoryRecord = {
-    id: `dst_${createId()}`,
+    id: `mem_${createId()}`,
     scopeKey: key,
     kind: "observation",
     content: observed,
@@ -288,6 +291,7 @@ async function commitDistillForKey(
   };
   await ds.write(observation);
   embedAndStore(ds, observation.id, key, observed);
+  result.observeTokens = observation.tokenEstimate;
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
 
   const entries = [...existingEntries, observation];
@@ -298,7 +302,7 @@ async function commitDistillForKey(
     ? observations.filter((e) => e.createdAt > latestReflection.createdAt)
     : observations;
   const totalTokens = pendingObservations.reduce((sum, e) => sum + e.tokenEstimate, 0);
-  if (totalTokens < config.reflectionThresholdTokens) return;
+  if (totalTokens < config.reflectionThresholdTokens) return result;
 
   const allObservations = pendingObservations.map((o) => o.content).join("\n\n---\n\n");
   let reflected = "";
@@ -309,13 +313,13 @@ async function commitDistillForKey(
         : "\n\nCompression retry: keep all critical facts while reducing length and merging redundant details.";
     const reflectedRaw = await runner(REFLECTOR_PROMPT, `${allObservations}${promptSuffix}`);
     reflected = clampToTokenEstimate(reflectedRaw, config.maxOutputTokens);
-    if (!reflected.trim()) return;
+    if (!reflected.trim()) return result;
     if (!needsReflectionRetry(reflected, totalTokens, config)) break;
   }
-  if (needsReflectionRetry(reflected, totalTokens, config)) return;
+  if (needsReflectionRetry(reflected, totalTokens, config)) return result;
 
   const reflection: MemoryRecord = {
-    id: `dst_${createId()}`,
+    id: `mem_${createId()}`,
     scopeKey: key,
     kind: "reflection",
     content: reflected,
@@ -325,12 +329,14 @@ async function commitDistillForKey(
   };
   await ds.write(reflection);
   embedAndStore(ds, reflection.id, key, reflected);
+  result.reflectTokens = reflection.tokenEstimate;
   log.debug("memory.distill.reflection_written", { key, id: reflection.id, tokens: reflection.tokenEstimate });
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
   const stale = [...observations, ...reflections];
   for (const r of stale) await ds.remove(r.id);
   log.debug("memory.distill.gc", { key, removed: stale.length });
+  return result;
 }
 
 export function createDistillMemorySource(
@@ -367,14 +373,18 @@ export function createDistillMemorySource(
       const observedRaw = await runner(OBSERVER_PROMPT, distillInput);
       const observed = clampToTokenEstimate(observedRaw, config.maxOutputTokens);
       if (!observed.trim()) return;
+      const observerPromptTokens =
+        estimateTokens(OBSERVER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
       if (commitScope !== "session") {
-        await commitDistillForKey(ds, key, observed, runner, config, policy);
+        const usage = await commitDistillForKey(ds, key, observed, runner, config, policy);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
         return {
           projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
           userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
           sessionScopedFacts: 0,
           droppedUntaggedFacts: 0,
+          observeTokens: observerPromptTokens + usage.observeTokens,
+          reflectTokens: usage.reflectTokens,
         };
       }
 
@@ -391,17 +401,28 @@ export function createDistillMemorySource(
       } else {
         malformedRejectStreak = 0;
       }
+      let totalObserve = observerPromptTokens;
+      let totalReflect = 0;
       if (scoped.session) {
-        await commitDistillForKey(ds, key, scoped.session, runner, config, policy);
+        const u = await commitDistillForKey(ds, key, scoped.session, runner, config, policy);
+        totalObserve += u.observeTokens;
+        totalReflect += u.reflectTokens;
       }
-
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) await commitDistillForKey(ds, projectKey, scoped.project, runner, config, policy);
+        if (projectKey) {
+          const u = await commitDistillForKey(ds, projectKey, scoped.project, runner, config, policy);
+          totalObserve += u.observeTokens;
+          totalReflect += u.reflectTokens;
+        }
       }
       if (scoped.user) {
         const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) await commitDistillForKey(ds, userKey, scoped.user, runner, config, policy);
+        if (userKey) {
+          const u = await commitDistillForKey(ds, userKey, scoped.user, runner, config, policy);
+          totalObserve += u.observeTokens;
+          totalReflect += u.reflectTokens;
+        }
       }
       log.debug("memory.distill.commit_done", {
         key,
@@ -415,6 +436,8 @@ export function createDistillMemorySource(
         userPromotedFacts: scoped.userCount,
         sessionScopedFacts: scoped.sessionCount,
         droppedUntaggedFacts: scoped.droppedUntaggedCount,
+        observeTokens: totalObserve,
+        reflectTokens: totalReflect,
       };
     },
   };

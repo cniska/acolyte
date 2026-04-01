@@ -36,6 +36,11 @@ function migrateLegacySchema(db: Database): void {
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN record_id TO id");
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN scope_key TO scope");
   }
+  // Migrate dst_ IDs to mem_ IDs (safe on fresh DBs — WHERE clause matches nothing)
+  if (hasLegacyTable || hasLegacyEmb) {
+    db.run("UPDATE memories SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
+    db.run("UPDATE memory_embeddings SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
+  }
 }
 
 function initSchema(db: Database): void {

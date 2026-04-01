@@ -41,6 +41,8 @@ export type MemoryCommitMetrics = {
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
+  observeTokens?: number;
+  reflectTokens?: number;
 };
 
 export type MemorySource = {
@@ -49,14 +51,11 @@ export type MemorySource = {
   commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 };
 
-export const distillIdSchema = domainIdSchema("dst");
-export type DistillId = z.infer<typeof distillIdSchema>;
-
 export const memoryKindSchema = z.enum(["observation", "reflection", "stored"]);
 export type MemoryKind = z.infer<typeof memoryKindSchema>;
 
 export const memoryRecordSchema = z.object({
-  id: distillIdSchema,
+  id: memoryIdSchema,
   scopeKey: z.string().min(1),
   kind: memoryKindSchema,
   content: z.string().min(1),

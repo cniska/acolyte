@@ -22,7 +22,7 @@ describe("createSqliteMemoryStore", () => {
   test("write + list round-trips a record", async () => {
     const store = createStore();
     const record: MemoryRecord = {
-      id: "dst_test001",
+      id: "mem_test001",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "project uses Bun, not Node",
@@ -38,7 +38,7 @@ describe("createSqliteMemoryStore", () => {
   test("list returns records sorted chronologically", async () => {
     const store = createStore();
     const older: MemoryRecord = {
-      id: "dst_older001",
+      id: "mem_older001",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "first observation",
@@ -46,7 +46,7 @@ describe("createSqliteMemoryStore", () => {
       tokenEstimate: 3,
     };
     const newer: MemoryRecord = {
-      id: "dst_newer001",
+      id: "mem_newer001",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "second observation",
@@ -63,7 +63,7 @@ describe("createSqliteMemoryStore", () => {
   test("list isolates sessions", async () => {
     const store = createStore();
     const record1: MemoryRecord = {
-      id: "dst_sess1rec",
+      id: "mem_sess1rec",
       scopeKey: "sess_session1",
       kind: "observation",
       content: "session 1 fact",
@@ -71,7 +71,7 @@ describe("createSqliteMemoryStore", () => {
       tokenEstimate: 4,
     };
     const record2: MemoryRecord = {
-      id: "dst_sess2rec",
+      id: "mem_sess2rec",
       scopeKey: "sess_session2",
       kind: "observation",
       content: "session 2 fact",
@@ -91,7 +91,7 @@ describe("createSqliteMemoryStore", () => {
   test("remove deletes a record by id", async () => {
     const store = createStore();
     const record: MemoryRecord = {
-      id: "dst_rmtest01",
+      id: "mem_rmtest01",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "to be removed",
@@ -100,20 +100,20 @@ describe("createSqliteMemoryStore", () => {
     };
     await store.write(record);
     expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(1);
-    await store.remove("dst_rmtest01");
+    await store.remove("mem_rmtest01");
     expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(0);
   });
 
   test("remove is a no-op for nonexistent record", async () => {
     const store = createStore();
-    await store.remove("dst_missing01");
+    await store.remove("mem_missing01");
     expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(0);
   });
 
   test("write replaces existing record with same id", async () => {
     const store = createStore();
     const record: MemoryRecord = {
-      id: "dst_replace1",
+      id: "mem_replace1",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "original",
@@ -130,7 +130,7 @@ describe("createSqliteMemoryStore", () => {
   test("list filters by kind", async () => {
     const store = createStore();
     await store.write({
-      id: "dst_obs001",
+      id: "mem_obs001",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "an observation",
@@ -150,7 +150,7 @@ describe("createSqliteMemoryStore", () => {
     expect(stored[0]?.id).toBe("mem_stored01");
     const observations = await store.list({ kind: "observation" });
     expect(observations).toHaveLength(1);
-    expect(observations[0]?.id).toBe("dst_obs001");
+    expect(observations[0]?.id).toBe("mem_obs001");
   });
 
   test("list filters by scope and kind", async () => {
@@ -164,7 +164,7 @@ describe("createSqliteMemoryStore", () => {
       tokenEstimate: 2,
     });
     await store.write({
-      id: "dst_user01",
+      id: "mem_user02",
       scopeKey: "user_abc123",
       kind: "observation",
       content: "user observation",
@@ -182,7 +182,7 @@ describe("createSqliteMemoryStore", () => {
     expect(records).toEqual([]);
 
     const invalidSessionRecord: MemoryRecord = {
-      id: "dst_invalid01",
+      id: "mem_invalid01",
       scopeKey: "../escape",
       kind: "observation",
       content: "should not be written",
@@ -197,7 +197,7 @@ describe("createSqliteMemoryStore", () => {
   test("supports resource-scoped memory keys", async () => {
     const store = createStore();
     const userRecord: MemoryRecord = {
-      id: "dst_user001",
+      id: "mem_user001",
       scopeKey: "user_abc123",
       kind: "observation",
       content: "user fact",
@@ -205,7 +205,7 @@ describe("createSqliteMemoryStore", () => {
       tokenEstimate: 2,
     };
     const projectRecord: MemoryRecord = {
-      id: "dst_proj001",
+      id: "mem_proj001",
       scopeKey: "proj_abc123",
       kind: "observation",
       content: "project fact",
@@ -223,8 +223,8 @@ describe("embedding storage", () => {
   test("writeEmbedding + getEmbedding round-trips", async () => {
     const store = createStore();
     const embedding = Buffer.from(new Float32Array([0.1, 0.2, 0.3]).buffer);
-    store.writeEmbedding("dst_emb001", "sess_abc123", embedding);
-    const result = store.getEmbedding("dst_emb001");
+    store.writeEmbedding("mem_emb001", "sess_abc123", embedding);
+    const result = store.getEmbedding("mem_emb001");
     expect(result).not.toBeNull();
     if (!result) throw new Error("expected embedding");
     const arr = new Float32Array(result.buffer, result.byteOffset, result.byteLength / 4);
@@ -235,22 +235,22 @@ describe("embedding storage", () => {
 
   test("getEmbedding returns null for missing record", async () => {
     const store = createStore();
-    expect(store.getEmbedding("dst_missing")).toBeNull();
+    expect(store.getEmbedding("mem_missing")).toBeNull();
   });
 
   test("removeEmbedding deletes embedding", async () => {
     const store = createStore();
     const embedding = Buffer.from(new Float32Array([1, 2, 3]).buffer);
-    store.writeEmbedding("dst_rm001", "sess_abc123", embedding);
-    expect(store.getEmbedding("dst_rm001")).not.toBeNull();
-    store.removeEmbedding("dst_rm001");
-    expect(store.getEmbedding("dst_rm001")).toBeNull();
+    store.writeEmbedding("mem_rm001", "sess_abc123", embedding);
+    expect(store.getEmbedding("mem_rm001")).not.toBeNull();
+    store.removeEmbedding("mem_rm001");
+    expect(store.getEmbedding("mem_rm001")).toBeNull();
   });
 
   test("remove record also removes embedding", async () => {
     const store = createStore();
     const record: MemoryRecord = {
-      id: "dst_cascade1",
+      id: "mem_cascade1",
       scopeKey: "sess_abc123",
       kind: "observation",
       content: "test",
@@ -273,7 +273,7 @@ describe("migrateFromFilesystem", () => {
 
     // Legacy format uses "tier" not "kind"
     const legacyRecord = {
-      id: "dst_migr001",
+      id: "mem_migr001",
       scopeKey: "sess_abc123",
       tier: "observation",
       content: "migrated fact",
@@ -308,11 +308,11 @@ describe("migrateFromFilesystem", () => {
     const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
     mkdirSync(scopeDir, { recursive: true });
 
-    writeFileSync(join(scopeDir, "dst_broken.json"), "not valid json", "utf8");
+    writeFileSync(join(scopeDir, "mem_broken.json"), "not valid json", "utf8");
 
     // Legacy format uses "tier" not "kind"
     const validRecord = {
-      id: "dst_valid001",
+      id: "mem_valid001",
       scopeKey: "sess_abc123",
       tier: "observation",
       content: "valid record",
@@ -334,7 +334,7 @@ describe("migrateFromFilesystem", () => {
     const home = createDir("acolyte-migrate-");
     const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
     mkdirSync(scopeDir, { recursive: true });
-    writeFileSync(join(scopeDir, "dst_broken.json"), "not valid json", "utf8");
+    writeFileSync(join(scopeDir, "mem_broken.json"), "not valid json", "utf8");
 
     const store = createSqliteMemoryStore(join(home, "test.db"));
     const count = await migrateFromFilesystem(home, store);

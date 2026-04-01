@@ -59,7 +59,7 @@ describe("distillMemorySource", () => {
     test("returns observation content when no reflections", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "user prefers Bun",
@@ -67,7 +67,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 4,
         },
         {
-          id: "dst_obs00002",
+          id: "mem_obs00002",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "auth module in src/auth/",
@@ -83,7 +83,7 @@ describe("distillMemorySource", () => {
     test("returns latest reflection and preserves observations created after it", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "old observation",
@@ -91,7 +91,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_ref00001",
+          id: "mem_ref00001",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "older reflection",
@@ -99,7 +99,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_ref00002",
+          id: "mem_ref00002",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "latest reflection",
@@ -107,7 +107,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_obs00002",
+          id: "mem_obs00002",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "new observation",
@@ -123,7 +123,7 @@ describe("distillMemorySource", () => {
     test("orders post-reflection observations by recency", async () => {
       const store = createMockStore([
         {
-          id: "dst_ref00001",
+          id: "mem_ref00001",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "latest reflection",
@@ -131,7 +131,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "older observation",
@@ -139,7 +139,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_obs00002",
+          id: "mem_obs00002",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "newer observation",
@@ -155,7 +155,7 @@ describe("distillMemorySource", () => {
     test("uses continuation from most recent post-reflection observation", async () => {
       const store = createMockStore([
         {
-          id: "dst_ref00001",
+          id: "mem_ref00001",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "latest reflection",
@@ -163,7 +163,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "older observation",
@@ -173,7 +173,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_obs00002",
+          id: "mem_obs00002",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "newer observation",
@@ -197,7 +197,7 @@ describe("distillMemorySource", () => {
     test("appends continuation lines when available", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "recent observation",
@@ -219,7 +219,7 @@ describe("distillMemorySource", () => {
     test("strips continuation lines from observation content and emits typed continuation once", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "recent observation\nCurrent task: Fix memory retrieval\nNext step: Add regression tests",
@@ -241,7 +241,7 @@ describe("distillMemorySource", () => {
     test("loadEntries marks continuation lines as continuation entries", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs00001",
+          id: "mem_obs00001",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "recent observation",
@@ -297,7 +297,7 @@ describe("distillMemorySource", () => {
     test("reflects only observations created since latest reflection", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs_old",
+          id: "mem_obs_old",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "old observation",
@@ -305,7 +305,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 3,
         },
         {
-          id: "dst_ref_old",
+          id: "mem_ref_old",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "old reflection",
@@ -342,7 +342,7 @@ describe("distillMemorySource", () => {
     test("removes consolidated observations and old reflections after writing new reflection", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs_old",
+          id: "mem_obs_old",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "old observation that was before the reflection",
@@ -350,7 +350,7 @@ describe("distillMemorySource", () => {
           tokenEstimate: 10,
         },
         {
-          id: "dst_ref_old",
+          id: "mem_ref_old",
           scopeKey: "sess_test0001",
           kind: "reflection",
           content: "old reflection",
@@ -380,8 +380,8 @@ describe("distillMemorySource", () => {
       expect(store.written.filter((e) => e.kind === "reflection")).toHaveLength(1);
       // Old observation (pre-reflection) and old reflection were GC'd
       // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
-      expect(store.removed).toContain("dst_ref_old");
-      expect(store.removed.some((id) => id !== "dst_ref_old")).toBe(true);
+      expect(store.removed).toContain("mem_ref_old");
+      expect(store.removed.some((id) => id !== "mem_ref_old")).toBe(true);
       // Only the new reflection remains in the store
       const remaining = await store.list({ scopeKey: "sess_test0001" });
       expect(remaining).toHaveLength(1);
@@ -489,7 +489,7 @@ describe("distillMemorySource", () => {
     test("skips consecutive duplicate observations", async () => {
       const store = createMockStore([
         {
-          id: "dst_obs_prev",
+          id: "mem_obs_prev",
           scopeKey: "sess_test0001",
           kind: "observation",
           content: "prefers short answers",
@@ -600,7 +600,7 @@ describe("distillMemorySource", () => {
       });
       // Malformed tags are silently dropped; valid facts are committed.
       expect(store.written.length).toBeGreaterThan(0);
-      expect(metrics).toEqual({
+      expect(metrics).toMatchObject({
         projectPromotedFacts: 1,
         userPromotedFacts: 1,
         sessionScopedFacts: 1,
@@ -706,7 +706,7 @@ describe("distillMemorySource", () => {
         output: "done",
       });
       // Malformed tag is silently dropped; its following fact line becomes untagged.
-      expect(metrics).toEqual({
+      expect(metrics).toMatchObject({
         projectPromotedFacts: 2,
         userPromotedFacts: 1,
         sessionScopedFacts: 3,
@@ -794,7 +794,7 @@ describe("distillMemorySource", () => {
           messages: [{ role: "user", content: "hello" }],
           output: "done",
         });
-        expect(metrics, fixture.name).toEqual(fixture.expectedMetrics);
+        expect(metrics, fixture.name).toMatchObject(fixture.expectedMetrics);
         expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
       }
     });
