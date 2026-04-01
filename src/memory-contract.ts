@@ -54,17 +54,28 @@ export type MemorySource = {
 export const distillIdSchema = domainIdSchema("dst");
 export type DistillId = z.infer<typeof distillIdSchema>;
 
-export const distillTierSchema = z.enum(["observation", "reflection"]);
-export type DistillTier = z.infer<typeof distillTierSchema>;
+export const memoryKindSchema = z.enum(["observation", "reflection", "stored"]);
+export type MemoryKind = z.infer<typeof memoryKindSchema>;
 
-export const distillRecordSchema = z.object({
+export const memoryRecordSchema = z.object({
   id: distillIdSchema,
   sessionId: z.string().min(1),
-  tier: distillTierSchema,
+  kind: memoryKindSchema,
   content: z.string().min(1),
   currentTask: z.string().min(1).optional(),
   nextStep: z.string().min(1).optional(),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
 });
-export type DistillRecord = z.infer<typeof distillRecordSchema>;
+export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
+
+export interface MemoryStore {
+  list(options?: { scope?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
+  write(record: MemoryRecord, scope?: string): Promise<void>;
+  remove(id: string): Promise<void>;
+  writeEmbedding(id: string, scope: string, embedding: Buffer): void;
+  removeEmbedding(id: string): void;
+  getEmbedding(id: string): Buffer | null;
+  getEmbeddings(ids: string[]): Map<string, Buffer>;
+  close(): void;
+}
