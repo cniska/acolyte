@@ -24,7 +24,7 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
   return keys;
 }
 
-function scopeFromKey(key: string): MemoryScope {
+export function scopeFromKey(key: string): MemoryScope {
   return key.startsWith("proj_") ? "project" : "user";
 }
 

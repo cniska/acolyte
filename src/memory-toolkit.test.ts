@@ -13,20 +13,44 @@ describe("searchMemories", () => {
     await addMemory("alpha fact", { scope: "user", store });
     await addMemory("beta fact", { scope: "user", store });
     await addMemory("gamma fact", { scope: "user", store });
-    const result = await searchMemories("anything", 2, store);
+    const result = await searchMemories("anything", { limit: 2, store });
     expect(result).toHaveLength(2);
   });
 
   test("returns all entries when limit exceeds count", async () => {
     const store = createStore();
     await addMemory("only fact", { scope: "user", store });
-    const result = await searchMemories("only", 10, store);
+    const result = await searchMemories("only", { limit: 10, store });
     expect(result).toHaveLength(1);
   });
 
   test("returns empty array for empty store", async () => {
     const store = createStore();
-    const result = await searchMemories("query", 5, store);
+    const result = await searchMemories("query", { store });
     expect(result).toEqual([]);
+  });
+
+  test("filters by scope", async () => {
+    const store = createStore();
+    await addMemory("user preference", { scope: "user", store });
+    await addMemory("project convention", { scope: "project", store });
+    const userOnly = await searchMemories("anything", { scope: "user", store });
+    expect(userOnly).toHaveLength(1);
+    expect(userOnly[0]?.content).toBe("user preference");
+    const projectOnly = await searchMemories("anything", { scope: "project", store });
+    expect(projectOnly).toHaveLength(1);
+    expect(projectOnly[0]?.content).toBe("project convention");
+  });
+
+  test("scope filter applies before limit", async () => {
+    const store = createStore();
+    await addMemory("user a", { scope: "user", store });
+    await addMemory("user b", { scope: "user", store });
+    await addMemory("project a", { scope: "project", store });
+    const result = await searchMemories("anything", { scope: "user", limit: 5, store });
+    expect(result).toHaveLength(2);
+    for (const r of result) {
+      expect(r.scopeKey.startsWith("user_")).toBe(true);
+    }
   });
 });

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
 import { memoryScopeSchema } from "./memory-contract";
 import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
-import { addMemory, removeMemory } from "./memory-ops";
+import { addMemory, removeMemory, scopeFromKey } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -48,20 +48,21 @@ const memoryRemoveOutputSchema = z.object({
 
 export async function searchMemories(
   query: string,
-  limit: number,
-  store: MemoryStore = getDefaultMemoryStore(),
+  options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore },
 ): Promise<MemoryRecord[]> {
-  const records = store.list({ kind: "stored" });
-  const all = await records;
-  if (all.length === 0) return [];
+  const store = options?.store ?? getDefaultMemoryStore();
+  const limit = options?.limit ?? 10;
+  const all = await store.list({ kind: "stored" });
+  const filtered = options?.scope ? all.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : all;
+  if (filtered.length === 0) return [];
 
   const queryEmbedding = await embedText(query);
-  if (!queryEmbedding) return all.slice(0, limit);
+  if (!queryEmbedding) return filtered.slice(0, limit);
 
-  const ids = all.map((r) => r.id);
+  const ids = filtered.map((r) => r.id);
   const embeddings = store.getEmbeddings(ids);
 
-  const scored = all.map((record) => {
+  const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
     const score = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
     return { record, score };
@@ -83,17 +84,16 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
     outputSchema: memorySearchOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-search", toolCallId, toolInput, async () => {
-        const limit = toolInput.limit ?? 10;
-        const results = await searchMemories(toolInput.query, limit);
-        const filtered = toolInput.scope
-          ? results.filter((r) => r.scopeKey.startsWith(toolInput.scope === "project" ? "proj_" : "user_"))
-          : results;
+        const results = await searchMemories(toolInput.query, {
+          scope: toolInput.scope,
+          limit: toolInput.limit,
+        });
         return {
           kind: "memory-search" as const,
-          results: filtered.map((r) => ({
+          results: results.map((r) => ({
             id: r.id,
             content: r.content,
-            scope: r.scopeKey.startsWith("proj_") ? ("project" as const) : ("user" as const),
+            scope: scopeFromKey(r.scopeKey),
             createdAt: r.createdAt,
           })),
         };

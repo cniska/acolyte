@@ -14,10 +14,10 @@
   "Query vs mutation tools have different design constraints. Query tools get simple vocabularies; mutation tools may expose scoping constraints. Do not unify contracts just because they share implementation.",
   "Workspace sandbox: tool filesystem access is scoped to workspace root. Fail-closed with realpath validation. Symlink escapes blocked. Violations return E_SANDBOX_VIOLATION.",
   "Workspace profile detection: ecosystem, package manager, format/lint/test commands inferred from project files. Used by lifecycle effects for format/lint runs on edited files.",
-  "Memory pipeline: ingest → normalize → select → inject → commit. All memories stored in unified SQLite table (memories) with scope, scope_key, and kind columns.",
+  "Memory pipeline: ingest → normalize → commit. Load is on-demand via memory toolkit (search/add/remove tools). All memories stored in unified SQLite table (memories) with scope, scope_key, and kind columns.",
   "Memory kinds: stored (explicit user/tool-created), observation (distill round-level facts), reflection (distill consolidated state). Embeddings in memory_embeddings table.",
   "Distill promotion: observation lines tagged [project] promote to project scope, [user] to user scope. Untagged facts dropped. Session/continuation lines stay in session scope.",
-  "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Continuation entries always rank first. Deduplication by normalized content.",
+  "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Deduplication by normalized content.",
   "Test types: unit (*.test.ts), integration (*.int.test.ts), visual (*.tui.test.tsx), performance. Unit tests must avoid filesystem writes, subprocesses, and network calls.",
   "Verification: bun run verify runs lint + typecheck + test + audit. Always run before pushing.",
   "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable.",
@@ -27,7 +27,7 @@
   "Session model: tracks chat context and message history. State persists outside lifecycle and is passed in per request.",
 
   "Skills: declarative prompt extensions with metadata and tool restrictions. Loaded from .agents/skills/*/SKILL.md with YAML frontmatter (name, description).",
-  "Soul prompt: loaded from docs/soul.md. Combined with AGENTS.md as repository instructions. Memory context injected during request setup.",
+  "Soul prompt: loaded from docs/soul.md. Combined with AGENTS.md as repository instructions.",
   "Agent instructions: core instructions + per-tool instructions + workspace instructions. Tool instructions come from each tool's instruction field.",
 
   "Protocol events: status, reasoning, tool-call, tool-output, tool-result, text-delta, error, done. Every request has exactly one terminal event (done or error).",

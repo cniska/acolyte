@@ -11,30 +11,33 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 - **Memory Pipeline**: staged flow:
 
 ```text
-ingest → normalize → select → inject → commit
+ingest → normalize → commit
 ```
 
-- **Memory Source**: pluggable source that provides entries and optional commit behavior
-- **Memory Source Strategy**: configured source IDs and order (`memorySources`)
+- **Memory Toolkit**: on-demand tools (`memory-search`, `memory-add`, `memory-remove`) that the model invokes when it needs context instead of upfront injection
+- **Memory Source**: pluggable source that provides commit behavior
 - **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory
+
+### On-demand access
+
+Memory is no longer injected into the system prompt. Instead, the model uses the memory toolkit to search for relevant context when it determines it needs it. This replaces the previous injection-based model where memory was loaded and inserted into every request upfront.
 
 ## Sources
 
-- `stored`: explicit stored memories (`user`/`project` scope, kind `stored`)
-- `distill_user`: cross-session user distill context
-- `distill_project`: cross-session project distill context (workspace-keyed)
-- `distill_session`: session distill context (active session continuity)
+Default commit sources are `distill_session`, `distill_project`, `distill_user`.
 
-Default source order is `stored, distill_project, distill_user, distill_session`.
+- `distill_session`: session distill context (active session continuity)
+- `distill_project`: cross-session project distill context (workspace-keyed)
+- `distill_user`: cross-session user distill context
+
+Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill round-level facts), `reflection` (distill consolidated state).
 
 ## Controls
 
 - Request-level off switch: `useMemory=false`
-  - Disables memory injection for that request
   - Skips memory commit for that request
-- Config-level off switch: `memoryBudgetTokens=0`
-  - Disables memory injection globally
-  - Source strategy config is still retained
+  - Memory toolkit tools remain available (on-demand access is not gated)
+- `memory.budgetTokens`: legacy config, no longer used for injection
 
 ## Inspiration
 
@@ -67,8 +70,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 - commit scheduling is best-effort background work at lifecycle finalize
 - commits are serialized per session per process through a keyed task queue seam
-- selection keeps one continuation state (`Current task`, `Next step`) based on source-provided continuation metadata, choosing the freshest that fits budget
-- soul prompt injection adds an explicit resume block from structured continuation state when available
+- continuation state (`Current task`, `Next step`) is available through the memory toolkit when the model searches for it
 - agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget)
 - aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
@@ -77,7 +79,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - selection dedupes identical entry content to avoid wasting budget on repeats
 - normalization drops blank entries before selection
 - distill record writes use SQLite with WAL mode for atomic persistence
-- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first
+- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the search query is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering
 
 ## Storage
 
@@ -86,22 +88,30 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Extension seams
 
-- configure source order/enablement with `memorySources`
-- compose sources and strategies via `createMemoryRegistry(sources, normalizeEntries, selectEntries)`
+- compose sources and strategies via `createMemoryRegistry()`
 - pipeline stage seams:
   - `MemoryNormalizeStrategy`
-  - `MemorySelectionStrategy`
 - keep lifecycle contract stable while swapping strategies/storage behind sources
+
+## Memory toolkit
+
+The memory toolkit (`memory-toolkit.ts`) exposes three tools:
+
+- **memory-search**: search stored memories by query, with optional scope filter. Uses semantic ranking when embeddings are available.
+- **memory-add**: add a new stored memory with content and scope (`user` or `project`).
+- **memory-remove**: remove a stored memory by ID.
+
+These tools are the primary interface for the model to access and manage memory at runtime.
 
 ## Key files
 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
-- `src/memory-pipeline.ts` — staged pipeline (ingest, normalize, select, inject, commit)
-- `src/memory-registry.ts` — source composition, strategy injection, and pipeline orchestration
+- `src/memory-pipeline.ts` — staged pipeline (ingest, normalize, commit)
+- `src/memory-registry.ts` — source composition and pipeline orchestration
 - `src/memory-source-distill.ts` — distill memory source with observer and reflector agents
-- `src/memory-source-stored.ts` — stored memory source
+- `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
 - `src/memory-distill-prompts.ts` — observer and reflector prompt templates
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
 

@@ -87,15 +87,14 @@ resolve → prepare → generate → finalize
 
 ```text
 Memory Engine
-  → Memory Pipeline (ingest → normalize → select → inject → commit)
-  → Memory context in system prompt
+  → Memory Pipeline (ingest → normalize → commit)
+  → Memory Toolkit (search, add, remove) — on-demand access
 ```
 
 - Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns
-- **source strategy:** configured source IDs and order (`memorySources`) determine source composition
-- **pipeline seams:** normalization and selection are strategy-injectable behind registry contracts
-- **selection default:** one continuation cue is kept; selection prefers the freshest continuation that fits budget
-- **integration:** memory context is injected during request setup; commit is best-effort background work at finalize
+- **pipeline seams:** normalization is strategy-injectable behind registry contracts
+- **on-demand access:** the model uses memory toolkit tools (`memory-search`, `memory-add`, `memory-remove`) to access and manage memory at runtime instead of upfront injection
+- **integration:** commit is best-effort background work at finalize; memory access is on-demand via toolkit
 - **details:** see [Memory](./memory.md)
 
 ## Dependency injection
