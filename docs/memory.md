@@ -24,13 +24,9 @@ Memory is no longer injected into the system prompt. Instead, the model uses the
 
 ## Sources
 
-Default commit sources are `distill_session`, `distill_project`, `distill_user`.
+The observer runs after each request and promotes facts to the appropriate scope via `@observe` directives.
 
-- `distill_session`: session distill context (active session continuity)
-- `distill_project`: cross-session project distill context (workspace-keyed)
-- `distill_user`: cross-session user distill context
-
-Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill round-level facts), `reflection` (distill consolidated state).
+Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill-extracted facts).
 
 ## Controls
 
@@ -92,11 +88,11 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
-- `src/memory-pipeline.ts` — staged pipeline (ingest, normalize, commit)
+- `src/memory-pipeline.ts` — commit pipeline orchestration
 - `src/memory-registry.ts` — source composition and pipeline orchestration
-- `src/memory-source-distill.ts` — distill memory source with observer and reflector agents
+- `src/memory-source-distill.ts` — distill memory source with observer agent
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
-- `src/memory-distill-prompts.ts` — observer and reflector prompt templates
+- `src/memory-distill-prompts.ts` — observer prompt
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
 
 ## Further reading

@@ -18,20 +18,10 @@ export interface MemoryEntry {
 
 export type RemoveMemoryResult = { kind: "removed"; entry: MemoryEntry } | { kind: "not_found"; id: string };
 
-export type MemoryLoadContext = {
+export type MemoryCommitContext = {
   readonly sessionId?: string;
   readonly resourceId?: ResourceId;
   readonly workspace?: string;
-  readonly query?: string;
-};
-
-export type MemorySourceEntry = {
-  readonly content: string;
-  readonly isContinuation?: boolean;
-  readonly recordId?: string;
-};
-
-export type MemoryCommitContext = MemoryLoadContext & {
   readonly messages: readonly { role: string; content: string }[];
   readonly output: string;
 };
@@ -49,7 +39,7 @@ export type MemorySource = {
   commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 };
 
-export const memoryKindSchema = z.enum(["observation", "reflection", "stored"]);
+export const memoryKindSchema = z.enum(["observation", "stored"]);
 export type MemoryKind = z.infer<typeof memoryKindSchema>;
 
 export const memoryRecordSchema = z.object({

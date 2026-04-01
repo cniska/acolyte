@@ -24,7 +24,6 @@ function createDefaultConfig() {
     transportMode: "rpc" as const,
     distillMessageThreshold: 20,
     distillMaxOutputTokens: 1_000,
-    memoryBudgetTokens: 1_200,
     contextMaxTokens: 100_000,
     maxHistoryMessages: 40,
     maxMessageTokens: 600,
@@ -122,7 +121,6 @@ function serializeToml(config: Config): string {
     lines.push(`distillMessageThreshold = ${config.distillMessageThreshold}`);
   if (typeof config.distillMaxOutputTokens === "number")
     lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
-  if (typeof config.memoryBudgetTokens === "number") lines.push(`memoryBudgetTokens = ${config.memoryBudgetTokens}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
@@ -152,7 +150,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     distillModel: config.distillModel ?? model,
     distillMessageThreshold: config.distillMessageThreshold ?? defaults.distillMessageThreshold,
     distillMaxOutputTokens: config.distillMaxOutputTokens ?? defaults.distillMaxOutputTokens,
-    memoryBudgetTokens: config.memoryBudgetTokens ?? defaults.memoryBudgetTokens,
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,

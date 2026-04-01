@@ -55,7 +55,7 @@ describe("searchMemories", () => {
     }
   });
 
-  test("ranks by pre-computed embeddings when available", async () => {
+  test("stores and retrieves pre-computed embeddings", async () => {
     const store = createStore();
     const a = await addMemory("tool execution uses runTool", { scope: "user", store });
     const b = await addMemory("unrelated weather fact", { scope: "user", store });

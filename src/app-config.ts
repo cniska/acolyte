@@ -30,9 +30,6 @@ export const appConfig = {
     messageThreshold: fileConfig.distillMessageThreshold,
     maxOutputTokens: fileConfig.distillMaxOutputTokens,
   },
-  memory: {
-    budgetTokens: fileConfig.memoryBudgetTokens,
-  },
   embedding: {
     model: fileConfig.embeddingModel,
   },

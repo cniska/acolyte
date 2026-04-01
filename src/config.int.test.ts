@@ -182,7 +182,6 @@ describe("config store", () => {
         "temperature = 0.3",
         "distillMessageThreshold = 25",
         "distillMaxOutputTokens = 1500",
-        "memoryBudgetTokens = 1500",
         "contextMaxTokens = 7000",
         "maxHistoryMessages = 50",
         "maxMessageTokens = 700",

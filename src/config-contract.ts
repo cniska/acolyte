@@ -13,7 +13,6 @@ export type MemorySourceId = z.infer<typeof memorySourceIdSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
 const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
-const MAX_MEMORY_BUDGET_TOKENS = 8_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
@@ -39,7 +38,6 @@ export interface Config {
   distillModel?: string;
   distillMessageThreshold?: number;
   distillMaxOutputTokens?: number;
-  memoryBudgetTokens?: number;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -62,7 +60,6 @@ export interface ResolvedConfig {
   distillModel: string;
   distillMessageThreshold: number;
   distillMaxOutputTokens: number;
-  memoryBudgetTokens: number;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
@@ -106,7 +103,6 @@ export function toConfig(input: Record<string, unknown>): Config {
       parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
       input.distillMaxOutputTokens,
     ),
-    memoryBudgetTokens: parseField(parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
