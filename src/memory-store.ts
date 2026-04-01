@@ -17,12 +17,12 @@ function scopeTypeFromKey(scopeKey: string): MemoryScope {
   throw new Error(`Unknown scope key prefix: ${scopeKey}`);
 }
 
-function initSchema(db: Database): void {
-  // TODO(cniska): Drop legacy table migration at v1.0.0.
-  const hasLegacy = db
+// TODO(cniska): Drop migrateLegacySchema at v1.0.0.
+function migrateLegacySchema(db: Database): void {
+  const hasLegacyTable = db
     .prepare<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type='table' AND name='distill_records'")
     .get();
-  if (hasLegacy) {
+  if (hasLegacyTable) {
     db.run("ALTER TABLE distill_records RENAME TO memories");
     db.run("ALTER TABLE memories RENAME COLUMN tier TO kind");
     db.run("ALTER TABLE memories ADD COLUMN scope TEXT NOT NULL DEFAULT ''");
@@ -35,7 +35,6 @@ function initSchema(db: Database): void {
       END
     `);
   }
-  // TODO(cniska): Drop legacy embeddings migration at v1.0.0.
   const hasLegacyEmb = db
     .prepare<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type='table' AND name='distill_embeddings'")
     .get();
@@ -44,6 +43,10 @@ function initSchema(db: Database): void {
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN record_id TO id");
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN scope_key TO scope");
   }
+}
+
+function initSchema(db: Database): void {
+  migrateLegacySchema(db);
   db.run(`
     CREATE TABLE IF NOT EXISTS memories (
       id TEXT PRIMARY KEY,
