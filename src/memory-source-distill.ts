@@ -3,12 +3,18 @@ import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import { log } from "./log";
-import type { DistillRecord, MemoryCommitMetrics, MemorySource, MemorySourceEntry } from "./memory-contract";
+import type {
+  MemoryCommitMetrics,
+  MemoryRecord,
+  MemorySource,
+  MemorySourceEntry,
+  MemoryStore,
+} from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
-import { createSqliteDistillStore, type DistillStore, migrateFromFilesystem } from "./memory-distill-store";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
 import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
+import { createSqliteMemoryStore, migrateFromFilesystem } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -22,12 +28,13 @@ export type DistillConfig = {
   maxOutputTokens: number;
 };
 
-let defaultStore: DistillStore | null = null;
+let defaultStore: MemoryStore | null = null;
 let defaultSelectionStrategy: MemorySelectionStrategy | null = null;
 
-function getDefaultStore(): DistillStore {
+function getDefaultStore(): MemoryStore {
   if (!defaultStore) {
-    defaultStore = createSqliteDistillStore();
+    defaultStore = createSqliteMemoryStore();
+    log.debug("memory.store.opened");
     defaultSelectionStrategy = createSemanticSelection(defaultStore);
     migrateFromFilesystem(homedir(), defaultStore).catch((error) => {
       log.warn("memory.distill.migration_failed", { error: String(error) });
@@ -52,13 +59,13 @@ type DistillSourceOptions = {
   policy?: MemoryPolicy;
 };
 
-function embedAndStore(ds: DistillStore, recordId: string, scopeKey: string, content: string): void {
+function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): void {
   embedText(content)
     .then((vec) => {
-      if (vec) ds.writeEmbedding(recordId, scopeKey, embeddingToBuffer(vec));
+      if (vec) ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
     })
     .catch((error) => {
-      log.warn("memory.distill.embed_failed", { recordId, error: String(error) });
+      log.warn("memory.distill.embed_failed", { id, error: String(error) });
     });
 }
 
@@ -245,14 +252,14 @@ function resolveDistillScopeKey(
   return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
-async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonly MemorySourceEntry[]> {
-  const entries = await ds.list(key);
-  const reflections = entries.filter((e) => e.tier === "reflection");
+async function loadEntriesForKey(ds: MemoryStore, key: string): Promise<readonly MemorySourceEntry[]> {
+  const entries = await ds.list({ scope: key });
+  const reflections = entries.filter((e) => e.kind === "reflection");
   if (reflections.length > 0) {
     // Safe: guarded by `reflections.length > 0` above.
-    const latestReflection = reflections[reflections.length - 1] as DistillRecord;
+    const latestReflection = reflections[reflections.length - 1] as MemoryRecord;
     const observationsSinceReflection = entries
-      .filter((e) => e.tier === "observation" && e.createdAt > latestReflection.createdAt)
+      .filter((e) => e.kind === "observation" && e.createdAt > latestReflection.createdAt)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const mostRecent = observationsSinceReflection[0] ?? latestReflection;
     const reflectionContent = stripContinuationLines(latestReflection.content);
@@ -266,7 +273,7 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
     ];
   }
   const observationEntries = entries
-    .filter((e) => e.tier === "observation")
+    .filter((e) => e.kind === "observation")
     .slice()
     .reverse();
   const mostRecent = observationEntries[0];
@@ -280,21 +287,21 @@ async function loadEntriesForKey(ds: DistillStore, key: string): Promise<readonl
 }
 
 async function commitDistillForKey(
-  ds: DistillStore,
+  ds: MemoryStore,
   key: string,
   observed: string,
   runner: DistillRunner,
   config: DistillConfig,
   policy: MemoryPolicy,
 ): Promise<void> {
-  const existingEntries = await ds.list(key);
-  const latestObservation = existingEntries.filter((e) => e.tier === "observation").slice(-1)[0];
+  const existingEntries = await ds.list({ scope: key });
+  const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
   if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return;
 
-  const observation: DistillRecord = {
+  const observation: MemoryRecord = {
     id: `dst_${createId()}`,
     sessionId: key,
-    tier: "observation",
+    kind: "observation",
     content: observed,
     ...parseContinuationState(observed),
     createdAt: nowIso(),
@@ -305,8 +312,8 @@ async function commitDistillForKey(
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
 
   const entries = [...existingEntries, observation];
-  const observations = entries.filter((e) => e.tier === "observation");
-  const reflections = entries.filter((e) => e.tier === "reflection");
+  const observations = entries.filter((e) => e.kind === "observation");
+  const reflections = entries.filter((e) => e.kind === "reflection");
   const latestReflection = reflections[reflections.length - 1];
   const pendingObservations = latestReflection
     ? observations.filter((e) => e.createdAt > latestReflection.createdAt)
@@ -328,10 +335,10 @@ async function commitDistillForKey(
   }
   if (needsReflectionRetry(reflected, totalTokens, config)) return;
 
-  const reflection: DistillRecord = {
+  const reflection: MemoryRecord = {
     id: `dst_${createId()}`,
     sessionId: key,
-    tier: "reflection",
+    kind: "reflection",
     content: reflected,
     ...parseContinuationState(reflected),
     createdAt: nowIso(),
@@ -343,12 +350,12 @@ async function commitDistillForKey(
 
   // GC: remove all prior observations and reflections now consolidated into the new reflection.
   const stale = [...observations, ...reflections];
-  await Promise.all(stale.map((r) => ds.remove(r.id, key)));
+  for (const r of stale) ds.remove(r.id);
   log.debug("memory.distill.gc", { key, removed: stale.length });
 }
 
 export function createDistillMemorySource(
-  injectedStore?: DistillStore,
+  injectedStore?: MemoryStore,
   runner: DistillRunner = runDistillLLM,
   options: DistillSourceOptions = {},
 ): MemorySource {

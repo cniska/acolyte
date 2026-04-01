@@ -1,5 +1,5 @@
-import { listMemories } from "./memory";
 import type { MemorySource } from "./memory-contract";
+import { listMemories } from "./memory-ops";
 
 const STORED_MEMORY_LIMIT = 8;
 
