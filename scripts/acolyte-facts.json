@@ -20,5 +20,19 @@
   "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Continuation entries always rank first. Deduplication by normalized content.",
   "Test types: unit (*.test.ts), integration (*.int.test.ts), visual (*.tui.test.tsx), performance. Unit tests must avoid filesystem writes, subprocesses, and network calls.",
   "Verification: bun run verify runs lint + typecheck + test + audit. Always run before pushing.",
-  "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable."
+  "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable.",
+
+  "Error handling: tools emit coded errors (ToolError with code and kind). The model reads errors and decides recovery. Keep error contracts minimal and descriptive.",
+  "Task lifecycle: accepted → queued → running → completed|failed|cancelled. One active task per session. Queue policy enforces ordering and capacity.",
+  "Session model: tracks chat context and message history. State persists outside lifecycle and is passed in per request.",
+
+  "Skills: declarative prompt extensions with metadata and tool restrictions. Loaded from .agents/skills/*/SKILL.md with YAML frontmatter (name, description).",
+  "Soul prompt: loaded from docs/soul.md. Combined with AGENTS.md as repository instructions. Memory context injected during request setup.",
+  "Agent instructions: core instructions + per-tool instructions + workspace instructions. Tool instructions come from each tool's instruction field.",
+
+  "Protocol events: status, reasoning, tool-call, tool-output, tool-result, text-delta, error, done. Every request has exactly one terminal event (done or error).",
+  "RPC: WebSocket JSON envelopes with transport request id (rpc_*) and domain task id (task_*). Auth via Bearer token in sec-websocket-protocol.",
+
+  "Config scopes: user (~/.acolyte/config.toml) and project (<cwd>/.acolyte/config.toml). Project overrides user.",
+  "Provider support: OpenAI, Anthropic, Google with configurable base URLs. Local models via OpenAI-compatible endpoints (Ollama, vLLM)."
 ]
