@@ -16,7 +16,6 @@ Check the entire project. This is a release gate, not a diff review.
 - `scripts/release.sh`
 - `CHANGELOG.md`
 - `docs/features.md`
-- `docs/roadmap.md`
 
 ## Workflow
 
@@ -29,7 +28,6 @@ Check the entire project. This is a release gate, not a diff review.
    - no `TODO` or `FIXME` in non-test source files
    - commits exist since the last tag
    - `docs/features.md` covers capabilities introduced by commits since last tag (cross-reference `feat` commit subjects)
-   - new features in `docs/roadmap.md` are accounted for (moved to shipped sections where applicable)
    - run the `/benchmark` skill to refresh `docs/benchmarks.md`
 3. Determine version bump from commits since last tag:
    - run `git describe --tags --abbrev=0 --match 'v[0-9]*'` to find the previous tag

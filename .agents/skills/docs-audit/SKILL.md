@@ -34,4 +34,4 @@ Then: **Canonical updates needed** | **Optional cleanup**.
 - Generic prose polishing
 - Duplicate explanations across docs
 - Implementation detail where a concept is enough
-- Treating roadmap notes as shipped behavior
+- Treating issue descriptions as shipped behavior

@@ -4,6 +4,7 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 
 ## Overview
 
+- [Features](./features.md) — shipped, user-visible capabilities
 - [Why Acolyte](./why-acolyte.md) — observable execution and full developer control over AI coding
 - [Comparison](./comparison.md) — how Acolyte compares to other AI coding agents
 - [Benchmarks](./benchmarks.md) — measured code quality comparisons across agents

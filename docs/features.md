@@ -4,74 +4,55 @@ Shipped, user-visible capabilities.
 
 ## CLI
 
-- interactive chat
-- one-shot run command with `--model` and `--file` flags
-- one-shot skill execution via `acolyte skill <name> <prompt>` with `--model` flag
-- session resume and session listing
-- configurable locale via `config set locale <tag>`
-- fuzzy search and autocomplete with suggestion and correction for file paths, sessions, commands, and skills
-- model picker that queries provider APIs for available models (`/model <id>`)
-- automatic server startup/reuse for chat and run command
-- server control commands (`start`, `stop`, `restart`, `ps`, `status`)
-- status guidance when daemon server is not running
-- managed vs unmanaged server state visibility in CLI status/stop flows
-- managed server replacement when daemon target changes
-- `@path` file/directory attachments
-- slash command support
-- skill invocation via slash commands
-- HTTP and RPC transport support
-- multi-line input support
-- custom terminal renderer with React reconciler, static/active split, and structured output
+- interactive chat and one-shot run/skill commands
+- persistent daemon with automatic startup and lifecycle management
+- session resume and history
+- model picker that queries provider APIs for available models
+- fuzzy search and autocomplete for file paths, sessions, commands, and skills
+- file and directory attachments via @path
+- slash commands and skill invocation
+- configurable locale
+- multi-line input
+- custom terminal renderer with React reconciler and structured output
 
 ## Agent execution
 
-- lifecycle-driven execution with explicit resolve/prepare/generate/finalize phases
-- explicit lifecycle completion signals so the agent can stop cleanly when work is done or no changes are needed
-- automatic format and lint effects applied per-tool-result via lifecycle callback
-- step budget enforcement for cost protection
-- streaming progress output for tool activity with real-time token usage
-- proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation
+- single-pass lifecycle with resolve/prepare/generate/finalize phases
+- explicit completion signals (done, no-op, blocked)
+- pre/post-tool-call effect pipeline (auto-install deps, format, lint)
+- workspace profile detection with auto-detected install, lint, format, and test commands
 - provider rate limit awareness with sliding window pacing and exponential backoff
-- two-tier result cache for read-only and search tools with SQLite-backed cross-task persistence
-- workspace profile detection for ecosystem, package manager, lint, format, and test commands
-- automatic formatting of edited files via detected formatter
-- automatic linting of edited files via detected linter
-- ecosystem-aware scoped test runner (`test-run`) with auto-detected test command
-- inline task checklist for multi-step tasks, pinned between transcript and input
+- proactive token budgeting with system prompt reservation and priority-based allocation
+- step budget enforcement for cost protection
+- two-tier result cache for read-only and search tools with cross-task persistence
+- streaming progress output with real-time token usage
+- inline task checklist for multi-step tasks
 
 ## Tools
 
-- find/search/read files
+- find/search/read files with gitignore awareness
 - edit/create/delete files
-- scan/edit code via AST-based tools
+- AST-based structural code editing
 - git status/diff/log/show/add/commit
-- shell command execution
-- scoped test execution via detected test runner
+- shell and test execution
 - web search/fetch
-- file discovery respects `.gitignore` (including nested)
 
 ## Memory
 
-- user-scoped saved memory
-- project-scoped saved memory
-- memory inspect/list/remove commands
+- three-tier persistent memory (session, project, user)
 - context distillation with automatic observation and reflection
-- session-scoped distill memory
-- SQLite-backed persistent storage for distill records
-- semantic recall with provider embeddings and cosine similarity ranking
+- semantic recall with embeddings and cosine similarity ranking
+- memory inspect/list/remove commands
 
 ## Safety and control
 
-- workspace sandbox boundary enforcement for tool filesystem access
-- cooperative interruption and queued message handling over RPC
+- workspace sandbox boundary enforcement for filesystem access
+- cooperative interruption and queued message handling
 
 ## Diagnostics
 
-- status command with `--json` output
-- token usage reporting per turn with prompt breakdown (system, tools, memory, messages) and share percentages
-- lifecycle trace command with SQLite-backed indexed queries (`acolyte trace`)
-- logs command with level, session, and time filtering (`acolyte logs`)
-- managed daemon log file at `~/.acolyte/daemons/server.log`
-- configurable log format (`logfmt` or `json`) via `logFormat` config key
-- scoped debug logging via `ACOLYTE_DEBUG` tags (supports wildcard matching)
-- status output resource diagnostics for prompt/skill/config load problems
+- lifecycle trace with SQLite-backed indexed queries
+- structured logs with level, session, and time filtering
+- token usage reporting with prompt breakdown per turn
+- status command with JSON output
+- scoped debug logging with wildcard tag matching
