@@ -5,6 +5,7 @@ import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
+import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
@@ -122,6 +123,7 @@ export type LifecycleInput = {
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
+  onMemoryCommit?: (metrics: MemoryCommitMetrics) => void;
   shouldYield?: () => boolean;
 };
 

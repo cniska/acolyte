@@ -51,6 +51,7 @@ export function shouldCommitMemory(input: LifecycleInput): boolean {
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
+  onCommit?: (metrics: MemoryCommitMetrics) => void,
   commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitMemorySources,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
     memoryCommitQueue.enqueue(key, job),
@@ -65,12 +66,15 @@ export function scheduleMemoryCommit(
   debug("lifecycle.memory.commit_scheduled", debugFields);
   void enqueueFn(key, async () => {
     const metrics = await commitFn(commitCtx);
+    if (metrics) onCommit?.(metrics);
     debug("lifecycle.memory.commit_done", {
       ...debugFields,
       project_promoted_facts: metrics?.projectPromotedFacts ?? 0,
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
+      observe_tokens: metrics?.observeTokens ?? 0,
+      reflect_tokens: metrics?.reflectTokens ?? 0,
     });
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
@@ -320,6 +324,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
         output: ctx.result.text,
       },
       ctx.debug,
+      input.onMemoryCommit,
     );
   }
 

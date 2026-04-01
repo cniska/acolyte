@@ -21,4 +21,5 @@ export type RunChatHandlers = {
   onError: (payload: StreamErrorPayload) => void;
   isCancelled?: () => boolean;
   shouldYield?: () => boolean;
+  onMemoryCommit?: (metrics: import("./memory-contract").MemoryCommitMetrics) => void;
 };

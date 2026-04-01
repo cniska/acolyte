@@ -210,6 +210,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           });
         handlers.onEvent(event as Record<string, unknown>);
       },
+      onMemoryCommit: handlers.onMemoryCommit,
       onDebug: (entry) => {
         logLifecycleDebugEntry({
           requestId,
