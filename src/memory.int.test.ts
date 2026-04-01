@@ -1,38 +1,29 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
-import { tempDir } from "./test-utils";
+import { addMemory, listMemories, removeMemoryByPrefix } from "./memory-ops";
+import { createSqliteMemoryStore } from "./memory-store";
+import { tempDb } from "./test-utils";
 
-const { createDir, cleanupDirs } = tempDir();
-afterEach(cleanupDirs);
+const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
+afterEach(cleanup);
 
-describe("markdown memory store", () => {
-  test("writes user memory as markdown with frontmatter", async () => {
-    const homeDir = createDir("acolyte-memory-home-");
-    const cwd = createDir("acolyte-memory-cwd-");
-    const entry = await addMemory("Prefer concise answers", { scope: "user", homeDir, cwd });
+describe("sqlite memory store", () => {
+  test("adds user memory and retrieves it", async () => {
+    const db = createDb();
+    const entry = await addMemory("Prefer concise answers", { scope: "user", store: db });
 
-    const memoryDir = join(homeDir, ".acolyte", "memory", "user");
-    const files = readdirSync(memoryDir).filter((name) => name.endsWith(".md"));
-    expect(files.length).toBe(1);
-    expect(files[0]).toBe(`${entry.id}.md`);
-    const raw = readFileSync(join(memoryDir, files[0] ?? ""), "utf8");
-    expect(raw).toContain("---");
-    expect(raw).toContain(`id: ${entry.id}`);
-    expect(raw).toContain("scope: user");
-    expect(raw).toContain("Prefer concise answers");
+    expect(entry.id).toMatch(/^mem_/);
+    expect(entry.content).toBe("Prefer concise answers");
+    expect(entry.scope).toBe("user");
   });
 
   test("supports separate project and user memories", async () => {
-    const homeDir = createDir("acolyte-memory-home-");
-    const cwd = createDir("acolyte-memory-cwd-");
-    await addMemory("Global preference", { scope: "user", homeDir, cwd });
-    await addMemory("Project convention", { scope: "project", homeDir, cwd });
+    const db = createDb();
+    await addMemory("Global preference", { scope: "user", store: db });
+    await addMemory("Project convention", { scope: "project", store: db });
 
-    const projectOnly = await listMemories({ scope: "project", homeDir, cwd });
-    const userOnly = await listMemories({ scope: "user", homeDir, cwd });
-    const all = await listMemories({ scope: "all", homeDir, cwd });
+    const projectOnly = await listMemories({ scope: "project", store: db });
+    const userOnly = await listMemories({ scope: "user", store: db });
+    const all = await listMemories({ store: db });
 
     expect(projectOnly).toHaveLength(1);
     expect(projectOnly[0]?.scope).toBe("project");
@@ -44,19 +35,17 @@ describe("markdown memory store", () => {
   });
 
   test("removeMemoryByPrefix removes a matching memory", async () => {
-    const homeDir = createDir("acolyte-memory-home-");
-    const cwd = createDir("acolyte-memory-cwd-");
-    const entry = await addMemory("Disposable note", { scope: "user", homeDir, cwd });
-    const result = await removeMemoryByPrefix(entry.id.slice(0, 12), { homeDir, cwd });
+    const db = createDb();
+    const entry = await addMemory("Disposable note", { scope: "user", store: db });
+    const result = await removeMemoryByPrefix(entry.id.slice(0, 12), { store: db });
     expect(result.kind).toBe("removed");
-    const all = await listMemories({ homeDir, cwd });
+    const all = await listMemories({ store: db });
     expect(all.some((item) => item.id === entry.id)).toBe(false);
   });
 
   test("removeMemoryByPrefix returns not_found for unknown prefix", async () => {
-    const homeDir = createDir("acolyte-memory-home-");
-    const cwd = createDir("acolyte-memory-cwd-");
-    const result = await removeMemoryByPrefix("mem_missing", { homeDir, cwd });
+    const db = createDb();
+    const result = await removeMemoryByPrefix("mem_missing", { store: db });
     expect(result).toEqual({ kind: "not_found", prefix: "mem_missing" });
   });
 });

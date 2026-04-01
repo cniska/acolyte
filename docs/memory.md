@@ -20,7 +20,7 @@ ingest → normalize → select → inject → commit
 
 ## Sources
 
-- `stored`: explicit Markdown memory notes (`user`/`project` scope)
+- `stored`: explicit stored memories (`user`/`project` scope, kind `stored`)
 - `distill_user`: cross-session user distill context
 - `distill_project`: cross-session project distill context (workspace-keyed)
 - `distill_session`: session distill context (active session continuity)
@@ -42,7 +42,7 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Distill behavior
 
-- distill writes two record tiers:
+- distill writes two record kinds:
   - `observation`: round-level extracted facts
   - `reflection`: consolidated cross-round state
 - commit scopes:
@@ -77,13 +77,12 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 - selection dedupes identical entry content to avoid wasting budget on repeats
 - normalization drops blank entries before selection
 - distill record writes use SQLite with WAL mode for atomic persistence
-- semantic recall: distill records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first
+- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the user's message is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering. Continuation entries always rank first
 
 ## Storage
 
-- stored notes: `.acolyte/memory/{user|project}/*.md`
-- distill records: `~/.acolyte/memory.db` (SQLite, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`)
-- embeddings: `distill_embeddings` table in `memory.db` (BLOB vectors, keyed by `record_id`)
+- all memories: `~/.acolyte/memory.db` (SQLite, `memories` table, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`)
+- embeddings: `memory_embeddings` table in `memory.db` (BLOB vectors, keyed by `id`)
 
 ## Extension seams
 
@@ -96,16 +95,15 @@ The observation/reflection model is inspired by [Mastra's Observational Memory](
 
 ## Key files
 
-- `src/memory.ts` — top-level memory operations (list, add, remove)
-- `src/memory-contract.ts` — type definitions for entries, scopes, and distill records
+- `src/memory-ops.ts` — top-level memory operations (list, add, remove)
+- `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
+- `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
 - `src/memory-pipeline.ts` — staged pipeline (ingest, normalize, select, inject, commit)
 - `src/memory-registry.ts` — source composition, strategy injection, and pipeline orchestration
 - `src/memory-source-distill.ts` — distill memory source with observer and reflector agents
-- `src/memory-source-stored.ts` — stored markdown memory source
+- `src/memory-source-stored.ts` — stored memory source
 - `src/memory-distill-prompts.ts` — observer and reflector prompt templates
-- `src/memory-distill-store.ts` — SQLite-based distill record and embedding persistence
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
-- `src/memory-store.ts` — memory store interface for list, add, and remove
 
 ## Further reading
 

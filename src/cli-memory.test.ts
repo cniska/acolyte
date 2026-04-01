@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { memoryMode } from "./cli-memory";
-import type { MemoryStore } from "./memory-store";
+
 import { dedent } from "./test-utils";
 
 type MemoryDeps = Parameters<typeof memoryMode>[1];
 
-function createStore(overrides?: Partial<MemoryStore>): MemoryStore {
+type MemoryOps = MemoryDeps["ops"];
+
+function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
   return {
     list: async () => [
       {
@@ -21,7 +23,6 @@ function createStore(overrides?: Partial<MemoryStore>): MemoryStore {
       scope: scope ?? "user",
       createdAt: "9999-01-01T00:00:00.000Z",
     }),
-    remove: async () => ({ kind: "not_found" as const, prefix: "" }),
     ...overrides,
   };
 }
@@ -29,7 +30,7 @@ function createStore(overrides?: Partial<MemoryStore>): MemoryStore {
 function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output: () => string } {
   const lines: string[] = [];
   const deps: MemoryDeps = {
-    store: createStore(),
+    ops: createOps(),
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
     commandError: () => {},
@@ -53,10 +54,10 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
-  test("list with no scope calls store.list with scope all", async () => {
-    let receivedScope: string | undefined;
+  test("list with no scope calls store.list with undefined scope", async () => {
+    let receivedScope: string | undefined = "sentinel";
     const { deps } = createDeps({
-      store: createStore({
+      ops: createOps({
         list: async (scope) => {
           receivedScope = scope;
           return [];
@@ -64,13 +65,13 @@ describe("cli-memory", () => {
       }),
     });
     await memoryMode(["list"], deps);
-    expect(receivedScope).toBe("all");
+    expect(receivedScope).toBeUndefined();
   });
 
   test("list user calls store.list with scope user", async () => {
     let receivedScope: string | undefined;
     const { deps } = createDeps({
-      store: createStore({
+      ops: createOps({
         list: async (scope) => {
           receivedScope = scope;
           return [];
@@ -97,7 +98,7 @@ describe("cli-memory", () => {
     let savedContent: string | undefined;
     let savedScope: string | undefined;
     const { deps, output } = createDeps({
-      store: createStore({
+      ops: createOps({
         add: async (content, scope) => {
           savedContent = content;
           savedScope = scope;

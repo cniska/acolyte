@@ -3,6 +3,7 @@ import { appConfig } from "./app-config";
 import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
+import type { MemoryScope } from "./memory-contract";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
 import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
@@ -210,8 +211,8 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
     let receivedScope = "";
     const memoryApi = {
-      listMemories: async (options?: { scope?: "all" | "user" | "project" }) => {
-        receivedScope = options?.scope ?? "all";
+      listMemories: async (options?: { scope?: MemoryScope }) => {
+        receivedScope = options?.scope ?? "";
         return [];
       },
       addMemory: async () => ({
@@ -419,7 +420,7 @@ describe("chat-commands", () => {
     let savedScope = "";
     const memoryApi = {
       listMemories: async () => [],
-      addMemory: async (content: string, options?: { scope?: "user" | "project" }) => {
+      addMemory: async (content: string, options?: { scope?: MemoryScope }) => {
         const scope = options?.scope ?? "user";
         savedContent = content;
         savedScope = scope;

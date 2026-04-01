@@ -22,7 +22,7 @@ import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { t } from "./i18n";
-import { fileMemoryStore } from "./memory";
+import { fileMemoryStore } from "./memory-ops";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -227,7 +227,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     },
     handler: (args) =>
       memoryMode(args, {
-        store: fileMemoryStore,
+        ops: fileMemoryStore,
         hasHelpFlag,
         printDim,
         commandError,

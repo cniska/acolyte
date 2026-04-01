@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { DistillRecord } from "./memory-contract";
+import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
-import type { DistillStore } from "./memory-distill-store";
 import { createDistillMemorySource, type DistillConfig } from "./memory-source-distill";
 
 const testDistillConfig: DistillConfig = {
@@ -11,16 +10,16 @@ const testDistillConfig: DistillConfig = {
   maxOutputTokens: 200,
 };
 
-function createMockStore(
-  records: DistillRecord[] = [],
-): DistillStore & { written: DistillRecord[]; removed: string[] } {
-  const written: DistillRecord[] = [];
+function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
+  const written: MemoryRecord[] = [];
   const removed: string[] = [];
   return {
     written,
     removed,
-    async list(sessionId) {
-      return records.filter((r) => r.sessionId === sessionId);
+    async list(options?: { scopeKey?: string; kind?: MemoryKind }) {
+      return records.filter(
+        (r) => (!options?.scopeKey || r.scopeKey === options.scopeKey) && (!options?.kind || r.kind === options.kind),
+      );
     },
     async write(record) {
       records.push(record);
@@ -61,16 +60,16 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "user prefers Bun",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 4,
         },
         {
           id: "dst_obs00002",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "auth module in src/auth/",
           createdAt: "2026-03-04T11:00:00.000Z",
           tokenEstimate: 5,
@@ -85,32 +84,32 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "old observation",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_ref00001",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "older reflection",
           createdAt: "2026-03-04T11:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_ref00002",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "latest reflection",
           createdAt: "2026-03-04T12:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_obs00002",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "new observation",
           createdAt: "2026-03-04T12:30:00.000Z",
           tokenEstimate: 3,
@@ -125,24 +124,24 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_ref00001",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "latest reflection",
           createdAt: "2026-03-04T12:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "older observation",
           createdAt: "2026-03-04T12:10:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_obs00002",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "newer observation",
           createdAt: "2026-03-04T12:20:00.000Z",
           tokenEstimate: 3,
@@ -157,16 +156,16 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_ref00001",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "latest reflection",
           createdAt: "2026-03-04T12:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "older observation",
           currentTask: "Old task",
           nextStep: "Old step",
@@ -175,8 +174,8 @@ describe("distillMemorySource", () => {
         },
         {
           id: "dst_obs00002",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "newer observation",
           currentTask: "New task",
           nextStep: "New step",
@@ -199,8 +198,8 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "recent observation",
           currentTask: "Fix memory retrieval",
           nextStep: "Add regression tests",
@@ -221,8 +220,8 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "recent observation\nCurrent task: Fix memory retrieval\nNext step: Add regression tests",
           currentTask: "Fix memory retrieval",
           nextStep: "Add regression tests",
@@ -243,8 +242,8 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs00001",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "recent observation",
           currentTask: "Fix memory retrieval",
           nextStep: "Add regression tests",
@@ -299,16 +298,16 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs_old",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "old observation",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 3,
         },
         {
           id: "dst_ref_old",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "old reflection",
           createdAt: "2026-03-04T10:30:00.000Z",
           tokenEstimate: 3,
@@ -344,16 +343,16 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs_old",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "old observation that was before the reflection",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 10,
         },
         {
           id: "dst_ref_old",
-          sessionId: "sess_test0001",
-          tier: "reflection",
+          scopeKey: "sess_test0001",
+          kind: "reflection",
           content: "old reflection",
           createdAt: "2026-03-04T10:30:00.000Z",
           tokenEstimate: 4,
@@ -377,16 +376,16 @@ describe("distillMemorySource", () => {
       });
 
       // New observation and reflection were written
-      expect(store.written.filter((e) => e.tier === "observation")).toHaveLength(1);
-      expect(store.written.filter((e) => e.tier === "reflection")).toHaveLength(1);
+      expect(store.written.filter((e) => e.kind === "observation")).toHaveLength(1);
+      expect(store.written.filter((e) => e.kind === "reflection")).toHaveLength(1);
       // Old observation (pre-reflection) and old reflection were GC'd
       // The new observation (post-old-reflection, consolidated into new reflection) was also GC'd
       expect(store.removed).toContain("dst_ref_old");
       expect(store.removed.some((id) => id !== "dst_ref_old")).toBe(true);
       // Only the new reflection remains in the store
-      const remaining = await store.list("sess_test0001");
+      const remaining = await store.list({ scopeKey: "sess_test0001" });
       expect(remaining).toHaveLength(1);
-      expect(remaining[0]?.tier).toBe("reflection");
+      expect(remaining[0]?.kind).toBe("reflection");
     });
 
     test("skips writing reflection when retry compression cannot reduce size", async () => {
@@ -412,8 +411,8 @@ describe("distillMemorySource", () => {
       });
 
       expect(reflectionCalls).toBe(3);
-      expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
-      expect(store.written.filter((entry) => entry.tier === "reflection")).toHaveLength(0);
+      expect(store.written.filter((entry) => entry.kind === "observation")).toHaveLength(1);
+      expect(store.written.filter((entry) => entry.kind === "reflection")).toHaveLength(0);
     });
 
     test("stores parsed continuation fields from observation output", async () => {
@@ -433,7 +432,7 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
       expect(writtenObservation?.currentTask).toBe("Implement rolling context");
       expect(writtenObservation?.nextStep).toBe("Add continuation fields");
     });
@@ -455,7 +454,7 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
       expect(writtenObservation?.currentTask).toBe("Bullet task");
       expect(writtenObservation?.nextStep).toBe("Bullet next");
     });
@@ -482,7 +481,7 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      const writtenObservation = store.written.find((entry) => entry.tier === "observation");
+      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
       expect(writtenObservation?.currentTask).toBe("New task");
       expect(writtenObservation?.nextStep).toBe("New step");
     });
@@ -491,8 +490,8 @@ describe("distillMemorySource", () => {
       const store = createMockStore([
         {
           id: "dst_obs_prev",
-          sessionId: "sess_test0001",
-          tier: "observation",
+          scopeKey: "sess_test0001",
+          kind: "observation",
           content: "prefers short answers",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 6,
@@ -531,7 +530,7 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      const sessionEntry = store.written.find((entry) => entry.sessionId === "sess_test0001");
+      const sessionEntry = store.written.find((entry) => entry.scopeKey === "sess_test0001");
       expect(sessionEntry?.content).toContain("Current task: keep tagged facts only");
       expect(sessionEntry?.content).not.toContain("untagged fact should be dropped");
     });
@@ -558,7 +557,7 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+      const byScope = new Map(store.written.map((entry) => [entry.scopeKey, entry.content]));
       expect(byScope.get("sess_test0001")).toContain("Current task: should stay session scoped");
       expect(byScope.get("sess_test0001")).toContain("Next step: should stay session scoped");
       expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
@@ -618,8 +617,8 @@ describe("distillMemorySource", () => {
         output: "done",
       });
 
-      expect(store.written.filter((entry) => entry.tier === "observation")).toHaveLength(1);
-      const keys = store.written.map((entry) => entry.sessionId);
+      expect(store.written.filter((entry) => entry.kind === "observation")).toHaveLength(1);
+      const keys = store.written.map((entry) => entry.scopeKey);
       expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
       expect(keys.some((key) => key === "sess_test0001")).toBe(false);
       expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
@@ -649,7 +648,7 @@ describe("distillMemorySource", () => {
         output: "done",
       });
 
-      const byScope = new Map(store.written.map((entry) => [entry.sessionId, entry.content]));
+      const byScope = new Map(store.written.map((entry) => [entry.scopeKey, entry.content]));
       expect(byScope.get("sess_test0001")).toContain("fix failing tests");
       expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
       expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");

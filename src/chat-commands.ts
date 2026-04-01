@@ -7,8 +7,8 @@ import { setConfigValue } from "./config";
 import type { ConfigScope } from "./config-contract";
 import { formatRelativeTime, nowIso } from "./datetime";
 import { t } from "./i18n";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory";
 import type { MemoryScope } from "./memory-contract";
+import { addMemory, listMemories, removeMemoryByPrefix } from "./memory-ops";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName } from "./skills";
@@ -332,7 +332,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
       return { stop: true, userText: text };
     }
-    const memories = await memoryApi.listMemories({ scope });
+    const memories = await memoryApi.listMemories({ scope: scope === "all" ? undefined : scope });
     if (memories.length === 0) {
       const emptyLabel = scope === "all" ? "" : `${scope} `;
       ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);

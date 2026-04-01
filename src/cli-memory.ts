@@ -4,10 +4,15 @@ import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output
 import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
-import type { MemoryStore } from "./memory-store";
+import type { MemoryEntry, MemoryScope } from "./memory-contract";
+
+type MemoryOps = {
+  list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
+  add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
+};
 
 type MemoryModeDeps = {
-  store: MemoryStore;
+  ops: MemoryOps;
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
   commandError: (name: string, message?: string) => void;
@@ -15,7 +20,7 @@ type MemoryModeDeps = {
 };
 
 export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
-  const { store, hasHelpFlag, printDim, commandError, commandHelp } = deps;
+  const { ops, hasHelpFlag, printDim, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("memory");
     return;
@@ -30,12 +35,12 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
-    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
+    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : undefined;
     if (scopeRaw && !validScopes.has(scopeRaw)) {
       commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
-    const rows = await store.list(scope as "all" | "user" | "project");
+    const rows = await ops.list(scope === "all" ? undefined : (scope as MemoryScope));
     if (rows.length === 0) {
       printDim(t("cli.memory.none"));
       return;
@@ -72,7 +77,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       commandError("memory", formatUsage("acolyte memory add [--user|--project] <memory text>"));
       return;
     }
-    const entry = await store.add(content, scope);
+    const entry = await ops.add(content, scope);
     printDim(t("cli.memory.saved", { scope, id: entry.id }));
     return;
   }
