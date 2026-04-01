@@ -55,7 +55,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-export type ToolRunResult<T = unknown> = { result: T; effectOutput?: string };
+export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
 
 export async function runTool(
   session: SessionContext,
@@ -64,7 +64,7 @@ export async function runTool(
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<unknown>,
   options?: { timeoutMs?: number },
-): Promise<ToolRunResult> {
+): Promise<RunToolResult> {
   return withToolError(toolId, async () => {
     const budgetError = checkStepBudget(session);
     if (budgetError) {

@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
-import type { ToolRunResult } from "./tool-execution";
+import type { RunToolResult } from "./tool-execution";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
 
@@ -14,7 +14,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly execute: (input: TInput, toolCallId: string) => Promise<ToolRunResult<TOutput>>;
+  readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
   readonly labelKey?: string;
 };
 
