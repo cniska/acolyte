@@ -116,19 +116,13 @@ function isContinuationLine(line: string): boolean {
   return /^(?:[-*]\s*)?(?:Current task|Next step):\s*/i.test(line.trim());
 }
 
-function stripScopeTag(line: string): { scope: DistillScope | null; content: string } {
-  const trimmed = line.trim();
-  const match = trimmed.match(/^\[(project|user|session)\]\s*(.+)$/i);
-  if (!match) return { scope: null, content: trimmed };
-  const scopeToken = match[1]?.toLowerCase();
-  const content = (match[2] ?? "").trim();
-  if (scopeToken === "project") return { scope: "project", content };
-  if (scopeToken === "user") return { scope: "user", content };
-  return { scope: "session", content };
+function parseObserveDirective(line: string): DistillScope | null {
+  const match = line.trim().match(/^@observe\s+(project|user|session)$/i);
+  return match ? (match[1].toLowerCase() as DistillScope) : null;
 }
 
-function hasBracketPrefix(line: string): boolean {
-  return /^\[[^\]]+\]/.test(line.trim());
+function hasMalformedObserveDirective(line: string): boolean {
+  return /^@observe\b/i.test(line.trim()) && !parseObserveDirective(line);
 }
 
 function splitScopedObservation(observed: string): {
@@ -150,36 +144,34 @@ function splitScopedObservation(observed: string): {
   const userLines: string[] = [];
   let droppedUntaggedCount = 0;
   let droppedMalformedCount = 0;
+  let pendingScope: DistillScope | null = null;
   for (const line of lines) {
+    // Check for @scope directive
+    const scope = parseObserveDirective(line);
+    if (scope) {
+      pendingScope = scope;
+      continue;
+    }
+    if (hasMalformedObserveDirective(line)) {
+      droppedMalformedCount += 1;
+      pendingScope = null;
+      continue;
+    }
+    // Continuation state is always session-scoped
     if (isContinuationLine(line)) {
       sessionLines.push(line);
+      pendingScope = null;
       continue;
     }
-    const tagged = stripScopeTag(line);
-    if (!tagged.scope && hasBracketPrefix(line)) {
-      droppedMalformedCount += 1;
-      continue;
-    }
-    if (!tagged.content) continue;
-    // Continuation state is always session-scoped, regardless of any tag prefix.
-    if (isContinuationLine(tagged.content)) {
-      sessionLines.push(tagged.content);
-      continue;
-    }
-    // Enforce explicit scope tags for fact lines.
-    if (!tagged.scope) {
+    // Fact line — needs a preceding @scope directive
+    if (!pendingScope) {
       droppedUntaggedCount += 1;
       continue;
     }
-    if (tagged.scope === "project") {
-      projectLines.push(tagged.content);
-      continue;
-    }
-    if (tagged.scope === "user") {
-      userLines.push(tagged.content);
-      continue;
-    }
-    sessionLines.push(tagged.content);
+    if (pendingScope === "project") projectLines.push(line);
+    else if (pendingScope === "user") userLines.push(line);
+    else sessionLines.push(line);
+    pendingScope = null;
   }
 
   return {

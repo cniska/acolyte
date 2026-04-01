@@ -317,7 +317,7 @@ describe("distillMemorySource", () => {
       const source = createDistillMemorySource(
         store,
         async (systemPrompt, input) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "[session] new observation";
+          if (systemPrompt === OBSERVER_PROMPT) return "@observe session\nnew observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectorInputs.push(input);
             return "new reflection";
@@ -362,7 +362,7 @@ describe("distillMemorySource", () => {
         store,
         async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
-            return "[session] a new observation with enough tokens to exceed the reflection threshold for this test";
+            return "@observe session\na new observation with enough tokens to exceed the reflection threshold for this test";
           if (systemPrompt === REFLECTOR_PROMPT) return "compact";
           return "";
         },
@@ -394,7 +394,7 @@ describe("distillMemorySource", () => {
       const source = createDistillMemorySource(
         store,
         async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return "[session] tiny observation";
+          if (systemPrompt === OBSERVER_PROMPT) return "@observe session\ntiny observation";
           if (systemPrompt === REFLECTOR_PROMPT) {
             reflectionCalls += 1;
             return "x".repeat(2_000);
@@ -421,7 +421,7 @@ describe("distillMemorySource", () => {
         store,
         async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
-            return "[session] fact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
+            return "@observe session\nfact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
           return "";
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -443,7 +443,7 @@ describe("distillMemorySource", () => {
         store,
         async (systemPrompt) => {
           if (systemPrompt === OBSERVER_PROMPT)
-            return "[session] fact line\n- Current task: Bullet task\n* Next step: Bullet next";
+            return "@observe session\nfact line\n- Current task: Bullet task\n* Next step: Bullet next";
           return "";
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -500,7 +500,7 @@ describe("distillMemorySource", () => {
       const source = createDistillMemorySource(
         store,
         async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT) return " [session] prefers   short answers ";
+          if (systemPrompt === OBSERVER_PROMPT) return " @observe session\n prefers   short answers ";
           return "";
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -542,10 +542,14 @@ describe("distillMemorySource", () => {
         async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
-            "[project] Current task: should stay session scoped",
-            "[user] Next step: should stay session scoped",
-            "[project] repo uses Bun",
-            "[user] prefers concise replies",
+            "@observe project",
+            "Current task: should stay session scoped",
+            "@observe user",
+            "Next step: should stay session scoped",
+            "@observe project",
+            "repo uses Bun",
+            "@observe user",
+            "prefers concise replies",
           ].join("\n");
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -573,11 +577,16 @@ describe("distillMemorySource", () => {
         async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
-            "[project] valid project fact",
-            "[user] valid user fact",
-            "[proj] malformed tag dropped",
-            "[usr] malformed tag dropped",
-            "[session] valid session fact",
+            "@observe project",
+            "valid project fact",
+            "@observe user",
+            "valid user fact",
+            "@observe proj",
+            "malformed tag dropped",
+            "@observe usr",
+            "malformed tag dropped",
+            "@observe session",
+            "valid session fact",
           ].join("\n");
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -595,7 +604,7 @@ describe("distillMemorySource", () => {
         projectPromotedFacts: 1,
         userPromotedFacts: 1,
         sessionScopedFacts: 1,
-        droppedUntaggedFacts: 0,
+        droppedUntaggedFacts: 2,
       });
     });
 
@@ -624,16 +633,19 @@ describe("distillMemorySource", () => {
       expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
     });
 
-    test("session commit promotes [project] and [user] lines to scoped stores", async () => {
+    test("session commit promotes @observe project and @observe user lines to scoped stores", async () => {
       const store = createMockStore();
       const source = createDistillMemorySource(
         store,
         async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
-            "[project] repo uses Bun",
-            "[user] prefers short answers",
-            "[session] fix failing tests",
+            "@observe project",
+            "repo uses Bun",
+            "@observe user",
+            "prefers short answers",
+            "@observe session",
+            "fix failing tests",
             "Current task: stabilize memory",
             "Next step: add promotion tests",
           ].join("\n");
@@ -652,7 +664,7 @@ describe("distillMemorySource", () => {
       expect(byScope.get("sess_test0001")).toContain("fix failing tests");
       expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
       expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");
-      expect(byScope.get("sess_test0001")).not.toContain("[project]");
+      expect(byScope.get("sess_test0001")).not.toContain("@observe project");
       expect(byScope.get("sess_test0001")).not.toContain("repo uses Bun");
       expect(byScope.get("sess_test0001")).not.toContain("prefers short answers");
       expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
@@ -668,14 +680,20 @@ describe("distillMemorySource", () => {
         async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
           return [
-            "[project] project fact one",
-            "[project] project fact two",
-            "[user] user fact one",
-            "[session] session fact one",
+            "@observe project",
+            "project fact one",
+            "@observe project",
+            "project fact two",
+            "@observe user",
+            "user fact one",
+            "@observe session",
+            "session fact one",
             "Current task: keep continuation",
-            "[project] Next step: continuation forced to session",
+            "@observe project",
+            "Next step: continuation forced to session",
             "untagged dropped fact",
-            "[proj] malformed tag dropped",
+            "@observe proj",
+            "malformed tag dropped",
           ].join("\n");
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -687,12 +705,12 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      // Malformed tag is silently dropped; valid facts are committed.
+      // Malformed tag is silently dropped; its following fact line becomes untagged.
       expect(metrics).toEqual({
         projectPromotedFacts: 2,
         userPromotedFacts: 1,
         sessionScopedFacts: 3,
-        droppedUntaggedFacts: 1,
+        droppedUntaggedFacts: 2,
       });
       expect(store.written.length).toBeGreaterThan(0);
     });
@@ -707,9 +725,12 @@ describe("distillMemorySource", () => {
         {
           name: "good_scoped_output",
           observed: [
-            "[project] uses bun test",
-            "[user] prefers concise responses",
-            "[session] fixing failing memory tests",
+            "@observe project",
+            "uses bun test",
+            "@observe user",
+            "prefers concise responses",
+            "@observe session",
+            "fixing failing memory tests",
             "Current task: stabilize memory quality",
             "Next step: add regression coverage",
           ].join("\n"),
@@ -723,7 +744,12 @@ describe("distillMemorySource", () => {
         },
         {
           name: "mixed_output_with_untagged_fact",
-          observed: ["[project] uses bun test", "untagged fact", "Current task: stabilize memory quality"].join("\n"),
+          observed: [
+            "@observe project",
+            "uses bun test",
+            "untagged fact",
+            "Current task: stabilize memory quality",
+          ].join("\n"),
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
@@ -735,15 +761,17 @@ describe("distillMemorySource", () => {
         {
           name: "malformed_tag_silently_dropped",
           observed: [
-            "[project] uses bun test",
-            "[proj] malformed tag silently dropped",
+            "@observe project",
+            "uses bun test",
+            "@observe proj",
+            "malformed tag silently dropped",
             "Current task: stabilize memory quality",
           ].join("\n"),
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
             sessionScopedFacts: 1,
-            droppedUntaggedFacts: 0,
+            droppedUntaggedFacts: 1,
           },
           expectedWriteCount: 2,
         },
