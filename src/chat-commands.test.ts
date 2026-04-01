@@ -30,7 +30,6 @@ describe("chat-commands", () => {
         usedTokens: 100,
         systemTokens: 40,
         toolTokens: 30,
-        memoryTokens: 20,
         messageTokens: 10,
       },
     };
@@ -72,7 +71,6 @@ describe("chat-commands", () => {
         usedTokens: 100,
         systemTokens: 20,
         toolTokens: 30,
-        memoryTokens: 10,
         messageTokens: 40,
       },
     };
@@ -82,7 +80,6 @@ describe("chat-commands", () => {
     const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
     expect(find("System")).toContain("20%");
     expect(find("Tools")).toContain("30%");
-    expect(find("Memory")).toContain("10%");
     expect(find("Messages")).toContain("40%");
   });
 
@@ -133,7 +130,6 @@ describe("chat-commands", () => {
           usedTokens: 10,
           systemTokens: 4,
           toolTokens: 3,
-          memoryTokens: 2,
           messageTokens: 1,
         },
       },
@@ -149,7 +145,6 @@ describe("chat-commands", () => {
           usedTokens: 20,
           systemTokens: 8,
           toolTokens: 6,
-          memoryTokens: 4,
           messageTokens: 2,
         },
       },

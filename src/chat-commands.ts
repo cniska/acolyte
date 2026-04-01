@@ -102,7 +102,6 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
     for (const [label, tokens] of [
       [t("chat.usage.metric.system"), bd.systemTokens],
       [t("chat.usage.metric.tools"), bd.toolTokens],
-      [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
       if (tokens > 0) {

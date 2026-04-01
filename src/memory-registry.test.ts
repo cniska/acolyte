@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "bun:test";
 import { createMemoryRegistry } from "./memory-registry";
 
 describe("memory registry", () => {

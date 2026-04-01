@@ -195,8 +195,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     });
     const reply = await runLifecycle({
       request: lifecycleRequest,
-      soulPrompt: soulPrompt.prompt,
-      memoryTokens: 0,
+      soulPrompt,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,
       shouldYield: handlers.shouldYield,

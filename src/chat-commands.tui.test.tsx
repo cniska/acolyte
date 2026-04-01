@@ -44,7 +44,6 @@ describe("chat slash command visual regression", () => {
             usedTokens: 26100,
             systemTokens: 9600,
             toolTokens: 12800,
-            memoryTokens: 2400,
             messageTokens: 1300,
           },
         },
@@ -56,7 +55,6 @@ describe("chat slash command visual regression", () => {
             usedTokens: 15900,
             systemTokens: 6200,
             toolTokens: 8900,
-            memoryTokens: 500,
             messageTokens: 300,
           },
         },
@@ -83,7 +81,6 @@ describe("chat slash command visual regression", () => {
 
           System:             6.2k  39%
           Tools:              8.9k  56%
-          Memory:             500   3%
           Messages:           300   2%
     `),
     );

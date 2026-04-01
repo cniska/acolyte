@@ -90,7 +90,6 @@ export const EN_MESSAGES = {
   "chat.usage.header": "Usage",
   "chat.usage.metric.input": "Input",
   "chat.usage.metric.messages": "Messages",
-  "chat.usage.metric.memory": "Memory",
   "chat.usage.metric.output": "Output",
   "chat.usage.metric.system": "System",
   "chat.usage.metric.tools": "Tools",

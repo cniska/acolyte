@@ -69,7 +69,6 @@ describe("phaseFinalize", () => {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
-        memoryTokens: 8,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,
@@ -94,7 +93,6 @@ describe("phaseFinalize", () => {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
-        memoryTokens: 8,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,
@@ -121,7 +119,6 @@ describe("phaseFinalize", () => {
         inputTokens: 12,
         systemPromptTokens: 48,
         toolTokens: 20,
-        memoryTokens: 8,
         messageTokens: 12,
         inputBudgetTokens: 100,
         inputTruncated: false,
@@ -132,7 +129,6 @@ describe("phaseFinalize", () => {
       promptBreakdownTotals: {
         systemTokens: 80,
         toolTokens: 40,
-        memoryTokens: 16,
         messageTokens: 34,
       },
       result: { text: "done", toolCalls: [] },
@@ -140,13 +136,12 @@ describe("phaseFinalize", () => {
 
     const response = phaseFinalize(ctx);
 
-    expect(response.usage?.inputTokens).toBe(170);
+    expect(response.usage?.inputTokens).toBe(154);
     expect(response.promptBreakdown).toEqual({
       budgetTokens: 100,
-      usedTokens: 170,
+      usedTokens: 154,
       systemTokens: 80,
       toolTokens: 40,
-      memoryTokens: 16,
       messageTokens: 34,
     });
   });

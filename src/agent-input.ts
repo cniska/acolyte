@@ -130,7 +130,6 @@ export function createAgentInput(
     inputBudgetTokens: number;
     systemPromptTokens: number;
     toolTokens: number;
-    memoryTokens: number;
     messageTokens: number;
     inputTruncated: boolean;
     includedHistoryMessages: number;
@@ -193,7 +192,6 @@ export function createAgentInput(
       inputBudgetTokens: maxContextTokens,
       systemPromptTokens,
       toolTokens: 0,
-      memoryTokens: 0,
       messageTokens: inputTokens,
       inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,

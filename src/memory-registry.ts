@@ -1,10 +1,6 @@
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { runMemoryCommitPipeline } from "./memory-pipeline";
-import {
-  distillMemorySource,
-  distillProjectMemorySource,
-  distillUserMemorySource,
-} from "./memory-source-distill";
+import { distillMemorySource, distillProjectMemorySource, distillUserMemorySource } from "./memory-source-distill";
 
 export type MemoryRegistry = {
   commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics>;

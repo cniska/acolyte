@@ -265,7 +265,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
-    memoryTokens: input.memoryTokens,
     model,
     policy,
     debug,

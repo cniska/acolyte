@@ -9,9 +9,8 @@ import { scopedCallLog } from "./tool-session";
 function resolvePromptBreakdown(ctx: RunContext) {
   if (totalPromptBreakdownTokens(ctx.promptBreakdownTotals) > 0) return ctx.promptBreakdownTotals;
   return {
-    systemTokens: Math.max(0, ctx.promptUsage.systemPromptTokens - ctx.promptUsage.memoryTokens),
+    systemTokens: ctx.promptUsage.systemPromptTokens,
     toolTokens: ctx.promptUsage.toolTokens,
-    memoryTokens: ctx.promptUsage.memoryTokens,
     messageTokens: ctx.promptUsage.messageTokens,
   };
 }
@@ -86,7 +85,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       usedTokens: inputTokens,
       systemTokens: promptBreakdown.systemTokens,
       toolTokens: promptBreakdown.toolTokens,
-      memoryTokens: promptBreakdown.memoryTokens,
       messageTokens: promptBreakdown.messageTokens,
     },
   };

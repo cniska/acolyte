@@ -4,7 +4,6 @@ import type { PromptUsage } from "./lifecycle-contract";
 export type PromptBreakdownTotals = {
   systemTokens: number;
   toolTokens: number;
-  memoryTokens: number;
   messageTokens: number;
 };
 
@@ -12,24 +11,20 @@ export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
   return {
     systemTokens: 0,
     toolTokens: 0,
-    memoryTokens: 0,
     messageTokens: 0,
   };
 }
 
 export function estimatePromptBreakdown(prompt: string, usage: PromptUsage): PromptBreakdownTotals {
   return {
-    // Memory is carved out of the system prompt, so systemTokens is the non-memory portion.
-    // Math.max guards against estimation drift where memoryTokens could exceed systemPromptTokens.
-    systemTokens: Math.max(0, usage.systemPromptTokens - usage.memoryTokens),
+    systemTokens: usage.systemPromptTokens,
     toolTokens: usage.toolTokens,
-    memoryTokens: usage.memoryTokens,
     messageTokens: estimateTokens(prompt),
   };
 }
 
 export function totalPromptBreakdownTokens(totals: PromptBreakdownTotals): number {
-  return totals.systemTokens + totals.toolTokens + totals.memoryTokens + totals.messageTokens;
+  return totals.systemTokens + totals.toolTokens + totals.messageTokens;
 }
 
 export function addPromptBreakdownTotals(
@@ -38,7 +33,6 @@ export function addPromptBreakdownTotals(
 ): PromptBreakdownTotals {
   current.systemTokens += next.systemTokens;
   current.toolTokens += next.toolTokens;
-  current.memoryTokens += next.memoryTokens;
   current.messageTokens += next.messageTokens;
   return current;
 }

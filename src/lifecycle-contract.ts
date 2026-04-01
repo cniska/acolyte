@@ -57,7 +57,6 @@ export type PromptUsage = {
   inputBudgetTokens: number;
   systemPromptTokens: number;
   toolTokens: number;
-  memoryTokens: number;
   messageTokens: number;
   inputTruncated: boolean;
   includedHistoryMessages: number;
@@ -94,7 +93,6 @@ export type PhasePrepareInput = {
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
-  memoryTokens?: number;
   model: string;
   policy: LifecyclePolicy;
   debug: RunContext["debug"];
@@ -119,7 +117,6 @@ export type Effect = {
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
-  memoryTokens?: number;
   workspace?: string;
   taskId?: string;
   lifecyclePolicy?: Partial<LifecyclePolicy>;

@@ -461,7 +461,6 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
       inputTokens: 0,
       systemPromptTokens: 0,
       toolTokens: 0,
-      memoryTokens: 0,
       messageTokens: 0,
       inputBudgetTokens: 8000,
       inputTruncated: false,

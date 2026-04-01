@@ -31,13 +31,6 @@ const parseTemperatureSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
   z.number().min(0).max(MAX_TEMPERATURE),
 );
-const parseMemorySourcesSchema = z.preprocess((value) => {
-  if (typeof value !== "string") return value;
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}, z.array(memorySourceIdSchema).min(1));
 
 export interface Config {
   port?: number;
