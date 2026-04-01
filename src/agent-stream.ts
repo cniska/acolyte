@@ -22,6 +22,7 @@ import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
+import type { ToolRunResult } from "./tool-execution";
 
 function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
   const { $schema: _, ...rest } = z.toJSONSchema(schema);
@@ -205,16 +206,17 @@ export function createAgentStream(
 
           try {
             const args = JSON.parse(tc.input);
-            const result = await tool.execute(args, tc.toolCallId);
+            const { result, effectOutput } = (await tool.execute(args, tc.toolCallId)) as ToolRunResult;
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
             });
+            const outputValue = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
             toolResultParts.push({
               type: "tool-result",
               toolCallId: tc.toolCallId,
               toolName: tc.toolName,
-              output: { type: "text", value: JSON.stringify(result) },
+              output: { type: "text", value: outputValue },
             });
           } catch (error) {
             batchHadError = true;

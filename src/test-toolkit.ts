@@ -33,7 +33,9 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
       const profile = session.workspaceProfile;
       const testCommand = profile?.testCommand;
       if (!testCommand) {
-        return { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." };
+        return {
+          result: { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." },
+        };
       }
 
       const resolved = resolveCommandFiles(testCommand, toolInput.files);

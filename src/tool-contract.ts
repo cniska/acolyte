@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
+import type { ToolRunResult } from "./tool-execution";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
 
@@ -13,7 +14,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly execute: (input: TInput, toolCallId: string) => Promise<TOutput>;
+  readonly execute: (input: TInput, toolCallId: string) => Promise<ToolRunResult>;
   readonly labelKey?: string;
 };
 
@@ -64,6 +65,10 @@ export type ToolCache = {
 export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutput>): ToolDefinition<TInput, TOutput> {
   return {
     ...config,
-    execute: async (input, toolCallId) => config.outputSchema.parse(await config.execute(input, toolCallId)),
+    execute: async (input, toolCallId) => {
+      const runResult = await config.execute(input, toolCallId);
+      config.outputSchema.parse(runResult.result);
+      return runResult;
+    },
   };
 }

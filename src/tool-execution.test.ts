@@ -44,7 +44,7 @@ describe("per-tool timeout", () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     const result = await runTool(session, "fast-tool", "call_1", {}, async () => "done");
-    expect(result).toBe("done");
+    expect(result).toEqual({ result: "done" });
   });
 
   test("uses explicit timeout override when provided", async () => {
@@ -58,6 +58,6 @@ describe("per-tool timeout", () => {
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
       { timeoutMs: 300 },
     );
-    expect(result).toBe("done");
+    expect(result).toEqual({ result: "done" });
   });
 });
