@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { addMemory } from "./memory";
+import { addMemory } from "./memory-ops";
 import { storedMemorySource } from "./memory-source-stored";
-import { tempDir } from "./test-utils";
+import { createSqliteMemoryStore } from "./memory-store";
+import { tempDb } from "./test-utils";
 
-const { createDir, cleanupDirs } = tempDir();
-afterEach(cleanupDirs);
+const { create: createDb, cleanup } = tempDb("acolyte-stored-src-", createSqliteMemoryStore);
+afterEach(cleanup);
 
 describe("storedMemorySource", () => {
   test("id is 'stored'", () => {
@@ -12,17 +13,14 @@ describe("storedMemorySource", () => {
   });
 
   test("load returns empty array when no memories exist", async () => {
-    const _home = createDir("acolyte-home-");
-    const _cwd = createDir("acolyte-cwd-");
     const entries = await storedMemorySource.loadEntries({});
     expect(Array.isArray(entries)).toBe(true);
   });
 
   test("loadEntries returns memory content strings", async () => {
-    const home = createDir("acolyte-home-");
-    const cwd = createDir("acolyte-cwd-");
-    await addMemory("use bun not node", { homeDir: home, cwd, scope: "user" });
-    await addMemory("prefer tabs", { homeDir: home, cwd, scope: "user" });
+    const db = createDb();
+    await addMemory("use bun not node", { scope: "user", store: db });
+    await addMemory("prefer tabs", { scope: "user", store: db });
 
     const { storedMemorySource: freshSource } = await import("./memory-source-stored");
     const entries = await freshSource.loadEntries({});

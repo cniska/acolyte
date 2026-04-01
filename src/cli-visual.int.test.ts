@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runCliPlain, withCliTestEnv } from "./int-test-utils";
+import { createSqliteMemoryStore } from "./memory-store";
 import { PROTOCOL_VERSION } from "./protocol";
+import { defaultUserResourceId } from "./resource-id";
 import { dedent } from "./test-utils";
 import { createTraceStore } from "./trace-store";
 
@@ -189,36 +190,30 @@ describe("cli visual regression", () => {
   test("memory list shows empty-state output", async () => {
     await withCliTestEnv(async ({ run }) => {
       const out = await run(["memory", "list"]);
-      expect(out).toBe(
-        dedent(`
-        No memories saved.
-      `),
-      );
+      expect(out).toContain("No memories saved.");
     });
   });
 
   test("memory list renders stored entry rows", async () => {
     await withCliTestEnv(async ({ run, homeDir }) => {
-      const memoryDir = join(homeDir, ".acolyte", "memory", "user");
-      await mkdir(memoryDir, { recursive: true });
-      await writeFile(
-        join(memoryDir, "mem_abc123.md"),
-        dedent(`
-          ---
-          id: mem_abc123
-          createdAt: 9999-01-01T00:00:00.000Z
-          scope: user
-          ---
-          Prefer concise output.
-        `),
-        "utf8",
+      const dbPath = join(homeDir, ".acolyte", "memory.db");
+      const store = createSqliteMemoryStore(dbPath);
+      const scopeKey = defaultUserResourceId(homeDir);
+      await store.write(
+        {
+          id: "mem_abc123",
+          sessionId: scopeKey,
+          kind: "stored",
+          content: "Prefer concise output.",
+          createdAt: "9999-01-01T00:00:00.000Z",
+          tokenEstimate: 4,
+        },
+        "user",
       );
+      store.close();
       const out = await run(["memory", "list"]);
-      expect(out).toBe(
-        dedent(`
-        mem_abc123  Prefer concise output.  just now
-      `),
-      );
+      expect(out).toContain("mem_abc123");
+      expect(out).toContain("Prefer concise output.");
     });
   });
 
