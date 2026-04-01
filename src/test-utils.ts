@@ -12,7 +12,6 @@ import { createErrorStats } from "./error-handling";
 import type { RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
-import type { MemorySource } from "./memory-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { ToolkitDeps } from "./tool-contract";
 import { createSessionContext } from "./tool-session";
@@ -227,21 +226,6 @@ export function createStore(overrides: Partial<SessionState> = {}): SessionState
   return {
     activeSessionId: overrides.activeSessionId ?? sessions[0]?.id ?? "sess_test001",
     sessions,
-  };
-}
-
-export function createMemorySource(id: string, entries: string[], onCommit?: () => void): MemorySource {
-  return {
-    id,
-    async loadEntries() {
-      return entries.map((content) => ({ content }));
-    },
-    commit: onCommit
-      ? async () => {
-          onCommit();
-          return undefined;
-        }
-      : undefined,
   };
 }
 

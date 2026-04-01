@@ -43,233 +43,6 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
 }
 
 describe("distillMemorySource", () => {
-  describe("load", () => {
-    async function loadContents(source: ReturnType<typeof createDistillMemorySource>, ctx: { sessionId?: string }) {
-      const entries = await source.loadEntries(ctx);
-      return entries.map((entry) => entry.content);
-    }
-
-    test("returns empty when no sessionId", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, {});
-      expect(entries).toEqual([]);
-    });
-
-    test("returns observation content when no reflections", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "user prefers Bun",
-          createdAt: "2026-03-04T10:00:00.000Z",
-          tokenEstimate: 4,
-        },
-        {
-          id: "mem_obs00002",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "auth module in src/auth/",
-          createdAt: "2026-03-04T11:00:00.000Z",
-          tokenEstimate: 5,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual(["auth module in src/auth/", "user prefers Bun"]);
-    });
-
-    test("returns latest reflection and preserves observations created after it", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "old observation",
-          createdAt: "2026-03-04T10:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_ref00001",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "older reflection",
-          createdAt: "2026-03-04T11:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_ref00002",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "latest reflection",
-          createdAt: "2026-03-04T12:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_obs00002",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "new observation",
-          createdAt: "2026-03-04T12:30:00.000Z",
-          tokenEstimate: 3,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual(["latest reflection", "new observation"]);
-    });
-
-    test("orders post-reflection observations by recency", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_ref00001",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "latest reflection",
-          createdAt: "2026-03-04T12:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "older observation",
-          createdAt: "2026-03-04T12:10:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_obs00002",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "newer observation",
-          createdAt: "2026-03-04T12:20:00.000Z",
-          tokenEstimate: 3,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual(["latest reflection", "newer observation", "older observation"]);
-    });
-
-    test("uses continuation from most recent post-reflection observation", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_ref00001",
-          scopeKey: "sess_test0001",
-          kind: "reflection",
-          content: "latest reflection",
-          createdAt: "2026-03-04T12:00:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "older observation",
-          currentTask: "Old task",
-          nextStep: "Old step",
-          createdAt: "2026-03-04T12:10:00.000Z",
-          tokenEstimate: 3,
-        },
-        {
-          id: "mem_obs00002",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "newer observation",
-          currentTask: "New task",
-          nextStep: "New step",
-          createdAt: "2026-03-04T12:20:00.000Z",
-          tokenEstimate: 3,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual([
-        "latest reflection",
-        "newer observation",
-        "older observation",
-        "Current task: New task",
-        "Next step: New step",
-      ]);
-    });
-
-    test("appends continuation lines when available", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "recent observation",
-          currentTask: "Fix memory retrieval",
-          nextStep: "Add regression tests",
-          createdAt: "2026-03-04T12:30:00.000Z",
-          tokenEstimate: 5,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual([
-        "recent observation",
-        "Current task: Fix memory retrieval",
-        "Next step: Add regression tests",
-      ]);
-    });
-
-    test("strips continuation lines from observation content and emits typed continuation once", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "recent observation\nCurrent task: Fix memory retrieval\nNext step: Add regression tests",
-          currentTask: "Fix memory retrieval",
-          nextStep: "Add regression tests",
-          createdAt: "2026-03-04T12:30:00.000Z",
-          tokenEstimate: 5,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_test0001" });
-      expect(entries).toEqual([
-        "recent observation",
-        "Current task: Fix memory retrieval",
-        "Next step: Add regression tests",
-      ]);
-    });
-
-    test("loadEntries marks continuation lines as continuation entries", async () => {
-      const store = createMockStore([
-        {
-          id: "mem_obs00001",
-          scopeKey: "sess_test0001",
-          kind: "observation",
-          content: "recent observation",
-          currentTask: "Fix memory retrieval",
-          nextStep: "Add regression tests",
-          createdAt: "2026-03-04T12:30:00.000Z",
-          tokenEstimate: 5,
-        },
-      ]);
-      const source = createDistillMemorySource(store);
-      const entries = await source.loadEntries?.({ sessionId: "sess_test0001" });
-      expect(entries?.map((entry) => entry.content)).toEqual([
-        "recent observation",
-        "Current task: Fix memory retrieval",
-        "Next step: Add regression tests",
-      ]);
-      const continuationFlags = entries?.map((entry) => Boolean(entry.isContinuation));
-      expect(continuationFlags).toEqual([false, true, true]);
-    });
-
-    test("returns empty for session with no records", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(store);
-      const entries = await loadContents(source, { sessionId: "sess_empty001" });
-      expect(entries).toEqual([]);
-    });
-  });
-
   describe("commit", () => {
     test("skips when no sessionId", async () => {
       const store = createMockStore();
@@ -415,77 +188,6 @@ describe("distillMemorySource", () => {
       expect(store.written.filter((entry) => entry.kind === "reflection")).toHaveLength(0);
     });
 
-    test("stores parsed continuation fields from observation output", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT)
-            return "@observe session\nfact line\nCurrent task: Implement rolling context\nNext step: Add continuation fields";
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
-      expect(writtenObservation?.currentTask).toBe("Implement rolling context");
-      expect(writtenObservation?.nextStep).toBe("Add continuation fields");
-    });
-
-    test("stores parsed continuation fields from bullet observation output", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT)
-            return "@observe session\nfact line\n- Current task: Bullet task\n* Next step: Bullet next";
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
-      expect(writtenObservation?.currentTask).toBe("Bullet task");
-      expect(writtenObservation?.nextStep).toBe("Bullet next");
-    });
-
-    test("stores last continuation fields when multiple lines are present", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt === OBSERVER_PROMPT)
-            return [
-              "Current task: Old task",
-              "Next step: Old step",
-              "Current task: New task",
-              "Next step: New step",
-            ].join("\n");
-          return "";
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-      const writtenObservation = store.written.find((entry) => entry.kind === "observation");
-      expect(writtenObservation?.currentTask).toBe("New task");
-      expect(writtenObservation?.nextStep).toBe("New step");
-    });
-
     test("skips consecutive duplicate observations", async () => {
       const store = createMockStore([
         {
@@ -520,7 +222,12 @@ describe("distillMemorySource", () => {
         store,
         async (systemPrompt) => {
           if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return ["untagged fact should be dropped", "Current task: keep tagged facts only"].join("\n");
+          return [
+            "untagged fact should be dropped",
+            "Current task: also dropped without directive",
+            "@observe session",
+            "tagged fact is kept",
+          ].join("\n");
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
       );
@@ -531,43 +238,9 @@ describe("distillMemorySource", () => {
         output: "done",
       });
       const sessionEntry = store.written.find((entry) => entry.scopeKey === "sess_test0001");
-      expect(sessionEntry?.content).toContain("Current task: keep tagged facts only");
+      expect(sessionEntry?.content).toContain("tagged fact is kept");
       expect(sessionEntry?.content).not.toContain("untagged fact should be dropped");
-    });
-
-    test("keeps continuation lines in session scope even if tagged as project/user", async () => {
-      const store = createMockStore();
-      const source = createDistillMemorySource(
-        store,
-        async (systemPrompt) => {
-          if (systemPrompt !== OBSERVER_PROMPT) return "";
-          return [
-            "@observe project",
-            "Current task: should stay session scoped",
-            "@observe user",
-            "Next step: should stay session scoped",
-            "@observe project",
-            "repo uses Bun",
-            "@observe user",
-            "prefers concise replies",
-          ].join("\n");
-        },
-        { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
-      await source.commit({
-        sessionId: "sess_test0001",
-        resourceId: "proj_abc123",
-        messages: [{ role: "user", content: "hello" }],
-        output: "done",
-      });
-      const byScope = new Map(store.written.map((entry) => [entry.scopeKey, entry.content]));
-      expect(byScope.get("sess_test0001")).toContain("Current task: should stay session scoped");
-      expect(byScope.get("sess_test0001")).toContain("Next step: should stay session scoped");
-      expect(byScope.get("proj_abc123")).toBe("repo uses Bun");
-      const userScopeKey = [...byScope.keys()].find((key) => key.startsWith("user_"));
-      expect(userScopeKey).toBeDefined();
-      expect(userScopeKey ? byScope.get(userScopeKey) : "").toBe("prefers concise replies");
+      expect(sessionEntry?.content).not.toContain("Current task:");
     });
 
     test("silently drops malformed scope tags and commits valid facts", async () => {
@@ -646,8 +319,6 @@ describe("distillMemorySource", () => {
             "prefers short answers",
             "@observe session",
             "fix failing tests",
-            "Current task: stabilize memory",
-            "Next step: add promotion tests",
           ].join("\n");
         },
         { config: { ...testDistillConfig, reflectionThresholdTokens: 999_999, maxOutputTokens: 10_000 } },
@@ -662,8 +333,6 @@ describe("distillMemorySource", () => {
 
       const byScope = new Map(store.written.map((entry) => [entry.scopeKey, entry.content]));
       expect(byScope.get("sess_test0001")).toContain("fix failing tests");
-      expect(byScope.get("sess_test0001")).toContain("Current task: stabilize memory");
-      expect(byScope.get("sess_test0001")).toContain("Next step: add promotion tests");
       expect(byScope.get("sess_test0001")).not.toContain("@observe project");
       expect(byScope.get("sess_test0001")).not.toContain("repo uses Bun");
       expect(byScope.get("sess_test0001")).not.toContain("prefers short answers");
@@ -705,12 +374,13 @@ describe("distillMemorySource", () => {
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
-      // Malformed tag is silently dropped; its following fact line becomes untagged.
+      // "Current task:" and "Next step:" lines without @observe are dropped as untagged.
+      // The line after @observe proj (malformed) also becomes untagged.
       expect(metrics).toMatchObject({
-        projectPromotedFacts: 2,
+        projectPromotedFacts: 3,
         userPromotedFacts: 1,
-        sessionScopedFacts: 3,
-        droppedUntaggedFacts: 2,
+        sessionScopedFacts: 1,
+        droppedUntaggedFacts: 3,
       });
       expect(store.written.length).toBeGreaterThan(0);
     });
@@ -731,8 +401,10 @@ describe("distillMemorySource", () => {
             "prefers concise responses",
             "@observe session",
             "fixing failing memory tests",
-            "Current task: stabilize memory quality",
-            "Next step: add regression coverage",
+            "@observe session",
+            "stabilize memory quality",
+            "@observe session",
+            "add regression coverage",
           ].join("\n"),
           expectedMetrics: {
             projectPromotedFacts: 1,
@@ -748,15 +420,15 @@ describe("distillMemorySource", () => {
             "@observe project",
             "uses bun test",
             "untagged fact",
-            "Current task: stabilize memory quality",
+            "Current task: also untagged without directive",
           ].join("\n"),
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
-            sessionScopedFacts: 1,
-            droppedUntaggedFacts: 1,
+            sessionScopedFacts: 0,
+            droppedUntaggedFacts: 2,
           },
-          expectedWriteCount: 2,
+          expectedWriteCount: 1,
         },
         {
           name: "malformed_tag_silently_dropped",
@@ -765,15 +437,15 @@ describe("distillMemorySource", () => {
             "uses bun test",
             "@observe proj",
             "malformed tag silently dropped",
-            "Current task: stabilize memory quality",
+            "Current task: also untagged without directive",
           ].join("\n"),
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
-            sessionScopedFacts: 1,
-            droppedUntaggedFacts: 1,
+            sessionScopedFacts: 0,
+            droppedUntaggedFacts: 2,
           },
-          expectedWriteCount: 2,
+          expectedWriteCount: 1,
         },
       ] as const;
 

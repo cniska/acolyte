@@ -4,16 +4,10 @@ import { expectIntent } from "./test-utils";
 
 describe("memory distill prompts", () => {
   test("observer prompt defines @observe scopes", () => {
-    expectIntent(OBSERVER_PROMPT, [
-      ["@observe project"],
-      ["@observe user"],
-      ["@observe session"],
-      ["current task"],
-      ["next step"],
-    ]);
+    expectIntent(OBSERVER_PROMPT, [["@observe project"], ["@observe user"], ["@observe session"]]);
   });
 
-  test("reflector prompt preserves continuation state", () => {
-    expectIntent(REFLECTOR_PROMPT, [["current task"], ["next step"]]);
+  test("reflector prompt requires merge and dedup", () => {
+    expectIntent(REFLECTOR_PROMPT, [["merge duplicates"], ["resolve contradictions"]]);
   });
 });

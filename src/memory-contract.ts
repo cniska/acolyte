@@ -47,7 +47,6 @@ export type MemoryCommitMetrics = {
 
 export type MemorySource = {
   readonly id: string;
-  loadEntries(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
   commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 };
 

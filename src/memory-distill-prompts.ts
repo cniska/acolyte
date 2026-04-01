@@ -13,14 +13,10 @@ stable personal preferences that carry across projects
 @observe session
 in-progress state, temporary constraints, next steps
 
-If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.
-
-End with:
-Current task: [what is being worked on]
-Next step: [immediate next action]`;
+If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
 export const REFLECTOR_PROMPT = `Consolidate these observations into a single knowledge document.
 
-Merge duplicates, resolve contradictions (newer wins), drop completed tasks. Keep specifics. Always include "Current task:" and "Next step:" from the most recent observation.
+Merge duplicates, resolve contradictions (newer wins), drop completed tasks. Keep specifics.
 
 One fact per line, grouped by theme. Plain text.`;

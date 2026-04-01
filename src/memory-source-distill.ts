@@ -2,13 +2,7 @@ import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import { log } from "./log";
-import type {
-  MemoryCommitMetrics,
-  MemoryRecord,
-  MemorySource,
-  MemorySourceEntry,
-  MemoryStore,
-} from "./memory-contract";
+import type { MemoryCommitMetrics, MemoryRecord, MemorySource, MemoryStore } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 
@@ -40,7 +34,6 @@ type DistillScope = "session" | "project" | "user";
 
 type DistillSourceOptions = {
   id?: string;
-  loadScope?: DistillScope;
   commitScope?: DistillScope | "none";
   config?: DistillConfig;
   policy?: MemoryPolicy;
@@ -77,43 +70,8 @@ function needsReflectionRetry(reflected: string, sourceTokenEstimate: number, co
   return reflectedTokens >= sourceTokenEstimate || reflectedTokens > config.reflectionThresholdTokens;
 }
 
-function parseContinuationState(text: string): { currentTask?: string; nextStep?: string } {
-  const currentTask = extractLastLineValue(text, /^(?:[-*]\s*)?Current task:\s*(.+)$/gim);
-  const nextStep = extractLastLineValue(text, /^(?:[-*]\s*)?Next step:\s*(.+)$/gim);
-  return {
-    ...(currentTask ? { currentTask } : {}),
-    ...(nextStep ? { nextStep } : {}),
-  };
-}
-
-export function extractLastLineValue(text: string, pattern: RegExp): string | undefined {
-  const matches = Array.from(text.matchAll(pattern));
-  const value = matches[matches.length - 1]?.[1]?.trim();
-  return value && value.length > 0 ? value : undefined;
-}
-
-function continuationEntries(record: { currentTask?: string; nextStep?: string } | undefined): string[] {
-  if (!record) return [];
-  const lines: string[] = [];
-  if (record.currentTask) lines.push(`Current task: ${record.currentTask}`);
-  if (record.nextStep) lines.push(`Next step: ${record.nextStep}`);
-  return lines;
-}
-
-function stripContinuationLines(content: string): string {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => !/^(?:[-*]\s*)?(?:Current task|Next step):\s*/i.test(line));
-  return lines.join("\n").trim();
-}
-
 function normalizeMemoryText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
-}
-
-function isContinuationLine(line: string): boolean {
-  return /^(?:[-*]\s*)?(?:Current task|Next step):\s*/i.test(line.trim());
 }
 
 function parseObserveDirective(line: string): DistillScope | null {
@@ -146,7 +104,7 @@ function splitScopedObservation(observed: string): {
   let droppedMalformedCount = 0;
   let pendingScope: DistillScope | null = null;
   for (const line of lines) {
-    // Check for @scope directive
+    // Check for @observe directive
     const scope = parseObserveDirective(line);
     if (scope) {
       pendingScope = scope;
@@ -157,13 +115,7 @@ function splitScopedObservation(observed: string): {
       pendingScope = null;
       continue;
     }
-    // Continuation state is always session-scoped
-    if (isContinuationLine(line)) {
-      sessionLines.push(line);
-      pendingScope = null;
-      continue;
-    }
-    // Fact line — needs a preceding @scope directive
+    // Fact line — needs a preceding @observe directive
     if (!pendingScope) {
       droppedUntaggedCount += 1;
       continue;
@@ -232,40 +184,6 @@ function resolveDistillScopeKey(
   return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
-async function loadEntriesForKey(ds: MemoryStore, key: string): Promise<readonly MemorySourceEntry[]> {
-  const entries = await ds.list({ scopeKey: key });
-  const reflections = entries.filter((e) => e.kind === "reflection");
-  if (reflections.length > 0) {
-    // Safe: guarded by `reflections.length > 0` above.
-    const latestReflection = reflections[reflections.length - 1] as MemoryRecord;
-    const observationsSinceReflection = entries
-      .filter((e) => e.kind === "observation" && e.createdAt > latestReflection.createdAt)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const mostRecent = observationsSinceReflection[0] ?? latestReflection;
-    const reflectionContent = stripContinuationLines(latestReflection.content);
-    return [
-      ...(reflectionContent ? [{ content: reflectionContent, recordId: latestReflection.id }] : []),
-      ...observationsSinceReflection.flatMap((e) => {
-        const content = stripContinuationLines(e.content);
-        return content.length > 0 ? [{ content, recordId: e.id }] : [];
-      }),
-      ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
-    ];
-  }
-  const observationEntries = entries
-    .filter((e) => e.kind === "observation")
-    .slice()
-    .reverse();
-  const mostRecent = observationEntries[0];
-  return [
-    ...observationEntries.flatMap((e) => {
-      const content = stripContinuationLines(e.content);
-      return content.length > 0 ? [{ content, recordId: e.id }] : [];
-    }),
-    ...continuationEntries(mostRecent).map((content) => ({ content, isContinuation: true as const })),
-  ];
-}
-
 async function commitDistillForKey(
   ds: MemoryStore,
   key: string,
@@ -285,7 +203,7 @@ async function commitDistillForKey(
     scopeKey: key,
     kind: "observation",
     content: observed,
-    ...parseContinuationState(observed),
+
     createdAt: nowIso(),
     tokenEstimate: estimateTokens(observed),
   };
@@ -323,7 +241,6 @@ async function commitDistillForKey(
     scopeKey: key,
     kind: "reflection",
     content: reflected,
-    ...parseContinuationState(reflected),
     createdAt: nowIso(),
     tokenEstimate: estimateTokens(reflected),
   };
@@ -348,17 +265,10 @@ export function createDistillMemorySource(
   const config = options.config ?? defaultDistillConfig();
   const policy = options.policy ?? defaultMemoryPolicy;
   const id = options.id ?? "distill_session";
-  const loadScope = options.loadScope ?? "session";
   const commitScope = options.commitScope ?? "session";
   let malformedRejectStreak = 0;
   return {
     id,
-
-    async loadEntries(ctx) {
-      const key = resolveDistillScopeKey(loadScope, ctx);
-      if (!key) return [];
-      return loadEntriesForKey(ds, key);
-    },
 
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
@@ -446,11 +356,9 @@ export function createDistillMemorySource(
 export const distillMemorySource: MemorySource = createDistillMemorySource();
 export const distillProjectMemorySource: MemorySource = createDistillMemorySource(undefined, runDistillLLM, {
   id: "distill_project",
-  loadScope: "project",
   commitScope: "none",
 });
 export const distillUserMemorySource: MemorySource = createDistillMemorySource(undefined, runDistillLLM, {
   id: "distill_user",
-  loadScope: "user",
   commitScope: "none",
 });
