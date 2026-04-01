@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { MemoryRegistry } from "./memory-registry";
 import { createId } from "./short-id";
 import { createSoulPrompt, formatMemoryResumeBlock, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { expectIntent, tempDir } from "./test-utils";
+
+const emptyMemoryRegistry: MemoryRegistry = {
+  async load() {
+    return { prompt: "", tokenEstimate: 0, entryCount: 0, continuationSelected: false, continuation: {} };
+  },
+  async commit() {
+    return {};
+  },
+};
 
 const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);
@@ -58,6 +68,7 @@ describe("soul prompt loading", () => {
       sessionId: `sess_${createId()}`,
       resourceId: `user_${createId()}`,
       workspace: dir,
+      memoryRegistry: emptyMemoryRegistry,
       onDebug: (event) => {
         events.push(event);
       },

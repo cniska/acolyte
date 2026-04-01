@@ -205,16 +205,17 @@ export function createAgentStream(
 
           try {
             const args = JSON.parse(tc.input);
-            const result = await tool.execute(args, tc.toolCallId);
+            const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
             });
+            const outputValue = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
             toolResultParts.push({
               type: "tool-result",
               toolCallId: tc.toolCallId,
               toolName: tc.toolName,
-              output: { type: "text", value: JSON.stringify(result) },
+              output: { type: "text", value: outputValue },
             });
           } catch (error) {
             batchHadError = true;

@@ -44,7 +44,25 @@ describe("per-tool timeout", () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     const result = await runTool(session, "fast-tool", "call_1", {}, async () => "done");
-    expect(result).toBe("done");
+    expect(result).toEqual({ result: "done" });
+  });
+
+  test("returns effectOutput from lifecycle hooks", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    session.onAfterTool = () => ({ append: "Lint errors:\nsrc/foo.ts:1 missing semicolon" });
+    const result = await runTool(session, "file-edit", "call_1", {}, async () => ({ ok: true }));
+    expect(result.result).toEqual({ ok: true });
+    expect(result.effectOutput).toBe("Lint errors:\nsrc/foo.ts:1 missing semicolon");
+  });
+
+  test("omits effectOutput when lifecycle hooks return no feedback", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    session.onAfterTool = () => undefined;
+    const result = await runTool(session, "file-edit", "call_1", {}, async () => ({ ok: true }));
+    expect(result.result).toEqual({ ok: true });
+    expect(result.effectOutput).toBeUndefined();
   });
 
   test("uses explicit timeout override when provided", async () => {
@@ -58,6 +76,6 @@ describe("per-tool timeout", () => {
       () => new Promise((resolve) => setTimeout(() => resolve("done"), 100)),
       { timeoutMs: 300 },
     );
-    expect(result).toBe("done");
+    expect(result).toEqual({ result: "done" });
   });
 });

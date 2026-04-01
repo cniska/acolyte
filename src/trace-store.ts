@@ -162,6 +162,7 @@ export function createTraceStore(dbPath?: string): TraceStore {
       return queries.listByTask.all(taskId).map(rowToLogLine);
     },
     close() {
+      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
     },
   };

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
-import { loadMemoryContext } from "./memory-registry";
+import { loadMemoryContext, type MemoryRegistry } from "./memory-registry";
 import type { ResourceId } from "./resource-id";
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
@@ -50,6 +50,7 @@ type CreateSoulPromptOptions = {
   useMemory?: boolean;
   memoryBudgetTokens?: number;
   onDebug?: (event: string, fields?: Record<string, unknown>) => void;
+  memoryRegistry?: MemoryRegistry;
 };
 
 export function formatMemoryResumeBlock(continuation: { currentTask?: string; nextStep?: string }): string {
@@ -78,7 +79,8 @@ export async function createSoulPrompt(options: CreateSoulPromptOptions = {}): P
     options.onDebug?.("lifecycle.memory.load_skipped", { ...debugBaseFields, reason: "budget_disabled" });
     return { prompt: base, memoryTokens: 0 };
   }
-  const memoryContext = await loadMemoryContext(
+  const load = options.memoryRegistry?.load ?? loadMemoryContext;
+  const memoryContext = await load(
     {
       sessionId: options.sessionId,
       resourceId: options.resourceId,

@@ -3,8 +3,6 @@ import { createTestToolkit } from "./test-toolkit";
 import { createToolkitDeps } from "./test-utils";
 import { createSessionContext } from "./tool-session";
 
-type TestResult = { kind: string; command: string; exitCode?: number; output: string };
-
 function createToolkit(testCommand?: { bin: string; args: string[] }) {
   const session = createSessionContext();
   if (testCommand) session.workspaceProfile = { testCommand };
@@ -18,8 +16,11 @@ function createToolkit(testCommand?: { bin: string; args: string[] }) {
   return { toolkit, output };
 }
 
-async function runTests(toolkit: ReturnType<typeof createToolkit>["toolkit"], files: string[]): Promise<TestResult> {
-  return (await toolkit.runTests.execute({ files }, "call_1")) as TestResult;
+type TestResult = { kind: string; command: string; exitCode?: number; output: string };
+
+async function runTests(toolkit: ReturnType<typeof createToolkit>["toolkit"], files: string[]) {
+  const { result } = await toolkit.runTests.execute({ files }, "call_1");
+  return result as TestResult;
 }
 
 describe("test-run tool", () => {

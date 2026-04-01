@@ -30,17 +30,16 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
-      const profile = session.workspaceProfile;
-      const testCommand = profile?.testCommand;
-      if (!testCommand) {
-        return { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." };
-      }
-
-      const resolved = resolveCommandFiles(testCommand, toolInput.files);
-      const commandSpec = { cmd: resolved.bin, args: [...resolved.args] };
-      const command = formatWorkspaceCommand(resolved);
-
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
+        const profile = session.workspaceProfile;
+        const testCommand = profile?.testCommand;
+        if (!testCommand) {
+          return { kind: "test-run" as const, command: "", exitCode: 1, output: "No test command detected." };
+        }
+
+        const resolved = resolveCommandFiles(testCommand, toolInput.files);
+        const commandSpec = { cmd: resolved.bin, args: [...resolved.args] };
+        const command = formatWorkspaceCommand(resolved);
         onOutput({
           toolName: "test-run",
           content: { kind: "tool-header", labelKey: "tool.label.test_run", detail: compactDetail(command) },

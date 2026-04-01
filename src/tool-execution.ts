@@ -55,6 +55,8 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
+export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
+
 export async function runTool(
   session: SessionContext,
   toolId: string,
@@ -62,7 +64,7 @@ export async function runTool(
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<unknown>,
   options?: { timeoutMs?: number },
-): Promise<unknown> {
+): Promise<RunToolResult> {
   return withToolError(toolId, async () => {
     const budgetError = checkStepBudget(session);
     if (budgetError) {
@@ -86,7 +88,7 @@ export async function runTool(
       if (cached) {
         session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
         recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded");
-        return cached.result;
+        return { result: cached.result };
       }
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
     }
@@ -101,10 +103,7 @@ export async function runTool(
       }
       const postOutput = session.onAfterTool?.({ toolId, args: args, result: taskResult });
       const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
-      if (append && typeof taskResult === "object" && taskResult !== null) {
-        (taskResult as Record<string, unknown>).lifecycleFeedback = append;
-      }
-      return taskResult;
+      return { result: taskResult, effectOutput: append || undefined };
     } catch (error) {
       taskFailed = true;
       throw error;
