@@ -1,4 +1,5 @@
 import { estimateTokens } from "./agent-input";
+import { log } from "./log";
 import type { MemoryEntry, MemoryScope, MemoryStore, RemoveMemoryResult } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getDefaultMemoryStore } from "./memory-store";
@@ -68,12 +69,15 @@ export async function addMemory(
     tokenEstimate: estimateTokens(trimmed),
   };
   await store.write(record, scope);
+  log.debug("memory.stored.added", { id: record.id, scope, tokens: record.tokenEstimate });
 
   embedText(trimmed)
     .then((vec) => {
       if (vec) store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
     })
-    .catch(() => {});
+    .catch((error) => {
+      log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
+    });
 
   return toMemoryEntry(record);
 }
@@ -90,6 +94,7 @@ export async function removeMemoryByPrefix(prefix: string, options: MemoryOption
   const entry = matches[0];
   const { store = getDefaultMemoryStore() } = options;
   await store.remove(entry.id);
+  log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
   return { kind: "removed", entry };
 }
 
