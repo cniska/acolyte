@@ -211,8 +211,8 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
     let receivedScope = "";
     const memoryApi = {
-      listMemories: async (options?: { scope?: MemoryScope | "all" }) => {
-        receivedScope = options?.scope ?? "all";
+      listMemories: async (options?: { scope?: MemoryScope }) => {
+        receivedScope = options?.scope ?? "";
         return [];
       },
       addMemory: async () => ({
