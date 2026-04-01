@@ -6,6 +6,7 @@ import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { EN_MESSAGES } from "./i18n/en";
+import { createMemoryToolkit } from "./memory-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
@@ -24,7 +25,8 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createShellToolkit> &
   ReturnType<typeof createTestToolkit> &
   ReturnType<typeof createGitToolkit> &
-  ReturnType<typeof createChecklistToolkit>;
+  ReturnType<typeof createChecklistToolkit> &
+  ReturnType<typeof createMemoryToolkit>;
 
 export type Toolset = {
   [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
@@ -63,6 +65,10 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "checklist",
     createToolkit: (deps, input) => createChecklistToolkit(deps, input),
+  },
+  {
+    id: "memory",
+    createToolkit: (deps, input) => createMemoryToolkit(deps, input),
   },
 ];
 

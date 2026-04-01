@@ -19,6 +19,9 @@ describe("toolsets", () => {
       "gitLog",
       "gitShow",
       "gitStatus",
+      "memoryAdd",
+      "memoryRemove",
+      "memorySearch",
       "readFile",
       "runCommand",
       "runTests",
@@ -96,6 +99,9 @@ describe("localization baseline", () => {
     const webFetchInstruction = toolDefinitionsById["web-fetch"]?.instruction ?? "";
     const checklistCreateInstruction = toolDefinitionsById["checklist-create"]?.instruction ?? "";
     const checklistUpdateInstruction = toolDefinitionsById["checklist-update"]?.instruction ?? "";
+    const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
+    const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
+    const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
 
     expectIntent(readInstruction, [
       ["file-read", "before", "file-edit", "code-edit"],
@@ -132,5 +138,8 @@ describe("localization baseline", () => {
     expectIntent(webFetchInstruction, [["read specific urls"]]);
     expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);
     expectIntent(checklistUpdateInstruction, [["checklist-update"], ["status"], ["checklist-create"]]);
+    expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
+    expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
+    expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
   });
 });
