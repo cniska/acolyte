@@ -13,7 +13,8 @@ Create a GitHub issue from a short description.
 - Label: `enhancement` for features, `bug` for bugs
 - Body sections (in order): **What would you like?**, **Motivation**, **Proposed approach**, **Scope**
 - Each section is a `##` heading followed by 1–3 short paragraphs
-- Write plainly — no code blocks, no bullet-heavy lists, no implementation detail
+- Write plainly — no bullet-heavy lists, no implementation detail
+- Inline code only when the identifier is essential to understanding the issue
 - Focus on *what* and *why*, not *how* — leave implementation to the branch
 - Scope section uses a flat bullet list of affected areas
 
