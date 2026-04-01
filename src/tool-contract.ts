@@ -14,7 +14,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly execute: (input: TInput, toolCallId: string) => Promise<ToolRunResult>;
+  readonly execute: (input: TInput, toolCallId: string) => Promise<ToolRunResult<TOutput>>;
   readonly labelKey?: string;
 };
 
@@ -67,8 +67,7 @@ export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutp
     ...config,
     execute: async (input, toolCallId) => {
       const runResult = await config.execute(input, toolCallId);
-      config.outputSchema.parse(runResult.result);
-      return runResult;
+      return { ...runResult, result: config.outputSchema.parse(runResult.result) };
     },
   };
 }

@@ -55,7 +55,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   }
 }
 
-export type ToolRunResult = { result: unknown; effectOutput?: string };
+export type ToolRunResult<T = unknown> = { result: T; effectOutput?: string };
 
 export async function runTool(
   session: SessionContext,
