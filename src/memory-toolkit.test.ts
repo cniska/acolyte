@@ -1,29 +1,32 @@
-import { describe, expect, test } from "bun:test";
-import type { MemoryEntry } from "./memory-contract";
-import { rankByRelevance } from "./memory-toolkit";
+import { afterEach, describe, expect, test } from "bun:test";
+import { addMemory } from "./memory-ops";
+import { createSqliteMemoryStore } from "./memory-store";
+import { searchMemories } from "./memory-toolkit";
+import { tempDb } from "./test-utils";
 
-function entry(id: string, content: string, scope: "user" | "project" = "user"): MemoryEntry {
-  return { id, content, scope, createdAt: "2026-01-01T00:00:00.000Z" };
-}
+const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);
+afterEach(cleanupStores);
 
-describe("rankByRelevance", () => {
+describe("searchMemories", () => {
   test("returns entries up to the limit", async () => {
-    const entries = [entry("mem_a", "alpha"), entry("mem_b", "beta"), entry("mem_c", "gamma")];
-    const result = await rankByRelevance(entries, "anything", 2);
+    const store = createStore();
+    await addMemory("alpha fact", { scope: "user", store });
+    await addMemory("beta fact", { scope: "user", store });
+    await addMemory("gamma fact", { scope: "user", store });
+    const result = await searchMemories("anything", 2, store);
     expect(result).toHaveLength(2);
-    for (const r of result) {
-      expect(entries.some((e) => e.id === r.id)).toBe(true);
-    }
   });
 
   test("returns all entries when limit exceeds count", async () => {
-    const entries = [entry("mem_a", "alpha")];
-    const result = await rankByRelevance(entries, "alpha", 10);
+    const store = createStore();
+    await addMemory("only fact", { scope: "user", store });
+    const result = await searchMemories("only", 10, store);
     expect(result).toHaveLength(1);
   });
 
-  test("returns empty array for empty input", async () => {
-    const result = await rankByRelevance([], "query", 5);
+  test("returns empty array for empty store", async () => {
+    const store = createStore();
+    const result = await searchMemories("query", 5, store);
     expect(result).toEqual([]);
   });
 });

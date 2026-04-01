@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { type MemoryEntry, memoryScopeSchema } from "./memory-contract";
-import { cosineSimilarity, embedText } from "./memory-embedding";
-import { addMemory, listMemories, removeMemory } from "./memory-ops";
+import type { MemoryRecord, MemoryStore } from "./memory-contract";
+import { memoryScopeSchema } from "./memory-contract";
+import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
+import { addMemory, removeMemory } from "./memory-ops";
+import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -44,19 +46,28 @@ const memoryRemoveOutputSchema = z.object({
   result: z.enum(["removed", "not_found", "ambiguous"]),
 });
 
-export async function rankByRelevance(entries: MemoryEntry[], query: string, limit: number): Promise<MemoryEntry[]> {
-  const queryEmbedding = await embedText(query);
-  if (!queryEmbedding) return entries.slice(0, limit);
+export async function searchMemories(
+  query: string,
+  limit: number,
+  store: MemoryStore = getDefaultMemoryStore(),
+): Promise<MemoryRecord[]> {
+  const records = store.list({ kind: "stored" });
+  const all = await records;
+  if (all.length === 0) return [];
 
-  const scored = await Promise.all(
-    entries.map(async (entry) => {
-      const entryEmbedding = await embedText(entry.content);
-      const score = entryEmbedding ? cosineSimilarity(queryEmbedding, entryEmbedding) : 0;
-      return { entry, score };
-    }),
-  );
+  const queryEmbedding = await embedText(query);
+  if (!queryEmbedding) return all.slice(0, limit);
+
+  const ids = all.map((r) => r.id);
+  const embeddings = store.getEmbeddings(ids);
+
+  const scored = all.map((record) => {
+    const buf = embeddings.get(record.id);
+    const score = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
+    return { record, score };
+  });
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map((s) => s.entry);
+  return scored.slice(0, limit).map((s) => s.record);
 }
 
 function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
@@ -65,21 +76,26 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
     toolkit: "memory",
     labelKey: "tool.label.memory_search",
     category: "meta",
-    description:
-      "Search stored memories by relevance. Returns matching entries ranked by semantic similarity to the query.",
+    description: "Search all memories by relevance. Returns entries ranked by semantic similarity to the query.",
     instruction:
       "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions.",
     inputSchema: memorySearchInputSchema,
     outputSchema: memorySearchOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-search", toolCallId, toolInput, async () => {
-        const scope = toolInput.scope;
         const limit = toolInput.limit ?? 10;
-        const entries = await listMemories({ scope });
-        const ranked = await rankByRelevance(entries, toolInput.query, limit);
+        const results = await searchMemories(toolInput.query, limit);
+        const filtered = toolInput.scope
+          ? results.filter((r) => r.scopeKey.startsWith(toolInput.scope === "project" ? "proj_" : "user_"))
+          : results;
         return {
           kind: "memory-search" as const,
-          results: ranked.map((e) => ({ id: e.id, content: e.content, scope: e.scope, createdAt: e.createdAt })),
+          results: filtered.map((r) => ({
+            id: r.id,
+            content: r.content,
+            scope: r.scopeKey.startsWith("proj_") ? ("project" as const) : ("user" as const),
+            createdAt: r.createdAt,
+          })),
         };
       });
     },
