@@ -11,7 +11,7 @@ import type {
 } from "./memory-contract";
 import { OBSERVER_PROMPT, REFLECTOR_PROMPT } from "./memory-distill-prompts";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { createSemanticSelection, type MemorySelectionStrategy } from "./memory-pipeline";
+
 import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
 import { getDefaultMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
@@ -28,19 +28,12 @@ export type DistillConfig = {
 };
 
 let defaultStore: MemoryStore | null = null;
-let defaultSelectionStrategy: MemorySelectionStrategy | null = null;
 
 function getDefaultStore(): MemoryStore {
   if (!defaultStore) {
     defaultStore = getDefaultMemoryStore();
-    defaultSelectionStrategy = createSemanticSelection(defaultStore);
   }
   return defaultStore;
-}
-
-export function getDefaultSelectionStrategy(): MemorySelectionStrategy | null {
-  getDefaultStore();
-  return defaultSelectionStrategy;
 }
 
 type DistillScope = "session" | "project" | "user";
