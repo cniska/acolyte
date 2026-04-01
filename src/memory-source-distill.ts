@@ -247,7 +247,7 @@ function resolveDistillScopeKey(
 }
 
 async function loadEntriesForKey(ds: MemoryStore, key: string): Promise<readonly MemorySourceEntry[]> {
-  const entries = await ds.list({ scope: key });
+  const entries = await ds.list({ scopeKey: key });
   const reflections = entries.filter((e) => e.kind === "reflection");
   if (reflections.length > 0) {
     // Safe: guarded by `reflections.length > 0` above.
@@ -288,13 +288,13 @@ async function commitDistillForKey(
   config: DistillConfig,
   policy: MemoryPolicy,
 ): Promise<void> {
-  const existingEntries = await ds.list({ scope: key });
+  const existingEntries = await ds.list({ scopeKey: key });
   const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
   if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return;
 
   const observation: MemoryRecord = {
     id: `dst_${createId()}`,
-    sessionId: key,
+    scopeKey: key,
     kind: "observation",
     content: observed,
     ...parseContinuationState(observed),
@@ -331,7 +331,7 @@ async function commitDistillForKey(
 
   const reflection: MemoryRecord = {
     id: `dst_${createId()}`,
-    sessionId: key,
+    scopeKey: key,
     kind: "reflection",
     content: reflected,
     ...parseContinuationState(reflected),

@@ -6,7 +6,7 @@ const STORED_MEMORY_LIMIT = 8;
 export const storedMemorySource: MemorySource = {
   id: "stored",
   async loadEntries() {
-    const entries = await listMemories({ scope: "all" });
+    const entries = await listMemories();
     return entries.slice(0, STORED_MEMORY_LIMIT).map((e) => ({ content: e.content }));
   },
 };

@@ -7,7 +7,7 @@ import { t } from "./i18n";
 import type { MemoryEntry, MemoryScope } from "./memory-contract";
 
 type MemoryOps = {
-  list: (scope: MemoryScope | "all") => Promise<MemoryEntry[]>;
+  list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
   add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
 };
 
@@ -35,12 +35,12 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
-    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : "all";
+    const scope = scopeRaw && validScopes.has(scopeRaw) ? scopeRaw : undefined;
     if (scopeRaw && !validScopes.has(scopeRaw)) {
       commandError("memory", formatUsage("acolyte memory list [all|user|project]"));
       return;
     }
-    const rows = await ops.list(scope as "all" | "user" | "project");
+    const rows = await ops.list(scope === "all" ? undefined : (scope as MemoryScope));
     if (rows.length === 0) {
       printDim(t("cli.memory.none"));
       return;

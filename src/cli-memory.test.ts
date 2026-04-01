@@ -1,14 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { memoryMode } from "./cli-memory";
-import type { MemoryEntry, MemoryScope } from "./memory-contract";
+
 import { dedent } from "./test-utils";
 
 type MemoryDeps = Parameters<typeof memoryMode>[1];
 
-type MemoryOps = {
-  list: (scope: MemoryScope | "all") => Promise<MemoryEntry[]>;
-  add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
-};
+type MemoryOps = MemoryDeps["ops"];
 
 function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
   return {
@@ -57,8 +54,8 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
-  test("list with no scope calls store.list with scope all", async () => {
-    let receivedScope: string | undefined;
+  test("list with no scope calls store.list with undefined scope", async () => {
+    let receivedScope: string | undefined = "sentinel";
     const { deps } = createDeps({
       ops: createOps({
         list: async (scope) => {
@@ -68,7 +65,7 @@ describe("cli-memory", () => {
       }),
     });
     await memoryMode(["list"], deps);
-    expect(receivedScope).toBe("all");
+    expect(receivedScope).toBeUndefined();
   });
 
   test("list user calls store.list with scope user", async () => {

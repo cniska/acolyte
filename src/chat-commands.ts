@@ -332,7 +332,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
       return { stop: true, userText: text };
     }
-    const memories = await memoryApi.listMemories({ scope });
+    const memories = await memoryApi.listMemories({ scope: scope === "all" ? undefined : scope });
     if (memories.length === 0) {
       const emptyLabel = scope === "all" ? "" : `${scope} `;
       ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);

@@ -15,7 +15,7 @@ afterEach(() => {
 describe("createSqliteMemoryStore", () => {
   test("list returns empty for nonexistent session", async () => {
     const store = createStore();
-    const records = await store.list({ scope: "sess_nonexistent" });
+    const records = await store.list({ scopeKey: "sess_nonexistent" });
     expect(records).toEqual([]);
   });
 
@@ -23,14 +23,14 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     const record: MemoryRecord = {
       id: "dst_test001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "project uses Bun, not Node",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 7,
     };
     await store.write(record);
-    const records = await store.list({ scope: "sess_abc123" });
+    const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records).toHaveLength(1);
     expect(records[0]).toEqual(record);
   });
@@ -39,7 +39,7 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     const older: MemoryRecord = {
       id: "dst_older001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "first observation",
       createdAt: "2026-03-04T10:00:00.000Z",
@@ -47,7 +47,7 @@ describe("createSqliteMemoryStore", () => {
     };
     const newer: MemoryRecord = {
       id: "dst_newer001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "second observation",
       createdAt: "2026-03-04T11:00:00.000Z",
@@ -55,7 +55,7 @@ describe("createSqliteMemoryStore", () => {
     };
     await store.write(newer);
     await store.write(older);
-    const records = await store.list({ scope: "sess_abc123" });
+    const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records[0]?.content).toBe("first observation");
     expect(records[1]?.content).toBe("second observation");
   });
@@ -64,7 +64,7 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     const record1: MemoryRecord = {
       id: "dst_sess1rec",
-      sessionId: "sess_session1",
+      scopeKey: "sess_session1",
       kind: "observation",
       content: "session 1 fact",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -72,7 +72,7 @@ describe("createSqliteMemoryStore", () => {
     };
     const record2: MemoryRecord = {
       id: "dst_sess2rec",
-      sessionId: "sess_session2",
+      scopeKey: "sess_session2",
       kind: "observation",
       content: "session 2 fact",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -80,8 +80,8 @@ describe("createSqliteMemoryStore", () => {
     };
     await store.write(record1);
     await store.write(record2);
-    const s1 = await store.list({ scope: "sess_session1" });
-    const s2 = await store.list({ scope: "sess_session2" });
+    const s1 = await store.list({ scopeKey: "sess_session1" });
+    const s2 = await store.list({ scopeKey: "sess_session2" });
     expect(s1).toHaveLength(1);
     expect(s1[0]?.content).toBe("session 1 fact");
     expect(s2).toHaveLength(1);
@@ -92,29 +92,29 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     const record: MemoryRecord = {
       id: "dst_rmtest01",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "to be removed",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 3,
     };
     await store.write(record);
-    expect(await store.list({ scope: "sess_abc123" })).toHaveLength(1);
+    expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(1);
     await store.remove("dst_rmtest01");
-    expect(await store.list({ scope: "sess_abc123" })).toHaveLength(0);
+    expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(0);
   });
 
   test("remove is a no-op for nonexistent record", async () => {
     const store = createStore();
     await store.remove("dst_missing01");
-    expect(await store.list({ scope: "sess_abc123" })).toHaveLength(0);
+    expect(await store.list({ scopeKey: "sess_abc123" })).toHaveLength(0);
   });
 
   test("write replaces existing record with same id", async () => {
     const store = createStore();
     const record: MemoryRecord = {
       id: "dst_replace1",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "original",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -122,7 +122,7 @@ describe("createSqliteMemoryStore", () => {
     };
     await store.write(record);
     await store.write({ ...record, content: "updated" });
-    const records = await store.list({ scope: "sess_abc123" });
+    const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records).toHaveLength(1);
     expect(records[0]?.content).toBe("updated");
   });
@@ -131,7 +131,7 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     await store.write({
       id: "dst_obs001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "an observation",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -139,7 +139,7 @@ describe("createSqliteMemoryStore", () => {
     });
     await store.write({
       id: "mem_stored01",
-      sessionId: "user_abc123",
+      scopeKey: "user_abc123",
       kind: "stored",
       content: "a stored memory",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -157,7 +157,7 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     await store.write({
       id: "mem_user01",
-      sessionId: "user_abc123",
+      scopeKey: "user_abc123",
       kind: "stored",
       content: "user memory",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -165,32 +165,32 @@ describe("createSqliteMemoryStore", () => {
     });
     await store.write({
       id: "dst_user01",
-      sessionId: "user_abc123",
+      scopeKey: "user_abc123",
       kind: "observation",
       content: "user observation",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 2,
     });
-    const stored = await store.list({ scope: "user_abc123", kind: "stored" });
+    const stored = await store.list({ scopeKey: "user_abc123", kind: "stored" });
     expect(stored).toHaveLength(1);
     expect(stored[0]?.id).toBe("mem_user01");
   });
 
   test("ignores unsafe session ids", async () => {
     const store = createStore();
-    const records = await store.list({ scope: "../escape" });
+    const records = await store.list({ scopeKey: "../escape" });
     expect(records).toEqual([]);
 
     const invalidSessionRecord: MemoryRecord = {
       id: "dst_invalid01",
-      sessionId: "../escape",
+      scopeKey: "../escape",
       kind: "observation",
       content: "should not be written",
       createdAt: "2026-03-04T12:00:00.000Z",
       tokenEstimate: 3,
     };
     await store.write(invalidSessionRecord);
-    const stillEmpty = await store.list({ scope: "../escape" });
+    const stillEmpty = await store.list({ scopeKey: "../escape" });
     expect(stillEmpty).toEqual([]);
   });
 
@@ -198,7 +198,7 @@ describe("createSqliteMemoryStore", () => {
     const store = createStore();
     const userRecord: MemoryRecord = {
       id: "dst_user001",
-      sessionId: "user_abc123",
+      scopeKey: "user_abc123",
       kind: "observation",
       content: "user fact",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -206,7 +206,7 @@ describe("createSqliteMemoryStore", () => {
     };
     const projectRecord: MemoryRecord = {
       id: "dst_proj001",
-      sessionId: "proj_abc123",
+      scopeKey: "proj_abc123",
       kind: "observation",
       content: "project fact",
       createdAt: "2026-03-04T12:00:01.000Z",
@@ -214,8 +214,8 @@ describe("createSqliteMemoryStore", () => {
     };
     await store.write(userRecord);
     await store.write(projectRecord);
-    expect((await store.list({ scope: "user_abc123" })).map((record) => record.content)).toEqual(["user fact"]);
-    expect((await store.list({ scope: "proj_abc123" })).map((record) => record.content)).toEqual(["project fact"]);
+    expect((await store.list({ scopeKey: "user_abc123" })).map((record) => record.content)).toEqual(["user fact"]);
+    expect((await store.list({ scopeKey: "proj_abc123" })).map((record) => record.content)).toEqual(["project fact"]);
   });
 });
 
@@ -251,7 +251,7 @@ describe("embedding storage", () => {
     const store = createStore();
     const record: MemoryRecord = {
       id: "dst_cascade1",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       kind: "observation",
       content: "test",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -274,7 +274,7 @@ describe("migrateFromFilesystem", () => {
     // Legacy format uses "tier" not "kind"
     const legacyRecord = {
       id: "dst_migr001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       tier: "observation",
       content: "migrated fact",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -286,7 +286,7 @@ describe("migrateFromFilesystem", () => {
     const count = await migrateFromFilesystem(home, store);
     expect(count).toBe(1);
 
-    const records = await store.list({ scope: "sess_abc123" });
+    const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records).toHaveLength(1);
     expect(records[0]?.content).toBe("migrated fact");
 
@@ -313,7 +313,7 @@ describe("migrateFromFilesystem", () => {
     // Legacy format uses "tier" not "kind"
     const validRecord = {
       id: "dst_valid001",
-      sessionId: "sess_abc123",
+      scopeKey: "sess_abc123",
       tier: "observation",
       content: "valid record",
       createdAt: "2026-03-04T12:00:00.000Z",
@@ -325,7 +325,7 @@ describe("migrateFromFilesystem", () => {
     const count = await migrateFromFilesystem(home, store);
     expect(count).toBe(1);
 
-    const records = await store.list({ scope: "sess_abc123" });
+    const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records).toHaveLength(1);
     expect(records[0]?.content).toBe("valid record");
   });

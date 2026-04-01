@@ -202,7 +202,7 @@ describe("cli visual regression", () => {
       await store.write(
         {
           id: "mem_abc123",
-          sessionId: scopeKey,
+          scopeKey,
           kind: "stored",
           content: "Prefer concise output.",
           createdAt: "9999-01-01T00:00:00.000Z",

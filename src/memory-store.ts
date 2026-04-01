@@ -4,19 +4,17 @@ import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryStore, memoryRecordSchema } from "./memory-contract";
-
-export type { MemoryStore } from "./memory-contract";
+import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
 
 export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
 }
 
-function scopeTypeFromKey(scopeKey: string): string {
+function scopeTypeFromKey(scopeKey: string): MemoryScope {
   if (scopeKey.startsWith("sess_")) return "session";
   if (scopeKey.startsWith("proj_")) return "project";
   if (scopeKey.startsWith("user_")) return "user";
-  return "";
+  throw new Error(`Unknown scope key prefix: ${scopeKey}`);
 }
 
 function initSchema(db: Database): void {
@@ -86,7 +84,7 @@ type MemoryRow = {
 function rowToRecord(row: MemoryRow): MemoryRecord {
   return {
     id: row.id,
-    sessionId: row.scope_key,
+    scopeKey: row.scope_key,
     kind: row.kind as MemoryRecord["kind"],
     content: row.content,
     ...(row.current_task ? { currentTask: row.current_task } : {}),
@@ -131,25 +129,25 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
 
   return {
     async list(options) {
-      const { scope, kind } = options ?? {};
-      if (scope && kind) {
-        if (!safeScopeKey(scope)) return [];
-        return listByScopeAndKindStmt.all(scope, kind).map(rowToRecord);
+      const { scopeKey, kind } = options ?? {};
+      if (scopeKey && kind) {
+        if (!safeScopeKey(scopeKey)) return [];
+        return listByScopeAndKindStmt.all(scopeKey, kind).map(rowToRecord);
       }
-      if (scope) {
-        if (!safeScopeKey(scope)) return [];
-        return listByScopeStmt.all(scope).map(rowToRecord);
+      if (scopeKey) {
+        if (!safeScopeKey(scopeKey)) return [];
+        return listByScopeStmt.all(scopeKey).map(rowToRecord);
       }
       if (kind) return listByKindStmt.all(kind).map(rowToRecord);
       return listAllStmt.all().map(rowToRecord);
     },
     async write(record, scope) {
-      if (!safeScopeKey(record.sessionId)) return;
-      const scopeType = scope ?? scopeTypeFromKey(record.sessionId);
+      if (!safeScopeKey(record.scopeKey)) return;
+      const scopeType = scope ?? scopeTypeFromKey(record.scopeKey);
       writeStmt.run(
         record.id,
         scopeType,
-        record.sessionId,
+        record.scopeKey,
         record.kind,
         record.content,
         record.currentTask ?? null,
@@ -222,8 +220,9 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
       try {
         const raw = await readFile(join(scopePath, file), "utf8");
         const json = JSON.parse(raw);
-        // TODO(cniska): Drop legacy tier→kind mapping at v1.0.0.
+        // TODO(cniska): Drop legacy field mapping at v1.0.0.
         if (json.tier && !json.kind) json.kind = json.tier;
+        if (json.sessionId && !json.scopeKey) json.scopeKey = json.sessionId;
         const parsed = memoryRecordSchema.safeParse(json);
         if (parsed.success) records.push(parsed.data);
       } catch {
@@ -233,7 +232,7 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
   }
 
   for (const record of records) {
-    await store.write(record, scopeTypeFromKey(record.sessionId));
+    await store.write(record, scopeTypeFromKey(record.scopeKey));
     migrated += 1;
   }
 

@@ -23,7 +23,7 @@ describe("sqlite memory store", () => {
 
     const projectOnly = await listMemories({ scope: "project", store: db });
     const userOnly = await listMemories({ scope: "user", store: db });
-    const all = await listMemories({ scope: "all", store: db });
+    const all = await listMemories({ store: db });
 
     expect(projectOnly).toHaveLength(1);
     expect(projectOnly[0]?.scope).toBe("project");

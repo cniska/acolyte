@@ -8,15 +8,15 @@ import { createId } from "./short-id";
 export type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 
 export interface MemoryOptions {
-  scope?: MemoryScope | "all";
+  scope?: MemoryScope;
   workspace?: string;
   store?: MemoryStore;
 }
 
-function scopeKeysForScope(scope: MemoryScope | "all", workspace?: string): string[] {
+function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): string[] {
   const keys: string[] = [];
-  if (scope === "all" || scope === "user") keys.push(defaultUserResourceId());
-  if (scope === "all" || scope === "project") {
+  if (!scope || scope === "user") keys.push(defaultUserResourceId());
+  if (!scope || scope === "project") {
     const ws = workspace ?? process.cwd();
     keys.push(projectResourceIdFromWorkspace(ws));
   }
@@ -27,21 +27,21 @@ function scopeFromKey(key: string): MemoryScope {
   return key.startsWith("proj_") ? "project" : "user";
 }
 
-function toMemoryEntry(record: { id: string; sessionId: string; content: string; createdAt: string }): MemoryEntry {
+function toMemoryEntry(record: { id: string; scopeKey: string; content: string; createdAt: string }): MemoryEntry {
   return {
     id: record.id,
     content: record.content,
     createdAt: record.createdAt,
-    scope: scopeFromKey(record.sessionId),
+    scope: scopeFromKey(record.scopeKey),
   };
 }
 
 export async function listMemories(options: MemoryOptions = {}): Promise<MemoryEntry[]> {
-  const { scope = "all", workspace, store = getDefaultMemoryStore() } = options;
+  const { scope, workspace, store = getDefaultMemoryStore() } = options;
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
-    const records = await store.list({ scope: key, kind: "stored" });
+    const records = await store.list({ scopeKey: key, kind: "stored" });
     entries.push(...records.map(toMemoryEntry));
   }
   entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -61,7 +61,7 @@ export async function addMemory(
 
   const record = {
     id: `mem_${createId()}`,
-    sessionId: scopeKey,
+    scopeKey,
     kind: "stored" as const,
     content: trimmed,
     createdAt: new Date().toISOString(),
@@ -78,10 +78,7 @@ export async function addMemory(
   return toMemoryEntry(record);
 }
 
-export async function removeMemoryByPrefix(
-  prefix: string,
-  options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope | "all" } = {},
-): Promise<RemoveMemoryResult> {
+export async function removeMemoryByPrefix(prefix: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {
   const trimmed = prefix.trim();
   if (!trimmed) throw new Error("Memory prefix cannot be empty");
 
@@ -97,7 +94,7 @@ export async function removeMemoryByPrefix(
 }
 
 export const fileMemoryStore = {
-  list: (scope?: MemoryScope | "all") => listMemories({ scope: scope ?? "all" }),
+  list: (scope?: MemoryScope) => listMemories({ scope }),
   add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
-  remove: (prefix: string, scope?: MemoryScope | "all") => removeMemoryByPrefix(prefix, { scope }),
+  remove: (prefix: string, scope?: MemoryScope) => removeMemoryByPrefix(prefix, { scope }),
 };

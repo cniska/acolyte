@@ -4,7 +4,8 @@ import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import type { ResourceId } from "./resource-id";
 
-export type MemoryScope = "user" | "project";
+export const memoryScopeSchema = z.enum(["user", "project", "session"]);
+export type MemoryScope = z.infer<typeof memoryScopeSchema>;
 export const memoryIdSchema = domainIdSchema("mem");
 export type MemoryId = z.infer<typeof memoryIdSchema>;
 
@@ -59,7 +60,7 @@ export type MemoryKind = z.infer<typeof memoryKindSchema>;
 
 export const memoryRecordSchema = z.object({
   id: distillIdSchema,
-  sessionId: z.string().min(1),
+  scopeKey: z.string().min(1),
   kind: memoryKindSchema,
   content: z.string().min(1),
   currentTask: z.string().min(1).optional(),
@@ -70,10 +71,10 @@ export const memoryRecordSchema = z.object({
 export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
 
 export interface MemoryStore {
-  list(options?: { scope?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
-  write(record: MemoryRecord, scope?: string): Promise<void>;
+  list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
+  write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
-  writeEmbedding(id: string, scope: string, embedding: Buffer): void;
+  writeEmbedding(id: string, scopeKey: string, embedding: Buffer): void;
   removeEmbedding(id: string): void;
   getEmbedding(id: string): Buffer | null;
   getEmbeddings(ids: string[]): Map<string, Buffer>;
