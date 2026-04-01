@@ -16,16 +16,13 @@ interface Project {
 const PROJECTS: Project[] = [
   { name: "acolyte", url: "https://github.com/cniska/acolyte.git", lang: "typescript" },
   { name: "opencode", url: "https://github.com/anomalyco/opencode.git", lang: "typescript" },
+  { name: "codex", url: "https://github.com/openai/codex.git", lang: "rust" },
   { name: "crush", url: "https://github.com/charmbracelet/crush.git", lang: "go" },
   { name: "aider", url: "https://github.com/Aider-AI/aider.git", lang: "python" },
-  { name: "pi", url: "https://github.com/badlogic/pi-mono.git", lang: "typescript" },
   { name: "goose", url: "https://github.com/block/goose.git", lang: "rust" },
-  { name: "openhands", url: "https://github.com/All-Hands-AI/OpenHands.git", lang: "python" },
-  { name: "continue", url: "https://github.com/continuedev/continue.git", lang: "typescript" },
-  { name: "cline", url: "https://github.com/cline/cline.git", lang: "typescript" },
-  { name: "openclaw", url: "https://github.com/openclaw/openclaw.git", lang: "typescript" },
+  { name: "qwen-code", url: "https://github.com/QwenLM/qwen-code.git", lang: "typescript" },
   { name: "plandex", url: "https://github.com/plandex-ai/plandex.git", lang: "go" },
-  { name: "codex", url: "https://github.com/openai/codex.git", lang: "rust" },
+  { name: "mistral-vibe", url: "https://github.com/mistralai/mistral-vibe.git", lang: "python" },
 ];
 
 // --- file collection ---
