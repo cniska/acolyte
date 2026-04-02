@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resultChunkParts, textHeadTailParts } from "./tool-output-format";
+import { resultChunkParts, textHeadTailParts, toolLabelKey } from "./tool-output-format";
 import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryStats } from "./tool-output-parse";
 
 describe("textHeadTailParts", () => {
@@ -203,5 +203,16 @@ describe("numberedUnifiedDiffLines", () => {
     const textParts = items.filter((i) => i.kind === "text");
     // b.ts has no changes so its header should not appear; a.ts keeps its header.
     expect(textParts).toEqual([{ kind: "text", text: "a.ts (+1 -1)" }]);
+  });
+});
+
+describe("toolLabelKey", () => {
+  test("returns label key for known tool", () => {
+    expect(toolLabelKey("file-read")).toBe("tool.label.file_read");
+    expect(toolLabelKey("git-commit")).toBe("tool.label.git_commit");
+  });
+
+  test("falls back to tool id for unknown tool", () => {
+    expect(toolLabelKey("unknown-tool")).toBe("unknown-tool");
   });
 });

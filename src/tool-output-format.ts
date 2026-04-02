@@ -1,4 +1,5 @@
 import { isAbsolute, relative } from "node:path";
+import type { TranslationKey } from "./i18n";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
@@ -6,7 +7,7 @@ import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
 
-const TOOL_LABEL_KEYS: Record<string, string> = {
+const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
   "file-find": "tool.label.file_find",
   "file-search": "tool.label.file_search",
   "file-read": "tool.label.file_read",
