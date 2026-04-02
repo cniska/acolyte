@@ -15,6 +15,7 @@ import {
 } from "./error-handling";
 import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
 import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
+import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
@@ -154,9 +155,12 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   try {
     resetTimeout();
     const temperature = ctx.temperature ?? appConfig.temperature;
+    const provider = providerFromModel(appConfig.model);
+    const providerOptions = reasoningProviderOptions(provider, appConfig.reasoning);
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),
+      ...(providerOptions ? { providerOptions } : {}),
       maxNudges: ctx.policy.maxNudgesPerGeneration,
     });
     const fullOutput = streamOutput.getFullOutput();

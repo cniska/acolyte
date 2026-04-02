@@ -128,6 +128,7 @@ function serializeToml(config: Config): string {
   if (typeof config.maxPinnedMessageTokens === "number")
     lines.push(`maxPinnedMessageTokens = ${config.maxPinnedMessageTokens}`);
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
+  if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -153,6 +154,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? defaults.maxAttachmentMessageTokens,
     maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? defaults.maxPinnedMessageTokens,
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
+    reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
   };
 }

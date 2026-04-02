@@ -16,6 +16,9 @@ const MAX_PINNED_MESSAGE_TOKENS = 4_000;
 const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
 const MAX_TEMPERATURE = 2;
 
+export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
+export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
+
 const nonEmptyStringSchema = z.string().trim().min(1);
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
@@ -44,6 +47,7 @@ export interface Config {
   maxAttachmentMessageTokens?: number;
   maxPinnedMessageTokens?: number;
   replyTimeoutMs?: number;
+  reasoning?: ReasoningLevel;
   embeddingModel?: string;
 }
 
@@ -64,6 +68,7 @@ export interface ResolvedConfig {
   maxAttachmentMessageTokens: number;
   maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
+  reasoning?: ReasoningLevel;
   embeddingModel: string;
 }
 
@@ -76,6 +81,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
   logFormat: logFormatSchema,
+  reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
 };
 
@@ -108,6 +114,7 @@ export function toConfig(input: Record<string, unknown>): Config {
       input.maxPinnedMessageTokens,
     ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
+    reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
   };
 }
