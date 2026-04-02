@@ -92,7 +92,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolCallId: callId,
           });
         }
-        const baseBudget = deps.outputBudget.scanCode;
+        const baseBudget = deps.outputBudget.codeScan;
         const count = paths.length * toolInput.patterns.length;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
@@ -157,7 +157,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "code-edit", input.onOutput, callId);
         emitParts(diffParts, "code-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(editResult.output);
-        const result = compactToolOutput(editResult.output, deps.outputBudget.astEdit);
+        const result = compactToolOutput(editResult.output, deps.outputBudget.codeEdit);
         return {
           kind: "code-edit",
           path: toolInput.path,

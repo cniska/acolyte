@@ -21,18 +21,19 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
 export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };
 
 export type ToolOutputBudget = {
-  findFiles: ToolOutputBudgetEntry;
-  searchFiles: ToolOutputBudgetEntry;
-  webSearch: ToolOutputBudgetEntry;
-  webFetch: ToolOutputBudgetEntry;
-  read: ToolOutputBudgetEntry;
+  fileFind: ToolOutputBudgetEntry;
+  fileSearch: ToolOutputBudgetEntry;
+  fileRead: ToolOutputBudgetEntry;
+  fileEdit: ToolOutputBudgetEntry;
+  fileCreate: ToolOutputBudgetEntry;
+  codeEdit: ToolOutputBudgetEntry;
+  codeScan: ToolOutputBudgetEntry;
   gitStatus: ToolOutputBudgetEntry;
   gitDiff: ToolOutputBudgetEntry;
-  run: ToolOutputBudgetEntry;
-  edit: ToolOutputBudgetEntry;
-  astEdit: ToolOutputBudgetEntry;
-  scanCode: ToolOutputBudgetEntry;
-  create: ToolOutputBudgetEntry;
+  shellRun: ToolOutputBudgetEntry;
+  testRun: ToolOutputBudgetEntry;
+  webSearch: ToolOutputBudgetEntry;
+  webFetch: ToolOutputBudgetEntry;
 };
 
 export type ToolkitDeps = {

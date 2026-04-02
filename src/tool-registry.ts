@@ -74,23 +74,24 @@ export const TOOLKIT_REGISTRY: {
 const noopOutput: ToolOutputListener = () => {};
 const noopChecklist: ChecklistListener = () => {};
 
-const TOOL_OUTPUT_BUDGET = {
-  findFiles: { maxChars: 2_500, maxLines: 100 },
-  searchFiles: { maxChars: 2_200, maxLines: 80 },
-  webSearch: { maxChars: 2_400, maxLines: 80 },
-  webFetch: { maxChars: 2_600, maxLines: 90 },
-  read: { maxChars: 80_000, maxLines: 2_000 },
+const TOOL_BUDGETS = {
+  fileFind: { maxChars: 2_500, maxLines: 100 },
+  fileSearch: { maxChars: 2_200, maxLines: 80 },
+  fileRead: { maxChars: 80_000, maxLines: 2_000 },
+  fileEdit: { maxChars: 1_400, maxLines: 60 },
+  fileCreate: { maxChars: 3_000, maxLines: 100 },
+  codeEdit: { maxChars: 1_400, maxLines: 60 },
+  codeScan: { maxChars: 2_400, maxLines: 80 },
   gitStatus: { maxChars: 1_800, maxLines: 80 },
   gitDiff: { maxChars: 3_200, maxLines: 120 },
-  run: { maxChars: 2_600, maxLines: 120 },
-  edit: { maxChars: 1_400, maxLines: 60 },
-  astEdit: { maxChars: 1_400, maxLines: 60 },
-  scanCode: { maxChars: 2_400, maxLines: 80 },
-  create: { maxChars: 3_000, maxLines: 100 },
+  shellRun: { maxChars: 2_600, maxLines: 120 },
+  testRun: { maxChars: 2_600, maxLines: 120 },
+  webSearch: { maxChars: 2_400, maxLines: 80 },
+  webFetch: { maxChars: 2_600, maxLines: 90 },
 } as const;
 
 const defaultToolkitDeps = (): ToolkitDeps => ({
-  outputBudget: TOOL_OUTPUT_BUDGET,
+  outputBudget: TOOL_BUDGETS,
 });
 
 function collectTools(

@@ -73,7 +73,7 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 40;
         const count = toolInput.patterns.length;
-        const baseBudget = deps.outputBudget.findFiles;
+        const baseBudget = deps.outputBudget.fileFind;
         const budget = {
           maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
           maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
@@ -143,7 +143,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
               : [];
         const result = compactToolOutput(
           await searchFiles(input.workspace, patterns, maxResults, toolInput.paths),
-          deps.outputBudget.searchFiles,
+          deps.outputBudget.fileSearch,
         );
         const summaryStats = searchResultSummaryStats(result, patterns);
         const summaryParts = searchSummaryParts(
@@ -203,8 +203,8 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           },
           toolCallId: callId,
         });
-        const raw = await readFileContents(input.workspace, paths, deps.outputBudget.read.maxLines);
-        const output = compactToolOutput(raw, deps.outputBudget.read);
+        const raw = await readFileContents(input.workspace, paths, deps.outputBudget.fileRead.maxLines);
+        const output = compactToolOutput(raw, deps.outputBudget.fileRead);
         return { kind: "file-read", paths, output };
       });
     },
@@ -259,7 +259,7 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "file-edit", input.onOutput, callId);
         emitParts(diffParts, "file-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, deps.outputBudget.edit);
+        const result = compactToolOutput(rawResult, deps.outputBudget.fileEdit);
         return {
           kind: "file-edit",
           path: toolInput.path,
@@ -307,7 +307,7 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "file-create", input.onOutput, callId);
         emitParts(diffParts, "file-create", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, deps.outputBudget.create);
+        const result = compactToolOutput(rawResult, deps.outputBudget.fileCreate);
         return {
           kind: "file-create",
           path: toolInput.path,
@@ -353,7 +353,7 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           resultParts.push(rawResult);
         }
         const rawResult = resultParts.join("\n\n");
-        const result = compactToolOutput(rawResult, deps.outputBudget.edit);
+        const result = compactToolOutput(rawResult, deps.outputBudget.fileEdit);
         return { kind: "file-delete", paths, deleted: paths.length, output: result };
       });
     },
