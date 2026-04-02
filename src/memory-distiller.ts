@@ -30,11 +30,15 @@ Tag each fact with an observe directive on its own line, followed by the fact on
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
 export type MemoryPolicy = {
+  messageThreshold: number;
+  maxOutputTokens: number;
   contextMessageWindow: number;
   malformedStreakWarningThreshold: number;
 };
 
 export const defaultMemoryPolicy: MemoryPolicy = {
+  messageThreshold: 4,
+  maxOutputTokens: 1_000,
   contextMessageWindow: 20,
   malformedStreakWarningThreshold: 3,
 };
@@ -43,12 +47,6 @@ export function resolveMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPol
   if (!override) return defaultMemoryPolicy;
   return { ...defaultMemoryPolicy, ...override };
 }
-
-export type DistillConfig = {
-  model: string;
-  messageThreshold: number;
-  maxOutputTokens: number;
-};
 
 let defaultStore: MemoryStore | null = null;
 
@@ -63,7 +61,6 @@ type DistillScope = "session" | "project" | "user";
 
 type DistillOptions = {
   commitScope?: DistillScope | "none";
-  config?: DistillConfig;
   policy?: MemoryPolicy;
 };
 
@@ -163,8 +160,6 @@ function splitScopedObservation(observed: string): {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
-const defaultDistillConfig = (): DistillConfig => appConfig.distill;
-
 async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
   const qualifiedModel = normalizeModel(appConfig.distill.model);
   const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
@@ -173,6 +168,7 @@ async function runDistillLLM(systemPrompt: string, userContent: string): Promise
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: userContent }] },
     ],
+    temperature: 0,
   });
   const text = result.content
     .filter((part): part is { type: "text"; text: string } => part.type === "text")
@@ -231,7 +227,6 @@ export function createMemoryDistiller(
   options: DistillOptions = {},
 ): MemoryDistiller {
   const ds = injectedStore ?? getDefaultStore();
-  const config = options.config ?? defaultDistillConfig();
   const policy = options.policy ?? defaultMemoryPolicy;
   const commitScope = options.commitScope ?? "session";
   let malformedRejectStreak = 0;
@@ -240,14 +235,14 @@ export function createMemoryDistiller(
       if (commitScope === "none") return;
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
-      if (ctx.messages.length < config.messageThreshold) return;
+      if (ctx.messages.length < policy.messageThreshold) return;
 
       const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");
       const observedRaw = await runner(DISTILLER_PROMPT, distillInput);
-      const observed = clampToTokenEstimate(observedRaw, config.maxOutputTokens);
+      const observed = clampToTokenEstimate(observedRaw, policy.maxOutputTokens);
       if (!observed.trim()) return;
       const promptTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
       if (commitScope !== "session") {

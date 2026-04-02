@@ -27,8 +27,6 @@ export const appConfig = {
   temperature: fileConfig.temperature,
   distill: {
     model: fileConfig.distillModel,
-    messageThreshold: fileConfig.distillMessageThreshold,
-    maxOutputTokens: fileConfig.distillMaxOutputTokens,
   },
   embedding: {
     model: fileConfig.embeddingModel,

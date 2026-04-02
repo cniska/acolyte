@@ -1,19 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { createMemoryDistiller, DISTILLER_PROMPT, type DistillConfig } from "./memory-distiller";
+import { createMemoryDistiller, DISTILLER_PROMPT, resolveMemoryPolicy } from "./memory-distiller";
 
-const testDistillConfig: DistillConfig = {
-  model: "test-model",
-  messageThreshold: 1,
-  maxOutputTokens: 200,
-};
+const testPolicy = resolveMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
 function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
   runner?: (systemPrompt: string, userContent: string) => Promise<string>,
   options?: { commitScope?: "session" | "project" | "user" | "none" },
 ) {
-  return createMemoryDistiller(store, runner, { config: testDistillConfig, ...options });
+  return createMemoryDistiller(store, runner, { policy: testPolicy, ...options });
 }
 
 function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
@@ -64,7 +60,7 @@ describe("memoryDistiller", () => {
     test("skips when messages below threshold", async () => {
       const store = createMockStore();
       const source = createMemoryDistiller(store, undefined, {
-        config: { ...testDistillConfig, messageThreshold: 5 },
+        policy: resolveMemoryPolicy({ messageThreshold: 5 }),
       });
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
@@ -162,7 +158,7 @@ describe("memoryDistiller", () => {
         store,
         async (systemPrompt) => (systemPrompt === DISTILLER_PROMPT ? "scope fact" : ""),
         {
-          config: testDistillConfig,
+          policy: testPolicy,
           commitScope: "project",
         },
       );
@@ -253,10 +249,7 @@ describe("memoryDistiller", () => {
     });
 
     test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
-      const fixtureConfig: DistillConfig = {
-        ...testDistillConfig,
-        maxOutputTokens: 10_000,
-      };
+      const fixturePolicy = resolveMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 10_000 });
       const fixtures = [
         {
           name: "good_scoped_output",
@@ -323,7 +316,7 @@ describe("memoryDistiller", () => {
             if (systemPrompt !== DISTILLER_PROMPT) return "";
             return fixture.observed;
           },
-          { config: fixtureConfig },
+          { policy: fixturePolicy },
         );
         if (!source.commit) throw new Error("expected commit handler");
         const metrics = await source.commit({

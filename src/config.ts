@@ -22,8 +22,6 @@ function createDefaultConfig() {
     googleBaseUrl: "https://generativelanguage.googleapis.com",
     logFormat: "logfmt" as LogFormat,
     transportMode: "rpc" as const,
-    distillMessageThreshold: 4,
-    distillMaxOutputTokens: 1_000,
     contextMaxTokens: 100_000,
     maxHistoryMessages: 40,
     maxMessageTokens: 600,
@@ -117,10 +115,6 @@ function serializeToml(config: Config): string {
   if (config.model) lines.push(`model = ${JSON.stringify(config.model)}`);
   if (typeof config.temperature === "number") lines.push(`temperature = ${config.temperature}`);
   if (config.distillModel) lines.push(`distillModel = ${JSON.stringify(config.distillModel)}`);
-  if (typeof config.distillMessageThreshold === "number")
-    lines.push(`distillMessageThreshold = ${config.distillMessageThreshold}`);
-  if (typeof config.distillMaxOutputTokens === "number")
-    lines.push(`distillMaxOutputTokens = ${config.distillMaxOutputTokens}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
@@ -148,8 +142,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     model,
     temperature: config.temperature,
     distillModel: config.distillModel ?? model,
-    distillMessageThreshold: config.distillMessageThreshold ?? defaults.distillMessageThreshold,
-    distillMaxOutputTokens: config.distillMaxOutputTokens ?? defaults.distillMaxOutputTokens,
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,

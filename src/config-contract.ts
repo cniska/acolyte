@@ -10,7 +10,6 @@ export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
-const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
@@ -34,8 +33,6 @@ export interface Config {
   model?: string;
   temperature?: number;
   distillModel?: string;
-  distillMessageThreshold?: number;
-  distillMaxOutputTokens?: number;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -56,8 +53,6 @@ export interface ResolvedConfig {
   model: string;
   temperature?: number;
   distillModel: string;
-  distillMessageThreshold: number;
-  distillMaxOutputTokens: number;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
@@ -96,11 +91,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     model: parseField(nonEmptyStringSchema, input.model),
     temperature: parseField(parseTemperatureSchema, input.temperature),
     distillModel: parseField(nonEmptyStringSchema, input.distillModel),
-    distillMessageThreshold: parseField(parseIntegerSchema(1, 200), input.distillMessageThreshold),
-    distillMaxOutputTokens: parseField(
-      parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
-      input.distillMaxOutputTokens,
-    ),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
