@@ -67,6 +67,7 @@ acolyte config set logFormat json
 | `locale` | UI language (default: `en`) |
 | `model` | model |
 | `temperature` | generation temperature (`0.0` to `2.0`) |
+| `reasoning` | reasoning level for supported models (`low`, `medium`, `high`) |
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |
 | `googleBaseUrl` | Google AI API base URL |

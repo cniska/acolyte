@@ -154,9 +154,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
 
   try {
     resetTimeout();
-    const temperature = ctx.temperature ?? appConfig.temperature;
     const provider = providerFromModel(appConfig.model);
     const providerOptions = reasoningProviderOptions(provider, appConfig.reasoning);
+    const temperature = providerOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),

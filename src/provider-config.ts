@@ -1,4 +1,5 @@
 import type { SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
 
 const MODEL_NAME_PREFIX_TO_PROVIDER: Record<string, Provider> = {
@@ -24,7 +25,7 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-export function formatModel(model: string, reasoning?: string): string {
+export function formatModel(model: string, reasoning?: ReasoningLevel): string {
   const name = (model.indexOf("/") >= 0 ? model.slice(model.indexOf("/") + 1) : model).trim();
   if (reasoning && reasoning !== DEFAULT_REASONING) return `${name} (${reasoning})`;
   return name;
@@ -79,7 +80,7 @@ const ANTHROPIC_THINKING_BUDGET: Record<string, number> = {
 
 export function reasoningProviderOptions(
   provider: Provider,
-  level: string | undefined,
+  level: ReasoningLevel | undefined,
 ): SharedV3ProviderOptions | undefined {
   if (!level) return undefined;
   switch (provider) {
