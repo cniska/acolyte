@@ -42,14 +42,13 @@ function getDefaultStore(): MemoryStore {
 
 type DistillScope = "session" | "project" | "user";
 
-function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): void {
-  embedText(content)
-    .then((vec) => {
-      if (vec) ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
-    })
-    .catch((error) => {
-      log.warn("memory.distill.embed_failed", { id, error: String(error) });
-    });
+async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
+  try {
+    const vec = await embedText(content);
+    if (vec) ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
+  } catch (error) {
+    log.warn("memory.distill.embed_failed", { id, error: String(error) });
+  }
 }
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;
@@ -194,7 +193,7 @@ async function commitDistillForKey(ds: MemoryStore, key: string, observed: strin
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
-  embedAndStore(ds, observation.id, key, observed);
+  await embedAndStore(ds, observation.id, key, observed);
   log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
   return observation.tokenEstimate;
 }
