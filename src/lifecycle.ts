@@ -174,6 +174,30 @@ export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
   return undefined;
 }
 
+function commitMemory(ctx: RunContext, input: LifecycleInput): void {
+  const output = ctx.result?.text;
+  if (!output) return;
+  const messages = [
+    ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: ctx.request.message },
+  ];
+  const distillInput = [...messages, { role: "assistant", content: output }]
+    .map((m) => `${m.role}: ${m.content}`)
+    .join("\n\n");
+  ctx.promptUsage.memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
+  scheduleMemoryCommit(
+    {
+      sessionId: ctx.request.sessionId,
+      resourceId: ctx.request.resourceId,
+      workspace: ctx.workspace,
+      messages,
+      output,
+    },
+    ctx.debug,
+    input.onMemoryCommit,
+  );
+}
+
 function acceptResult(ctx: RunContext): void {
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
@@ -310,28 +334,8 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   acceptResult(ctx);
 
-  // Fire-and-forget: memory commit errors are logged but do not affect the response.
-  if (ctx.result && shouldCommitMemory(input)) {
-    const commitMessages = [
-      ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: ctx.request.message },
-    ];
-    // Estimate distill cost: observer prompt + input + estimated output
-    const distillInput = [...commitMessages, { role: "assistant", content: ctx.result.text }]
-      .map((m) => `${m.role}: ${m.content}`)
-      .join("\n\n");
-    ctx.promptUsage.memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
-    scheduleMemoryCommit(
-      {
-        sessionId: ctx.request.sessionId,
-        resourceId: ctx.request.resourceId,
-        workspace: ctx.workspace,
-        messages: commitMessages,
-        output: ctx.result.text,
-      },
-      ctx.debug,
-      input.onMemoryCommit,
-    );
+  if (shouldCommitMemory(input)) {
+    commitMemory(ctx, input);
   }
 
   return deps.phaseFinalize(ctx);
