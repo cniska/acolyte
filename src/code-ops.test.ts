@@ -657,6 +657,45 @@ describe("editCode", () => {
     expect(bContent).toContain("newName");
   });
 
+  test("workspace scope renames across all project files", async () => {
+    const dirPath = join(WORKSPACE, `acolyte-test-ast-ws-${testUuid()}`);
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await writeFile(join(dirPath, "lib.ts"), "export function oldName() { return 1; }\n", "utf8");
+    await writeFile(join(dirPath, "main.ts"), "import { oldName } from './lib';\noldName();\n", "utf8");
+    tempFiles.push(join(dirPath, "lib.ts"), join(dirPath, "main.ts"));
+    const result = await editCode({
+      workspace: dirPath,
+      path: join(dirPath, "lib.ts"),
+      edits: [{ op: "rename", from: "oldName", to: "newName", scope: "workspace" }],
+    });
+    expect(result.matches).toBeGreaterThanOrEqual(3);
+    const libContent = await readFile(join(dirPath, "lib.ts"), "utf8");
+    const mainContent = await readFile(join(dirPath, "main.ts"), "utf8");
+    expect(libContent).toContain("newName");
+    expect(mainContent).toContain("newName");
+    expect(mainContent).not.toContain("oldName");
+  });
+
+  test("workspace scope replaces across all project files", async () => {
+    const dirPath = join(WORKSPACE, `acolyte-test-ast-ws-replace-${testUuid()}`);
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await writeFile(join(dirPath, "a.ts"), "console.log('hello');\n", "utf8");
+    await writeFile(join(dirPath, "b.ts"), "console.log('world');\n", "utf8");
+    tempFiles.push(join(dirPath, "a.ts"), join(dirPath, "b.ts"));
+    const result = await editCode({
+      workspace: dirPath,
+      path: join(dirPath, "a.ts"),
+      edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.info($ARG)", scope: "workspace" }],
+    });
+    expect(result.matches).toBe(2);
+    const aContent = await readFile(join(dirPath, "a.ts"), "utf8");
+    const bContent = await readFile(join(dirPath, "b.ts"), "utf8");
+    expect(aContent).toContain("logger.info");
+    expect(bContent).toContain("logger.info");
+  });
+
   test("rejects unsupported non-code files", async () => {
     const filePath = join(WORKSPACE, `acolyte-test-ast-md-${testUuid()}.md`);
     tempFiles.push(filePath);

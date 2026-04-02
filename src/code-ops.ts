@@ -504,11 +504,19 @@ async function editCodeFile(
   return { matches: totalMatches, affectedSymbols: Array.from(affectedSymbols), diff };
 }
 
+function hasWorkspaceScope(edits: EditCodeEdit[]): boolean {
+  return edits.some((edit) => edit.scope === "workspace");
+}
+
 export async function editCode(input: {
   workspace: string;
   path: string;
   edits: EditCodeEdit[];
 }): Promise<EditCodeResult> {
+  if (hasWorkspaceScope(input.edits)) {
+    return editCodeDirectory(input.workspace, input.workspace, input.edits);
+  }
+
   const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const pathStats = await stat(absPath);
 

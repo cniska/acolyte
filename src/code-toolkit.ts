@@ -127,6 +127,7 @@ function createEditCodeTool(input: ToolkitInput) {
       "Prefer explicit `rename` or `replace` operations.",
       "For ambiguous local/member renames, set `target` to `local` or `member`.",
       "Use `withinSymbol` to keep edits scoped.",
+      "Set `scope` to `workspace` to apply edits across all project files.",
       "Read the target file directly before editing.",
       "If `code-edit` reports no matches, refine scope/rule from current file evidence instead of broadening blindly.",
       "Use the diff preview to confirm bounded changes and stop.",
