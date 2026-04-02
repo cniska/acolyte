@@ -2,12 +2,14 @@ import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import { log } from "./log";
-import type {
-  MemoryCommitContext,
-  MemoryCommitMetrics,
-  MemoryDistiller,
-  MemoryRecord,
-  MemoryStore,
+import {
+  defaultMemoryPolicy,
+  type MemoryCommitContext,
+  type MemoryCommitMetrics,
+  type MemoryDistiller,
+  type MemoryPolicy,
+  type MemoryRecord,
+  type MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getDefaultMemoryStore } from "./memory-store";
@@ -29,25 +31,6 @@ Tag each fact with an observe directive on its own line, followed by the fact on
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
-export type MemoryPolicy = {
-  messageThreshold: number;
-  maxOutputTokens: number;
-  contextMessageWindow: number;
-  malformedStreakWarningThreshold: number;
-};
-
-export const defaultMemoryPolicy: MemoryPolicy = {
-  messageThreshold: 4,
-  maxOutputTokens: 1_000,
-  contextMessageWindow: 20,
-  malformedStreakWarningThreshold: 3,
-};
-
-export function resolveMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
-  if (!override) return defaultMemoryPolicy;
-  return { ...defaultMemoryPolicy, ...override };
-}
-
 let defaultStore: MemoryStore | null = null;
 
 function getDefaultStore(): MemoryStore {
@@ -58,11 +41,6 @@ function getDefaultStore(): MemoryStore {
 }
 
 type DistillScope = "session" | "project" | "user";
-
-type DistillOptions = {
-  commitScope?: DistillScope | "none";
-  policy?: MemoryPolicy;
-};
 
 function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): void {
   embedText(content)
@@ -160,7 +138,7 @@ function splitScopedObservation(observed: string): {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
-async function runDistillLLM(systemPrompt: string, userContent: string): Promise<string> {
+async function defaultRunner(systemPrompt: string, userContent: string): Promise<string> {
   const qualifiedModel = normalizeModel(appConfig.distill.model);
   const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   const result = await model.doGenerate({
@@ -221,14 +199,18 @@ async function commitDistillForKey(ds: MemoryStore, key: string, observed: strin
   return observation.tokenEstimate;
 }
 
-export function createMemoryDistiller(
-  injectedStore?: MemoryStore,
-  runner: DistillRunner = runDistillLLM,
-  options: DistillOptions = {},
-): MemoryDistiller {
-  const ds = injectedStore ?? getDefaultStore();
-  const policy = options.policy ?? defaultMemoryPolicy;
-  const commitScope = options.commitScope ?? "session";
+export type DistillerDeps = {
+  store: MemoryStore;
+  runner: DistillRunner;
+  policy: MemoryPolicy;
+  commitScope: DistillScope | "none";
+};
+
+export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
+  const ds = deps.store ?? getDefaultStore();
+  const runner = deps.runner ?? defaultRunner;
+  const policy = deps.policy ?? defaultMemoryPolicy;
+  const commitScope = deps.commitScope ?? "session";
   let malformedRejectStreak = 0;
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {

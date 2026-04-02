@@ -12,7 +12,7 @@ import type {
 import { POST_EFFECTS, PRE_EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
-import { resolveLifecyclePolicy } from "./lifecycle-policy";
+import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
@@ -29,7 +29,7 @@ const memoryCommitQueue = createInMemoryTaskQueue();
 
 export type LifecycleDeps = {
   resolveModel: typeof resolveModel;
-  resolveLifecyclePolicy: typeof resolveLifecyclePolicy;
+  createLifecyclePolicy: typeof createLifecyclePolicy;
   phasePrepare: typeof phasePrepare;
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
@@ -38,7 +38,7 @@ export type LifecycleDeps = {
 
 const defaultLifecycleDeps: LifecycleDeps = {
   resolveModel,
-  resolveLifecyclePolicy,
+  createLifecyclePolicy,
   phasePrepare,
   createRunAgent,
   phaseGenerate,
@@ -221,7 +221,7 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+  let policy = deps.createLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
   if (profile.installCommand || profile.formatCommand || profile.lintCommand) {

@@ -50,7 +50,7 @@ describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
     const deps: LifecycleDeps = {
       resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
-      resolveLifecyclePolicy: () => ({
+      createLifecyclePolicy: () => ({
         ...defaultLifecyclePolicy,
         initialMaxSteps: 3,
         stepTimeoutMs: 1000,

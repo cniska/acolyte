@@ -34,6 +34,25 @@ export type MemoryCommitMetrics = {
   distillTokens?: number;
 };
 
+export type MemoryPolicy = {
+  messageThreshold: number;
+  maxOutputTokens: number;
+  contextMessageWindow: number;
+  malformedStreakWarningThreshold: number;
+};
+
+export const defaultMemoryPolicy: MemoryPolicy = {
+  messageThreshold: 4,
+  maxOutputTokens: 1_000,
+  contextMessageWindow: 20,
+  malformedStreakWarningThreshold: 3,
+};
+
+export function createMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
+  if (!override) return defaultMemoryPolicy;
+  return { ...defaultMemoryPolicy, ...override };
+}
+
 export interface MemoryDistiller {
   commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 }

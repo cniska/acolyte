@@ -1,15 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { createMemoryDistiller, DISTILLER_PROMPT, resolveMemoryPolicy } from "./memory-distiller";
+import { createMemoryPolicy } from "./memory-contract";
+import { createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 
-const testPolicy = resolveMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
+const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
 function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
   runner?: (systemPrompt: string, userContent: string) => Promise<string>,
   options?: { commitScope?: "session" | "project" | "user" | "none" },
 ) {
-  return createMemoryDistiller(store, runner, { policy: testPolicy, ...options });
+  return createMemoryDistiller({ store, runner, policy: testPolicy, ...options });
 }
 
 function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
@@ -59,10 +60,10 @@ describe("memoryDistiller", () => {
 
     test("skips when messages below threshold", async () => {
       const store = createMockStore();
-      const source = createMemoryDistiller(store, undefined, {
-        policy: resolveMemoryPolicy({ messageThreshold: 5 }),
+      const source = createMemoryDistiller({
+        store,
+        policy: createMemoryPolicy({ messageThreshold: 5 }),
       });
-      if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
@@ -154,15 +155,12 @@ describe("memoryDistiller", () => {
 
     test("commitScope writes only the targeted scope", async () => {
       const store = createMockStore();
-      const source = createMemoryDistiller(
+      const source = createMemoryDistiller({
         store,
-        async (systemPrompt) => (systemPrompt === DISTILLER_PROMPT ? "scope fact" : ""),
-        {
-          policy: testPolicy,
-          commitScope: "project",
-        },
-      );
-      if (!source.commit) throw new Error("expected commit handler");
+        runner: async (systemPrompt) => (systemPrompt === DISTILLER_PROMPT ? "scope fact" : ""),
+        policy: testPolicy,
+        commitScope: "project",
+      });
       await source.commit({
         sessionId: "sess_test0001",
         workspace: "/tmp/acolyte-project",
@@ -249,7 +247,7 @@ describe("memoryDistiller", () => {
     });
 
     test("quality fixtures classify observer output into promote, drop, or reject paths", async () => {
-      const fixturePolicy = resolveMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 10_000 });
+      const fixturePolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 10_000 });
       const fixtures = [
         {
           name: "good_scoped_output",
@@ -310,15 +308,14 @@ describe("memoryDistiller", () => {
 
       for (const fixture of fixtures) {
         const store = createMockStore();
-        const source = createMemoryDistiller(
+        const source = createMemoryDistiller({
           store,
-          async (systemPrompt) => {
+          runner: async (systemPrompt) => {
             if (systemPrompt !== DISTILLER_PROMPT) return "";
             return fixture.observed;
           },
-          { policy: fixturePolicy },
-        );
-        if (!source.commit) throw new Error("expected commit handler");
+          policy: fixturePolicy,
+        });
         const metrics = await source.commit({
           sessionId: "sess_test0001",
           resourceId: "proj_abc123",

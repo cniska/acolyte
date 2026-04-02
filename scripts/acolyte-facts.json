@@ -1,7 +1,7 @@
 [
   "System flow: CLI → client → server → lifecycle → model + tools. One active task per session with ordered queued tasks.",
   "First-class concepts: sessions, tasks, lifecycle phases, effects, tools, skills, memory sources, and typed RPC protocol. Each has its own module with typed contracts.",
-  "Dependency injection: no container or decorators. Dependencies are passed as typed parameters with defaults from appConfig. Factory functions take (deps, input) — deps for config, input for per-request runtime data.",
+  "Dependency injection: no container or decorators. Dependencies are passed as typed deps objects with defaults (e.g. LifecycleDeps, DistillerDeps). Tests override individual deps.",
   "Composition roots that read appConfig and pass values down: cli-command-registry.ts, server-chat-runtime.ts, cli-chat.ts. Tests inject directly through params.",
   "Lifecycle phases: resolve → prepare → generate → finalize. Single-pass execution — no regeneration loop, no feedback injection, no retry logic.",
   "Effects (format, lint) are lifecycle-owned side effects applied per-tool-result via onToolResult callback on the session. Lint errors are appended to tool results for the model to see.",
