@@ -91,7 +91,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           flushRemainder("stderr");
           const previewParts = shellHeadTailParts(streamed);
           emitParts(previewParts, "shell-run", input.onOutput, callId);
-          const result = compactToolOutput(rawResult, deps.outputBudget.run);
+          const result = compactToolOutput(rawResult, deps.outputBudget.shellRun);
           return {
             kind: "shell-run",
             command: displayCommand,

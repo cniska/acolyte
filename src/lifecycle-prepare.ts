@@ -25,7 +25,18 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     sessionId: input.request.sessionId,
   });
   const toolTokens = estimateToolTokens(tools);
-  const requestInput = createAgentInput(input.request, { systemPromptTokens, toolTokens });
+  const { policy } = input;
+  const requestInput = createAgentInput(input.request, {
+    systemPromptTokens,
+    toolTokens,
+    contextMaxTokens: policy.contextMaxTokens,
+    budget: {
+      maxHistoryMessages: policy.maxHistoryMessages,
+      maxMessageTokens: policy.maxMessageTokens,
+      maxAttachmentMessageTokens: policy.maxAttachmentMessageTokens,
+      maxSkillContextTokens: policy.maxSkillContextTokens,
+    },
+  });
   requestInput.usage.toolTokens = toolTokens;
   requestInput.usage.messageTokens = requestInput.usage.inputTokens;
   const baseAgentInput = requestInput.input;

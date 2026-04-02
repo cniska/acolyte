@@ -1,6 +1,5 @@
 import { encoding_for_model } from "tiktoken";
 import type { ChatRequest } from "./api";
-import { appConfig } from "./app-config";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
@@ -35,8 +34,8 @@ function isRelevantFileContext(content: string): boolean {
   return content.startsWith("Attached file:") || content.startsWith("Attached directory:");
 }
 
-function isPinnedSystemContext(content: string): boolean {
-  return content.startsWith("Active skill (") || content.startsWith("Pinned memory:");
+function isSkillContext(content: string): boolean {
+  return content.startsWith("Active skill (");
 }
 
 function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
@@ -73,10 +72,11 @@ function collectLinesWithinBudget(
   usedIds: Set<string>,
   remainingTokens: number,
   maxPerMessageTokens: number,
+  maxHistoryMessages: number,
 ): { lines: string[]; consumedTokens: number } {
   const lines: string[] = [];
   let consumed = 0;
-  const recent = messages.slice(-appConfig.agent.inputBudget.maxHistoryMessages);
+  const recent = messages.slice(-maxHistoryMessages);
   const includeMessage = (i: number): void => {
     const message = recent[i];
     if (usedIds.has(message.id)) return;
@@ -117,12 +117,12 @@ export type InputBudget = {
   maxHistoryMessages: number;
   maxMessageTokens: number;
   maxAttachmentMessageTokens: number;
-  maxPinnedMessageTokens: number;
+  maxSkillContextTokens: number;
 };
 
 export function createAgentInput(
   req: ChatRequest,
-  options?: { systemPromptTokens?: number; toolTokens?: number; budget?: InputBudget },
+  options: { systemPromptTokens?: number; toolTokens?: number; contextMaxTokens: number; budget: InputBudget },
 ): {
   input: string;
   usage: {
@@ -139,32 +139,48 @@ export function createAgentInput(
     skillInstructionChars?: number;
   };
 } {
-  const maxContextTokens = appConfig.agent.contextMaxTokens;
-  const systemPromptTokens = options?.systemPromptTokens ?? 0;
-  const toolTokens = options?.toolTokens ?? 0;
+  const contextMaxTokens = options.contextMaxTokens;
+  const systemPromptTokens = options.systemPromptTokens ?? 0;
+  const toolTokens = options.toolTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
-  const budget = options?.budget ?? appConfig.agent.inputBudget;
+  const budget = options.budget;
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
-  let remaining = Math.max(0, maxContextTokens - userTokens - systemPromptTokens - toolTokens);
+  let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
 
-  const pinnedSystem = req.history.filter(
-    (message) => message.role === "system" && isPinnedSystemContext(message.content),
+  const skillMessages = req.history.filter((message) => message.role === "system" && isSkillContext(message.content));
+  const skillResult = collectLinesWithinBudget(
+    skillMessages,
+    usedIds,
+    remaining,
+    budget.maxSkillContextTokens,
+    budget.maxHistoryMessages,
   );
-  const pinnedResult = collectLinesWithinBudget(pinnedSystem, usedIds, remaining, budget.maxPinnedMessageTokens);
-  lines.push(...pinnedResult.lines);
-  remaining -= pinnedResult.consumedTokens;
+  lines.push(...skillResult.lines);
+  remaining -= skillResult.consumedTokens;
 
   const relevantFiles = req.history.filter(
     (message) => message.role === "system" && isRelevantFileContext(message.content),
   );
-  const filesResult = collectLinesWithinBudget(relevantFiles, usedIds, remaining, budget.maxAttachmentMessageTokens);
+  const filesResult = collectLinesWithinBudget(
+    relevantFiles,
+    usedIds,
+    remaining,
+    budget.maxAttachmentMessageTokens,
+    budget.maxHistoryMessages,
+  );
   lines.push(...filesResult.lines);
   remaining -= filesResult.consumedTokens;
 
-  const recentResult = collectLinesWithinBudget(req.history, usedIds, remaining, budget.maxMessageTokens);
+  const recentResult = collectLinesWithinBudget(
+    req.history,
+    usedIds,
+    remaining,
+    budget.maxMessageTokens,
+    budget.maxHistoryMessages,
+  );
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) lines.push("");
@@ -174,7 +190,7 @@ export function createAgentInput(
 
   let activeSkillName: string | undefined;
   let skillInstructionChars: number | undefined;
-  for (const msg of pinnedSystem) {
+  for (const msg of skillMessages) {
     const match = msg.content.match(/^Active skill \(([^)]+)\):/);
     if (match) {
       activeSkillName = match[1];
@@ -190,7 +206,7 @@ export function createAgentInput(
     input,
     usage: {
       inputTokens,
-      inputBudgetTokens: maxContextTokens,
+      inputBudgetTokens: contextMaxTokens,
       systemPromptTokens,
       toolTokens: 0,
       memoryTokens: 0,

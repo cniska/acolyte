@@ -39,10 +39,10 @@ Shipped, user-visible capabilities.
 
 ## Memory
 
-- three-tier persistent memory (session, project, user)
-- context distillation with automatic observation and reflection
+- on-demand memory toolkit (search, add, remove)
+- three-scope persistent memory (session, project, user)
+- automatic observation via distiller with @observe directives
 - semantic recall with embeddings and cosine similarity ranking
-- memory inspect/list/remove commands
 
 ## Safety and control
 

@@ -32,7 +32,7 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
-import { findSkillByName, loadSkills, readSkillInstructions } from "./skills";
+import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { formatStatus } from "./status-format";
 import { createSession, readStore } from "./storage";
 import { openTraceStore } from "./trace-store";
@@ -282,7 +282,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         serverApiKey: appConfig.server.apiKey,
         serverEntry: `${import.meta.dir}/server.ts`,
         serverPort: appConfig.server.port,
-        skillBudget: appConfig.agent.skillBudget,
+        skillBudget: SKILL_BUDGET,
         commandError,
         commandHelp,
       }),

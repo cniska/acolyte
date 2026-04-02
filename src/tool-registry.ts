@@ -1,5 +1,4 @@
 import { resolve } from "node:path";
-import { appConfig } from "./app-config";
 import { invariant } from "./assert";
 import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
@@ -74,8 +73,24 @@ export const TOOLKIT_REGISTRY: {
 const noopOutput: ToolOutputListener = () => {};
 const noopChecklist: ChecklistListener = () => {};
 
+const TOOL_BUDGETS = {
+  fileFind: { maxChars: 2_500, maxLines: 100 },
+  fileSearch: { maxChars: 2_200, maxLines: 80 },
+  fileRead: { maxChars: 80_000, maxLines: 2_000 },
+  fileEdit: { maxChars: 1_400, maxLines: 60 },
+  fileCreate: { maxChars: 3_000, maxLines: 100 },
+  codeEdit: { maxChars: 1_400, maxLines: 60 },
+  codeScan: { maxChars: 2_400, maxLines: 80 },
+  gitStatus: { maxChars: 1_800, maxLines: 80 },
+  gitDiff: { maxChars: 3_200, maxLines: 120 },
+  shellRun: { maxChars: 2_600, maxLines: 120 },
+  testRun: { maxChars: 2_600, maxLines: 120 },
+  webSearch: { maxChars: 2_400, maxLines: 80 },
+  webFetch: { maxChars: 2_600, maxLines: 90 },
+} as const;
+
 const defaultToolkitDeps = (): ToolkitDeps => ({
-  outputBudget: appConfig.agent.toolOutputBudget,
+  outputBudget: TOOL_BUDGETS,
 });
 
 function collectTools(

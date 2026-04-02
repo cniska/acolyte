@@ -515,18 +515,19 @@ const DEFAULT_BUDGET_ENTRY = { maxChars: 2000, maxLines: 80 };
 export function createToolkitDeps(): ToolkitDeps {
   return {
     outputBudget: {
-      findFiles: DEFAULT_BUDGET_ENTRY,
-      searchFiles: DEFAULT_BUDGET_ENTRY,
-      webSearch: DEFAULT_BUDGET_ENTRY,
-      webFetch: DEFAULT_BUDGET_ENTRY,
-      read: DEFAULT_BUDGET_ENTRY,
+      fileFind: DEFAULT_BUDGET_ENTRY,
+      fileSearch: DEFAULT_BUDGET_ENTRY,
+      fileRead: DEFAULT_BUDGET_ENTRY,
+      fileEdit: DEFAULT_BUDGET_ENTRY,
+      fileCreate: DEFAULT_BUDGET_ENTRY,
+      codeEdit: DEFAULT_BUDGET_ENTRY,
+      codeScan: DEFAULT_BUDGET_ENTRY,
       gitStatus: DEFAULT_BUDGET_ENTRY,
       gitDiff: DEFAULT_BUDGET_ENTRY,
-      run: DEFAULT_BUDGET_ENTRY,
-      edit: DEFAULT_BUDGET_ENTRY,
-      astEdit: DEFAULT_BUDGET_ENTRY,
-      scanCode: DEFAULT_BUDGET_ENTRY,
-      create: DEFAULT_BUDGET_ENTRY,
+      shellRun: DEFAULT_BUDGET_ENTRY,
+      testRun: DEFAULT_BUDGET_ENTRY,
+      webSearch: DEFAULT_BUDGET_ENTRY,
+      webFetch: DEFAULT_BUDGET_ENTRY,
     },
   };
 }
