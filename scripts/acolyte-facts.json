@@ -19,6 +19,7 @@
   "Distill: observer extracts facts after each request using @observe directives (@observe project, @observe user, @observe session). Each fact is stored individually with its own embedding.",
   "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Deduplication by normalized content.",
   "Test types: unit (*.test.ts), integration (*.int.test.ts), visual (*.tui.test.tsx), performance. Unit tests must avoid filesystem writes, subprocesses, and network calls.",
+  "Code quality: fix things properly the first time. No hacks, no workarounds, no intentional debt. If a type is wrong, fix the type. If a name is misleading, rename it.",
   "Verification: bun run verify runs lint + typecheck + test + audit. Always run before pushing.",
   "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable.",
 
