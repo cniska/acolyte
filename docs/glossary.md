@@ -23,9 +23,9 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
 | Checklist | Inline progress display for multi-step tasks, defined by `checklist-create` and updated by `checklist-update` |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
-| Continuation State | Persisted "Current task" and "Next step" cues carried into later turns |
-| Distill | Memory source family that extracts and consolidates knowledge into records at project, user, or session scope |
-| Embedding | Provider-generated vector representation of a distill record used for semantic recall |
+| Directive | Model-to-host structured annotation emitted via `@` prefix (e.g. `@signal done`, `@observe project`) |
+| Distill | Memory source that extracts observations from conversations at project, user, or session scope |
+| Embedding | Provider-generated vector representation of a memory record used for semantic recall |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
@@ -36,15 +36,14 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal memory flow from ingest through commit |
 | Memory Policy | Centralized limits and defaults for memory behavior |
-| Memory Source | Pluggable provider that contributes memory entries and optional commit behavior |
-| Memory Source Strategy | Configured memory source IDs and order used by the Memory Engine |
+| Memory Distiller | Extracts and commits observations from conversations after each request |
+| Memory Toolkit | On-demand tools (`memory-search`, `memory-add`, `memory-remove`) the model invokes to access memory at runtime |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
-| Observation | Distill record tier for round-level facts |
+| Observation | Memory record kind for facts extracted from conversations via `@observe` directives |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
 | Provider | Model backend selected for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`) |
 | Record | Persisted entity object stored by a persistence backend |
-| Reflection | Distill record tier for cross-round consolidation |
 | Registry | Composition layer that wires implementations into an agent-facing surface under shared contracts |
 | Resource ID | Typed cross-session identity key used for memory and execution scoping |
 | Semantic Recall | Relevance-ranked memory selection using embeddings and cosine similarity |

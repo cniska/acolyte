@@ -29,7 +29,7 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   toolTimeoutMs: TOOL_TIMEOUT_MS,
 };
 
-export function resolveLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {
+export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {
   if (!override) return defaultLifecyclePolicy;
   return { ...defaultLifecyclePolicy, ...override };
 }

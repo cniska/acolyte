@@ -57,7 +57,6 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 protocol_version: PROTOCOL_VERSION,
                 capabilities: "stream.sse, error.structured",
                 service: "http://localhost:6767",
-                memory: "file",
                 tasks_total: 0,
                 tasks_running: 0,
                 tasks_detached: 0,
@@ -275,7 +274,6 @@ describe("cli visual regression", () => {
           Protocol version:   ${PROTOCOL_VERSION}
           Capabilities:       stream.sse, error.structured
           Service:            http://localhost:6767
-          Memory:             file
           Tasks total:        0
           Tasks running:      0
           Tasks detached:     0

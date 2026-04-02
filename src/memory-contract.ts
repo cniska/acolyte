@@ -16,25 +16,12 @@ export interface MemoryEntry {
   readonly scope: MemoryScope;
 }
 
-export type RemoveMemoryResult =
-  | { kind: "removed"; entry: MemoryEntry }
-  | { kind: "not_found"; prefix: string }
-  | { kind: "ambiguous"; prefix: string; matches: MemoryEntry[] };
+export type RemoveMemoryResult = { kind: "removed"; entry: MemoryEntry } | { kind: "not_found"; id: string };
 
-export type MemoryLoadContext = {
+export type MemoryCommitContext = {
   readonly sessionId?: string;
   readonly resourceId?: ResourceId;
   readonly workspace?: string;
-  readonly query?: string;
-};
-
-export type MemorySourceEntry = {
-  readonly content: string;
-  readonly isContinuation?: boolean;
-  readonly recordId?: string;
-};
-
-export type MemoryCommitContext = MemoryLoadContext & {
   readonly messages: readonly { role: string; content: string }[];
   readonly output: string;
 };
@@ -44,27 +31,40 @@ export type MemoryCommitMetrics = {
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
+  distillTokens?: number;
 };
 
-export type MemorySource = {
-  readonly id: string;
-  loadEntries(ctx: MemoryLoadContext): Promise<readonly MemorySourceEntry[]>;
-  commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
+export type MemoryPolicy = {
+  messageThreshold: number;
+  maxOutputTokens: number;
+  contextMessageWindow: number;
+  malformedStreakWarningThreshold: number;
 };
 
-export const distillIdSchema = domainIdSchema("dst");
-export type DistillId = z.infer<typeof distillIdSchema>;
+export const defaultMemoryPolicy: MemoryPolicy = {
+  messageThreshold: 4,
+  maxOutputTokens: 1_000,
+  contextMessageWindow: 20,
+  malformedStreakWarningThreshold: 3,
+};
 
-export const memoryKindSchema = z.enum(["observation", "reflection", "stored"]);
+export function createMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
+  if (!override) return defaultMemoryPolicy;
+  return { ...defaultMemoryPolicy, ...override };
+}
+
+export interface MemoryDistiller {
+  commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
+}
+
+export const memoryKindSchema = z.enum(["observation", "stored"]);
 export type MemoryKind = z.infer<typeof memoryKindSchema>;
 
 export const memoryRecordSchema = z.object({
-  id: distillIdSchema,
+  id: memoryIdSchema,
   scopeKey: z.string().min(1),
   kind: memoryKindSchema,
   content: z.string().min(1),
-  currentTask: z.string().min(1).optional(),
-  nextStep: z.string().min(1).optional(),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
 });
@@ -79,4 +79,11 @@ export interface MemoryStore {
   getEmbedding(id: string): Buffer | null;
   getEmbeddings(ids: string[]): Map<string, Buffer>;
   close(): void;
+}
+
+export function scopeFromKey(key: string): MemoryScope {
+  if (key.startsWith("sess_")) return "session";
+  if (key.startsWith("proj_")) return "project";
+  if (key.startsWith("user_")) return "user";
+  throw new Error(`Unknown scope key prefix: ${key}`);
 }

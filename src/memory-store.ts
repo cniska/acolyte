@@ -4,17 +4,10 @@ import { readdir, readFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
+import { type MemoryRecord, type MemoryStore, memoryRecordSchema, scopeFromKey } from "./memory-contract";
 
 export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
-}
-
-function scopeTypeFromKey(scopeKey: string): MemoryScope {
-  if (scopeKey.startsWith("sess_")) return "session";
-  if (scopeKey.startsWith("proj_")) return "project";
-  if (scopeKey.startsWith("user_")) return "user";
-  throw new Error(`Unknown scope key prefix: ${scopeKey}`);
 }
 
 // TODO(cniska): Drop migrateLegacySchema at v1.0.0.
@@ -43,6 +36,18 @@ function migrateLegacySchema(db: Database): void {
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN record_id TO id");
     db.run("ALTER TABLE memory_embeddings RENAME COLUMN scope_key TO scope");
   }
+  // Migrate dst_ IDs to mem_ IDs (safe on fresh DBs — WHERE clause matches nothing)
+  if (hasLegacyTable || hasLegacyEmb) {
+    db.run("UPDATE memories SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
+    db.run("UPDATE memory_embeddings SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
+    db.run("DELETE FROM memory_embeddings WHERE id IN (SELECT id FROM memories WHERE kind = 'reflection')");
+    db.run("DELETE FROM memories WHERE kind = 'reflection'");
+  }
+  // Drop continuation state columns
+  const cols = db.prepare("PRAGMA table_info(memories)").all() as { name: string }[];
+  const names = new Set(cols.map((c) => c.name));
+  if (names.has("current_task")) db.run("ALTER TABLE memories DROP COLUMN current_task");
+  if (names.has("next_step")) db.run("ALTER TABLE memories DROP COLUMN next_step");
 }
 
 function initSchema(db: Database): void {
@@ -54,8 +59,6 @@ function initSchema(db: Database): void {
       scope_key TEXT NOT NULL,
       kind TEXT NOT NULL,
       content TEXT NOT NULL,
-      current_task TEXT,
-      next_step TEXT,
       created_at TEXT NOT NULL,
       token_estimate INTEGER NOT NULL
     )
@@ -78,8 +81,6 @@ type MemoryRow = {
   scope_key: string;
   kind: string;
   content: string;
-  current_task: string | null;
-  next_step: string | null;
   created_at: string;
   token_estimate: number;
 };
@@ -90,8 +91,6 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     scopeKey: row.scope_key,
     kind: row.kind as MemoryRecord["kind"],
     content: row.content,
-    ...(row.current_task ? { currentTask: row.current_task } : {}),
-    ...(row.next_step ? { nextStep: row.next_step } : {}),
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
   };
@@ -114,12 +113,9 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     "SELECT * FROM memories WHERE scope_key = ? AND kind = ? ORDER BY created_at ASC",
   );
   const listAllStmt = db.prepare<MemoryRow, []>("SELECT * FROM memories ORDER BY created_at ASC");
-  const writeStmt = db.prepare<
-    void,
-    [string, string, string, string, string, string | null, string | null, string, number]
-  >(
-    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, current_task, next_step, created_at, token_estimate)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const writeStmt = db.prepare<void, [string, string, string, string, string, string, number]>(
+    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const removeStmt = db.prepare<void, [string]>("DELETE FROM memories WHERE id = ?");
   const writeEmbStmt = db.prepare<void, [string, string, Buffer]>(
@@ -146,15 +142,13 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     },
     async write(record, scope) {
       if (!safeScopeKey(record.scopeKey)) return;
-      const scopeType = scope ?? scopeTypeFromKey(record.scopeKey);
+      const scopeType = scope ?? scopeFromKey(record.scopeKey);
       writeStmt.run(
         record.id,
         scopeType,
         record.scopeKey,
         record.kind,
         record.content,
-        record.currentTask ?? null,
-        record.nextStep ?? null,
         record.createdAt,
         record.tokenEstimate,
       );
@@ -185,6 +179,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       return new Map(rows.map((row) => [row.id, row.embedding]));
     },
     close() {
+      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
     },
   };
@@ -238,7 +233,7 @@ export async function migrateFromFilesystem(homeDir: string, store: MemoryStore)
   }
 
   for (const record of records) {
-    await store.write(record, scopeTypeFromKey(record.scopeKey));
+    await store.write(record, scopeFromKey(record.scopeKey));
     migrated += 1;
   }
 

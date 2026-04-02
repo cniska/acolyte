@@ -8,13 +8,8 @@ export const transportModeSchema = z.literal("rpc");
 
 export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
-export const memorySourceIdSchema = z.enum(["stored", "distill_user", "distill_project", "distill_session"]);
-export type MemorySourceId = z.infer<typeof memorySourceIdSchema>;
 
 const MAX_CONTEXT_TOKENS = 32_000;
-const MAX_DISTILL_MAX_OUTPUT_TOKENS = 4_000;
-const MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS = 32_000;
-const MAX_MEMORY_BUDGET_TOKENS = 8_000;
 const MAX_MESSAGE_TOKENS = 4_000;
 const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
 const MAX_PINNED_MESSAGE_TOKENS = 4_000;
@@ -31,13 +26,6 @@ const parseTemperatureSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
   z.number().min(0).max(MAX_TEMPERATURE),
 );
-const parseMemorySourcesSchema = z.preprocess((value) => {
-  if (typeof value !== "string") return value;
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}, z.array(memorySourceIdSchema).min(1));
 
 export interface Config {
   port?: number;
@@ -45,11 +33,6 @@ export interface Config {
   model?: string;
   temperature?: number;
   distillModel?: string;
-  distillMessageThreshold?: number;
-  distillReflectionThresholdTokens?: number;
-  distillMaxOutputTokens?: number;
-  memoryBudgetTokens?: number;
-  memorySources?: MemorySourceId[];
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -70,11 +53,6 @@ export interface ResolvedConfig {
   model: string;
   temperature?: number;
   distillModel: string;
-  distillMessageThreshold: number;
-  distillReflectionThresholdTokens: number;
-  distillMaxOutputTokens: number;
-  memoryBudgetTokens: number;
-  memorySources: MemorySourceId[];
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
@@ -113,17 +91,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     model: parseField(nonEmptyStringSchema, input.model),
     temperature: parseField(parseTemperatureSchema, input.temperature),
     distillModel: parseField(nonEmptyStringSchema, input.distillModel),
-    distillMessageThreshold: parseField(parseIntegerSchema(1, 200), input.distillMessageThreshold),
-    distillReflectionThresholdTokens: parseField(
-      parseIntegerSchema(1000, MAX_DISTILL_REFLECTION_THRESHOLD_TOKENS),
-      input.distillReflectionThresholdTokens,
-    ),
-    distillMaxOutputTokens: parseField(
-      parseIntegerSchema(100, MAX_DISTILL_MAX_OUTPUT_TOKENS),
-      input.distillMaxOutputTokens,
-    ),
-    memoryBudgetTokens: parseField(parseIntegerSchema(0, MAX_MEMORY_BUDGET_TOKENS), input.memoryBudgetTokens),
-    memorySources: parseField(parseMemorySourcesSchema, input.memorySources),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),

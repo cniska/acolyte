@@ -1,3 +1,4 @@
+import { estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
@@ -11,12 +12,12 @@ import type {
 import { POST_EFFECTS, PRE_EFFECTS } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
-import { resolveLifecyclePolicy } from "./lifecycle-policy";
+import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
-import { commitMemorySources } from "./memory-registry";
+import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
@@ -28,7 +29,7 @@ const memoryCommitQueue = createInMemoryTaskQueue();
 
 export type LifecycleDeps = {
   resolveModel: typeof resolveModel;
-  resolveLifecyclePolicy: typeof resolveLifecyclePolicy;
+  createLifecyclePolicy: typeof createLifecyclePolicy;
   phasePrepare: typeof phasePrepare;
   createRunAgent: typeof createRunAgent;
   phaseGenerate: typeof phaseGenerate;
@@ -37,7 +38,7 @@ export type LifecycleDeps = {
 
 const defaultLifecycleDeps: LifecycleDeps = {
   resolveModel,
-  resolveLifecyclePolicy,
+  createLifecyclePolicy,
   phasePrepare,
   createRunAgent,
   phaseGenerate,
@@ -51,7 +52,8 @@ export function shouldCommitMemory(input: LifecycleInput): boolean {
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
-  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitMemorySources,
+  onCommit?: (metrics: MemoryCommitMetrics) => void,
+  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitDistiller,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
     memoryCommitQueue.enqueue(key, job),
 ): void {
@@ -65,12 +67,14 @@ export function scheduleMemoryCommit(
   debug("lifecycle.memory.commit_scheduled", debugFields);
   void enqueueFn(key, async () => {
     const metrics = await commitFn(commitCtx);
+    if (metrics) onCommit?.(metrics);
     debug("lifecycle.memory.commit_done", {
       ...debugFields,
       project_promoted_facts: metrics?.projectPromotedFacts ?? 0,
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
+      distill_tokens: metrics?.distillTokens ?? 0,
     });
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
@@ -170,6 +174,30 @@ export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
   return undefined;
 }
 
+function commitMemory(ctx: RunContext, input: LifecycleInput): void {
+  const output = ctx.result?.text;
+  if (!output) return;
+  const messages = [
+    ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: ctx.request.message },
+  ];
+  const distillInput = [...messages, { role: "assistant", content: output }]
+    .map((m) => `${m.role}: ${m.content}`)
+    .join("\n\n");
+  ctx.promptUsage.memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
+  scheduleMemoryCommit(
+    {
+      sessionId: ctx.request.sessionId,
+      resourceId: ctx.request.resourceId,
+      workspace: ctx.workspace,
+      messages,
+      output,
+    },
+    ctx.debug,
+    input.onMemoryCommit,
+  );
+}
+
 function acceptResult(ctx: RunContext): void {
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
@@ -217,7 +245,7 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  let policy = deps.resolveLifecyclePolicy(input.lifecyclePolicy);
+  let policy = deps.createLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
   if (profile.installCommand || profile.formatCommand || profile.lintCommand) {
@@ -265,7 +293,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
-    memoryTokens: input.memoryTokens,
     model,
     policy,
     debug,
@@ -307,21 +334,8 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   acceptResult(ctx);
 
-  // Fire-and-forget: memory commit errors are logged but do not affect the response.
-  if (ctx.result && shouldCommitMemory(input)) {
-    scheduleMemoryCommit(
-      {
-        sessionId: ctx.request.sessionId,
-        resourceId: ctx.request.resourceId,
-        workspace: ctx.workspace,
-        messages: [
-          ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
-          { role: "user", content: ctx.request.message },
-        ],
-        output: ctx.result.text,
-      },
-      ctx.debug,
-    );
+  if (shouldCommitMemory(input)) {
+    commitMemory(ctx, input);
   }
 
   return deps.phaseFinalize(ctx);

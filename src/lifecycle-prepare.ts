@@ -27,7 +27,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const toolTokens = estimateToolTokens(tools);
   const requestInput = createAgentInput(input.request, { systemPromptTokens, toolTokens });
   requestInput.usage.toolTokens = toolTokens;
-  requestInput.usage.memoryTokens = input.memoryTokens ?? 0;
   requestInput.usage.messageTokens = requestInput.usage.inputTokens;
   const baseAgentInput = requestInput.input;
 

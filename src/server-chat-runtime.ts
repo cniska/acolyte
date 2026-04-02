@@ -191,27 +191,11 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
 
   try {
     const soulPrompt = await createSoulPrompt({
-      sessionId: chatRequest.sessionId,
-      resourceId: canonicalResourceId,
-      workspace: workspaceResolution.workspacePath,
-      query: chatRequest.message,
-      useMemory: chatRequest.useMemory !== false,
-      onDebug: (event, fields) => {
-        log.info("agent debug", {
-          request_id: requestId,
-          task_id: handlers.taskId ?? null,
-          session_id: chatRequest.sessionId ?? null,
-          event,
-          sequence: 0,
-          event_ts: new Date().toISOString(),
-          ...(fields ?? {}),
-        });
-      },
+      cwd: workspaceResolution.workspacePath,
     });
     const reply = await runLifecycle({
       request: lifecycleRequest,
-      soulPrompt: soulPrompt.prompt,
-      memoryTokens: soulPrompt.memoryTokens,
+      soulPrompt,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,
       shouldYield: handlers.shouldYield,
@@ -226,6 +210,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           });
         handlers.onEvent(event as Record<string, unknown>);
       },
+      onMemoryCommit: handlers.onMemoryCommit,
       onDebug: (entry) => {
         logLifecycleDebugEntry({
           requestId,

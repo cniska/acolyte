@@ -5,6 +5,7 @@ import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
+import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
@@ -94,7 +95,6 @@ export type PhasePrepareInput = {
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
-  memoryTokens?: number;
   model: string;
   policy: LifecyclePolicy;
   debug: RunContext["debug"];
@@ -119,12 +119,12 @@ export type Effect = {
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
-  memoryTokens?: number;
   workspace?: string;
   taskId?: string;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
+  onMemoryCommit?: (metrics: MemoryCommitMetrics) => void;
   shouldYield?: () => boolean;
 };
 

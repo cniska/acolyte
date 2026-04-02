@@ -9,7 +9,6 @@ export const statusPayloadSchema = z
     protocol_version: z.string(),
     capabilities: z.string(),
     service: z.string(),
-    memory: z.string(),
     tasks_total: z.number().int().min(0),
     tasks_running: z.number().int().min(0),
     tasks_detached: z.number().int().min(0),

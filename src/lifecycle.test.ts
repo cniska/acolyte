@@ -50,7 +50,7 @@ describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
     const deps: LifecycleDeps = {
       resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
-      resolveLifecyclePolicy: () => ({
+      createLifecyclePolicy: () => ({
         ...defaultLifecyclePolicy,
         initialMaxSteps: 3,
         stepTimeoutMs: 1000,
@@ -111,11 +111,12 @@ describe("scheduleMemoryCommit", () => {
         output: "done",
       },
       () => {},
+      undefined,
       async (ctx) => {
         calls.push({ sessionId: ctx.sessionId });
         return undefined;
       },
-      async (_key, job) => {
+      async (_key: string, job: () => Promise<void>) => {
         await job();
       },
     );
@@ -134,10 +135,11 @@ describe("scheduleMemoryCommit", () => {
       (event, fields) => {
         events.push({ event, fields });
       },
+      undefined,
       async () => {
         throw new Error("commit failed");
       },
-      async (_key, job) => {
+      async (_key: string, job: () => Promise<void>) => {
         await job();
       },
     );
@@ -164,8 +166,9 @@ describe("scheduleMemoryCommit", () => {
       (event, fields) => {
         events.push({ event, fields });
       },
+      undefined,
       async () => undefined,
-      async (_key, job) => {
+      async (_key: string, job: () => Promise<void>) => {
         await job();
       },
     );
@@ -183,6 +186,7 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(0);
     expect(done?.fields?.session_scoped_facts).toBe(0);
     expect(done?.fields?.dropped_untagged_facts).toBe(0);
+    expect(done?.fields?.distill_tokens).toBe(0);
   });
 
   test("logs commit metrics when commit returns promotion stats", async () => {
@@ -196,13 +200,14 @@ describe("scheduleMemoryCommit", () => {
       (event, fields) => {
         events.push({ event, fields });
       },
+      undefined,
       async () => ({
         projectPromotedFacts: 2,
         userPromotedFacts: 1,
         sessionScopedFacts: 3,
         droppedUntaggedFacts: 4,
       }),
-      async (_key, job) => {
+      async (_key: string, job: () => Promise<void>) => {
         await job();
       },
     );

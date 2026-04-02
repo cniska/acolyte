@@ -8,7 +8,7 @@ import type { ConfigScope } from "./config-contract";
 import { formatRelativeTime, nowIso } from "./datetime";
 import { t } from "./i18n";
 import type { MemoryScope } from "./memory-contract";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory-ops";
+import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName } from "./skills";
@@ -105,10 +105,8 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
       [t("chat.usage.metric.memory"), bd.memoryTokens],
       [t("chat.usage.metric.messages"), bd.messageTokens],
     ] as [string, number][]) {
-      if (tokens > 0) {
-        breakdownLabels.push(label);
-        breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
-      }
+      breakdownLabels.push(label);
+      breakdownGrid.push([formatUsageValue(tokens), formatShare(tokens, total)]);
     }
     const breakdownAligned = alignCols(breakdownGrid);
     for (let i = 0; i < breakdownLabels.length; i++) {
@@ -150,7 +148,7 @@ export type CommandContext = {
   memoryApi?: {
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
-    removeMemoryByPrefix?: typeof removeMemoryByPrefix;
+    removeMemory: typeof removeMemory;
   };
 };
 
@@ -182,7 +180,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   const memoryApi = {
     listMemories,
     addMemory,
-    removeMemoryByPrefix,
+    removeMemory,
     ...ctx.memoryApi,
   };
 
@@ -290,26 +288,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
     const prefix = parts[2];
-    const remove = memoryApi.removeMemoryByPrefix;
-    if (!remove) {
-      ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.unavailable"))]);
-      return { stop: true, userText: text };
-    }
     try {
-      const removed = await remove(prefix);
+      const removed = await memoryApi.removeMemory(prefix);
       if (removed.kind === "not_found") {
-        ctx.setRows((current) => [
-          ...current,
-          createRow("system", t("chat.memory.rm.not_found", { prefix: removed.prefix })),
-        ]);
-        return { stop: true, userText: text };
-      }
-      if (removed.kind === "ambiguous") {
-        const ids = removed.matches.map((item) => item.id).join(", ");
-        ctx.setRows((current) => [
-          ...current,
-          createRow("system", t("chat.memory.rm.ambiguous", { prefix: removed.prefix, ids })),
-        ]);
+        ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.not_found", { id: removed.id }))]);
         return { stop: true, userText: text };
       }
       ctx.setRows((current) => [

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { addMemory, listMemories, removeMemoryByPrefix } from "./memory-ops";
+import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { tempDb } from "./test-utils";
 
@@ -34,18 +34,18 @@ describe("sqlite memory store", () => {
     expect(all.some((entry) => entry.scope === "user")).toBe(true);
   });
 
-  test("removeMemoryByPrefix removes a matching memory", async () => {
+  test("removeMemory removes a matching memory", async () => {
     const db = createDb();
     const entry = await addMemory("Disposable note", { scope: "user", store: db });
-    const result = await removeMemoryByPrefix(entry.id.slice(0, 12), { store: db });
+    const result = await removeMemory(entry.id, { store: db });
     expect(result.kind).toBe("removed");
     const all = await listMemories({ store: db });
     expect(all.some((item) => item.id === entry.id)).toBe(false);
   });
 
-  test("removeMemoryByPrefix returns not_found for unknown prefix", async () => {
+  test("removeMemory returns not_found for unknown id", async () => {
     const db = createDb();
-    const result = await removeMemoryByPrefix("mem_missing", { store: db });
-    expect(result).toEqual({ kind: "not_found", prefix: "mem_missing" });
+    const result = await removeMemory("mem_missing", { store: db });
+    expect(result).toEqual({ kind: "not_found", id: "mem_missing" });
   });
 });

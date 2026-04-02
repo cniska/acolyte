@@ -1,0 +1,39 @@
+[
+  "System flow: CLI → client → server → lifecycle → model + tools. One active task per session with ordered queued tasks.",
+  "First-class concepts: sessions, tasks, lifecycle phases, effects, tools, skills, memory sources, and typed RPC protocol. Each has its own module with typed contracts.",
+  "Dependency injection: no container or decorators. Dependencies are passed as typed deps objects with defaults (e.g. LifecycleDeps, DistillerDeps). Tests override individual deps.",
+  "Composition roots that read appConfig and pass values down: cli-command-registry.ts, server-chat-runtime.ts, cli-chat.ts. Tests inject directly through params.",
+  "Lifecycle phases: resolve → prepare → generate → finalize. Single-pass execution — no regeneration loop, no feedback injection, no retry logic.",
+  "Effects (format, lint) are lifecycle-owned side effects applied per-tool-result via onToolResult callback on the session. Lint errors are appended to tool results for the model to see.",
+  "Step budget: checkStepBudget() is inlined into tool execution. Blocks calls with budgetExhausted error when exhausted. This is the only pre-tool policy check.",
+  "Lifecycle signal contract: model emits @signal done, @signal no_op, or @signal blocked. Host validates against runtime state. A blocked signal maps to awaiting-input response state.",
+  "Tool execution layers: lifecycle → budget → cache → toolkit → registry. All tool calls run through runTool() which ensures budget enforcement, error shaping, and call recording.",
+  "Toolkits: file-toolkit, code-toolkit, git-toolkit, shell-toolkit, web-toolkit, checklist-toolkit, memory-toolkit. Each is a factory function returning a map of ToolDefinition objects.",
+  "Tool categories: read, search, write, execute, network, meta. Write tools invalidate cache. Meta tools (checklist, memory) are agent-internal.",
+  "Tool result cache: L1 in-memory LRU (256 entries per task), L2 SQLite persists across tasks within a session. Write tools evict overlapping paths; shell-run clears entire cache.",
+  "Query vs mutation tools have different design constraints. Query tools get simple vocabularies; mutation tools may expose scoping constraints. Do not unify contracts just because they share implementation.",
+  "Workspace sandbox: tool filesystem access is scoped to workspace root. Fail-closed with realpath validation. Symlink escapes blocked. Violations return E_SANDBOX_VIOLATION.",
+  "Workspace profile detection: ecosystem, package manager, format/lint/test commands inferred from project files. Used by lifecycle effects for format/lint runs on edited files.",
+  "Memory pipeline: ingest → normalize → commit. Load is on-demand via memory toolkit (search/add/remove tools). All memories stored in unified SQLite table (memories) with scope, scope_key, and kind columns.",
+  "Memory kinds: stored (explicit user/tool-created), observation (distill round-level facts extracted via @observe directives). Embeddings in memory_embeddings table.",
+  "Distill: observer extracts facts after each request using @observe directives (@observe project, @observe user, @observe session). Each fact is stored individually with its own embedding.",
+  "Memory selection: semantic ranking via cosine similarity when query/embeddings available. Deduplication by normalized content.",
+  "Test types: unit (*.test.ts), integration (*.int.test.ts), visual (*.tui.test.tsx), performance. Unit tests must avoid filesystem writes, subprocesses, and network calls.",
+  "Code quality: fix things properly the first time. No hacks, no workarounds, no intentional debt. If a type is wrong, fix the type. If a name is misleading, rename it.",
+  "Verification: bun run verify runs lint + typecheck + test + audit. Always run before pushing.",
+  "Behavior harness: scripts/run-behavior.ts for small real-model tuning across bounded temporary workspaces. Keep scenarios explicit, small, manually inspectable.",
+
+  "Error handling: tools emit coded errors (ToolError with code and kind). The model reads errors and decides recovery. Keep error contracts minimal and descriptive.",
+  "Task lifecycle: accepted → queued → running → completed|failed|cancelled. One active task per session. Queue policy enforces ordering and capacity.",
+  "Session model: tracks chat context and message history. State persists outside lifecycle and is passed in per request.",
+
+  "Skills: declarative prompt extensions with metadata and tool restrictions. Loaded from .agents/skills/*/SKILL.md with YAML frontmatter (name, description).",
+  "Soul prompt: loaded from docs/soul.md. Combined with AGENTS.md as repository instructions.",
+  "Agent instructions: core instructions + per-tool instructions + workspace instructions. Tool instructions come from each tool's instruction field.",
+
+  "Protocol events: status, reasoning, tool-call, tool-output, tool-result, text-delta, error, done. Every request has exactly one terminal event (done or error).",
+  "RPC: WebSocket JSON envelopes with transport request id (rpc_*) and domain task id (task_*). Auth via Bearer token in sec-websocket-protocol.",
+
+  "Config scopes: user (~/.acolyte/config.toml) and project (<cwd>/.acolyte/config.toml). Project overrides user.",
+  "Provider support: OpenAI, Anthropic, Google with configurable base URLs. Local models via OpenAI-compatible endpoints (Ollama, vLLM)."
+]
