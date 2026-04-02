@@ -36,7 +36,6 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "memory-search",
     toolkit: "memory",
-    labelKey: "tool.label.memory_search",
     category: "meta",
     description: "Search all memories by relevance. Returns entries ranked by semantic similarity to the query.",
     instruction:
@@ -88,7 +87,6 @@ function createMemoryAddTool(_deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "memory-add",
     toolkit: "memory",
-    labelKey: "tool.label.memory_add",
     category: "meta",
     description:
       "Store a new memory. Use project scope for workspace-specific facts and user scope for cross-project preferences.",
@@ -116,7 +114,6 @@ function createMemoryRemoveTool(_deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "memory-remove",
     toolkit: "memory",
-    labelKey: "tool.label.memory_remove",
     category: "meta",
     description: "Remove a memory by its ID. Use after finding stale or incorrect memories via memory-search.",
     instruction: "Use `memory-remove` to clean up outdated or incorrect memories found via `memory-search`.",

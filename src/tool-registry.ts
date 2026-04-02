@@ -5,7 +5,6 @@ import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
-import { EN_MESSAGES } from "./i18n/en";
 import { createMemoryToolkit } from "./memory-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createTestToolkit } from "./test-toolkit";
@@ -97,9 +96,6 @@ function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefiniti
   const byId: Record<string, AnyToolDefinition> = {};
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
-    if (tool.labelKey) {
-      invariant(tool.labelKey in EN_MESSAGES, `tool ${tool.id} has unknown labelKey "${tool.labelKey}"`);
-    }
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
     invariant(
       typeof tool.instruction === "string" && tool.instruction.trim().length > 0,

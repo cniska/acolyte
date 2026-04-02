@@ -1,10 +1,39 @@
 import { isAbsolute, relative } from "node:path";
+import type { TranslationKey } from "./i18n";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
 import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
+
+const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
+  "file-find": "tool.label.file_find",
+  "file-search": "tool.label.file_search",
+  "file-read": "tool.label.file_read",
+  "file-edit": "tool.label.file_edit",
+  "file-create": "tool.label.file_create",
+  "file-delete": "tool.label.file_delete",
+  "git-status": "tool.label.git_status",
+  "git-diff": "tool.label.git_diff",
+  "git-log": "tool.label.git_log",
+  "git-show": "tool.label.git_show",
+  "git-add": "tool.label.git_add",
+  "git-commit": "tool.label.git_commit",
+  "shell-run": "tool.label.shell_run",
+  "web-search": "tool.label.web_search",
+  "web-fetch": "tool.label.web_fetch",
+  "code-scan": "tool.label.code_scan",
+  "code-edit": "tool.label.code_edit",
+  "test-run": "tool.label.test_run",
+  "memory-search": "tool.label.memory_search",
+  "memory-add": "tool.label.memory_add",
+  "memory-remove": "tool.label.memory_remove",
+};
+
+export function toolLabelKey(toolId: string): string {
+  return TOOL_LABEL_KEYS[toolId] ?? toolId;
+}
 
 export function emitParts(
   parts: ToolOutputPart[],
