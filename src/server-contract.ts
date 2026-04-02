@@ -1,5 +1,6 @@
 import type { ChatResponse } from "./api";
 import type { ErrorId } from "./error-handling";
+import type { MemoryCommitMetrics } from "./memory-contract";
 import type { StreamError } from "./stream-error";
 import type { TaskId } from "./task-contract";
 
@@ -21,5 +22,5 @@ export type RunChatHandlers = {
   onError: (payload: StreamErrorPayload) => void;
   isCancelled?: () => boolean;
   shouldYield?: () => boolean;
-  onMemoryCommit?: (metrics: import("./memory-contract").MemoryCommitMetrics) => void;
+  onMemoryCommit?: (metrics: MemoryCommitMetrics) => void;
 };

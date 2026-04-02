@@ -47,8 +47,6 @@ export const memoryRecordSchema = z.object({
   scopeKey: z.string().min(1),
   kind: memoryKindSchema,
   content: z.string().min(1),
-  currentTask: z.string().min(1).optional(),
-  nextStep: z.string().min(1).optional(),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
 });

@@ -78,8 +78,6 @@ type MemoryRow = {
   scope_key: string;
   kind: string;
   content: string;
-  current_task: string | null;
-  next_step: string | null;
   created_at: string;
   token_estimate: number;
 };
@@ -90,8 +88,6 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     scopeKey: row.scope_key,
     kind: row.kind as MemoryRecord["kind"],
     content: row.content,
-    ...(row.current_task ? { currentTask: row.current_task } : {}),
-    ...(row.next_step ? { nextStep: row.next_step } : {}),
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
   };
@@ -114,12 +110,9 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     "SELECT * FROM memories WHERE scope_key = ? AND kind = ? ORDER BY created_at ASC",
   );
   const listAllStmt = db.prepare<MemoryRow, []>("SELECT * FROM memories ORDER BY created_at ASC");
-  const writeStmt = db.prepare<
-    void,
-    [string, string, string, string, string, string | null, string | null, string, number]
-  >(
-    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, current_task, next_step, created_at, token_estimate)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const writeStmt = db.prepare<void, [string, string, string, string, string, string, number]>(
+    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const removeStmt = db.prepare<void, [string]>("DELETE FROM memories WHERE id = ?");
   const writeEmbStmt = db.prepare<void, [string, string, Buffer]>(
@@ -153,8 +146,6 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
         record.scopeKey,
         record.kind,
         record.content,
-        record.currentTask ?? null,
-        record.nextStep ?? null,
         record.createdAt,
         record.tokenEstimate,
       );
