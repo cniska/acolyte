@@ -2,9 +2,8 @@ import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { editCodeEditSchema } from "./code-contract";
 import { editCode, type ScanCodeResult, scanCode } from "./code-ops";
-import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import { diffSummaryParts, emitParts } from "./tool-output-format";
 import { numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-parse";
 
@@ -46,7 +45,7 @@ function formatScanCodeResult(result: ScanCodeResult): string {
   return lines.join("\n");
 }
 
-function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createScanCodeTool(input: ToolkitInput) {
   return createTool({
     id: "code-scan",
     toolkit: "code",
@@ -72,6 +71,7 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       patterns: z.array(z.string().min(1)),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 2_400, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "code-scan", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
@@ -91,12 +91,6 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
             toolCallId: callId,
           });
         }
-        const baseBudget = deps.outputBudget.codeScan;
-        const count = paths.length * toolInput.patterns.length;
-        const budget = {
-          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
-          maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
-        };
         const rawScan = await scanCode({
           workspace: input.workspace,
           paths,
@@ -104,14 +98,13 @@ function createScanCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
           language: toolInput.language,
           maxResults: toolInput.maxResults ?? 50,
         });
-        const result = compactToolOutput(formatScanCodeResult(rawScan), budget);
-        return { kind: "code-scan", paths, patterns: toolInput.patterns, output: result };
+        return { kind: "code-scan", paths, patterns: toolInput.patterns, output: formatScanCodeResult(rawScan) };
       });
     },
   });
 }
 
-function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createEditCodeTool(input: ToolkitInput) {
   const outputSchema = z.object({
     kind: z.literal("code-edit"),
     path: z.string().min(1),
@@ -143,6 +136,7 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
       edits: z.array(editCodeEditSchema).min(1),
     }),
     outputSchema,
+    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "code-edit", toolCallId, toolInput, async (callId) => {
         const editResult = await editCode({
@@ -155,7 +149,6 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "code-edit", input.onOutput, callId);
         emitParts(diffParts, "code-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(editResult.output);
-        const result = compactToolOutput(editResult.output, deps.outputBudget.codeEdit);
         return {
           kind: "code-edit",
           path: toolInput.path,
@@ -165,16 +158,16 @@ function createEditCodeTool(deps: ToolkitDeps, input: ToolkitInput) {
           matches: editResult.matches,
           edits: editResult.edits,
           affectedSymbols: editResult.affectedSymbols,
-          output: result,
+          output: editResult.output,
         };
       });
     },
   });
 }
 
-export function createCodeToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createCodeToolkit(input: ToolkitInput) {
   return {
-    scanCode: createScanCodeTool(deps, input),
-    editCode: createEditCodeTool(deps, input),
+    scanCode: createScanCodeTool(input),
+    editCode: createEditCodeTool(input),
   };
 }

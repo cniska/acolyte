@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type ChecklistItem, checklistItemStatusSchema } from "./checklist-contract";
-import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
+import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
@@ -37,11 +37,7 @@ const updateChecklistOutputSchema = z.object({
   status: checklistItemStatusSchema,
 });
 
-function createCreateChecklistTool(
-  _deps: ToolkitDeps,
-  input: ToolkitInput,
-  state: Map<string, { title: string; items: ChecklistItem[] }>,
-) {
+function createCreateChecklistTool(input: ToolkitInput, state: Map<string, { title: string; items: ChecklistItem[] }>) {
   return createTool({
     id: "checklist-create",
     toolkit: "checklist",
@@ -67,11 +63,7 @@ function createCreateChecklistTool(
   });
 }
 
-function createUpdateChecklistTool(
-  _deps: ToolkitDeps,
-  input: ToolkitInput,
-  state: Map<string, { title: string; items: ChecklistItem[] }>,
-) {
+function createUpdateChecklistTool(input: ToolkitInput, state: Map<string, { title: string; items: ChecklistItem[] }>) {
   return createTool({
     id: "checklist-update",
     toolkit: "checklist",
@@ -102,10 +94,10 @@ function createUpdateChecklistTool(
   });
 }
 
-export function createChecklistToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createChecklistToolkit(input: ToolkitInput) {
   const state = new Map<string, { title: string; items: ChecklistItem[] }>();
   return {
-    createChecklist: createCreateChecklistTool(deps, input, state),
-    updateChecklist: createUpdateChecklistTool(deps, input, state),
+    createChecklist: createCreateChecklistTool(input, state),
+    updateChecklist: createUpdateChecklistTool(input, state),
   };
 }
