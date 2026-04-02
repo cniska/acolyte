@@ -1,8 +1,7 @@
-import { appConfig } from "./app-config";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { type CompactBudget, compactText } from "./compact-text";
 import type { Session } from "./session-contract";
-import { findSkillByName, readSkillInstructions } from "./skills";
+import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skills";
 
 type CreateSkillActivatorDeps = {
   skillBudget?: CompactBudget;
@@ -20,7 +19,7 @@ export function createSkillActivator(
   deps: CreateSkillActivatorDeps,
   input: CreateSkillActivatorInput,
 ): (skillName: string, args: string) => Promise<boolean> {
-  const skillBudget = deps.skillBudget ?? appConfig.agent.skillBudget;
+  const skillBudget = deps.skillBudget ?? SKILL_BUDGET;
   return async (skillName, args) => {
     const skill = findSkillByName(skillName);
     if (!skill) return false;

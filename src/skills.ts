@@ -1,6 +1,9 @@
 import { type Dirent, existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { CompactBudget } from "./compact-text";
+
+export const SKILL_BUDGET: CompactBudget = { maxChars: 4_000, maxLines: 120 };
 
 export interface SkillMeta {
   name: string;
