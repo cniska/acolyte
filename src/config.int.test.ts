@@ -178,13 +178,7 @@ describe("config store", () => {
         'googleBaseUrl = "https://google.example.com"',
 
         'logFormat = "json"',
-        'transportMode = "rpc"',
         "temperature = 0.3",
-        "contextMaxTokens = 7000",
-        "maxHistoryMessages = 50",
-        "maxMessageTokens = 700",
-        "maxAttachmentMessageTokens = 4500",
-        "maxPinnedMessageTokens = 1600",
         "replyTimeoutMs = 220000",
       ].join("\n"),
       "utf8",
@@ -196,9 +190,7 @@ describe("config store", () => {
     expect(loaded.model).toBe("openai/gpt-5-mini");
 
     expect(loaded.logFormat).toBe("json");
-    expect(loaded.transportMode).toBe("rpc");
     expect(loaded.temperature).toBe(0.3);
-    expect(loaded.maxMessageTokens).toBe(700);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
 
@@ -217,7 +209,6 @@ describe("config store", () => {
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
 
     expect(resolved.logFormat).toBe("logfmt");
-    expect(resolved.transportMode).toBe("rpc");
     expect(resolved.replyTimeoutMs).toBe(180000);
   });
 
@@ -274,18 +265,18 @@ describe("config store", () => {
 
     writeFileSync(
       join(userDataDir, "config.toml"),
-      ['model = "openai/gpt-5-mini"', "maxMessageTokens = 600"].join("\n"),
+      ['model = "openai/gpt-5-mini"', "replyTimeoutMs = 120000"].join("\n"),
       "utf8",
     );
     writeFileSync(
       join(projectDataDir, "config.toml"),
-      ['model = "anthropic/claude-sonnet-4"', "maxMessageTokens = 700"].join("\n"),
+      ['model = "anthropic/claude-sonnet-4"', "replyTimeoutMs = 200000"].join("\n"),
       "utf8",
     );
 
     const loaded = await readConfig({ homeDir: home, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
-    expect(loaded.maxMessageTokens).toBe(700);
+    expect(loaded.replyTimeoutMs).toBe(200000);
   });
 
   test("project config does not clear user values when project key is missing", async () => {

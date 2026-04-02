@@ -4,15 +4,9 @@ import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales"
 export const logFormatSchema = z.enum(["logfmt", "json"]);
 export type LogFormat = z.infer<typeof logFormatSchema>;
 
-export const transportModeSchema = z.literal("rpc");
-
 export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
 
-const MAX_CONTEXT_TOKENS = 32_000;
-const MAX_MESSAGE_TOKENS = 4_000;
-const MAX_ATTACHMENT_MESSAGE_TOKENS = 12_000;
-const MAX_PINNED_MESSAGE_TOKENS = 4_000;
 const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
 const MAX_TEMPERATURE = 2;
 
@@ -37,12 +31,6 @@ export interface Config {
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
   logFormat?: LogFormat;
-  transportMode?: "rpc";
-  contextMaxTokens?: number;
-  maxHistoryMessages?: number;
-  maxMessageTokens?: number;
-  maxAttachmentMessageTokens?: number;
-  maxPinnedMessageTokens?: number;
   replyTimeoutMs?: number;
   embeddingModel?: string;
 }
@@ -57,12 +45,6 @@ export interface ResolvedConfig {
   anthropicBaseUrl: string;
   googleBaseUrl: string;
   logFormat: LogFormat;
-  transportMode: "rpc";
-  contextMaxTokens: number;
-  maxHistoryMessages: number;
-  maxMessageTokens: number;
-  maxAttachmentMessageTokens: number;
-  maxPinnedMessageTokens: number;
   replyTimeoutMs: number;
   embeddingModel: string;
 }
@@ -95,18 +77,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
     logFormat: parseField(logFormatSchema, input.logFormat),
-    transportMode: parseField(transportModeSchema, input.transportMode),
-    contextMaxTokens: parseField(parseIntegerSchema(1000, MAX_CONTEXT_TOKENS), input.contextMaxTokens),
-    maxHistoryMessages: parseField(parseIntegerSchema(1, 200), input.maxHistoryMessages),
-    maxMessageTokens: parseField(parseIntegerSchema(50, MAX_MESSAGE_TOKENS), input.maxMessageTokens),
-    maxAttachmentMessageTokens: parseField(
-      parseIntegerSchema(100, MAX_ATTACHMENT_MESSAGE_TOKENS),
-      input.maxAttachmentMessageTokens,
-    ),
-    maxPinnedMessageTokens: parseField(
-      parseIntegerSchema(100, MAX_PINNED_MESSAGE_TOKENS),
-      input.maxPinnedMessageTokens,
-    ),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
   };

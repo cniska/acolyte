@@ -100,7 +100,7 @@ describe("chat-ui helpers", () => {
     const session = createSession({
       id: "sess_resume1",
       messages: [
-        { id: "msg_1", role: "system", content: "Pinned memory", timestamp: "2026-02-23T00:00:00.000Z" },
+        { id: "msg_1", role: "system", content: "System context", timestamp: "2026-02-23T00:00:00.000Z" },
         { id: "msg_2", role: "user", content: "hello", timestamp: "2026-02-23T00:00:01.000Z" },
         { id: "msg_3", role: "assistant", content: "hi", timestamp: "2026-02-23T00:00:02.000Z" },
       ],

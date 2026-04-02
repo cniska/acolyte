@@ -10,7 +10,7 @@ describe("chat turn helpers", () => {
 
   test("createInputHistory reconstructs user prompt history from messages", () => {
     const history = createInputHistory([
-      { id: "m1", role: "system", content: "Pinned memory", timestamp: "2026-02-21T10:00:00.000Z" },
+      { id: "m1", role: "system", content: "System context", timestamp: "2026-02-21T10:00:00.000Z" },
       { id: "m2", role: "user", content: "  hello  ", timestamp: "2026-02-21T10:00:01.000Z" },
       { id: "m3", role: "assistant", content: "Hi", timestamp: "2026-02-21T10:00:02.000Z" },
       { id: "m4", role: "user", content: "hello", timestamp: "2026-02-21T10:00:03.000Z" },

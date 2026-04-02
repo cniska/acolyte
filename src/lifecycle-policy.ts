@@ -1,6 +1,11 @@
 import {
+  CONTEXT_MAX_TOKENS,
   INITIAL_MAX_STEPS,
+  MAX_ATTACHMENT_MESSAGE_TOKENS,
+  MAX_HISTORY_MESSAGES,
+  MAX_MESSAGE_TOKENS,
   MAX_NUDGES_PER_GENERATION,
+  MAX_SKILL_CONTEXT_TOKENS,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
@@ -9,12 +14,21 @@ import {
 import type { WorkspaceCommand } from "./workspace-profile";
 
 export type LifecyclePolicy = {
+  // Step limits
   totalMaxSteps: number;
   initialMaxSteps: number;
-  stepTimeoutMs: number;
-  maxUnknownErrorsPerRequest: number;
   maxNudgesPerGeneration: number;
+  maxUnknownErrorsPerRequest: number;
+  // Timeouts
+  stepTimeoutMs: number;
   toolTimeoutMs: number;
+  // Input budgets
+  contextMaxTokens: number;
+  maxHistoryMessages: number;
+  maxMessageTokens: number;
+  maxAttachmentMessageTokens: number;
+  maxSkillContextTokens: number;
+  // Workspace commands
   installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   lintCommand?: WorkspaceCommand;
@@ -27,6 +41,11 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
+  contextMaxTokens: CONTEXT_MAX_TOKENS,
+  maxHistoryMessages: MAX_HISTORY_MESSAGES,
+  maxMessageTokens: MAX_MESSAGE_TOKENS,
+  maxAttachmentMessageTokens: MAX_ATTACHMENT_MESSAGE_TOKENS,
+  maxSkillContextTokens: MAX_SKILL_CONTEXT_TOKENS,
 };
 
 export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

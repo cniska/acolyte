@@ -1,7 +1,17 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createAgentInput, setTokenEncoder } from "./agent-input";
+import { createAgentInput, type InputBudget, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
-import { appConfig } from "./app-config";
+import { defaultLifecyclePolicy } from "./lifecycle-policy";
+
+const defaultOptions = {
+  contextMaxTokens: defaultLifecyclePolicy.contextMaxTokens,
+  budget: {
+    maxHistoryMessages: defaultLifecyclePolicy.maxHistoryMessages,
+    maxMessageTokens: defaultLifecyclePolicy.maxMessageTokens,
+    maxAttachmentMessageTokens: defaultLifecyclePolicy.maxAttachmentMessageTokens,
+    maxSkillContextTokens: defaultLifecyclePolicy.maxSkillContextTokens,
+  } satisfies InputBudget,
+};
 
 // Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
 const charsPerToken = 4;
@@ -26,7 +36,7 @@ function createRequest(content: string): ChatRequest {
 describe("createAgentInput", () => {
   test("keeps large attached-file system context", () => {
     const attachment = `Attached file: AGENTS.md\n${"A".repeat(6000)}`;
-    const { input } = createAgentInput(createRequest(attachment));
+    const { input } = createAgentInput(createRequest(attachment), defaultOptions);
     expect(input).toContain("Attached file: AGENTS.md");
     expect(input).toContain("A".repeat(5000));
     expect(input.endsWith("…")).toBe(false);
@@ -34,7 +44,7 @@ describe("createAgentInput", () => {
 
   test("still truncates non-attachment long messages", () => {
     const longSystem = `General note: ${"B".repeat(4000)}`;
-    const { input } = createAgentInput(createRequest(longSystem));
+    const { input } = createAgentInput(createRequest(longSystem), defaultOptions);
     expect(input).toContain("General note:");
     expect(input).toContain("…");
   });
@@ -53,7 +63,7 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { usage } = createAgentInput(req);
+    const { usage } = createAgentInput(req, defaultOptions);
     expect(usage.activeSkillName).toBe("dogfood");
     expect(usage.skillInstructionChars).toBe("Active skill (dogfood): keep slices small.".length);
   });
@@ -78,7 +88,7 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     expect(input).toContain("SYSTEM: Active skill (dogfood)");
     expect(input).toContain("USER: use repo conventions");
   });
@@ -95,7 +105,7 @@ describe("createAgentInput", () => {
       })),
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     // 100 messages × ~1000 chars each = ~100k chars; budget allows ~100k tokens so all fit
     expect(input.length).toBeLessThanOrEqual(120_000);
     expect(input).toContain("USER: review");
@@ -129,7 +139,7 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine?.length).toBeLessThanOrEqual(900);
@@ -163,7 +173,7 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     expect(input).toContain("TAIL_SENTINEL");
   });
 
@@ -199,7 +209,7 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     const oldStructuredLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: scope=workspace"));
     expect(oldStructuredLine).toBeDefined();
     expect(oldStructuredLine?.length).toBeLessThanOrEqual(900);
@@ -233,78 +243,66 @@ describe("createAgentInput", () => {
       ],
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     expect(input).toContain("A".repeat(1500));
   });
 
   test("keeps newest oversized history turn by truncating to remaining budget", () => {
-    const originalContextMaxTokens = appConfig.agent.contextMaxTokens;
-    (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = 120;
-    try {
-      const req: ChatRequest = {
-        model: "gpt-5-mini",
-        message: "U".repeat(380),
-        history: [
-          {
-            id: "msg_old",
-            role: "assistant",
-            content: "older context that should lose to newest turn",
-            timestamp: "2026-02-20T10:00:00.000Z",
-          },
-          {
-            id: "msg_new",
-            role: "assistant",
-            content: `LATEST ${"x".repeat(4000)}`,
-            timestamp: "2026-02-20T10:00:01.000Z",
-          },
-        ],
-      };
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "U".repeat(380),
+      history: [
+        {
+          id: "msg_old",
+          role: "assistant",
+          content: "older context that should lose to newest turn",
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_new",
+          role: "assistant",
+          content: `LATEST ${"x".repeat(4000)}`,
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+      ],
+    };
 
-      const { input } = createAgentInput(req);
-      expect(input).toContain("ASSISTANT: LATEST");
-      expect(input).toContain("…");
-      expect(input).not.toContain("older context that should lose to newest turn");
-    } finally {
-      (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = originalContextMaxTokens;
-    }
+    const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 120 });
+    expect(input).toContain("ASSISTANT: LATEST");
+    expect(input).toContain("…");
+    expect(input).not.toContain("older context that should lose to newest turn");
   });
 
   test("prioritizes conversational turns before old tool payloads under tight budget", () => {
-    const originalContextMaxTokens = appConfig.agent.contextMaxTokens;
-    (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = 120;
-    try {
-      const req: ChatRequest = {
-        model: "gpt-5-mini",
-        message: "U".repeat(380),
-        history: [
-          {
-            id: "msg_old_tool",
-            role: "assistant",
-            kind: "tool_payload",
-            content: `TOOL_SENTINEL ${"A".repeat(5000)}`,
-            timestamp: "2026-02-20T10:00:00.000Z",
-          },
-          {
-            id: "msg_keep_1",
-            role: "assistant",
-            content: `KEEP_ONE ${"x".repeat(500)}`,
-            timestamp: "2026-02-20T10:00:01.000Z",
-          },
-          {
-            id: "msg_keep_2",
-            role: "user",
-            content: `KEEP_TWO ${"y".repeat(500)}`,
-            timestamp: "2026-02-20T10:00:02.000Z",
-          },
-        ],
-      };
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "U".repeat(380),
+      history: [
+        {
+          id: "msg_old_tool",
+          role: "assistant",
+          kind: "tool_payload",
+          content: `TOOL_SENTINEL ${"A".repeat(5000)}`,
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+        {
+          id: "msg_keep_1",
+          role: "assistant",
+          content: `KEEP_ONE ${"x".repeat(500)}`,
+          timestamp: "2026-02-20T10:00:01.000Z",
+        },
+        {
+          id: "msg_keep_2",
+          role: "user",
+          content: `KEEP_TWO ${"y".repeat(500)}`,
+          timestamp: "2026-02-20T10:00:02.000Z",
+        },
+      ],
+    };
 
-      const { input } = createAgentInput(req);
-      expect(input).toContain("KEEP_TWO");
-      expect(input).not.toContain("TOOL_SENTINEL");
-    } finally {
-      (appConfig.agent as { contextMaxTokens: number }).contextMaxTokens = originalContextMaxTokens;
-    }
+    const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 120 });
+    expect(input).toContain("KEEP_TWO");
+    expect(input).not.toContain("TOOL_SENTINEL");
   });
 
   test("applies stronger caps for very old tool payload turns", () => {
@@ -332,7 +330,7 @@ describe("createAgentInput", () => {
       history,
     };
 
-    const { input } = createAgentInput(req);
+    const { input } = createAgentInput(req, defaultOptions);
     const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
     expect(oldToolLine).toBeDefined();
     expect(oldToolLine?.length).toBeLessThanOrEqual(300);

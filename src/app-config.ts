@@ -8,7 +8,6 @@ export const appConfig = {
   server: {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,
-    transportMode: fileConfig.transportMode,
     replyTimeoutMs: fileConfig.replyTimeoutMs,
   },
   openai: {
@@ -32,13 +31,6 @@ export const appConfig = {
     model: fileConfig.embeddingModel,
   },
   agent: {
-    contextMaxTokens: fileConfig.contextMaxTokens,
-    inputBudget: {
-      maxHistoryMessages: fileConfig.maxHistoryMessages,
-      maxMessageTokens: fileConfig.maxMessageTokens,
-      maxAttachmentMessageTokens: fileConfig.maxAttachmentMessageTokens,
-      maxPinnedMessageTokens: fileConfig.maxPinnedMessageTokens,
-    },
     toolOutputBudget: {
       findFiles: { maxChars: 2500, maxLines: 100 },
       searchFiles: { maxChars: 2200, maxLines: 80 },

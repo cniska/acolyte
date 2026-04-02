@@ -21,12 +21,6 @@ function createDefaultConfig() {
     anthropicBaseUrl: "https://api.anthropic.com/v1",
     googleBaseUrl: "https://generativelanguage.googleapis.com",
     logFormat: "logfmt" as LogFormat,
-    transportMode: "rpc" as const,
-    contextMaxTokens: 100_000,
-    maxHistoryMessages: 40,
-    maxMessageTokens: 600,
-    maxAttachmentMessageTokens: 3_000,
-    maxPinnedMessageTokens: 1_200,
     replyTimeoutMs: 180_000,
     embeddingModel: "text-embedding-3-small",
   };
@@ -119,14 +113,6 @@ function serializeToml(config: Config): string {
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
-  if (config.transportMode) lines.push(`transportMode = ${JSON.stringify(config.transportMode)}`);
-  if (typeof config.contextMaxTokens === "number") lines.push(`contextMaxTokens = ${config.contextMaxTokens}`);
-  if (typeof config.maxHistoryMessages === "number") lines.push(`maxHistoryMessages = ${config.maxHistoryMessages}`);
-  if (typeof config.maxMessageTokens === "number") lines.push(`maxMessageTokens = ${config.maxMessageTokens}`);
-  if (typeof config.maxAttachmentMessageTokens === "number")
-    lines.push(`maxAttachmentMessageTokens = ${config.maxAttachmentMessageTokens}`);
-  if (typeof config.maxPinnedMessageTokens === "number")
-    lines.push(`maxPinnedMessageTokens = ${config.maxPinnedMessageTokens}`);
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
@@ -146,12 +132,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,
     logFormat: config.logFormat ?? defaults.logFormat,
-    transportMode: config.transportMode ?? defaults.transportMode,
-    contextMaxTokens: config.contextMaxTokens ?? defaults.contextMaxTokens,
-    maxHistoryMessages: config.maxHistoryMessages ?? defaults.maxHistoryMessages,
-    maxMessageTokens: config.maxMessageTokens ?? defaults.maxMessageTokens,
-    maxAttachmentMessageTokens: config.maxAttachmentMessageTokens ?? defaults.maxAttachmentMessageTokens,
-    maxPinnedMessageTokens: config.maxPinnedMessageTokens ?? defaults.maxPinnedMessageTokens,
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
   };
