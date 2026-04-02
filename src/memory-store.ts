@@ -43,6 +43,11 @@ function migrateLegacySchema(db: Database): void {
     db.run("DELETE FROM memory_embeddings WHERE id IN (SELECT id FROM memories WHERE kind = 'reflection')");
     db.run("DELETE FROM memories WHERE kind = 'reflection'");
   }
+  // Drop continuation state columns
+  const cols = db.prepare("PRAGMA table_info(memories)").all() as { name: string }[];
+  const names = new Set(cols.map((c) => c.name));
+  if (names.has("current_task")) db.run("ALTER TABLE memories DROP COLUMN current_task");
+  if (names.has("next_step")) db.run("ALTER TABLE memories DROP COLUMN next_step");
 }
 
 function initSchema(db: Database): void {
@@ -54,8 +59,6 @@ function initSchema(db: Database): void {
       scope_key TEXT NOT NULL,
       kind TEXT NOT NULL,
       content TEXT NOT NULL,
-      current_task TEXT,
-      next_step TEXT,
       created_at TEXT NOT NULL,
       token_estimate INTEGER NOT NULL
     )
