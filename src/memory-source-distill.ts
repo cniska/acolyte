@@ -2,17 +2,53 @@ import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
 import { log } from "./log";
-import type { MemoryCommitMetrics, MemoryRecord, MemorySource, MemoryStore } from "./memory-contract";
-import { OBSERVER_PROMPT } from "./memory-distill-prompts";
+import type {
+  MemoryCommitContext,
+  MemoryCommitMetrics,
+  MemoryRecord,
+  MemorySource,
+  MemoryStore,
+} from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-
-import { defaultMemoryPolicy, type MemoryPolicy } from "./memory-policy";
 import { getDefaultMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
+
+// --- Observer prompt ---
+
+export const OBSERVER_PROMPT = `Extract concrete facts from this conversation.
+
+Preserve specifics: file paths, function names, error messages, config values, decisions with reasoning.
+
+Tag each fact with an observe directive on its own line, followed by the fact on the next line:
+
+@observe project — project-specific durable facts (architecture, tooling, conventions, decisions)
+@observe user — personal preferences that carry across projects
+@observe session — in-progress state, temporary constraints, working assumptions
+
+If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
+
+// --- Memory policy ---
+
+export type MemoryPolicy = {
+  contextMessageWindow: number;
+  malformedStreakWarningThreshold: number;
+};
+
+export const defaultMemoryPolicy: MemoryPolicy = {
+  contextMessageWindow: 20,
+  malformedStreakWarningThreshold: 3,
+};
+
+export function resolveMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
+  if (!override) return defaultMemoryPolicy;
+  return { ...defaultMemoryPolicy, ...override };
+}
+
+// --- Distill config ---
 
 export type DistillConfig = {
   model: string;
@@ -281,3 +317,35 @@ export function createDistillMemorySource(
 }
 
 export const distillMemorySource: MemorySource = createDistillMemorySource();
+
+// --- Commit pipeline ---
+
+const COMMIT_SOURCES: readonly MemorySource[] = [distillMemorySource];
+
+async function runMemoryCommitPipeline(
+  sources: readonly MemorySource[],
+  ctx: MemoryCommitContext,
+): Promise<MemoryCommitMetrics> {
+  const totals: MemoryCommitMetrics = {
+    projectPromotedFacts: 0,
+    userPromotedFacts: 0,
+    sessionScopedFacts: 0,
+    droppedUntaggedFacts: 0,
+    observeTokens: 0,
+  };
+  for (const source of sources) {
+    if (!source.commit) continue;
+    const metrics = await source.commit(ctx);
+    if (!metrics) continue;
+    totals.projectPromotedFacts = (totals.projectPromotedFacts ?? 0) + (metrics.projectPromotedFacts ?? 0);
+    totals.userPromotedFacts = (totals.userPromotedFacts ?? 0) + (metrics.userPromotedFacts ?? 0);
+    totals.sessionScopedFacts = (totals.sessionScopedFacts ?? 0) + (metrics.sessionScopedFacts ?? 0);
+    totals.droppedUntaggedFacts = (totals.droppedUntaggedFacts ?? 0) + (metrics.droppedUntaggedFacts ?? 0);
+    totals.observeTokens = (totals.observeTokens ?? 0) + (metrics.observeTokens ?? 0);
+  }
+  return totals;
+}
+
+export function commitMemorySources(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics> {
+  return runMemoryCommitPipeline(COMMIT_SOURCES, ctx);
+}

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { OBSERVER_PROMPT } from "./memory-distill-prompts";
-import { createDistillMemorySource, type DistillConfig } from "./memory-source-distill";
+import { createDistillMemorySource, type DistillConfig, OBSERVER_PROMPT } from "./memory-source-distill";
 
 const testDistillConfig: DistillConfig = {
   model: "test-model",

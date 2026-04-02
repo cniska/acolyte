@@ -88,11 +88,8 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
-- `src/memory-pipeline.ts` — commit pipeline orchestration
-- `src/memory-registry.ts` — source composition and pipeline orchestration
-- `src/memory-source-distill.ts` — distill memory source with observer agent
+- `src/memory-source-distill.ts` — distill memory source, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
-- `src/memory-distill-prompts.ts` — observer prompt
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
 
 ## Further reading
