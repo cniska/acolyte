@@ -1,10 +1,13 @@
 import type { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
 import type { RunToolResult } from "./tool-execution";
+import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
 
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
+
+export type ToolOutputBudget = { maxChars: number; maxLines: number };
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
@@ -14,29 +17,8 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
+  readonly outputBudget?: ToolOutputBudget;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
-};
-
-export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };
-
-export type ToolOutputBudget = {
-  fileFind: ToolOutputBudgetEntry;
-  fileSearch: ToolOutputBudgetEntry;
-  fileRead: ToolOutputBudgetEntry;
-  fileEdit: ToolOutputBudgetEntry;
-  fileCreate: ToolOutputBudgetEntry;
-  codeEdit: ToolOutputBudgetEntry;
-  codeScan: ToolOutputBudgetEntry;
-  gitStatus: ToolOutputBudgetEntry;
-  gitDiff: ToolOutputBudgetEntry;
-  shellRun: ToolOutputBudgetEntry;
-  testRun: ToolOutputBudgetEntry;
-  webSearch: ToolOutputBudgetEntry;
-  webFetch: ToolOutputBudgetEntry;
-};
-
-export type ToolkitDeps = {
-  outputBudget: ToolOutputBudget;
 };
 
 export type ChecklistListener = (event: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
@@ -67,7 +49,14 @@ export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutp
     ...config,
     execute: async (input, toolCallId) => {
       const runResult = await config.execute(input, toolCallId);
-      return { ...runResult, result: config.outputSchema.parse(runResult.result) };
+      const parsed = config.outputSchema.parse(runResult.result);
+      if (config.outputBudget && parsed && typeof parsed === "object" && "output" in parsed) {
+        const record = parsed as Record<string, unknown>;
+        if (typeof record.output === "string") {
+          record.output = compactToolOutput(record.output, config.outputBudget);
+        }
+      }
+      return { ...runResult, result: parsed };
     },
   };
 }

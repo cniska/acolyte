@@ -100,7 +100,7 @@ Memory Engine
 ## Dependency injection
 
 - **No container, no decorators** — dependencies are passed as typed parameters with defaults from `appConfig`.
-- **Deps vs input** — factory functions that need both configuration and runtime data take two arguments: a `*Deps` object for config that is fixed for the process lifetime, and an `*Input` object for per-request runtime data (e.g. `createFileToolkit(deps: ToolkitDeps, input: ToolkitInput)`).
+- **Toolkit input** — toolkit factory functions take a single `ToolkitInput` object containing per-request runtime data (e.g. `createFileToolkit(input: ToolkitInput)`). Output budgets are defined locally in each tool.
 - **Defaults at the edge** — library modules accept injected params; composition roots (`cli-command-registry`, `server-chat-runtime`, `cli-chat`) read `appConfig` and pass values down.
 - **Tests inject directly** — tests pass config through the new params instead of mutating `appConfig`.
 

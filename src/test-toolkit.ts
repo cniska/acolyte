@@ -1,13 +1,12 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
 import { parseExitCode, runShellCommand } from "./shell-ops";
-import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
 import { formatWorkspaceCommand, resolveCommandFiles } from "./workspace-profile";
 
-function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createRunTestsTool(input: ToolkitInput) {
   const { session, onOutput } = input;
 
   return createTool({
@@ -28,6 +27,7 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 2_600, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         const profile = session.workspaceProfile;
@@ -58,15 +58,14 @@ function createRunTestsTool(deps: ToolkitDeps, input: ToolkitInput) {
         const previewParts = shellHeadTailParts(streamed);
         emitParts(previewParts, "test-run", onOutput, callId);
 
-        const result = compactToolOutput(rawResult, deps.outputBudget.testRun);
-        return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: result };
+        return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: rawResult };
       });
     },
   });
 }
 
-export function createTestToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createTestToolkit(input: ToolkitInput) {
   return {
-    runTests: createRunTestsTool(deps, input),
+    runTests: createRunTestsTool(input),
   };
 }

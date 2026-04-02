@@ -1,9 +1,8 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
 import { deleteTextFile, editFile, findFiles, readFileContents, searchFiles, writeTextFile } from "./file-ops";
-import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
 import {
   findResultPaths,
@@ -47,7 +46,7 @@ function deduplicatePaths(paths: Array<{ path: string }>): string[] {
   return result;
 }
 
-function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createFindFilesTool(input: ToolkitInput) {
   return createTool({
     id: "file-find",
     toolkit: "file",
@@ -68,17 +67,12 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 2_500, maxLines: 100 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 40;
-        const count = toolInput.patterns.length;
-        const baseBudget = deps.outputBudget.fileFind;
-        const budget = {
-          maxChars: Math.max(400, Math.floor(baseBudget.maxChars / count) * count),
-          maxLines: Math.max(20, Math.floor(baseBudget.maxLines / count) * count),
-        };
-        const result = compactToolOutput(await findFiles(input.workspace, toolInput.patterns, maxResults), budget);
-        const paths = findResultPaths(result);
+        const raw = await findFiles(input.workspace, toolInput.patterns, maxResults);
+        const paths = findResultPaths(raw);
         emitParts(
           findSummaryParts(paths, toolInput.patterns, "tool.label.file_find"),
           "file-find",
@@ -91,14 +85,14 @@ function createFindFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
           patterns: toolInput.patterns,
           matches: paths.length,
           paths,
-          output: result,
+          output: raw,
         };
       });
     },
   });
 }
 
-function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createSearchFilesTool(input: ToolkitInput) {
   return createTool({
     id: "file-search",
     toolkit: "file",
@@ -130,6 +124,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
       entries: z.array(z.object({ path: z.string().min(1), hits: z.array(z.string().min(1)) })),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 2_200, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 20;
@@ -139,10 +134,7 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
             : toolInput.pattern
               ? [toolInput.pattern]
               : [];
-        const result = compactToolOutput(
-          await searchFiles(input.workspace, patterns, maxResults, toolInput.paths),
-          deps.outputBudget.fileSearch,
-        );
+        const result = await searchFiles(input.workspace, patterns, maxResults, toolInput.paths);
         const summaryStats = searchResultSummaryStats(result, patterns);
         const summaryParts = searchSummaryParts(
           summaryStats,
@@ -165,7 +157,9 @@ function createSearchFilesTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
 }
 
-function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+const FILE_READ_MAX_LINES = 2_000;
+
+function createReadFileTool(input: ToolkitInput) {
   return createTool({
     id: "file-read",
     toolkit: "file",
@@ -182,6 +176,7 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 80_000, maxLines: FILE_READ_MAX_LINES },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
         const paths = deduplicatePaths(toolInput.paths);
@@ -200,15 +195,14 @@ function createReadFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           },
           toolCallId: callId,
         });
-        const raw = await readFileContents(input.workspace, paths, deps.outputBudget.fileRead.maxLines);
-        const output = compactToolOutput(raw, deps.outputBudget.fileRead);
+        const output = await readFileContents(input.workspace, paths, FILE_READ_MAX_LINES);
         return { kind: "file-read", paths, output };
       });
     },
   });
 }
 
-function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createEditFileTool(input: ToolkitInput) {
   const outputSchema = z.object({
     kind: z.literal("file-edit"),
     path: z.string().min(1),
@@ -243,6 +237,7 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         .min(1),
     }),
     outputSchema,
+    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-edit", toolCallId, toolInput, async (callId) => {
         const rawResult = await editFile({
@@ -255,21 +250,20 @@ function createEditFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "file-edit", input.onOutput, callId);
         emitParts(diffParts, "file-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, deps.outputBudget.fileEdit);
         return {
           kind: "file-edit",
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
           removed: totals.removed,
-          output: result,
+          output: rawResult,
         };
       });
     },
   });
 }
 
-function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createCreateFileTool(input: ToolkitInput) {
   return createTool({
     id: "file-create",
     toolkit: "file",
@@ -289,6 +283,7 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       removed: z.number().int().nonnegative(),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 3_000, maxLines: 100 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-create", toolCallId, toolInput, async (callId) => {
         const rawResult = await writeTextFile({
@@ -302,21 +297,20 @@ function createCreateFileTool(deps: ToolkitDeps, input: ToolkitInput) {
         emitParts(summaryParts, "file-create", input.onOutput, callId);
         emitParts(diffParts, "file-create", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
-        const result = compactToolOutput(rawResult, deps.outputBudget.fileCreate);
         return {
           kind: "file-create",
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
           removed: totals.removed,
-          output: result,
+          output: rawResult,
         };
       });
     },
   });
 }
 
-function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createDeleteFileTool(input: ToolkitInput) {
   return createTool({
     id: "file-delete",
     toolkit: "file",
@@ -332,6 +326,7 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
       deleted: z.number().int().nonnegative(),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-delete", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
@@ -347,20 +342,19 @@ function createDeleteFileTool(deps: ToolkitDeps, input: ToolkitInput) {
           resultParts.push(rawResult);
         }
         const rawResult = resultParts.join("\n\n");
-        const result = compactToolOutput(rawResult, deps.outputBudget.fileEdit);
-        return { kind: "file-delete", paths, deleted: paths.length, output: result };
+        return { kind: "file-delete", paths, deleted: paths.length, output: rawResult };
       });
     },
   });
 }
 
-export function createFileToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createFileToolkit(input: ToolkitInput) {
   return {
-    findFiles: createFindFilesTool(deps, input),
-    searchFiles: createSearchFilesTool(deps, input),
-    readFile: createReadFileTool(deps, input),
-    editFile: createEditFileTool(deps, input),
-    createFile: createCreateFileTool(deps, input),
-    deleteFile: createDeleteFileTool(deps, input),
+    findFiles: createFindFilesTool(input),
+    searchFiles: createSearchFilesTool(input),
+    readFile: createReadFileTool(input),
+    editFile: createEditFileTool(input),
+    createFile: createCreateFileTool(input),
+    deleteFile: createDeleteFileTool(input),
   };
 }

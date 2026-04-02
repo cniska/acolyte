@@ -1,12 +1,11 @@
 import { z } from "zod";
 import { compactDetail } from "./compact-text";
 import { formatShellCommand, parseExitCode, runShellCommand } from "./shell-ops";
-import { createTool, type ToolkitDeps, type ToolkitInput } from "./tool-contract";
+import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
 
-function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
+function createRunCommandTool(input: ToolkitInput) {
   return createTool({
     id: "shell-run",
     toolkit: "shell",
@@ -26,6 +25,7 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
+    outputBudget: { maxChars: 2_600, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
@@ -91,12 +91,11 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
           flushRemainder("stderr");
           const previewParts = shellHeadTailParts(streamed);
           emitParts(previewParts, "shell-run", input.onOutput, callId);
-          const result = compactToolOutput(rawResult, deps.outputBudget.shellRun);
           return {
             kind: "shell-run",
             command: displayCommand,
             exitCode: parseExitCode(rawResult),
-            output: result,
+            output: rawResult,
           };
         },
         { timeoutMs: toolInput.timeoutMs },
@@ -105,8 +104,8 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   });
 }
 
-export function createShellToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createShellToolkit(input: ToolkitInput) {
   return {
-    runCommand: createRunCommandTool(deps, input),
+    runCommand: createRunCommandTool(input),
   };
 }

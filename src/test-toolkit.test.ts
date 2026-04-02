@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { createTestToolkit } from "./test-toolkit";
-import { createToolkitDeps } from "./test-utils";
 import { createSessionContext } from "./tool-session";
 
 function createToolkit(testCommand?: { bin: string; args: string[] }) {
   const session = createSessionContext();
   if (testCommand) session.workspaceProfile = { testCommand };
   const output: unknown[] = [];
-  const toolkit = createTestToolkit(createToolkitDeps(), {
+  const toolkit = createTestToolkit({
     workspace: process.cwd(),
     session,
     onOutput: (e) => output.push(e),

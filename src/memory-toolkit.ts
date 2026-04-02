@@ -3,7 +3,7 @@ import { type MemoryRecord, type MemoryStore, memoryScopeSchema, scopeFromKey } 
 import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
-import type { ToolkitDeps, ToolkitInput } from "./tool-contract";
+import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
@@ -32,7 +32,7 @@ export async function searchMemories(
   return scored.slice(0, limit).map((s) => s.record);
 }
 
-function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
+function createMemorySearchTool(input: ToolkitInput) {
   return createTool({
     id: "memory-search",
     toolkit: "memory",
@@ -83,7 +83,7 @@ function createMemorySearchTool(_deps: ToolkitDeps, input: ToolkitInput) {
   });
 }
 
-function createMemoryAddTool(_deps: ToolkitDeps, input: ToolkitInput) {
+function createMemoryAddTool(input: ToolkitInput) {
   return createTool({
     id: "memory-add",
     toolkit: "memory",
@@ -110,7 +110,7 @@ function createMemoryAddTool(_deps: ToolkitDeps, input: ToolkitInput) {
   });
 }
 
-function createMemoryRemoveTool(_deps: ToolkitDeps, input: ToolkitInput) {
+function createMemoryRemoveTool(input: ToolkitInput) {
   return createTool({
     id: "memory-remove",
     toolkit: "memory",
@@ -133,10 +133,10 @@ function createMemoryRemoveTool(_deps: ToolkitDeps, input: ToolkitInput) {
   });
 }
 
-export function createMemoryToolkit(deps: ToolkitDeps, input: ToolkitInput) {
+export function createMemoryToolkit(input: ToolkitInput) {
   return {
-    memorySearch: createMemorySearchTool(deps, input),
-    memoryAdd: createMemoryAddTool(deps, input),
-    memoryRemove: createMemoryRemoveTool(deps, input),
+    memorySearch: createMemorySearchTool(input),
+    memoryAdd: createMemoryAddTool(input),
+    memoryRemove: createMemoryRemoveTool(input),
   };
 }
