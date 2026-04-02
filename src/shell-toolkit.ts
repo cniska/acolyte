@@ -10,7 +10,6 @@ function createRunCommandTool(deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "shell-run",
     toolkit: "shell",
-    labelKey: "tool.label.shell_run",
     category: "execute",
     description:
       "Run a command in the repository and capture stdout/stderr without shell evaluation. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",

@@ -92,7 +92,6 @@ function createGitStatusTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
   return createTool({
     id: "git-status",
     toolkit: "git",
-    labelKey: "tool.label.git_status",
     category: "search",
     description: "Show working tree status (short format with branch) for the current repository.",
     instruction: "Use `git-status` when repo-wide state matters. Skip it for already-understood file-scoped edits.",
@@ -122,7 +121,6 @@ function createGitDiffTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
   return createTool({
     id: "git-diff",
     toolkit: "git",
-    labelKey: "tool.label.git_diff",
     category: "search",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
     instruction:
@@ -158,7 +156,6 @@ function createGitLogTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-log",
     toolkit: "git",
-    labelKey: "tool.label.git_log",
     category: "search",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
     instruction: "Use `git-log` for committed history (optionally scoped by path), not for uncommitted edits.",
@@ -193,7 +190,6 @@ function createGitShowTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) 
   return createTool({
     id: "git-show",
     toolkit: "git",
-    labelKey: "tool.label.git_show",
     category: "search",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
     instruction:
@@ -242,7 +238,6 @@ function createGitAddTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput) {
   return createTool({
     id: "git-add",
     toolkit: "git",
-    labelKey: "tool.label.git_add",
     category: "write",
     description:
       "Stage tracked/untracked files. Prefer explicit `paths` scoped to files edited in the current task. Use `all=true` only when explicitly needed.",
@@ -290,7 +285,6 @@ function createGitCommitTool(git: GitOps, deps: ToolkitDeps, input: ToolkitInput
   return createTool({
     id: "git-commit",
     toolkit: "git",
-    labelKey: "tool.label.git_commit",
     category: "write",
     description: "Create a git commit with a required subject line and optional body lines.",
     instruction: "Use `git-commit` only when the user explicitly asks. Set `message` to the subject line.",

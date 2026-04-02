@@ -15,7 +15,6 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly inputSchema: z.ZodType<TInput>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
-  readonly labelKey?: string;
 };
 
 export type ToolOutputBudgetEntry = { maxChars: number; maxLines: number };
