@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-export const editCodeEditScopeSchema = z.enum(["file", "workspace"]);
-
 const editCodeScopeSchema = {
   within: z.string().min(1).optional(),
   withinSymbol: z.string().min(1).optional(),
-  scope: editCodeEditScopeSchema.optional(),
+  scope: z.literal("workspace").optional(),
 };
 
 export const editCodeRenameTargetSchema = z.enum(["local", "member"]);
