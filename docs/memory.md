@@ -20,7 +20,7 @@ ingest → normalize → commit
 
 ### On-demand access
 
-Memory is no longer injected into the system prompt. Instead, the model uses the memory toolkit to search for relevant context when it determines it needs it. This replaces the previous injection-based model where memory was loaded and inserted into every request upfront.
+The model uses the memory toolkit to search for relevant context when it determines it needs it. Memory is not injected into the system prompt.
 
 ## Sources
 

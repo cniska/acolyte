@@ -31,7 +31,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, memory, and recovery |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
-| Lifecycle Signal | Directive that signals generation completion (`@signal done`, `@signal no_op`, `@signal blocked`) |
+| Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
 | Lifecycle State | Internal task-scoped runtime state used during the lifecycle pass |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal memory flow from ingest through commit |
