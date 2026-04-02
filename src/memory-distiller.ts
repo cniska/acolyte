@@ -308,5 +308,5 @@ export function createMemoryDistiller(
 const defaultDistiller: MemoryDistiller = createMemoryDistiller();
 
 export function commitDistiller(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined> {
-  return defaultDistiller.commit?.(ctx) ?? Promise.resolve(undefined);
+  return defaultDistiller.commit(ctx);
 }

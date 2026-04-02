@@ -35,7 +35,7 @@ export type MemoryCommitMetrics = {
 };
 
 export interface MemoryDistiller {
-  commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
+  commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 }
 
 export const memoryKindSchema = z.enum(["observation", "stored"]);
