@@ -31,13 +31,12 @@ export type MemoryCommitMetrics = {
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
-  observeTokens?: number;
+  distillTokens?: number;
 };
 
-export type MemorySource = {
-  readonly id: string;
+export interface MemoryDistiller {
   commit?(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
-};
+}
 
 export const memoryKindSchema = z.enum(["observation", "stored"]);
 export type MemoryKind = z.infer<typeof memoryKindSchema>;

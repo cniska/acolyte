@@ -15,7 +15,7 @@ ingest → normalize → commit
 ```
 
 - **Memory Toolkit**: on-demand tools (`memory-search`, `memory-add`, `memory-remove`) that the model invokes when it needs context instead of upfront injection
-- **Memory Source**: pluggable source that provides commit behavior
+- **Memory Distiller**: extracts and commits observations from conversations after each request
 - **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory
 
 ### On-demand access
@@ -88,7 +88,7 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
-- `src/memory-source-distill.ts` — distill memory source, observer prompt, commit pipeline
+- `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
 

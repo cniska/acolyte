@@ -17,7 +17,7 @@ import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
-import { commitMemorySources, OBSERVER_PROMPT } from "./memory-source-distill";
+import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
@@ -53,7 +53,7 @@ export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
   onCommit?: (metrics: MemoryCommitMetrics) => void,
-  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitMemorySources,
+  commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitDistiller,
   enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
     memoryCommitQueue.enqueue(key, job),
 ): void {
@@ -74,7 +74,7 @@ export function scheduleMemoryCommit(
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
-      observe_tokens: metrics?.observeTokens ?? 0,
+      distill_tokens: metrics?.distillTokens ?? 0,
     });
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
@@ -320,7 +320,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     const distillInput = [...commitMessages, { role: "assistant", content: ctx.result.text }]
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n\n");
-    ctx.promptUsage.memoryTokens = estimateTokens(OBSERVER_PROMPT) + estimateTokens(distillInput);
+    ctx.promptUsage.memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
     scheduleMemoryCommit(
       {
         sessionId: ctx.request.sessionId,

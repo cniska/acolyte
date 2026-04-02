@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { createDistillMemorySource, type DistillConfig, OBSERVER_PROMPT } from "./memory-source-distill";
+import { createMemoryDistiller, DISTILLER_PROMPT, type DistillConfig } from "./memory-distiller";
 
 const testDistillConfig: DistillConfig = {
   model: "test-model",
@@ -8,12 +8,12 @@ const testDistillConfig: DistillConfig = {
   maxOutputTokens: 200,
 };
 
-function createTestSource(
+function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
   runner?: (systemPrompt: string, userContent: string) => Promise<string>,
   options?: { commitScope?: "session" | "project" | "user" | "none" },
 ) {
-  return createDistillMemorySource(store, runner, { config: testDistillConfig, ...options });
+  return createMemoryDistiller(store, runner, { config: testDistillConfig, ...options });
 }
 
 function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
@@ -48,11 +48,11 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
   };
 }
 
-describe("distillMemorySource", () => {
+describe("memoryDistiller", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {
       const store = createMockStore();
-      const source = createTestSource(store);
+      const source = createTestDistiller(store);
       if (!source.commit) throw new Error("expected commit handler");
       await source.commit({
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
@@ -63,7 +63,7 @@ describe("distillMemorySource", () => {
 
     test("skips when messages below threshold", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(store, undefined, {
+      const source = createMemoryDistiller(store, undefined, {
         config: { ...testDistillConfig, messageThreshold: 5 },
       });
       if (!source.commit) throw new Error("expected commit handler");
@@ -86,8 +86,8 @@ describe("distillMemorySource", () => {
           tokenEstimate: 6,
         },
       ]);
-      const source = createTestSource(store, async (systemPrompt) => {
-        if (systemPrompt === OBSERVER_PROMPT) return " @observe session\n prefers   short answers ";
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt === DISTILLER_PROMPT) return " @observe session\n prefers   short answers ";
         return "";
       });
       if (!source.commit) throw new Error("expected commit handler");
@@ -101,8 +101,8 @@ describe("distillMemorySource", () => {
 
     test("drops untagged fact lines during session commit", async () => {
       const store = createMockStore();
-      const source = createTestSource(store, async (systemPrompt) => {
-        if (systemPrompt !== OBSERVER_PROMPT) return "";
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt !== DISTILLER_PROMPT) return "";
         return [
           "untagged fact should be dropped",
           "Current task: also dropped without directive",
@@ -124,8 +124,8 @@ describe("distillMemorySource", () => {
 
     test("silently drops malformed scope tags and commits valid facts", async () => {
       const store = createMockStore();
-      const source = createTestSource(store, async (systemPrompt) => {
-        if (systemPrompt !== OBSERVER_PROMPT) return "";
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt !== DISTILLER_PROMPT) return "";
         return [
           "@observe project",
           "valid project fact",
@@ -158,9 +158,9 @@ describe("distillMemorySource", () => {
 
     test("commitScope writes only the targeted scope", async () => {
       const store = createMockStore();
-      const source = createDistillMemorySource(
+      const source = createMemoryDistiller(
         store,
-        async (systemPrompt) => (systemPrompt === OBSERVER_PROMPT ? "scope fact" : ""),
+        async (systemPrompt) => (systemPrompt === DISTILLER_PROMPT ? "scope fact" : ""),
         {
           config: testDistillConfig,
           commitScope: "project",
@@ -183,8 +183,8 @@ describe("distillMemorySource", () => {
 
     test("session commit promotes @observe project and @observe user lines to scoped stores", async () => {
       const store = createMockStore();
-      const source = createTestSource(store, async (systemPrompt) => {
-        if (systemPrompt !== OBSERVER_PROMPT) return "";
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt !== DISTILLER_PROMPT) return "";
         return [
           "@observe project",
           "repo uses Bun",
@@ -215,8 +215,8 @@ describe("distillMemorySource", () => {
 
     test("returns scoped promotion and drop metrics for mixed observations", async () => {
       const store = createMockStore();
-      const source = createTestSource(store, async (systemPrompt) => {
-        if (systemPrompt !== OBSERVER_PROMPT) return "";
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt !== DISTILLER_PROMPT) return "";
         return [
           "@observe project",
           "project fact one",
@@ -317,10 +317,10 @@ describe("distillMemorySource", () => {
 
       for (const fixture of fixtures) {
         const store = createMockStore();
-        const source = createDistillMemorySource(
+        const source = createMemoryDistiller(
           store,
           async (systemPrompt) => {
-            if (systemPrompt !== OBSERVER_PROMPT) return "";
+            if (systemPrompt !== DISTILLER_PROMPT) return "";
             return fixture.observed;
           },
           { config: fixtureConfig },

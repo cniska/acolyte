@@ -5,8 +5,8 @@ import { log } from "./log";
 import type {
   MemoryCommitContext,
   MemoryCommitMetrics,
+  MemoryDistiller,
   MemoryRecord,
-  MemorySource,
   MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
@@ -17,9 +17,7 @@ import { sharedRateLimiter } from "./rate-limiter";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
-// --- Observer prompt ---
-
-export const OBSERVER_PROMPT = `Extract concrete facts from this conversation.
+export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
 Preserve specifics: file paths, function names, error messages, config values, decisions with reasoning.
 
@@ -30,8 +28,6 @@ Tag each fact with an observe directive on its own line, followed by the fact on
 @observe session — in-progress state, temporary constraints, working assumptions
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
-
-// --- Memory policy ---
 
 export type MemoryPolicy = {
   contextMessageWindow: number;
@@ -47,8 +43,6 @@ export function resolveMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPol
   if (!override) return defaultMemoryPolicy;
   return { ...defaultMemoryPolicy, ...override };
 }
-
-// --- Distill config ---
 
 export type DistillConfig = {
   model: string;
@@ -67,8 +61,7 @@ function getDefaultStore(): MemoryStore {
 
 type DistillScope = "session" | "project" | "user";
 
-type DistillSourceOptions = {
-  id?: string;
+type DistillOptions = {
   commitScope?: DistillScope | "none";
   config?: DistillConfig;
   policy?: MemoryPolicy;
@@ -232,20 +225,17 @@ async function commitDistillForKey(ds: MemoryStore, key: string, observed: strin
   return observation.tokenEstimate;
 }
 
-export function createDistillMemorySource(
+export function createMemoryDistiller(
   injectedStore?: MemoryStore,
   runner: DistillRunner = runDistillLLM,
-  options: DistillSourceOptions = {},
-): MemorySource {
+  options: DistillOptions = {},
+): MemoryDistiller {
   const ds = injectedStore ?? getDefaultStore();
   const config = options.config ?? defaultDistillConfig();
   const policy = options.policy ?? defaultMemoryPolicy;
-  const id = options.id ?? "distill_session";
   const commitScope = options.commitScope ?? "session";
   let malformedRejectStreak = 0;
   return {
-    id,
-
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
       const key = resolveDistillScopeKey(commitScope, ctx);
@@ -256,11 +246,10 @@ export function createDistillMemorySource(
       const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
         .map((m) => `${m.role}: ${m.content}`)
         .join("\n\n");
-      const observedRaw = await runner(OBSERVER_PROMPT, distillInput);
+      const observedRaw = await runner(DISTILLER_PROMPT, distillInput);
       const observed = clampToTokenEstimate(observedRaw, config.maxOutputTokens);
       if (!observed.trim()) return;
-      const observerPromptTokens =
-        estimateTokens(OBSERVER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
+      const promptTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
       if (commitScope !== "session") {
         const usage = await commitDistillForKey(ds, key, observed);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
@@ -269,7 +258,7 @@ export function createDistillMemorySource(
           userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
           sessionScopedFacts: 0,
           droppedUntaggedFacts: 0,
-          observeTokens: observerPromptTokens + usage,
+          distillTokens: promptTokens + usage,
         };
       }
 
@@ -286,17 +275,17 @@ export function createDistillMemorySource(
       } else {
         malformedRejectStreak = 0;
       }
-      let totalObserve = observerPromptTokens;
+      let totalTokens = promptTokens;
       if (scoped.session) {
-        totalObserve += await commitDistillForKey(ds, key, scoped.session);
+        totalTokens += await commitDistillForKey(ds, key, scoped.session);
       }
       if (scoped.project) {
         const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) totalObserve += await commitDistillForKey(ds, projectKey, scoped.project);
+        if (projectKey) totalTokens += await commitDistillForKey(ds, projectKey, scoped.project);
       }
       if (scoped.user) {
         const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) totalObserve += await commitDistillForKey(ds, userKey, scoped.user);
+        if (userKey) totalTokens += await commitDistillForKey(ds, userKey, scoped.user);
       }
       log.debug("memory.distill.commit_done", {
         key,
@@ -310,42 +299,14 @@ export function createDistillMemorySource(
         userPromotedFacts: scoped.userCount,
         sessionScopedFacts: scoped.sessionCount,
         droppedUntaggedFacts: scoped.droppedUntaggedCount,
-        observeTokens: totalObserve,
+        distillTokens: totalTokens,
       };
     },
   };
 }
 
-export const distillMemorySource: MemorySource = createDistillMemorySource();
+const defaultDistiller: MemoryDistiller = createMemoryDistiller();
 
-// --- Commit pipeline ---
-
-const COMMIT_SOURCES: readonly MemorySource[] = [distillMemorySource];
-
-async function runMemoryCommitPipeline(
-  sources: readonly MemorySource[],
-  ctx: MemoryCommitContext,
-): Promise<MemoryCommitMetrics> {
-  const totals: MemoryCommitMetrics = {
-    projectPromotedFacts: 0,
-    userPromotedFacts: 0,
-    sessionScopedFacts: 0,
-    droppedUntaggedFacts: 0,
-    observeTokens: 0,
-  };
-  for (const source of sources) {
-    if (!source.commit) continue;
-    const metrics = await source.commit(ctx);
-    if (!metrics) continue;
-    totals.projectPromotedFacts = (totals.projectPromotedFacts ?? 0) + (metrics.projectPromotedFacts ?? 0);
-    totals.userPromotedFacts = (totals.userPromotedFacts ?? 0) + (metrics.userPromotedFacts ?? 0);
-    totals.sessionScopedFacts = (totals.sessionScopedFacts ?? 0) + (metrics.sessionScopedFacts ?? 0);
-    totals.droppedUntaggedFacts = (totals.droppedUntaggedFacts ?? 0) + (metrics.droppedUntaggedFacts ?? 0);
-    totals.observeTokens = (totals.observeTokens ?? 0) + (metrics.observeTokens ?? 0);
-  }
-  return totals;
-}
-
-export function commitMemorySources(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics> {
-  return runMemoryCommitPipeline(COMMIT_SOURCES, ctx);
+export function commitDistiller(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined> {
+  return defaultDistiller.commit?.(ctx) ?? Promise.resolve(undefined);
 }

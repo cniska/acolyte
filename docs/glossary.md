@@ -36,7 +36,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal memory flow from ingest through commit |
 | Memory Policy | Centralized limits and defaults for memory behavior |
-| Memory Source | Pluggable provider that contributes memory entries and optional commit behavior |
+| Memory Distiller | Extracts and commits observations from conversations after each request |
 | Memory Toolkit | On-demand tools (`memory-search`, `memory-add`, `memory-remove`) the model invokes to access memory at runtime |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
