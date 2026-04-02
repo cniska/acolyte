@@ -1,8 +1,8 @@
-export const OBSERVER_PROMPT = `Extract key facts from this conversation. Concrete facts only, not a summary.
+export const OBSERVER_PROMPT = `Extract concrete facts from this conversation.
 
 Preserve specifics: file paths, function names, error messages, config values, decisions with reasoning.
 
-Tag each fact with a scope directive on its own line, followed by the fact on the next line:
+Tag each fact with an observe directive on its own line, followed by the fact on the next line:
 
 @observe project
 repository facts, architecture, tooling, conventions, decisions
