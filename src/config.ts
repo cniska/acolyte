@@ -22,7 +22,7 @@ function createDefaultConfig() {
     googleBaseUrl: "https://generativelanguage.googleapis.com",
     logFormat: "logfmt" as LogFormat,
     transportMode: "rpc" as const,
-    distillMessageThreshold: 20,
+    distillMessageThreshold: 4,
     distillMaxOutputTokens: 1_000,
     contextMaxTokens: 100_000,
     maxHistoryMessages: 40,
