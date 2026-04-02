@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0 (2026-04-02)
+
+- docs(benchmarks): update project list and metrics (#93) (`22c5e31c`)
+- refactor(memory): unified memory store (#95) (`6d49a5bb`)
+- refactor(lifecycle): separate effect output from tool result (#98) (`50c86dd1`)
+- feat(memory): memory toolkit and on-demand search (#97) (`e9a9b1f2`)
+- refactor: move tool labels to UI layer (#103) (`c5ad2243`)
+- refactor(config): slim down user-facing config (#104) (`637f02f7`)
+- feat: configurable model reasoning (#105) (`e33786ed`)
+- refactor(tools): move output budgets to tool definitions (#106) (`04896be5`)
+- feat(code): workspace scope for cross-file edits (#107) (`f1bb5c86`)
+- docs(benchmarks): update metrics 2 April 2026 (`a2c21103`)
+- docs(features): add reasoning and workspace scope (`e269a472`)
+
+
 ## 0.11.0 (2026-04-01)
 
 - docs: clean up benchmarks section headings (`2ac6df5d`)
