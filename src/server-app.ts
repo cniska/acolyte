@@ -106,7 +106,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
   if (appConfig.anthropic.apiKey) providers.push("anthropic");
   if (appConfig.google.apiKey) providers.push("google");
   const model = appConfig.model;
-  const memoryStatus = "on-demand";
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
   return {
@@ -116,7 +115,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
     service: `http://localhost:${PORT}`,
-    memory: memoryStatus,
     tasks_total: taskSummary.total,
     tasks_running: taskSummary.running,
     tasks_detached: taskSummary.detached,
