@@ -21,6 +21,7 @@ Shipped, user-visible capabilities.
 - explicit completion signals (done, no-op, blocked)
 - pre/post-tool-call effect pipeline (auto-install deps, format, lint)
 - workspace profile detection with auto-detected install, lint, format, and test commands
+- configurable model reasoning level (low, medium, high) with provider-specific mapping
 - provider rate limit awareness with sliding window pacing and exponential backoff
 - proactive token budgeting with system prompt reservation and priority-based allocation
 - step budget enforcement for cost protection
@@ -32,7 +33,7 @@ Shipped, user-visible capabilities.
 
 - find/search/read files with gitignore awareness
 - edit/create/delete files
-- AST-based structural code editing
+- AST-based structural code editing with workspace-wide scope
 - git status/diff/log/show/add/commit
 - shell and test execution
 - web search/fetch
