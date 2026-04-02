@@ -73,13 +73,12 @@ export async function addMemory(
   await store.write(record, scope);
   log.debug("memory.stored.added", { id: record.id, scope, tokens: record.tokenEstimate });
 
-  embedText(trimmed)
-    .then((vec) => {
-      if (vec) store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
-    })
-    .catch((error) => {
-      log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
-    });
+  try {
+    const vec = await embedText(trimmed);
+    if (vec) store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
+  } catch (error) {
+    log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
+  }
 
   return toMemoryEntry(record);
 }

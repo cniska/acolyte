@@ -24,6 +24,7 @@ export const appConfig = {
   },
   model: fileConfig.model,
   temperature: fileConfig.temperature,
+  reasoning: fileConfig.reasoning,
   distill: {
     model: fileConfig.distillModel,
   },

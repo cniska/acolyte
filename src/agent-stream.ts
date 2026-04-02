@@ -91,6 +91,7 @@ export function createAgentStream(
               : functionTools.length > 0
                 ? { type: "auto" }
                 : undefined,
+            ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
           });
           rateLimiter.reset();
         } catch (error) {

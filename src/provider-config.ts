@@ -1,3 +1,5 @@
+import type { SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
 
 const MODEL_NAME_PREFIX_TO_PROVIDER: Record<string, Provider> = {
@@ -23,9 +25,10 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
-export function formatModel(model: string): string {
-  const slash = model.indexOf("/");
-  return (slash >= 0 ? model.slice(slash + 1) : model).trim();
+export function formatModel(model: string, reasoning?: ReasoningLevel): string {
+  const name = (model.indexOf("/") >= 0 ? model.slice(model.indexOf("/") + 1) : model).trim();
+  if (reasoning && reasoning !== DEFAULT_REASONING) return `${name} (${reasoning})`;
+  return name;
 }
 
 function isOpenAICompatibleBaseUrl(openaiBaseUrl: string): boolean {
@@ -66,6 +69,29 @@ export function providerFromModel(model: string): Provider {
 }
 
 export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
+
+export const DEFAULT_REASONING = "medium";
+
+const ANTHROPIC_THINKING_BUDGET: Record<string, number> = {
+  low: 5_000,
+  medium: 10_000,
+  high: 20_000,
+};
+
+export function reasoningProviderOptions(
+  provider: Provider,
+  level: ReasoningLevel | undefined,
+): SharedV3ProviderOptions | undefined {
+  if (!level) return undefined;
+  switch (provider) {
+    case "openai":
+      return { openai: { reasoningEffort: level } };
+    case "anthropic":
+      return { anthropic: { thinking: { type: "enabled", budgetTokens: ANTHROPIC_THINKING_BUDGET[level] ?? 10_000 } } };
+    case "google":
+      return { google: { thinkingConfig: { thinkingLevel: level } } };
+  }
+}
 
 export function isProviderAvailable(provider: Provider, credentials: ProviderCredentials): boolean {
   if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);

@@ -114,6 +114,7 @@ function serializeToml(config: Config): string {
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
+  if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -133,6 +134,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,
     logFormat: config.logFormat ?? defaults.logFormat,
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
+    reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
   };
 }

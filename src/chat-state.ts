@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
@@ -124,7 +125,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
-  const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model)}`;
+  const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model, appConfig.reasoning)}`;
 
   useMountEffect(() => {
     loadSkills().catch(() => {});

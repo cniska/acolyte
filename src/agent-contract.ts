@@ -1,4 +1,4 @@
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV3, SharedV3ProviderOptions } from "@ai-sdk/provider";
 import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
 import type { ToolDefinition } from "./tool-contract";
 
@@ -14,6 +14,7 @@ export type Agent = {
 export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
+  providerOptions?: SharedV3ProviderOptions;
   /** Max nudge re-prompts when the model stops prematurely. 0 disables. */
   maxNudges?: number;
 };

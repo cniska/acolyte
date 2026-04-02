@@ -10,6 +10,9 @@ export type ConfigScope = z.infer<typeof scopeSchema>;
 const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
 const MAX_TEMPERATURE = 2;
 
+export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
+export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
+
 const nonEmptyStringSchema = z.string().trim().min(1);
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
@@ -32,6 +35,7 @@ export interface Config {
   googleBaseUrl?: string;
   logFormat?: LogFormat;
   replyTimeoutMs?: number;
+  reasoning?: ReasoningLevel;
   embeddingModel?: string;
 }
 
@@ -46,6 +50,7 @@ export interface ResolvedConfig {
   googleBaseUrl: string;
   logFormat: LogFormat;
   replyTimeoutMs: number;
+  reasoning?: ReasoningLevel;
   embeddingModel: string;
 }
 
@@ -58,6 +63,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
   logFormat: logFormatSchema,
+  reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
 };
 
@@ -78,6 +84,7 @@ export function toConfig(input: Record<string, unknown>): Config {
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
     logFormat: parseField(logFormatSchema, input.logFormat),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
+    reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
   };
 }
