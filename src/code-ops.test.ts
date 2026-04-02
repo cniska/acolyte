@@ -657,6 +657,26 @@ describe("editCode", () => {
     expect(bContent).toContain("newName");
   });
 
+  test("workspace scope renames across all project files", async () => {
+    const dirPath = join(WORKSPACE, `acolyte-test-ast-ws-${testUuid()}`);
+    tempDirs.push(dirPath);
+    await mkdir(dirPath, { recursive: true });
+    await writeFile(join(dirPath, "lib.ts"), "export function oldName() { return 1; }\n", "utf8");
+    await writeFile(join(dirPath, "main.ts"), "import { oldName } from './lib';\noldName();\n", "utf8");
+    tempFiles.push(join(dirPath, "lib.ts"), join(dirPath, "main.ts"));
+    const result = await editCode({
+      workspace: dirPath,
+      path: join(dirPath, "lib.ts"),
+      edits: [{ op: "rename", from: "oldName", to: "newName", scope: "workspace" }],
+    });
+    expect(result.matches).toBeGreaterThanOrEqual(3);
+    const libContent = await readFile(join(dirPath, "lib.ts"), "utf8");
+    const mainContent = await readFile(join(dirPath, "main.ts"), "utf8");
+    expect(libContent).toContain("newName");
+    expect(mainContent).toContain("newName");
+    expect(mainContent).not.toContain("oldName");
+  });
+
   test("rejects unsupported non-code files", async () => {
     const filePath = join(WORKSPACE, `acolyte-test-ast-md-${testUuid()}.md`);
     tempFiles.push(filePath);
