@@ -61,6 +61,10 @@ Every dependency is a liability.
 
 One section per review dimension (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
 
+## Fix policy
+
+Default to fixing all findings — including trivial ones. Small issues left unfixed accumulate into tech debt. If a finding is worth reporting, it's worth fixing before merge.
+
 ## Red flags
 
 - Reviewing only the diff without reading touched files in context
