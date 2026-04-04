@@ -21,21 +21,13 @@ These must always hold. Break them and the system breaks.
 
 ## Workflow
 
-1. Start from latest `main`.
-2. Read relevant files before editing. Use errors, logs, tests, and source as evidence — never guess.
-3. Keep changes scoped to the task. Defer out-of-scope work to issues.
-4. Clean up code you touch — but don't chase cleanup into unrelated files.
-5. Before creating a new file: check whether an existing one is the right place.
-6. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
-7. Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
+1. Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
+2. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
+3. Commit only when explicitly requested.
 
 ## Commits
 
-1. Commit only when explicitly requested.
-2. Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
-3. Single-line subject, no body, under 72 characters. ASCII only — no arrows, symbols, or emoji.
-4. Never amend commits already pushed to remote — create a new commit instead.
-5. Branch names use hyphens, no slashes (e.g. `di-pattern`, not `refactor/di-pattern`).
+Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters. ASCII only.
 
 ## Code
 
@@ -43,10 +35,3 @@ These must always hold. Break them and the system breaks.
 - When defining a string union or shared type: define it as a Zod schema first and infer the TS type from it.
 - No banner or separator comments. Import from the canonical source module directly — no re-export layers.
 - No direct `useEffect` in chat-layer code. Use the approved effect helpers from `src/tui/effects.ts`.
-
-## Safety
-
-1. Never run destructive git or file operations unless explicitly requested.
-2. Never amend commits already pushed to remote — create a new commit instead.
-3. Use `--force-with-lease` over `--force`.
-4. Do not discard unrelated changes without approval.
