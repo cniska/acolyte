@@ -58,6 +58,7 @@ export function providerFromModel(model: string): Provider {
     for (const [namePrefix, provider] of Object.entries(MODEL_NAME_PREFIX_TO_PROVIDER)) {
       if (normalizedModel.startsWith(namePrefix)) return provider;
     }
+    return "openai";
   }
 
   const prefix = trimmedModel.split("/", 1)[0]?.toLowerCase() ?? "";
@@ -65,7 +66,7 @@ export function providerFromModel(model: string): Provider {
   if (parsed.success) return parsed.data;
   const aliased = PROVIDER_PREFIX_ALIASES[prefix];
   if (aliased) return aliased;
-  return "openai";
+  return "vercel";
 }
 
 export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
@@ -85,6 +86,7 @@ export function reasoningProviderOptions(
   if (!level) return undefined;
   switch (provider) {
     case "openai":
+    case "vercel":
       return { openai: { reasoningEffort: level } };
     case "anthropic":
       return { anthropic: { thinking: { type: "enabled", budgetTokens: ANTHROPIC_THINKING_BUDGET[level] ?? 10_000 } } };
@@ -96,6 +98,7 @@ export function reasoningProviderOptions(
 export function isProviderAvailable(provider: Provider, credentials: ProviderCredentials): boolean {
   if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);
   if (provider === "google") return Boolean(credentials.apiKey);
+  if (provider === "vercel") return Boolean(credentials.apiKey);
   if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
   return Boolean(credentials.apiKey);
 }

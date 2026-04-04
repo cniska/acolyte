@@ -27,9 +27,12 @@ export function invalidateModelsCache(): void {
 }
 
 function credentialsCacheKey(credentials: ProviderCredentialsMap): string {
-  return [credentials.openai?.apiKey ?? "", credentials.anthropic?.apiKey ?? "", credentials.google?.apiKey ?? ""].join(
-    "\0",
-  );
+  return [
+    credentials.openai?.apiKey ?? "",
+    credentials.anthropic?.apiKey ?? "",
+    credentials.google?.apiKey ?? "",
+    credentials.vercel?.apiKey ?? "",
+  ].join("\0");
 }
 
 async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]> {
@@ -76,6 +79,16 @@ async function fetchGoogleModels(config: ProviderFetchConfig): Promise<string[]>
   return (json.models ?? []).map((m) => m.name.replace(/^models\//, ""));
 }
 
+async function fetchVercelModels(config: ProviderFetchConfig): Promise<string[]> {
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const res = await fetch(`${baseUrl}/models`, {
+    headers: config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {},
+  });
+  if (!res.ok) return [];
+  const json = (await res.json()) as { data?: Array<{ id: string }> };
+  return (json.data ?? []).map((m) => m.id);
+}
+
 async function fetchProviderModels(provider: Provider, config: ProviderFetchConfig): Promise<string[]> {
   try {
     switch (provider) {
@@ -85,6 +98,8 @@ async function fetchProviderModels(provider: Provider, config: ProviderFetchConf
         return await fetchAnthropicModels(config);
       case "google":
         return await fetchGoogleModels(config);
+      case "vercel":
+        return await fetchVercelModels(config);
       default:
         return unreachable(provider);
     }
@@ -97,7 +112,8 @@ function providerConfig(provider: Provider, credentials: ProviderCredentialsMap)
   switch (provider) {
     case "openai":
     case "anthropic":
-    case "google": {
+    case "google":
+    case "vercel": {
       const creds = credentials[provider] ?? {};
       return { apiKey: creds.apiKey, baseUrl: creds.baseUrl ?? "" };
     }
@@ -111,6 +127,7 @@ function availableProviders(credentials: ProviderCredentialsMap): Provider[] {
   if (isProviderAvailable("openai", credentials.openai ?? {})) providers.push("openai");
   if (isProviderAvailable("anthropic", credentials.anthropic ?? {})) providers.push("anthropic");
   if (isProviderAvailable("google", credentials.google ?? {})) providers.push("google");
+  if (isProviderAvailable("vercel", credentials.vercel ?? {})) providers.push("vercel");
   return providers;
 }
 

@@ -145,8 +145,8 @@ export const EN_MESSAGES = {
   "cli.init.api_key.exists": "A provider API key already exists in .env. Remove it first to re-run init.",
   "cli.init.next": "Next: bun run dev",
   "cli.init.prompt.api_key": "API key: ",
-  "cli.init.prompt.provider": "Provider [openai|anthropic|google]: ",
-  "cli.init.provider.invalid": "Invalid provider. Use openai, anthropic, or google.",
+  "cli.init.prompt.provider": "Provider [vercel|openai|anthropic|google]: ",
+  "cli.init.provider.invalid": "Invalid provider. Use vercel, openai, anthropic, or google.",
   "cli.init.saved": "Saved {envKey} in {path}",
   "cli.memory.none": "No memories saved.",
   "cli.memory.saved": "Saved {scope} memory {id}.",
@@ -177,6 +177,7 @@ export const EN_MESSAGES = {
   "error.model.provider_unavailable.google": 'Model "{model}" is unavailable. Set GOOGLE_API_KEY and try again.',
   "error.model.provider_unavailable.openai":
     'Model "{model}" is unavailable. Set OPENAI_API_KEY (or configure an OpenAI-compatible base URL) and try again.',
+  "error.model.provider_unavailable.vercel": 'Model "{model}" is unavailable. Set AI_GATEWAY_API_KEY and try again.',
   "error.prompt.quota_exceeded": "Provider quota exceeded. Add billing/credits or switch model/provider.",
   "error.prompt.request_failed": "Request failed. Retry and check server logs if it keeps failing.",
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",

@@ -16,6 +16,25 @@ acolyte config set --project logFormat json
 acolyte config unset openaiBaseUrl
 ```
 
+## Vercel AI Gateway (recommended)
+
+The fastest way to get started. The [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) provides unified access to 20+ providers with a single API key.
+
+```bash
+acolyte init vercel
+acolyte config set model anthropic/claude-sonnet-4
+```
+
+When a direct provider key is also set (e.g. `ANTHROPIC_API_KEY`), Acolyte prefers the direct connection. When it's missing, requests fall back to the gateway automatically — no prefix or config change needed.
+
+```bash
+# Explicitly target a provider only available through the gateway
+acolyte config set model vercel/xai/grok-4.1
+
+# Override the gateway base URL
+acolyte config set vercelBaseUrl https://custom-gateway.example.com/v1
+```
+
 ## Provider base URLs
 
 Each provider has a configurable base URL with a sensible default:
@@ -71,5 +90,6 @@ acolyte config set logFormat json
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |
 | `googleBaseUrl` | Google AI API base URL |
+| `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |

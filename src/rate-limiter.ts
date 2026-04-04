@@ -5,22 +5,14 @@ export type RateLimiterConfig = {
   readonly backoffMaxMs: number;
 };
 
-const PROVIDER_DEFAULTS: Record<Provider, RateLimiterConfig> = {
-  anthropic: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
-  openai: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
-  google: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
-};
-
-export function defaultRateLimiterConfig(provider: Provider): RateLimiterConfig {
-  return PROVIDER_DEFAULTS[provider];
-}
+const DEFAULT_RATE_LIMITER_CONFIG: RateLimiterConfig = { backoffBaseMs: 1_000, backoffMaxMs: 60_000 };
 
 const sharedLimiters = new Map<Provider, RateLimiter>();
 
 export function sharedRateLimiter(provider: Provider): RateLimiter {
   const existing = sharedLimiters.get(provider);
   if (existing) return existing;
-  const limiter = createRateLimiter(defaultRateLimiterConfig(provider));
+  const limiter = createRateLimiter(DEFAULT_RATE_LIMITER_CONFIG);
   sharedLimiters.set(provider, limiter);
   return limiter;
 }

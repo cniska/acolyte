@@ -24,6 +24,40 @@ describe("resolveModelProviderState", () => {
     });
   });
 
+  test("falls back to vercel when direct provider is unavailable", () => {
+    expect(
+      resolveModelProviderState("anthropic/claude-sonnet-4", {
+        vercel: { apiKey: "sk-gw" },
+      }),
+    ).toEqual({
+      provider: "vercel",
+      available: true,
+    });
+  });
+
+  test("prefers direct provider over vercel when available", () => {
+    expect(
+      resolveModelProviderState("anthropic/claude-sonnet-4", {
+        anthropic: { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com/v1" },
+        vercel: { apiKey: "sk-gw" },
+      }),
+    ).toEqual({
+      provider: "anthropic",
+      available: true,
+    });
+  });
+
+  test("routes vercel-prefixed models directly to vercel", () => {
+    expect(
+      resolveModelProviderState("vercel/xai/grok-4.1", {
+        vercel: { apiKey: "sk-gw" },
+      }),
+    ).toEqual({
+      provider: "vercel",
+      available: true,
+    });
+  });
+
   test("marks anthropic and google availability by provider-specific credentials", () => {
     expect(resolveModelProviderState("anthropic/claude-sonnet-4", {})).toEqual({
       provider: "anthropic",

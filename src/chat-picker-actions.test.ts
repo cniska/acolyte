@@ -87,8 +87,10 @@ describe("chat picker actions", () => {
 
   test("createModelPicker marks openai-compatible models as local", async () => {
     const originalFetch = globalThis.fetch;
+    const originalVercelApiKey = appConfig.vercel.apiKey;
     (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
     (appConfig.openai as { baseUrl: string }).baseUrl = "http://localhost:11434/v1";
+    (appConfig.vercel as { apiKey: string | undefined }).apiKey = undefined;
     globalThis.fetch = mock(async () => {
       return new Response(JSON.stringify({ data: [{ id: "qwen2.5-coder:3b" }] }), { status: 200 });
     }) as unknown as typeof fetch;
@@ -102,6 +104,7 @@ describe("chat picker actions", () => {
       ]);
     } finally {
       globalThis.fetch = originalFetch;
+      (appConfig.vercel as { apiKey: string | undefined }).apiKey = originalVercelApiKey;
     }
   });
 });

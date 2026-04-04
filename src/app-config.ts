@@ -22,6 +22,10 @@ export const appConfig = {
     apiKey: env.GOOGLE_API_KEY,
     baseUrl: fileConfig.googleBaseUrl,
   },
+  vercel: {
+    apiKey: env.AI_GATEWAY_API_KEY,
+    baseUrl: fileConfig.vercelBaseUrl,
+  },
   model: fileConfig.model,
   temperature: fileConfig.temperature,
   reasoning: fileConfig.reasoning,

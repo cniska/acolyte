@@ -33,6 +33,7 @@ export interface Config {
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
+  vercelBaseUrl?: string;
   logFormat?: LogFormat;
   replyTimeoutMs?: number;
   reasoning?: ReasoningLevel;
@@ -48,6 +49,7 @@ export interface ResolvedConfig {
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
+  vercelBaseUrl: string;
   logFormat: LogFormat;
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
@@ -62,6 +64,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
+  vercelBaseUrl: nonEmptyStringSchema,
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
@@ -82,6 +85,7 @@ export function toConfig(input: Record<string, unknown>): Config {
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),
+    vercelBaseUrl: parseField(nonEmptyStringSchema, input.vercelBaseUrl),
     logFormat: parseField(logFormatSchema, input.logFormat),
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     reasoning: parseField(reasoningLevelSchema, input.reasoning),

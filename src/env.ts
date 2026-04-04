@@ -5,6 +5,7 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
   GOOGLE_API_KEY: z.string().trim().min(1).optional(),
+  AI_GATEWAY_API_KEY: z.string().trim().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
