@@ -1,6 +1,6 @@
 ---
 name: git
-description: Git workflow for atomic commits, change sizing, and safe versioning. Use when committing, branching, or managing change history.
+description: Manage commits, branches, and change history. Use when committing, branching, or managing version control.
 ---
 
 # Git
