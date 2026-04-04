@@ -9,6 +9,7 @@ const PROVIDER_DEFAULTS: Record<Provider, RateLimiterConfig> = {
   anthropic: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
   openai: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
   google: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
+  vercel: { backoffBaseMs: 1_000, backoffMaxMs: 60_000 },
 };
 
 export function defaultRateLimiterConfig(provider: Provider): RateLimiterConfig {

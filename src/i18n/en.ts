@@ -177,6 +177,7 @@ export const EN_MESSAGES = {
   "error.model.provider_unavailable.google": 'Model "{model}" is unavailable. Set GOOGLE_API_KEY and try again.',
   "error.model.provider_unavailable.openai":
     'Model "{model}" is unavailable. Set OPENAI_API_KEY (or configure an OpenAI-compatible base URL) and try again.',
+  "error.model.provider_unavailable.vercel": 'Model "{model}" is unavailable. Set AI_GATEWAY_API_KEY and try again.',
   "error.prompt.quota_exceeded": "Provider quota exceeded. Add billing/credits or switch model/provider.",
   "error.prompt.request_failed": "Request failed. Retry and check server logs if it keeps failing.",
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",

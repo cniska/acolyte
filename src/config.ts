@@ -20,6 +20,7 @@ function createDefaultConfig() {
     openaiBaseUrl: "https://api.openai.com/v1",
     anthropicBaseUrl: "https://api.anthropic.com/v1",
     googleBaseUrl: "https://generativelanguage.googleapis.com",
+    vercelBaseUrl: "https://ai-gateway.vercel.sh/v1",
     logFormat: "logfmt" as LogFormat,
     replyTimeoutMs: 180_000,
     embeddingModel: "text-embedding-3-small",
@@ -112,6 +113,7 @@ function serializeToml(config: Config): string {
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
+  if (config.vercelBaseUrl) lines.push(`vercelBaseUrl = ${JSON.stringify(config.vercelBaseUrl)}`);
   if (config.logFormat) lines.push(`logFormat = ${JSON.stringify(config.logFormat)}`);
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
@@ -132,6 +134,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,
+    vercelBaseUrl: config.vercelBaseUrl ?? defaults.vercelBaseUrl,
     logFormat: config.logFormat ?? defaults.logFormat,
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,

@@ -8,6 +8,7 @@ describe("env parsing", () => {
     expect(parsed.OPENAI_API_KEY).toBeUndefined();
     expect(parsed.ANTHROPIC_API_KEY).toBeUndefined();
     expect(parsed.GOOGLE_API_KEY).toBeUndefined();
+    expect(parsed.AI_GATEWAY_API_KEY).toBeUndefined();
   });
 
   test("parseEnv accepts explicit values", () => {
@@ -16,11 +17,13 @@ describe("env parsing", () => {
       OPENAI_API_KEY: "sk-openai",
       ANTHROPIC_API_KEY: "sk-ant",
       GOOGLE_API_KEY: "sk-goog",
+      AI_GATEWAY_API_KEY: "sk-gw",
     });
     expect(parsed.ACOLYTE_API_KEY).toBe("acolyte-token");
     expect(parsed.OPENAI_API_KEY).toBe("sk-openai");
     expect(parsed.ANTHROPIC_API_KEY).toBe("sk-ant");
     expect(parsed.GOOGLE_API_KEY).toBe("sk-goog");
+    expect(parsed.AI_GATEWAY_API_KEY).toBe("sk-gw");
   });
 
   test("parseEnv ignores legacy non-secret env keys", () => {

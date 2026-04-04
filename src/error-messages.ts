@@ -23,6 +23,7 @@ function messageForUserError(code: UserErrorCode, meta?: UserErrorMetaByCode[Use
         openai: "error.model.provider_unavailable.openai",
         anthropic: "error.model.provider_unavailable.anthropic",
         google: "error.model.provider_unavailable.google",
+        vercel: "error.model.provider_unavailable.vercel",
       } as const;
       const key = providerKey[typedMeta.provider] ?? undefined;
       if (key) return t(key, { model: typedMeta.model });
