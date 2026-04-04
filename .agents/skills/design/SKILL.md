@@ -28,7 +28,7 @@ Trust internal code. Validate at system boundaries — RPC payloads, config file
 ### Predictable naming
 
 Follow established conventions:
-- Tool names: kebab-case verbs (`read-file`, `write-file`)
+- Tool names: `toolkit-action` kebab-case (`file-read`, `git-commit`, `shell-run`)
 - Schema names: PascalCase with `Schema` suffix (`ToolResultSchema`)
 - Config fields: camelCase
 - Constants: UPPER_SNAKE when truly constant
