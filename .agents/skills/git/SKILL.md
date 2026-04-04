@@ -27,6 +27,7 @@ Separate refactoring from feature work. Separate formatting from behavior change
 - Start from latest `main`.
 - Branch names: hyphens, no slashes, no prefixes (`workspace-scope`, not `feature/workspace-scope`).
 - Keep branches short-lived — merge within days, not weeks.
+- Rewrite local history before pushing — amend, rebase, squash to keep history clean. Commit noise should never become permanent.
 - Never amend commits already pushed to remote.
 - Use `--force-with-lease` over `--force`.
 
