@@ -34,6 +34,8 @@ Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | 
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
+For non-trivial plans, create a checklist early with `checklist-create` and add items one at a time as each step gets agreed. When planning is done, the checklist is ready — start executing.
+
 ## Red flags
 
 - Disappearing to build a plan and returning with a document for approval
