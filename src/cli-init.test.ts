@@ -48,7 +48,7 @@ describe("cli-init", () => {
     await initMode(["invalid"], deps);
     expect(output()).toBe(
       dedent(`
-        Invalid provider. Use openai, anthropic, or google.
+        Invalid provider. Use vercel, openai, anthropic, or google.
       `),
     );
   });
