@@ -3,9 +3,11 @@ import { appConfig } from "./app-config";
 import { resolveModel } from "./lifecycle-resolve";
 
 const SAVED_OPENAI_KEY = appConfig.openai.apiKey;
+const SAVED_VERCEL_KEY = appConfig.vercel.apiKey;
 
 beforeEach(() => {
   (appConfig.openai as { apiKey: string | undefined }).apiKey = SAVED_OPENAI_KEY;
+  (appConfig.vercel as { apiKey: string | undefined }).apiKey = SAVED_VERCEL_KEY;
 });
 
 describe("resolveModel", () => {
@@ -26,6 +28,7 @@ describe("resolveModel", () => {
 
   test("throws E_MODEL_PROVIDER_UNAVAILABLE when provider unavailable", () => {
     (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
+    (appConfig.vercel as { apiKey: string | undefined }).apiKey = undefined;
     try {
       resolveModel("openai/gpt-5-mini");
       expect.unreachable("should have thrown");

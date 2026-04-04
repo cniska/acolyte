@@ -38,6 +38,9 @@ describe("provider config", () => {
     expect(providerFromModel("google/gemini-2.5-pro")).toBe("google");
     expect(providerFromModel("openai-compatible/qwen2.5-coder")).toBe("openai");
     expect(providerFromModel(" anthropic/claude-sonnet-4 ")).toBe("anthropic");
+    expect(providerFromModel("vercel/anthropic/claude-sonnet-4")).toBe("vercel");
+    expect(providerFromModel("xai/grok-4.1")).toBe("vercel");
+    expect(providerFromModel("mistral/mistral-large")).toBe("vercel");
   });
 
   test("reasoningProviderOptions returns provider-specific options", () => {
@@ -46,6 +49,7 @@ describe("provider config", () => {
       anthropic: { thinking: { type: "enabled", budgetTokens: 20_000 } },
     });
     expect(reasoningProviderOptions("google", "low")).toEqual({ google: { thinkingConfig: { thinkingLevel: "low" } } });
+    expect(reasoningProviderOptions("vercel", "high")).toEqual({ openai: { reasoningEffort: "high" } });
   });
 
   test("reasoningProviderOptions returns undefined when level is not set", () => {
@@ -61,5 +65,7 @@ describe("provider config", () => {
     expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com" })).toBe(false);
     expect(isProviderAvailable("google", { apiKey: "sk-goog" })).toBe(true);
     expect(isProviderAvailable("google", {})).toBe(false);
+    expect(isProviderAvailable("vercel", { apiKey: "sk-gw" })).toBe(true);
+    expect(isProviderAvailable("vercel", {})).toBe(false);
   });
 });

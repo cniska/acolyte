@@ -48,6 +48,16 @@ function createEmbeddingModel(qualifiedModel: string) {
       });
       return google.textEmbeddingModel(modelId);
     }
+    case "vercel": {
+      const vercel = createOpenAI({
+        apiKey: providerCreds.apiKey,
+        ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
+      });
+      const gatewayModelId = qualifiedModel.startsWith("vercel/")
+        ? qualifiedModel.slice("vercel/".length)
+        : qualifiedModel;
+      return vercel.textEmbeddingModel(gatewayModelId);
+    }
     default:
       return null;
   }

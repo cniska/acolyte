@@ -44,6 +44,19 @@ export function createModel(
       });
       return openai(modelId);
     }
+    case "vercel": {
+      const vercel = createOpenAI({
+        apiKey: providerCreds.apiKey,
+        ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
+        fetch: fetchFn,
+      });
+      // The gateway expects provider/model format (e.g. "anthropic/claude-sonnet-4").
+      // When explicitly prefixed with vercel/, strip that prefix.
+      const gatewayModelId = qualifiedModel.startsWith("vercel/")
+        ? qualifiedModel.slice("vercel/".length)
+        : qualifiedModel;
+      return vercel(gatewayModelId);
+    }
     default:
       return unreachable(provider);
   }

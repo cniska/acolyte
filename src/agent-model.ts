@@ -8,6 +8,7 @@ export const defaultCredentials = (): ProviderCredentialsMap => ({
   openai: appConfig.openai,
   anthropic: appConfig.anthropic,
   google: appConfig.google,
+  vercel: appConfig.vercel,
 });
 
 export function resolveModelProviderState(
@@ -16,6 +17,11 @@ export function resolveModelProviderState(
 ): { provider: Provider; available: boolean } {
   const provider = providerFromModel(model);
   const available = isProviderAvailable(provider, credentials[provider] ?? {});
+  if (available) return { provider, available };
+  // Fall back to Vercel AI Gateway when direct provider is unavailable.
+  if (provider !== "vercel" && isProviderAvailable("vercel", credentials.vercel ?? {})) {
+    return { provider: "vercel", available: true };
+  }
   return { provider, available };
 }
 
