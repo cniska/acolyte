@@ -24,6 +24,11 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 - [Sessions and tasks](./sessions-tasks.md) — isolated, resumable session state and task execution
 - [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
 
+## Development
+
+- [Agent skills](./agent-skills.md) — engineering workflows for plan, build, review, and ship phases
+- [Testing](./testing.md) — test types, naming, and execution
+
 ## Reference
 
 - [CLI](./cli.md) — commands for chat, run, server, memory, config, logs, and trace

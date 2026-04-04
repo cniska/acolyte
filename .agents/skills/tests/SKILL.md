@@ -1,9 +1,9 @@
 ---
-name: test-audit
-description: Audit test coverage, quality, and missing edge cases. Use when reviewing whether changed code has adequate tests.
+name: tests
+description: Review test coverage, quality, and missing edge cases. Use when reviewing whether changed code has adequate tests.
 ---
 
-# Test Audit
+# Tests
 
 Review test adequacy for changed code.
 
@@ -23,10 +23,12 @@ Review test adequacy for changed code.
 
 ### 3. Test quality
 
-- tests asserting implementation details instead of behavior
+- tests asserting implementation details instead of behavior (method call sequences break on refactor)
 - tests duplicating coverage without distinct scenarios
 - fragile tests (timing, ordering, absolute paths)
 - missing cleanup (temp files, cache state)
+- mocking internals instead of testing through the real contract — mock at boundaries only
+- test names that don't read as specifications
 
 ### 4. Unnecessary tests
 
@@ -44,7 +46,7 @@ For each finding: **severity**, **source file + test file**, **what is untested*
 
 Then: **Must-add** | **Should-add** | **Optional** | **Remove** (if any).
 
-## Anti-patterns
+## Red flags
 
 - Demanding 100% line coverage
 - Flagging missing tests for trivial functions

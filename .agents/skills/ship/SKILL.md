@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Pre-deploy gate with version bump and automated release. Use when ready to cut a release.
+description: Run pre-deploy checks, determine version bump, and execute release. Use when ready to cut a release.
 ---
 
 # Ship
@@ -66,7 +66,7 @@ Check the entire project. This is a release gate, not a diff review.
 - Never push — print the push commands for the user.
 - If there are no commits since the last tag, stop and report that.
 
-## Anti-patterns
+## Red flags
 
 - Running the release without checking preconditions
 - Guessing the version bump without reading the commits

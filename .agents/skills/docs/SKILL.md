@@ -1,9 +1,9 @@
 ---
-name: docs-audit
-description: Audit docs for drift, missing updates, and terminology changes. Use when code changes should be reflected in documentation.
+name: docs
+description: Review docs for drift, missing updates, and terminology changes. Use when code changes should be reflected in documentation.
 ---
 
-# Documentation Audit
+# Documentation
 
 Review doc coverage, terminology drift, and canonical doc accuracy.
 
@@ -29,7 +29,7 @@ For each finding: **severity**, **affected file**, **what drifted or is missing*
 
 Then: **Canonical updates needed** | **Optional cleanup**.
 
-## Anti-patterns
+## Red flags
 
 - Generic prose polishing
 - Duplicate explanations across docs

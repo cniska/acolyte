@@ -42,13 +42,14 @@ If a test needs real fs/process/network behavior, use `*.int.test.ts` instead of
 
 ## Test selection
 
-- Test through public behavior, not internals.
+- Test through public behavior, not internals. Prefer DAMP (descriptive and meaningful phrases) over DRY in tests — each test should independently communicate what it verifies.
 - Prefer extending an existing nearby test file before creating a new one.
 - Add integration tests for lifecycle, tool wiring, RPC flow, or real process/fs boundaries.
 - Add visual tests for stable TUI rendering behavior.
 - Do not add tests for trivial pass-through code or type-system guarantees.
+- Mock at system boundaries (fs, network, external APIs), not between internal functions. Prefer real implementations when practical.
 
-## Anti-patterns
+## Red flags
 
 - Writing multiple tests before the first one passes
 - Running `bun test` by default when a smaller target would do
