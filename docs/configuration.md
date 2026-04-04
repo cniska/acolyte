@@ -24,6 +24,24 @@ Each provider has a configurable base URL with a sensible default:
 - `anthropicBaseUrl`: Anthropic API base (default: `https://api.anthropic.com/v1`). Must end with `/v1`.
 - `googleBaseUrl`: Google AI API base (default: `https://generativelanguage.googleapis.com`).
 
+## Vercel AI Gateway
+
+Route requests through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) for unified access to 20+ providers.
+
+Set `AI_GATEWAY_API_KEY` in your environment. When a direct provider key is available, Acolyte uses the direct connection. When it's not, the gateway acts as a fallback automatically.
+
+```bash
+# All models route through the gateway when direct keys are absent
+export AI_GATEWAY_API_KEY=xxx
+acolyte config set model anthropic/claude-sonnet-4
+
+# Explicitly target a provider only available through the gateway
+acolyte config set model vercel/xai/grok-4.1
+
+# Override the gateway base URL
+acolyte config set vercelBaseUrl https://custom-gateway.example.com/v1
+```
+
 ## Local models
 
 Configure an OpenAI-compatible local endpoint directly in project config, then set the model explicitly:
@@ -71,5 +89,6 @@ acolyte config set logFormat json
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |
 | `googleBaseUrl` | Google AI API base URL |
+| `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
