@@ -1,6 +1,6 @@
 ---
-name: style-audit
-description: Audit code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
+name: style
+description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
 ---
 
 # Style Audit
@@ -40,6 +40,8 @@ Check where the codebase already has a clear local pattern:
 - no banner or separator comments
 - no unused params, dead branches, or ad-hoc fallbacks
 - keep style aligned with nearby code
+- abstractions must earn their complexity — if a wrapper adds no policy, inline it
+- prefer clarity over cleverness: nested ternaries, chained reduces, and dense one-liners that require a mental pause should be simplified
 
 ## Evidence threshold
 
@@ -58,7 +60,7 @@ For each finding: **severity**, **file**, **violated convention**, **evidence**,
 
 Then: **Must-fix** | **Optional polish** | **Open questions** (if needed).
 
-## Anti-patterns
+## Red flags
 
 - Enforcing generic style dogma over local conventions
 - Broad rewrites instead of minimal fixes

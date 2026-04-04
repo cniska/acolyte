@@ -48,7 +48,7 @@ Create a pull request for the current branch against `main`.
 - Always read the PR template before drafting the body
 - Always check for associated issues
 
-## Anti-patterns
+## Red flags
 
 - Skipping verify because "tests passed earlier"
 - Skipping the review because it takes time

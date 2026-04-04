@@ -20,13 +20,21 @@ Ground every recommendation in current code, docs, and project rules. Read `AGEN
 - Chat-layer code must use approved effect helpers, not direct `useEffect`
 - Shared string unions start as Zod schemas
 
+## Task sizing
+
+- **Small (1-2 files):** single endpoint, component, or utility
+- **Medium (3-5 files):** one feature slice through the stack
+- **Large (5-8 files):** multi-component feature — consider splitting
+
+Anything larger needs further decomposition. Slice vertically (complete paths through the stack), not horizontally (all types, then all implementations, then all tests).
+
 ## When aligned
 
 Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | **Validation** | **Open questions**.
 
-Split into phases if the work is large. Each phase independently valuable. Reference concrete files.
+Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
-## Anti-patterns
+## Red flags
 
 - Disappearing to build a plan and returning with a document for approval
 - Presenting options instead of surfacing the underlying problem

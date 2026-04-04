@@ -66,7 +66,7 @@ Check the entire project. This is a release gate, not a diff review.
 - Never push — print the push commands for the user.
 - If there are no commits since the last tag, stop and report that.
 
-## Anti-patterns
+## Red flags
 
 - Running the release without checking preconditions
 - Guessing the version bump without reading the commits

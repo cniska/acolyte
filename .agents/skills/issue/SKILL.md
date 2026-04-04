@@ -35,7 +35,7 @@ Create a GitHub issue from a short description.
 - Always check for duplicate or overlapping issues
 - Keep the body concise — if a section would be one sentence, that's fine
 
-## Anti-patterns
+## Red flags
 
 - Creating the issue without checking for duplicates
 - Writing implementation plans in the issue body

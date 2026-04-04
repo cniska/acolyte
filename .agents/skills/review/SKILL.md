@@ -1,11 +1,11 @@
 ---
 name: review
-description: Run all audit skills against the current branch diff. Use when reviewing a feature branch before merge.
+description: Run all review skills against the current branch diff. Use when reviewing a feature branch before merge.
 ---
 
 # Review
 
-Run the full audit suite against the current branch and produce one unified review.
+Run all review dimensions against the current branch and produce one unified review. Approve when a change improves overall code health, even if it isn't perfect.
 
 ## Scope
 
@@ -13,28 +13,61 @@ Review only what changed on the current branch against `main`, but read enough s
 
 Do not duplicate the same issue across categories.
 
+## Change sizing
+
+Before reviewing, check the diff size:
+
+- ~100 lines: good, reviewable in one pass.
+- ~300 lines: acceptable if one logical change.
+- ~1000 lines: too large — ask the author to split before reviewing.
+
+Refactoring mixed with feature work is two changes. Flag it.
+
 ## Workflow
 
 1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
 2. If no commits ahead of `main`, report that and stop.
 3. Read changed files in full, plus `AGENTS.md` and `docs/architecture.md`.
-4. Run each audit:
-   - **Style** — `.agents/skills/style-audit/SKILL.md`
-   - **Architecture** — `.agents/skills/arch-audit/SKILL.md`
-   - **Docs** — `.agents/skills/docs-audit/SKILL.md`
-   - **Security** — `.agents/skills/security-audit/SKILL.md`
-   - **Tests** — `.agents/skills/test-audit/SKILL.md`
-5. Merge findings: deduplicate, keep strongest framing per root issue.
-6. Order by merge relevance: must-fix → should-fix → optional.
+4. **Review tests first** — they reveal intent and coverage gaps.
+5. Run each review dimension:
+   - **Style** — `.agents/skills/style/SKILL.md`
+   - **Architecture** — `.agents/skills/architecture/SKILL.md`
+   - **Docs** — `.agents/skills/docs/SKILL.md`
+   - **Security** — `.agents/skills/security/SKILL.md`
+   - **Tests** — `.agents/skills/tests/SKILL.md`
+6. Merge findings: deduplicate, keep strongest framing per root issue.
+7. Label every finding by severity:
+
+| Label | Meaning | Action |
+|-------|---------|--------|
+| *(unmarked)* | Must fix | Address before merge |
+| **Critical:** | Blocks merge | Security, data loss, broken functionality |
+| **Nit:** | Optional | Style preference, minor improvement |
+| **Consider:** | Suggestion | Worth thinking about, not required |
+
+8. Order by merge relevance: must-fix → should-fix → optional.
+
+## Dependency review
+
+If the change adds a dependency, check:
+- Does the existing stack already solve this?
+- Is it actively maintained?
+- What's the size impact?
+- Any known vulnerabilities?
+
+Every dependency is a liability.
 
 ## Output
 
-One section per audit category (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
+One section per review dimension (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
 
-## Anti-patterns
+## Red flags
 
 - Reviewing only the diff without reading touched files in context
 - Duplicating the same root issue across categories
 - Generic cleanup wishlists
 - Speculative issues without evidence
 - Broad rewrite suggestions out of scope
+- "LGTM" without evidence of review
+- Softening real issues — if it's a bug, say so directly
+- Accepting "I'll fix it later" — require cleanup before merge

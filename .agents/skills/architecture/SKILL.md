@@ -1,6 +1,6 @@
 ---
-name: arch-audit
-description: Audit architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
+name: architecture
+description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
 ---
 
 # Architecture Audit
@@ -67,7 +67,7 @@ For each finding: **severity**, **impacted files**, **violated pattern**, **evid
 
 Then: **Confirmed issues** | **Open questions** | **Optional refactors**.
 
-## Anti-patterns
+## Red flags
 
 - Suggesting speculative frameworks or plugin systems
 - Broad rewrites instead of minimal structural fixes
