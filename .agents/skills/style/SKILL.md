@@ -3,7 +3,7 @@ name: style
 description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
 ---
 
-# Style Audit
+# Style
 
 Review code quality consistency, coding patterns, and style drift.
 

@@ -3,7 +3,7 @@ name: security
 description: Review security risks, trust boundaries, and unsafe defaults. Use when reviewing security posture or assessing risk before release.
 ---
 
-# Security Audit
+# Security
 
 Review security posture, trust boundaries, and unsafe defaults.
 

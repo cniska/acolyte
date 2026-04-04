@@ -24,7 +24,7 @@ Engineering skills for Acolyte development. Each skill is a step-by-step workflo
 ### Review
 | Skill | Use when |
 |-------|----------|
-| [review](../.agents/skills/review/SKILL.md) | Running the full audit suite before merge |
+| [review](../.agents/skills/review/SKILL.md) | Running all review dimensions before merge |
 | [style](../.agents/skills/style/SKILL.md) | Checking code style, naming, and pattern consistency |
 | [architecture](../.agents/skills/architecture/SKILL.md) | Checking architecture, boundaries, and design consistency |
 | [tests](../.agents/skills/tests/SKILL.md) | Checking test coverage, quality, and edge cases |

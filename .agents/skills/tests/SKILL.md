@@ -3,7 +3,7 @@ name: tests
 description: Review test coverage, quality, and missing edge cases. Use when reviewing whether changed code has adequate tests.
 ---
 
-# Test Audit
+# Tests
 
 Review test adequacy for changed code.
 

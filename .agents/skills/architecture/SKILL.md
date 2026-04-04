@@ -3,7 +3,7 @@ name: architecture
 description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
 ---
 
-# Architecture Audit
+# Architecture
 
 Review architecture quality, design consistency, extension seams, and pattern adherence.
 

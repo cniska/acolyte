@@ -3,7 +3,7 @@ name: docs
 description: Review docs for drift, missing updates, and terminology changes. Use when code changes should be reflected in documentation.
 ---
 
-# Documentation Audit
+# Documentation
 
 Review doc coverage, terminology drift, and canonical doc accuracy.
 
