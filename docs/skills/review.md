@@ -27,9 +27,14 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
 2. If no commits ahead of `main`, report that and stop.
-3. Read changed files in full, plus project instructions and architecture docs.
+3. Read changed files in full, plus any project-level convention docs.
 4. **Review tests first** — they reveal intent and coverage gaps.
-5. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
+5. Run each review dimension:
+   - **Style** — `style/SKILL.md`
+   - **Architecture** — `architecture/SKILL.md`
+   - **Docs** — `docs/SKILL.md`
+   - **Security** — `security/SKILL.md`
+   - **Tests** — `tests/SKILL.md`
 6. Merge findings: deduplicate, keep strongest framing per root issue.
 7. Label every finding by severity:
 
@@ -52,13 +57,13 @@ If the change adds a dependency, check:
 
 Every dependency is a liability.
 
-## Output
-
-One section per review dimension (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
-
 ## Fix policy
 
 Default to fixing all findings — including trivial ones. Small issues left unfixed accumulate into tech debt. If a finding is worth reporting, it's worth fixing before merge.
+
+## Output
+
+One section per review dimension (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
 
 ## Red flags
 

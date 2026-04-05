@@ -11,21 +11,21 @@ Review security posture, trust boundaries, and unsafe defaults.
 
 ### 1. Trust boundaries and access control
 
-- auth and trust boundaries (server key checks, RPC access, local-vs-remote assumptions)
-- authorization gaps between clients, sessions, tasks, and workspace operations
+- auth and trust boundaries
+- authorization gaps between clients, sessions, and operations
 - endpoint exposure and listener defaults
 
 ### 2. Transport and encryption
 
-- transport security (`http/ws` vs `https/wss`)
+- transport security (HTTP vs HTTPS, WS vs WSS)
 - sensitive payloads traversing insecure channels
 - key/secret handling: env-based sourcing, redacted logs, no plaintext persistence
 
-### 3. Workspace and execution boundaries
+### 3. Execution boundaries
 
-- workspace/path boundary enforcement for file tools
+- path boundary enforcement for file operations
 - path traversal and escaping project roots
-- shell/tool execution safety and permission-mode enforcement
+- shell/command execution safety
 - destructive operations without appropriate guards
 
 ### 4. Protocol abuse and resource exhaustion

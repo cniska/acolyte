@@ -11,8 +11,7 @@ Commits are save points, branches are sandboxes, history is documentation. Treat
 
 - **Commit after each successful slice.** Don't accumulate work — a commit is a save point you can return to.
 - **One logical change per commit.** A commit that refactors and adds a feature is two commits.
-- **Format:** `type(scope): description` — under 72 chars, ASCII only, no body.
-- **Explain intent, not mechanics.** "feat(tools): add workspace scope for cross-file edits" not "add new function to tools file."
+- **Explain intent, not mechanics.** Describe why the change matters, not what files were touched.
 
 ## Change sizing
 
@@ -24,8 +23,7 @@ Separate refactoring from feature work. Separate formatting from behavior change
 
 ## Branch workflow
 
-- Start from latest `main`.
-- Branch names: hyphens, no slashes, no prefixes (`workspace-scope`, not `feature/workspace-scope`).
+- Start from latest main branch.
 - Keep branches short-lived — merge within days, not weeks.
 - Rewrite local history before pushing — amend, rebase, squash to keep history clean. Commit noise should never become permanent.
 - Never amend commits already pushed to remote.

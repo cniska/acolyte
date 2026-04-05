@@ -13,7 +13,7 @@ Have a design conversation about this task. Read the relevant code, share what y
 
 If a question can be answered by reading the code, read the code instead of asking.
 
-Ground every recommendation in current code, docs, and project rules. Read project instructions and architecture docs before forming opinions.
+Ground every recommendation in current code, docs, and project rules.
 
 ## Task sizing
 
@@ -28,8 +28,6 @@ Anything larger needs further decomposition. Slice vertically (complete paths th
 Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | **Validation** | **Open questions**.
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
-
-For non-trivial plans, create a checklist early and add items as each step gets agreed. Use a checklist tool if one is available. When planning is done, the checklist is ready — start executing.
 
 ## Red flags
 

@@ -12,14 +12,14 @@ Build in thin vertical slices. Implement one piece, verify it, commit it, then m
 1. **Pick the smallest slice** that delivers a complete, testable path through the change.
 2. **Read before writing.** Load the relevant files, understand existing patterns, check for utilities you can reuse.
 3. **Implement the slice.** Stay within its boundary — don't fix adjacent issues or refactor unrelated code.
-4. **Verify the slice.** Run the targeted tests, then the full test suite. The build must pass after every slice.
-5. **Commit the slice.** One logical change per commit, conventional commit format.
+4. **Verify the slice.** Run the targeted tests, then the project's full verification. The build must pass after every slice.
+5. **Commit the slice.** One logical change per commit.
 6. **Repeat.** Pick the next slice. If the plan needs adjusting, adjust it before continuing.
 
 ## Slicing strategies
 
 - **Vertical slice** — one complete path through the stack (type + implementation + test). Preferred default.
-- **Contract-first** — define the interface or schema first, then implement consumers.
+- **Contract-first** — define the schema and types first, then implement consumers.
 - **Risk-first** — tackle the uncertain part first, then build the straightforward parts on top.
 
 ## Red flags
