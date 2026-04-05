@@ -1,14 +1,18 @@
 import { type Dirent, existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { BUNDLED_SKILLS } from "./bundled-skills";
 import type { CompactBudget } from "./compact-text";
 
 export const SKILL_BUDGET: CompactBudget = { maxChars: 4_000, maxLines: 120 };
+
+export type SkillSource = "bundled" | "project";
 
 export interface SkillMeta {
   name: string;
   description: string;
   path: string;
+  source: SkillSource;
   license?: string;
   compatibility?: string;
   metadata?: Record<string, string>;
@@ -195,6 +199,7 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
         name,
         description,
         path: skillPath,
+        source: "project",
         ...(fm.license ? { license: fm.license } : {}),
         ...(fm.compatibility ? { compatibility: fm.compatibility } : {}),
         ...(fm.metadata && Object.keys(fm.metadata).length > 0 ? { metadata: fm.metadata } : {}),
@@ -211,8 +216,33 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
   return { skills: found, diagnostics };
 }
 
+const bundledContentByName = new Map<string, string>();
+
+function getBundledSkills(): SkillMeta[] {
+  const skills: SkillMeta[] = [];
+  for (const bundled of BUNDLED_SKILLS) {
+    const body = stripFrontmatter(bundled.content);
+    bundledContentByName.set(bundled.name, body);
+    skills.push({
+      name: bundled.name,
+      description: bundled.description,
+      path: `bundled://${bundled.name}`,
+      source: "bundled",
+    });
+  }
+  return skills;
+}
+
+function mergeSkills(bundled: SkillMeta[], project: SkillMeta[]): SkillMeta[] {
+  const projectNames = new Set(project.map((s) => s.name));
+  const merged = [...project, ...bundled.filter((s) => !projectNames.has(s.name))];
+  merged.sort((a, b) => a.name.localeCompare(b.name));
+  return merged;
+}
+
 export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
-  return (await scanSkills(cwd)).skills;
+  const { skills: project } = await scanSkills(cwd);
+  return mergeSkills(getBundledSkills(), project);
 }
 
 let cachedSkills: SkillMeta[] | null = null;
@@ -220,7 +250,7 @@ let cachedSkillDiagnostics: SkillLoadDiagnostics = createEmptySkillLoadDiagnosti
 
 export async function loadSkills(cwd?: string): Promise<SkillMeta[]> {
   const result = await scanSkills(cwd);
-  cachedSkills = result.skills;
+  cachedSkills = mergeSkills(getBundledSkills(), result.skills);
   cachedSkillDiagnostics = result.diagnostics;
   return cachedSkills;
 }
@@ -247,8 +277,16 @@ export function substituteArguments(body: string, args: string): string {
 }
 
 export async function readSkillInstructions(path: string, args?: string): Promise<string> {
-  const raw = await readFile(path, "utf8");
-  const body = stripFrontmatter(raw);
+  let body: string;
+  if (path.startsWith("bundled://")) {
+    const name = path.slice("bundled://".length);
+    const content = bundledContentByName.get(name);
+    if (!content) throw new Error(`bundled skill not found: ${name}`);
+    body = content;
+  } else {
+    const raw = await readFile(path, "utf8");
+    body = stripFrontmatter(raw);
+  }
   if (args !== undefined) return substituteArguments(body, args);
   return body;
 }
