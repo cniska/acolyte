@@ -3,9 +3,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSkillToolkit } from "./skill-toolkit";
 import { loadSkills, resetSkillCache } from "./skills";
+import { tempDir } from "./test-utils";
 import type { ToolkitInput } from "./tool-contract";
 import { createSessionContext } from "./tool-session";
-import { tempDir } from "./test-utils";
+
+type SkillListResult = { kind: string; skills: { name: string; description: string; source: string }[] };
+type SkillActivateResult = { kind: string; name: string; source: string; instructions: string };
 
 const { createDir, cleanupDirs } = tempDir();
 
@@ -32,12 +35,12 @@ describe("skill-list", () => {
     const dir = createDir("acolyte-skill-list-");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.listSkills.execute({}, "call-1");
+    const { result } = (await toolkit.listSkills.execute({}, "call-1")) as { result: SkillListResult };
     expect(result.kind).toBe("skill-list");
     expect(result.skills.length).toBeGreaterThan(0);
     const build = result.skills.find((s) => s.name === "build");
     expect(build).toBeDefined();
-    expect(build!.source).toBe("bundled");
+    expect(build?.source).toBe("bundled");
   });
 
   test("returns project skills with source", async () => {
@@ -45,10 +48,10 @@ describe("skill-list", () => {
     writeProjectSkill(dir, "deploy", "Deploy to prod", "# Deploy\nRun deploy.");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.listSkills.execute({}, "call-2");
+    const { result } = (await toolkit.listSkills.execute({}, "call-2")) as { result: SkillListResult };
     const deploy = result.skills.find((s) => s.name === "deploy");
     expect(deploy).toBeDefined();
-    expect(deploy!.source).toBe("project");
+    expect(deploy?.source).toBe("project");
   });
 
   test("includes both bundled and project skills", async () => {
@@ -56,7 +59,7 @@ describe("skill-list", () => {
     writeProjectSkill(dir, "deploy", "Deploy to prod", "# Deploy\nRun deploy.");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.listSkills.execute({}, "call-3");
+    const { result } = (await toolkit.listSkills.execute({}, "call-3")) as { result: SkillListResult };
     const sources = new Set(result.skills.map((s) => s.source));
     expect(sources.has("bundled")).toBe(true);
     expect(sources.has("project")).toBe(true);
@@ -68,7 +71,9 @@ describe("skill-activate", () => {
     const dir = createDir("acolyte-skill-activate-");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.activateSkill.execute({ name: "build" }, "call-4");
+    const { result } = (await toolkit.activateSkill.execute({ name: "build" }, "call-4")) as {
+      result: SkillActivateResult;
+    };
     expect(result.kind).toBe("skill-activate");
     expect(result.name).toBe("build");
     expect(result.source).toBe("bundled");
@@ -80,7 +85,9 @@ describe("skill-activate", () => {
     writeProjectSkill(dir, "deploy", "Deploy to prod", "# Deploy\nRun the deploy script.");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.activateSkill.execute({ name: "deploy" }, "call-5");
+    const { result } = (await toolkit.activateSkill.execute({ name: "deploy" }, "call-5")) as {
+      result: SkillActivateResult;
+    };
     expect(result.name).toBe("deploy");
     expect(result.source).toBe("project");
     expect(result.instructions).toContain("deploy script");
@@ -91,7 +98,9 @@ describe("skill-activate", () => {
     writeProjectSkill(dir, "build", "Custom build", "# Custom Build\nProject-specific build.");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.activateSkill.execute({ name: "build" }, "call-6");
+    const { result } = (await toolkit.activateSkill.execute({ name: "build" }, "call-6")) as {
+      result: SkillActivateResult;
+    };
     expect(result.source).toBe("project");
     expect(result.instructions).toContain("Project-specific build");
   });
@@ -108,7 +117,9 @@ describe("skill-activate", () => {
     writeProjectSkill(dir, "greet", "Greet someone", "# Greet\nHello $ARGUMENTS!");
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = await toolkit.activateSkill.execute({ name: "greet", args: "world" }, "call-8");
+    const { result } = (await toolkit.activateSkill.execute({ name: "greet", args: "world" }, "call-8")) as {
+      result: SkillActivateResult;
+    };
     expect(result.instructions).toContain("Hello world!");
   });
 });

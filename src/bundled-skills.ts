@@ -65,7 +65,8 @@ export const BUNDLED_SKILLS: readonly BundledSkill[] = [
   },
   {
     name: "git",
-    description: "Manage commits, branches, and change history. Use when committing, branching, or managing version control.",
+    description:
+      "Manage commits, branches, and change history. Use when committing, branching, or managing version control.",
     content: gitMd,
   },
   {
@@ -76,7 +77,8 @@ export const BUNDLED_SKILLS: readonly BundledSkill[] = [
   },
   {
     name: "review",
-    description: "Run all review skills against the current branch diff. Use when reviewing a feature branch before merge.",
+    description:
+      "Run all review skills against the current branch diff. Use when reviewing a feature branch before merge.",
     content: reviewMd,
   },
   {
@@ -93,12 +95,14 @@ export const BUNDLED_SKILLS: readonly BundledSkill[] = [
   },
   {
     name: "style",
-    description: "Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.",
+    description:
+      "Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.",
     content: styleMd,
   },
   {
     name: "tdd",
-    description: "Drive implementation with red-green-refactor. Use when building or fixing behavior through tests first.",
+    description:
+      "Drive implementation with red-green-refactor. Use when building or fixing behavior through tests first.",
     content: tddMd,
   },
   {

@@ -30,7 +30,8 @@ describe("resource diagnostics", () => {
     const home = createDir("acolyte-resdiag-home-");
 
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
-    expect(diagnostics["resources.prompt.soul"]).toBe("missing_or_unreadable");
+    // Soul always resolves via bundled fallback, so only agents is missing
+    expect(diagnostics["resources.prompt.soul"]).toBeUndefined();
     expect(diagnostics["resources.prompt.agents"]).toBe("missing_or_unreadable");
   });
 
@@ -42,7 +43,8 @@ describe("resource diagnostics", () => {
     await loadSkills(cwd);
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
     expect(diagnostics["resources.skills.invalid"]).toBe(1);
-    expect(diagnostics["resources.skills.status"]).toBe("no_valid_skills_loaded");
+    // Bundled skills are always loaded, so no_valid_skills_loaded is not triggered
+    expect(diagnostics["resources.skills.status"]).toBeUndefined();
   });
 
   test("returns empty diagnostics when resources are healthy", async () => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { compactText } from "./compact-text";
-import { type SkillSource, SKILL_BUDGET, findSkillByName, getLoadedSkills, readSkillInstructions } from "./skills";
+import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET, type SkillSource } from "./skills";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";

@@ -22,8 +22,18 @@ describe("chat picker visual regression", () => {
     const out = renderInputPanelWithPicker({
       kind: "skills",
       items: [
-        { name: "build", description: "Implement features incrementally through vertical slices", path: "bundled://build", source: "bundled" as const },
-        { name: "debug", description: "Debug systematically with structured triage", path: "bundled://debug", source: "bundled" as const },
+        {
+          name: "build",
+          description: "Implement features incrementally through vertical slices",
+          path: "bundled://build",
+          source: "bundled" as const,
+        },
+        {
+          name: "debug",
+          description: "Debug systematically with structured triage",
+          path: "bundled://debug",
+          source: "bundled" as const,
+        },
       ],
       index: 0,
     });

@@ -10,22 +10,22 @@ plan → build → review → ship
 
 | Phase | Skill | Description |
 |-------|-------|------------|
-| **Plan** | [explore](../.agents/skills/explore/SKILL.md) | Clarify requirements through systematic questions |
-| | [plan](../.agents/skills/plan/SKILL.md) | Design through dialogue, slice vertically |
+| **Plan** | [explore](skills/explore.md) | Clarify requirements through systematic questions |
+| | [plan](skills/plan.md) | Design through dialogue, slice vertically |
 | | [issue](../.agents/skills/issue/SKILL.md) | Check duplicates, draft, get approval, create |
-| **Build** | [build](../.agents/skills/build/SKILL.md) | Vertical slices — implement, verify, commit, repeat |
-| | [tdd](../.agents/skills/tdd/SKILL.md) | Red-green-refactor, mock at boundaries |
-| | [debug](../.agents/skills/debug/SKILL.md) | Stop the line, reproduce, fix root cause, guard with test |
-| | [design](../.agents/skills/design/SKILL.md) | Hard-to-misuse interfaces, contract first, validate at boundaries |
-| | [simplify](../.agents/skills/simplify/SKILL.md) | Reduce complexity, Chesterton's Fence, preserve behavior |
-| | [git](../.agents/skills/git/SKILL.md) | Atomic commits, clean history, rewrite before pushing |
-| | [deprecation](../.agents/skills/deprecation/SKILL.md) | Build replacement first, migrate consumers, remove completely |
-| **Review** | [review](../.agents/skills/review/SKILL.md) | Run all review dimensions, severity labels, fix-all policy |
-| | [style](../.agents/skills/style/SKILL.md) | Local conventions, naming, control flow, readability |
-| | [architecture](../.agents/skills/architecture/SKILL.md) | Boundaries, indirection pressure, contract integrity |
-| | [tests](../.agents/skills/tests/SKILL.md) | Coverage gaps, edge cases, test quality |
-| | [security](../.agents/skills/security/SKILL.md) | Trust boundaries, execution safety, concrete attack paths only |
-| | [docs](../.agents/skills/docs/SKILL.md) | Drift detection, terminology, outdated names |
+| **Build** | [build](skills/build.md) | Vertical slices — implement, verify, commit, repeat |
+| | [tdd](skills/tdd.md) | Red-green-refactor, mock at boundaries |
+| | [debug](skills/debug.md) | Stop the line, reproduce, fix root cause, guard with test |
+| | [design](skills/design.md) | Hard-to-misuse interfaces, contract first, validate at boundaries |
+| | [simplify](skills/simplify.md) | Reduce complexity, Chesterton's Fence, preserve behavior |
+| | [git](skills/git.md) | Atomic commits, clean history, rewrite before pushing |
+| | [deprecation](skills/deprecation.md) | Build replacement first, migrate consumers, remove completely |
+| **Review** | [review](skills/review.md) | Run all review dimensions, severity labels, fix-all policy |
+| | [style](skills/style.md) | Local conventions, naming, control flow, readability |
+| | [architecture](skills/architecture.md) | Boundaries, indirection pressure, contract integrity |
+| | [tests](skills/tests.md) | Coverage gaps, edge cases, test quality |
+| | [security](skills/security.md) | Trust boundaries, execution safety, concrete attack paths only |
+| | [docs](skills/docs.md) | Drift detection, terminology, outdated names |
 | **Ship** | [ship](../.agents/skills/ship/SKILL.md) | Pre-deploy checks, version bump, release |
 | | [benchmark](../.agents/skills/benchmark/SKILL.md) | Run benchmarks and update metrics |
 | **GitHub** | [pr](../.agents/skills/pr/SKILL.md) | Verify, review, then open the pull request |
