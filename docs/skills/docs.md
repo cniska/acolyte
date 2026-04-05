@@ -11,9 +11,8 @@ Review doc coverage, terminology drift, and canonical doc accuracy.
 
 - canonical doc updates for behavior, contract, or config changes
 - glossary drift when new terms are introduced
-- duplicated concepts across `README.md` and `docs/*`
+- duplicated concepts across docs
 - outdated names or contracts after refactors
-- `docs/features.md` discipline: shipped features only, one line, user-visible wording
 - docs staying conceptual rather than describing implementation line-by-line
 
 ## Style conventions
@@ -34,4 +33,4 @@ Then: **Canonical updates needed** | **Optional cleanup**.
 - Generic prose polishing
 - Duplicate explanations across docs
 - Implementation detail where a concept is enough
-- Treating issue descriptions as shipped behavior
+- Treating roadmap notes as shipped behavior

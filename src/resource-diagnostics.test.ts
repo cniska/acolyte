@@ -25,12 +25,11 @@ describe("resource diagnostics", () => {
     expect(diagnostics["resources.config.collisions"]).toBe("project");
   });
 
-  test("reports missing prompt resources", () => {
+  test("reports missing AGENTS.md", () => {
     const cwd = createDir("acolyte-resdiag-prompts-");
     const home = createDir("acolyte-resdiag-home-");
 
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
-    expect(diagnostics["resources.prompt.soul"]).toBe("missing_or_unreadable");
     expect(diagnostics["resources.prompt.agents"]).toBe("missing_or_unreadable");
   });
 
@@ -42,14 +41,12 @@ describe("resource diagnostics", () => {
     await loadSkills(cwd);
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
     expect(diagnostics["resources.skills.invalid"]).toBe(1);
-    expect(diagnostics["resources.skills.status"]).toBe("no_valid_skills_loaded");
+    expect(diagnostics["resources.skills.status"]).toBeUndefined();
   });
 
   test("returns empty diagnostics when resources are healthy", async () => {
     const cwd = createDir("acolyte-resdiag-ok-");
     const home = createDir("acolyte-resdiag-home-");
-    mkdirSync(join(cwd, "docs"), { recursive: true });
-    writeFileSync(join(cwd, "docs", "soul.md"), "# Soul\n", "utf8");
     writeFileSync(join(cwd, "AGENTS.md"), "# Agents\n", "utf8");
     writeSkill(cwd, "demo", "---\nname: demo\ndescription: Demo skill\n---");
 

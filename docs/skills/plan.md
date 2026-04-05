@@ -3,22 +3,17 @@ name: plan
 description: Design a feature or behavior change through dialogue. Use when asked to plan, scope, design, or break down work before coding.
 ---
 
+# Plan
+
+Design a feature or behavior change through dialogue. The plan emerges from the conversation, not in isolation.
+
 If an issue number is given, fetch it with `gh issue view $ARGUMENTS` and use it as the starting point.
 
 Have a design conversation about this task. Read the relevant code, share what you find, say what you think, and let the user shape the direction. The plan emerges from the dialogue — do not build it in isolation.
 
 If a question can be answered by reading the code, read the code instead of asking.
 
-Ground every recommendation in current code, docs, and project rules. Read `AGENTS.md` and `docs/architecture.md` before forming opinions.
-
-## Acolyte checks
-
-- Tools must flow through `runTool`
-- New payloads and contracts validated with Zod
-- Model output must preserve the `@signal` contract
-- TUI state reads must use functional updaters
-- Chat-layer code must use approved effect helpers, not direct `useEffect`
-- Shared string unions start as Zod schemas
+Ground every recommendation in current code, docs, and project rules.
 
 ## Task sizing
 
@@ -34,7 +29,7 @@ Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | 
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
-For non-trivial plans, create a checklist early with `checklist-create` and add items one at a time as each step gets agreed. When planning is done, the checklist is ready — start executing.
+For non-trivial plans, track agreed steps in a checklist as the conversation progresses. When planning is done, the checklist is ready — start executing.
 
 ## Red flags
 

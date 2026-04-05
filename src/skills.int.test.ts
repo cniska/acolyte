@@ -1,26 +1,32 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { BUNDLED_SKILLS } from "./bundled-skills";
 import { listSkills, readSkillInstructions } from "./skills";
 import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);
 
+const BUNDLED_COUNT = BUNDLED_SKILLS.length;
+
 describe("skills loader", () => {
-  test("returns empty when skills directory is missing", async () => {
+  test("returns only bundled skills when no project skills exist", async () => {
     const dir = createDir("acolyte-skills-empty-");
     const skills = await listSkills(dir);
-    expect(skills).toEqual([]);
+    expect(skills).toHaveLength(BUNDLED_COUNT);
+    expect(skills.every((s) => s.source === "bundled")).toBe(true);
   });
 
   test("reads name/description from SKILL.md frontmatter", async () => {
     const dir = createDir("acolyte-skills-one-");
     writeSkill(dir, "demo", "---\nname: demo\ndescription: Demo description\n---", "# Demo");
     const skills = await listSkills(dir);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.name).toBe("demo");
-    expect(skills[0]?.description).toBe("Demo description");
+    expect(skills).toHaveLength(BUNDLED_COUNT + 1);
+    const demo = skills.find((s) => s.name === "demo");
+    expect(demo?.name).toBe("demo");
+    expect(demo?.description).toBe("Demo description");
+    expect(demo?.source).toBe("project");
   });
 
   test("scans .agents/skills/ directory", async () => {
@@ -29,8 +35,9 @@ describe("skills loader", () => {
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "---\nname: helper\ndescription: Helper skill\n---\n# Help", "utf8");
     const skills = await listSkills(dir);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.name).toBe("helper");
+    const helper = skills.find((s) => s.name === "helper");
+    expect(helper).toBeDefined();
+    expect(helper?.source).toBe("project");
   });
 
   test("does not scan legacy ./skills directory", async () => {
@@ -42,8 +49,8 @@ describe("skills loader", () => {
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(join(agentDir, "SKILL.md"), "---\nname: demo\ndescription: From .agents/skills/\n---", "utf8");
     const skills = await listSkills(dir);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.description).toBe("From .agents/skills/");
+    const demo = skills.find((s) => s.name === "demo");
+    expect(demo?.description).toBe("From .agents/skills/");
   });
 
   test("skips skills with invalid names", async () => {
@@ -51,15 +58,16 @@ describe("skills loader", () => {
     writeSkill(dir, "Bad-Name", "---\nname: Bad-Name\ndescription: Invalid\n---");
     writeSkill(dir, "good", "---\nname: good\ndescription: Valid\n---");
     const skills = await listSkills(dir);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.name).toBe("good");
+    const projectSkills = skills.filter((s) => s.source === "project");
+    expect(projectSkills).toHaveLength(1);
+    expect(projectSkills[0]?.name).toBe("good");
   });
 
   test("skips skills where name mismatches directory", async () => {
     const dir = createDir("acolyte-skills-mismatch-");
     writeSkill(dir, "foo", "---\nname: bar\ndescription: Mismatched\n---");
     const skills = await listSkills(dir);
-    expect(skills).toEqual([]);
+    expect(skills.filter((s) => s.source === "project")).toHaveLength(0);
   });
 
   test("parses optional fields: license, compatibility, metadata, allowed-tools", async () => {
@@ -78,11 +86,20 @@ describe("skills loader", () => {
     ].join("\n");
     writeSkill(dir, "full", fm);
     const skills = await listSkills(dir);
-    expect(skills).toHaveLength(1);
-    expect(skills[0]?.license).toBe("MIT");
-    expect(skills[0]?.compatibility).toBe("Requires git");
-    expect(skills[0]?.allowedTools).toEqual(["Bash", "Read", "Write"]);
-    expect(skills[0]?.metadata).toEqual({ author: "test-org", version: "1.0" });
+    const full = skills.find((s) => s.name === "full");
+    expect(full?.license).toBe("MIT");
+    expect(full?.compatibility).toBe("Requires git");
+    expect(full?.allowedTools).toEqual(["Bash", "Read", "Write"]);
+    expect(full?.metadata).toEqual({ author: "test-org", version: "1.0" });
+  });
+
+  test("project skill overrides bundled skill with same name", async () => {
+    const dir = createDir("acolyte-skills-override-");
+    writeSkill(dir, "build", "---\nname: build\ndescription: Custom build\n---", "# Custom");
+    const skills = await listSkills(dir);
+    const build = skills.find((s) => s.name === "build");
+    expect(build?.source).toBe("project");
+    expect(build?.description).toBe("Custom build");
   });
 });
 

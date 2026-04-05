@@ -57,15 +57,15 @@ describe("createAgentInput", () => {
         {
           id: "msg_skill",
           role: "system",
-          content: "Active skill (dogfood): keep slices small.",
+          content: "Active skill (build): keep slices small.",
           timestamp: "2026-02-20T10:00:00.000Z",
         },
       ],
     };
 
     const { usage } = createAgentInput(req, defaultOptions);
-    expect(usage.activeSkillName).toBe("dogfood");
-    expect(usage.skillInstructionChars).toBe("Active skill (dogfood): keep slices small.".length);
+    expect(usage.activeSkillName).toBe("build");
+    expect(usage.skillInstructionChars).toBe("Active skill (build): keep slices small.".length);
   });
 
   test("keeps pinned context before recent chat when budget is tight", () => {
@@ -76,7 +76,7 @@ describe("createAgentInput", () => {
         {
           id: "msg_skill",
           role: "system",
-          content: "Active skill (dogfood): keep slices small.",
+          content: "Active skill (build): keep slices small.",
           timestamp: "2026-02-20T10:00:00.000Z",
         },
         {
@@ -89,7 +89,7 @@ describe("createAgentInput", () => {
     };
 
     const { input } = createAgentInput(req, defaultOptions);
-    expect(input).toContain("SYSTEM: Active skill (dogfood)");
+    expect(input).toContain("SYSTEM: Active skill (build)");
     expect(input).toContain("USER: use repo conventions");
   });
 

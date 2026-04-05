@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
 import { tempDir } from "./test-utils";
@@ -8,17 +8,10 @@ const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);
 
 describe("soul prompt loading", () => {
-  test("loadSoulPrompt returns empty when no soul file", () => {
-    const dir = createDir("acolyte-empty-soul-");
-    expect(loadSoulPrompt(dir)).toBe("");
-  });
-
-  test("loadSoulPrompt reads docs/soul.md", () => {
-    const dir = createDir("acolyte-soul-");
-    const docsDir = join(dir, "docs");
-    mkdirSync(docsDir, { recursive: true });
-    writeFileSync(join(docsDir, "soul.md"), "I am Acolyte.", "utf8");
-    expect(loadSoulPrompt(dir)).toBe("I am Acolyte.");
+  test("loadSoulPrompt returns bundled soul", () => {
+    const result = loadSoulPrompt();
+    expect(result.length).toBeGreaterThan(0);
+    expect(result).toContain("Acolyte");
   });
 
   test("loadAgentsPrompt returns empty when no AGENTS.md", () => {
@@ -28,21 +21,14 @@ describe("soul prompt loading", () => {
 
   test("loadSystemPrompt combines soul and agents", () => {
     const dir = createDir("acolyte-combined-");
-    const docsDir = join(dir, "docs");
-    mkdirSync(docsDir, { recursive: true });
-    writeFileSync(join(docsDir, "soul.md"), "Soul.", "utf8");
     writeFileSync(join(dir, "AGENTS.md"), "Rules.", "utf8");
     const prompt = loadSystemPrompt(dir);
-    expect(prompt).toContain("Soul.");
+    expect(prompt).toContain("Acolyte");
     expect(prompt).toContain("Rules.");
   });
 
   test("createSoulPrompt returns prompt string", async () => {
-    const dir = createDir("acolyte-soul-prompt-");
-    const docsDir = join(dir, "docs");
-    mkdirSync(docsDir, { recursive: true });
-    writeFileSync(join(docsDir, "soul.md"), "I am Acolyte.", "utf8");
-    const result = await createSoulPrompt({ cwd: dir });
-    expect(result).toContain("I am Acolyte.");
+    const result = await createSoulPrompt();
+    expect(result).toContain("Acolyte");
   });
 });

@@ -9,7 +9,7 @@ lifecycle → budget → cache → toolkit → registry
 ## Layers
 
 - **budget**: step-budget check (`checkStepBudget()`) inlined into tool execution
-- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`)
+- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`, `memory-toolkit`, `skill-toolkit`)
 - **registry**: tool registration and agent-facing tool surface
 
 ## Tool execution

@@ -20,7 +20,7 @@ Make the failure happen reliably. Run the specific failing test in isolation. If
 ### 3. Localize
 
 Narrow down where the failure occurs:
-- Which layer? (lifecycle, tools, TUI, RPC, config)
+- Which layer is failing?
 - Which change introduced it? (use `git bisect` for regressions)
 - Is it the test or the code that's wrong?
 
@@ -38,7 +38,7 @@ Write a test that catches this specific failure. It should fail without the fix 
 
 ### 7. Verify end-to-end
 
-Run the specific test, then `bun run verify`. Resume only after everything passes.
+Run the specific test, then the full suite. Resume only after everything passes.
 
 ## Prove-It pattern (for bug fixes)
 
@@ -46,7 +46,7 @@ Run the specific test, then `bun run verify`. Resume only after everything passe
 2. Confirm it fails
 3. Implement the fix
 4. Confirm the test passes
-5. Run `bun run verify`
+5. Run the full test suite
 
 ## Treating error output as data
 

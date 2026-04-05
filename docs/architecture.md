@@ -63,7 +63,7 @@ lifecycle → budget → cache → toolkit → registry
 
 - **budget:** step-budget check inlined into tool execution
 - **cache:** per-task reuse layer for read-only and search tool results
-- **toolkit:** domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`, `memory-toolkit`)
+- **toolkit:** domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`, `memory-toolkit`, `skill-toolkit`)
 - **registry:** toolkit registration and agent-facing tool surface
 - **details:** see [Tooling](./tooling.md)
 

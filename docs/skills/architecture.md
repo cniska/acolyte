@@ -26,16 +26,13 @@ Default: if a layer carries no policy, invariants, or boundary isolation, remove
 
 - hard-coded behavior where a policy/config seam is expected
 - new features requiring edits across many unrelated modules
-- private coupling preventing additive toolkits, transports, or providers
-- extension seams with no current product use adding maintenance cost
+- private coupling preventing additive providers or plugins
+- extension seams with no current use adding maintenance cost
 
 ### 3. Boundary and contract integrity
 
-- lifecycle phase boundaries and effect-driven settle behavior
-- tool architecture (toolkits, registry, step-budget execution)
-- contracts and schemas as source of truth (Zod + inferred types)
-- transport and protocol consistency
-- DI convention: `*Deps` for config, `*Input` for runtime, defaults from `appConfig`
+- contracts and schemas as source of truth
+- dependency direction consistency
 - design-pattern consistency for extension seams
 
 ### 4. Cohesion and responsibility
@@ -55,7 +52,7 @@ Only report issues with concrete evidence in code, contracts, or dependency flow
 
 ## Workflow
 
-1. Build expected architecture map from `docs/architecture.md` and `AGENTS.md`.
+1. Build expected architecture map from project docs.
 2. Compare implementation against that map.
 3. Run cycle and indirection pass on core entrypoints.
 4. Check whether the change increases coupling or creates contract drift.

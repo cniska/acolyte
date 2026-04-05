@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { isKnownSlashToken, shouldAutocompleteSlashSubmit, slashCommandHelp, suggestSlashCommands } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skills";
 import { tempDir, writeSkill } from "./test-utils";
+
+beforeEach(() => resetSkillCache());
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
