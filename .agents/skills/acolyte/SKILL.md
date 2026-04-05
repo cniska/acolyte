@@ -3,78 +3,39 @@ name: acolyte
 description: Guide for working on the Acolyte codebase. Use when building features, fixing bugs, or extending Acolyte itself.
 ---
 
-# Working on Acolyte
+# Acolyte
 
-Read `AGENTS.md` for invariants. This skill covers extension patterns and architecture beyond what the rules file provides.
+Map of the codebase for contributors. Read `AGENTS.md` for invariants. This skill points you to the right place — docs have the detail.
 
 ## System flow
 
 ```
-CLI → client → server → lifecycle → model + tools
+CLI → daemon (RPC) → lifecycle → model + tools
 ```
 
-Lifecycle phases: resolve → prepare → generate → finalize. The model runs in generate; tools execute via `runTool`. Effects apply per-tool-result during generate.
+- Lifecycle is single-pass: resolve → prepare → generate → finalize. See `docs/lifecycle.md`.
+- Tools execute via `runTool` through budget → cache → toolkit → registry layers. See `docs/tooling.md`.
+- TUI is a custom React reconciler with `Box`, `Text`, `Static`. See `docs/tui.md`.
+- Memory is on-demand via toolkit, not injected. Observer distills facts at finalize. See `docs/memory.md`.
+- Workspace sandbox scopes filesystem access to the project root. See `docs/workspace.md`.
+- RPC uses WebSocket JSON envelopes with task lifecycle state machine. See `docs/protocol.md`.
 
-## Adding a tool
+## Extension patterns
 
-1. Create `src/{domain}-toolkit.ts` (or add to existing one)
-2. Define Zod input/output schemas
-3. Create tool with `createTool({ id, toolkit, category, description, instruction, inputSchema, outputSchema, execute })`
-4. Inside `execute`, call `runTool(input.session, toolId, toolCallId, toolInput, async (callId) => { ... })`
-5. Emit output via `input.onOutput({ toolName, content, toolCallId })` for streaming feedback
-6. Return typed result matching `outputSchema`
-7. Export a `create{Domain}Toolkit(input: ToolkitInput)` factory returning all tools
-8. Register in `src/tool-registry.ts`: add to `TOOLKIT_REGISTRY` and `RegisteredToolkit` type
+**Add a tool**: Create or extend `src/{domain}-toolkit.ts` with `createTool` + `runTool`, register in `src/tool-registry.ts`. See `docs/tooling.md`.
 
-Categories: `read`, `search`, `write`, `execute`, `network`, `meta`.
+**Add a bundled skill**: Create `docs/skills/{name}.md`, add text import in `src/bundled-skills.ts`, add to `BUNDLED_SKILLS` array.
 
-## Adding a bundled skill
+**Add a project skill**: Create `.agents/skills/{name}/SKILL.md`. Scanned automatically.
 
-1. Create `docs/skills/{name}.md` with frontmatter (`name`, `description`) and body
-2. Add text import in `src/bundled-skills.ts`: `import {name}Md from "../docs/skills/{name}.md" with { type: "text" }`
-3. Add entry to `BUNDLED_SKILLS` array
+**Add a lifecycle effect**: Define `Effect` in `src/lifecycle-effects.ts`, add to `EFFECTS`. See `docs/lifecycle.md`.
 
-## Adding a project skill
+**Add an ecosystem detector**: Define `EcosystemDetector` in `src/workspace-detectors.ts`, add to `ECOSYSTEM_DETECTORS`. See `docs/workspace.md`.
 
-1. Create `.agents/skills/{name}/SKILL.md` with frontmatter and body
-2. Scanned automatically — no registration needed
+## Testing
 
-## Adding a lifecycle effect
+Unit (`*.test.ts`), integration (`*.int.test.ts`), visual (`*.tui.test.ts`), perf (`*.perf.test.ts`). Helpers: `tempDir()`, `tempDb()`, `createSessionContext()`. Full check: `bun run verify`. See `docs/testing.md`.
 
-1. Define `Effect` in `src/lifecycle-effects.ts`
-2. Add to `EFFECTS` array
-3. Effects run per-tool-result during generate phase via callback
+## Config
 
-## Adding an ecosystem detector
-
-1. Define `EcosystemDetector` in `src/workspace-detectors.ts`
-2. Add to `ECOSYSTEM_DETECTORS` array
-3. Detectors run during workspace profile resolution
-
-## Key modules
-
-| Module | Purpose |
-|--------|---------|
-| `tool-contract.ts` | `ToolDefinition`, `createTool`, `ToolkitInput` |
-| `tool-execution.ts` | `runTool` — budget, cache, hooks, recording |
-| `tool-registry.ts` | `TOOLKIT_REGISTRY`, `Toolset`, `toolsForAgent` |
-| `tool-session.ts` | `SessionContext`, step budget, call log |
-| `skills.ts` | Skill loading, bundled/project merge, cache |
-| `bundled-skills.ts` | Embedded bundled skill content via text imports |
-| `lifecycle.ts` | Lifecycle orchestration |
-| `lifecycle-generate.ts` | Model + tool execution loop |
-| `lifecycle-effects.ts` | Per-tool-result side effects |
-| `memory-ops.ts` | Memory CRUD operations |
-| `memory-store.ts` | SQLite-backed memory persistence |
-| `agent-instructions.ts` | System prompt assembly |
-| `soul.ts` | Soul + AGENTS.md loading |
-
-## Testing patterns
-
-- Unit tests: `src/{module}.test.ts`
-- Integration tests: `src/{module}.int.test.ts`
-- TUI visual tests: `src/{module}.tui.test.ts`
-- Use `tempDir()` from `test-utils.ts` for filesystem fixtures
-- Use `tempDb()` from `test-utils.ts` for SQLite test stores
-- Use `createSessionContext()` for tool execution tests
-- Always `resetSkillCache()` in skill tests
+User `~/.acolyte/config.toml`, project `<cwd>/.acolyte/config.toml`. Project overrides user. See `docs/configuration.md`.

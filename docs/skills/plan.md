@@ -3,6 +3,10 @@ name: plan
 description: Design a feature or behavior change through dialogue. Use when asked to plan, scope, design, or break down work before coding.
 ---
 
+# Plan
+
+Design a feature or behavior change through dialogue. The plan emerges from the conversation, not in isolation.
+
 If an issue number is given, fetch it with `gh issue view $ARGUMENTS` and use it as the starting point.
 
 Have a design conversation about this task. Read the relevant code, share what you find, say what you think, and let the user shape the direction. The plan emerges from the dialogue — do not build it in isolation.
