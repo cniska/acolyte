@@ -12,35 +12,34 @@ Review code quality consistency, coding patterns, and style drift.
 ### 1. Naming and shape consistency
 
 - naming consistency across types, constants, functions, and files
-- factory naming (`create*` for factories; avoid `build*` / `make*` unless established locally)
-- export shape: prefer direct exports over local alias + re-export
-- import clarity: avoid aliasing unless it resolves a collision
-- module layout consistency
+- constructor and factory naming follows a single project convention
+- module and file layout follows the established project structure
+- import/export patterns are consistent across the codebase
 
 ### 2. Control flow and state modeling
 
-- switch exhaustiveness (`default` + unreachable when applicable)
-- assert patterns (invariant for impossible states vs user-facing errors)
-- prefer explicit status/state fields over boolean flags for lifecycle phases
-- prefer guard clauses and early returns over nested `if/else`
+- exhaustive handling of state variants where applicable
+- consistent assertion and error patterns
+- prefer explicit status/state fields over boolean flags for state transitions
+- prefer guard clauses and early returns over deep nesting
 - prefer data-driven lookups over long control-flow chains
 
 ### 3. Pattern consistency
 
 Check where the codebase already has a clear local pattern:
 
-- table-driven or rule-driven structure where nearby code uses it
-- error classification: prefer structured error kinds over message regex
+- structural patterns (table-driven, rule-driven) where nearby code uses them
+- error classification follows the project's established convention
 - repeated argument groups that want one named type
-- raw strings or codes that should become typed values
+- raw strings or magic values that should become typed constants
 
 ### 4. Readability and hygiene
 
 - no banner or separator comments
 - no unused params, dead branches, or ad-hoc fallbacks
 - keep style aligned with nearby code
-- abstractions must earn their complexity — if a wrapper adds no policy, inline it
-- prefer clarity over cleverness: nested ternaries, chained reduces, and dense one-liners that require a mental pause should be simplified
+- abstractions must earn their complexity — if a wrapper adds no value, inline it
+- prefer clarity over cleverness: dense one-liners that require a mental pause should be simplified
 
 ## Evidence threshold
 
