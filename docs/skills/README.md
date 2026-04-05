@@ -2,10 +2,6 @@
 
 Acolyte's engineering discipline. Each skill encodes a workflow the agent can activate when the task calls for it. Bundled skills are project-agnostic and available in every workspace.
 
-```
-plan → build → review
-```
-
 ## Skills
 
 | Phase | Skill | Description |
