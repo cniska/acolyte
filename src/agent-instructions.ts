@@ -6,6 +6,7 @@ const CORE_INSTRUCTIONS = [
   "Prefer dedicated project tools; use shell only when it helps.",
   "If implementation intent is clear, do the work and stay with it until the task is complete.",
   "If the user asks for explanation or planning only, answer directly and wait for an implementation request.",
+  "Use `skill-list` to discover available engineering skills and `skill-activate` to load one when its workflow would help with the current task.",
   "Make the smallest root-cause change that matches local conventions.",
   "Skip unrelated or speculative detours.",
   "Avoid repeating tool calls without new information.",
