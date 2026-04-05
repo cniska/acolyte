@@ -55,4 +55,11 @@ CLI → daemon (RPC) → lifecycle → model + tools
 
 ## Testing
 
-Unit (`*.test.ts`), integration (`*.int.test.ts`), visual (`*.tui.test.ts`), perf (`*.perf.test.ts`). Helpers: `tempDir()`, `tempDb()`, `createSessionContext()`. Full check: `bun run verify`. See `docs/testing.md`.
+| Type | Pattern | When to use |
+|------|---------|-------------|
+| Unit | `*.test.ts` | Pure logic, schemas, contracts |
+| Integration | `*.int.test.ts` | Real server/lifecycle/tool wiring |
+| Visual | `*.tui.test.ts` | TUI rendering snapshots |
+| Perf | `*.perf.test.ts` | Latency trend detection |
+
+Helpers: `tempDir()` for filesystem fixtures, `tempDb()` for SQLite stores, `createSessionContext()` for tool tests. Full check: `bun run verify`. See `docs/testing.md`.
