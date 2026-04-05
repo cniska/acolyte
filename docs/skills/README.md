@@ -3,7 +3,7 @@
 Acolyte's engineering discipline. Each skill encodes a workflow the agent can activate when the task calls for it. Bundled skills are project-agnostic and available in every workspace.
 
 ```
-plan → build → review → ship
+plan → build → review
 ```
 
 ## Skills
@@ -12,7 +12,6 @@ plan → build → review → ship
 |-------|-------|------------|
 | **Plan** | [explore](explore.md) | Clarify requirements through systematic questions |
 | | [plan](plan.md) | Design through dialogue, slice vertically |
-| | [issue](../../.agents/skills/issue/SKILL.md) | Check duplicates, draft, get approval, create |
 | **Build** | [build](build.md) | Vertical slices — implement, verify, commit, repeat |
 | | [tdd](tdd.md) | Red-green-refactor, mock at boundaries |
 | | [debug](debug.md) | Stop the line, reproduce, fix root cause, guard with test |
@@ -26,9 +25,6 @@ plan → build → review → ship
 | | [tests](tests.md) | Coverage gaps, edge cases, test quality |
 | | [security](security.md) | Trust boundaries, execution safety, concrete attack paths only |
 | | [docs](docs.md) | Drift detection, terminology, outdated names |
-| **Ship** | [ship](../../.agents/skills/ship/SKILL.md) | Pre-deploy checks, version bump, release |
-| | [benchmark](../../.agents/skills/benchmark/SKILL.md) | Run benchmarks and update metrics |
-| **GitHub** | [pr](../../.agents/skills/pr/SKILL.md) | Verify, review, then open the pull request |
 
 ## Principles
 
