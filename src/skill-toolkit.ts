@@ -7,31 +7,6 @@ import { runTool } from "./tool-execution";
 
 const skillSourceSchema = z.enum(["bundled", "project"]) satisfies z.ZodType<SkillSource>;
 
-const listSkillsInputSchema = z.object({});
-
-const listSkillsOutputSchema = z.object({
-  kind: z.literal("skill-list"),
-  skills: z.array(
-    z.object({
-      name: z.string(),
-      description: z.string(),
-      source: skillSourceSchema,
-    }),
-  ),
-});
-
-const activateSkillInputSchema = z.object({
-  name: z.string().min(1),
-  args: z.string().optional(),
-});
-
-const activateSkillOutputSchema = z.object({
-  kind: z.literal("skill-activate"),
-  name: z.string(),
-  source: skillSourceSchema,
-  instructions: z.string(),
-});
-
 function createListSkillsTool(input: ToolkitInput) {
   return createTool({
     id: "skill-list",
@@ -40,8 +15,17 @@ function createListSkillsTool(input: ToolkitInput) {
     description: "List all available skills with names, descriptions, and sources.",
     instruction:
       "Use `skill-list` to discover available skills before activating one. Returns bundled (universal) and project (repo-specific) skills.",
-    inputSchema: listSkillsInputSchema,
-    outputSchema: listSkillsOutputSchema,
+    inputSchema: z.object({}),
+    outputSchema: z.object({
+      kind: z.literal("skill-list"),
+      skills: z.array(
+        z.object({
+          name: z.string(),
+          description: z.string(),
+          source: skillSourceSchema,
+        }),
+      ),
+    }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-list", toolCallId, toolInput, async () => {
         const skills = getLoadedSkills().map((s) => ({
@@ -63,8 +47,16 @@ function createActivateSkillTool(input: ToolkitInput) {
     description: "Activate a skill by name to load its structured guidance into context.",
     instruction:
       "Use `skill-activate` when you recognize that a skill's structured guidance would help with the current task. Use `skill-list` first to discover available skills.",
-    inputSchema: activateSkillInputSchema,
-    outputSchema: activateSkillOutputSchema,
+    inputSchema: z.object({
+      name: z.string().min(1),
+      args: z.string().optional(),
+    }),
+    outputSchema: z.object({
+      kind: z.literal("skill-activate"),
+      name: z.string(),
+      source: skillSourceSchema,
+      instructions: z.string(),
+    }),
     outputBudget: { maxChars: 4_000, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-activate", toolCallId, toolInput, async () => {
