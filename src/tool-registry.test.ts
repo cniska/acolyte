@@ -7,6 +7,7 @@ describe("toolsets", () => {
   test("returns all tools", () => {
     const { tools, session } = toolsForAgent();
     expect(Object.keys(tools).sort()).toEqual([
+      "activateSkill",
       "createChecklist",
       "createFile",
       "deleteFile",
@@ -19,6 +20,7 @@ describe("toolsets", () => {
       "gitLog",
       "gitShow",
       "gitStatus",
+      "listSkills",
       "memoryAdd",
       "memoryRemove",
       "memorySearch",
