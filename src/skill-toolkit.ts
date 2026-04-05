@@ -14,7 +14,7 @@ function createListSkillsTool(input: ToolkitInput) {
     category: "meta",
     description: "List all available skills with names, descriptions, and sources.",
     instruction:
-      "Use `skill-list` to discover available skills before activating one. Returns bundled (universal) and project (repo-specific) skills.",
+      "Use `skill-list` at the start of non-trivial tasks to check if a relevant skill exists. Skills encode engineering workflows — debug triage, build discipline, review checklists — that improve task execution. Returns bundled (universal) and project (repo-specific) skills.",
     inputSchema: z.object({}),
     outputSchema: z.object({
       kind: z.literal("skill-list"),
