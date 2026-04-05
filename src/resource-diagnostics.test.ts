@@ -25,13 +25,11 @@ describe("resource diagnostics", () => {
     expect(diagnostics["resources.config.collisions"]).toBe("project");
   });
 
-  test("reports missing prompt resources", () => {
+  test("reports missing AGENTS.md", () => {
     const cwd = createDir("acolyte-resdiag-prompts-");
     const home = createDir("acolyte-resdiag-home-");
 
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
-    // Soul always resolves via bundled fallback, so only agents is missing
-    expect(diagnostics["resources.prompt.soul"]).toBeUndefined();
     expect(diagnostics["resources.prompt.agents"]).toBe("missing_or_unreadable");
   });
 

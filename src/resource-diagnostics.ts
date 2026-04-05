@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
-import { loadAgentsPrompt, loadSoulPrompt } from "./soul";
+import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
 
 function hasConfigFileCollision(scopeDir: string): boolean {
@@ -19,7 +19,6 @@ export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: s
   if (hasConfigFileCollision(join(homeDir, ".acolyte"))) collisionScopes.push("user");
   if (collisionScopes.length > 0) diagnostics["resources.config.collisions"] = collisionScopes.join(",");
 
-  if (loadSoulPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.soul"] = "missing_or_unreadable";
   if (loadAgentsPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.agents"] = "missing_or_unreadable";
 
   const skills = getLoadedSkills();
