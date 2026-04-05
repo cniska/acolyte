@@ -11,6 +11,7 @@ import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
+import { loadSkills } from "./skills";
 import { createSoulPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
@@ -190,6 +191,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   });
 
   try {
+    await loadSkills(workspaceResolution.workspacePath);
     const soulPrompt = await createSoulPrompt({
       cwd: workspaceResolution.workspacePath,
     });
