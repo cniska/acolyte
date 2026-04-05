@@ -29,6 +29,8 @@ Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | 
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
+For non-trivial plans, track agreed steps in a checklist as the conversation progresses. When planning is done, the checklist is ready — start executing.
+
 ## Red flags
 
 - Disappearing to build a plan and returning with a document for approval
