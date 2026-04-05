@@ -8,9 +8,19 @@ const { createDir, cleanupDirs } = tempDir();
 afterEach(cleanupDirs);
 
 describe("soul prompt loading", () => {
-  test("loadSoulPrompt returns empty when no soul file", () => {
+  test("loadSoulPrompt falls back to package root when no project soul file", () => {
     const dir = createDir("acolyte-empty-soul-");
-    expect(loadSoulPrompt(dir)).toBe("");
+    const result = loadSoulPrompt(dir);
+    // Falls back to package root's docs/soul.md
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  test("loadSoulPrompt prefers project soul over package root", () => {
+    const dir = createDir("acolyte-override-soul-");
+    const docsDir = join(dir, "docs");
+    mkdirSync(docsDir, { recursive: true });
+    writeFileSync(join(docsDir, "soul.md"), "Custom soul.", "utf8");
+    expect(loadSoulPrompt(dir)).toBe("Custom soul.");
   });
 
   test("loadSoulPrompt reads docs/soul.md", () => {

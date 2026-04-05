@@ -1,16 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import bundledSoul from "../docs/soul.md" with { type: "text" };
 
 export function loadSoulPrompt(cwd = process.cwd()): string {
-  const soulPath = join(cwd, "docs", "soul.md");
-  if (!existsSync(soulPath)) return "";
-
-  try {
-    const content = readFileSync(soulPath, "utf8").trim();
-    return content;
-  } catch {
-    return "";
+  const projectPath = join(cwd, "docs", "soul.md");
+  if (existsSync(projectPath)) {
+    try {
+      const content = readFileSync(projectPath, "utf8").trim();
+      if (content) return content;
+    } catch {}
   }
+  return (bundledSoul as string).trim();
 }
 
 export function loadAgentsPrompt(cwd = process.cwd()): string {
