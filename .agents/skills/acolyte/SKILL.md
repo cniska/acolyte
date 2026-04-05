@@ -23,6 +23,9 @@ CLI → daemon (RPC) → lifecycle → model + tools
 | Providers | Pluggable: OpenAI, Anthropic, Google, Vercel AI Gateway, OpenAI-compatible locals | `docs/configuration.md` |
 | Workspace | Sandbox scopes file ops to project root. Profile detection infers ecosystem and commands | `docs/workspace.md` |
 | Protocol | WebSocket JSON envelopes with request correlation and task state transitions | `docs/protocol.md` |
+| CLI | Command registry, daemon spawn, argument parsing | `docs/cli.md` |
+| Errors | Structured error codes and kinds, consistent shaping across layers | `docs/errors.md` |
+| Localization | Locale catalogs in `src/i18n/locales/*.json`, `en` fallback | `docs/localization.md` |
 
 ## What to read when
 
@@ -35,6 +38,8 @@ CLI → daemon (RPC) → lifecycle → model + tools
 | Adding a provider | `src/provider-*.ts`, `docs/configuration.md` |
 | Modifying RPC or task flow | `docs/protocol.md`, `docs/sessions-tasks.md` |
 | Changing workspace detection | `docs/workspace.md`, then `src/workspace-*.ts` |
+| Adding a CLI command | `docs/cli.md`, then `src/cli-command-registry.ts` |
+| Adding or changing error codes | `docs/errors.md`, then `src/lifecycle-error.ts` |
 
 ## Extension patterns
 
@@ -45,6 +50,8 @@ CLI → daemon (RPC) → lifecycle → model + tools
 | Project skill | Create `.agents/skills/{name}/SKILL.md` — scanned automatically |
 | Lifecycle effect | Define `Effect` in `src/lifecycle-effects.ts`, add to `EFFECTS` |
 | Ecosystem detector | Define `EcosystemDetector` in `src/workspace-detectors.ts`, add to `ECOSYSTEM_DETECTORS` |
+| Provider | Add `src/provider-{name}.ts`, register in provider resolution |
+| CLI command | Add to `src/cli-command-registry.ts` |
 
 ## Testing
 
