@@ -31,11 +31,11 @@ Default: if a layer carries no policy, invariants, or boundary isolation, remove
 
 ### 3. Boundary and contract integrity
 
-- lifecycle phase boundaries and effect-driven settle behavior
-- tool architecture (toolkits, registry, step-budget execution)
-- contracts and schemas as source of truth (Zod + inferred types)
+- phase boundaries and internal settle behavior
+- tool/plugin architecture and registration patterns
+- contracts and schemas as source of truth
 - transport and protocol consistency
-- DI convention: `*Deps` for config, `*Input` for runtime, defaults from `appConfig`
+- DI convention consistency (naming, defaults, injection boundaries)
 - design-pattern consistency for extension seams
 
 ### 4. Cohesion and responsibility
@@ -55,7 +55,7 @@ Only report issues with concrete evidence in code, contracts, or dependency flow
 
 ## Workflow
 
-1. Build expected architecture map from `docs/architecture.md` and `AGENTS.md`.
+1. Build expected architecture map from project docs and instructions.
 2. Compare implementation against that map.
 3. Run cycle and indirection pass on core entrypoints.
 4. Check whether the change increases coupling or creates contract drift.

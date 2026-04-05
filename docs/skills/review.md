@@ -27,14 +27,9 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
 2. If no commits ahead of `main`, report that and stop.
-3. Read changed files in full, plus `AGENTS.md` and `docs/architecture.md`.
+3. Read changed files in full, plus project instructions and architecture docs.
 4. **Review tests first** — they reveal intent and coverage gaps.
-5. Run each review dimension:
-   - **Style** — `.agents/skills/style/SKILL.md`
-   - **Architecture** — `.agents/skills/architecture/SKILL.md`
-   - **Docs** — `.agents/skills/docs/SKILL.md`
-   - **Security** — `.agents/skills/security/SKILL.md`
-   - **Tests** — `.agents/skills/tests/SKILL.md`
+5. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
 6. Merge findings: deduplicate, keep strongest framing per root issue.
 7. Label every finding by severity:
 

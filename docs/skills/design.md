@@ -11,7 +11,7 @@ Design interfaces that are hard to misuse, easy to extend, and stable under chan
 
 ### Contract first
 
-Define the interface before implementing it. In Acolyte, this means Zod schema first, infer the TypeScript type from it. The schema is the contract — implementation follows.
+Define the interface before implementing it. The contract comes first — implementation follows.
 
 ### Hyrum's Law
 
@@ -23,7 +23,7 @@ Extend interfaces by adding optional fields rather than changing existing ones. 
 
 ### Validate at boundaries
 
-Trust internal code. Validate at system boundaries — RPC payloads, config files, model output, external tool results. Use Zod `safeParse` at entry points, not deep inside the call stack.
+Trust internal code. Validate at system boundaries — API payloads, config files, external inputs. Validate at entry points, not deep inside the call stack.
 
 ### Predictable naming
 
@@ -36,7 +36,7 @@ Follow established conventions:
 ## Workflow
 
 1. **Identify the boundary.** What calls this? What does it return? Who else might consume it?
-2. **Define the schema.** Zod first, TypeScript inferred. Include descriptions for non-obvious fields.
+2. **Define the contract.** Schema or type definition first, implementation second. Include descriptions for non-obvious fields.
 3. **Design for the common case.** Make the default behavior correct. Require explicit opt-in for unusual behavior.
 4. **Review for misuse.** Can a caller get into a bad state by passing valid-looking but wrong data? Add discriminants or branded types where confusion is likely.
 5. **Check extensibility.** Can this be extended without modifying existing consumers?
@@ -47,4 +47,4 @@ Follow established conventions:
 - Fields that mean different things depending on context
 - Breaking changes disguised as bug fixes
 - Validation scattered through the call stack instead of at the boundary
-- Schemas defined as TypeScript types first, Zod second
+- Implementation before contract definition

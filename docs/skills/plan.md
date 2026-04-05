@@ -13,16 +13,7 @@ Have a design conversation about this task. Read the relevant code, share what y
 
 If a question can be answered by reading the code, read the code instead of asking.
 
-Ground every recommendation in current code, docs, and project rules. Read `AGENTS.md` and `docs/architecture.md` before forming opinions.
-
-## Acolyte checks
-
-- Tools must flow through `runTool`
-- New payloads and contracts validated with Zod
-- Model output must preserve the `@signal` contract
-- TUI state reads must use functional updaters
-- Chat-layer code must use approved effect helpers, not direct `useEffect`
-- Shared string unions start as Zod schemas
+Ground every recommendation in current code, docs, and project rules. Read project instructions and architecture docs before forming opinions.
 
 ## Task sizing
 
@@ -38,7 +29,7 @@ Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | 
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
-For non-trivial plans, create a checklist early with `checklist-create` and add items one at a time as each step gets agreed. When planning is done, the checklist is ready — start executing.
+For non-trivial plans, create a checklist early and add items as each step gets agreed. Use a checklist tool if one is available. When planning is done, the checklist is ready — start executing.
 
 ## Red flags
 

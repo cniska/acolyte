@@ -11,17 +11,17 @@ Review doc coverage, terminology drift, and canonical doc accuracy.
 
 - canonical doc updates for behavior, contract, or config changes
 - glossary drift when new terms are introduced
-- duplicated concepts across `README.md` and `docs/*`
+- duplicated concepts across documentation files
 - outdated names or contracts after refactors
-- `docs/features.md` discipline: shipped features only, one line, user-visible wording
 - docs staying conceptual rather than describing implementation line-by-line
 
-## Style conventions
+## Workflow
 
-- One H1 per doc (page title). Headings follow semantic order.
-- H1 title case, H2+ sentence case.
-- Bullets starting with a word or phrase use a capital letter.
-- No unnecessary fenced code blocks for content that reads as prose.
+1. Identify which docs are affected by the code change.
+2. Check for terminology drift — renamed concepts, changed contracts, new terms without definitions.
+3. Check for stale content — does the doc still describe what the code actually does?
+4. Check for duplication — is the same concept explained in multiple places?
+5. Follow the project's documentation conventions for style and structure.
 
 ## Output
 
