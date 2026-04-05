@@ -13,6 +13,7 @@ export interface MemoryEntry {
   readonly id: MemoryId;
   readonly content: string;
   readonly createdAt: IsoDateTimeString;
+  readonly lastRecalledAt: IsoDateTimeString | null;
   readonly scope: MemoryScope;
 }
 
@@ -67,6 +68,7 @@ export const memoryRecordSchema = z.object({
   content: z.string().min(1),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
+  lastRecalledAt: isoDateTimeSchema.nullable().optional(),
 });
 export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
 
@@ -74,6 +76,7 @@ export interface MemoryStore {
   list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
+  touchRecalled(ids: string[]): void;
   writeEmbedding(id: string, scopeKey: string, embedding: Buffer): void;
   removeEmbedding(id: string): void;
   getEmbedding(id: string): Buffer | null;

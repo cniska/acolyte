@@ -32,7 +32,7 @@ describe("createSqliteMemoryStore", () => {
     await store.write(record);
     const records = await store.list({ scopeKey: "sess_abc123" });
     expect(records).toHaveLength(1);
-    expect(records[0]).toEqual(record);
+    expect(records[0]).toEqual({ ...record, lastRecalledAt: null });
   });
 
   test("list returns records sorted chronologically", async () => {
@@ -216,6 +216,58 @@ describe("createSqliteMemoryStore", () => {
     await store.write(projectRecord);
     expect((await store.list({ scopeKey: "user_abc123" })).map((record) => record.content)).toEqual(["user fact"]);
     expect((await store.list({ scopeKey: "proj_abc123" })).map((record) => record.content)).toEqual(["project fact"]);
+  });
+});
+
+describe("touchRecalled", () => {
+  test("sets last_recalled_at on specified records", async () => {
+    const store = createStore();
+    const record: MemoryRecord = {
+      id: "mem_touch001",
+      scopeKey: "user_abc123",
+      kind: "stored",
+      content: "recall me",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    };
+    await store.write(record);
+    const before = await store.list({ scopeKey: "user_abc123" });
+    expect(before[0]?.lastRecalledAt).toBeNull();
+
+    store.touchRecalled(["mem_touch001"]);
+    const after = await store.list({ scopeKey: "user_abc123" });
+    expect(after[0]?.lastRecalledAt).not.toBeNull();
+  });
+
+  test("does not touch records not in the id list", async () => {
+    const store = createStore();
+    await store.write({
+      id: "mem_touched1",
+      scopeKey: "user_abc123",
+      kind: "stored",
+      content: "will be touched",
+      createdAt: "2026-03-04T12:00:00.000Z",
+      tokenEstimate: 2,
+    });
+    await store.write({
+      id: "mem_untouchd",
+      scopeKey: "user_abc123",
+      kind: "stored",
+      content: "will not be touched",
+      createdAt: "2026-03-04T12:00:01.000Z",
+      tokenEstimate: 3,
+    });
+    store.touchRecalled(["mem_touched1"]);
+    const records = await store.list({ scopeKey: "user_abc123" });
+    const touched = records.find((r) => r.id === "mem_touched1");
+    const untouched = records.find((r) => r.id === "mem_untouchd");
+    expect(touched?.lastRecalledAt).not.toBeNull();
+    expect(untouched?.lastRecalledAt).toBeNull();
+  });
+
+  test("no-ops on empty id list", () => {
+    const store = createStore();
+    expect(() => store.touchRecalled([])).not.toThrow();
   });
 });
 
