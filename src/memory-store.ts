@@ -48,6 +48,9 @@ function migrateLegacySchema(db: Database): void {
   const names = new Set(cols.map((c) => c.name));
   if (names.has("current_task")) db.run("ALTER TABLE memories DROP COLUMN current_task");
   if (names.has("next_step")) db.run("ALTER TABLE memories DROP COLUMN next_step");
+  if (names.size > 0 && !names.has("last_recalled_at")) {
+    db.run("ALTER TABLE memories ADD COLUMN last_recalled_at TEXT");
+  }
 }
 
 function initSchema(db: Database): void {
@@ -60,7 +63,8 @@ function initSchema(db: Database): void {
       kind TEXT NOT NULL,
       content TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      token_estimate INTEGER NOT NULL
+      token_estimate INTEGER NOT NULL,
+      last_recalled_at TEXT
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)`);
@@ -83,6 +87,7 @@ type MemoryRow = {
   content: string;
   created_at: string;
   token_estimate: number;
+  last_recalled_at: string | null;
 };
 
 function rowToRecord(row: MemoryRow): MemoryRecord {
@@ -93,6 +98,7 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     content: row.content,
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
+    lastRecalledAt: row.last_recalled_at ?? null,
   };
 }
 
@@ -152,6 +158,12 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
         record.createdAt,
         record.tokenEstimate,
       );
+    },
+    touchRecalled(ids) {
+      if (ids.length === 0) return;
+      const now = new Date().toISOString();
+      const placeholders = ids.map(() => "?").join(",");
+      db.run(`UPDATE memories SET last_recalled_at = ? WHERE id IN (${placeholders})`, [now, ...ids]);
     },
     async remove(id) {
       removeStmt.run(id);

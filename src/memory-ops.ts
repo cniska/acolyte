@@ -30,11 +30,18 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
   return keys;
 }
 
-function toMemoryEntry(record: { id: string; scopeKey: string; content: string; createdAt: string }): MemoryEntry {
+function toMemoryEntry(record: {
+  id: string;
+  scopeKey: string;
+  content: string;
+  createdAt: string;
+  lastRecalledAt?: string | null;
+}): MemoryEntry {
   return {
     id: record.id,
     content: record.content,
     createdAt: record.createdAt,
+    lastRecalledAt: record.lastRecalledAt ?? null,
     scope: scopeFromKey(record.scopeKey),
   };
 }
@@ -87,14 +94,19 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   const trimmed = id.trim();
   if (!trimmed) throw new Error("Memory id cannot be empty");
 
-  const entries = await listMemories(options);
-  const entry = entries.find((e) => e.id === trimmed);
-  if (!entry) return { kind: "not_found", id: trimmed };
-
-  const { store = getDefaultMemoryStore() } = options;
-  await store.remove(entry.id);
-  log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
-  return { kind: "removed", entry };
+  const { scope, workspace, store = getDefaultMemoryStore() } = options;
+  const keys = scopeKeysForScope(scope, workspace);
+  for (const key of keys) {
+    const records = await store.list({ scopeKey: key, kind: "stored" });
+    const record = records.find((r) => r.id === trimmed);
+    if (record) {
+      const entry = toMemoryEntry(record);
+      await store.remove(entry.id);
+      log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
+      return { kind: "removed", entry };
+    }
+  }
+  return { kind: "not_found", id: trimmed };
 }
 
 export const fileMemoryStore = {

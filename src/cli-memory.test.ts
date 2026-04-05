@@ -15,6 +15,7 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
         content: "remember this",
         scope: "user" as const,
         createdAt: "9999-01-01T00:00:00.000Z",
+        lastRecalledAt: null,
       },
     ],
     add: async (content, scope) => ({
@@ -22,6 +23,7 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
       content,
       scope: scope ?? "user",
       createdAt: "9999-01-01T00:00:00.000Z",
+      lastRecalledAt: null,
     }),
     ...overrides,
   };
@@ -107,6 +109,7 @@ describe("cli-memory", () => {
             content,
             scope: scope ?? "user",
             createdAt: "9999-01-01T00:00:00.000Z",
+            lastRecalledAt: null,
           };
         },
       }),

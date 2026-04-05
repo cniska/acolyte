@@ -50,7 +50,8 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       rows.slice(0, 50).map((row) => ({
         id: row.id,
         content: truncateText(row.content, 80),
-        time: formatRelativeTime(row.createdAt),
+        created: formatRelativeTime(row.createdAt),
+        recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
       })),
     );
     const rendered = out.render();
