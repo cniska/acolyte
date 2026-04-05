@@ -26,7 +26,7 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 
 ## Development
 
-- [Agent skills](./agent-skills.md) — engineering workflows for plan, build, review, and ship phases
+- [Skills](./skills/README.md) — engineering workflows for plan, build, and review
 - [Testing](./testing.md) — test types, naming, and execution
 
 ## Reference
