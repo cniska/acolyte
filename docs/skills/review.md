@@ -29,12 +29,7 @@ Refactoring mixed with feature work is two changes. Flag it.
 2. If no commits ahead of `main`, report that and stop.
 3. Read changed files in full, plus any project-level convention docs.
 4. **Review tests first** — they reveal intent and coverage gaps.
-5. Run each review dimension:
-   - **Style** — `style/SKILL.md`
-   - **Architecture** — `architecture/SKILL.md`
-   - **Docs** — `docs/SKILL.md`
-   - **Security** — `security/SKILL.md`
-   - **Tests** — `tests/SKILL.md`
+5. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
 6. Merge findings: deduplicate, keep strongest framing per root issue.
 7. Label every finding by severity:
 

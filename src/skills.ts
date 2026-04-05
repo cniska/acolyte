@@ -216,21 +216,26 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
   return { skills: found, diagnostics };
 }
 
-const bundledContentByName = new Map<string, string>();
+let bundledSkillCache: { skills: SkillMeta[]; contentByName: Map<string, string> } | null = null;
 
-function getBundledSkills(): SkillMeta[] {
+function loadBundledSkills(): { skills: SkillMeta[]; contentByName: Map<string, string> } {
+  if (bundledSkillCache) return bundledSkillCache;
   const skills: SkillMeta[] = [];
+  const contentByName = new Map<string, string>();
   for (const bundled of BUNDLED_SKILLS) {
+    const fm = parseFrontmatter(bundled.content);
+    const description = fm?.description ?? "";
     const body = stripFrontmatter(bundled.content);
-    bundledContentByName.set(bundled.name, body);
+    contentByName.set(bundled.name, body);
     skills.push({
       name: bundled.name,
-      description: bundled.description,
+      description,
       path: `bundled://${bundled.name}`,
       source: "bundled",
     });
   }
-  return skills;
+  bundledSkillCache = { skills, contentByName };
+  return bundledSkillCache;
 }
 
 function mergeSkills(bundled: SkillMeta[], project: SkillMeta[]): SkillMeta[] {
@@ -242,7 +247,7 @@ function mergeSkills(bundled: SkillMeta[], project: SkillMeta[]): SkillMeta[] {
 
 export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
   const { skills: project } = await scanSkills(cwd);
-  return mergeSkills(getBundledSkills(), project);
+  return mergeSkills(loadBundledSkills().skills, project);
 }
 
 let cachedSkills: SkillMeta[] | null = null;
@@ -250,7 +255,7 @@ let cachedSkillDiagnostics: SkillLoadDiagnostics = createEmptySkillLoadDiagnosti
 
 export async function loadSkills(cwd?: string): Promise<SkillMeta[]> {
   const result = await scanSkills(cwd);
-  cachedSkills = mergeSkills(getBundledSkills(), result.skills);
+  cachedSkills = mergeSkills(loadBundledSkills().skills, result.skills);
   cachedSkillDiagnostics = result.diagnostics;
   return cachedSkills;
 }
@@ -280,7 +285,7 @@ export async function readSkillInstructions(path: string, args?: string): Promis
   let body: string;
   if (path.startsWith("bundled://")) {
     const name = path.slice("bundled://".length);
-    const content = bundledContentByName.get(name);
+    const content = loadBundledSkills().contentByName.get(name);
     if (!content) throw new Error(`bundled skill not found: ${name}`);
     body = content;
   } else {
