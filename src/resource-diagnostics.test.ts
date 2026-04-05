@@ -41,15 +41,12 @@ describe("resource diagnostics", () => {
     await loadSkills(cwd);
     const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
     expect(diagnostics["resources.skills.invalid"]).toBe(1);
-    // Bundled skills are always loaded, so no_valid_skills_loaded is not triggered
     expect(diagnostics["resources.skills.status"]).toBeUndefined();
   });
 
   test("returns empty diagnostics when resources are healthy", async () => {
     const cwd = createDir("acolyte-resdiag-ok-");
     const home = createDir("acolyte-resdiag-home-");
-    mkdirSync(join(cwd, "docs"), { recursive: true });
-    writeFileSync(join(cwd, "docs", "soul.md"), "# Soul\n", "utf8");
     writeFileSync(join(cwd, "AGENTS.md"), "# Agents\n", "utf8");
     writeSkill(cwd, "demo", "---\nname: demo\ndescription: Demo skill\n---");
 
