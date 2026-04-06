@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
 import type { LifecycleDeps } from "./lifecycle";
 import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { createRunControl } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
@@ -219,5 +220,131 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(1);
     expect(done?.fields?.session_scoped_facts).toBe(3);
     expect(done?.fields?.dropped_untagged_facts).toBe(4);
+  });
+});
+
+describe("createRunControl", () => {
+  test("defaults to no-op callbacks", () => {
+    const rc = createRunControl();
+    expect(rc.shouldYield()).toBe(false);
+    expect(rc.isCancelled()).toBe(false);
+  });
+
+  test("accepts partial overrides", () => {
+    const rc = createRunControl({ shouldYield: () => true });
+    expect(rc.shouldYield()).toBe(true);
+    expect(rc.isCancelled()).toBe(false);
+  });
+
+  test("accepts full overrides", () => {
+    const rc = createRunControl({ shouldYield: () => true, isCancelled: () => true });
+    expect(rc.shouldYield()).toBe(true);
+    expect(rc.isCancelled()).toBe(true);
+  });
+});
+
+describe("runLifecycle yield", () => {
+  function createDeps(overrides?: Partial<LifecycleDeps>): LifecycleDeps {
+    return {
+      resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
+      createLifecyclePolicy: () => ({
+        ...defaultLifecyclePolicy,
+        initialMaxSteps: 3,
+        stepTimeoutMs: 1000,
+        totalMaxSteps: 12,
+        maxNudgesPerGeneration: 1,
+      }),
+      phasePrepare: mock(() => ({
+        session: createSessionContext(),
+        tools: {} as unknown as Toolset,
+        baseAgentInput: "BASE_INPUT",
+        promptUsage: {
+          inputTokens: 0,
+          inputBudgetTokens: 8000,
+          systemPromptTokens: 0,
+          toolTokens: 0,
+          memoryTokens: 0,
+          messageTokens: 0,
+          inputTruncated: false,
+          includedHistoryMessages: 0,
+          totalHistoryMessages: 0,
+        },
+      })),
+      createRunAgent: mock(() => ({
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as never,
+        tools: {},
+        async stream() {
+          throw new Error("unused");
+        },
+      })),
+      phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+        ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+      }),
+      phaseFinalize: mock(
+        (ctx: { result?: { text: string } }): ChatResponse => ({
+          state: "done",
+          model: "gpt-5-mini",
+          output: ctx.result?.text ?? "",
+        }),
+      ),
+      ...overrides,
+    };
+  }
+
+  const baseInput = {
+    request: { model: "gpt-5-mini" as const, message: "test", history: [] as never[], useMemory: false },
+    soulPrompt: "SOUL",
+    workspace: process.cwd(),
+    taskId: "task_test",
+  };
+
+  test("skips acceptResult when runControl yields", async () => {
+    const deps = createDeps();
+    const debugEvents: string[] = [];
+    const response = await runLifecycle(
+      {
+        ...baseInput,
+        runControl: createRunControl({ shouldYield: () => true }),
+        onDebug: (entry) => debugEvents.push(entry.event),
+      },
+      deps,
+    );
+    expect(response.output).toBe("Generated output");
+    expect(debugEvents).toContain("lifecycle.yield");
+  });
+
+  test("replaces empty text when yielding", async () => {
+    const deps = createDeps({
+      phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+        ctx.result = { text: "  ", toolCalls: [{ toolCallId: "tc1", toolName: "read", args: {} }] };
+      }),
+      phaseFinalize: mock(
+        (ctx: { result?: { text: string } }): ChatResponse => ({
+          state: "done",
+          model: "gpt-5-mini",
+          output: ctx.result?.text ?? "",
+        }),
+      ),
+    });
+    const response = await runLifecycle(
+      {
+        ...baseInput,
+        runControl: createRunControl({ shouldYield: () => true }),
+      },
+      deps,
+    );
+    expect(response.output).toBe("Yielding to a newer pending message.");
+  });
+
+  test("proceeds normally without runControl", async () => {
+    const deps = createDeps();
+    const debugEvents: string[] = [];
+    const onDebug = (entry: { event: string }) => debugEvents.push(entry.event);
+    const response = await runLifecycle({ ...baseInput, onDebug }, deps);
+    expect(response.output).toBe("Generated output");
+    expect(debugEvents).not.toContain("lifecycle.yield");
   });
 });
