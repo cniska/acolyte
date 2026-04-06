@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent, wrapText } from "./chat-content";
+import { sanitizeAssistantContent, wrapAssistantContent, wrapText } from "./chat-content";
 
 describe("chat-content helpers", () => {
   test("sanitizeAssistantContent removes tools/evidence footer lines", () => {
@@ -15,14 +15,6 @@ describe("chat-content helpers", () => {
   test("sanitizeAssistantContent returns empty when everything is stripped", () => {
     const raw = ["Tools used: file-search", "Evidence: src/cli.ts:1"].join("\n");
     expect(sanitizeAssistantContent(raw)).toBe("");
-  });
-
-  test("tokenizeForHighlighting tags code and paths", () => {
-    const tokens = tokenizeForHighlighting("bun run verify in `src/chat-ui.tsx:42` and src/chat-ui.tsx:42");
-    const kinds = tokens.map((token) => token.kind);
-    expect(kinds).toContain("code");
-    expect(kinds).toContain("path");
-    expect(kinds).not.toContain("command");
   });
 
   test("wrapText wraps long lines at word boundaries", () => {

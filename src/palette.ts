@@ -6,7 +6,6 @@ export const palette = {
 
   // Text
   text: "white",
-  textCode: "#D4B3FF",
   textMuted: "#6B7280",
 
   // Diff
