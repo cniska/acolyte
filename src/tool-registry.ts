@@ -39,32 +39,12 @@ export const TOOLKIT_REGISTRY: {
   createToolkit: (input: ToolkitInput) => ToolMap;
 }[] = [
   {
-    id: "file",
-    createToolkit: (input) => createFileToolkit(input),
-  },
-  {
     id: "code",
     createToolkit: (input) => createCodeToolkit(input),
   },
   {
-    id: "web",
-    createToolkit: (input) => createWebToolkit(input),
-  },
-  {
-    id: "shell",
-    createToolkit: (input) => createShellToolkit(input),
-  },
-  {
-    id: "test",
-    createToolkit: (input) => createTestToolkit(input),
-  },
-  {
-    id: "git",
-    createToolkit: (input) => createGitToolkit(input),
-  },
-  {
-    id: "checklist",
-    createToolkit: (input) => createChecklistToolkit(input),
+    id: "file",
+    createToolkit: (input) => createFileToolkit(input),
   },
   {
     id: "memory",
@@ -73,6 +53,26 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "skill",
     createToolkit: (input) => createSkillToolkit(input),
+  },
+  {
+    id: "test",
+    createToolkit: (input) => createTestToolkit(input),
+  },
+  {
+    id: "checklist",
+    createToolkit: (input) => createChecklistToolkit(input),
+  },
+  {
+    id: "git",
+    createToolkit: (input) => createGitToolkit(input),
+  },
+  {
+    id: "web",
+    createToolkit: (input) => createWebToolkit(input),
+  },
+  {
+    id: "shell",
+    createToolkit: (input) => createShellToolkit(input),
   },
 ];
 
