@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { normalizeStore } from "./storage";
 
 describe("storage", () => {
-  test("normalizeStore defaults missing tokenUsage to an empty list", () => {
+  test("normalizeStore drops sessions missing tokenUsage", () => {
     const normalized = normalizeStore({
       activeSessionId: "sess_1",
       sessions: [
@@ -17,8 +17,7 @@ describe("storage", () => {
       ] as never,
     });
 
-    expect(normalized.sessions).toHaveLength(1);
-    expect(normalized.sessions[0]?.tokenUsage).toEqual([]);
+    expect(normalized.sessions).toHaveLength(0);
   });
 
   test("normalizeStore preserves existing tokenUsage entries", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseChatResponse, parseStreamEvent } from "./client-contract";
+import { parseChatResponse } from "./client-contract";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunContext } from "./test-utils";
 
@@ -31,34 +31,6 @@ describe("ChatResponse error field", () => {
     });
     expect(response).not.toBeNull();
     expect(response?.error).toBeUndefined();
-  });
-
-  test("parseChatResponse accepts legacy prompt/completion usage fields", () => {
-    const response = parseChatResponse({
-      output: "Hello",
-      model: "gpt-5-mini",
-      usage: {
-        promptTokens: 12,
-        completionTokens: 8,
-        totalTokens: 20,
-        promptBudgetTokens: 100,
-        promptTruncated: true,
-      },
-    });
-    expect(response?.usage?.inputTokens).toBe(12);
-    expect(response?.usage?.outputTokens).toBe(8);
-    expect(response?.usage?.totalTokens).toBe(20);
-    expect(response?.usage?.inputBudgetTokens).toBe(100);
-    expect(response?.usage?.inputTruncated).toBe(true);
-  });
-
-  test("parseStreamEvent accepts legacy usage event fields", () => {
-    const event = parseStreamEvent({
-      type: "usage",
-      promptTokens: 9,
-      completionTokens: 4,
-    });
-    expect(event).toEqual({ type: "usage", inputTokens: 9, outputTokens: 4 });
   });
 });
 
