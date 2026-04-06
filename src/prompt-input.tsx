@@ -16,6 +16,7 @@ interface PromptInputProps {
   linePrefixRest?: string;
   onChange: (next: string) => void;
   onSubmit: (value: string) => void;
+  onCursorLine?: (line: number, lineCount: number) => void;
 }
 
 type PromptDisplayLine = {
@@ -44,6 +45,36 @@ export function moveWordRight(value: string, cursor: number): number {
     index += 1;
   }
   return index;
+}
+
+export function cursorLineIndex(value: string, cursorOffset: number): number {
+  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
+  return value.slice(0, clamped).split("\n").length - 1;
+}
+
+export function moveLineUp(value: string, cursor: number): number {
+  const clamped = Math.max(0, Math.min(cursor, value.length));
+  const before = value.slice(0, clamped);
+  const currentLineStart = before.lastIndexOf("\n") + 1;
+  if (currentLineStart === 0) return cursor; // already on first line
+  const column = clamped - currentLineStart;
+  const prevLineEnd = currentLineStart - 1;
+  const prevLineStart = before.lastIndexOf("\n", prevLineEnd - 1) + 1;
+  const prevLineLength = prevLineEnd - prevLineStart;
+  return prevLineStart + Math.min(column, prevLineLength);
+}
+
+export function moveLineDown(value: string, cursor: number): number {
+  const clamped = Math.max(0, Math.min(cursor, value.length));
+  const before = value.slice(0, clamped);
+  const currentLineStart = before.lastIndexOf("\n") + 1;
+  const column = clamped - currentLineStart;
+  const nextNewline = value.indexOf("\n", clamped);
+  if (nextNewline === -1) return cursor; // already on last line
+  const nextLineStart = nextNewline + 1;
+  const nextNextNewline = value.indexOf("\n", nextLineStart);
+  const nextLineLength = (nextNextNewline === -1 ? value.length : nextNextNewline) - nextLineStart;
+  return nextLineStart + Math.min(column, nextLineLength);
 }
 
 export function buildPromptDisplayLines(value: string, cursorOffset: number): PromptDisplayLine[] {
@@ -75,6 +106,7 @@ export function PromptInput({
   linePrefixRest = "",
   onChange,
   onSubmit,
+  onCursorLine,
 }: PromptInputProps): React.JSX.Element {
   const [cursorOffset, setCursorOffset] = useState(value.length);
   const metaPrefixAt = useRef<number | null>(null);
@@ -86,6 +118,8 @@ export function PromptInput({
   const cursorRef = useRef(cursorOffset);
   const onChangeRef = useRef(onChange);
   const onSubmitRef = useRef(onSubmit);
+  const onCursorLineRef = useRef(onCursorLine);
+  onCursorLineRef.current = onCursorLine;
   if (valueRef.current !== value) {
     const clamped = Math.max(0, Math.min(cursorRef.current, value.length));
     cursorRef.current = clamped;
@@ -103,6 +137,9 @@ export function PromptInput({
     const moveCursor = (next: number) => {
       cursorRef.current = next;
       setCursorOffset(next);
+      const v = valueRef.current;
+      const lineCount = v.split("\n").length;
+      onCursorLineRef.current?.(cursorLineIndex(v, next), lineCount);
     };
 
     const v = valueRef.current;
@@ -153,6 +190,12 @@ export function PromptInput({
         return;
       case "move_right":
         moveCursor(Math.min(v.length, c + 1));
+        return;
+      case "move_up":
+        moveCursor(moveLineUp(v, c));
+        return;
+      case "move_down":
+        moveCursor(moveLineDown(v, c));
         return;
       case "delete_back":
         metaPrefixAt.current = null;

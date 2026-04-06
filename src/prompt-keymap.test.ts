@@ -25,11 +25,14 @@ describe("prompt keymap", () => {
     });
   });
 
-  test("noop for arrows, tab, ctrl+c", () => {
-    expect(resolvePromptAction("", key({ upArrow: true }), noMeta)).toEqual({ type: "noop" });
-    expect(resolvePromptAction("", key({ downArrow: true }), noMeta)).toEqual({ type: "noop" });
+  test("noop for tab, ctrl+c", () => {
     expect(resolvePromptAction("", key({ tab: true }), noMeta)).toEqual({ type: "noop" });
     expect(resolvePromptAction("c", key({ ctrl: true }), noMeta)).toEqual({ type: "noop" });
+  });
+
+  test("up/down arrows produce move_up/move_down", () => {
+    expect(resolvePromptAction("", key({ upArrow: true }), noMeta)).toEqual({ type: "move_up" });
+    expect(resolvePromptAction("", key({ downArrow: true }), noMeta)).toEqual({ type: "move_down" });
   });
 
   describe("home/end", () => {

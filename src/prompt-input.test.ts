@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPromptDisplayLines, moveWordLeft, moveWordRight } from "./prompt-input";
+import {
+  buildPromptDisplayLines,
+  cursorLineIndex,
+  moveLineDown,
+  moveLineUp,
+  moveWordLeft,
+  moveWordRight,
+} from "./prompt-input";
 
 describe("prompt input word navigation", () => {
   test("moveWordLeft jumps to previous word start", () => {
@@ -29,5 +36,45 @@ describe("prompt input word navigation", () => {
     const lines = buildPromptDisplayLines(value, value.length);
     expect(lines).toHaveLength(3);
     expect(lines[2]).toEqual({ before: "", cursor: " ", after: "" });
+  });
+});
+
+describe("cursorLineIndex", () => {
+  test("returns 0 for single-line input", () => {
+    expect(cursorLineIndex("hello", 3)).toBe(0);
+  });
+
+  test("returns correct line for multi-line input", () => {
+    expect(cursorLineIndex("ab\ncd\nef", 0)).toBe(0);
+    expect(cursorLineIndex("ab\ncd\nef", 3)).toBe(1);
+    expect(cursorLineIndex("ab\ncd\nef", 6)).toBe(2);
+  });
+});
+
+describe("moveLineUp", () => {
+  test("stays on first line", () => {
+    expect(moveLineUp("hello", 3)).toBe(3);
+  });
+
+  test("moves to previous line preserving column", () => {
+    expect(moveLineUp("abc\ndef", 5)).toBe(1); // col 1 on line 1 → col 1 on line 0
+  });
+
+  test("clamps column to shorter line", () => {
+    expect(moveLineUp("ab\ndefgh", 8)).toBe(2); // col 4 on line 1 → col 2 (end of line 0)
+  });
+});
+
+describe("moveLineDown", () => {
+  test("stays on last line", () => {
+    expect(moveLineDown("hello", 3)).toBe(3);
+  });
+
+  test("moves to next line preserving column", () => {
+    expect(moveLineDown("abc\ndef", 1)).toBe(5); // col 1 on line 0 → col 1 on line 1
+  });
+
+  test("clamps column to shorter line", () => {
+    expect(moveLineDown("abcde\nfg", 4)).toBe(8); // col 4 on line 0 → col 2 (end of line 1)
   });
 });
