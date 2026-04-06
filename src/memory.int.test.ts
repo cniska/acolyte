@@ -1,12 +1,9 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { setLogSink } from "./log";
+import { afterEach, describe, expect, test } from "bun:test";
 import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { tempDb } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
-beforeAll(() => setLogSink(() => {}));
-afterAll(() => setLogSink(null));
 afterEach(cleanup);
 
 describe("sqlite memory store", () => {
