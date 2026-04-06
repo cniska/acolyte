@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-command-registry";
+import { checkAndUpdateOnStartup } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { printOutput } from "./ui";
 
@@ -18,17 +19,19 @@ function isTopLevelVersionCommand(command: string | undefined): boolean {
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
+  if (!command) {
+    const updated = await checkAndUpdateOnStartup();
+    if (updated) return;
+    await chatModeWithOptions({ resumeLatest: false });
+    return;
+  }
+
   if (isTopLevelHelpCommand(command)) {
     usage(CLI_VERSION);
     return;
   }
   if (isTopLevelVersionCommand(command)) {
     printOutput(CLI_VERSION_OUTPUT);
-    return;
-  }
-
-  if (!command) {
-    await chatModeWithOptions({ resumeLatest: false });
     return;
   }
 

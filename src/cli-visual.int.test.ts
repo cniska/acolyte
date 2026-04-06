@@ -116,6 +116,7 @@ describe("cli visual regression", () => {
         config                 manage config
         skill <name> [prompt]  run a prompt with an active skill
         logs                   view server logs
+        update                 check for and install updates
         trace                  inspect server lifecycle traces
 
       Options
@@ -123,6 +124,13 @@ describe("cli visual regression", () => {
         -V, --version          print version
     `),
     );
+  });
+
+  test("update command prints up-to-date or network error", async () => {
+    const out = await runCliPlain(["update"]);
+    const isUpToDate = out.includes("Already up to date");
+    const isNetworkError = out.includes("Could not check for updates");
+    expect(isUpToDate || isNetworkError).toBe(true);
   });
 
   test("history command renders aligned session rows", async () => {

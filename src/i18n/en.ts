@@ -120,6 +120,7 @@ export const EN_MESSAGES = {
   "cli.help.desc.stop": "stop all servers",
   "cli.help.desc.tool": "run a tool directly",
   "cli.help.desc.trace": "inspect server lifecycle traces",
+  "cli.help.desc.update": "check for and install updates",
   "cli.trace.no_store": "No trace data available. Run a task first.",
   "cli.trace.col.model": "Model",
   "cli.trace.col.status": "Status",

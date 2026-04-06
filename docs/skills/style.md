@@ -39,6 +39,7 @@ Check where the codebase already has a clear local pattern:
 - no unused params, dead branches, or ad-hoc fallbacks
 - keep style aligned with nearby code
 - abstractions must earn their complexity — if a wrapper adds no value, inline it
+- no premature file splitting — keep related code in one file until size or complexity justifies separation
 - prefer clarity over cleverness: dense one-liners that require a mental pause should be simplified
 
 ## Evidence threshold

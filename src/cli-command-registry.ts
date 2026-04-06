@@ -18,6 +18,7 @@ import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
 import { traceMode } from "./cli-trace";
+import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
@@ -318,6 +319,15 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         commandError,
         commandHelp,
       }),
+  },
+  update: {
+    help: {
+      command: "update",
+      usage: "acolyte update",
+      description: t("cli.help.desc.update"),
+      examples: ["acolyte update"],
+    },
+    handler: () => updateMode(),
   },
   trace: {
     help: {
