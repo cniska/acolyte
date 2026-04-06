@@ -30,6 +30,14 @@ One generation pass runs, effects apply inline during tool execution, and the li
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
 - this is the only pre-tool policy check; there is no guard abstraction
 
+## Run control
+
+- `RunControl` is a first-class abstraction that owns yield and cancellation behavior for a lifecycle run
+- created at the transport layer (e.g. RPC) where queue and abort state are known, and threaded into the lifecycle as a single object
+- `shouldYield()` is checked after generation completes and before accepting the result; yielding skips result acceptance and memory commit
+- `isCancelled()` is checked at event emission boundaries and in error handlers
+- both methods are polled (not event-driven) — the answer can change over time as external state evolves
+
 ## Memory integration point
 
 - memory injection happens during request setup before generation
@@ -43,7 +51,7 @@ One generation pass runs, effects apply inline during tool execution, and the li
 - `src/lifecycle-contract.ts` — type definitions for lifecycle events, inputs, and runtime contexts
 - `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
 - `src/lifecycle-finalize.ts` — finalization phase including token accounting and tool statistics
-- `src/lifecycle-generate.ts` — generation phase with agent creation and yield detection
+- `src/lifecycle-generate.ts` — generation phase with agent creation and tool-call loop
 - `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
 - `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
 - `src/lifecycle-resolve.ts` — initial model resolution for the request

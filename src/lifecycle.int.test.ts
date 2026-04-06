@@ -12,6 +12,7 @@ import {
 } from "../scripts/fake-provider-server";
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
+import { createRunControl } from "./lifecycle-contract";
 
 let fake: FakeProviderServer;
 let workspace: string;
@@ -203,5 +204,38 @@ exit 1
 
     expect(turnCount).toBe(2);
     expect(reply.output).toContain("Updated x to 7.");
+  });
+
+  test("runControl yield skips result acceptance", async () => {
+    setupFakeProvider((ctx) => {
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Hello there.");
+    });
+
+    const debugEvents: string[] = [];
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "hi", history: [], useMemory: false },
+      soulPrompt: "",
+      workspace,
+      runControl: createRunControl({ shouldYield: () => true }),
+      onDebug: (entry) => debugEvents.push(entry.event),
+    });
+
+    expect(reply.output).toContain("Hello there.");
+    expect(debugEvents).toContain("lifecycle.yield");
+  });
+
+  test("runControl yield replaces empty output", async () => {
+    setupFakeProvider((ctx) => {
+      return createMessagePayload(ctx.model, ctx.responseCounter, "  ");
+    });
+
+    const reply = await runLifecycle({
+      request: { model: "gpt-5-mini", message: "hi", history: [], useMemory: false },
+      soulPrompt: "",
+      workspace,
+      runControl: createRunControl({ shouldYield: () => true }),
+    });
+
+    expect(reply.output).toBe("Yielding to a newer pending message.");
   });
 });

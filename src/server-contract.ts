@@ -1,5 +1,6 @@
 import type { ChatResponse } from "./api";
 import type { ErrorId } from "./error-handling";
+import type { RunControl } from "./lifecycle-contract";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { StreamError } from "./stream-error";
 import type { TaskId } from "./task-contract";
@@ -17,10 +18,9 @@ export type RunChatHandlers = {
   path: string;
   method: string;
   taskId?: TaskId;
+  runControl?: RunControl;
   onEvent: (event: Record<string, unknown>) => void;
   onDone: (reply: ChatResponse) => void;
   onError: (payload: StreamErrorPayload) => void;
-  isCancelled?: () => boolean;
-  shouldYield?: () => boolean;
   onMemoryCommit?: (metrics: MemoryCommitMetrics) => void;
 };

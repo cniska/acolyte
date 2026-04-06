@@ -116,16 +116,28 @@ export type Effect = {
   run: (ctx: RunContext, paths?: string[]) => EffectResult;
 };
 
+export type RunControl = {
+  shouldYield: () => boolean;
+  isCancelled: () => boolean;
+};
+
+export function createRunControl(overrides?: Partial<RunControl>): RunControl {
+  return {
+    shouldYield: overrides?.shouldYield ?? (() => false),
+    isCancelled: overrides?.isCancelled ?? (() => false),
+  };
+}
+
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
   workspace?: string;
   taskId?: string;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
+  runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;
   onDebug?: (event: LifecycleDebugEvent) => void;
   onMemoryCommit?: (metrics: MemoryCommitMetrics) => void;
-  shouldYield?: () => boolean;
 };
 
 export type RunContext = {

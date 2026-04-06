@@ -1,18 +1,21 @@
-import { expect } from "bun:test";
+import { expect, mock } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ChatResponse } from "./api";
 import type { CommandContext } from "./chat-commands";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
+import type { LifecycleDeps } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
@@ -425,6 +428,56 @@ export type CommandContextSpies = {
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
 };
+
+export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): LifecycleDeps {
+  return {
+    resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
+    createLifecyclePolicy: () => ({
+      ...defaultLifecyclePolicy,
+      initialMaxSteps: 3,
+      stepTimeoutMs: 1000,
+      totalMaxSteps: 12,
+      maxNudgesPerGeneration: 1,
+    }),
+    phasePrepare: mock(() => ({
+      session: createSessionContext(),
+      tools: {} as unknown as Toolset,
+      baseAgentInput: "BASE_INPUT",
+      promptUsage: {
+        inputTokens: 0,
+        inputBudgetTokens: 8000,
+        systemPromptTokens: 0,
+        toolTokens: 0,
+        memoryTokens: 0,
+        messageTokens: 0,
+        inputTruncated: false,
+        includedHistoryMessages: 0,
+        totalHistoryMessages: 0,
+      },
+    })),
+    createRunAgent: mock(() => ({
+      id: "test-agent",
+      name: "test-agent",
+      instructions: "",
+      model: {} as never,
+      tools: {},
+      async stream() {
+        throw new Error("createRunAgent stream should not be called in unit test");
+      },
+    })),
+    phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+      ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+    }),
+    phaseFinalize: mock(
+      (ctx: { result?: { text: string } }): ChatResponse => ({
+        state: "done",
+        model: "gpt-5-mini",
+        output: ctx.result?.text ?? "",
+      }),
+    ),
+    ...overrides,
+  };
+}
 
 export function createRunContext(overrides: Partial<RunContext> = {}): RunContext {
   return {

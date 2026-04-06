@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
+import { createRunControl } from "./lifecycle-contract";
 import { log } from "./log";
 import { type RpcRequestId, rpcClientMessageSchema, rpcRequestIdSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
@@ -41,7 +42,6 @@ type WorkerRunInput = {
   taskId: TaskId;
   request: ChatRequest;
   state: ActiveRpcChatState;
-  shouldYield: () => boolean;
   emitEvent: (event: Record<string, unknown>) => void;
   emitDone: (reply: ChatResponse) => void;
   emitError: (payload: StreamErrorPayload) => void;
@@ -95,7 +95,7 @@ function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEn
   return { id: parsed.data.id, message: parsed.data };
 }
 
-function runWorkerTask(input: WorkerRunInput, deps: RpcDeps): Promise<void> {
+function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcDeps): Promise<void> {
   deps.transitionTaskState(input.taskId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
   log.info("rpc task started", {
     event: "rpc.task.started",
@@ -106,8 +106,10 @@ function runWorkerTask(input: WorkerRunInput, deps: RpcDeps): Promise<void> {
     path: "/v1/rpc",
     method: "WS",
     taskId: input.taskId,
-    isCancelled: () => input.state.aborted,
-    shouldYield: input.shouldYield,
+    runControl: createRunControl({
+      isCancelled: () => input.state.aborted,
+      shouldYield: () => rpcQueuePolicy.shouldYield(queue),
+    }),
     onEvent: input.emitEvent,
     onDone: (reply) => {
       deps.transitionTaskState(
@@ -308,11 +310,11 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
             taskId: state.taskId,
             request,
             state,
-            shouldYield: () => rpcQueuePolicy.shouldYield(ws.data.queue),
             emitEvent: (event) => sendForId(requestId, { type: "chat.event", event }),
             emitDone: (reply) => sendForId(requestId, { type: "chat.done", reply }),
             emitError: (payload) => sendForId(requestId, { type: "chat.error", ...payload }),
           },
+          ws.data.queue,
           deps,
         ).finally(() => {
           ws.data.activeChats.delete(requestId);

@@ -1,67 +1,12 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
-import type { LifecycleDeps } from "./lifecycle";
 import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
-import { defaultLifecyclePolicy } from "./lifecycle-policy";
-import type { Toolset } from "./tool-registry";
-import { createSessionContext } from "./tool-session";
-
-const phasePrepare = mock(() => ({
-  session: createSessionContext(),
-  tools: {} as unknown as Toolset,
-  baseAgentInput: "BASE_INPUT",
-  promptUsage: {
-    inputTokens: 0,
-    inputBudgetTokens: 8000,
-    systemPromptTokens: 0,
-    toolTokens: 0,
-    memoryTokens: 0,
-    messageTokens: 0,
-    inputTruncated: false,
-    includedHistoryMessages: 0,
-    totalHistoryMessages: 0,
-  },
-}));
-
-const phaseGenerate = mock(async (ctx: { result?: unknown }) => {
-  ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
-});
-
-const phaseFinalize = mock(
-  (ctx: { result?: { text: string } }): ChatResponse => ({
-    state: "done",
-    model: "gpt-5-mini",
-    output: ctx.result?.text ?? "",
-  }),
-);
-
-const createRunAgent = mock(() => ({
-  id: "test-agent",
-  name: "test-agent",
-  instructions: "",
-  model: {} as never,
-  tools: {},
-  async stream() {
-    throw new Error("createRunAgent stream should not be called in runLifecycle unit test");
-  },
-}));
+import { createRunControl } from "./lifecycle-contract";
+import { createLifecycleDeps } from "./test-utils";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
-    const deps: LifecycleDeps = {
-      resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
-      createLifecyclePolicy: () => ({
-        ...defaultLifecyclePolicy,
-        initialMaxSteps: 3,
-        stepTimeoutMs: 1000,
-        totalMaxSteps: 12,
-        maxNudgesPerGeneration: 1,
-      }),
-      phasePrepare,
-      createRunAgent,
-      phaseGenerate,
-      phaseFinalize,
-    };
+    const deps = createLifecycleDeps();
 
     const response = await runLifecycle(
       {
@@ -73,10 +18,10 @@ describe("runLifecycle", () => {
       deps,
     );
 
-    expect(phasePrepare).toHaveBeenCalledTimes(1);
-    expect(createRunAgent).toHaveBeenCalledTimes(1);
-    expect(phaseGenerate).toHaveBeenCalledTimes(1);
-    expect(phaseFinalize).toHaveBeenCalledTimes(1);
+    expect(deps.phasePrepare).toHaveBeenCalledTimes(1);
+    expect(deps.createRunAgent).toHaveBeenCalledTimes(1);
+    expect(deps.phaseGenerate).toHaveBeenCalledTimes(1);
+    expect(deps.phaseFinalize).toHaveBeenCalledTimes(1);
     expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
   });
 });
@@ -219,5 +164,61 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(1);
     expect(done?.fields?.session_scoped_facts).toBe(3);
     expect(done?.fields?.dropped_untagged_facts).toBe(4);
+  });
+});
+
+describe("runLifecycle yield", () => {
+  const baseInput = {
+    request: { model: "gpt-5-mini" as const, message: "test", history: [] as never[], useMemory: false },
+    soulPrompt: "SOUL",
+    workspace: process.cwd(),
+    taskId: "task_test",
+  };
+
+  test("skips acceptResult when runControl yields", async () => {
+    const deps = createLifecycleDeps();
+    const debugEvents: string[] = [];
+    const response = await runLifecycle(
+      {
+        ...baseInput,
+        runControl: createRunControl({ shouldYield: () => true }),
+        onDebug: (entry) => debugEvents.push(entry.event),
+      },
+      deps,
+    );
+    expect(response.output).toBe("Generated output");
+    expect(debugEvents).toContain("lifecycle.yield");
+  });
+
+  test("replaces empty text when yielding", async () => {
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+        ctx.result = { text: "  ", toolCalls: [{ toolCallId: "tc1", toolName: "read", args: {} }] };
+      }),
+      phaseFinalize: mock(
+        (ctx: { result?: { text: string } }): ChatResponse => ({
+          state: "done",
+          model: "gpt-5-mini",
+          output: ctx.result?.text ?? "",
+        }),
+      ),
+    });
+    const response = await runLifecycle(
+      {
+        ...baseInput,
+        runControl: createRunControl({ shouldYield: () => true }),
+      },
+      deps,
+    );
+    expect(response.output).toBe("Yielding to a newer pending message.");
+  });
+
+  test("proceeds normally without runControl", async () => {
+    const deps = createLifecycleDeps();
+    const debugEvents: string[] = [];
+    const onDebug = (entry: { event: string }) => debugEvents.push(entry.event);
+    const response = await runLifecycle({ ...baseInput, onDebug }, deps);
+    expect(response.output).toBe("Generated output");
+    expect(debugEvents).not.toContain("lifecycle.yield");
   });
 });
