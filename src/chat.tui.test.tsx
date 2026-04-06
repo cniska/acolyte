@@ -8,9 +8,16 @@ import { renderPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main";
 
-function renderInputPanel(overrides: ComponentProps<typeof ChatInputPanel> = {}, columns = 96): string {
+const noopCursorLine = () => {};
+
+function renderInputPanel(overrides: Partial<ComponentProps<typeof ChatInputPanel>> = {}, columns = 96): string {
   return renderPlain(
-    <ChatInputPanel brandColor={palette.brand} footerContext={DEFAULT_FOOTER_CONTEXT} {...overrides} />,
+    <ChatInputPanel
+      brandColor={palette.brand}
+      footerContext={DEFAULT_FOOTER_CONTEXT}
+      onCursorLine={noopCursorLine}
+      {...overrides}
+    />,
     columns,
   );
 }

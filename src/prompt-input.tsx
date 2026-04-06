@@ -16,7 +16,7 @@ interface PromptInputProps {
   linePrefixRest?: string;
   onChange: (next: string) => void;
   onSubmit: (value: string) => void;
-  onCursorLine?: (line: number, lineCount: number) => void;
+  onCursorLine: (line: number, lineCount: number) => void;
 }
 
 type PromptDisplayLine = {
@@ -139,7 +139,7 @@ export function PromptInput({
       setCursorOffset(next);
       const v = valueRef.current;
       const lineCount = v.split("\n").length;
-      onCursorLineRef.current?.(cursorLineIndex(v, next), lineCount);
+      onCursorLineRef.current(cursorLineIndex(v, next), lineCount);
     };
 
     const v = valueRef.current;

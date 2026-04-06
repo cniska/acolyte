@@ -25,7 +25,7 @@ type ChatInputPanelProps = {
   slashSuggestionIndex?: number;
   showHelp?: boolean;
   ctrlCPending?: boolean;
-  onCursorLine?: (line: number, lineCount: number) => void;
+  onCursorLine: (line: number, lineCount: number) => void;
 };
 
 const noop = (): void => {};
@@ -154,6 +154,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             linePrefixFirst={pickerLabel(picker)}
             onChange={onPickerQueryChange}
             onSubmit={onPickerSubmit}
+            onCursorLine={noop}
           />
         ) : (
           <Text>{pickerLabel(picker)}</Text>

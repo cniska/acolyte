@@ -12,6 +12,7 @@ function renderInputPanelWithPicker(picker: PickerState, columns = 96): string {
       activeSessionId="sess_active"
       brandColor={palette.brand}
       footerContext="~/code/acolyte · main · gpt-5-mini"
+      onCursorLine={() => {}}
     />,
     columns,
   );
