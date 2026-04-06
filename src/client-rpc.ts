@@ -265,13 +265,6 @@ export class RpcClient implements Client {
         if (msg.type === "chat.done")
           return resolve(validateFinalChatResponse(msg.reply, "RPC stream returned invalid done payload"));
         if (msg.type === "chat.error") {
-          options.onEvent({
-            type: "error",
-            errorMessage: msg.errorMessage,
-            errorId: msg.errorId,
-            errorCode: msg.errorCode,
-            error: msg.error,
-          });
           return reject(
             createRemoteError(msg.errorMessage, {
               errorId: msg.errorId,
