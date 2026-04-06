@@ -27,7 +27,7 @@ Check the entire project. This is a release gate, not a diff review.
 2. Run quality checks (warn if any fail):
    - no `TODO` or `FIXME` in non-test source files
    - commits exist since the last tag
-   - `docs/features.md` covers capabilities introduced by commits since last tag (cross-reference `feat` commit subjects)
+   - `docs/features.md` covers high-signal capabilities introduced by commits since last tag — only user-visible features, not internal improvements (cross-reference `feat` commit subjects)
    - run the `/benchmark` skill to refresh `docs/benchmarks.md`
 3. Determine version bump from commits since last tag:
    - run `git describe --tags --abbrev=0 --match 'v[0-9]*'` to find the previous tag

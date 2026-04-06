@@ -11,9 +11,12 @@ Shipped, user-visible capabilities.
 - fuzzy search and autocomplete for file paths, sessions, commands, and skills
 - file and directory attachments via @path
 - slash commands and skill invocation
+- engineering skills for structured workflows (plan, build, review, ship)
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
+- auto-update on startup with progress UI
+- one-line install script
 
 ## Agent execution
 
@@ -22,6 +25,7 @@ Shipped, user-visible capabilities.
 - pre/post-tool-call effect pipeline (auto-install deps, format, lint)
 - workspace profile detection with auto-detected install, lint, format, and test commands
 - configurable model reasoning level (low, medium, high) with provider-specific mapping
+- multi-provider support (OpenAI, Anthropic, Google, Vercel)
 - provider rate limit awareness with sliding window pacing and exponential backoff
 - proactive token budgeting with system prompt reservation and priority-based allocation
 - step budget enforcement for cost protection

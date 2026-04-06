@@ -9,7 +9,7 @@ Run the benchmark script, parse its output, and update `docs/benchmarks.md` with
 
 ## Workflow
 
-1. Check whether `/tmp/acolyte-benchmarks` exists and how recently it was populated. If repos are present and were updated within the last 24 hours, the script will pull them automatically — proceed. If the directory is missing or clearly stale, note that a full clone will run and may take several minutes.
+1. Always delete `/tmp/acolyte-benchmarks` and reclone all repos before running. Incremental pulls frequently leave repos in a broken state with missing files.
 2. Run `bun run scripts/benchmark.ts` and capture the output.
 3. Parse the output — each project block lists metric labels and values. Match each value to the corresponding table cell in `docs/benchmarks.md` by project name and metric label.
 4. Update every metric value the script covers. Do not change narrative prose, section headings, or table structure.
