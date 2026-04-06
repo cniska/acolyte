@@ -32,8 +32,6 @@ export function createResumePicker(store: SessionState): PickerState | null {
 }
 
 function modelPickerItem(id: string): ModelPickerItem {
-  const prefix = "openai-compatible/";
-  if (id.startsWith(prefix)) return { label: id.slice(prefix.length), value: id, detail: "local" };
   return { label: id, value: id };
 }
 

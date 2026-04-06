@@ -11,7 +11,6 @@ import { Box, Text } from "./tui";
 export type ModelPickerItem = {
   label: string;
   value: string;
-  detail?: string;
 };
 
 export type PickerState =
@@ -31,16 +30,17 @@ export const PICKER_PAGE_SIZE = 8;
 export const PICKER_LABEL_WIDTH = 20;
 
 function renderPickerRows(
-  items: Array<{ key: string; label: string; detail: string }>,
+  items: Array<{ key: string; label: string; detail?: string }>,
   selectedIndex: number,
   brandColor: string,
+  labelWidth = PICKER_LABEL_WIDTH,
 ): React.ReactNode {
   return items.map((item, index) => {
     const selected = index === selectedIndex;
     return (
       <Box key={item.key}>
         <Text>{selected ? "› " : "  "}</Text>
-        <Box width={PICKER_LABEL_WIDTH}>
+        <Box width={labelWidth}>
           <Text color={selected ? brandColor : undefined}>{item.label}</Text>
         </Box>
         {item.detail ? (
@@ -114,14 +114,12 @@ export function renderPickerItems(
         return <Text dimColor> {t("chat.picker.no_matches")}</Text>;
       }
       const visible = picker.filtered.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
+      const maxLabel = Math.max(PICKER_LABEL_WIDTH, ...visible.map((item) => item.label.length + 2));
       return renderPickerRows(
-        visible.map((item) => ({
-          key: item.value,
-          label: truncateText(item.label, PICKER_LABEL_WIDTH),
-          detail: item.detail ?? "",
-        })),
+        visible.map((item) => ({ key: item.value, label: item.label })),
         picker.index - picker.scrollOffset,
         brandColor,
+        maxLabel,
       );
     }
     case "resume": {

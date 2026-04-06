@@ -85,7 +85,7 @@ describe("chat picker actions", () => {
     }
   });
 
-  test("createModelPicker marks openai-compatible models as local", async () => {
+  test("createModelPicker includes openai-compatible models with full id", async () => {
     const originalFetch = globalThis.fetch;
     const originalVercelApiKey = appConfig.vercel.apiKey;
     (appConfig.openai as { apiKey: string | undefined }).apiKey = undefined;
@@ -100,7 +100,7 @@ describe("chat picker actions", () => {
       expect(picker.kind).toBe("model");
       if (picker.kind !== "model") throw new Error("Expected model picker");
       expect(picker.items).toEqual([
-        { label: "qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b", detail: "local" },
+        { label: "openai-compatible/qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b" },
       ]);
     } finally {
       globalThis.fetch = originalFetch;
