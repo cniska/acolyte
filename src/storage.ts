@@ -10,86 +10,22 @@ import { createId } from "./short-id";
 const DATA_DIR = join(homedir(), ".acolyte");
 const STORE_PATH = join(DATA_DIR, "sessions.json");
 
-const EMPTY_STORE: SessionState = { sessions: [] };
+const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
 
-type LegacySessionTokenUsageEntry = {
-  id?: unknown;
-  usage?: {
-    inputTokens?: unknown;
-    outputTokens?: unknown;
-    totalTokens?: unknown;
-    inputBudgetTokens?: unknown;
-    inputTruncated?: unknown;
-    promptTokens?: unknown;
-    completionTokens?: unknown;
-    promptBudgetTokens?: unknown;
-    promptTruncated?: unknown;
-  };
-  promptBreakdown?: unknown;
-
-  modelCalls?: unknown;
-};
-
-function normalizeLegacyTokenUsageEntry(entry: unknown): unknown | null {
-  if (!entry || typeof entry !== "object") return null;
-  const record = entry as LegacySessionTokenUsageEntry;
-  if (!record.usage || typeof record.usage !== "object") return null;
-  const usage = record.usage;
-  if (
-    typeof usage.inputTokens === "number" &&
-    typeof usage.outputTokens === "number" &&
-    typeof usage.totalTokens === "number"
-  ) {
-    return record;
-  }
-  if (
-    typeof usage.promptTokens !== "number" ||
-    typeof usage.completionTokens !== "number" ||
-    typeof usage.totalTokens !== "number"
-  ) {
-    return null;
-  }
-  // TODO(cniska): Drop legacy session usage support at v1.0.0.
-  return {
-    ...record,
-    usage: {
-      inputTokens: usage.promptTokens,
-      outputTokens: usage.completionTokens,
-      totalTokens: usage.totalTokens,
-      ...(typeof usage.promptBudgetTokens === "number" ? { inputBudgetTokens: usage.promptBudgetTokens } : {}),
-      ...(typeof usage.promptTruncated === "boolean" ? { inputTruncated: usage.promptTruncated } : {}),
-    },
-  };
-}
-
-export function normalizeStore(parsed: SessionState): SessionState {
-  const normalized = {
-    sessions: Array.isArray(parsed.sessions)
-      ? parsed.sessions.map((session) => {
-          const rawTokenUsage = Array.isArray((session as Partial<Session>).tokenUsage)
-            ? ((session as Partial<Session>).tokenUsage as unknown[])
-            : [];
-          const tokenUsage = rawTokenUsage
-            .map(normalizeLegacyTokenUsageEntry)
-            .filter((entry): entry is Session["tokenUsage"][number] => entry !== null);
-          return { ...session, tokenUsage } as Session;
-        })
-      : [],
-    activeSessionId: parsed.activeSessionId,
-  };
-  const result = sessionStateSchema.safeParse(normalized);
-  return result.success ? result.data : EMPTY_STORE;
+export function parseSessionState(input: SessionState): SessionState {
+  const result = sessionStateSchema.safeParse(input);
+  return result.success ? result.data : DEFAULT_SESSION_STATE;
 }
 
 export async function readStore(): Promise<SessionState> {
-  if (!existsSync(STORE_PATH)) return EMPTY_STORE;
+  if (!existsSync(STORE_PATH)) return DEFAULT_SESSION_STATE;
 
   try {
     const raw = await readFile(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw) as SessionState;
-    return normalizeStore(parsed);
+    return parseSessionState(parsed);
   } catch {
-    return EMPTY_STORE;
+    return DEFAULT_SESSION_STATE;
   }
 }
 

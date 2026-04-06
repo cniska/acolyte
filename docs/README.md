@@ -35,4 +35,5 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 - [Configuration](./configuration.md) — settings for models, providers, memory, permissions, and runtime behavior
 - [Protocol](./protocol.md) — transport-facing contract between client and server
 - [Localization](./localization.md) — translatable copy separated from protocol contracts
+- [Updates](./updates.md) — versioning, auto-update, and breaking change policy
 - [Glossary](./glossary.md) — core terminology for sessions, tasks, phases, and effects

@@ -23,12 +23,8 @@ type UsageLikePayload = {
   inputTokens?: unknown;
   outputTokens?: unknown;
   totalTokens?: unknown;
-  promptTokens?: unknown;
-  completionTokens?: unknown;
   inputBudgetTokens?: unknown;
   inputTruncated?: unknown;
-  promptBudgetTokens?: unknown;
-  promptTruncated?: unknown;
 };
 
 type ParsedUsagePayload = {
@@ -186,42 +182,23 @@ export function parseStreamEvent(raw: unknown): StreamEvent | null {
   return event;
 }
 
+function parseUsageNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function parseUsagePayload(raw: unknown): ParsedUsagePayload | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const usage = raw as UsageLikePayload;
-  const inputTokens = parseUsageNumber(usage.inputTokens) ?? parseUsageNumber(usage.promptTokens);
-  const outputTokens = parseUsageNumber(usage.outputTokens) ?? parseUsageNumber(usage.completionTokens);
-  const inputBudgetTokens = parseUsageOptionalNumber(usage, "inputBudgetTokens", "promptBudgetTokens");
-  const inputTruncated = parseUsageOptionalBoolean(usage, "inputTruncated", "promptTruncated");
+  const inputTokens = parseUsageNumber(usage.inputTokens);
+  const outputTokens = parseUsageNumber(usage.outputTokens);
   if (typeof inputTokens !== "number" || typeof outputTokens !== "number") return undefined;
   return {
     inputTokens,
     outputTokens,
     totalTokens: parseUsageNumber(usage.totalTokens) ?? inputTokens + outputTokens,
-    ...(typeof inputBudgetTokens === "number" ? { inputBudgetTokens } : {}),
-    ...(typeof inputTruncated === "boolean" ? { inputTruncated } : {}),
+    ...(typeof usage.inputBudgetTokens === "number" ? { inputBudgetTokens: usage.inputBudgetTokens } : {}),
+    ...(typeof usage.inputTruncated === "boolean" ? { inputTruncated: usage.inputTruncated } : {}),
   };
-}
-
-function parseUsageNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function parseUsageOptionalNumber(
-  usage: UsageLikePayload,
-  primary: keyof UsageLikePayload,
-  fallback: keyof UsageLikePayload,
-): number | undefined {
-  return parseUsageNumber(usage[primary]) ?? parseUsageNumber(usage[fallback]);
-}
-
-function parseUsageOptionalBoolean(
-  usage: UsageLikePayload,
-  primary: keyof UsageLikePayload,
-  fallback: keyof UsageLikePayload,
-): boolean | undefined {
-  const value = usage[primary];
-  return typeof value === "boolean" ? value : typeof usage[fallback] === "boolean" ? usage[fallback] : undefined;
 }
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {
@@ -230,7 +207,6 @@ export function parseChatResponse(payload: unknown): ChatResponse | null {
   if (typeof json.output !== "string") return null;
   if (typeof json.model !== "string" || json.model.trim().length === 0) return null;
   const parsedUsage = json.usage ? parseUsagePayload(json.usage) : undefined;
-  // TODO(cniska): Drop legacy prompt/completion parsing at v1.0.0.
   return {
     output: json.output,
     model: json.model,

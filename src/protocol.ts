@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = "4";
+export const PROTOCOL_VERSION = "1";
 
 export const SERVER_CAPABILITIES = ["stream.sse", "error.structured", "workspace.path"] as const;
 

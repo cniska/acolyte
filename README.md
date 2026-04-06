@@ -16,6 +16,8 @@ An open-source, terminal-first AI coding agent with a single-pass lifecycle, on-
 curl -fsSL https://acolyte.sh/install | sh
 ```
 
+[What does this do?](scripts/install.sh)
+
 Then initialize your provider:
 
 ```bash
