@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.13.0 (2026-04-06)
+
+- feat(provider): add Vercel provider (#108) (`f2663713`)
+- feat(skills): add engineering skills (#109) (`8457521b`)
+- feat(skills): skill toolkit and bundled skills (#110) (`0c7f5a15`)
+- fix(docs): update skills link in README (`e59ba409`)
+- feat(memory): track last recall time (#111) (`b316c65d`)
+- refactor(tools): reorder toolkit registry by priority (`2008d195`)
+- fix(test): silence log output during tests (`0ea72aa9`)
+- test: classify db-backed tests as integration tests (`baccb8f4`)
+- refactor(lifecycle): replace shouldYield with run control (#112) (`ed991335`)
+- fix(provider): add Vercel credentials and hint (`72a4d456`)
+- fix(rpc): remove duplicate error event on chat failure (`f6008cd6`)
+- test(provider): add Vercel credential routing regression test (`ddd7490c`)
+- fix(tui): skip empty assistant row on whitespace-only content (`17821a97`)
+- fix(tui): use white for assistant marker instead of brand (`85b362f2`)
+- fix(tui): flush pending text on tool-call before tool output (`734a98f5`)
+- feat(tui): add line navigation in multi-line input (#114) (`f2dd2ea9`)
+- feat: auto-update and install script (#115) (`2a087dae`)
+- feat(tui): rework text formatting and tokenizer (#117) (`e8395f9c`)
+- chore(docs): update benchmarks and features for v0.13.0 (`d3f0be2e`)
+
+
 ## 0.12.0 (2026-04-02)
 
 - docs(benchmarks): update project list and metrics (#93) (`22c5e31c`)
