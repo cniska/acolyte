@@ -20,4 +20,4 @@ Releases follow [semver](https://semver.org). Patch and minor releases are alway
 
 ## Release process
 
-The `scripts/release.sh` script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.
+The [`scripts/release.sh`](../scripts/release.sh) script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.
