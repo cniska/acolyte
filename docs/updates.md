@@ -10,14 +10,14 @@ Skip the check with `--skip-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check wi
 
 ## Version compatibility
 
-Auto-update keeps version drift unlikely — most users are on the latest release within 24 hours. Despite this, Acolyte treats compatibility as a first-class concern:
-
 - **Protocol** — the client-server protocol is versioned. Server and client validate the protocol version on connection and reject mismatches cleanly.
-- **Database schemas** — SQLite stores (memory, trace, cache) use forward migrations when schemas change. Migrations run automatically on startup.
-- **Configuration** — config changes include migrations that preserve user settings across versions.
+- **Database schemas** — SQLite stores (memory, trace, cache) will use forward migrations when schemas change. No migration framework exists yet — it will be added when the first schema change requires one.
+- **Configuration** — same approach. Config migrations will be added when a release changes the config format.
 
-The narrow version window means we only need to support N-1 → N migrations, not arbitrary version jumps. But the migrations are always there — even when the probability of hitting them is low.
+## Versioning
+
+Releases follow [semver](https://semver.org). Patch and minor releases are always safe to apply. Major releases may include breaking changes to the protocol, configuration, or database schemas.
 
 ## Release process
 
-Releases follow semver. The `scripts/release.sh` script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.
+The `scripts/release.sh` script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.
