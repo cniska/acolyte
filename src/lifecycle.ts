@@ -324,7 +324,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   });
 
   if (!ctx.result) return deps.phaseFinalize(ctx);
-  if (input.shouldYield?.()) {
+  if (input.runControl?.shouldYield()) {
     ctx.debug("lifecycle.yield", {});
     if (!ctx.result.text.trim()) {
       ctx.result = { text: "Yielding to a newer pending message.", toolCalls: ctx.result.toolCalls };

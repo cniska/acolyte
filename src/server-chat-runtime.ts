@@ -190,6 +190,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     transport_path: handlers.path,
   });
 
+  const runControl = handlers.runControl;
   try {
     await loadSkills(workspaceResolution.workspacePath);
     const soulPrompt = await createSoulPrompt({
@@ -200,9 +201,9 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
       taskId: handlers.taskId,
-      shouldYield: handlers.shouldYield,
+      runControl,
       onEvent: (event) => {
-        if (handlers.isCancelled?.()) return;
+        if (runControl?.isCancelled()) return;
         if ((event as { type?: string }).type === "tool-output")
           debug.log("tool-stream-forward", {
             task_id: handlers.taskId ?? null,
@@ -225,7 +226,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
         });
       },
     });
-    if (handlers.isCancelled?.()) {
+    if (runControl?.isCancelled()) {
       log.info("chat request cancelled", {
         request_id: requestId,
         task_id: handlers.taskId ?? null,
@@ -252,7 +253,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     });
     handlers.onDone(reply);
   } catch (error) {
-    if (handlers.isCancelled?.()) return;
+    if (runControl?.isCancelled()) return;
     const payload = streamErrorPayload(error);
     log.error("chat stream failed", {
       request_id: requestId,
