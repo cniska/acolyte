@@ -180,6 +180,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         caretVisible={caretVisible}
         linePrefixFirst="❯ "
         linePrefixRest="  "
+        wrapWidth={termWidth - 2}
         onChange={onChange}
         onSubmit={onSubmit}
         onCursorLine={onCursorLine}

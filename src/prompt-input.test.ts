@@ -78,3 +78,38 @@ describe("moveLineDown", () => {
     expect(moveLineDown("abcde\nfg", 4)).toBe(8); // col 4 on line 0 → col 2 (end of line 1)
   });
 });
+
+describe("buildPromptDisplayLines with wrapWidth", () => {
+  test("wraps long line into multiple display lines", () => {
+    const lines = buildPromptDisplayLines("aaa bbb ccc ddd", 0, 8);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines[0]?.cursor).not.toBeNull(); // cursor on first display line
+  });
+
+  test("cursor on second wrapped segment", () => {
+    // "aaa bbb ccc" with wrap at 8 → ["aaa bbb", "ccc"]
+    // cursor at offset 8 (start of "ccc") should be on second display line
+    const lines = buildPromptDisplayLines("aaa bbb ccc", 8, 8);
+    expect(lines.length).toBe(2);
+    expect(lines[1]?.cursor).not.toBeNull();
+  });
+});
+
+describe("moveLineUp/Down with wrapWidth", () => {
+  test("moves up across wrapped segments", () => {
+    // "aaa bbb ccc ddd" wraps at 8 → ["aaa bbb", "ccc ddd"]
+    // cursor at offset 10 (col 2 of "ccc ddd") → should move to offset 2 (col 2 of "aaa bbb")
+    const result = moveLineUp("aaa bbb ccc ddd", 10, 8);
+    expect(result).toBe(2);
+  });
+
+  test("stays on first visual line when wrapping", () => {
+    const result = moveLineUp("aaa bbb ccc ddd", 2, 8);
+    expect(result).toBe(2);
+  });
+
+  test("moves down across wrapped segments", () => {
+    const result = moveLineDown("aaa bbb ccc ddd", 2, 8);
+    expect(result).toBe(10);
+  });
+});
