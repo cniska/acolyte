@@ -1,60 +1,15 @@
 import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync } from "node:fs";
-import { readdir, readFile, rename } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryStore, memoryRecordSchema, scopeFromKey } from "./memory-contract";
+import { type MemoryRecord, type MemoryStore, scopeFromKey } from "./memory-contract";
 
 export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
 }
 
-// TODO(cniska): Drop migrateLegacySchema at v1.0.0.
-function migrateLegacySchema(db: Database): void {
-  const hasLegacyTable = db
-    .prepare<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type='table' AND name='distill_records'")
-    .get();
-  if (hasLegacyTable) {
-    db.run("ALTER TABLE distill_records RENAME TO memories");
-    db.run("ALTER TABLE memories RENAME COLUMN tier TO kind");
-    db.run("ALTER TABLE memories ADD COLUMN scope TEXT NOT NULL DEFAULT ''");
-    db.run(`
-      UPDATE memories SET scope = CASE
-        WHEN scope_key LIKE 'sess_%' THEN 'session'
-        WHEN scope_key LIKE 'proj_%' THEN 'project'
-        WHEN scope_key LIKE 'user_%' THEN 'user'
-        ELSE ''
-      END
-    `);
-  }
-  const hasLegacyEmb = db
-    .prepare<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type='table' AND name='distill_embeddings'")
-    .get();
-  if (hasLegacyEmb) {
-    db.run("ALTER TABLE distill_embeddings RENAME TO memory_embeddings");
-    db.run("ALTER TABLE memory_embeddings RENAME COLUMN record_id TO id");
-    db.run("ALTER TABLE memory_embeddings RENAME COLUMN scope_key TO scope");
-  }
-  // Migrate dst_ IDs to mem_ IDs (safe on fresh DBs — WHERE clause matches nothing)
-  if (hasLegacyTable || hasLegacyEmb) {
-    db.run("UPDATE memories SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
-    db.run("UPDATE memory_embeddings SET id = 'mem_' || substr(id, 5) WHERE id LIKE 'dst_%'");
-    db.run("DELETE FROM memory_embeddings WHERE id IN (SELECT id FROM memories WHERE kind = 'reflection')");
-    db.run("DELETE FROM memories WHERE kind = 'reflection'");
-  }
-  // Drop continuation state columns
-  const cols = db.prepare("PRAGMA table_info(memories)").all() as { name: string }[];
-  const names = new Set(cols.map((c) => c.name));
-  if (names.has("current_task")) db.run("ALTER TABLE memories DROP COLUMN current_task");
-  if (names.has("next_step")) db.run("ALTER TABLE memories DROP COLUMN next_step");
-  if (names.size > 0 && !names.has("last_recalled_at")) {
-    db.run("ALTER TABLE memories ADD COLUMN last_recalled_at TEXT");
-  }
-}
-
 function initSchema(db: Database): void {
-  migrateLegacySchema(db);
   db.run(`
     CREATE TABLE IF NOT EXISTS memories (
       id TEXT PRIMARY KEY,
@@ -203,119 +158,7 @@ export function getDefaultMemoryStore(): MemoryStore {
   if (!defaultInstance) {
     defaultInstance = createSqliteMemoryStore();
     log.debug("memory.store.opened");
-    const home = homedir();
-    migrateFromFilesystem(home, defaultInstance).catch((error) => {
-      log.warn("memory.distill.migration_failed", { error: String(error) });
-    });
-    migrateFromMarkdown(home, process.cwd(), defaultInstance).catch((error) => {
-      log.warn("memory.markdown.migration_failed", { error: String(error) });
-    });
     process.on("exit", () => defaultInstance?.close());
   }
   return defaultInstance;
-}
-
-// TODO(cniska): Drop legacy distill filesystem migration at v1.0.0.
-export async function migrateFromFilesystem(homeDir: string, store: MemoryStore): Promise<number> {
-  const distillDir = join(homeDir, ".acolyte", "distill");
-  if (!existsSync(distillDir)) return 0;
-
-  let migrated = 0;
-  const scopeDirs = await readdir(distillDir, { withFileTypes: true });
-  const records: MemoryRecord[] = [];
-  for (const entry of scopeDirs) {
-    if (!entry.isDirectory()) continue;
-    const scope = entry.name;
-    if (!safeScopeKey(scope)) continue;
-    const scopePath = join(distillDir, scope);
-    const files = await readdir(scopePath);
-    for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-      try {
-        const raw = await readFile(join(scopePath, file), "utf8");
-        const json = JSON.parse(raw);
-        if (json.tier && !json.kind) json.kind = json.tier;
-        if (json.sessionId && !json.scopeKey) json.scopeKey = json.sessionId;
-        const parsed = memoryRecordSchema.safeParse(json);
-        if (parsed.success) records.push(parsed.data);
-      } catch {
-        // Skip unreadable files.
-      }
-    }
-  }
-
-  for (const record of records) {
-    await store.write(record, scopeFromKey(record.scopeKey));
-    migrated += 1;
-  }
-
-  const backupPath = join(homeDir, ".acolyte", "distill.bak");
-  if (!existsSync(backupPath)) {
-    await rename(distillDir, backupPath);
-  }
-
-  log.info("memory.distill.migration_done", { migrated });
-  return migrated;
-}
-
-// TODO(cniska): Drop legacy markdown memory migration at v1.0.0.
-export async function migrateFromMarkdown(homeDir: string, cwd: string, store: MemoryStore): Promise<number> {
-  const dirs: { path: string; scope: "user" | "project"; scopeKey: string }[] = [
-    {
-      path: join(homeDir, ".acolyte", "memory", "user"),
-      scope: "user",
-      scopeKey: `user_${new Bun.CryptoHasher("sha1").update(resolve(homeDir)).digest("hex").slice(0, 12)}`,
-    },
-    {
-      path: join(cwd, ".acolyte", "memory", "project"),
-      scope: "project",
-      scopeKey: `proj_${new Bun.CryptoHasher("sha1").update(resolve(cwd)).digest("hex").slice(0, 12)}`,
-    },
-  ];
-
-  let migrated = 0;
-  for (const { path: dir, scope, scopeKey } of dirs) {
-    if (!existsSync(dir)) continue;
-    const files = await readdir(dir);
-    for (const file of files) {
-      if (!file.endsWith(".md")) continue;
-      try {
-        const raw = await readFile(join(dir, file), "utf8");
-        const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-        if (!match) continue;
-        const meta: Record<string, string> = {};
-        for (const line of match[1].split("\n")) {
-          const idx = line.indexOf(":");
-          if (idx <= 0) continue;
-          meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
-        }
-        const id = meta.id?.trim();
-        const createdAt = meta.createdAt?.trim();
-        const content = match[2].trim();
-        if (!id || !createdAt || !content) continue;
-
-        await store.write(
-          {
-            id,
-            scopeKey,
-            kind: "stored",
-            content,
-            createdAt,
-            tokenEstimate: Math.ceil(content.length / 4),
-          },
-          scope,
-        );
-        migrated += 1;
-      } catch {
-        // Skip unreadable files.
-      }
-    }
-    const backupPath = `${dir}.bak`;
-    if (!existsSync(backupPath)) {
-      await rename(dir, backupPath);
-    }
-  }
-
-  if (migrated > 0) log.info("memory.markdown.migration_done", { migrated });
-  return migrated;
 }

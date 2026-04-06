@@ -1,16 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import type { MemoryRecord } from "./memory-contract";
-import { createSqliteMemoryStore, migrateFromFilesystem, migrateFromMarkdown } from "./memory-store";
-import { tempDb, tempDir } from "./test-utils";
+import { createSqliteMemoryStore } from "./memory-store";
+import { tempDb } from "./test-utils";
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-memory-", createSqliteMemoryStore);
-const { createDir, cleanupDirs } = tempDir();
-afterEach(() => {
-  cleanupStores();
-  cleanupDirs();
-});
+afterEach(cleanupStores);
 
 describe("createSqliteMemoryStore", () => {
   test("list returns empty for nonexistent session", async () => {
@@ -314,123 +308,5 @@ describe("embedding storage", () => {
     expect(store.getEmbedding(record.id)).not.toBeNull();
     await store.remove(record.id);
     expect(store.getEmbedding(record.id)).toBeNull();
-  });
-});
-
-describe("migrateFromFilesystem", () => {
-  test("migrates JSON files into SQLite store", async () => {
-    const home = createDir("acolyte-migrate-");
-    const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
-    mkdirSync(scopeDir, { recursive: true });
-
-    // Legacy format uses "tier" not "kind"
-    const legacyRecord = {
-      id: "mem_migr001",
-      scopeKey: "sess_abc123",
-      tier: "observation",
-      content: "migrated fact",
-      createdAt: "2026-03-04T12:00:00.000Z",
-      tokenEstimate: 3,
-    };
-    writeFileSync(join(scopeDir, `${legacyRecord.id}.json`), JSON.stringify(legacyRecord), "utf8");
-
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromFilesystem(home, store);
-    expect(count).toBe(1);
-
-    const records = await store.list({ scopeKey: "sess_abc123" });
-    expect(records).toHaveLength(1);
-    expect(records[0]?.content).toBe("migrated fact");
-
-    // Old directory should be renamed to distill.bak
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(join(home, ".acolyte", "distill"))).toBe(false);
-    expect(existsSync(join(home, ".acolyte", "distill.bak"))).toBe(true);
-  });
-
-  test("returns 0 when no distill directory exists", async () => {
-    const home = createDir("acolyte-migrate-");
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromFilesystem(home, store);
-    expect(count).toBe(0);
-  });
-
-  test("skips invalid JSON files during migration", async () => {
-    const home = createDir("acolyte-migrate-");
-    const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
-    mkdirSync(scopeDir, { recursive: true });
-
-    writeFileSync(join(scopeDir, "mem_broken.json"), "not valid json", "utf8");
-
-    // Legacy format uses "tier" not "kind"
-    const validRecord = {
-      id: "mem_valid001",
-      scopeKey: "sess_abc123",
-      tier: "observation",
-      content: "valid record",
-      createdAt: "2026-03-04T12:00:00.000Z",
-      tokenEstimate: 3,
-    };
-    writeFileSync(join(scopeDir, `${validRecord.id}.json`), JSON.stringify(validRecord), "utf8");
-
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromFilesystem(home, store);
-    expect(count).toBe(1);
-
-    const records = await store.list({ scopeKey: "sess_abc123" });
-    expect(records).toHaveLength(1);
-    expect(records[0]?.content).toBe("valid record");
-  });
-
-  test("renames distill dir even when all files are invalid", async () => {
-    const home = createDir("acolyte-migrate-");
-    const scopeDir = join(home, ".acolyte", "distill", "sess_abc123");
-    mkdirSync(scopeDir, { recursive: true });
-    writeFileSync(join(scopeDir, "mem_broken.json"), "not valid json", "utf8");
-
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromFilesystem(home, store);
-    expect(count).toBe(0);
-
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(join(home, ".acolyte", "distill"))).toBe(false);
-    expect(existsSync(join(home, ".acolyte", "distill.bak"))).toBe(true);
-  });
-});
-
-describe("migrateFromMarkdown", () => {
-  test("migrates markdown memory files into SQLite store", async () => {
-    const home = createDir("acolyte-migrate-md-");
-    const cwd = createDir("acolyte-migrate-cwd-");
-    const userDir = join(home, ".acolyte", "memory", "user");
-    mkdirSync(userDir, { recursive: true });
-    writeFileSync(
-      join(userDir, "mem_abc123.md"),
-      "---\nid: mem_abc123\ncreatedAt: 2026-03-04T12:00:00.000Z\nscope: user\n---\nPrefer concise answers",
-      "utf8",
-    );
-
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromMarkdown(home, cwd, store);
-    expect(count).toBe(1);
-
-    const records = await store.list({ kind: "stored" });
-    expect(records).toHaveLength(1);
-    expect(records[0]?.content).toBe("Prefer concise answers");
-    expect(records[0]?.id).toBe("mem_abc123");
-
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(userDir)).toBe(false);
-    expect(existsSync(`${userDir}.bak`)).toBe(true);
-    store.close();
-  });
-
-  test("returns 0 when no markdown memory directories exist", async () => {
-    const home = createDir("acolyte-migrate-md-");
-    const cwd = createDir("acolyte-migrate-cwd-");
-    const store = createSqliteMemoryStore(join(home, "test.db"));
-    const count = await migrateFromMarkdown(home, cwd, store);
-    expect(count).toBe(0);
-    store.close();
   });
 });
