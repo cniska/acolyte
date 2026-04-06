@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { logLifecycleDebugEntry } from "./server-chat-runtime";
+import { appConfig } from "./app-config";
+import { logLifecycleDebugEntry, runChatRequest } from "./server-chat-runtime";
+import type { StreamErrorPayload } from "./server-contract";
 import { tempDir } from "./test-utils";
 import { createTraceStore } from "./trace-store";
 
@@ -49,5 +51,27 @@ describe("server chat runtime", () => {
     expect(lines[0]?.fields.event).toBe("lifecycle.start");
     expect(lines[0]?.fields.model).toBe("gpt-5");
     store.close();
+  });
+
+  test("vercel provider error mentions AI_GATEWAY_API_KEY", async () => {
+    const savedKey = appConfig.vercel.apiKey;
+    (appConfig.vercel as { apiKey: string | undefined }).apiKey = undefined;
+    try {
+      const errors: StreamErrorPayload[] = [];
+      await runChatRequest(
+        { model: "minimax/minimax-m2.7", message: "hi", history: [] },
+        {
+          path: "/test",
+          method: "POST",
+          onEvent: () => {},
+          onDone: () => {},
+          onError: (payload) => errors.push(payload),
+        },
+      );
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.errorMessage).toContain("AI_GATEWAY_API_KEY");
+    } finally {
+      (appConfig.vercel as { apiKey: string | undefined }).apiKey = savedKey;
+    }
   });
 });
