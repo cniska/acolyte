@@ -43,7 +43,7 @@ export const PERF_SCENARIOS: PerfScenario[] = [
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Lifecycle is a 5-phase request pipeline.");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Lifecycle is a request pipeline.");
     },
   },
   {

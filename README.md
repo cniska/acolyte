@@ -10,17 +10,28 @@ An open-source, terminal-first AI coding agent with a single-pass lifecycle, on-
 
 ![Acolyte CLI](docs/assets/cli.png)
 
-## Quick start
+## Install
 
 ```bash
-bun install
-bun run start init   # prompts for provider API key, writes .env
-bun run dev           # starts server + CLI client
+curl -fsSL https://acolyte.sh/install | sh
 ```
 
-See all commands: `bun run start help`
+Then initialize your provider:
 
-## Validate
+```bash
+acolyte init
+```
+
+## Development
+
+Requires [Bun](https://bun.sh).
+
+```bash
+git clone https://github.com/cniska/acolyte.git
+cd acolyte
+bun install
+bun run dev           # starts server + CLI client
+```
 
 ```bash
 bun run verify        # lint + typecheck + all tests
