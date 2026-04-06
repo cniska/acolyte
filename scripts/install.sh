@@ -37,6 +37,23 @@ main() {
   trap 'rm -rf "$tmpdir"' EXIT
 
   curl -fsSL "$url" -o "${tmpdir}/${asset}"
+
+  sha_url="https://github.com/${REPO}/releases/download/${tag}/${asset%.tar.gz}.sha256"
+  if curl -fsSL "$sha_url" -o "${tmpdir}/checksum.sha256" 2>/dev/null; then
+    expected="$(cut -d ' ' -f 1 "${tmpdir}/checksum.sha256")"
+    if command -v shasum >/dev/null 2>&1; then
+      actual="$(shasum -a 256 "${tmpdir}/${asset}" | cut -d ' ' -f 1)"
+    elif command -v sha256sum >/dev/null 2>&1; then
+      actual="$(sha256sum "${tmpdir}/${asset}" | cut -d ' ' -f 1)"
+    else
+      actual=""
+    fi
+    if [ -n "$actual" ] && [ "$expected" != "$actual" ]; then
+      echo "Checksum mismatch: expected ${expected}, got ${actual}" >&2
+      exit 1
+    fi
+  fi
+
   tar xzf "${tmpdir}/${asset}" -C "$tmpdir"
 
   mkdir -p "$INSTALL_DIR"

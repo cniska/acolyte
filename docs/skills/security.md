@@ -15,11 +15,12 @@ Review security posture, trust boundaries, and unsafe defaults.
 - authorization gaps between clients, sessions, and operations
 - endpoint exposure and listener defaults
 
-### 2. Transport and encryption
+### 2. Transport and integrity
 
 - transport security (HTTP vs HTTPS, WS vs WSS)
 - sensitive payloads traversing insecure channels
 - key/secret handling: env-based sourcing, redacted logs, no plaintext persistence
+- downloaded artifacts (binaries, archives, scripts) must be verified against a checksum before execution
 
 ### 3. Execution boundaries
 

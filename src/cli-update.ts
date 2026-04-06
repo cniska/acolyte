@@ -144,15 +144,43 @@ async function extractBinary(tarPath: string, outDir: string): Promise<string> {
   return join(outDir, "acolyte");
 }
 
+async function verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
+  try {
+    const res = await fetch(checksumUrl, {
+      headers: { "user-agent": "acolyte-cli" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return;
+    const expected = (await res.text()).trim().split(/\s+/)[0];
+    if (!expected) return;
+
+    const hasher = new Bun.CryptoHasher("sha256");
+    const file = Bun.file(filePath);
+    const stream = file.stream();
+    for await (const chunk of stream) {
+      hasher.update(chunk);
+    }
+    const actual = hasher.digest("hex");
+
+    if (expected !== actual) {
+      throw new Error(`Checksum mismatch: expected ${expected}, got ${actual}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Checksum mismatch")) throw error;
+  }
+}
+
 async function installUpdate(downloadUrl: string, onProgress?: ProgressCallback): Promise<InstallResult> {
   const binaryPath = process.execPath;
   const tmp = tmpdir();
   const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
   const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
   const newBinaryPath = `${binaryPath}.new`;
+  const checksumUrl = downloadUrl.replace(/\.tar\.gz$/, ".sha256");
 
   try {
     await downloadToFile(downloadUrl, tarPath, onProgress);
+    await verifyChecksum(tarPath, checksumUrl);
 
     await mkdir(extractDir, { recursive: true });
     const extractedPath = await extractBinary(tarPath, extractDir);
