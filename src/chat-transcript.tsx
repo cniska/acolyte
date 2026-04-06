@@ -9,7 +9,7 @@ import { t, tDynamic } from "./i18n";
 import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/styles";
+import { DEFAULT_COLUMNS } from "./tui/constants";
 
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: "❯ ",

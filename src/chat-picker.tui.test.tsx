@@ -3,7 +3,7 @@ import { ChatInputPanel } from "./chat-input-panel";
 import type { PickerState } from "./chat-picker";
 import { palette } from "./palette";
 import { createSession, dedent } from "./test-utils";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui-test-utils";
 
 function renderInputPanelWithPicker(picker: PickerState, columns = DEFAULT_TERMINAL_WIDTH): string {

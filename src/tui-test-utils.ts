@@ -1,10 +1,10 @@
 import { createElement as h, type ReactNode } from "react";
 import { renderToString } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { createElement } from "./tui/dom";
 import { setOnCommit } from "./tui/host-config";
 import { reconciler } from "./tui/reconciler";
 import { stripAnsi } from "./tui/serialize";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
 
 export const trimRightLines = (value: string): string =>
   value

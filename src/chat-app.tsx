@@ -8,7 +8,7 @@ import { type ChatAppProps, useChatState } from "./chat-state";
 import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
 import { palette } from "./palette";
 import { Box, render, Static, Text, useApp } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/styles";
+import { DEFAULT_COLUMNS } from "./tui/constants";
 
 function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();

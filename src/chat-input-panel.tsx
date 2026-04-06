@@ -6,7 +6,7 @@ import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 import { Box, Text } from "./tui";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;

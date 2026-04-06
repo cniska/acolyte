@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
 import { createClient, createMessageHandlerHarness, createSession, createStore, dedent } from "./test-utils";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui-test-utils";
 
 function renderTranscript(
