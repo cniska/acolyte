@@ -4,13 +4,17 @@ import { ChatHeader } from "./chat-header";
 import { ChatInputPanel } from "./chat-input-panel";
 import { palette } from "./palette";
 import { dedent } from "./test-utils";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
 import { renderPlain } from "./tui-test-utils";
 
 const DEFAULT_FOOTER_CONTEXT = "~/code/acolyte · main";
 
 const noopCursorLine = () => {};
 
-function renderInputPanel(overrides: Partial<ComponentProps<typeof ChatInputPanel>> = {}, columns = 96): string {
+function renderInputPanel(
+  overrides: Partial<ComponentProps<typeof ChatInputPanel>> = {},
+  columns = DEFAULT_TERMINAL_WIDTH,
+): string {
   return renderPlain(
     <ChatInputPanel
       brandColor={palette.brand}

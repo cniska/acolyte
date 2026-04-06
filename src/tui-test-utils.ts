@@ -4,6 +4,7 @@ import { createElement } from "./tui/dom";
 import { setOnCommit } from "./tui/host-config";
 import { reconciler } from "./tui/reconciler";
 import { stripAnsi } from "./tui/serialize";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
 
 export const trimRightLines = (value: string): string =>
   value
@@ -21,7 +22,7 @@ export function withTerminalWidth(width: number, run: () => string): string {
   }
 }
 
-export function renderPlain(node: ReactNode, columns = 96): string {
+export function renderPlain(node: ReactNode, columns = DEFAULT_TERMINAL_WIDTH): string {
   const rendered = withTerminalWidth(columns, () => renderToString(node));
   return trimRightLines(stripAnsi(rendered)).replace(/^\n+/, "").replace(/\n+$/, "");
 }

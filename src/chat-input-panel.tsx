@@ -6,6 +6,7 @@ import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 import { Box, Text } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/styles";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;
@@ -31,8 +32,6 @@ type ChatInputPanelProps = {
 const noop = (): void => {};
 
 const SLASH_COMMAND_COLUMN_WIDTH = 16;
-
-const DEFAULT_TERMINAL_WIDTH = 96;
 
 function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boolean }): boolean {
   if (input.hasSuggestions) return false;
