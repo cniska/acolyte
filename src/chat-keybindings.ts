@@ -169,8 +169,8 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         !browsingInputHistory &&
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
       const onFirstLine = input.cursorLineRef.current === 0;
-      const historyTriggerUp = (key.upArrow && onFirstLine) || (key.ctrl && keyInput === "p");
-      const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
+      const historyTriggerUp = key.upArrow && onFirstLine;
+      const historyTriggerDown = key.downArrow;
       if (!suggestionNavActive && historyTriggerUp) {
         if (!shouldCycleInputHistory(input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);
