@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { type Migration, migrateUp } from "./db-migrate";
 import { log } from "./log";
 
 export interface ToolCacheStore {
@@ -12,30 +13,31 @@ export interface ToolCacheStore {
   close(): void;
 }
 
-function initSchema(db: Database): void {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS tool_cache (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS tool_cache_paths (
-      key TEXT NOT NULL,
-      path TEXT NOT NULL,
-      PRIMARY KEY (key, path)
-    )
-  `);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_cache_path ON tool_cache_paths(path)`);
-}
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    up: `
+      CREATE TABLE IF NOT EXISTS tool_cache (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS tool_cache_paths (
+        key TEXT NOT NULL,
+        path TEXT NOT NULL,
+        PRIMARY KEY (key, path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_cache_path ON tool_cache_paths(path);
+    `,
+  },
+];
 
 export function createToolCacheStore(dbPath?: string): ToolCacheStore {
   const resolvedPath = dbPath ?? join(homedir(), ".acolyte", "tool.db");
   mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
-  initSchema(db);
+  migrateUp(db, MIGRATIONS);
   log.debug("tool.cache.store_opened", { path: resolvedPath });
 
   const getStmt = db.prepare<{ value: string }, [string]>("SELECT value FROM tool_cache WHERE key = ?");

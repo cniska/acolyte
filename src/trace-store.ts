@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { type Migration, migrateUp } from "./db-migrate";
 import type { LogLine, TaskSummary } from "./log-parser";
 
 const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence"]);
@@ -23,22 +24,25 @@ export interface TraceStore {
   close(): void;
 }
 
-function initSchema(db: Database): void {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS trace_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      task_id TEXT,
-      request_id TEXT,
-      session_id TEXT,
-      event TEXT,
-      sequence INTEGER,
-      fields_json TEXT NOT NULL DEFAULT '{}'
-    )
-  `);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_task ON trace_events(task_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_ts ON trace_events(timestamp DESC)`);
-}
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    up: `
+      CREATE TABLE IF NOT EXISTS trace_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        task_id TEXT,
+        request_id TEXT,
+        session_id TEXT,
+        event TEXT,
+        sequence INTEGER,
+        fields_json TEXT NOT NULL DEFAULT '{}'
+      );
+      CREATE INDEX IF NOT EXISTS idx_trace_task ON trace_events(task_id);
+      CREATE INDEX IF NOT EXISTS idx_trace_ts ON trace_events(timestamp DESC);
+    `,
+  },
+];
 
 type TraceRow = {
   timestamp: string;
@@ -132,7 +136,7 @@ export function createTraceStore(dbPath?: string): TraceStore {
   mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
-  initSchema(db);
+  migrateUp(db, MIGRATIONS);
 
   const writeStmt = db.prepare<
     void,

@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { type Migration, migrateUp } from "./db-migrate";
 import { log } from "./log";
 import { type MemoryRecord, type MemoryStore, scopeFromKey } from "./memory-contract";
 
@@ -9,30 +10,31 @@ export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
 }
 
-function initSchema(db: Database): void {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS memories (
-      id TEXT PRIMARY KEY,
-      scope TEXT NOT NULL,
-      scope_key TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      token_estimate INTEGER NOT NULL,
-      last_recalled_at TEXT
-    )
-  `);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_memories_scope_key ON memories(scope_key)`);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS memory_embeddings (
-      id TEXT PRIMARY KEY,
-      scope TEXT NOT NULL,
-      embedding BLOB NOT NULL
-    )
-  `);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_embeddings_scope ON memory_embeddings(scope)`);
-}
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    up: `
+      CREATE TABLE IF NOT EXISTS memories (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        scope_key TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        token_estimate INTEGER NOT NULL,
+        last_recalled_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope);
+      CREATE INDEX IF NOT EXISTS idx_memories_scope_key ON memories(scope_key);
+      CREATE TABLE IF NOT EXISTS memory_embeddings (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        embedding BLOB NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_embeddings_scope ON memory_embeddings(scope);
+    `,
+  },
+];
 
 type MemoryRow = {
   id: string;
@@ -62,7 +64,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");
-  initSchema(db);
+  migrateUp(db, MIGRATIONS);
 
   const listByScopeStmt = db.prepare<MemoryRow, [string]>(
     "SELECT * FROM memories WHERE scope_key = ? ORDER BY created_at ASC",
