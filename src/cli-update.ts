@@ -8,26 +8,14 @@ import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
 import { printOutput } from "./ui";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 type UpdateInfo = { available: boolean; latest: string; downloadUrl: string };
 type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string };
 type GitHubRelease = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
 type InstallResult = { success: boolean; error?: string };
-
-// ---------------------------------------------------------------------------
-// Version comparison
-// ---------------------------------------------------------------------------
 
 export function resolveAssetName(): string {
   const platform = process.platform === "darwin" ? "darwin" : "linux";
@@ -47,10 +35,6 @@ export function compareSemver(current: string, latest: string): boolean {
   if (lMinor !== cMinor) return lMinor > cMinor;
   return lPatch > cPatch;
 }
-
-// ---------------------------------------------------------------------------
-// Update check (with 24h cache)
-// ---------------------------------------------------------------------------
 
 function cachePath(homeDir: string): string {
   return join(homeDir, ".acolyte", "update-check.json");
@@ -122,10 +106,6 @@ async function checkForUpdate(
     downloadUrl: asset.browser_download_url,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Binary download and self-replace
-// ---------------------------------------------------------------------------
 
 type ProgressCallback = (received: number, total: number) => void;
 
@@ -204,10 +184,6 @@ async function installUpdate(downloadUrl: string, onProgress?: ProgressCallback)
   }
 }
 
-// ---------------------------------------------------------------------------
-// Progress UI
-// ---------------------------------------------------------------------------
-
 const BRAND = colorToFg(palette.brand);
 const GREEN = colorToFg(palette.green);
 const RED = colorToFg(palette.red);
@@ -246,10 +222,6 @@ function renderError(message: string): void {
   stdout.write(`  ${RED}Update failed: ${message}${ansi.reset}\n\n`);
   stdout.write(ansi.cursorShow);
 }
-
-// ---------------------------------------------------------------------------
-// Orchestration
-// ---------------------------------------------------------------------------
 
 function reexec(): never {
   Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
