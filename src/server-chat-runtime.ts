@@ -134,6 +134,7 @@ function resolveWorkspacePath(request: Pick<ChatRequest, "workspace">): Workspac
 function providerConfigurationHint(provider: Provider): string {
   if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
   if (provider === "google") return "Set GOOGLE_API_KEY.";
+  if (provider === "vercel") return "Set AI_GATEWAY_API_KEY.";
   return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
 }
 
@@ -145,6 +146,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     openai: { apiKey: OPENAI_API_KEY, baseUrl: OPENAI_BASE_URL },
     anthropic: appConfig.anthropic,
     google: appConfig.google,
+    vercel: appConfig.vercel,
   };
   const providerReady = isProviderAvailable(modelProvider, providerCredentials[modelProvider] ?? {});
   if (!providerReady) {
