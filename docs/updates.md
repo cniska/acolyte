@@ -11,7 +11,7 @@ Skip the check with `--skip-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check wi
 ## Version compatibility
 
 - **Protocol** — the client-server protocol is versioned. Server and client validate the protocol version on connection and reject mismatches cleanly.
-- **Database schemas** — SQLite stores (memory, trace, cache) will use forward migrations when schemas change. No migration framework exists yet — it will be added when the first schema change requires one.
+- **Database schemas** — SQLite stores (memory, trace, cache) use versioned forward migrations (`db-migrate.ts`). Each store defines a migrations array; pending migrations run automatically on startup within transactions. Migrations are cumulative — if a user skips several versions, all intermediate migrations run in sequence.
 - **Configuration** — same approach. Config migrations will be added when a release changes the config format.
 
 ## Versioning
