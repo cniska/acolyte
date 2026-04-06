@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -151,6 +151,55 @@ describe("server daemon internals", () => {
       ).resolves.toEqual({ port: server.port, pid: 0, started: false });
     } finally {
       server.stop();
+    }
+  });
+
+  test("ensureLocalServer recovers from a stale startup lock with a live owner pid", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const reservation = startTestServer(() => new Response("reserved"));
+    const port = reservation.port;
+    reservation.stop();
+    const startLockPath = serverDaemonInternals.startupLockPath(port, home);
+    await mkdir(join(startLockPath, ".."), { recursive: true });
+    await writeFile(startLockPath, String(process.pid), "utf8");
+    const staleAt = new Date(Date.now() - 60_000);
+    await utimes(startLockPath, staleAt, staleAt);
+
+    const serverEntry = join(home, "status-server.ts");
+    await writeFile(
+      serverEntry,
+      [
+        "Bun.serve({",
+        "  port: Number(process.env.PORT),",
+        "  fetch(request) {",
+        '    if (new URL(request.url).pathname === "/v1/status") {',
+        `      return Response.json({ ok: true, protocol_version: ${JSON.stringify(PROTOCOL_VERSION)} });`,
+        "    }",
+        '    return new Response("ok");',
+        "  },",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+
+    let startedPid: number | null = null;
+    try {
+      const result = await ensureLocalServer({
+        port,
+        apiKey: undefined,
+        serverEntry,
+        homeDir: home,
+        timeoutMs: 1_500,
+      });
+      startedPid = result.pid;
+      expect(result.port).toBe(port);
+      expect(result.started).toBe(true);
+      expect(result.pid).toBeGreaterThan(0);
+      await expect(Bun.file(startLockPath).exists()).resolves.toBe(false);
+    } finally {
+      if (startedPid !== null && startedPid > 0) {
+        await stopLocalServer({ port, homeDir: home });
+      }
     }
   });
 

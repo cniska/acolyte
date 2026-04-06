@@ -1,5 +1,5 @@
 import { closeSync, openSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { PROTOCOL_VERSION } from "./protocol";
 const DEFAULT_PORT = 6767;
 const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
+const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 
 type ServerLock = {
   pid: number;
@@ -20,7 +21,19 @@ type ServerLock = {
   startedAt: IsoDateTimeString;
 };
 
+type StartupLock = {
+  pid: number;
+  port: number;
+  startedAt: IsoDateTimeString;
+};
+
 const serverLockSchema = z.object({
+  pid: z.number().int().positive(),
+  port: z.number().int().positive(),
+  startedAt: isoDateTimeSchema,
+});
+
+const startupLockSchema = z.object({
   pid: z.number().int().positive(),
   port: z.number().int().positive(),
   startedAt: isoDateTimeSchema,
@@ -140,11 +153,19 @@ async function waitForHealthyServer(apiUrl: string, apiKey: string | undefined, 
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
-async function tryAcquireStartupLock(path: string): Promise<boolean> {
+async function tryAcquireStartupLock(path: string, port: number): Promise<boolean> {
   await mkdir(join(path, ".."), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      await writeFile(path, String(process.pid), { flag: "wx", mode: PRIVATE_FILE_MODE });
+      await writeFile(
+        path,
+        JSON.stringify({
+          pid: process.pid,
+          port,
+          startedAt: new Date().toISOString(),
+        } satisfies StartupLock),
+        { flag: "wx", mode: PRIVATE_FILE_MODE },
+      );
       return true;
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -160,18 +181,59 @@ async function releaseStartupLock(path: string): Promise<void> {
   await rm(path, { force: true });
 }
 
-async function clearStaleStartupLock(path: string): Promise<boolean> {
-  let ownerPid: number | null = null;
+async function readStartupLock(path: string): Promise<StartupLock | number | null> {
   try {
     const raw = (await readFile(path, "utf8")).trim();
-    const parsed = Number(raw);
-    if (Number.isInteger(parsed) && parsed > 0) ownerPid = parsed;
+    const parsedPid = Number(raw);
+    if (Number.isInteger(parsedPid) && parsedPid > 0) return parsedPid;
+    const parsedJson = startupLockSchema.safeParse(JSON.parse(raw));
+    if (parsedJson.success) return parsedJson.data;
   } catch {
-    // If we can't read/parse lock owner, treat it as stale and try removing it.
+    return null;
   }
-  if (ownerPid && isProcessAlive(ownerPid)) return false;
+  return null;
+}
+
+async function startupLockAgeMs(path: string, lock: StartupLock | number): Promise<number | null> {
+  if (typeof lock !== "number") {
+    const startedAt = Date.parse(lock.startedAt);
+    if (Number.isFinite(startedAt)) return Math.max(0, Date.now() - startedAt);
+  }
+  try {
+    const file = await stat(path);
+    return Math.max(0, Date.now() - file.mtimeMs);
+  } catch {
+    return null;
+  }
+}
+
+async function clearStaleStartupLock(path: string, maxAgeMs?: number): Promise<boolean> {
+  const lock = await readStartupLock(path);
+  const ownerPid = typeof lock === "number" ? lock : (lock?.pid ?? null);
+  if (ownerPid && isProcessAlive(ownerPid)) {
+    if (maxAgeMs === undefined) return false;
+    const ageMs = await startupLockAgeMs(path, lock);
+    if (ageMs === null || ageMs < maxAgeMs) return false;
+  }
+  if (lock === null && (await Bun.file(path).exists()) === false) return false;
   await rm(path, { force: true });
   return true;
+}
+
+async function waitForHealthyServerOrStaleStartupLock(
+  apiUrl: string,
+  apiKey: string | undefined,
+  timeoutMs: number,
+  startLockPath: string,
+  staleLockMaxAgeMs = STARTUP_LOCK_MAX_AGE_MS,
+): Promise<"healthy" | "retry"> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await isServerHealthy(apiUrl, apiKey)) return "healthy";
+    if (await clearStaleStartupLock(startLockPath, staleLockMaxAgeMs)) return "retry";
+    await Bun.sleep(120);
+  }
+  throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
 async function cleanupLegacyLocks(homeDir = homedir()): Promise<void> {
@@ -206,9 +268,12 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
     return { port, pid: 0, started: false };
   }
 
-  const startupClaimed = await tryAcquireStartupLock(startLockPath);
+  const startupClaimed = await tryAcquireStartupLock(startLockPath, port);
   if (!startupClaimed) {
-    await waitForHealthyServer(apiUrl, apiKey, timeoutMs);
+    const waitResult = await waitForHealthyServerOrStaleStartupLock(apiUrl, apiKey, timeoutMs, startLockPath);
+    if (waitResult === "retry") {
+      return ensureLocalServer(input);
+    }
     const waitedLock = await readServerLock(lockPath);
     return { port, pid: waitedLock?.pid ?? 0, started: false };
   }
