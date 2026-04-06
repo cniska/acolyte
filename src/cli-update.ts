@@ -1,9 +1,255 @@
-import { checkForUpdate } from "./cli-update-check";
-import { installUpdate } from "./cli-update-install";
-import { renderUpdateDone, renderUpdateError, renderUpdateHeader, renderUpdateProgress } from "./cli-update-ui";
+import { chmod, copyFile, mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
+import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
+import { palette } from "./palette";
 import { stopAllLocalServers } from "./server-daemon";
+import { ansi, colorToFg } from "./tui/styles";
 import { printDim, printOutput } from "./ui";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
+const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 5_000;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type UpdateInfo = { available: boolean; latest: string; downloadUrl: string };
+type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string };
+type GitHubRelease = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
+type InstallResult = { success: boolean; error?: string };
+
+// ---------------------------------------------------------------------------
+// Version comparison
+// ---------------------------------------------------------------------------
+
+export function resolveAssetName(): string {
+  const platform = process.platform === "darwin" ? "darwin" : "linux";
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  return `acolyte-${platform}-${arch}.tar.gz`;
+}
+
+export function compareSemver(current: string, latest: string): boolean {
+  const parse = (v: string): number[] =>
+    v
+      .replace(/^v/, "")
+      .split(".")
+      .map((n) => Number.parseInt(n, 10) || 0);
+  const [cMajor = 0, cMinor = 0, cPatch = 0] = parse(current);
+  const [lMajor = 0, lMinor = 0, lPatch = 0] = parse(latest);
+  if (lMajor !== cMajor) return lMajor > cMajor;
+  if (lMinor !== cMinor) return lMinor > cMinor;
+  return lPatch > cPatch;
+}
+
+// ---------------------------------------------------------------------------
+// Update check (with 24h cache)
+// ---------------------------------------------------------------------------
+
+function cachePath(homeDir: string): string {
+  return join(homeDir, ".acolyte", "update-check.json");
+}
+
+async function readCache(homeDir: string): Promise<CachedCheck | null> {
+  try {
+    const raw = await readFile(cachePath(homeDir), "utf8");
+    return JSON.parse(raw) as CachedCheck;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(homeDir: string, data: CachedCheck): Promise<void> {
+  const dir = join(homeDir, ".acolyte");
+  await mkdir(dir, { recursive: true });
+  await writeFile(cachePath(homeDir), JSON.stringify(data), "utf8");
+}
+
+async function fetchLatestRelease(): Promise<GitHubRelease | null> {
+  try {
+    const res = await fetch(GITHUB_API, {
+      headers: { accept: "application/vnd.github+json", "user-agent": "acolyte-cli" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as GitHubRelease;
+  } catch {
+    return null;
+  }
+}
+
+async function checkForUpdate(
+  currentVersion: string,
+  options?: { force?: boolean; homeDir?: string },
+): Promise<UpdateInfo | null> {
+  const home = options?.homeDir ?? homedir();
+  const force = options?.force ?? false;
+
+  if (!force) {
+    const cached = await readCache(home);
+    if (cached) {
+      const age = Date.now() - new Date(cached.checkedAt).getTime();
+      if (age < CHECK_INTERVAL_MS) {
+        const available = compareSemver(currentVersion, cached.latest);
+        return { available, latest: cached.latest, downloadUrl: cached.downloadUrl };
+      }
+    }
+  }
+
+  const release = await fetchLatestRelease();
+  if (!release) return null;
+
+  const version = release.tag_name.replace(/^v/, "");
+  const assetName = resolveAssetName();
+  const asset = release.assets.find((a) => a.name === assetName);
+  if (!asset) return null;
+
+  await writeCache(home, {
+    checkedAt: new Date().toISOString(),
+    latest: version,
+    downloadUrl: asset.browser_download_url,
+  });
+
+  return {
+    available: compareSemver(currentVersion, version),
+    latest: version,
+    downloadUrl: asset.browser_download_url,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Binary download and self-replace
+// ---------------------------------------------------------------------------
+
+type ProgressCallback = (received: number, total: number) => void;
+
+async function downloadToFile(url: string, dest: string, onProgress?: ProgressCallback): Promise<void> {
+  const res = await fetch(url, {
+    headers: { "user-agent": "acolyte-cli" },
+    redirect: "follow",
+  });
+  if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
+
+  const total = Number(res.headers.get("content-length") ?? 0);
+  let received = 0;
+
+  const file = Bun.file(dest);
+  const writer = file.writer();
+
+  for await (const chunk of res.body) {
+    writer.write(chunk);
+    received += chunk.byteLength;
+    if (onProgress && total > 0) onProgress(received, total);
+  }
+
+  await writer.end();
+}
+
+async function extractBinary(tarPath: string, outDir: string): Promise<string> {
+  const proc = Bun.spawn(["tar", "xzf", tarPath, "-C", outDir], {
+    stdout: "ignore",
+    stderr: "pipe",
+  });
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text();
+    throw new Error(`Extract failed (exit ${exitCode}): ${stderr}`);
+  }
+  return join(outDir, "acolyte");
+}
+
+async function installUpdate(downloadUrl: string, onProgress?: ProgressCallback): Promise<InstallResult> {
+  const binaryPath = process.execPath;
+  const tmp = tmpdir();
+  const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
+  const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
+  const newBinaryPath = `${binaryPath}.new`;
+
+  try {
+    await downloadToFile(downloadUrl, tarPath, onProgress);
+
+    await mkdir(extractDir, { recursive: true });
+    const extractedPath = await extractBinary(tarPath, extractDir);
+
+    await copyFile(extractedPath, newBinaryPath);
+    await chmod(newBinaryPath, 0o755);
+    await rename(newBinaryPath, binaryPath);
+
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    try {
+      await unlink(newBinaryPath);
+    } catch {
+      // ignore
+    }
+    return { success: false, error: message };
+  } finally {
+    try {
+      await unlink(tarPath);
+    } catch {
+      // ignore
+    }
+    try {
+      await rm(extractDir, { recursive: true, force: true });
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Progress UI
+// ---------------------------------------------------------------------------
+
+const BRAND = colorToFg(palette.brand);
+const GREEN = colorToFg(palette.green);
+const RED = colorToFg(palette.red);
+const BAR_FILL = "\u2588";
+const BAR_EMPTY = "\u2591";
+
+function progressBar(fraction: number, width: number): string {
+  const filled = Math.round(fraction * width);
+  const empty = width - filled;
+  return `${BRAND}${BAR_FILL.repeat(filled)}${ansi.dim}${BAR_EMPTY.repeat(empty)}${ansi.reset}`;
+}
+
+function renderHeader(current: string, latest: string): void {
+  stdout.write(ansi.cursorHide);
+  stdout.write(
+    `\n  ${BRAND}Acolyte${ansi.reset} ${ansi.dim}v${current}${ansi.reset} \u2192 ${ansi.dim}v${latest}${ansi.reset}\n\n`,
+  );
+  stdout.write(`  Downloading  ${progressBar(0, 20)}   0%\n`);
+}
+
+function renderProgress(received: number, total: number): void {
+  const fraction = total > 0 ? Math.min(received / total, 1) : 0;
+  const percent = Math.round(fraction * 100);
+  stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
+  stdout.write(`  Downloading  ${progressBar(fraction, 20)}  ${String(percent).padStart(3)}%\n`);
+}
+
+function renderDone(latest: string): void {
+  stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
+  stdout.write(`  ${GREEN}Updated to v${latest}${ansi.reset}\n\n`);
+  stdout.write(ansi.cursorShow);
+}
+
+function renderError(message: string): void {
+  stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
+  stdout.write(`  ${RED}Update failed: ${message}${ansi.reset}\n\n`);
+  stdout.write(ansi.cursorShow);
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
 
 function reexec(): never {
   Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
@@ -12,6 +258,23 @@ function reexec(): never {
     stderr: "inherit",
   });
   process.exit(0);
+}
+
+async function performUpdate(currentVersion: string, latest: string, downloadUrl: string): Promise<void> {
+  renderHeader(currentVersion, latest);
+
+  const result = await installUpdate(downloadUrl, (received, total) => {
+    renderProgress(received, total);
+  });
+
+  if (!result.success) {
+    renderError(result.error ?? "unknown error");
+    return;
+  }
+
+  renderDone(latest);
+  await stopAllLocalServers();
+  reexec();
 }
 
 export async function updateMode(): Promise<void> {
@@ -46,22 +309,4 @@ export async function checkAndUpdateOnStartup(): Promise<boolean> {
 
   await performUpdate(currentVersion, update.latest, update.downloadUrl);
   return true;
-}
-
-async function performUpdate(currentVersion: string, latest: string, downloadUrl: string): Promise<void> {
-  renderUpdateHeader(currentVersion, latest);
-
-  const result = await installUpdate(downloadUrl, (received, total) => {
-    renderUpdateProgress(received, total);
-  });
-
-  if (!result.success) {
-    renderUpdateError(result.error ?? "unknown error");
-    return;
-  }
-
-  renderUpdateDone(latest);
-
-  await stopAllLocalServers();
-  reexec();
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compareSemver, resolveAssetName } from "./cli-update-check";
+import { compareSemver, resolveAssetName } from "./cli-update";
 
 describe("compareSemver", () => {
   test("returns true when latest is newer (patch)", () => {
