@@ -1,12 +1,12 @@
-type HighlightKind = "plain" | "code" | "bold" | "path";
+type MarkupTokenKind = "plain" | "code" | "bold" | "path";
 
-export type HighlightToken = {
+export type MarkupToken = {
   text: string;
-  kind: HighlightKind;
+  kind: MarkupTokenKind;
 };
 
 type TokenRule = {
-  kind: Exclude<HighlightKind, "plain" | "path">;
+  kind: Exclude<MarkupTokenKind, "plain" | "path">;
   pattern: RegExp;
 };
 
@@ -74,15 +74,15 @@ function looksLikePathRef(token: string): boolean {
   return CODE_EXTENSIONS.has(fileMatch[2]?.toLowerCase() ?? "");
 }
 
-function classifyMatch(text: string): HighlightKind {
+function classifyMatch(text: string): MarkupTokenKind {
   for (const rule of TOKEN_RULES) {
     if (rule.pattern.test(text)) return rule.kind;
   }
   return "plain";
 }
 
-function tokenizePlainSegment(text: string): HighlightToken[] {
-  const tokens: HighlightToken[] = [];
+function tokenizePlainSegment(text: string): MarkupToken[] {
+  const tokens: MarkupToken[] = [];
   const chunks = text.split(/(\s+)/).filter((c) => c.length > 0);
   for (const chunk of chunks) {
     if (/^\s+$/.test(chunk)) {
@@ -95,8 +95,8 @@ function tokenizePlainSegment(text: string): HighlightToken[] {
   return tokens;
 }
 
-export function tokenizeForHighlighting(line: string): HighlightToken[] {
-  const tokens: HighlightToken[] = [];
+export function tokenize(line: string): MarkupToken[] {
+  const tokens: MarkupToken[] = [];
   let lastIndex = 0;
   for (const match of line.matchAll(COMBINED_TOKEN_PATTERN)) {
     const start = match.index;

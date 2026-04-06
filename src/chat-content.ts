@@ -1,4 +1,4 @@
-export { type HighlightToken, tokenizeForHighlighting } from "./chat-tokenizer";
+export { type MarkupToken, tokenize } from "./chat-tokenizer";
 
 export function sanitizeAssistantContent(content: string): string {
   const cleaned = content

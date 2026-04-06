@@ -1,6 +1,6 @@
 import React from "react";
 import { unreachable } from "./assert";
-import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
+import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { Text } from "./tui";
 
 export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
@@ -13,7 +13,7 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
       {lines.map((line) => {
         const lineKey = `assistant-line-${lineOffset}-${line}`;
         const showBreak = lineOffset > 0;
-        const tokens = tokenizeForHighlighting(line);
+        const tokens = tokenize(line);
         let tokenOffset = 0;
         const renderedTokens = tokens.map((token) => {
           const tokenKey = `${lineKey}-token-${tokenOffset}-${token.kind}-${token.text}`;

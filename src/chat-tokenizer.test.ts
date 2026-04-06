@@ -1,18 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { tokenizeForHighlighting } from "./chat-tokenizer";
+import { tokenize } from "./chat-tokenizer";
 
 function kinds(line: string): string[] {
-  return tokenizeForHighlighting(line).map((t) => t.kind);
+  return tokenize(line).map((t) => t.kind);
 }
 
 function texts(line: string): string[] {
-  return tokenizeForHighlighting(line).map((t) => t.text);
+  return tokenize(line).map((t) => t.text);
 }
 
-describe("tokenizeForHighlighting", () => {
+describe("tokenize", () => {
   describe("plain text", () => {
     test("plain text returns single token", () => {
-      expect(tokenizeForHighlighting("hello world")).toEqual([
+      expect(tokenize("hello world")).toEqual([
         { text: "hello", kind: "plain" },
         { text: " ", kind: "plain" },
         { text: "world", kind: "plain" },
@@ -20,7 +20,7 @@ describe("tokenizeForHighlighting", () => {
     });
 
     test("empty string returns empty array", () => {
-      expect(tokenizeForHighlighting("")).toEqual([]);
+      expect(tokenize("")).toEqual([]);
     });
 
     test("preserves multiple spaces", () => {
@@ -30,7 +30,7 @@ describe("tokenizeForHighlighting", () => {
 
   describe("code tokens", () => {
     test("backtick-delimited code", () => {
-      const tokens = tokenizeForHighlighting("run `bun test` now");
+      const tokens = tokenize("run `bun test` now");
       expect(tokens).toEqual([
         { text: "run", kind: "plain" },
         { text: " ", kind: "plain" },
@@ -49,7 +49,7 @@ describe("tokenizeForHighlighting", () => {
     });
 
     test("multiple code spans", () => {
-      const tokens = tokenizeForHighlighting("`a` and `b`");
+      const tokens = tokenize("`a` and `b`");
       expect(tokens.filter((t) => t.kind === "code").map((t) => t.text)).toEqual(["`a`", "`b`"]);
     });
 
@@ -60,7 +60,7 @@ describe("tokenizeForHighlighting", () => {
 
   describe("bold tokens", () => {
     test("double-star bold", () => {
-      const tokens = tokenizeForHighlighting("this is **important** stuff");
+      const tokens = tokenize("this is **important** stuff");
       expect(tokens).toEqual([
         { text: "this", kind: "plain" },
         { text: " ", kind: "plain" },
@@ -77,7 +77,7 @@ describe("tokenizeForHighlighting", () => {
     });
 
     test("bold and code in same line", () => {
-      const tokens = tokenizeForHighlighting("use **bold** and `code`");
+      const tokens = tokenize("use **bold** and `code`");
       const tagged = tokens.filter((t) => t.kind !== "plain");
       expect(tagged).toEqual([
         { text: "**bold**", kind: "bold" },
@@ -96,7 +96,7 @@ describe("tokenizeForHighlighting", () => {
     });
 
     test("path with line number", () => {
-      const tokens = tokenizeForHighlighting("at src/foo.ts:42");
+      const tokens = tokenize("at src/foo.ts:42");
       expect(tokens.find((t) => t.kind === "path")?.text).toBe("src/foo.ts:42");
     });
 
@@ -105,7 +105,7 @@ describe("tokenizeForHighlighting", () => {
     });
 
     test("path inside parentheses", () => {
-      const tokens = tokenizeForHighlighting("(src/foo.ts)");
+      const tokens = tokenize("(src/foo.ts)");
       expect(tokens.find((t) => t.kind === "path")?.text).toBe("(src/foo.ts)");
     });
 
@@ -126,7 +126,7 @@ describe("tokenizeForHighlighting", () => {
 
   describe("mixed content", () => {
     test("code, bold, path, and plain in one line", () => {
-      const tokens = tokenizeForHighlighting("**Fix** `runLifecycle` in src/lifecycle.ts now");
+      const tokens = tokenize("**Fix** `runLifecycle` in src/lifecycle.ts now");
       const tagged = tokens.filter((t) => t.kind !== "plain");
       expect(tagged.map((t) => t.kind)).toEqual(["bold", "code", "path"]);
     });
