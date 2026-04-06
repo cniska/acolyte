@@ -8,8 +8,6 @@ import { printOutput } from "./ui";
 const CLI_VERSION = resolveCliVersion();
 const CLI_VERSION_OUTPUT = formatVersionWithCommit(CLI_VERSION, resolveCliCommitShort());
 
-const SKIP_UPDATE_COMMANDS = new Set(["help", "--help", "-h", "version", "--version", "-V", "update"]);
-
 function isTopLevelHelpCommand(command: string | undefined): boolean {
   return command === "help" || command === "--help" || command === "-h";
 }
@@ -21,9 +19,11 @@ function isTopLevelVersionCommand(command: string | undefined): boolean {
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
-  if (!SKIP_UPDATE_COMMANDS.has(command ?? "")) {
+  if (!command) {
     const updated = await checkAndUpdateOnStartup();
     if (updated) return;
+    await chatModeWithOptions({ resumeLatest: false });
+    return;
   }
 
   if (isTopLevelHelpCommand(command)) {
@@ -32,11 +32,6 @@ async function main(): Promise<void> {
   }
   if (isTopLevelVersionCommand(command)) {
     printOutput(CLI_VERSION_OUTPUT);
-    return;
-  }
-
-  if (!command) {
-    await chatModeWithOptions({ resumeLatest: false });
     return;
   }
 

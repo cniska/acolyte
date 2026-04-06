@@ -6,7 +6,7 @@ import { resolveCliVersion } from "./cli-version";
 import { palette } from "./palette";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
-import { printDim, printOutput } from "./ui";
+import { printOutput } from "./ui";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -279,9 +279,6 @@ async function performUpdate(currentVersion: string, latest: string, downloadUrl
 
 export async function updateMode(): Promise<void> {
   const currentVersion = resolveCliVersion();
-  printDim(`Current version: ${currentVersion}`);
-  printDim("Checking for updates...");
-
   const update = await checkForUpdate(currentVersion, { force: true });
 
   if (!update) {

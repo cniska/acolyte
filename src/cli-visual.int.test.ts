@@ -126,6 +126,13 @@ describe("cli visual regression", () => {
     );
   });
 
+  test("update command prints up-to-date or network error", async () => {
+    const out = await runCliPlain(["update"]);
+    const isUpToDate = out.includes("Already up to date");
+    const isNetworkError = out.includes("Could not check for updates");
+    expect(isUpToDate || isNetworkError).toBe(true);
+  });
+
   test("history command renders aligned session rows", async () => {
     await withCliTestEnv(async ({ run, writeSessionsStore }) => {
       await writeSessionsStore({
