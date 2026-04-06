@@ -10,22 +10,22 @@ import { createId } from "./short-id";
 const DATA_DIR = join(homedir(), ".acolyte");
 const STORE_PATH = join(DATA_DIR, "sessions.json");
 
-const EMPTY_STORE: SessionState = { sessions: [] };
+const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
 
-export function normalizeStore(input: SessionState): SessionState {
+export function parseSessionState(input: SessionState): SessionState {
   const result = sessionStateSchema.safeParse(input);
-  return result.success ? result.data : EMPTY_STORE;
+  return result.success ? result.data : DEFAULT_SESSION_STATE;
 }
 
 export async function readStore(): Promise<SessionState> {
-  if (!existsSync(STORE_PATH)) return EMPTY_STORE;
+  if (!existsSync(STORE_PATH)) return DEFAULT_SESSION_STATE;
 
   try {
     const raw = await readFile(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw) as SessionState;
-    return normalizeStore(parsed);
+    return parseSessionState(parsed);
   } catch {
-    return EMPTY_STORE;
+    return DEFAULT_SESSION_STATE;
   }
 }
 

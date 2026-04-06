@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeStore } from "./storage";
+import { parseSessionState } from "./storage";
 
 describe("storage", () => {
-  test("normalizeStore drops sessions missing tokenUsage", () => {
-    const normalized = normalizeStore({
+  test("parseSessionState drops sessions missing tokenUsage", () => {
+    const normalized = parseSessionState({
       activeSessionId: "sess_1",
       sessions: [
         {
@@ -20,8 +20,8 @@ describe("storage", () => {
     expect(normalized.sessions).toHaveLength(0);
   });
 
-  test("normalizeStore preserves existing tokenUsage entries", () => {
-    const normalized = normalizeStore({
+  test("parseSessionState preserves existing tokenUsage entries", () => {
+    const normalized = parseSessionState({
       activeSessionId: "sess_1",
       sessions: [
         {
@@ -52,8 +52,8 @@ describe("storage", () => {
     expect(normalized.sessions[0]?.tokenUsage[0]?.modelCalls).toBe(2);
   });
 
-  test("normalizeStore defaults missing message kind to text", () => {
-    const normalized = normalizeStore({
+  test("parseSessionState defaults missing message kind to text", () => {
+    const normalized = parseSessionState({
       activeSessionId: "sess_1",
       sessions: [
         {
