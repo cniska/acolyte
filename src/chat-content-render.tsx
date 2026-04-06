@@ -1,4 +1,5 @@
 import React from "react";
+import { unreachable } from "./assert";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
 import { Text } from "./tui";
 
@@ -17,28 +18,30 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
         const renderedTokens = tokens.map((token) => {
           const tokenKey = `${lineKey}-token-${tokenOffset}-${token.kind}-${token.text}`;
           tokenOffset += token.text.length;
-          if (token.kind === "code") {
-            return (
-              <Text key={tokenKey} dimColor>
-                {token.text.slice(1, -1)}
-              </Text>
-            );
+          switch (token.kind) {
+            case "code":
+              return (
+                <Text key={tokenKey} dimColor>
+                  {token.text.slice(1, -1)}
+                </Text>
+              );
+            case "bold":
+              return (
+                <Text key={tokenKey} bold>
+                  {token.text.slice(2, -2)}
+                </Text>
+              );
+            case "path":
+              return (
+                <Text key={tokenKey} dimColor>
+                  {token.text}
+                </Text>
+              );
+            case "plain":
+              return <Text key={tokenKey}>{token.text}</Text>;
+            default:
+              return unreachable(token.kind);
           }
-          if (token.kind === "bold") {
-            return (
-              <Text key={tokenKey} bold>
-                {token.text.slice(2, -2)}
-              </Text>
-            );
-          }
-          if (token.kind === "path") {
-            return (
-              <Text key={tokenKey} dimColor>
-                {token.text}
-              </Text>
-            );
-          }
-          return <Text key={tokenKey}>{token.text}</Text>;
         });
         lineOffset += line.length + 1;
         return (
