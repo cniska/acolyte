@@ -18,7 +18,11 @@ export async function searchMemories(
   if (filtered.length === 0) return [];
 
   const queryEmbedding = await embedText(query);
-  if (!queryEmbedding) return filtered.slice(0, limit);
+  if (!queryEmbedding) {
+    const fallback = filtered.slice(0, limit);
+    store.touchRecalled(fallback.map((r) => r.id));
+    return [...fallback];
+  }
 
   const ids = filtered.map((r) => r.id);
   const embeddings = store.getEmbeddings(ids);
@@ -29,7 +33,9 @@ export async function searchMemories(
     return { record, score };
   });
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map((s) => s.record);
+  const results = scored.slice(0, limit).map((s) => s.record);
+  store.touchRecalled(results.map((r) => r.id));
+  return results;
 }
 
 function createMemorySearchTool(input: ToolkitInput) {
@@ -53,6 +59,7 @@ function createMemorySearchTool(input: ToolkitInput) {
           content: z.string(),
           scope: memoryScopeSchema.extract(["user", "project"]),
           createdAt: z.string(),
+          lastRecalledAt: z.string().nullable(),
         }),
       ),
     }),
@@ -76,6 +83,7 @@ function createMemorySearchTool(input: ToolkitInput) {
             content: r.content,
             scope: scopeFromKey(r.scopeKey),
             createdAt: r.createdAt,
+            lastRecalledAt: r.lastRecalledAt ?? null,
           })),
         };
       });

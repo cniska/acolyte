@@ -25,6 +25,7 @@ function createMemoryApi(overrides?: {
         scope: "user" as const,
         content: "unused",
         createdAt: "2026-02-21T00:00:00.000Z",
+        lastRecalledAt: null,
       })),
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
   };
@@ -245,12 +246,14 @@ describe("chat-commands", () => {
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
         },
         {
           id: "mem_2",
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:01.000Z",
+          lastRecalledAt: null,
         },
       ],
     });
@@ -270,12 +273,14 @@ describe("chat-commands", () => {
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
         },
         {
           id: "mem_2",
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:01.000Z",
+          lastRecalledAt: null,
         },
       ],
     });
@@ -296,6 +301,7 @@ describe("chat-commands", () => {
           scope: "project" as const,
           content: "x",
           createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
         },
       }),
     });
@@ -325,6 +331,7 @@ describe("chat-commands", () => {
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
         },
       ],
     });
@@ -341,6 +348,7 @@ describe("chat-commands", () => {
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
         },
       ],
     });
@@ -374,6 +382,7 @@ describe("chat-commands", () => {
           scope,
           content,
           createdAt: "2026-02-21T00:00:02.000Z",
+          lastRecalledAt: null,
         };
       },
     });
