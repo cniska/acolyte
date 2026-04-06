@@ -95,7 +95,7 @@ export function createMessageStreamState(input: {
           let rows = current;
           if (pendingContent && pendingRowId) {
             rows = rows.map((row) => (row.id === pendingRowId ? { ...row, content: pendingContent } : row));
-          } else if (pendingContent) {
+          } else if (pendingContent && pendingContent.trim().length > 0) {
             const id = `row_${createId()}`;
             agentRowIds.push(id);
             rows = [...rows, { id, kind: "assistant" as const, content: pendingContent }];

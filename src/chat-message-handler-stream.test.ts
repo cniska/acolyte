@@ -153,6 +153,24 @@ describe("chat-message-handler-stream", () => {
     expect(toolIndex).toBeLessThan(statusIndex);
   });
 
+  test("whitespace-only pending content does not create empty assistant row", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // Simulate step-start emitting a newline before a tool call
+    state.onDelta("\n");
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
+    });
+
+    // Only the tool row should exist — no empty assistant row
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("tool");
+    state.dispose();
+  });
+
   test("removes budget-exhausted tool rows", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
