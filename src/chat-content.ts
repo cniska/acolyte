@@ -54,6 +54,17 @@ function wrapSingleLine(line: string, width: number): string[] {
   return wrapWithIndent(baseIndent, baseIndent, body, width);
 }
 
+export function wrapText(content: string, width: number): string {
+  const normalizedWidth = Math.max(24, width);
+  return content
+    .split("\n")
+    .flatMap((line) => {
+      if (line.length <= normalizedWidth) return [line];
+      return wrapWithIndent("", "", line, normalizedWidth);
+    })
+    .join("\n");
+}
+
 export function wrapAssistantContent(content: string, width: number): string {
   const normalizedWidth = Math.max(24, width);
   return content
