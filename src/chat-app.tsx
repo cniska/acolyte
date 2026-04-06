@@ -76,6 +76,7 @@ function ChatApp(props: ChatAppProps) {
         slashSuggestionIndex={state.slashSuggestionIndex}
         showHelp={state.showHelp}
         ctrlCPending={state.ctrlCPending}
+        onCursorLine={state.onCursorLine}
       />
     </Box>
   );

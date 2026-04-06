@@ -114,6 +114,8 @@ type UseChatKeybindingsInput = {
   interruptCurrentTurn: () => void;
   ctrlCPending: boolean;
   setCtrlCPending: (next: boolean) => void;
+  cursorLineRef: { current: number };
+  lineCountRef: { current: number };
 };
 
 export function useChatKeybindings(input: UseChatKeybindingsInput): void {
@@ -167,8 +169,10 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       const suggestionNavActive =
         !browsingInputHistory &&
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
-      const historyTriggerUp = key.upArrow || (key.ctrl && keyInput === "p");
-      const historyTriggerDown = key.downArrow || (key.ctrl && keyInput === "n");
+      const onFirstLine = input.cursorLineRef.current === 0;
+      const onLastLine = input.cursorLineRef.current >= input.lineCountRef.current - 1;
+      const historyTriggerUp = (key.upArrow && onFirstLine) || (key.ctrl && keyInput === "p");
+      const historyTriggerDown = (key.downArrow && onLastLine) || (key.ctrl && keyInput === "n");
       if (!suggestionNavActive && historyTriggerUp) {
         if (!shouldCycleInputHistory(input.inputHistoryIndex)) return;
         const transition = resolveHistoryUp(input.inputHistory, input.inputHistoryIndex, input.value);

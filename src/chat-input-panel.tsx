@@ -25,6 +25,7 @@ type ChatInputPanelProps = {
   slashSuggestionIndex?: number;
   showHelp?: boolean;
   ctrlCPending?: boolean;
+  onCursorLine?: (line: number, lineCount: number) => void;
 };
 
 const noop = (): void => {};
@@ -134,6 +135,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex = 0,
     showHelp = false,
     ctrlCPending = false,
+    onCursorLine,
   } = props;
   const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
@@ -180,6 +182,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         linePrefixRest="  "
         onChange={onChange}
         onSubmit={onSubmit}
+        onCursorLine={onCursorLine}
         key={`chat-input-${inputRevision}`}
       />
       <Text color={brandColor} dimColor>
