@@ -116,6 +116,7 @@ describe("cli visual regression", () => {
         config                 manage config
         skill <name> [prompt]  run a prompt with an active skill
         logs                   view server logs
+        update                 check for and install updates
         trace                  inspect server lifecycle traces
 
       Options
