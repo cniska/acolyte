@@ -12,8 +12,8 @@ const STORE_PATH = join(DATA_DIR, "sessions.json");
 
 const EMPTY_STORE: SessionState = { sessions: [] };
 
-export function normalizeStore(parsed: SessionState): SessionState {
-  const result = sessionStateSchema.safeParse(parsed);
+export function normalizeStore(input: SessionState): SessionState {
+  const result = sessionStateSchema.safeParse(input);
   return result.success ? result.data : EMPTY_STORE;
 }
 
