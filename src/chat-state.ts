@@ -58,6 +58,7 @@ export interface ChatStateResult {
   handleInputSubmit: (next: string) => void;
   handlePickerQueryChange: (query: string) => void;
   handlePickerSubmit: () => void;
+  onCursorLine: (line: number) => void;
 }
 
 export function useChatState(props: ChatAppProps, exit: () => void): ChatStateResult {
@@ -111,6 +112,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   } = useSuggestions(value);
 
   const [showHelp, setShowHelp] = useState(false);
+  const cursorLineRef = useRef(0);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
 
@@ -246,6 +248,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     },
     ctrlCPending,
     setCtrlCPending,
+    cursorLineRef,
   });
 
   const handlePickerQueryChange = useCallback((query: string) => {
@@ -342,5 +345,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     handleInputSubmit,
     handlePickerQueryChange,
     handlePickerSubmit,
+    onCursorLine: (line: number) => {
+      cursorLineRef.current = line;
+    },
   };
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { wrapText } from "./chat-content";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
@@ -9,7 +10,7 @@ import { t, tDynamic } from "./i18n";
 import { palette } from "./palette";
 import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
 import { Box, Text } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/styles";
+import { DEFAULT_COLUMNS } from "./tui/constants";
 
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: "❯ ",
@@ -219,7 +220,7 @@ export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatT
           </Text>
         ) : typeof row.content === "string" ? (
           <Text dimColor={dim} color={textColor}>
-            {row.content}
+            {wrapText(row.content, contentWidth)}
           </Text>
         ) : null}
       </Box>

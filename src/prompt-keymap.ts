@@ -13,12 +13,17 @@ export type PromptAction =
   | { type: "delete_forward" }
   | { type: "delete_word_back" }
   | { type: "clear_line" }
+  | { type: "move_up" }
+  | { type: "move_down" }
   | { type: "insert"; text: string };
 
 export function resolvePromptAction(input: string, key: KeyEvent, options: { hasMetaPrefix: boolean }): PromptAction {
-  // Noop: arrows, tab, ctrl+c
-  if (key.upArrow || key.downArrow || key.tab || (key.shift && key.tab) || (key.ctrl && input === "c"))
-    return { type: "noop" };
+  // Noop: tab, ctrl+c
+  if (key.tab || (key.shift && key.tab) || (key.ctrl && input === "c")) return { type: "noop" };
+
+  // Vertical line navigation
+  if (key.upArrow) return { type: "move_up" };
+  if (key.downArrow) return { type: "move_down" };
 
   // Submit / newline
   if (key.return && key.shift) return { type: "insert", text: "\n" };

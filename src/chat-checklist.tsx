@@ -4,7 +4,7 @@ import { isChecklistOutput } from "./chat-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
 import { Box, Text } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/styles";
+import { DEFAULT_COLUMNS } from "./tui/constants";
 
 function renderChecklist(output: ChecklistOutput): React.ReactNode {
   const { header, items } = formatChecklist(output);

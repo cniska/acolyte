@@ -55,6 +55,9 @@ export function createMessageStreamState(input: {
     if (agentContent.trim().length === 0) return;
     input.setRows((current) => {
       if (!activeRowId) {
+        const trimmed = agentContent.trim();
+        if (trimmed.length === 0) return current;
+        agentContent = trimmed;
         activeRowId = `row_${createId()}`;
         agentRowIds.push(activeRowId);
         return [...current, { id: activeRowId, kind: "assistant", content: agentContent }];

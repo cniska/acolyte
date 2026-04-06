@@ -1,5 +1,6 @@
 import { createElement as h, type ReactNode } from "react";
 import { renderToString } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { createElement } from "./tui/dom";
 import { setOnCommit } from "./tui/host-config";
 import { reconciler } from "./tui/reconciler";
@@ -21,7 +22,7 @@ export function withTerminalWidth(width: number, run: () => string): string {
   }
 }
 
-export function renderPlain(node: ReactNode, columns = 96): string {
+export function renderPlain(node: ReactNode, columns = DEFAULT_TERMINAL_WIDTH): string {
   const rendered = withTerminalWidth(columns, () => renderToString(node));
   return trimRightLines(stripAnsi(rendered)).replace(/^\n+/, "").replace(/\n+$/, "");
 }

@@ -175,6 +175,20 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
+  test("leading newlines are stripped when creating new assistant row", async () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // step-start emits "\n", then real text follows
+    state.onDelta("\n");
+    state.onDelta("Hello world");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("assistant");
+    expect(rows[0]?.content).toBe("Hello world");
+    state.dispose();
+  });
+
   test("whitespace-only pending content does not create empty assistant row", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });

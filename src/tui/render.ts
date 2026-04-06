@@ -4,13 +4,14 @@ import { join } from "node:path";
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
 import { setLogSink } from "../log";
+import { DEFAULT_COLUMNS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
 import { setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
-import { ansi, DEFAULT_COLUMNS, kitty } from "./styles";
+import { ansi, kitty } from "./styles";
 
 function clientLogPath(): string {
   return join(homedir(), ".acolyte", "client.log");

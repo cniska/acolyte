@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
 import { createClient, createMessageHandlerHarness, createSession, createStore, dedent } from "./test-utils";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui-test-utils";
 
-function renderTranscript(rows: Parameters<typeof ChatTranscript>[0]["rows"], columns = 96): string {
+function renderTranscript(
+  rows: Parameters<typeof ChatTranscript>[0]["rows"],
+  columns = DEFAULT_TERMINAL_WIDTH,
+): string {
   return dedent(renderPlain(<ChatTranscript rows={rows} pendingFrame={0} />, columns));
 }
 

@@ -1,8 +1,7 @@
 import { homedir } from "node:os";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
-
-const DEFAULT_TERMINAL_WIDTH = 96;
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */
 export const BREAKPOINT_TWO_COLUMN = 92;

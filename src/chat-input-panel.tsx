@@ -6,6 +6,7 @@ import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 import { Box, Text } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;
@@ -25,13 +26,12 @@ type ChatInputPanelProps = {
   slashSuggestionIndex?: number;
   showHelp?: boolean;
   ctrlCPending?: boolean;
+  onCursorLine: (line: number) => void;
 };
 
 const noop = (): void => {};
 
 const SLASH_COMMAND_COLUMN_WIDTH = 16;
-
-const DEFAULT_TERMINAL_WIDTH = 96;
 
 function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boolean }): boolean {
   if (input.hasSuggestions) return false;
@@ -134,6 +134,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     slashSuggestionIndex = 0,
     showHelp = false,
     ctrlCPending = false,
+    onCursorLine,
   } = props;
   const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
@@ -152,6 +153,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
             linePrefixFirst={pickerLabel(picker)}
             onChange={onPickerQueryChange}
             onSubmit={onPickerSubmit}
+            onCursorLine={noop}
           />
         ) : (
           <Text>{pickerLabel(picker)}</Text>
@@ -178,8 +180,10 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         caretVisible={caretVisible}
         linePrefixFirst="❯ "
         linePrefixRest="  "
+        wrapWidth={termWidth - 2}
         onChange={onChange}
         onSubmit={onSubmit}
+        onCursorLine={onCursorLine}
         key={`chat-input-${inputRevision}`}
       />
       <Text color={brandColor} dimColor>
