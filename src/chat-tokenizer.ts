@@ -17,12 +17,61 @@ const TOKEN_RULES: TokenRule[] = [
 
 const COMBINED_TOKEN_PATTERN = new RegExp(`(${TOKEN_RULES.map((r) => r.pattern.source).join("|")})`, "g");
 
+const CODE_EXTENSIONS = new Set([
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "json",
+  "jsonl",
+  "py",
+  "rs",
+  "go",
+  "rb",
+  "java",
+  "kt",
+  "swift",
+  "c",
+  "cpp",
+  "h",
+  "hpp",
+  "css",
+  "scss",
+  "html",
+  "vue",
+  "svelte",
+  "md",
+  "mdx",
+  "yaml",
+  "yml",
+  "toml",
+  "xml",
+  "sql",
+  "sh",
+  "bash",
+  "zsh",
+  "fish",
+  "test",
+  "spec",
+  "config",
+  "lock",
+  "env",
+  "gitignore",
+  "dockerignore",
+]);
+
 function looksLikePathRef(token: string): boolean {
   if (token.length === 0) return false;
   if (token.startsWith("@")) return false;
-  const fileWithExt = /^(?:\.{1,2}\/)?[\w.-]+\.[\w-]+(?::\d+(?::\d+)?)?$/.test(token);
   const slashPath = /^(?:\.{1,2}\/|~\/)?[\w.-]+(?:\/[\w.-]+)+(?:\.[\w-]+)?(?::\d+(?::\d+)?)?$/.test(token);
-  return fileWithExt || slashPath;
+  if (slashPath) return true;
+  const fileMatch = token.match(/^(?:\.{1,2}\/)?([\w.-]+)\.([\w-]+)(?::\d+(?::\d+)?)?$/);
+  if (!fileMatch) return false;
+  const name = fileMatch[1] ?? "";
+  if (/^[A-Z]/.test(name) && !name.includes("/") && !name.includes("-")) return false;
+  return CODE_EXTENSIONS.has(fileMatch[2]?.toLowerCase() ?? "");
 }
 
 function classifyMatch(text: string): HighlightKind {

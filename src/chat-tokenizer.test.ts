@@ -108,6 +108,20 @@ describe("tokenizeForHighlighting", () => {
       const tokens = tokenizeForHighlighting("(src/foo.ts)");
       expect(tokens.find((t) => t.kind === "path")?.text).toBe("(src/foo.ts)");
     });
+
+    test("version numbers are not paths", () => {
+      expect(kinds("version v0.12.0 released")).not.toContain("path");
+      expect(kinds("use 1.5 here")).not.toContain("path");
+    });
+
+    test("abbreviations are not paths", () => {
+      expect(kinds("i.e. this works")).not.toContain("path");
+      expect(kinds("e.g. like this")).not.toContain("path");
+    });
+
+    test("proper nouns with dots are not paths", () => {
+      expect(kinds("use Node.js for this")).not.toContain("path");
+    });
   });
 
   describe("mixed content", () => {
