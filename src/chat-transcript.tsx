@@ -200,7 +200,7 @@ type ChatTranscriptRowProps = {
 
 export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatTranscriptRowProps): React.ReactNode {
   const marker = MARKERS[row.kind];
-  const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.brand : undefined);
+  const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.text : undefined);
   const textColor = row.style?.text;
   const dim = row.style?.dim ?? false;
   return (
