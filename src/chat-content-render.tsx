@@ -1,6 +1,5 @@
 import React from "react";
 import { sanitizeAssistantContent, tokenizeForHighlighting, wrapAssistantContent } from "./chat-content";
-import { palette } from "./palette";
 import { Text } from "./tui";
 
 export function renderAssistantContent(content: string, wrapWidth: number): React.ReactNode {
@@ -20,14 +19,21 @@ export function renderAssistantContent(content: string, wrapWidth: number): Reac
           tokenOffset += token.text.length;
           if (token.kind === "code") {
             return (
-              <Text key={tokenKey} color={palette.textCode}>
+              <Text key={tokenKey} dimColor>
                 {token.text.slice(1, -1)}
+              </Text>
+            );
+          }
+          if (token.kind === "bold") {
+            return (
+              <Text key={tokenKey} bold>
+                {token.text.slice(2, -2)}
               </Text>
             );
           }
           if (token.kind === "path") {
             return (
-              <Text key={tokenKey} color={palette.textCode}>
+              <Text key={tokenKey} dimColor>
                 {token.text}
               </Text>
             );
