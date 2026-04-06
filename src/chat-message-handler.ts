@@ -123,6 +123,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
               break;
             case "tool-call":
+              streamState.onToolCall();
               runningToolCallIds.add(event.toolCallId);
               input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
               break;

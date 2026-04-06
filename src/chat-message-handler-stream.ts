@@ -7,6 +7,7 @@ import { createToolOutputState, type ToolOutputPart } from "./tool-output-conten
 
 export type MessageStreamState = {
   onDelta: (delta: string) => void;
+  onToolCall: () => void;
   onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
   onToolResult: (entry: {
     toolCallId: string;
@@ -75,6 +76,10 @@ export function createMessageStreamState(input: {
       if (delta.length === 0) return;
       agentContent += delta;
       if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
+    },
+
+    onToolCall: () => {
+      sealAgentRow();
     },
 
     onOutput: (entry) => {

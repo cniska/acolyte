@@ -153,6 +153,28 @@ describe("chat-message-handler-stream", () => {
     expect(toolIndex).toBeLessThan(statusIndex);
   });
 
+  test("onToolCall flushes pending text before tool output arrives", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onDelta("Let me read that.");
+    expect(rows).toHaveLength(0); // not flushed yet (timer pending)
+
+    state.onToolCall();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("assistant");
+    expect(rows[0]?.content).toBe("Let me read that.");
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[1]?.kind).toBe("tool");
+    state.dispose();
+  });
+
   test("whitespace-only pending content does not create empty assistant row", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
