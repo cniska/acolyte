@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { CloudApiError, createCloudSyncClient } from "./cloud-sync-client";
+import { CloudApiError, CloudClient } from "./cloud-client";
 import { mockFetch } from "./test-utils";
 
 let cleanup: (() => void) | undefined;
@@ -24,7 +24,7 @@ function callArgs(fn: ReturnType<typeof jsonFetch>, index = 0): [string, Request
 describe("cloud sync client", () => {
   test("sends authorization header", async () => {
     const fn = jsonFetch(200, []);
-    const client = createCloudSyncClient("https://api.example.com", "test-token");
+    const client = new CloudClient("https://api.example.com", "test-token");
     await client.memory.list();
     expect(fn).toHaveBeenCalledTimes(1);
     const [, init] = callArgs(fn);
@@ -33,7 +33,7 @@ describe("cloud sync client", () => {
 
   test("strips trailing slash from base URL", async () => {
     const fn = jsonFetch(200, []);
-    const client = createCloudSyncClient("https://api.example.com/", "t");
+    const client = new CloudClient("https://api.example.com/", "t");
     await client.memory.list();
     const [url] = callArgs(fn);
     expect(url).toStartWith("https://api.example.com/api/");
@@ -41,13 +41,13 @@ describe("cloud sync client", () => {
 
   test("throws CloudApiError on non-ok response", async () => {
     jsonFetch(403, "forbidden", "text/plain");
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     await expect(client.memory.list()).rejects.toThrow(CloudApiError);
   });
 
   test("memory.list passes query params", async () => {
     const fn = jsonFetch(200, []);
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     await client.memory.list({ scopeKey: "user_abc", kind: "stored" });
     const [url] = callArgs(fn);
     expect(url).toContain("scopeKey=user_abc");
@@ -56,7 +56,7 @@ describe("cloud sync client", () => {
 
   test("memory.write sends POST with record", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     const record = {
       id: "mem_1",
       scopeKey: "user_x",
@@ -73,7 +73,7 @@ describe("cloud sync client", () => {
 
   test("memory.remove sends DELETE", async () => {
     const fn = jsonFetch(200, undefined, "");
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     await client.memory.remove("mem_1");
     const [url, init] = callArgs(fn);
     expect(init.method).toBe("DELETE");
@@ -82,7 +82,7 @@ describe("cloud sync client", () => {
 
   test("session.listSessions passes limit param", async () => {
     const fn = jsonFetch(200, []);
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     await client.session.listSessions({ limit: 10 });
     const [url] = callArgs(fn);
     expect(url).toContain("limit=10");
@@ -90,7 +90,7 @@ describe("cloud sync client", () => {
 
   test("session.saveSession sends POST", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = createCloudSyncClient("https://api.example.com", "t");
+    const client = new CloudClient("https://api.example.com", "t");
     await client.session.saveSession({ id: "sess_1" } as never);
     const [, init] = callArgs(fn);
     expect(init.method).toBe("POST");

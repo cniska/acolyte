@@ -114,8 +114,8 @@ export function getSessionStore(): Promise<SessionStore> {
 async function resolveStore(): Promise<SessionStore> {
   const { appConfig } = await import("./app-config");
   if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
-    const { getCloudSyncClient } = await import("./cloud-sync-client");
-    return (await getCloudSyncClient()).session;
+    const { getCloudClient } = await import("./cloud-client");
+    return (await getCloudClient()).session;
   }
   return createFileSessionStore();
 }

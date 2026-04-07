@@ -1,6 +1,6 @@
-# Cloud Sync
+# Cloud
 
-Cloud Sync gives Acolyte portable agent identity — the same memory and sessions across machines.
+Cloud gives Acolyte portable agent identity — the same memory and sessions across machines.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ When `cloudSync` is enabled with a valid `cloudUrl` and `cloudToken`, all memory
 
 ## Authentication
 
-Cloud Sync uses EdDSA JWT tokens (Ed25519) with scope claims:
+Cloud uses EdDSA JWT tokens (Ed25519) with scope claims:
 
 - `sub` — user ID
 - `tid` — team ID (optional, for team-scoped access)
@@ -45,9 +45,8 @@ Deploy the cloud API to your own Vercel + Neon Postgres:
 
 ## API versioning
 
-The cloud API is versioned at `/api/v1/`. Routes are defined in `src/cloud-sync-contract.ts`.
+The cloud API is versioned at `/api/v1/`. Routes are defined in `src/cloud-client.ts`.
 
 ## Key files
 
-- `src/cloud-sync-client.ts` — cloud sync client with `MemoryStore` and `SessionStore` implementations
-- `src/cloud-sync-contract.ts` — route definitions
+- `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
