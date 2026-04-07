@@ -150,23 +150,23 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   };
 }
 
-let defaultInstance: MemoryStore | null = null;
-let defaultInstancePromise: Promise<MemoryStore> | null = null;
+let storeInstance: MemoryStore | null = null;
+let storePromise: Promise<MemoryStore> | null = null;
 
 export function getMemoryStore(): Promise<MemoryStore> {
-  if (defaultInstance) return Promise.resolve(defaultInstance);
-  if (defaultInstancePromise) return defaultInstancePromise;
+  if (storeInstance) return Promise.resolve(storeInstance);
+  if (storePromise) return storePromise;
 
-  defaultInstancePromise = resolveDefaultStore().then((store) => {
-    defaultInstance = store;
-    defaultInstancePromise = null;
-    process.on("exit", () => defaultInstance?.close());
+  storePromise = resolveStore().then((store) => {
+    storeInstance = store;
+    storePromise = null;
+    process.on("exit", () => storeInstance?.close());
     return store;
   });
-  return defaultInstancePromise;
+  return storePromise;
 }
 
-async function resolveDefaultStore(): Promise<MemoryStore> {
+async function resolveStore(): Promise<MemoryStore> {
   const { appConfig } = await import("./app-config");
   if (appConfig.features.postgresMemory) {
     const url = appConfig.postgresUrl;

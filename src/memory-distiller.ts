@@ -31,13 +31,13 @@ Tag each fact with an observe directive on its own line, followed by the fact on
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
-let defaultStore: MemoryStore | null = null;
+let cachedStore: MemoryStore | null = null;
 
-async function getDefaultStore(): Promise<MemoryStore> {
-  if (!defaultStore) {
-    defaultStore = await getMemoryStore();
+async function getCachedStore(): Promise<MemoryStore> {
+  if (!cachedStore) {
+    cachedStore = await getMemoryStore();
   }
-  return defaultStore;
+  return cachedStore;
 }
 
 type DistillScope = "session" | "project" | "user";
@@ -213,7 +213,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
-      const ds = deps.store ?? (await getDefaultStore());
+      const ds = deps.store ?? (await getCachedStore());
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
       if (ctx.messages.length < policy.messageThreshold) return;
