@@ -283,9 +283,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const showUsage = (): CommandResult => {
         ctx.setRows((current) => [
           ...current,
-          createRow("system", formatUsage("/workspaces new <name>")),
-          createRow("system", t("chat.workspaces.new.hint_named")),
-          createRow("system", t("chat.workspaces.new.hint_auto")),
+          createRow("system", formatUsage("/workspaces new <name> [-- <prompt>]")),
+          createRow("system", formatUsage("/workspaces new -- <prompt>")),
         ]);
         return { stop: true, userText: text };
       };
@@ -317,7 +316,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ctx.setRows((current) => [
           ...current,
           createRow("system", formatUsage("/workspaces new <name> -- <prompt>")),
-          createRow("system", t("chat.workspaces.new.hint_auto")),
+          createRow("system", formatUsage("/workspaces new -- <prompt>")),
         ]);
         return { stop: true, userText: text };
       }
