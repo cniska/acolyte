@@ -19,7 +19,7 @@ export function loadAgentsPrompt(cwd = process.cwd()): string {
   try {
     const content = readFileSync(agentsPath, "utf8").trim();
     if (content.length === 0) return "";
-    return ["Repository Instructions (AGENTS.md):", content].join("\n");
+    return ["Project rules (AGENTS.md):", content].join("\n");
   } catch {
     return "";
   }
@@ -32,7 +32,7 @@ export function loadSystemPrompt(cwd = process.cwd(), options: Omit<SoulPromptOp
   if (agents) return `${soul}\n\n${agents}`;
 
   if (options.agentsHint === "memory") {
-    return `${soul}\n\nRepository instructions are available via project memory. Use memory-search to retrieve them when needed.`;
+    return `${soul}\n\nProject rules are available via project memory. Use memory-search to retrieve them when needed.`;
   }
 
   return soul;

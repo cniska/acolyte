@@ -18,7 +18,7 @@ function agentsPromptFromWorkspace(workspace: string): { kind: "present"; prompt
   try {
     const content = readFileSync(agentsPath, "utf8").trim();
     if (content.length === 0) return { kind: "absent" };
-    return { kind: "present", prompt: ["Repository Instructions (AGENTS.md):", content].join("\n") };
+    return { kind: "present", prompt: ["Project rules (AGENTS.md):", content].join("\n") };
   } catch {
     return { kind: "absent" };
   }

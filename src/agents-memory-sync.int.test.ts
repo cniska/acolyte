@@ -26,7 +26,7 @@ describe("syncAgentsMdToProjectMemory", () => {
     const records = await store.list({ scopeKey, kind: "stored" });
     expect(records.length).toBe(1);
     expect(records[0]?.id).toBe("mem_agentsmd");
-    expect(records[0]?.content).toContain("Repository Instructions (AGENTS.md):");
+    expect(records[0]?.content).toContain("Project rules (AGENTS.md):");
     expect(records[0]?.content).toContain("Rules.");
   });
 
