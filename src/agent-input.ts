@@ -1,19 +1,39 @@
-import { fileURLToPath } from "node:url";
-import { encoding_for_model, init } from "tiktoken/init";
 import type { ChatRequest } from "./api";
-import { instantiateWasmFile } from "./wasm-loader";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
-// Force WASM initialization via the exported `init` hook so compiled binaries
-// don't depend on Node-style filesystem discovery in `tiktoken.cjs`.
-const wasmFilePath = fileURLToPath(
-  (import.meta as ImportMeta & { resolve: (specifier: string) => string }).resolve("tiktoken/tiktoken_bg.wasm"),
-);
-await init((imports) => instantiateWasmFile(wasmFilePath, imports));
+function createApproxEncoder(): TokenEncoder {
+  return {
+    encode(input) {
+      // We use token estimates for budgeting and truncation. Exact accuracy is
+      // not required for commands that don't run the lifecycle. The lifecycle
+      // switches this to the real tokenizer via ensureRealTokenEncoder().
+      return { length: Math.ceil(input.length / 4) };
+    },
+  };
+}
 
-const defaultEncoder: TokenEncoder = encoding_for_model("gpt-4o");
+let defaultEncoder: TokenEncoder = createApproxEncoder();
 let activeEncoder: TokenEncoder = defaultEncoder;
+let tiktokenReady = false;
+let tiktokenInitPromise: Promise<void> | null = null;
+
+export async function ensureRealTokenEncoder(): Promise<void> {
+  if (tiktokenReady) return;
+  if (tiktokenInitPromise) return tiktokenInitPromise;
+
+  const prevDefault = defaultEncoder;
+  tiktokenInitPromise = (async () => {
+    const { ensureTiktokenInitialized } = await import("./tiktoken-runtime");
+    const { encoding_for_model } = await import("tiktoken/init");
+    await ensureTiktokenInitialized();
+    defaultEncoder = encoding_for_model("gpt-4o");
+    if (activeEncoder === prevDefault) activeEncoder = defaultEncoder;
+    tiktokenReady = true;
+  })();
+
+  return tiktokenInitPromise;
+}
 
 /** Replace the tokenizer (test-only). */
 export function setTokenEncoder(encoder: TokenEncoder | null): void {

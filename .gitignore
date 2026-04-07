@@ -8,3 +8,4 @@ coverage/
 Library/
 scripts/demo.sh
 acolyte
+*.bun-build

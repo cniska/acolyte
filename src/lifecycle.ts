@@ -1,4 +1,4 @@
-import { estimateTokens } from "./agent-input";
+import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
@@ -246,6 +246,8 @@ function attachToolOutputHandler(ctx: RunContext) {
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
   let policy = deps.createLifecyclePolicy(input.lifecyclePolicy);
+
+  await ensureRealTokenEncoder();
 
   const profile = resolveWorkspaceProfile(input.workspace);
   if (profile.installCommand || profile.formatCommand || profile.lintCommand) {
