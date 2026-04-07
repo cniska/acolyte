@@ -269,17 +269,48 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     }
 
     if (sub === "new") {
-      const first = parts[2];
-      const explicitName = workspaceNameSchema.safeParse(first);
-      const prompt = explicitName.success ? parts.slice(3).join(" ").trim() : parts.slice(2).join(" ").trim();
-      if (!explicitName.success && prompt.length === 0) {
+      const args = parts.slice(2);
+      const showUsage = (): CommandResult => {
         ctx.setRows((current) => [
           ...current,
-          createRow("system", formatUsage("/workspaces new <name> [prompt]")),
+          createRow("system", formatUsage("/workspaces new <name>")),
+          createRow("system", t("chat.workspaces.new.hint_named")),
+          createRow("system", t("chat.workspaces.new.hint_auto")),
+        ]);
+        return { stop: true, userText: text };
+      };
+
+      if (args.length === 0) return showUsage();
+
+      const delimiterIndex = args.indexOf("--");
+      let baseName: z.infer<typeof workspaceNameSchema>;
+      let prompt = "";
+
+      if (delimiterIndex === -1) {
+        if (args.length !== 1) return showUsage();
+        const parsedName = workspaceNameSchema.safeParse(args[0]);
+        if (!parsedName.success) return showUsage();
+        baseName = parsedName.data;
+      } else if (delimiterIndex === 0) {
+        prompt = args.slice(1).join(" ").trim();
+        if (prompt.length === 0) {
+          ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces new -- <prompt>"))]);
+          return { stop: true, userText: text };
+        }
+        baseName = suggestWorkspaceName(prompt);
+      } else if (delimiterIndex === 1) {
+        const parsedName = workspaceNameSchema.safeParse(args[0]);
+        if (!parsedName.success) return showUsage();
+        baseName = parsedName.data;
+        prompt = args.slice(2).join(" ").trim();
+      } else {
+        ctx.setRows((current) => [
+          ...current,
+          createRow("system", formatUsage("/workspaces new <name> -- <prompt>")),
+          createRow("system", t("chat.workspaces.new.hint_auto")),
         ]);
         return { stop: true, userText: text };
       }
-      const baseName = explicitName.success ? explicitName.data : suggestWorkspaceName(prompt);
       const existing = new Set(
         ctx.store.sessions
           .map((s) => (typeof s.workspaceName === "string" && s.workspaceName.length > 0 ? s.workspaceName : null))
