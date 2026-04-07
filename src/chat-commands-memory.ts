@@ -1,4 +1,11 @@
-import type { CommandContext, CommandResult, SlashCommand } from "./chat-commands-contract";
+import type {
+  CommandContext,
+  CommandResult,
+  ParsedCommand,
+  SlashCommand,
+  SubcommandGroup,
+} from "./chat-commands-contract";
+import { dispatchSubcommandGroup } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
@@ -7,12 +14,8 @@ import { addMemory, listMemories, removeMemory } from "./memory-ops";
 
 type MemoryContextScope = "all" | "user" | "project";
 
-function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
-  if (parts.length === 1) return "all";
-  if (parts.length !== 2) return null;
-  const scope = parts[1];
-  if (scope === "all" || scope === "user" || scope === "project") return scope;
-  return null;
+function isMemoryContextScope(value: string): value is MemoryContextScope {
+  return value === "all" || value === "user" || value === "project";
 }
 
 function scopeLabel(scope: MemoryContextScope): string {
@@ -37,14 +40,14 @@ export function resolveMemoryApi(ctx: CommandContext): {
 async function handleMemoryRm(
   ctx: CommandContext,
   memoryApi: ReturnType<typeof resolveMemoryApi>,
+  parsed: ParsedCommand,
 ): Promise<CommandResult> {
-  const { text, resolvedText } = ctx;
-  const parts = resolvedText.trim().split(/\s+/);
-  if (parts.length !== 3) {
+  const { text } = ctx;
+  const prefix = parsed.args[0];
+  if (!prefix || parsed.args.length !== 1) {
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory rm <id-prefix>"))]);
     return { stop: true, userText: text };
   }
-  const prefix = parts[2];
   try {
     const removed = await memoryApi.removeMemory(prefix);
     if (removed.kind === "not_found") {
@@ -67,11 +70,11 @@ async function handleMemoryRm(
 async function handleMemoryList(
   ctx: CommandContext,
   memoryApi: ReturnType<typeof resolveMemoryApi>,
+  parsed: ParsedCommand,
 ): Promise<CommandResult> {
-  const { text, resolvedText } = ctx;
-  const parts = resolvedText.split(/\s+/);
-  const scope = parseMemoryListScope(parts);
-  if (!scope) {
+  const { text } = ctx;
+  const scope: MemoryContextScope = parsed.sub === "" ? "all" : (parsed.sub as MemoryContextScope);
+  if (parsed.args.length > 0) {
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
     return { stop: true, userText: text };
   }
@@ -132,16 +135,38 @@ async function handleRemember(
   return { stop: true, userText: text };
 }
 
+function createMemoryGroup(ctx: CommandContext, memoryApi: ReturnType<typeof resolveMemoryApi>): SubcommandGroup {
+  return {
+    root: "memory",
+    subcommands: [
+      {
+        name: "rm",
+        match: (sub) => sub === "rm",
+        run: (parsed) => handleMemoryRm(ctx, memoryApi, parsed),
+      },
+      {
+        name: "list",
+        match: (sub) => sub === "" || isMemoryContextScope(sub),
+        run: (parsed) => handleMemoryList(ctx, memoryApi, parsed),
+      },
+    ],
+    fallback: async () => {
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
+      return { stop: true, userText: ctx.text };
+    },
+  };
+}
+
 export function createMemoryCommands(
   ctx: CommandContext,
   memoryApi: ReturnType<typeof resolveMemoryApi>,
 ): SlashCommand[] {
+  const group = createMemoryGroup(ctx, memoryApi);
   return [
-    { name: "memory.rm", match: (value) => value.startsWith("/memory rm"), run: () => handleMemoryRm(ctx, memoryApi) },
     {
-      name: "memory.list",
+      name: "memory",
       match: (value) => value === "/memory" || value.startsWith("/memory "),
-      run: () => handleMemoryList(ctx, memoryApi),
+      run: () => dispatchSubcommandGroup(group, ctx.resolvedText),
     },
     { name: "remember", match: (value) => value.startsWith("/remember"), run: () => handleRemember(ctx, memoryApi) },
   ];
