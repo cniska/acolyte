@@ -3,8 +3,6 @@ import { log } from "./log";
 import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
 import { bufferToEmbedding, embeddingToBuffer } from "./memory-embedding";
 
-type Sql = postgres.Sql;
-
 type MemoryRow = {
   id: string;
   scope: string;
@@ -68,7 +66,7 @@ const MIGRATIONS = [
   },
 ];
 
-async function migrateUp(sql: Sql): Promise<number> {
+async function migrateUp(sql: postgres.Sql): Promise<number> {
   await sql`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)`;
   const rows = await sql<{ version: number }[]>`SELECT version FROM schema_version LIMIT 1`;
   const current = rows[0]?.version ?? 0;
@@ -85,12 +83,12 @@ async function migrateUp(sql: Sql): Promise<number> {
 
 export async function createPostgresMemoryStore(connectionUrl: string): Promise<MemoryStore> {
   let createSql: typeof postgres;
-  let registerPgvector: (sql: Sql) => Promise<void>;
+  let registerPgvector: (sql: postgres.Sql) => Promise<void>;
   try {
     createSql = (await import("postgres")).default;
     // @ts-expect-error -- pgvector has no type declarations
     const pgvectorMod = await import("pgvector/postgres");
-    registerPgvector = (sql: Sql) => pgvectorMod.default.registerTypes(sql);
+    registerPgvector = (sql: postgres.Sql) => pgvectorMod.default.registerTypes(sql);
   } catch {
     throw new Error("Install 'postgres' and 'pgvector' to use Postgres memory storage");
   }
