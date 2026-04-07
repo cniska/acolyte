@@ -102,7 +102,7 @@ type SplitResult = {
   droppedMalformedCount: number;
 };
 
-function splitScopedObservation(observed: string): SplitResult {
+export function splitScopedObservation(observed: string): SplitResult {
   const lines = observed
     .split(/\r?\n/)
     .map((line) => line.trim())
