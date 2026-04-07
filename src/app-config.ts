@@ -32,7 +32,8 @@ export const appConfig = {
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,
-  postgresUrl: fileConfig.postgresUrl,
+  cloudUrl: fileConfig.cloudUrl,
+  cloudToken: env.ACOLYTE_CLOUD_TOKEN,
 } as const;
 
 export function setModel(model: string): void {

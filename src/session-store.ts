@@ -113,11 +113,9 @@ export function getSessionStore(): Promise<SessionStore> {
 
 async function resolveStore(): Promise<SessionStore> {
   const { appConfig } = await import("./app-config");
-  if (appConfig.features.postgresSessions) {
-    const url = appConfig.postgresUrl;
-    if (!url) throw new Error("postgresUrl required when features.postgresSessions is enabled");
-    const { createPostgresSessionStore } = await import("./session-store-postgres");
-    return createPostgresSessionStore(url);
+  if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
+    const { getCloudClient } = await import("./cloud-client");
+    return (await getCloudClient()).session;
   }
   return createFileSessionStore();
 }

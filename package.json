@@ -39,10 +39,6 @@
     "@types/react-reconciler": "^0.33.0",
     "typescript": "^6.0.2"
   },
-  "optionalDependencies": {
-    "pgvector": "^0.2.0",
-    "postgres": "^3.4.7"
-  },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
     "@ai-sdk/google": "^3.0.53",

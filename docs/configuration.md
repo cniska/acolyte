@@ -102,8 +102,7 @@ acolyte config set features.syncAgents true
 | `syncAgents` | Sync `AGENTS.md` into a deterministic project memory record (`mem_agentsmd`). The model recalls it via `memory-search` instead of prompt injection. |
 | `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
 | `parallelWorkspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
-| `postgresMemory` | Use Postgres + pgvector for memory storage instead of SQLite. Requires `postgresUrl` and the `postgres`/`pgvector` optional dependencies. |
-| `postgresSessions` | Use Postgres for session storage instead of the local JSON file. Requires `postgresUrl` and the `postgres` optional dependency. |
+| `cloudSync` | Use the cloud API for memory and session storage. Requires `cloudUrl` and `cloudToken`. |
 
 ## All settable keys
 
@@ -120,9 +119,8 @@ acolyte config set features.syncAgents true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
-| `postgresUrl` | Postgres connection URL (required when `postgresMemory` or `postgresSessions` is enabled). Must not contain a password — use `PGPASSWORD` env var. |
+| `cloudUrl` | Cloud sync API base URL (e.g. `https://cloud.acolyte.sh`) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
-| `features.postgresMemory` | opt-in: use Postgres + pgvector for memory storage |
-| `features.postgresSessions` | opt-in: use Postgres for session storage |
+| `features.cloudSync` | opt-in: use cloud API for memory and session storage |

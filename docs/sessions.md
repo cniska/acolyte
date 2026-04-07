@@ -29,10 +29,10 @@ Each store tracks an active session ID — the most recently used session. Resum
 
 ## Storage
 
-Two backends, selected via the `postgresSessions` feature flag (default: file):
+Two backends, selected via the `cloudSync` feature flag (default: file):
 
 - **File** (default): `~/.acolyte/sessions.json`, entire state read/written as JSON
-- **Postgres** (feature-flagged): configured via `postgresUrl`, messages stored as JSONB, sessions table with `updated_at` index
+- **Cloud** (feature-flagged): configured via `cloudUrl` + `cloudToken`, backed by Postgres with JSONB messages. See [Cloud](cloud.md).
 
 The `SessionStore` interface provides granular operations (`listSessions`, `getSession`, `saveSession`, `removeSession`, active session tracking).
 
@@ -44,14 +44,14 @@ The `SessionStore` interface provides granular operations (`listSessions`, `getS
 
 ## Extension seams
 
-- swap storage backend via `SessionStore` interface (file, Postgres, or custom)
-- session locking is file-store-specific; Postgres handles concurrency natively
+- swap storage backend via `SessionStore` interface (file, cloud, or custom)
+- session locking is file-store-specific; cloud handles concurrency server-side
 
 ## Key files
 
 - `src/session-contract.ts` — session types, schemas, and `SessionStore` interface
 - `src/session-store.ts` — file-based session store and store factory
-- `src/session-store-postgres.ts` — Postgres session store (feature-flagged)
+- `src/cloud-client.ts` — cloud API session store (feature-flagged)
 - `src/session-lock.ts` — PID-based file locking for concurrent access
 
 ## Further reading
