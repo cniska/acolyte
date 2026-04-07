@@ -17,7 +17,7 @@ function createSessionsCommand(ctx: CommandContext): SlashCommand {
     name: "sessions",
     match: (value) => value === "/sessions",
     run: async () => {
-      ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
+      ctx.setRows((current) => [...current, ...sessionsRows(ctx.sessionState, 10)]);
       return { stop: true, userText: ctx.text };
     },
   };
@@ -71,8 +71,8 @@ function createNewCommand(ctx: CommandContext): SlashCommand {
     match: (value) => value === "/new",
     run: async () => {
       const next = createSession(appConfig.model);
-      ctx.store.sessions.unshift(next);
-      ctx.store.activeSessionId = next.id;
+      ctx.sessionState.sessions.unshift(next);
+      ctx.sessionState.activeSessionId = next.id;
       ctx.setCurrentSession(next);
       ctx.setTokenUsage?.(() => []);
       ctx.clearTranscript(next.id);

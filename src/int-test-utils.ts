@@ -36,7 +36,7 @@ export type CliTestEnv = {
   homeDir: string;
   workspaceDir: string;
   run: (args: readonly string[], options?: { env?: Record<string, string | undefined> }) => Promise<string>;
-  writeSessionsStore: (store: SessionState) => Promise<void>;
+  writeSessionsStore: (sessionState: SessionState) => Promise<void>;
 };
 
 export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Promise<T> {

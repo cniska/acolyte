@@ -13,7 +13,7 @@ export type CommandContext = {
   text: string;
   resolvedText: string;
   client: Client;
-  store: SessionState;
+  sessionState: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;

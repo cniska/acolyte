@@ -78,6 +78,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   const isResumed = resolved?.kind === "ok";
   const session = isResumed ? resolved.session : createSession(model);
   if (!isResumed) {
+    // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
     state.sessions.unshift(session);
   }
   state.activeSessionId = session.id;
@@ -107,7 +108,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     await runChat({
       client,
       session,
-      store: state,
+      sessionState: state,
       persist,
       version: CLI_VERSION,
       useMemory: isResumed,

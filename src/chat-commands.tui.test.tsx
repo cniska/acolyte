@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
-import { createClient, createMessageHandlerHarness, createSession, createStore, dedent } from "./test-utils";
+import { createClient, createMessageHandlerHarness, createSession, createSessionState, dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui-test-utils";
 
@@ -66,10 +66,10 @@ describe("chat slash command visual regression", () => {
         },
       ],
     });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
     const { handleMessage, rows } = createMessageHandlerHarness({
       session,
-      store,
+      sessionState,
       tokenUsage: session.tokenUsage,
     });
 
@@ -96,7 +96,7 @@ describe("chat slash command visual regression", () => {
   test("renders /sessions transcript output with multiple sessions", async () => {
     const realNow = Date.now;
     Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
-    const store = createStore({
+    const sessionState = createSessionState({
       activeSessionId: "sess_active",
       sessions: [
         createSession({ id: "sess_active", title: "Current Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
@@ -104,7 +104,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     try {
-      const { handleMessage, rows } = createMessageHandlerHarness({ store });
+      const { handleMessage, rows } = createMessageHandlerHarness({ sessionState });
 
       await handleMessage("/sessions");
 

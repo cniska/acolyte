@@ -11,18 +11,18 @@ export type ResumeResolution =
   | { kind: "ambiguous"; prefix: string; matches: Session[] }
   | { kind: "ok"; session: Session };
 
-export function resolveResumeSession(store: SessionState, text: string): ResumeResolution {
+export function resolveResumeSession(sessionState: SessionState, text: string): ResumeResolution {
   const parts = text.trim().split(/\s+/);
   if (parts.length < 2) return { kind: "usage" };
   const prefix = parts[1];
-  const matches = store.sessions.filter((item) => item.id.startsWith(prefix));
+  const matches = sessionState.sessions.filter((item) => item.id.startsWith(prefix));
   if (matches.length === 0) return { kind: "not_found", prefix };
   if (matches.length > 1) return { kind: "ambiguous", prefix, matches };
   return { kind: "ok", session: matches[0] };
 }
 
-function resumeUsageRows(store: SessionState): ChatRow[] {
-  const recent = formatSessionList(store, 6);
+function resumeUsageRows(sessionState: SessionState): ChatRow[] {
+  const recent = formatSessionList(sessionState, 6);
   return [
     createRow("system", formatUsage("/resume <session-id-prefix>")),
     ...recent.map((line) => createRow("system", line)),
@@ -36,9 +36,9 @@ async function handleResumePanel(ctx: CommandContext): Promise<CommandResult> {
 
 async function handleResume(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
-  const resolved = resolveResumeSession(ctx.store, resolvedText);
+  const resolved = resolveResumeSession(ctx.sessionState, resolvedText);
   if (resolved.kind === "usage") {
-    ctx.setRows((current) => [...current, ...resumeUsageRows(ctx.store)]);
+    ctx.setRows((current) => [...current, ...resumeUsageRows(ctx.sessionState)]);
     return { stop: true, userText: text };
   }
   if (resolved.kind === "not_found") {
@@ -57,7 +57,7 @@ async function handleResume(ctx: CommandContext): Promise<CommandResult> {
     return { stop: true, userText: text };
   }
   const target = resolved.session;
-  ctx.store.activeSessionId = target.id;
+  ctx.sessionState.activeSessionId = target.id;
   ctx.setCurrentSession(target);
   ctx.setTokenUsage?.(() => target.tokenUsage);
   ctx.clearTranscript(target.id);
