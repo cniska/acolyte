@@ -131,7 +131,7 @@ export const EN_MESSAGES = {
   "chat.workspaces.not_found": "No workspace found: {name}",
   "chat.workspaces.list.none":
     "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
-  "chat.workspaces.name_conflict": "Could not find a unique workspace name. Choose a different name.",
+  "chat.workspaces.name_conflict": "Workspace name already exists. Run /workspaces list or choose a different name.",
   "chat.workspaces.new.hint_named": "With prompt: /workspaces new <name> -- <prompt>",
   "chat.workspaces.new.hint_auto": "Auto-name: /workspaces new -- <prompt>",
   "cli.help.desc.tool": "run a tool directly",
