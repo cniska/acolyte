@@ -78,6 +78,29 @@ acolyte config set --project model openai-compatible/<model>
 acolyte config set logFormat json
 ```
 
+## Feature flags
+
+Feature flags are opt-in toggles for experimental behavior. They are configured under `[features]` in `config.toml`.
+
+### `features.syncAgents`
+
+When enabled:
+- `AGENTS.md` is synced into a deterministic project memory record (`mem_agentsmd`)
+- `AGENTS.md` is not automatically inlined into the system prompt; the model is expected to recall it via `memory-search` when needed
+
+Enable via TOML:
+
+```toml
+[features]
+syncAgents = true
+```
+
+Enable via CLI:
+
+```bash
+acolyte config set --project features.syncAgents true
+```
+
 ## All settable keys
 
 | Key | Description |
@@ -93,3 +116,4 @@ acolyte config set logFormat json
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
+| `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |

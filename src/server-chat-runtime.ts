@@ -1,7 +1,9 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { syncAgentsMdToProjectMemory } from "./agents-memory-sync";
 import type { ChatRequest } from "./api";
 import { appConfig } from "./app-config";
+import { readResolvedConfigSync } from "./config";
 import { createDebugLogger } from "./debug-flags";
 import { createStreamError, errorIdSchema, parseError } from "./error-handling";
 import { runLifecycle } from "./lifecycle";
@@ -195,8 +197,14 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   const runControl = handlers.runControl;
   try {
     await loadSkills(workspaceResolution.workspacePath);
+    const config = readResolvedConfigSync({ cwd: workspaceResolution.workspacePath });
+    if (config.features.syncAgents) {
+      await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath });
+    }
     const soulPrompt = await createSoulPrompt({
       cwd: workspaceResolution.workspacePath,
+      includeAgents: !config.features.syncAgents,
+      agentsHint: config.features.syncAgents ? "memory" : "none",
     });
     const reply = await runLifecycle({
       request: lifecycleRequest,

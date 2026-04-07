@@ -27,6 +27,15 @@ describe("soul prompt loading", () => {
     expect(prompt).toContain("Rules.");
   });
 
+  test("loadSystemPrompt can omit agents prompt and include a memory hint", () => {
+    const dir = createDir("acolyte-omit-agents-");
+    writeFileSync(join(dir, "AGENTS.md"), "Rules.", "utf8");
+    const prompt = loadSystemPrompt(dir, { includeAgents: false, agentsHint: "memory" });
+    expect(prompt).toContain("Acolyte");
+    expect(prompt).not.toContain("Rules.");
+    expect(prompt).toContain("memory-search");
+  });
+
   test("createSoulPrompt returns prompt string", async () => {
     const result = await createSoulPrompt();
     expect(result).toContain("Acolyte");
