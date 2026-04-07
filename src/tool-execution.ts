@@ -1,5 +1,6 @@
 import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { parseError } from "./error-handling";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
 
@@ -148,14 +149,24 @@ export async function runTool(
     } finally {
       if (session.onAfterToolAsync) {
         try {
-          await session.onAfterToolAsync({
-            toolId,
-            toolCallId,
-            args: args,
-            status: taskFailed ? "failed" : "succeeded",
-            result: taskFailed ? undefined : taskResult,
-            error: taskFailed ? taskError : undefined,
-          });
+          if (taskFailed) {
+            const parsed = parseError(taskError);
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "failed",
+              error: parsed.ok ? parsed.value : { message: `${toolId} failed` },
+            });
+          } else {
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "succeeded",
+              result: taskResult,
+            });
+          }
         } catch (error) {
           session.onDebug?.("lifecycle.tool.hook_failed", {
             hook: "after",

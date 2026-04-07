@@ -30,7 +30,7 @@ describe("undo checkpoint side effects", () => {
         toolCallId: "call_1",
         args: { path: "a.txt" },
         status: "failed",
-        error: new Error("boom"),
+        error: { message: "boom" },
       });
 
       const listed = await listUndoCheckpoints({ workspace, sessionId, limit: 10 });

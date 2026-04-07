@@ -17,7 +17,8 @@ These must always hold. Break them and the system breaks.
 2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
 3. `@signal` is a suffix — model output must end with exactly one `@signal` line. Strip the signal line and everything after it.
 4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
-5. Run `bun run verify` before every commit.
+5. Tool after-hooks must receive normalized errors (`message`, `code?`, `kind?`), not raw thrown values.
+6. Run `bun run verify` before every commit.
 
 ## Workflow
 

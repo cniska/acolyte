@@ -19,15 +19,24 @@ export type SessionFlags = {
   totalStepLimit?: number;
 };
 
+export type ToolErrorSummary = { message: string; code?: string; kind?: string };
+
 export type PreToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown> };
-export type PostToolContext = {
-  toolId: string;
-  toolCallId: string;
-  args: Record<string, unknown>;
-  status: ToolCallStatus;
-  result?: unknown;
-  error?: unknown;
-};
+export type PostToolContext =
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "succeeded";
+      result: unknown;
+    }
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "failed";
+      error: ToolErrorSummary;
+    };
 export type EffectOutput = { append?: string };
 
 export type SessionContext = {
