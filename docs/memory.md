@@ -68,7 +68,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 Two backends, selected via the `postgresMemory` feature flag (default: SQLite):
 
 - **SQLite** (default): `~/.acolyte/memory.db`, `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
-- **Postgres + pgvector** (feature-flagged): configured via `postgresUrl`, `vector(1536)` column type, native cosine distance search
+- **Postgres + pgvector** (feature-flagged): configured via `postgresUrl`, `vector(1536)` column type, native cosine distance search. Bring your own Postgres — Acolyte does not provision or manage the database.
 
 ## Extension seams
 
