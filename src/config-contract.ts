@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type FeatureFlags, featureFlagsSchema } from "./feature-flags-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const logFormatSchema = z.enum(["logfmt", "json"]);
@@ -38,6 +39,7 @@ export interface Config {
   replyTimeoutMs?: number;
   reasoning?: ReasoningLevel;
   embeddingModel?: string;
+  features?: FeatureFlags;
 }
 
 export interface ResolvedConfig {
@@ -54,6 +56,7 @@ export interface ResolvedConfig {
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
   embeddingModel: string;
+  features: Required<FeatureFlags>;
 }
 
 export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
@@ -68,6 +71,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
+  features: featureFlagsSchema,
 };
 
 export function toConfig(input: Record<string, unknown>): Config {
@@ -90,5 +94,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
+    features: parseField(featureFlagsSchema, input.features),
   };
 }

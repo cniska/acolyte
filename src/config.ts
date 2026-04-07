@@ -9,6 +9,7 @@ import {
   type ResolvedConfig,
   toConfig,
 } from "./config-contract";
+import { featureFlagsSchema } from "./feature-flags-contract";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 
@@ -24,6 +25,7 @@ function createDefaultConfig() {
     logFormat: "logfmt" as LogFormat,
     replyTimeoutMs: 180_000,
     embeddingModel: "text-embedding-3-small",
+    features: {},
   };
 }
 
@@ -118,6 +120,11 @@ function serializeToml(config: Config): string {
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
+  if (config.features && Object.keys(config.features).length > 0) {
+    lines.push("");
+    lines.push("[features]");
+    if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
+  }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
 
@@ -125,6 +132,8 @@ function resolveConfig(config: Config): ResolvedConfig {
   const defaults = createDefaultConfig();
   const model = config.model ?? defaults.model;
   const port = config.port ?? defaults.port;
+  const parsedFeatures = featureFlagsSchema.safeParse(config.features ?? {});
+  const features = parsedFeatures.success ? parsedFeatures.data : {};
   return {
     port,
     locale: config.locale ?? defaults.locale,
@@ -139,6 +148,9 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
+    features: {
+      syncAgents: features.syncAgents ?? false,
+    },
   };
 }
 
@@ -177,7 +189,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  // No dotted keys are currently supported.
+  features: new Set(["syncAgents"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

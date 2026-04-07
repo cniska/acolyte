@@ -194,6 +194,19 @@ describe("config store", () => {
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
 
+  test("reads feature flags from [features] section in config.toml", () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+
+    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    expect(loaded.features).toEqual({ syncAgents: true });
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.features.syncAgents).toBe(true);
+  });
+
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
@@ -253,6 +266,35 @@ describe("config store", () => {
     await setConfigValue("locale", "en", { homeDir: home, cwd: home });
     const loaded = readConfigSync({ homeDir: home, cwd: home });
     expect(loaded.locale).toBe("en");
+  });
+
+  test("setConfigValue supports dotted feature flags keys", async () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), "", "utf8");
+
+    await setConfigValue("features.syncAgents", "true", { homeDir: home, cwd: home });
+    const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
+    expect(rawToml).toContain("[features]");
+    expect(rawToml).toContain("syncAgents = true");
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.features.syncAgents).toBe(true);
+  });
+
+  test("unsetConfigValue supports dotted feature flags keys", async () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = join(home, ".acolyte");
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+
+    await unsetConfigValue("features.syncAgents", { homeDir: home, cwd: home });
+    const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
+    expect(rawToml).not.toContain("[features]");
+
+    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    expect(resolved.features.syncAgents).toBe(false);
   });
 
   test("project config overrides user config", async () => {
