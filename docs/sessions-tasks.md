@@ -27,8 +27,21 @@ accepted → queued → running → completed|failed|cancelled
 - RPC layer exposes queue and task status updates
 - task transitions are validated and logged with transition reason
 
+## Session storage
+
+Two backends, selected via the `postgresSessions` feature flag (default: file):
+
+- **File** (default): `~/.acolyte/sessions.json`, entire state read/written as JSON
+- **Postgres** (feature-flagged): configured via `postgresUrl`, messages stored as JSONB, sessions table with `updated_at` index
+
+The `SessionStore` interface provides granular operations (`listSessions`, `getSession`, `saveSession`, `removeSession`, active session tracking).
+
 ## Key files
 
+- `src/session-store.ts` — `SessionStore` interface
+- `src/storage.ts` — file-based session store and store factory
+- `src/session-store-postgres.ts` — Postgres session store (feature-flagged)
+- `src/session-contract.ts` — session types and schemas
 - `src/task-contract.ts` — task state schema and transition validation
 - `src/task-registry.ts` — task state transitions and persistence
 - `src/rpc-queue.ts` — request queuing with abort and position tracking
