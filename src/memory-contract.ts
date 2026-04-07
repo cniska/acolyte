@@ -85,6 +85,10 @@ export interface MemoryStore {
   removeEmbedding(id: string): Promise<void>;
   getEmbedding(id: string): Promise<Buffer | null>;
   getEmbeddings(ids: string[]): Promise<Map<string, Buffer>>;
+  searchByEmbedding?(
+    queryEmbedding: Float32Array,
+    options: { scopeKey?: string; kind?: MemoryKind; limit: number },
+  ): Promise<MemoryRecord[]>;
   close(): void;
 }
 

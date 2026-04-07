@@ -32,6 +32,15 @@ export async function searchMemories(
     return [...fallback];
   }
 
+  if (store.searchByEmbedding) {
+    const oversample = options?.scope ? limit * 2 : limit;
+    const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
+    const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
+    const results = scoped.slice(0, limit);
+    await store.touchRecalled(results.map((r) => r.id));
+    return results;
+  }
+
   const ids = filtered.map((r) => r.id);
   const embeddings = await store.getEmbeddings(ids);
 

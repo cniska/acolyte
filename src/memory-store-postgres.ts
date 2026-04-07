@@ -86,14 +86,7 @@ async function migrateUp(sql: Sql): Promise<number> {
   return pending.length;
 }
 
-export interface PostgresMemoryStore extends MemoryStore {
-  searchByEmbedding(
-    queryEmbedding: Float32Array,
-    options: { scopeKey?: string; kind?: MemoryKind; limit: number },
-  ): Promise<MemoryRecord[]>;
-}
-
-export async function createPostgresMemoryStore(connectionUrl: string): Promise<PostgresMemoryStore> {
+export async function createPostgresMemoryStore(connectionUrl: string): Promise<MemoryStore> {
   let createSql: typeof postgres;
   let registerPgvector: (sql: Sql) => Promise<void>;
   try {
