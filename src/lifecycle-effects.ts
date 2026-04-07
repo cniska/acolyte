@@ -77,7 +77,7 @@ function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectO
   return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
 }
 
-export function attachLifecycleSideEffects(ctx: RunContext, session: SessionContext): void {
+export function attachLifecycleEffectHandlers(ctx: RunContext, session: SessionContext): void {
   const prevBefore = session.onBeforeTool;
   const prevAfter = session.onAfterTool;
   session.onBeforeTool = (preCtx) => mergeEffectOutputs(prevBefore?.(preCtx), preToolSideEffects(ctx, preCtx));

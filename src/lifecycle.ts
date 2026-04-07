@@ -10,7 +10,7 @@ import type {
   RunContext,
   ToolOutputEvent,
 } from "./lifecycle-contract";
-import { attachLifecycleSideEffects } from "./lifecycle-effects";
+import { attachLifecycleEffectHandlers } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { createLifecyclePolicy } from "./lifecycle-policy";
@@ -135,7 +135,7 @@ function createRunContext(
   };
 
   session.featureFlags = ctx.features;
-  attachLifecycleSideEffects(ctx, session);
+  attachLifecycleEffectHandlers(ctx, session);
   if (ctx.features.undoCheckpoints) {
     const sessionId = ctx.request.sessionId;
     if (sessionId && ctx.workspace) {
