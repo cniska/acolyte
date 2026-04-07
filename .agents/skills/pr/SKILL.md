@@ -21,7 +21,7 @@ Create a pull request for the current branch against `main`.
    - working directory is clean (`git status`)
    - branch has commits ahead of `main` (`git log main..HEAD --oneline`)
    - `bun run verify` passes
-2. **Run the review skill** (`.agents/skills/review/SKILL.md`):
+2. **Run the review checklist** (`docs/skills/review.md`):
    - if there are must-fix findings, stop and report them — do not create the PR
 3. **Gather context**:
    - read `.github/pull_request_template.md`
