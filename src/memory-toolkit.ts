@@ -1,6 +1,13 @@
 import { z } from "zod";
-import { type MemoryRecord, type MemoryStore, memoryScopeSchema, scopeFromKey } from "./memory-contract";
-import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
+import {
+  createMemoryPolicy,
+  type MemoryPolicy,
+  type MemoryRecord,
+  type MemoryStore,
+  memoryScopeSchema,
+  scopeFromKey,
+} from "./memory-contract";
+import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
@@ -9,10 +16,11 @@ import { runTool } from "./tool-execution";
 
 export async function searchMemories(
   query: string,
-  options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore },
+  options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
 ): Promise<MemoryRecord[]> {
   const store = options?.store ?? getDefaultMemoryStore();
   const limit = options?.limit ?? 10;
+  const policy = options?.policy ?? createMemoryPolicy();
   const all = await store.list({ kind: "stored" });
   const filtered = options?.scope ? all.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : all;
   if (filtered.length === 0) return [];
@@ -29,7 +37,9 @@ export async function searchMemories(
 
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
-    const score = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
+    const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
+    const overlap = tokenOverlap(query, record.content);
+    const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight;
     return { record, score };
   });
   scored.sort((a, b) => b.score - a.score);

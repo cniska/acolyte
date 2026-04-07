@@ -61,7 +61,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
 - repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
 - distill record writes use SQLite with WAL mode for atomic persistence
-- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the search query is embedded and entries are ranked by cosine similarity. Records without embeddings fall back to recency ordering
+- hybrid recall: memory records are embedded at write time using the provider embedding API. At query time, entries are scored by a weighted blend of cosine similarity (0.8) and token overlap (0.2). Token overlap catches exact keyword matches that embeddings miss, such as proper nouns, tool names, and file paths. Records without embeddings fall back to recency ordering
 
 ## Storage
 

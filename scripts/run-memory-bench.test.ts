@@ -47,6 +47,7 @@ describe("parseDatasetId", () => {
   test("accepts valid ids", () => {
     expect(parseDatasetId("longmemeval")).toBe("longmemeval");
     expect(parseDatasetId("locomo")).toBe("locomo");
+    expect(parseDatasetId("locomo-observations")).toBe("locomo-observations");
   });
 
   test("rejects unknown id", () => {

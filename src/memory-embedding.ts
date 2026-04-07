@@ -74,6 +74,78 @@ function getEmbeddingModel() {
   return cachedModel;
 }
 
+const STOPWORDS = new Set([
+  "a",
+  "an",
+  "the",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "from",
+  "is",
+  "it",
+  "as",
+  "be",
+  "was",
+  "are",
+  "been",
+  "has",
+  "have",
+  "had",
+  "do",
+  "does",
+  "did",
+  "not",
+  "no",
+  "so",
+  "if",
+  "my",
+  "me",
+  "we",
+  "he",
+  "she",
+  "they",
+  "this",
+  "that",
+  "what",
+  "which",
+  "who",
+  "how",
+  "when",
+  "where",
+  "i",
+  "you",
+  "your",
+  "its",
+]);
+
+function tokenize(text: string): Set<string> {
+  const tokens = new Set<string>();
+  for (const raw of text.toLowerCase().split(/[\s\p{P}]+/u)) {
+    if (raw.length > 1 && !STOPWORDS.has(raw)) tokens.add(raw);
+  }
+  return tokens;
+}
+
+export function tokenOverlap(query: string, content: string): number {
+  const queryTokens = tokenize(query);
+  if (queryTokens.size === 0) return 0;
+  const contentTokens = tokenize(content);
+  let hits = 0;
+  for (const token of queryTokens) {
+    if (contentTokens.has(token)) hits++;
+  }
+  return hits / queryTokens.size;
+}
+
 export async function embedText(text: string): Promise<Float32Array | null> {
   const model = getEmbeddingModel();
   if (!model) return null;

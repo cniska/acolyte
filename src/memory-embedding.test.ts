@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bufferToEmbedding, cosineSimilarity, embeddingToBuffer } from "./memory-embedding";
+import { bufferToEmbedding, cosineSimilarity, embeddingToBuffer, tokenOverlap } from "./memory-embedding";
 
 describe("cosineSimilarity", () => {
   test("identical vectors return 1", () => {
@@ -30,6 +30,36 @@ describe("cosineSimilarity", () => {
     const a = new Float32Array([0, 0, 0]);
     const b = new Float32Array([1, 0, 0]);
     expect(cosineSimilarity(a, b)).toBe(0);
+  });
+});
+
+describe("tokenOverlap", () => {
+  test("exact query tokens in content scores 1", () => {
+    expect(tokenOverlap("bun test runner", "the project uses bun test runner")).toBeCloseTo(1);
+  });
+
+  test("partial overlap scores proportionally", () => {
+    expect(tokenOverlap("bun test runner", "bun is fast")).toBeCloseTo(1 / 3);
+  });
+
+  test("no overlap scores 0", () => {
+    expect(tokenOverlap("bun test runner", "python flask server")).toBe(0);
+  });
+
+  test("filters stopwords", () => {
+    expect(tokenOverlap("what is the test runner", "test runner is bun")).toBeCloseTo(1);
+  });
+
+  test("case insensitive", () => {
+    expect(tokenOverlap("Bun Test", "uses bun test")).toBeCloseTo(1);
+  });
+
+  test("empty query returns 0", () => {
+    expect(tokenOverlap("", "some content")).toBe(0);
+  });
+
+  test("stopwords-only query returns 0", () => {
+    expect(tokenOverlap("the a is", "some content")).toBe(0);
   });
 });
 
