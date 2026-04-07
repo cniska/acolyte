@@ -580,6 +580,27 @@ describe("chat-commands", () => {
         restore();
       }
     });
+
+    test("new reports errors from worktree creation instead of throwing", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const store = createStore({ sessions: [], activeSessionId: undefined });
+        const { rows, stop } = await runCommand("/workspaces new fix-auth", {
+          store,
+          workspacesApi: {
+            resolveGitRepoRoot: async () => "/repo",
+            createGitWorktree: async () => {
+              throw new Error("git failed");
+            },
+          },
+        });
+        expect(stop).toBe(true);
+        expect(rows.some((row) => row.content === "Failed to create workspace: git failed")).toBe(true);
+        expect(store.sessions.length).toBe(0);
+      } finally {
+        restore();
+      }
+    });
   });
 
   describe("inline skill invocation", () => {

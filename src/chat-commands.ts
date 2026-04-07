@@ -343,8 +343,15 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ]);
         return { stop: true, userText: text };
       }
-      const repoRoot = await workspacesApi.resolveGitRepoRoot(process.cwd());
-      const created = await workspacesApi.createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
+      let created: { workspacePath: string; branch: string };
+      try {
+        const repoRoot = await workspacesApi.resolveGitRepoRoot(process.cwd());
+        created = await workspacesApi.createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "unknown error";
+        ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.create_failed", { reason }))]);
+        return { stop: true, userText: text };
+      }
       const next = createSession(appConfig.model);
       next.workspaceName = name;
       next.workspace = created.workspacePath;

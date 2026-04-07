@@ -126,6 +126,7 @@ export const EN_MESSAGES = {
   "chat.workspaces.disabled":
     "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true",
   "chat.workspaces.created": "Created workspace {name}.",
+  "chat.workspaces.create_failed": "Failed to create workspace: {reason}",
   "chat.workspaces.switched": "Switched to workspace {name}.",
   "chat.workspaces.not_found": "No workspace found: {name}",
   "chat.workspaces.list.none": "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
