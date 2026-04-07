@@ -26,6 +26,19 @@ describe("dom", () => {
     expect(child.parent).toBe(parent);
   });
 
+  test("appendChild moves an existing child instead of duplicating it", () => {
+    const parent = createElement("tui-box", {});
+    const a = createTextNode("a");
+    const b = createTextNode("b");
+    appendChild(parent, a);
+    appendChild(parent, b);
+
+    appendChild(parent, a);
+
+    expect(parent.children).toEqual([b, a]);
+    expect(a.parent).toBe(parent);
+  });
+
   test("removeChild removes child and clears parent", () => {
     const parent = createElement("tui-box", {});
     const child = createTextNode("hi");
@@ -61,6 +74,19 @@ describe("dom", () => {
     appendChild(parent, a);
     insertBefore(parent, b, createTextNode("missing"));
     expect(parent.children).toEqual([a, b]);
+    expect(b.parent).toBe(parent);
+  });
+
+  test("insertBefore moves an existing child instead of duplicating it", () => {
+    const parent = createElement("tui-box", {});
+    const a = createTextNode("a");
+    const b = createTextNode("b");
+    appendChild(parent, a);
+    appendChild(parent, b);
+
+    insertBefore(parent, b, a);
+
+    expect(parent.children).toEqual([b, a]);
     expect(b.parent).toBe(parent);
   });
 });

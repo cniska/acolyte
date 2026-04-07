@@ -41,7 +41,16 @@ export function createTextNode(value: string): TuiTextNode {
   return { kind: "text", value, parent: null };
 }
 
+function detachChild(child: TuiNode): void {
+  const currentParent = child.parent;
+  if (!currentParent) return;
+  const currentIndex = currentParent.children.indexOf(child);
+  if (currentIndex !== -1) currentParent.children.splice(currentIndex, 1);
+  child.parent = null;
+}
+
 export function appendChild(parent: TuiElement, child: TuiNode): void {
+  detachChild(child);
   child.parent = parent;
   parent.children.push(child);
 }
@@ -55,6 +64,7 @@ export function removeChild(parent: TuiElement, child: TuiNode): void {
 }
 
 export function insertBefore(parent: TuiElement, child: TuiNode, before: TuiNode): void {
+  detachChild(child);
   child.parent = parent;
   const index = parent.children.indexOf(before);
   if (index === -1) {
