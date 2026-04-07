@@ -26,6 +26,7 @@ Review test adequacy for changed code.
 - tests asserting implementation details instead of behavior (method call sequences break on refactor)
 - tests duplicating coverage without distinct scenarios
 - fragile tests (timing, ordering, absolute paths)
+- using the wrong test type (filesystem/process/network in unit tests) — move those to integration tests
 - missing cleanup (temp files, cache state)
 - mocking internals instead of testing through the real contract — mock at boundaries only
 - test names that don't read as specifications

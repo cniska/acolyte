@@ -210,6 +210,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       request: lifecycleRequest,
       soulPrompt,
       workspace: workspaceResolution.workspacePath,
+      features: config.features,
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {

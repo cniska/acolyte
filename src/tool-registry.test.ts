@@ -21,10 +21,12 @@ describe("toolsets", () => {
       "gitShow",
       "gitStatus",
       "listSkills",
+      "listUndo",
       "memoryAdd",
       "memoryRemove",
       "memorySearch",
       "readFile",
+      "restoreUndo",
       "runCommand",
       "runTests",
       "scanCode",
@@ -44,6 +46,8 @@ describe("toolIds", () => {
     expect(ids).toEqual([...ids].sort());
     expect(ids).toContain("file-read");
     expect(ids).toContain("file-edit");
+    expect(ids).toContain("undo-list");
+    expect(ids).toContain("undo-restore");
     expect(ids).toContain("shell-run");
     expect(ids).toContain("web-search");
     expect(ids).toContain("git-add");
@@ -60,6 +64,7 @@ describe("toolIdsByCategory", () => {
     expect(ids).toContain("file-delete");
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
+    expect(ids).toContain("undo-restore");
     expect(ids).not.toContain("checklist-update");
     expect(ids).not.toContain("file-read");
     expect(ids).not.toContain("shell-run");

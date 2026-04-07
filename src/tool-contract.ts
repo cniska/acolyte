@@ -26,6 +26,7 @@ export type ChecklistListener = (event: { groupId: string; groupTitle: string; i
 export type ToolkitInput = {
   workspace: string;
   session: SessionContext;
+  sessionId?: string;
   onOutput: ToolOutputListener;
   onChecklist: ChecklistListener;
 };

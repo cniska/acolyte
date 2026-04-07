@@ -9,7 +9,7 @@ import {
   type ResolvedConfig,
   toConfig,
 } from "./config-contract";
-import { featureFlagsSchema } from "./feature-flags-contract";
+import { featureFlagsSchema, resolvedFeatureFlagsSchema } from "./feature-flags-contract";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 
@@ -124,6 +124,10 @@ function serializeToml(config: Config): string {
     lines.push("");
     lines.push("[features]");
     if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
+    if (typeof config.features.undoCheckpoints === "boolean")
+      lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
+    if (typeof config.features.undoCheckpoints === "boolean")
+      lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
     if (typeof config.features.parallelWorkspaces === "boolean")
       lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
   }
@@ -136,6 +140,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const port = config.port ?? defaults.port;
   const parsedFeatures = featureFlagsSchema.safeParse(config.features ?? {});
   const features = parsedFeatures.success ? parsedFeatures.data : {};
+  const resolvedFeatures = resolvedFeatureFlagsSchema.parse(features);
   return {
     port,
     locale: config.locale ?? defaults.locale,
@@ -150,10 +155,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
-    features: {
-      syncAgents: features.syncAgents ?? false,
-      parallelWorkspaces: features.parallelWorkspaces ?? false,
-    },
+    features: resolvedFeatures,
   };
 }
 
@@ -192,7 +194,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "parallelWorkspaces"]),
+  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

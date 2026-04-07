@@ -18,6 +18,13 @@ Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with
 
 Releases follow [semver](https://semver.org). Patch and minor releases are always safe to apply. Major releases may include breaking changes to the protocol, configuration, or database schemas.
 
+## Feature flags and deprecations
+
+Some features ship behind flags while they stabilize. When a flag is no longer needed, we remove it deliberately:
+
+- If a flag is user-settable (config/env/CLI): first deprecate it by making it a no-op and emitting a warning. Then remove it after one or more releases. Removal is documented in the release notes for that version.
+- If a flag is internal-only and not user-settable: it may be removed without a deprecation window.
+
 ## Release process
 
 The [`scripts/release.sh`](../scripts/release.sh) script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.

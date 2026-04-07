@@ -1,6 +1,7 @@
 import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { t } from "./i18n";
 import type {
   LifecycleEventName,
@@ -9,7 +10,7 @@ import type {
   RunContext,
   ToolOutputEvent,
 } from "./lifecycle-contract";
-import { POST_EFFECTS, PRE_EFFECTS } from "./lifecycle-effects";
+import { attachLifecycleEffectHandlers } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { createLifecyclePolicy } from "./lifecycle-policy";
@@ -20,8 +21,9 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
-import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
+import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
@@ -108,6 +110,7 @@ function createRunContext(
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
+    features: input.features ?? DEFAULT_FEATURE_FLAGS,
     emit: params.emit,
     debug: params.debug,
     tools: params.prepared.tools,
@@ -131,37 +134,21 @@ function createRunContext(
     toolOutputHandler: null,
   };
 
-  session.onBeforeTool = (preCtx) => runPreEffects(ctx, preCtx);
-  session.onAfterTool = (toolResult) => runPostEffects(ctx, toolResult);
+  session.featureFlags = ctx.features;
+  attachLifecycleEffectHandlers(ctx, session);
+  if (ctx.features.undoCheckpoints) {
+    const sessionId = ctx.request.sessionId;
+    if (sessionId && ctx.workspace) {
+      attachUndoCheckpointSideEffects({
+        workspace: ctx.workspace,
+        sessionId,
+        session,
+        writeToolSet: WRITE_TOOL_SET,
+      });
+    }
+  }
 
   return ctx;
-}
-
-function runPreEffects(
-  ctx: RunContext,
-  { toolId }: { toolId: string; args: Record<string, unknown> },
-): { append: string } | undefined {
-  if (DISCOVERY_TOOL_SET.has(toolId)) return undefined;
-  for (const effect of PRE_EFFECTS) {
-    effect.run(ctx);
-  }
-  return undefined;
-}
-
-function runPostEffects(
-  ctx: RunContext,
-  { toolId, args }: { toolId: string; args: Record<string, unknown> },
-): { append: string } | undefined {
-  if (!WRITE_TOOL_SET.has(toolId)) return undefined;
-  const path = typeof args.path === "string" ? args.path.trim() : "";
-  if (!path) return undefined;
-  const paths = [path];
-  let lintOutput: string | undefined;
-  for (const effect of POST_EFFECTS) {
-    const result = effect.run(ctx, paths);
-    if (result.lintOutput) lintOutput = result.lintOutput;
-  }
-  return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
 }
 
 export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {

@@ -10,6 +10,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
 import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import type { LifecycleDeps } from "./lifecycle";
 import type { RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
@@ -488,6 +489,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     workspace: undefined,
     taskId: undefined,
     soulPrompt: "",
+    features: DEFAULT_FEATURE_FLAGS,
     emit: () => {},
     debug: () => {},
     tools: {} as RunContext["tools"],

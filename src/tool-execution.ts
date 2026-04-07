@@ -1,5 +1,6 @@
 import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { parseError } from "./error-handling";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
 
@@ -74,7 +75,19 @@ export async function runTool(
       throw error;
     }
 
-    const preOutput = session.onBeforeTool?.({ toolId, args });
+    const preOutput = session.onBeforeTool?.({ toolId, toolCallId, args });
+    if (session.onBeforeToolAsync) {
+      try {
+        await session.onBeforeToolAsync({ toolId, toolCallId, args });
+      } catch (error) {
+        session.onDebug?.("lifecycle.tool.hook_failed", {
+          hook: "before",
+          tool: toolId,
+          tool_call_id: toolCallId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     const cache = session.cache;
     const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
@@ -87,6 +100,24 @@ export async function runTool(
       const cached = cache.get(toolId, args);
       if (cached) {
         session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
+        if (session.onAfterToolAsync) {
+          try {
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "succeeded",
+              result: cached.result,
+            });
+          } catch (error) {
+            session.onDebug?.("lifecycle.tool.hook_failed", {
+              hook: "after",
+              tool: toolId,
+              tool_call_id: toolCallId,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
         recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded");
         return { result: cached.result };
       }
@@ -95,19 +126,56 @@ export async function runTool(
 
     let taskFailed = false;
     let taskResult: unknown;
+    let taskError: unknown;
     try {
       taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
       if (cache?.isCacheable(toolId)) {
         cache.set(toolId, args, { result: taskResult });
         cache.populateSubEntries(toolId, args, taskResult);
       }
-      const postOutput = session.onAfterTool?.({ toolId, args: args, result: taskResult });
+      const postOutput = session.onAfterTool?.({
+        toolId,
+        toolCallId,
+        args: args,
+        status: "succeeded",
+        result: taskResult,
+      });
       const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
       return { result: taskResult, effectOutput: append || undefined };
     } catch (error) {
       taskFailed = true;
+      taskError = error;
       throw error;
     } finally {
+      if (session.onAfterToolAsync) {
+        try {
+          if (taskFailed) {
+            const parsed = parseError(taskError);
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "failed",
+              error: parsed.ok ? parsed.value : { message: `${toolId} failed` },
+            });
+          } else {
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "succeeded",
+              result: taskResult,
+            });
+          }
+        } catch (error) {
+          session.onDebug?.("lifecycle.tool.hook_failed", {
+            hook: "after",
+            tool: toolId,
+            tool_call_id: toolCallId,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       recordCall(
         session,
         toolId,

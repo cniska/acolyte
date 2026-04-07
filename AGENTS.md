@@ -17,7 +17,8 @@ These must always hold. Break them and the system breaks.
 2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
 3. `@signal` is a suffix — model output must end with exactly one `@signal` line. Strip the signal line and everything after it.
 4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
-5. Run `bun run verify` before every commit.
+5. Error handling must follow `docs/errors.md`.
+6. Run `bun run verify` before every commit.
 
 ## Workflow
 
@@ -52,5 +53,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 ## Testing
 
 - Unit: `bun run test:unit`, integration: `bun run test:int`, visual: `bun run test:tui`.
+- Unit tests should be pure: mock boundary effects (filesystem, subprocesses, network) instead of exercising them directly.
+- If a test needs real filesystem/process/network behavior, put it in `*.int.test.ts` (not `*.test.ts`).
 - Integration tests use real server/lifecycle/tool wiring with fake provider model calls.
 - Visual tests cover stable TUI rendering and interaction snapshots.

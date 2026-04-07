@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -13,6 +13,10 @@ import {
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
+import { createLifecycleDeps } from "./test-utils";
+import { runTool } from "./tool-execution";
+import type { SessionContext } from "./tool-session";
+import { listUndoCheckpoints } from "./undo-checkpoints";
 
 let fake: FakeProviderServer;
 let workspace: string;
@@ -237,5 +241,47 @@ exit 1
     });
 
     expect(reply.output).toBe("Yielding to a newer pending message.");
+  });
+
+  test("captures undo checkpoint after write tool when enabled", async () => {
+    const undoWorkspace = await mkdtemp(join(tmpdir(), "acolyte-lifecycle-undo-"));
+    try {
+      await mkdir(join(undoWorkspace, ".acolyte"), { recursive: true });
+      await writeFile(join(undoWorkspace, "a.txt"), "one\n", "utf8");
+
+      const deps = createLifecycleDeps({
+        phaseGenerate: mock(async (ctx: { session: SessionContext; result?: unknown }) => {
+          await runTool(ctx.session, "file-edit", "call_1", { path: "a.txt" }, async () => {
+            await writeFile(join(undoWorkspace, "a.txt"), "two\n", "utf8");
+            return { ok: true };
+          });
+
+          (ctx as { result?: unknown }).result = { text: "done", toolCalls: [], signal: "done" };
+        }),
+      });
+
+      await runLifecycle(
+        {
+          request: {
+            model: "gpt-5-mini",
+            message: "test",
+            history: [],
+            useMemory: false,
+            sessionId: "sess_undo",
+          },
+          soulPrompt: "SOUL",
+          workspace: undoWorkspace,
+          features: { syncAgents: false, undoCheckpoints: true, parallelWorkspaces: false },
+        },
+        deps,
+      );
+
+      const checkpoints = await listUndoCheckpoints({ workspace: undoWorkspace, sessionId: "sess_undo", limit: 10 });
+      expect(checkpoints.length).toBe(1);
+      expect(checkpoints[0]?.toolId).toBe("file-edit");
+      expect(checkpoints[0]?.paths).toEqual(["a.txt"]);
+    } finally {
+      await rm(undoWorkspace, { recursive: true, force: true });
+    }
   });
 });

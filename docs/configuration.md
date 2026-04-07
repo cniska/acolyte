@@ -101,6 +101,25 @@ Enable via CLI:
 acolyte config set --project features.syncAgents true
 ```
 
+### `features.undoCheckpoints`
+
+When enabled:
+- write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`
+- the model can list and restore checkpoints via `undo-list` and `undo-restore`
+
+Enable via TOML:
+
+```toml
+[features]
+undoCheckpoints = true
+```
+
+Enable via CLI:
+
+```bash
+acolyte config set --project features.undoCheckpoints true
+```
+
 ### `features.parallelWorkspaces`
 
 When enabled:
@@ -143,4 +162,5 @@ acolyte config set --project features.parallelWorkspaces true
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
+| `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |

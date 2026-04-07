@@ -1,3 +1,4 @@
+import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { INITIAL_MAX_STEPS, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
@@ -18,8 +19,24 @@ export type SessionFlags = {
   totalStepLimit?: number;
 };
 
-export type PreToolContext = { toolId: string; args: Record<string, unknown> };
-export type PostToolContext = { toolId: string; args: Record<string, unknown>; result: unknown };
+export type ToolErrorSummary = { message: string; code?: string; kind?: string };
+
+export type PreToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown> };
+export type PostToolContext =
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "succeeded";
+      result: unknown;
+    }
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "failed";
+      error: ToolErrorSummary;
+    };
 export type EffectOutput = { append?: string };
 
 export type SessionContext = {
@@ -29,9 +46,12 @@ export type SessionContext = {
   writeTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
   cache?: ToolCache;
+  featureFlags?: ResolvedFeatureFlags;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
   onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
   onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
+  onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
+  onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
   workspaceProfile?: WorkspaceProfile;
 };
 
