@@ -7,6 +7,9 @@ import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
+const COSINE_WEIGHT = 0.8;
+const TOKEN_WEIGHT = 0.2;
+
 export async function searchMemories(
   query: string,
   options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore },
@@ -27,8 +30,6 @@ export async function searchMemories(
   const ids = filtered.map((r) => r.id);
   const embeddings = store.getEmbeddings(ids);
 
-  const COSINE_WEIGHT = 0.8;
-  const TOKEN_WEIGHT = 0.2;
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
     const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
