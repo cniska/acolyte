@@ -49,6 +49,10 @@ export const TOOLKIT_REGISTRY: {
     createToolkit: (input) => createFileToolkit(input),
   },
   {
+    id: "undo",
+    createToolkit: (input) => createUndoToolkit(input),
+  },
+  {
     id: "memory",
     createToolkit: (input) => createMemoryToolkit(input),
   },
@@ -75,10 +79,6 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "shell",
     createToolkit: (input) => createShellToolkit(input),
-  },
-  {
-    id: "undo",
-    createToolkit: (input) => createUndoToolkit(input),
   },
 ];
 
