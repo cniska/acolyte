@@ -69,7 +69,7 @@ export const EN_MESSAGES = {
   "chat.slash.help.usage": "show token usage",
   "chat.slash.help.workspaces": "manage workspaces",
   "chat.slash.help.workspaces.list": "list workspaces",
-  "chat.slash.help.workspaces.new": "create workspace",
+  "chat.slash.help.workspaces.new": "create a new workspace",
   "chat.slash.help.workspaces.switch": "switch workspace",
   "chat.status.check_failed": "Status check failed.",
   "chat.status.header": "Status",
@@ -132,8 +132,6 @@ export const EN_MESSAGES = {
   "chat.workspaces.list.none":
     "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
   "chat.workspaces.name_conflict": "Workspace name already exists. Choose a different name.",
-  "chat.workspaces.new.hint_named": "With prompt: /workspaces new <name> -- <prompt>",
-  "chat.workspaces.new.hint_auto": "Auto-name: /workspaces new -- <prompt>",
   "cli.help.desc.tool": "run a tool directly",
   "cli.help.desc.trace": "inspect server lifecycle traces",
   "cli.help.desc.update": "check for and install updates",
