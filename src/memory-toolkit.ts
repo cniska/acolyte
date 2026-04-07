@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type MemoryRecord, type MemoryStore, memoryScopeSchema, scopeFromKey } from "./memory-contract";
-import { bufferToEmbedding, cosineSimilarity, embedText } from "./memory-embedding";
+import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getDefaultMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
@@ -27,9 +27,13 @@ export async function searchMemories(
   const ids = filtered.map((r) => r.id);
   const embeddings = store.getEmbeddings(ids);
 
+  const COSINE_WEIGHT = 0.8;
+  const TOKEN_WEIGHT = 0.2;
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
-    const score = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
+    const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
+    const overlap = tokenOverlap(query, record.content);
+    const score = cosine * COSINE_WEIGHT + overlap * TOKEN_WEIGHT;
     return { record, score };
   });
   scored.sort((a, b) => b.score - a.score);
