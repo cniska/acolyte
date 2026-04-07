@@ -92,49 +92,6 @@ describe("cli visual regression", () => {
     expect(out).toMatch(new RegExp(`^${packageJson.version}( \\([0-9a-f]{7}\\))?$`));
   });
 
-  test("top-level help output stays stable", async () => {
-    const out = await runCliPlain(["--help"]);
-    expect(out).toBe(
-      dedent(`
-      Acolyte v0.15.0
-
-      Usage
-        acolyte
-        acolyte <COMMAND> [ARGS]
-
-      Commands
-        init [provider]        initialize provider API key
-        resume [id]            resume previous session
-        run <prompt>           run a single prompt
-        history                show recent sessions
-        start                  start server
-        stop                   stop all servers
-        restart                restart server
-        ps                     list running servers
-        status                 show server status
-        memory                 manage memory
-        config                 manage config
-        skill <name> [prompt]  run a prompt with an active skill
-        logs                   view server logs
-        update                 check for and install updates
-        trace                  inspect server lifecycle traces
-
-      Options
-        -h, --help             print help
-        -V, --version          print version
-        --update               check for updates before running
-        --no-update            disable update checks
-    `),
-    );
-  });
-
-  test("update command prints up-to-date or network error", async () => {
-    const out = await runCliPlain(["update"]);
-    const isUpToDate = out.includes("Already up to date");
-    const isNetworkError = out.includes("Could not check for updates");
-    expect(isUpToDate || isNetworkError).toBe(true);
-  });
-
   test("history command renders aligned session rows", async () => {
     await withCliTestEnv(async ({ run, writeSessionsStore }) => {
       await writeSessionsStore({

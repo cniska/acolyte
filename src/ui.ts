@@ -1,6 +1,20 @@
 import { stdout } from "node:process";
 import { palette } from "./palette";
 
+let uiSink: ((chunk: string) => void) | null = null;
+
+export function setUiSink(sink: ((chunk: string) => void) | null): void {
+  uiSink = sink;
+}
+
+function write(chunk: string): void {
+  if (uiSink) {
+    uiSink(chunk);
+    return;
+  }
+  stdout.write(chunk);
+}
+
 function hexToAnsi(hex: string): string {
   const n = Number.parseInt(hex.replace("#", ""), 16);
   return `\x1b[38;2;${(n >> 16) & 255};${(n >> 8) & 255};${n & 255}m`;
@@ -26,34 +40,34 @@ export function tokenizeStreamContent(content: string): string[] {
 
 export async function streamText(content: string): Promise<void> {
   for (const token of tokenizeStreamContent(content)) {
-    stdout.write(token);
+    write(token);
     if (!/^\s+$/.test(token)) await Bun.sleep(12);
   }
-  if (!content.endsWith("\n")) stdout.write("\n");
+  if (!content.endsWith("\n")) write("\n");
 }
 
 export function printDim(content: string): void {
-  stdout.write(`${color.dim(content)}\n`);
+  write(`${color.dim(content)}\n`);
 }
 
 export function printToolHeader(title: string, detail?: string): void {
   const base = color.bold(color.white(title));
   const suffix = detail ? ` ${color.dim(detail)}` : "";
-  stdout.write(`${base}${suffix}\n`);
+  write(`${base}${suffix}\n`);
 }
 
 export function printOutput(content: string): void {
-  stdout.write(`${content}\n`);
+  write(`${content}\n`);
 }
 
 export function printWarning(content: string): void {
-  stdout.write(`${color.dim(color.yellow(content))}\n`);
+  write(`${color.dim(color.yellow(content))}\n`);
 }
 
 export function printError(content: string): void {
-  stdout.write(`${color.red(content)}\n`);
+  write(`${color.red(content)}\n`);
 }
 
 export function clearScreen(): void {
-  stdout.write("\x1b[2J\x1b[H");
+  write("\x1b[2J\x1b[H");
 }
