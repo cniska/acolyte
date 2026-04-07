@@ -56,6 +56,7 @@ export const EN_MESSAGES = {
   "chat.slash.help.memory.add": "add memory note",
   "chat.slash.help.memory.all": "show all memory notes",
   "chat.slash.help.memory.list": "show memory notes",
+  "chat.slash.help.memory.rm": "remove memory note",
   "chat.slash.help.memory.project": "show project memory notes",
   "chat.slash.help.memory.user": "show user memory notes",
   "chat.slash.help.model": "change model",

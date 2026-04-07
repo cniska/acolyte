@@ -14,10 +14,10 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/d")).toEqual([]);
     expect(suggestSlashCommands("/memo")).toEqual([
       "/memory",
-      "/memory list",
       "/memory add",
+      "/memory rm",
+      "/memory list",
       "/memory all",
-      "/memory user",
     ]);
     expect(suggestSlashCommands("/memory l")).toEqual(["/memory list"]);
     expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
@@ -26,7 +26,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model"]);
-    expect(suggestSlashCommands("/reme")).toEqual(["/remember"]);
+    expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
   });
@@ -50,10 +50,10 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
     expect(suggestSlashCommands("/memry")).toEqual([
       "/memory",
-      "/memory list",
       "/memory add",
+      "/memory rm",
+      "/memory list",
       "/memory all",
-      "/memory user",
     ]);
   });
 

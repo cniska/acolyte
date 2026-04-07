@@ -43,3 +43,38 @@ export type SlashCommand = {
   match: (value: string) => boolean;
   run: () => Promise<CommandResult>;
 };
+
+export type ParsedCommand = {
+  root: string;
+  sub: string;
+  args: string[];
+  raw: string;
+};
+
+export type Subcommand = {
+  name: string;
+  match: (sub: string, args: string[]) => boolean;
+  run: (parsed: ParsedCommand) => Promise<CommandResult>;
+};
+
+export type SubcommandGroup = {
+  root: string;
+  subcommands: Subcommand[];
+  fallback: (parsed: ParsedCommand) => Promise<CommandResult>;
+};
+
+export function parseSlashCommand(text: string): ParsedCommand {
+  const parts = text.trim().split(/\s+/);
+  const root = (parts[0] ?? "").replace(/^\//, "");
+  const sub = parts[1] ?? "";
+  const args = parts.slice(2);
+  return { root, sub, args, raw: text };
+}
+
+export function dispatchSubcommandGroup(group: SubcommandGroup, text: string): Promise<CommandResult> {
+  const parsed = parseSlashCommand(text);
+  for (const sub of group.subcommands) {
+    if (sub.match(parsed.sub, parsed.args)) return sub.run(parsed);
+  }
+  return group.fallback(parsed);
+}

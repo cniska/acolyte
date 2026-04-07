@@ -255,7 +255,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|all|user|project]")).toBe(true);
   });
 
   test("dispatchSlashCommand validates /memory extra args", async () => {
@@ -264,7 +264,7 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "Usage: /memory [all|user|project]")).toBe(true);
   });
 
-  test("dispatchSlashCommand handles /remember and saves selected scope", async () => {
+  test("dispatchSlashCommand handles /memory add and saves selected scope", async () => {
     let savedContent = "";
     let savedScope = "";
     const memoryApi = createMemoryApi({
@@ -281,7 +281,7 @@ describe("chat-commands", () => {
         };
       },
     });
-    const { rows, stop } = await runCommand("/remember --project use bun verify", { memoryApi });
+    const { rows, stop } = await runCommand("/memory add --project use bun verify", { memoryApi });
     expect(stop).toBe(true);
     expect(savedContent).toBe("use bun verify");
     expect(savedScope).toBe("project");
