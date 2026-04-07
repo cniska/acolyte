@@ -40,6 +40,8 @@ export type MemoryPolicy = {
   maxOutputTokens: number;
   contextMessageWindow: number;
   malformedStreakWarningThreshold: number;
+  cosineWeight: number;
+  tokenWeight: number;
 };
 
 export const defaultMemoryPolicy: MemoryPolicy = {
@@ -47,6 +49,8 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   maxOutputTokens: 1_000,
   contextMessageWindow: 20,
   malformedStreakWarningThreshold: 3,
+  cosineWeight: 0.8,
+  tokenWeight: 0.2,
 };
 
 export function createMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
