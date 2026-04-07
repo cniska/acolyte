@@ -21,6 +21,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Term | Definition |
 |---|---|
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
+| ChatRow | One display block in the chat transcript; may render as many visual lines (e.g. a usage summary or status panel) |
 | Checklist | Inline progress display for multi-step tasks, defined by `checklist-create` and updated by `checklist-update` |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
 | Directive | Model-to-host structured annotation emitted via `@` prefix (e.g. `@signal done`, `@observe project`) |
