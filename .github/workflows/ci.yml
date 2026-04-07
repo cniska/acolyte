@@ -66,8 +66,8 @@ jobs:
           name: coverage
           path: coverage
 
-  compile-smoke:
-    name: Compile smoke (${{ matrix.target }})
+  compile:
+    name: Compile (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
 
