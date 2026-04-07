@@ -10,6 +10,7 @@ describe("parseArgs", () => {
       kValues: [3, 5, 10],
       limit: null,
       embeddingModel: null,
+      distillModel: null,
       json: false,
     });
   });
@@ -34,6 +35,7 @@ describe("parseArgs", () => {
       kValues: [5, 20],
       limit: 10,
       embeddingModel: "text-embedding-3-large",
+      distillModel: null,
       json: true,
     });
   });

@@ -23,6 +23,7 @@ type MemoryBenchArgs = {
   kValues: number[];
   limit: number | null;
   embeddingModel: string | null;
+  distillModel: string | null;
   json: boolean;
 };
 
@@ -80,6 +81,7 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
   const kValues: number[] = [];
   let limit: number | null = null;
   let embeddingModel: string | null = null;
+  let distillModel: string | null = null;
   let json = false;
 
   for (let i = 0; i < args.length; i++) {
@@ -105,6 +107,12 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
       i += 1;
       continue;
     }
+    if (token === "--distill-model") {
+      distillModel = args[i + 1] ?? "";
+      if (distillModel.trim().length === 0) throw new Error("Missing value for --distill-model");
+      i += 1;
+      continue;
+    }
     if (token === "--json") {
       json = true;
       continue;
@@ -121,6 +129,7 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
     kValues: kValues.length > 0 ? kValues : DEFAULT_K_VALUES,
     limit,
     embeddingModel,
+    distillModel,
     json,
   };
 }
@@ -264,6 +273,9 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.embeddingModel) {
     (appConfig as { embeddingModel: string }).embeddingModel = args.embeddingModel;
+  }
+  if (args.distillModel) {
+    (appConfig as { distillModel: string }).distillModel = args.distillModel;
   }
   const embeddingModel = appConfig.embeddingModel;
   const dataDir = defaultDataDir();
