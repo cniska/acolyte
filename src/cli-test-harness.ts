@@ -2,7 +2,14 @@ import { stripAnsi } from "./tui/serialize";
 import { trimRightLines } from "./tui-test-utils";
 import { setUiSink } from "./ui";
 
+let isCapturingCliOutput = false;
+
 export async function captureCliOutput(fn: () => Promise<void> | void): Promise<string> {
+  if (isCapturingCliOutput) {
+    throw new Error("captureCliOutput cannot be nested");
+  }
+  isCapturingCliOutput = true;
+
   const chunks: string[] = [];
   const originalStdoutWrite = process.stdout.write;
   const originalStderrWrite = process.stderr.write;
@@ -27,6 +34,7 @@ export async function captureCliOutput(fn: () => Promise<void> | void): Promise<
     setUiSink(null);
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
+    isCapturingCliOutput = false;
   }
 
   return trimRightLines(stripAnsi(chunks.join("")))
