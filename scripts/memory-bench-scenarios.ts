@@ -435,18 +435,15 @@ async function distillLoCoMoConversation(
   return result;
 }
 
-async function matchEvidenceToFacts(turnText: string, facts: { obsId: string; content: string }[]): Promise<string[]> {
+function matchEvidenceToFacts(
+  turnVec: Float32Array,
+  facts: { obsId: string; vec: Float32Array }[],
+): string[] {
   if (facts.length === 0) return [];
-  const turnVec = await embedText(turnText);
-  if (!turnVec) return [facts[0].obsId];
-  const scored: { obsId: string; score: number }[] = [];
-  for (const fact of facts) {
-    const factVec = await embedText(fact.content);
-    if (factVec) scored.push({ obsId: fact.obsId, score: cosineSimilarity(turnVec, factVec) });
-  }
+  const scored = facts.map((f) => ({ obsId: f.obsId, score: cosineSimilarity(turnVec, f.vec) }));
   scored.sort((a, b) => b.score - a.score);
   const best = scored.filter((s) => s.score > 0.5).slice(0, 3);
-  return best.length > 0 ? best.map((s) => s.obsId) : scored.length > 0 ? [scored[0].obsId] : [];
+  return best.length > 0 ? best.map((s) => s.obsId) : [scored[0].obsId];
 }
 
 async function normalizeLoCoMoDistilled(
@@ -456,19 +453,20 @@ async function normalizeLoCoMoDistilled(
   convIdx: number,
 ): Promise<DatasetScenario> {
   const observations: NormalizedObservation[] = [];
-  const sessionFacts = new Map<string, { obsId: string; content: string }[]>();
+  const sessionFactVecs = new Map<string, { obsId: string; vec: Float32Array }[]>();
 
   let obsIndex = 0;
   for (const session of distilled.sessions) {
     const date = locomoSessionDate(conv, session.sessionNum);
-    const facts: { obsId: string; content: string }[] = [];
+    const factVecs: { obsId: string; vec: Float32Array }[] = [];
     for (const fact of session.facts) {
       const obsId = `conv${convIdx}_dist${obsIndex}`;
       observations.push({ id: obsId, content: fact.content, timestamp: date, topic: fact.topic });
-      facts.push({ obsId, content: fact.content });
+      const vec = await embedText(fact.content);
+      if (vec) factVecs.push({ obsId, vec });
       obsIndex++;
     }
-    sessionFacts.set(session.sessionNum, facts);
+    sessionFactVecs.set(session.sessionNum, factVecs);
   }
 
   const turnTextByDiaId = new Map<string, string>();
@@ -483,21 +481,14 @@ async function normalizeLoCoMoDistilled(
     for (const diaId of q.evidence) {
       if (evidenceCache.has(diaId)) continue;
       const sessionNum = diaId.split(":")[0]?.replace("D", "");
-      if (!sessionNum) {
-        evidenceCache.set(diaId, []);
-        continue;
-      }
-      const facts = sessionFacts.get(sessionNum);
-      if (!facts || facts.length === 0) {
-        evidenceCache.set(diaId, []);
-        continue;
-      }
+      if (!sessionNum) { evidenceCache.set(diaId, []); continue; }
+      const factVecs = sessionFactVecs.get(sessionNum);
+      if (!factVecs || factVecs.length === 0) { evidenceCache.set(diaId, []); continue; }
       const turnText = turnTextByDiaId.get(diaId) ?? "";
-      if (!turnText) {
-        evidenceCache.set(diaId, [facts[0].obsId]);
-        continue;
-      }
-      evidenceCache.set(diaId, await matchEvidenceToFacts(turnText, facts));
+      if (!turnText) { evidenceCache.set(diaId, [factVecs[0].obsId]); continue; }
+      const turnVec = await embedText(turnText);
+      if (!turnVec) { evidenceCache.set(diaId, [factVecs[0].obsId]); continue; }
+      evidenceCache.set(diaId, matchEvidenceToFacts(turnVec, factVecs));
     }
   }
 
