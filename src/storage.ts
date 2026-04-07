@@ -3,8 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
-import { type Session, type SessionState, sessionStateSchema } from "./session-contract";
-import type { SessionStore as SessionStorePort } from "./session-store";
+import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
+import type { SessionStore } from "./session-store";
 import { createId } from "./short-id";
 
 const DATA_DIR = join(resolveHomeDir(), ".acolyte");
@@ -17,26 +17,24 @@ export function parseSessionState(input: SessionState): SessionState {
   return result.success ? result.data : DEFAULT_SESSION_STATE;
 }
 
-export async function readStore(): Promise<SessionState> {
-  if (!existsSync(STORE_PATH)) return DEFAULT_SESSION_STATE;
-
+async function readState(): Promise<SessionState> {
+  if (!existsSync(STORE_PATH)) return { ...DEFAULT_SESSION_STATE };
   try {
     const raw = await readFile(STORE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as SessionState;
-    return parseSessionState(parsed);
+    return parseSessionState(JSON.parse(raw) as SessionState);
   } catch {
-    return DEFAULT_SESSION_STATE;
+    return { ...DEFAULT_SESSION_STATE };
   }
 }
 
-export async function writeStore(record: SessionState): Promise<void> {
+async function writeState(state: SessionState): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(record, null, 2), "utf8");
+  await writeFile(STORE_PATH, JSON.stringify(state, null, 2), "utf8");
 }
 
 export function createSession(model: string): Session {
   const now = new Date().toISOString();
-  const id = `sess_${createId()}`;
+  const id: SessionId = `sess_${createId()}`;
   return {
     id,
     createdAt: now,
@@ -48,8 +46,68 @@ export function createSession(model: string): Session {
   };
 }
 
-export const fileSessionStore: SessionStorePort = {
-  readStore,
-  writeStore,
-  createSession,
-};
+export function createFileSessionStore(): SessionStore {
+  return {
+    async listSessions(options) {
+      const state = await readState();
+      const limit = options?.limit;
+      return limit ? state.sessions.slice(0, limit) : state.sessions;
+    },
+
+    async getSession(id) {
+      const state = await readState();
+      return state.sessions.find((s) => s.id === id) ?? null;
+    },
+
+    async saveSession(session) {
+      const state = await readState();
+      const idx = state.sessions.findIndex((s) => s.id === session.id);
+      if (idx >= 0) {
+        state.sessions[idx] = session;
+      } else {
+        state.sessions.unshift(session);
+      }
+      await writeState(state);
+    },
+
+    async removeSession(id) {
+      const state = await readState();
+      state.sessions = state.sessions.filter((s) => s.id !== id);
+      if (state.activeSessionId === id) state.activeSessionId = undefined;
+      await writeState(state);
+    },
+
+    async getActiveSessionId() {
+      const state = await readState();
+      return state.activeSessionId;
+    },
+
+    async setActiveSessionId(id) {
+      const state = await readState();
+      state.activeSessionId = id;
+      await writeState(state);
+    },
+
+    close() {},
+  };
+}
+
+let storeInstance: SessionStore | null = null;
+let storePromise: Promise<SessionStore> | null = null;
+
+export function getSessionStore(): Promise<SessionStore> {
+  if (storeInstance) return Promise.resolve(storeInstance);
+  if (storePromise) return storePromise;
+
+  storePromise = resolveStore().then((store) => {
+    storeInstance = store;
+    storePromise = null;
+    process.on("exit", () => storeInstance?.close());
+    return store;
+  });
+  return storePromise;
+}
+
+async function resolveStore(): Promise<SessionStore> {
+  return createFileSessionStore();
+}

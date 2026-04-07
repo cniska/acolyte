@@ -3,18 +3,18 @@ import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output
 import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
-import type { readStore as readStoreType } from "./storage";
+import type { SessionStore } from "./session-store";
 
 type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
-  readStore: typeof readStoreType;
+  getSessionStore: () => Promise<SessionStore>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
 
 export async function historyMode(args: string[], deps: HistoryModeDeps): Promise<void> {
-  const { hasHelpFlag, printDim, readStore, commandError, commandHelp } = deps;
+  const { hasHelpFlag, printDim, getSessionStore, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("history");
     return;
@@ -25,15 +25,16 @@ export async function historyMode(args: string[], deps: HistoryModeDeps): Promis
     commandError("history");
     return;
   }
-  const store = await readStore();
-  if (store.sessions.length === 0) {
+  const store = await getSessionStore();
+  const sessions = await store.listSessions({ limit: 20 });
+  if (sessions.length === 0) {
     printDim(t("chat.picker.sessions.none"));
     return;
   }
 
   const out: CliOutput = json ? createJsonOutput() : createTextOutput();
   out.addTable(
-    store.sessions.slice(0, 20).map((session) => ({
+    sessions.map((session) => ({
       id: session.id,
       title: truncateText(session.title, 60),
       time: formatRelativeTime(session.updatedAt),
