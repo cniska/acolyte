@@ -4,7 +4,7 @@ import { createMemoryCommands, resolveMemoryApi } from "./chat-commands-memory";
 import { createModelCommands } from "./chat-commands-model";
 import { createResumeCommands } from "./chat-commands-resume";
 import { sessionsRows } from "./chat-commands-sessions";
-import { createSkillCommands } from "./chat-commands-skill";
+import { handleSkillActivation } from "./chat-commands-skill";
 import { statusRows } from "./chat-commands-status";
 import { usageRows } from "./chat-commands-usage";
 import { createWorkspacesCommands } from "./chat-commands-workspaces";
@@ -121,7 +121,6 @@ function resolveSlashCommands(ctx: CommandContext): SlashCommand[] {
     createNewCommand(ctx),
     createExitCommand(ctx),
     createClearCommand(ctx),
-    ...createSkillCommands(ctx),
   ];
 }
 
@@ -133,6 +132,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     return command.run();
   }
   if (resolvedText.startsWith("/")) {
+    const skillResult = await handleSkillActivation(ctx);
+    if (skillResult) return skillResult;
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
     return { stop: true, userText: text };
   }
