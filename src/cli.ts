@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { parseTopLevelArgs } from "./cli-args";
+import { parseGlobalArgsAndCommand } from "./cli-args";
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-command-registry";
 import { checkAndUpdateOnStartup, updateMode } from "./cli-update";
@@ -18,7 +18,7 @@ function isTopLevelVersionCommand(command: string | undefined): boolean {
 }
 
 async function main(): Promise<void> {
-  const { command, args, update } = parseTopLevelArgs(process.argv.slice(2));
+  const { command, args, update } = parseGlobalArgsAndCommand(process.argv.slice(2));
 
   if (!command) {
     if (update === "force") await updateMode();

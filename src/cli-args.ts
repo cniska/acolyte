@@ -68,7 +68,7 @@ export type TopLevelArgs = {
   update: UpdateBehavior;
 };
 
-export function parseTopLevelArgs(argv: string[]): TopLevelArgs {
+export function parseGlobalArgsAndCommand(argv: string[]): TopLevelArgs {
   let update: UpdateBehavior = "auto";
   const filtered: string[] = [];
 

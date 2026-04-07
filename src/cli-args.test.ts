@@ -3,11 +3,11 @@ import {
   hasBoolFlag,
   hasHelpFlag,
   parseFlag,
+  parseGlobalArgsAndCommand,
   parsePositional,
   parseRepeatableFlag,
   parseRequiredFlag,
   parseTailCount,
-  parseTopLevelArgs,
   stripFlag,
 } from "./cli-args";
 
@@ -95,17 +95,17 @@ describe("parsePositional", () => {
   });
 });
 
-describe("parseTopLevelArgs", () => {
+describe("parseGlobalArgsAndCommand", () => {
   test("parses --update with no command", () => {
-    expect(parseTopLevelArgs(["--update"])).toEqual({ command: undefined, args: [], update: "force" });
+    expect(parseGlobalArgsAndCommand(["--update"])).toEqual({ command: undefined, args: [], update: "force" });
   });
 
   test("parses --no-update with no command", () => {
-    expect(parseTopLevelArgs(["--no-update"])).toEqual({ command: undefined, args: [], update: "skip" });
+    expect(parseGlobalArgsAndCommand(["--no-update"])).toEqual({ command: undefined, args: [], update: "skip" });
   });
 
   test("strips global flags and preserves command and args", () => {
-    expect(parseTopLevelArgs(["--update", "run", "--model", "gpt-5-mini", "hi"])).toEqual({
+    expect(parseGlobalArgsAndCommand(["--update", "run", "--model", "gpt-5-mini", "hi"])).toEqual({
       command: "run",
       args: ["--model", "gpt-5-mini", "hi"],
       update: "force",
@@ -113,6 +113,10 @@ describe("parseTopLevelArgs", () => {
   });
 
   test("skip overrides force when both are present", () => {
-    expect(parseTopLevelArgs(["--update", "--no-update"])).toEqual({ command: undefined, args: [], update: "skip" });
+    expect(parseGlobalArgsAndCommand(["--update", "--no-update"])).toEqual({
+      command: undefined,
+      args: [],
+      update: "skip",
+    });
   });
 });
