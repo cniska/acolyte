@@ -16,6 +16,7 @@ Shipped, user-visible capabilities.
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
 - auto-update on startup with progress UI
+- update flags to force or skip auto-update (--update, --no-update)
 - one-line install script
 
 ## Agent execution
