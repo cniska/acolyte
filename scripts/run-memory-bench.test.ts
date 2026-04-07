@@ -9,15 +9,31 @@ describe("parseArgs", () => {
       datasets: ["longmemeval", "locomo"],
       kValues: [3, 5, 10],
       limit: null,
+      embeddingModel: null,
       json: false,
     });
   });
 
   test("parses explicit flags", () => {
-    expect(parseArgs(["--dataset", "longmemeval", "--k", "5", "--k", "20", "--limit", "10", "--json"])).toEqual({
+    expect(
+      parseArgs([
+        "--dataset",
+        "longmemeval",
+        "--k",
+        "5",
+        "--k",
+        "20",
+        "--limit",
+        "10",
+        "--embedding-model",
+        "text-embedding-3-large",
+        "--json",
+      ]),
+    ).toEqual({
       datasets: ["longmemeval"],
       kValues: [5, 20],
       limit: 10,
+      embeddingModel: "text-embedding-3-large",
       json: true,
     });
   });

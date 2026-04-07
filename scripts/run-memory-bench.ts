@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { appConfig } from "../src/app-config";
 import type { MemoryRecord } from "../src/memory-contract";
 import { embeddingToBuffer, embedText } from "../src/memory-embedding";
 import { createSqliteMemoryStore } from "../src/memory-store";
@@ -21,6 +22,7 @@ type MemoryBenchArgs = {
   datasets: MemoryBenchDatasetId[];
   kValues: number[];
   limit: number | null;
+  embeddingModel: string | null;
   json: boolean;
 };
 
@@ -77,6 +79,7 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
   const datasets: MemoryBenchDatasetId[] = [];
   const kValues: number[] = [];
   let limit: number | null = null;
+  let embeddingModel: string | null = null;
   let json = false;
 
   for (let i = 0; i < args.length; i++) {
@@ -96,6 +99,12 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
       i += 1;
       continue;
     }
+    if (token === "--embedding-model") {
+      embeddingModel = args[i + 1] ?? "";
+      if (embeddingModel.trim().length === 0) throw new Error("Missing value for --embedding-model");
+      i += 1;
+      continue;
+    }
     if (token === "--json") {
       json = true;
       continue;
@@ -111,12 +120,15 @@ export function parseArgs(args: string[]): MemoryBenchArgs {
     datasets: datasets.length > 0 ? datasets : (Object.keys(MEMORY_BENCH_ADAPTERS) as MemoryBenchDatasetId[]),
     kValues: kValues.length > 0 ? kValues : DEFAULT_K_VALUES,
     limit,
+    embeddingModel,
     json,
   };
 }
 
 function printUsage(): void {
-  console.log("Usage: bun run scripts/run-memory-bench.ts [--dataset <id>] [--k <n>] [--limit <n>] [--json]");
+  console.log(
+    "Usage: bun run scripts/run-memory-bench.ts [--dataset <id>] [--k <n>] [--limit <n>] [--embedding-model <id>] [--json]",
+  );
 }
 
 function safeIsoDate(value: string): string {
@@ -249,6 +261,10 @@ async function runDataset(
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.embeddingModel) {
+    (appConfig.embedding as { model: string }).model = args.embeddingModel;
+  }
+  const embeddingModel = appConfig.embedding.model;
   const dataDir = defaultDataDir();
   const results: Record<string, DatasetResult> = {};
 
@@ -277,7 +293,7 @@ async function main(): Promise<void> {
       datasets: args.datasets,
       kValues: args.kValues,
       limit: args.limit,
-      embeddingModel: "text-embedding-3-small",
+      embeddingModel,
     },
     summary: {
       datasetsRun: allResults.length,
