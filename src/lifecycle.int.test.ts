@@ -271,7 +271,7 @@ exit 1
           },
           soulPrompt: "SOUL",
           workspace: undoWorkspace,
-          features: { syncAgents: false, undoCheckpoints: true },
+          features: { syncAgents: false, undoCheckpoints: true, parallelWorkspaces: false },
         },
         deps,
       );

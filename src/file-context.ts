@@ -44,8 +44,8 @@ async function listDirectoryTree(root: string): Promise<{ lines: string[]; trunc
   return { lines, truncated };
 }
 
-export async function formatFileContext(pathInput: string): Promise<string> {
-  const absPath = resolve(pathInput);
+export async function formatFileContext(pathInput: string, baseDir: string = process.cwd()): Promise<string> {
+  const absPath = resolve(baseDir, pathInput);
   const fileInfo = await stat(absPath);
   if (fileInfo.isDirectory()) {
     const listed = await listDirectoryTree(absPath);

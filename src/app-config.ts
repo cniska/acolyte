@@ -5,6 +5,7 @@ const fileConfig = readResolvedConfigSync();
 
 export const appConfig = {
   locale: fileConfig.locale,
+  features: fileConfig.features,
   server: {
     port: fileConfig.port,
     apiKey: env.ACOLYTE_API_KEY,

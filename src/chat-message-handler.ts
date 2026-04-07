@@ -77,7 +77,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const userMessage = input.createMessage("user", userText);
     input.currentSession.messages.push(userMessage);
     input.currentSession.updatedAt = input.nowIso();
-    const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText);
+    const { contexts, unresolvedPaths } = await resolveReferencedFileContext(userText, {
+      workspace: input.currentSession.workspace,
+    });
     const fileContextMessages: ChatMessage[] = contexts.map((context) => input.createMessage("system", context));
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     if (unresolvedPaths.length > 0 && contexts.length === 0) {
@@ -104,6 +106,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: input.currentSession.model,
         sessionId: input.currentSession.id,
+        workspace: input.currentSession.workspace,
         useMemory: input.useMemory,
         signal: controller.signal,
         onEvent: (event) => {
