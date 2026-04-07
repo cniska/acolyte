@@ -156,6 +156,30 @@ export function tokenOverlap(query: string, content: string, idf?: ReadonlyMap<s
   return totalWeight === 0 ? 0 : weightedHits / totalWeight;
 }
 
+export function matchTopicsByEmbedding(
+  queryEmbedding: Float32Array,
+  topicEmbeddings: ReadonlyMap<string, Float32Array>,
+  threshold: number,
+): Set<string> {
+  const matched = new Set<string>();
+  for (const [topic, embedding] of topicEmbeddings) {
+    if (cosineSimilarity(queryEmbedding, embedding) >= threshold) {
+      matched.add(topic);
+    }
+  }
+  return matched;
+}
+
+export function filterByTopicEmbedding<T extends { topic?: string | null }>(
+  records: readonly T[],
+  matchedTopics: ReadonlySet<string>,
+  minSize: number,
+): readonly T[] {
+  if (matchedTopics.size === 0) return records;
+  const filtered = records.filter((r) => r.topic && matchedTopics.has(r.topic));
+  return filtered.length >= minSize ? filtered : records;
+}
+
 export function computeIdf(documents: readonly string[]): Map<string, number> {
   const n = documents.length;
   if (n === 0) return new Map();

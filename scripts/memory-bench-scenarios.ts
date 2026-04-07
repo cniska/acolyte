@@ -1,13 +1,17 @@
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { DISTILLER_PROMPT, splitScopedObservation } from "../src/memory-distiller";
+import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
-export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations";
+export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations" | "locomo-distilled";
 
 export type NormalizedObservation = {
   readonly id: string;
   readonly content: string;
   readonly timestamp: string;
+  readonly topic?: string | null;
 };
 
 export type NormalizedQuery = {
@@ -205,17 +209,129 @@ const locomoAdapter: DatasetAdapter = {
   },
 };
 
+function deriveSessionTopic(summary: string, excludeNames?: ReadonlySet<string>): string | null {
+  const stopwords = new Set([
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "is",
+    "it",
+    "as",
+    "be",
+    "was",
+    "are",
+    "been",
+    "has",
+    "have",
+    "had",
+    "do",
+    "does",
+    "did",
+    "not",
+    "no",
+    "so",
+    "if",
+    "my",
+    "me",
+    "we",
+    "he",
+    "she",
+    "they",
+    "this",
+    "that",
+    "what",
+    "which",
+    "who",
+    "how",
+    "when",
+    "where",
+    "i",
+    "you",
+    "your",
+    "its",
+    "about",
+    "also",
+    "her",
+    "his",
+    "their",
+    "them",
+    "she",
+    "him",
+    "would",
+    "could",
+    "should",
+    "will",
+    "can",
+    "may",
+    "more",
+    "some",
+    "been",
+    "being",
+    "were",
+    "than",
+    "very",
+    "much",
+    "both",
+    "each",
+    "other",
+    "into",
+    "over",
+    "such",
+    "then",
+    "out",
+    "up",
+    "new",
+    "one",
+    "two",
+    "mentioned",
+    "conversation",
+    "discussed",
+    "talked",
+    "told",
+  ]);
+  const freq = new Map<string, number>();
+  for (const raw of summary.toLowerCase().split(/[\s\p{P}]+/u)) {
+    if (raw.length > 2 && !stopwords.has(raw) && !excludeNames?.has(raw)) freq.set(raw, (freq.get(raw) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [word, count] of freq) {
+    if (count > bestCount) {
+      bestCount = count;
+      best = word;
+    }
+  }
+  return best;
+}
+
 function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
   return raw.map((entry, convIdx) => {
     const parsed = z
       .object({
         conversation: z.record(z.string(), z.any()),
         observation: z.record(z.string(), z.any()),
+        session_summary: z.record(z.string(), z.any()).optional(),
         qa: z.array(locomoQaSchema),
       })
       .parse(entry);
     const conv = parsed.conversation as Record<string, unknown>;
     const obsData = parsed.observation as Record<string, Record<string, [string, string][]>>;
+    const summaries = (parsed.session_summary ?? {}) as Record<string, string>;
+    const speakerA = typeof conv.speaker_a === "string" ? conv.speaker_a.toLowerCase() : "";
+    const speakerB = typeof conv.speaker_b === "string" ? conv.speaker_b.toLowerCase() : "";
+    const speakerNames = new Set([speakerA, speakerB].filter((s) => s.length > 0));
     const observations: NormalizedObservation[] = [];
     const diaIdToObsIds = new Map<string, string[]>();
 
@@ -231,12 +347,15 @@ function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
     for (const sessionKey of sessionKeys) {
       const sessionNum = sessionKey.match(/\d+/)?.[0] ?? "1";
       const date = locomoSessionDate(conv, sessionNum);
+      const summaryKey = `session_${sessionNum}_summary`;
+      const topic =
+        typeof summaries[summaryKey] === "string" ? deriveSessionTopic(summaries[summaryKey], speakerNames) : null;
       const speakers = obsData[sessionKey];
 
       for (const [speaker, facts] of Object.entries(speakers)) {
         for (const [fact, diaId] of facts) {
           const obsId = `conv${convIdx}_obs${obsIndex}`;
-          observations.push({ id: obsId, content: `[${speaker}] ${fact}`, timestamp: date });
+          observations.push({ id: obsId, content: `[${speaker}] ${fact}`, timestamp: date, topic });
           const existing = diaIdToObsIds.get(diaId) ?? [];
           existing.push(obsId);
           diaIdToObsIds.set(diaId, existing);
@@ -270,15 +389,197 @@ const locomoObservationsAdapter: DatasetAdapter = {
   },
 };
 
+type CachedDistillResult = {
+  sessions: { sessionNum: string; facts: { content: string; topic: string | null; scope: string }[] }[];
+};
+
+async function distillSession(
+  sessionTurns: { speaker: string; text: string }[],
+  runner: (systemPrompt: string, userContent: string) => Promise<string>,
+): Promise<{ content: string; topic: string | null; scope: string }[]> {
+  const conversationText = sessionTurns.map((t) => `${t.speaker}: ${t.text}`).join("\n");
+  const output = await runner(DISTILLER_PROMPT, conversationText);
+  if (!output.trim()) return [];
+  const parsed = splitScopedObservation(output);
+  return parsed.facts.map((f) => ({ content: f.content, topic: f.topic, scope: f.scope }));
+}
+
+async function distillLoCoMoConversation(
+  conv: Record<string, unknown>,
+  runner: (systemPrompt: string, userContent: string) => Promise<string>,
+  cachePath: string,
+): Promise<CachedDistillResult> {
+  if (existsSync(cachePath)) {
+    return JSON.parse(await readFile(cachePath, "utf8"));
+  }
+
+  const sessionKeys = Object.keys(conv)
+    .filter((k) => /^session_\d+$/.test(k))
+    .sort((a, b) => Number(a.split("_")[1]) - Number(b.split("_")[1]));
+
+  const sessions: CachedDistillResult["sessions"] = [];
+  for (const sessionKey of sessionKeys) {
+    const sessionNum = sessionKey.split("_")[1];
+    const turns = z.array(locomoTurnSchema).parse(conv[sessionKey]);
+    const facts = await distillSession(
+      turns.map((t) => ({ speaker: t.speaker, text: t.text })),
+      runner,
+    );
+    sessions.push({ sessionNum, facts });
+    process.stdout.write(".");
+  }
+  process.stdout.write("\n");
+
+  const result: CachedDistillResult = { sessions };
+  await writeFile(cachePath, JSON.stringify(result, null, 2), "utf8");
+  return result;
+}
+
+function matchEvidenceToFacts(turnVec: Float32Array, facts: { obsId: string; vec: Float32Array }[]): string[] {
+  if (facts.length === 0) return [];
+  const scored = facts.map((f) => ({ obsId: f.obsId, score: cosineSimilarity(turnVec, f.vec) }));
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored.filter((s) => s.score > 0.5).slice(0, 3);
+  return best.length > 0 ? best.map((s) => s.obsId) : [scored[0].obsId];
+}
+
+async function normalizeLoCoMoDistilled(
+  distilled: CachedDistillResult,
+  conv: Record<string, unknown>,
+  qa: z.infer<typeof locomoQaSchema>[],
+  convIdx: number,
+): Promise<DatasetScenario> {
+  const observations: NormalizedObservation[] = [];
+  const sessionFactVecs = new Map<string, { obsId: string; vec: Float32Array }[]>();
+
+  let obsIndex = 0;
+  for (const session of distilled.sessions) {
+    const date = locomoSessionDate(conv, session.sessionNum);
+    const factVecs: { obsId: string; vec: Float32Array }[] = [];
+    for (const fact of session.facts) {
+      const obsId = `conv${convIdx}_dist${obsIndex}`;
+      observations.push({ id: obsId, content: fact.content, timestamp: date, topic: fact.topic });
+      const vec = await embedText(fact.content);
+      if (vec) factVecs.push({ obsId, vec });
+      obsIndex++;
+    }
+    sessionFactVecs.set(session.sessionNum, factVecs);
+  }
+
+  const turnTextByDiaId = new Map<string, string>();
+  const sessionKeys = Object.keys(conv).filter((k) => /^session_\d+$/.test(k));
+  for (const sessionKey of sessionKeys) {
+    const turns = z.array(locomoTurnSchema).parse(conv[sessionKey]);
+    for (const turn of turns) turnTextByDiaId.set(turn.dia_id, turn.text);
+  }
+
+  const evidenceCache = new Map<string, string[]>();
+  for (const q of qa) {
+    for (const diaId of q.evidence) {
+      if (evidenceCache.has(diaId)) continue;
+      const sessionNum = diaId.split(":")[0]?.replace("D", "");
+      if (!sessionNum) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
+      const factVecs = sessionFactVecs.get(sessionNum);
+      if (!factVecs || factVecs.length === 0) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
+      const turnText = turnTextByDiaId.get(diaId) ?? "";
+      if (!turnText) {
+        evidenceCache.set(diaId, [factVecs[0].obsId]);
+        continue;
+      }
+      const turnVec = await embedText(turnText);
+      if (!turnVec) {
+        evidenceCache.set(diaId, [factVecs[0].obsId]);
+        continue;
+      }
+      evidenceCache.set(diaId, matchEvidenceToFacts(turnVec, factVecs));
+    }
+  }
+
+  const queries: NormalizedQuery[] = qa
+    .filter((q) => q.evidence.length > 0)
+    .map((q, qIdx) => ({
+      id: `conv${convIdx}_q${qIdx}`,
+      question: q.question,
+      relevantObservationIds: [...new Set(q.evidence.flatMap((e) => evidenceCache.get(e) ?? []))],
+    }))
+    .filter((q) => q.relevantObservationIds.length > 0);
+
+  return { scenarioId: `conv${convIdx}`, observations, queries };
+}
+
+const locomoDistilledAdapter: DatasetAdapter = {
+  id: "locomo-distilled",
+  name: "LoCoMo (distilled)",
+  description: "10 long conversations distilled through the real Acolyte distiller pipeline",
+  async load(dataDir = DATA_DIR) {
+    const dir = join(dataDir, "locomo");
+    await ensureDir(dir);
+    const filePath = join(dir, LOCOMO_FILE);
+    await downloadIfMissing(LOCOMO_URL, filePath);
+    const raw = JSON.parse(await readFile(filePath, "utf8")) as unknown[];
+
+    const { createModel } = await import("../src/model-factory");
+    const { normalizeModel, providerFromModel } = await import("../src/provider-config");
+    const { sharedRateLimiter } = await import("../src/rate-limiter");
+    const { appConfig } = await import("../src/app-config");
+
+    const runner = async (systemPrompt: string, userContent: string): Promise<string> => {
+      const qualifiedModel = normalizeModel(appConfig.distillModel);
+      const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
+      const result = await model.doGenerate({
+        prompt: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: [{ type: "text", text: userContent }] },
+        ],
+        temperature: 0,
+      });
+      return result.content
+        .filter((part): part is { type: "text"; text: string } => part.type === "text")
+        .map((part) => part.text)
+        .join("")
+        .trim();
+    };
+
+    const cacheDir = join(dir, "distilled");
+    await ensureDir(cacheDir);
+    const scenarios: DatasetScenario[] = [];
+
+    for (let convIdx = 0; convIdx < raw.length; convIdx++) {
+      const entry = z
+        .object({ conversation: z.record(z.string(), z.any()), qa: z.array(locomoQaSchema) })
+        .parse(raw[convIdx]);
+      const conv = entry.conversation as Record<string, unknown>;
+      const cachePath = join(cacheDir, `conv${convIdx}.json`);
+      const distilled = await distillLoCoMoConversation(conv, runner, cachePath);
+      scenarios.push(await normalizeLoCoMoDistilled(distilled, conv, entry.qa, convIdx));
+    }
+
+    return { id: "locomo-distilled" as const, name: "LoCoMo (distilled)", scenarios };
+  },
+};
+
 export const MEMORY_BENCH_ADAPTERS: Record<MemoryBenchDatasetId, DatasetAdapter> = {
   longmemeval: longMemEvalAdapter,
   locomo: locomoAdapter,
   "locomo-observations": locomoObservationsAdapter,
+  "locomo-distilled": locomoDistilledAdapter,
 };
 
-export const MEMORY_BENCH_DATASET_IDS: MemoryBenchDatasetId[] = ["longmemeval", "locomo", "locomo-observations"];
+export const MEMORY_BENCH_DATASET_IDS: MemoryBenchDatasetId[] = [
+  "longmemeval",
+  "locomo",
+  "locomo-observations",
+  "locomo-distilled",
+];
 
 export function parseDatasetId(value: string): MemoryBenchDatasetId {
-  if (value === "longmemeval" || value === "locomo" || value === "locomo-observations") return value;
+  if (value === "longmemeval" || value === "locomo" || value === "locomo-observations" || value === "locomo-distilled")
+    return value;
   throw new Error(`Unknown dataset: ${value}. Valid: ${MEMORY_BENCH_DATASET_IDS.join(", ")}`);
 }

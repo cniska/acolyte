@@ -23,11 +23,17 @@ export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
 Preserve specifics: file paths, function names, error messages, config values, decisions with reasoning.
 
-Tag each fact with an observe directive on its own line, followed by the fact on the next line:
+Tag each fact with an observe directive on its own line, optionally followed by a topic tag, then the fact on the next line:
 
 @observe project — project-specific durable facts (architecture, tooling, conventions, decisions)
 @observe user — personal preferences that carry across projects
 @observe session — in-progress state, temporary constraints, working assumptions
+@topic <word> — optional topic tag for the preceding observe (e.g. testing, auth, config, tooling)
+
+Example:
+@observe project
+@topic testing
+Project uses Vitest for unit tests
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
@@ -76,60 +82,68 @@ function parseObserveDirective(line: string): DistillScope | null {
   return match ? (match[1].toLowerCase() as DistillScope) : null;
 }
 
+function parseTopicDirective(line: string): string | null {
+  const match = line.trim().match(/^@topic\s+(\S+)$/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
 function hasMalformedObserveDirective(line: string): boolean {
   return /^@observe\b/i.test(line.trim()) && !parseObserveDirective(line);
 }
 
-function splitScopedObservation(observed: string): {
-  session: string;
-  project: string;
-  user: string;
+type ParsedFact = { scope: DistillScope; content: string; topic: string | null };
+
+type SplitResult = {
+  facts: ParsedFact[];
   sessionCount: number;
   projectCount: number;
   userCount: number;
   droppedUntaggedCount: number;
   droppedMalformedCount: number;
-} {
+};
+
+export function splitScopedObservation(observed: string): SplitResult {
   const lines = observed
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  const sessionLines: string[] = [];
-  const projectLines: string[] = [];
-  const userLines: string[] = [];
+  const facts: ParsedFact[] = [];
   let droppedUntaggedCount = 0;
   let droppedMalformedCount = 0;
   let pendingScope: DistillScope | null = null;
+  let pendingTopic: string | null = null;
   for (const line of lines) {
-    // Check for @observe directive
     const scope = parseObserveDirective(line);
     if (scope) {
       pendingScope = scope;
+      pendingTopic = null;
       continue;
     }
     if (hasMalformedObserveDirective(line)) {
       droppedMalformedCount += 1;
       pendingScope = null;
+      pendingTopic = null;
       continue;
     }
-    // Fact line — needs a preceding @observe directive
+    const topic = parseTopicDirective(line);
+    if (topic) {
+      pendingTopic = topic;
+      continue;
+    }
     if (!pendingScope) {
       droppedUntaggedCount += 1;
       continue;
     }
-    if (pendingScope === "project") projectLines.push(line);
-    else if (pendingScope === "user") userLines.push(line);
-    else sessionLines.push(line);
+    facts.push({ scope: pendingScope, content: line, topic: pendingTopic });
     pendingScope = null;
+    pendingTopic = null;
   }
 
   return {
-    session: sessionLines.join("\n").trim(),
-    project: projectLines.join("\n").trim(),
-    user: userLines.join("\n").trim(),
-    sessionCount: sessionLines.length,
-    projectCount: projectLines.length,
-    userCount: userLines.length,
+    facts,
+    sessionCount: facts.filter((f) => f.scope === "session").length,
+    projectCount: facts.filter((f) => f.scope === "project").length,
+    userCount: facts.filter((f) => f.scope === "user").length,
     droppedUntaggedCount,
     droppedMalformedCount,
   };
@@ -179,22 +193,28 @@ function resolveDistillScopeKey(
   return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
-async function commitDistillForKey(ds: MemoryStore, key: string, observed: string): Promise<number> {
+async function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<number> {
   const existingEntries = await ds.list({ scopeKey: key });
   const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
-  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return 0;
+  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(content)) return 0;
 
   const observation: MemoryRecord = {
     id: `mem_${createId()}`,
     scopeKey: key,
     kind: "observation",
-    content: observed,
+    content,
     createdAt: nowIso(),
-    tokenEstimate: estimateTokens(observed),
+    tokenEstimate: estimateTokens(content),
+    topic,
   };
   await ds.write(observation);
-  await embedAndStore(ds, observation.id, key, observed);
-  log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
+  await embedAndStore(ds, observation.id, key, content);
+  log.debug("memory.distill.observation_written", {
+    key,
+    id: observation.id,
+    topic,
+    tokens: observation.tokenEstimate,
+  });
   return observation.tokenEstimate;
 }
 
@@ -227,7 +247,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       if (!observed.trim()) return;
       const promptTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
       if (commitScope !== "session") {
-        const usage = await commitDistillForKey(ds, key, observed);
+        const usage = await commitFact(ds, key, observed, null);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
         return {
           projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
@@ -252,16 +272,9 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         malformedRejectStreak = 0;
       }
       let totalTokens = promptTokens;
-      if (scoped.session) {
-        totalTokens += await commitDistillForKey(ds, key, scoped.session);
-      }
-      if (scoped.project) {
-        const projectKey = resolveDistillScopeKey("project", ctx);
-        if (projectKey) totalTokens += await commitDistillForKey(ds, projectKey, scoped.project);
-      }
-      if (scoped.user) {
-        const userKey = resolveDistillScopeKey("user", ctx);
-        if (userKey) totalTokens += await commitDistillForKey(ds, userKey, scoped.user);
+      for (const fact of scoped.facts) {
+        const factKey = resolveDistillScopeKey(fact.scope, fact.scope === "session" ? { sessionId: key } : ctx);
+        if (factKey) totalTokens += await commitFact(ds, factKey, fact.content, fact.topic);
       }
       log.debug("memory.distill.commit_done", {
         key,

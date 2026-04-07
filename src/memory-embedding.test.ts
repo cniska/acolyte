@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { bufferToEmbedding, computeIdf, cosineSimilarity, embeddingToBuffer, tokenOverlap } from "./memory-embedding";
+import {
+  bufferToEmbedding,
+  computeIdf,
+  cosineSimilarity,
+  embeddingToBuffer,
+  filterByTopicEmbedding,
+  matchTopicsByEmbedding,
+  tokenOverlap,
+} from "./memory-embedding";
 
 describe("cosineSimilarity", () => {
   test("identical vectors return 1", () => {
@@ -81,6 +89,61 @@ describe("computeIdf", () => {
 
   test("empty corpus returns empty map", () => {
     expect(computeIdf([]).size).toBe(0);
+  });
+});
+
+describe("matchTopicsByEmbedding", () => {
+  test("matches topics above threshold", () => {
+    const query = new Float32Array([1, 0, 0]);
+    const topics = new Map([
+      ["testing", new Float32Array([0.9, 0.1, 0])],
+      ["auth", new Float32Array([0, 0, 1])],
+    ]);
+    const matched = matchTopicsByEmbedding(query, topics, 0.6);
+    expect(matched.has("testing")).toBe(true);
+    expect(matched.has("auth")).toBe(false);
+  });
+
+  test("returns empty set when nothing matches", () => {
+    const query = new Float32Array([1, 0, 0]);
+    const topics = new Map([["auth", new Float32Array([0, 0, 1])]]);
+    expect(matchTopicsByEmbedding(query, topics, 0.6).size).toBe(0);
+  });
+});
+
+describe("filterByTopicEmbedding", () => {
+  test("filters to matching topics when enough results", () => {
+    const records = [
+      { id: "1", topic: "testing" },
+      { id: "2", topic: "testing" },
+      { id: "3", topic: "testing" },
+      { id: "4", topic: "auth" },
+      { id: "5", topic: "auth" },
+    ];
+    const matched = new Set(["testing"]);
+    const filtered = filterByTopicEmbedding(records, matched, 3);
+    expect(filtered).toHaveLength(3);
+    expect(filtered.every((r) => r.topic === "testing")).toBe(true);
+  });
+
+  test("falls back to full set when filtered is too small", () => {
+    const records = [
+      { id: "1", topic: "testing" },
+      { id: "2", topic: "auth" },
+      { id: "3", topic: "auth" },
+    ];
+    const matched = new Set(["testing"]);
+    const filtered = filterByTopicEmbedding(records, matched, 3);
+    expect(filtered).toHaveLength(3);
+  });
+
+  test("returns all when no topics matched", () => {
+    const records = [
+      { id: "1", topic: "testing" },
+      { id: "2", topic: null },
+    ];
+    const filtered = filterByTopicEmbedding(records, new Set(), 1);
+    expect(filtered).toHaveLength(2);
   });
 });
 
