@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bufferToEmbedding, cosineSimilarity, embeddingToBuffer, tokenOverlap } from "./memory-embedding";
+import { bufferToEmbedding, computeIdf, cosineSimilarity, embeddingToBuffer, tokenOverlap } from "./memory-embedding";
 
 describe("cosineSimilarity", () => {
   test("identical vectors return 1", () => {
@@ -60,6 +60,27 @@ describe("tokenOverlap", () => {
 
   test("stopwords-only query returns 0", () => {
     expect(tokenOverlap("the a is", "some content")).toBe(0);
+  });
+
+  test("idf-weighted overlap favors rare tokens", () => {
+    const corpus = ["project uses bun", "project uses typescript", "project has tests", "pgvector is configured"];
+    const idf = computeIdf(corpus);
+    const common = tokenOverlap("project tools", "project uses bun", idf);
+    const rare = tokenOverlap("pgvector tools", "pgvector is configured", idf);
+    expect(rare).toBeGreaterThan(common);
+  });
+});
+
+describe("computeIdf", () => {
+  test("rare tokens get higher scores", () => {
+    const idf = computeIdf(["bun test", "bun build", "pgvector setup"]);
+    const bunScore = idf.get("bun") ?? 0;
+    const pgvectorScore = idf.get("pgvector") ?? 0;
+    expect(pgvectorScore).toBeGreaterThan(bunScore);
+  });
+
+  test("empty corpus returns empty map", () => {
+    expect(computeIdf([]).size).toBe(0);
   });
 });
 

@@ -61,7 +61,18 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
 - repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
 - distill record writes use the configured storage backend (SQLite or Postgres) for atomic persistence
-- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the SQLite backend scores entries by a weighted blend of cosine similarity (0.8) and token overlap (0.2). The Postgres backend uses native pgvector cosine distance (`<=>` operator) for similarity search. Records without embeddings fall back to recency ordering
+- hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
+
+## Recall
+
+Memory records are embedded at write time using the provider embedding API. At query time, entries are scored by a weighted blend of two signals:
+
+- **Cosine similarity** (weight 0.8) — semantic relevance via embedding distance
+- **TF-IDF token overlap** (weight 0.2) — exact keyword matching where rare tokens like proper nouns and tool names score higher than common words
+
+Both the SQLite and Postgres backends use this hybrid scoring. The Postgres path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
+
+Weights are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`).
 
 ## Storage
 

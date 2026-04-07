@@ -7,7 +7,7 @@ import {
   memoryScopeSchema,
   scopeFromKey,
 } from "./memory-contract";
-import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
+import { bufferToEmbedding, computeIdf, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
@@ -33,21 +33,29 @@ export async function searchMemories(
   }
 
   if (store.searchByEmbedding) {
-    const oversample = options?.scope ? limit * 2 : limit;
+    const oversample = (options?.scope ? limit * 2 : limit) * 2;
     const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
     const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
-    const results = scoped.slice(0, limit);
+    const idf = computeIdf(scoped.map((r) => r.content));
+    const rescored = scoped.map((record, rank) => {
+      const positionScore = 1 - rank / scoped.length;
+      const overlap = tokenOverlap(query, record.content, idf);
+      return { record, score: positionScore * policy.cosineWeight + overlap * policy.tokenWeight };
+    });
+    rescored.sort((a, b) => b.score - a.score);
+    const results = rescored.slice(0, limit).map((s) => s.record);
     await store.touchRecalled(results.map((r) => r.id));
     return results;
   }
 
   const ids = filtered.map((r) => r.id);
   const embeddings = await store.getEmbeddings(ids);
+  const idf = computeIdf(filtered.map((r) => r.content));
 
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
     const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
-    const overlap = tokenOverlap(query, record.content);
+    const overlap = tokenOverlap(query, record.content, idf);
     const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight;
     return { record, score };
   });

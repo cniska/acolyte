@@ -135,15 +135,41 @@ function tokenize(text: string): Set<string> {
   return tokens;
 }
 
-export function tokenOverlap(query: string, content: string): number {
+export function tokenOverlap(query: string, content: string, idf?: ReadonlyMap<string, number>): number {
   const queryTokens = tokenize(query);
   if (queryTokens.size === 0) return 0;
   const contentTokens = tokenize(content);
-  let hits = 0;
-  for (const token of queryTokens) {
-    if (contentTokens.has(token)) hits++;
+  if (!idf) {
+    let hits = 0;
+    for (const token of queryTokens) {
+      if (contentTokens.has(token)) hits++;
+    }
+    return hits / queryTokens.size;
   }
-  return hits / queryTokens.size;
+  let weightedHits = 0;
+  let totalWeight = 0;
+  for (const token of queryTokens) {
+    const w = idf.get(token) ?? 1;
+    totalWeight += w;
+    if (contentTokens.has(token)) weightedHits += w;
+  }
+  return totalWeight === 0 ? 0 : weightedHits / totalWeight;
+}
+
+export function computeIdf(documents: readonly string[]): Map<string, number> {
+  const n = documents.length;
+  if (n === 0) return new Map();
+  const df = new Map<string, number>();
+  for (const doc of documents) {
+    for (const token of tokenize(doc)) {
+      df.set(token, (df.get(token) ?? 0) + 1);
+    }
+  }
+  const idf = new Map<string, number>();
+  for (const [token, count] of df) {
+    idf.set(token, Math.log(n / count) + 1);
+  }
+  return idf;
 }
 
 export async function embedText(text: string): Promise<Float32Array | null> {
