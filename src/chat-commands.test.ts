@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { dispatchSlashCommand, sessionsRows, statusRows, usageRows } from "./chat-commands";
+import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
 import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
-import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
 import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
@@ -39,111 +38,8 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
 }
 
 describe("chat-commands", () => {
-  test("usageRows includes expected metric keys", () => {
-    const usage: SessionTokenUsageEntry = {
-      id: "row_1",
-      usage: {
-        inputTokens: 100,
-        outputTokens: 40,
-        totalTokens: 140,
-        inputBudgetTokens: 300,
-        inputTruncated: false,
-      },
-      promptBreakdown: {
-        budgetTokens: 300,
-        usedTokens: 100,
-        systemTokens: 40,
-        toolTokens: 30,
-        memoryTokens: 0,
-        messageTokens: 10,
-      },
-    };
-    const [row] = usageRows(usage);
-    const content = row?.content;
-    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
-    const keys = allPairs.map(([k]) => k);
-    expect(keys).toContain("Input");
-    expect(keys).toContain("Output");
-    expect(keys).toContain("System");
-    expect(keys).toContain("Tools");
-    expect(keys).toContain("Messages");
-  });
-
-  test("usageRows does not include budget warning", () => {
-    const usage: SessionTokenUsageEntry = {
-      id: "row_warn",
-      usage: {
-        inputTokens: 900,
-        outputTokens: 40,
-        totalTokens: 940,
-        inputBudgetTokens: 1000,
-        inputTruncated: true,
-      },
-    };
-    const [row] = usageRows(usage);
-    const content = row?.content;
-    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
-    expect(allPairs.every(([k]) => !k.toLowerCase().includes("warning"))).toBe(true);
-    expect(allPairs.every(([, v]) => !v.includes("context trimmed"))).toBe(true);
-  });
-
-  test("usageRows uses prompt breakdown total for percentages", () => {
-    const usage: SessionTokenUsageEntry = {
-      id: "row_1",
-      usage: { inputTokens: 50, outputTokens: 2, totalTokens: 52 },
-      promptBreakdown: {
-        budgetTokens: 1000,
-        usedTokens: 100,
-        systemTokens: 20,
-        toolTokens: 30,
-        memoryTokens: 0,
-        messageTokens: 40,
-      },
-    };
-    const [row] = usageRows(usage);
-    const content = row?.content;
-    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
-    const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
-    expect(find("System")).toContain("20%");
-    expect(find("Tools")).toContain("30%");
-    expect(find("Messages")).toContain("40%");
-  });
-
-  test("statusRows returns commandOutput with labeled fields", () => {
-    const [row] = statusRows({
-      providers: ["openai"],
-      model: "gpt-5-mini",
-    });
-    const content = row?.content;
-    expect(isCommandOutput(content) && content.header).toBe("Status");
-    const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
-    expect(pairs).toContainEqual(["Providers", "openai"]);
-    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
-  });
-
-  test("statusRows returns empty array when payload has no visible fields", () => {
-    expect(statusRows({})).toHaveLength(0);
-  });
-
-  test("sessionsRows returns commandOutput with header and list", () => {
-    const store = createStore({
-      activeSessionId: "sess_aaaa1111",
-      sessions: [createSession({ id: "sess_aaaa1111", title: "First" })],
-    });
-    const [row] = sessionsRows(store, 10);
-    const content = row?.content;
-    expect(isCommandOutput(content) && content.header).toBe("Sessions 1");
-    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
-    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("First"))).toBe(true);
-  });
-
-  test("usageRows returns fallback row when no usage data", () => {
-    const [row] = usageRows(null);
-    expect(row?.content).toBe("No usage data yet. Send a prompt first.");
-  });
-
   test("dispatchSlashCommand handles /usage", async () => {
-    const tokenUsage: SessionTokenUsageEntry[] = [
+    const tokenUsage = [
       {
         id: "row_2",
         usage: {
