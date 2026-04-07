@@ -35,11 +35,6 @@ function vectorToBuffer(vector: string): Buffer {
   return embeddingToBuffer(new Float32Array(nums));
 }
 
-function bufferToVector(buf: Buffer): string {
-  const arr = bufferToEmbedding(buf);
-  return `[${Array.from(arr).join(",")}]`;
-}
-
 const MIGRATIONS: Migration[] = [
   {
     version: 1,
@@ -84,18 +79,16 @@ async function migrateUp(sql: postgres.Sql, migrations: Migration[]): Promise<nu
 
 export async function createPostgresMemoryStore(connectionUrl: string): Promise<MemoryStore> {
   let createSql: typeof postgres;
-  let registerPgvector: (sql: postgres.Sql) => Promise<void>;
+  let toSql: (value: number[]) => string;
   try {
     createSql = (await import("postgres")).default;
-    // @ts-expect-error -- pgvector has no type declarations
-    const pgvectorMod = await import("pgvector/postgres");
-    registerPgvector = (sql: postgres.Sql) => pgvectorMod.default.registerTypes(sql);
+    const pgvectorMod = await import("pgvector");
+    toSql = pgvectorMod.toSql;
   } catch {
     throw new Error("Install 'postgres' and 'pgvector' to use Postgres memory storage");
   }
 
   const sql = createSql(connectionUrl);
-  await registerPgvector(sql);
   const applied = await migrateUp(sql, MIGRATIONS);
   if (applied > 0) log.debug("memory.postgres.migrated", { applied });
 
@@ -148,10 +141,10 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
 
     async writeEmbedding(id, scope, embedding) {
       if (!safeScopeKey(scope)) return;
-      const vector = bufferToVector(embedding);
+      const vector = toSql(Array.from(bufferToEmbedding(embedding)));
       await sql`
         INSERT INTO memory_embeddings (id, scope, embedding)
-        VALUES (${id}, ${scope}, ${vector}::vector)
+        VALUES (${id}, ${scope}, ${vector})
         ON CONFLICT (id) DO UPDATE SET scope = EXCLUDED.scope, embedding = EXCLUDED.embedding`;
     },
 
@@ -174,7 +167,7 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
     },
 
     async searchByEmbedding(queryEmbedding, options) {
-      const vector = `[${Array.from(queryEmbedding).join(",")}]`;
+      const vector = toSql(Array.from(queryEmbedding));
       const { scopeKey, kind, limit } = options;
       if (scopeKey && !safeScopeKey(scopeKey)) return [];
 
@@ -184,27 +177,27 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
           SELECT m.* FROM memories m
           JOIN memory_embeddings e ON m.id = e.id
           WHERE m.scope_key = ${scopeKey} AND m.kind = ${kind}
-          ORDER BY e.embedding <=> ${vector}::vector
+          ORDER BY e.embedding <=> ${vector}
           LIMIT ${limit}`;
       } else if (scopeKey) {
         rows = await sql<MemoryRow[]>`
           SELECT m.* FROM memories m
           JOIN memory_embeddings e ON m.id = e.id
           WHERE m.scope_key = ${scopeKey}
-          ORDER BY e.embedding <=> ${vector}::vector
+          ORDER BY e.embedding <=> ${vector}
           LIMIT ${limit}`;
       } else if (kind) {
         rows = await sql<MemoryRow[]>`
           SELECT m.* FROM memories m
           JOIN memory_embeddings e ON m.id = e.id
           WHERE m.kind = ${kind}
-          ORDER BY e.embedding <=> ${vector}::vector
+          ORDER BY e.embedding <=> ${vector}
           LIMIT ${limit}`;
       } else {
         rows = await sql<MemoryRow[]>`
           SELECT m.* FROM memories m
           JOIN memory_embeddings e ON m.id = e.id
-          ORDER BY e.embedding <=> ${vector}::vector
+          ORDER BY e.embedding <=> ${vector}
           LIMIT ${limit}`;
       }
       return rows.map(rowToRecord);
