@@ -7,7 +7,7 @@ import {
   memoryScopeSchema,
   scopeFromKey,
 } from "./memory-contract";
-import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
+import { bufferToEmbedding, computeIdf, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
@@ -43,11 +43,12 @@ export async function searchMemories(
 
   const ids = filtered.map((r) => r.id);
   const embeddings = await store.getEmbeddings(ids);
+  const idf = computeIdf(filtered.map((r) => r.content));
 
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
     const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
-    const overlap = tokenOverlap(query, record.content);
+    const overlap = tokenOverlap(query, record.content, idf);
     const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight;
     return { record, score };
   });
