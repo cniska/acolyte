@@ -51,7 +51,7 @@ The `SessionStore` interface provides granular operations (`listSessions`, `getS
 
 - `src/session-contract.ts` — session types, schemas, and `SessionStore` interface
 - `src/session-store.ts` — file-based session store and store factory
-- `src/session-store-cloud.ts` — cloud API session store (feature-flagged)
+- `src/cloud-sync-client.ts` — cloud API session store (feature-flagged)
 - `src/session-lock.ts` — PID-based file locking for concurrent access
 
 ## Further reading

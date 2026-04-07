@@ -49,7 +49,5 @@ The cloud API is versioned at `/api/v1/`. Routes are defined in `src/cloud-sync-
 
 ## Key files
 
-- `src/cloud-sync-client.ts` — HTTP client for the cloud API
-- `src/cloud-sync-contract.ts` — API version and route definitions
-- `src/memory-store-cloud.ts` — cloud MemoryStore implementation
-- `src/session-store-cloud.ts` — cloud SessionStore implementation
+- `src/cloud-sync-client.ts` — cloud sync client with `MemoryStore` and `SessionStore` implementations
+- `src/cloud-sync-contract.ts` — route definitions
