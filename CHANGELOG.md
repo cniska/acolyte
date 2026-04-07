@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.0 (2026-04-07)
+
+- feat(cli): add --update and --no-update (#123) (`c3a2b740`)
+- fix(release): bundle wasm deps in compiled binary (#124) (`be18beb9`)
+- chore(release): drop linux-arm64 build (#125) (`26f98135`)
+- docs(features): mention update flags (`709bd0ff`)
+
+
 ## 0.14.0 (2026-04-07)
 
 - refactor: drop legacy migrations, reset protocol (#118) (`1421a778`)
