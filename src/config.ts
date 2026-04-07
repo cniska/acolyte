@@ -120,6 +120,7 @@ function serializeToml(config: Config): string {
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
+  if (config.postgresUrl) lines.push(`postgresUrl = ${JSON.stringify(config.postgresUrl)}`);
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
@@ -130,6 +131,8 @@ function serializeToml(config: Config): string {
       lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
     if (typeof config.features.parallelWorkspaces === "boolean")
       lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
+    if (typeof config.features.postgresMemory === "boolean")
+      lines.push(`postgresMemory = ${config.features.postgresMemory}`);
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -194,7 +197,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces"]),
+  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces", "postgresMemory"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

@@ -15,6 +15,8 @@ export const featureFlagsSchema = z.object({
   undoCheckpoints: parseBoolSchema.optional(),
   // When enabled, allow managing parallel workspaces (git worktrees) from chat commands.
   parallelWorkspaces: parseBoolSchema.optional(),
+  // When enabled, use Postgres + pgvector as the memory storage backend instead of SQLite.
+  postgresMemory: parseBoolSchema.optional(),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -23,6 +25,7 @@ export const resolvedFeatureFlagsSchema = z.object({
   syncAgents: parseBoolSchema.optional().default(false),
   undoCheckpoints: parseBoolSchema.optional().default(false),
   parallelWorkspaces: parseBoolSchema.optional().default(false),
+  postgresMemory: parseBoolSchema.optional().default(false),
 });
 
 export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;
