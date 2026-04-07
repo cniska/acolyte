@@ -9,3 +9,4 @@ Library/
 scripts/demo.sh
 acolyte
 *.bun-build
+scripts/data/memory-bench/

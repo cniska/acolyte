@@ -13,6 +13,7 @@
     "run": "bun run src/cli.ts run",
     "behavior:run": "bun run scripts/run-behavior.ts",
     "perf:run": "bun run scripts/run-perf.ts",
+    "memory-bench:run": "bun run scripts/run-memory-bench.ts",
     "serve": "bun --env-file=.env run src/server.ts",
     "serve:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run scripts/wait-server.ts",
