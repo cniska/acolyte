@@ -106,6 +106,8 @@ export const EN_MESSAGES = {
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",
   "cli.config.invalid_value": "Invalid value for {key}: {reason}",
   "cli.config.keys": "Keys: {keys}",
+  "cli.config.password_in_url":
+    "Connection URL must not contain a password. Use the PGPASSWORD environment variable instead.",
   "cli.config.removed": "Removed config {key} ({scope}).",
   "cli.config.saved": "Saved config {key} ({scope}).",
   "cli.config.scope": "scope",

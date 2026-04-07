@@ -156,6 +156,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
+    postgresUrl: config.postgresUrl,
     features: resolvedFeatures,
   };
 }
@@ -209,6 +210,18 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   return { section, subKey };
 }
 
+function hasUrlPassword(value: string): boolean {
+  try {
+    return !!new URL(value).password;
+  } catch {
+    return false;
+  }
+}
+
+const CONFIG_VALIDATORS: Partial<Record<keyof Config, (value: string) => string | null>> = {
+  postgresUrl: (value) => (hasUrlPassword(value) ? t("cli.config.password_in_url") : null),
+};
+
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
   const dotted = parseDottedKey(key);
@@ -235,6 +248,8 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     throw new Error(
       t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
     );
+  const validationError = CONFIG_VALIDATORS[topKey]?.(value);
+  if (validationError) throw new Error(validationError);
   const current = await readConfigForScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

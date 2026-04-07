@@ -1,7 +1,6 @@
-import { readConfigSync, readResolvedConfigSync } from "./config";
+import { readResolvedConfigSync } from "./config";
 import { env } from "./env";
 
-const rawConfig = readConfigSync();
 const fileConfig = readResolvedConfigSync();
 
 export const appConfig = {
@@ -33,7 +32,7 @@ export const appConfig = {
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,
-  postgresUrl: rawConfig.postgresUrl,
+  postgresUrl: fileConfig.postgresUrl,
 } as const;
 
 export function setModel(model: string): void {
