@@ -184,12 +184,18 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ...ctx.memoryApi,
   };
 
-  if (resolvedText === "/resume") {
+  type SlashCommand = {
+    name: string;
+    match: (value: string) => boolean;
+    run: () => Promise<CommandResult>;
+  };
+
+  const handleResumePanel = async (): Promise<CommandResult> => {
     ctx.openResumePanel();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText.startsWith("/resume")) {
+  const handleResume = async (): Promise<CommandResult> => {
     const resolved = resolveResumeSession(ctx.store, resolvedText);
     if (resolved.kind === "usage") {
       const recent = formatSessionList(ctx.store, 6);
@@ -224,14 +230,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setShowHelp(() => false);
     await ctx.persist();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/sessions") {
+  const handleSessions = async (): Promise<CommandResult> => {
     ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/workspaces" || resolvedText.startsWith("/workspaces ")) {
+  const handleWorkspaces = async (): Promise<CommandResult> => {
     if (!appConfig.features.parallelWorkspaces) {
       ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.disabled"))]);
       return { stop: true, userText: text };
@@ -394,9 +400,9 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces [list|new|switch] ..."))]);
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/status") {
+  const handleStatus = async (): Promise<CommandResult> => {
     try {
       const status = await ctx.client.status();
       ctx.setRows((current) => [...current, ...statusRows(status)]);
@@ -407,14 +413,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ]);
     }
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/model") {
+  const handleModelPanel = async (): Promise<CommandResult> => {
     ctx.openModelPanel();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText.startsWith("/model ")) {
+  const handleModelSet = async (): Promise<CommandResult> => {
     const model = parseModelCommand(resolvedText);
     if (!model) {
       ctx.setRows((current) => [...current, createRow("system", formatUsage("/model <id>"))]);
@@ -444,9 +450,9 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ]);
     }
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText.startsWith("/memory rm")) {
+  const handleMemoryRm = async (): Promise<CommandResult> => {
     const parts = resolvedText.trim().split(/\s+/);
     if (parts.length !== 3) {
       ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory rm <id-prefix>"))]);
@@ -470,9 +476,9 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ]);
     }
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/memory" || resolvedText.startsWith("/memory ")) {
+  const handleMemoryList = async (): Promise<CommandResult> => {
     const parts = resolvedText.split(/\s+/);
     const scope = parseMemoryListScope(parts);
     if (!scope) {
@@ -492,15 +498,15 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         : t("chat.memory.header.scope", { scope: scopeLabel(scope), count: memories.length });
     ctx.setRows((current) => [...current, createRow("system", { header, sections: [], list })]);
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/usage") {
+  const handleUsage = async (): Promise<CommandResult> => {
     const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
     ctx.setRows((current) => [...current, ...usageRows(last, ctx.tokenUsage)]);
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText.startsWith("/remember")) {
+  const handleRemember = async (): Promise<CommandResult> => {
     const parts = resolvedText.split(/\s+/).slice(1);
     let scope: MemoryScope = "user";
     const contentParts: string[] = [];
@@ -536,14 +542,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ]);
     }
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/skills") {
+  const handleSkills = async (): Promise<CommandResult> => {
     await ctx.openSkillsPanel();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/new") {
+  const handleNew = async (): Promise<CommandResult> => {
     const next = createSession(appConfig.model);
     ctx.store.sessions.unshift(next);
     ctx.store.activeSessionId = next.id;
@@ -554,20 +560,20 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
     ctx.setShowHelp(() => false);
     await ctx.persist();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/exit") {
+  const handleExit = async (): Promise<CommandResult> => {
     await ctx.persist();
     ctx.exit();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText === "/clear") {
+  const handleClear = async (): Promise<CommandResult> => {
     ctx.clearTranscript();
     return { stop: true, userText: text };
-  }
+  };
 
-  if (resolvedText.startsWith("/")) {
+  const handleSkillOrUnknown = async (): Promise<CommandResult> => {
     const [head, ...rest] = resolvedText.split(/\s+/);
     const skillName = (head ?? "").slice(1);
     const skill = findSkillByName(skillName);
@@ -588,7 +594,40 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
     ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
     return { stop: true, userText: text };
+  };
+
+  const commands: SlashCommand[] = [
+    { name: "resume.panel", match: (value) => value === "/resume", run: handleResumePanel },
+    { name: "resume", match: (value) => value.startsWith("/resume"), run: handleResume },
+    { name: "sessions", match: (value) => value === "/sessions", run: handleSessions },
+    {
+      name: "workspaces",
+      match: (value) => value === "/workspaces" || value.startsWith("/workspaces "),
+      run: handleWorkspaces,
+    },
+    { name: "status", match: (value) => value === "/status", run: handleStatus },
+    { name: "model.panel", match: (value) => value === "/model", run: handleModelPanel },
+    { name: "model.set", match: (value) => value.startsWith("/model "), run: handleModelSet },
+    { name: "memory.rm", match: (value) => value.startsWith("/memory rm"), run: handleMemoryRm },
+    {
+      name: "memory.list",
+      match: (value) => value === "/memory" || value.startsWith("/memory "),
+      run: handleMemoryList,
+    },
+    { name: "usage", match: (value) => value === "/usage", run: handleUsage },
+    { name: "remember", match: (value) => value.startsWith("/remember"), run: handleRemember },
+    { name: "skills", match: (value) => value === "/skills", run: handleSkills },
+    { name: "new", match: (value) => value === "/new", run: handleNew },
+    { name: "exit", match: (value) => value === "/exit", run: handleExit },
+    { name: "clear", match: (value) => value === "/clear", run: handleClear },
+  ];
+
+  for (const command of commands) {
+    if (!command.match(resolvedText)) continue;
+    return command.run();
   }
+
+  if (resolvedText.startsWith("/")) return handleSkillOrUnknown();
 
   return { stop: false, userText: text };
 }
