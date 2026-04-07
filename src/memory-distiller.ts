@@ -138,7 +138,7 @@ function splitScopedObservation(observed: string): {
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
 
 async function defaultRunner(systemPrompt: string, userContent: string): Promise<string> {
-  const qualifiedModel = normalizeModel(appConfig.distill.model);
+  const qualifiedModel = normalizeModel(appConfig.distillModel);
   const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   const result = await model.doGenerate({
     prompt: [

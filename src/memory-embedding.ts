@@ -67,7 +67,7 @@ let cachedModelId: string | null = null;
 let cachedModel: ReturnType<typeof createEmbeddingModel> = null;
 
 function getEmbeddingModel() {
-  const modelId = appConfig.embedding.model;
+  const modelId = appConfig.embeddingModel;
   if (cachedModelId === modelId && cachedModel) return cachedModel;
   cachedModel = createEmbeddingModel(modelId);
   cachedModelId = modelId;
@@ -83,7 +83,7 @@ export async function embedText(text: string): Promise<Float32Array | null> {
     if (!raw) return null;
     return new Float32Array(raw);
   } catch (error) {
-    log.warn("memory.embedding.failed", { model: appConfig.embedding.model, error: String(error) });
+    log.warn("memory.embedding.failed", { model: appConfig.embeddingModel, error: String(error) });
     return null;
   }
 }

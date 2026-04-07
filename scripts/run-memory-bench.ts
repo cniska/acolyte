@@ -262,9 +262,9 @@ async function runDataset(
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.embeddingModel) {
-    (appConfig.embedding as { model: string }).model = args.embeddingModel;
+    (appConfig as { embeddingModel: string }).embeddingModel = args.embeddingModel;
   }
-  const embeddingModel = appConfig.embedding.model;
+  const embeddingModel = appConfig.embeddingModel;
   const dataDir = defaultDataDir();
   const results: Record<string, DatasetResult> = {};
 

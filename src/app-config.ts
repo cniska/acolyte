@@ -30,12 +30,8 @@ export const appConfig = {
   model: fileConfig.model,
   temperature: fileConfig.temperature,
   reasoning: fileConfig.reasoning,
-  distill: {
-    model: fileConfig.distillModel,
-  },
-  embedding: {
-    model: fileConfig.embeddingModel,
-  },
+  distillModel: fileConfig.distillModel,
+  embeddingModel: fileConfig.embeddingModel,
 } as const;
 
 export function setModel(model: string): void {
