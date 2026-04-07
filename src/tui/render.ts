@@ -123,11 +123,12 @@ export function render(node: ReactNode): RenderInstance {
 
   function syncWrite(data: string) {
     if (stdout.isTTY) {
+      const normalized = data.replace(/\r?\n/g, "\r\n");
       // Trailing \r defuses auto-margin pending-wrap state left when a
       // line fills exactly `columns` characters.  Without it, the next
       // cursorUp may overshoot (pending-wrap counts as the next row in
       // some terminals), causing eraseSequence to eat into static content.
-      stdout.write(`${ansi.syncStart}${data}\r${ansi.syncEnd}`);
+      stdout.write(`${ansi.syncStart}${normalized}\r${ansi.syncEnd}`);
     } else {
       stdout.write(data);
     }
@@ -145,8 +146,10 @@ export function render(node: ReactNode): RenderInstance {
     const rows = stdout.rows ?? 24;
     const maxLiveRows = rows - 1;
 
-    // Move to top of visible area and erase everything.
-    let buf = `${ansi.cursorUp(rows)}\r${ansi.eraseDown}`;
+    // Move to the visible origin and erase everything. Absolute positioning is
+    // more robust than relative cursor-up when prior output left terminals in
+    // ambiguous wrap states.
+    let buf = `${ansi.cursorTo(0, 0)}${ansi.eraseDown}`;
     for (const item of staticItems) buf += `${item}\n`;
     buf += active;
 
@@ -178,21 +181,33 @@ export function render(node: ReactNode): RenderInstance {
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenOverflowText = "";
+      const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
       syncWrite(buf + active);
       lastActive = active;
-      lastActiveLineCount = Math.min(countRows(active), maxLiveRows);
+      lastActiveLineCount = nextActiveLineCount;
       return;
     }
 
     // Only re-render the active region if it changed.
     if (active === lastActive) return;
 
+    const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
+    if (Math.abs(nextActiveLineCount - lastActiveLineCount) > 1) {
+      forceRedraw();
+      return;
+    }
+
     const allLines = active.split("\n");
 
-    // If content shrank (e.g. promotion removed rows), reset frozen state.
-    if (allLines.length < frozenLineCount) {
-      frozenLineCount = 0;
-      frozenOverflowText = "";
+    // If content shrank or rewrote the previously frozen prefix, the
+    // append-only overflow assumption no longer holds. Repaint the whole
+    // visible area so stale frozen lines are cleared as well.
+    if (
+      frozenLineCount > 0 &&
+      (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
+    ) {
+      forceRedraw();
+      return;
     }
 
     // Determine the live (on-screen, erasable) portion of the active output.
