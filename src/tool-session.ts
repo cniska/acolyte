@@ -20,7 +20,14 @@ export type SessionFlags = {
 };
 
 export type PreToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown> };
-export type PostToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown>; result: unknown };
+export type PostToolContext = {
+  toolId: string;
+  toolCallId: string;
+  args: Record<string, unknown>;
+  status: ToolCallStatus;
+  result?: unknown;
+  error?: unknown;
+};
 export type EffectOutput = { append?: string };
 
 export type SessionContext = {

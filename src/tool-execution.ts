@@ -99,6 +99,24 @@ export async function runTool(
       const cached = cache.get(toolId, args);
       if (cached) {
         session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
+        if (session.onAfterToolAsync) {
+          try {
+            await session.onAfterToolAsync({
+              toolId,
+              toolCallId,
+              args: args,
+              status: "succeeded",
+              result: cached.result,
+            });
+          } catch (error) {
+            session.onDebug?.("lifecycle.tool.hook_failed", {
+              hook: "after",
+              tool: toolId,
+              tool_call_id: toolCallId,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
         recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded");
         return { result: cached.result };
       }
@@ -107,16 +125,37 @@ export async function runTool(
 
     let taskFailed = false;
     let taskResult: unknown;
+    let taskError: unknown;
     try {
       taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
       if (cache?.isCacheable(toolId)) {
         cache.set(toolId, args, { result: taskResult });
         cache.populateSubEntries(toolId, args, taskResult);
       }
-      const postOutput = session.onAfterTool?.({ toolId, toolCallId, args: args, result: taskResult });
+      const postOutput = session.onAfterTool?.({
+        toolId,
+        toolCallId,
+        args: args,
+        status: "succeeded",
+        result: taskResult,
+      });
+      const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
+      return { result: taskResult, effectOutput: append || undefined };
+    } catch (error) {
+      taskFailed = true;
+      taskError = error;
+      throw error;
+    } finally {
       if (session.onAfterToolAsync) {
         try {
-          await session.onAfterToolAsync({ toolId, toolCallId, args: args, result: taskResult });
+          await session.onAfterToolAsync({
+            toolId,
+            toolCallId,
+            args: args,
+            status: taskFailed ? "failed" : "succeeded",
+            result: taskFailed ? undefined : taskResult,
+            error: taskFailed ? taskError : undefined,
+          });
         } catch (error) {
           session.onDebug?.("lifecycle.tool.hook_failed", {
             hook: "after",
@@ -126,12 +165,6 @@ export async function runTool(
           });
         }
       }
-      const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
-      return { result: taskResult, effectOutput: append || undefined };
-    } catch (error) {
-      taskFailed = true;
-      throw error;
-    } finally {
       recordCall(
         session,
         toolId,

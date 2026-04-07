@@ -18,6 +18,8 @@ type UndoCheckpointFile = {
   path: string;
   beforeExists: boolean;
   afterExists: boolean;
+  beforeStored: boolean;
+  afterStored: boolean;
   beforeHash?: string;
   afterHash?: string;
 };
@@ -31,6 +33,9 @@ function sha256Hex(value: Uint8Array): string {
   hasher.update(value);
   return hasher.digest("hex");
 }
+
+const UNDO_CHECKPOINT_MAX_CONTENT_BYTES = 256_000;
+const UNDO_CHECKPOINT_MAX_HASH_BYTES = 5_000_000;
 
 function ensureSafeRelPath(workspace: string, pathInput: string): string {
   const abs = ensurePathWithinSandbox(pathInput, workspace);
@@ -53,12 +58,22 @@ function formatCheckpointDirName(seq: number, toolCallId: string): string {
   return `${padded}_${toolCallId}`;
 }
 
-async function readMaybe(path: string): Promise<Uint8Array | null> {
+async function statMaybe(path: string): Promise<{ size: number } | null> {
   try {
-    return await readFile(path);
+    const s = await stat(path);
+    if (!s.isFile()) return null;
+    return { size: s.size };
   } catch {
     return null;
   }
+}
+
+async function hashMaybeCapped(path: string, maxBytes: number): Promise<{ hash: string; size: number } | null> {
+  const s = await statMaybe(path);
+  if (!s) return null;
+  if (s.size > maxBytes) return null;
+  const bytes = await readFile(path);
+  return { hash: sha256Hex(bytes), size: s.size };
 }
 
 async function writeAtomic(path: string, content: string): Promise<void> {
@@ -86,7 +101,15 @@ export type PendingUndoCapture = {
   toolCallId: string;
   toolId: string;
   paths: string[];
-  before: Map<string, Uint8Array | null>;
+  before: Map<
+    string,
+    {
+      beforeExists: boolean;
+      beforeStored: boolean;
+      beforeBytes?: Uint8Array;
+      beforeHash?: string;
+    }
+  >;
 };
 
 function collectUndoPathsFromToolArgs(
@@ -155,6 +178,7 @@ export function attachUndoCheckpointSideEffects(options: {
     const pending = pendingUndo.get(postCtx.toolCallId);
     if (!pending) return;
     pendingUndo.delete(postCtx.toolCallId);
+    if (postCtx.status !== "succeeded") return;
     await commitUndoCheckpoint({ workspace: options.workspace, sessionId: options.sessionId, pending });
   };
 }
@@ -167,11 +191,37 @@ export async function captureUndoBefore(options: {
   toolId: string;
   paths: string[];
 }): Promise<PendingUndoCapture> {
-  const before = new Map<string, Uint8Array | null>();
+  const before = new Map<
+    string,
+    { beforeExists: boolean; beforeStored: boolean; beforeBytes?: Uint8Array; beforeHash?: string }
+  >();
   for (const p of options.paths) {
     const rel = ensureSafeRelPath(options.workspace, p);
     const abs = resolve(options.workspace, rel);
-    before.set(rel, await readMaybe(abs));
+    const s = await statMaybe(abs);
+    if (!s) {
+      before.set(rel, { beforeExists: false, beforeStored: false });
+      continue;
+    }
+
+    if (s.size <= UNDO_CHECKPOINT_MAX_CONTENT_BYTES) {
+      const bytes = await readFile(abs);
+      before.set(rel, {
+        beforeExists: true,
+        beforeStored: true,
+        beforeBytes: bytes,
+        beforeHash: sha256Hex(bytes),
+      });
+      continue;
+    }
+
+    if (s.size <= UNDO_CHECKPOINT_MAX_HASH_BYTES) {
+      const bytes = await readFile(abs);
+      before.set(rel, { beforeExists: true, beforeStored: false, beforeHash: sha256Hex(bytes) });
+      continue;
+    }
+
+    before.set(rel, { beforeExists: true, beforeStored: false });
   }
   return { toolCallId: options.toolCallId, toolId: options.toolId, paths: Array.from(before.keys()), before };
 }
@@ -194,25 +244,40 @@ export async function commitUndoCheckpoint(options: {
   const files: UndoCheckpointFile[] = [];
   for (const rel of options.pending.paths) {
     const abs = resolve(options.workspace, rel);
-    const beforeBytes = options.pending.before.get(rel) ?? null;
-    const afterBytes = await readMaybe(abs);
+    const captured = options.pending.before.get(rel) ?? { beforeExists: false, beforeStored: false };
+    const afterStat = await statMaybe(abs);
+    const afterExists = afterStat !== null;
+    let afterStoredBytes: Uint8Array | undefined;
+    let afterHash: string | undefined;
 
-    const beforeExists = beforeBytes !== null;
-    const afterExists = afterBytes !== null;
-    const record: UndoCheckpointFile = { path: rel, beforeExists, afterExists };
-    if (beforeBytes) record.beforeHash = sha256Hex(beforeBytes);
-    if (afterBytes) record.afterHash = sha256Hex(afterBytes);
+    if (afterStat && afterStat.size <= UNDO_CHECKPOINT_MAX_CONTENT_BYTES) {
+      afterStoredBytes = await readFile(abs);
+      afterHash = sha256Hex(afterStoredBytes);
+    } else if (afterStat && afterStat.size <= UNDO_CHECKPOINT_MAX_HASH_BYTES) {
+      const bytes = await readFile(abs);
+      afterHash = sha256Hex(bytes);
+    }
+
+    const record: UndoCheckpointFile = {
+      path: rel,
+      beforeExists: captured.beforeExists,
+      afterExists,
+      beforeStored: captured.beforeStored,
+      afterStored: afterStoredBytes !== undefined,
+    };
+    if (captured.beforeHash) record.beforeHash = captured.beforeHash;
+    if (afterHash) record.afterHash = afterHash;
     files.push(record);
 
-    if (beforeBytes) {
+    if (captured.beforeStored && captured.beforeBytes) {
       const target = join(beforeDir, rel);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, beforeBytes);
+      await writeFile(target, captured.beforeBytes);
     }
-    if (afterBytes) {
+    if (afterStoredBytes) {
       const target = join(afterDir, rel);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, afterBytes);
+      await writeFile(target, afterStoredBytes);
     }
   }
 
@@ -311,7 +376,15 @@ async function resolveCheckpointDir(
 
 export type UndoRestoreResult = {
   restored: string[];
-  conflicts: Array<{ path: string; reason: "changed" | "missing_after_snapshot" }>;
+  conflicts: Array<{
+    path: string;
+    reason:
+      | "changed"
+      | "missing_after_snapshot"
+      | "missing_before_snapshot"
+      | "unverifiable_after_snapshot"
+      | "unverifiable_current";
+  }>;
 };
 
 export async function restoreUndoCheckpoint(options: {
@@ -328,26 +401,39 @@ export async function restoreUndoCheckpoint(options: {
   const wanted = new Set(options.paths.map((p) => ensureSafeRelPath(options.workspace, p)));
 
   const beforeDir = join(checkpointDir, "before");
-  const afterDir = join(checkpointDir, "after");
   const conflicts: UndoRestoreResult["conflicts"] = [];
 
   for (const file of meta.files) {
     if (!wanted.has(file.path)) continue;
+    if (file.beforeExists && !file.beforeStored) {
+      conflicts.push({ path: file.path, reason: "missing_before_snapshot" });
+      continue;
+    }
 
     // Verify current workspace state matches the snapshot we are undoing from.
     const abs = resolve(options.workspace, file.path);
-    const current = await readMaybe(abs);
-    const afterPath = join(afterDir, file.path);
-    const afterBytes = file.afterExists ? await readMaybe(afterPath) : null;
-    if (file.afterExists && afterBytes === null) {
-      conflicts.push({ path: file.path, reason: "missing_after_snapshot" });
+    const currentStat = await statMaybe(abs);
+    const currentExists = currentStat !== null;
+
+    if (!file.afterExists) {
+      if (currentExists) conflicts.push({ path: file.path, reason: "changed" });
       continue;
     }
-    const currentHash = current ? sha256Hex(current) : null;
-    const afterHash = afterBytes ? sha256Hex(afterBytes) : null;
-    if ((currentHash ?? null) !== (afterHash ?? null)) {
+
+    if (!currentExists) {
       conflicts.push({ path: file.path, reason: "changed" });
+      continue;
     }
+    if (!file.afterHash) {
+      conflicts.push({ path: file.path, reason: "unverifiable_after_snapshot" });
+      continue;
+    }
+    const currentHashed = await hashMaybeCapped(abs, UNDO_CHECKPOINT_MAX_HASH_BYTES);
+    if (!currentHashed) {
+      conflicts.push({ path: file.path, reason: "unverifiable_current" });
+      continue;
+    }
+    if (currentHashed.hash !== file.afterHash) conflicts.push({ path: file.path, reason: "changed" });
   }
 
   if (conflicts.length > 0) return { restored: [], conflicts };

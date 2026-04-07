@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createSessionContext } from "./tool-session";
 import {
+  attachUndoCheckpointSideEffects,
   captureUndoBefore,
   commitUndoCheckpoint,
   listUndoCheckpoints,
@@ -55,6 +57,71 @@ describe("undo checkpoints", () => {
       expect(restored.conflicts).toEqual([]);
       expect(restored.restored).toEqual(["a.txt"]);
       expect(await readFile(join(workspace, "a.txt"), "utf8")).toBe("one\n");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("does not create a checkpoint when a tool call fails", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-undo-fail-"));
+    const sessionId = "sess_fail";
+    try {
+      await writeFile(join(workspace, "a.txt"), "one\n", "utf8");
+      const session = createSessionContext("task_fail");
+      attachUndoCheckpointSideEffects({
+        workspace,
+        sessionId,
+        session,
+        writeToolSet: new Set(["file-edit"]),
+      });
+
+      await session.onBeforeToolAsync?.({
+        toolId: "file-edit",
+        toolCallId: "call_1",
+        args: { path: "a.txt" },
+      });
+      await session.onAfterToolAsync?.({
+        toolId: "file-edit",
+        toolCallId: "call_1",
+        args: { path: "a.txt" },
+        status: "failed",
+        error: new Error("boom"),
+      });
+
+      const listed = await listUndoCheckpoints({ workspace, sessionId, limit: 10 });
+      expect(listed).toEqual([]);
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("refuses to restore when before snapshot is too large to store", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-undo-large-"));
+    const sessionId = "sess_large";
+    try {
+      const big = new Uint8Array(300_000);
+      big.fill("a".charCodeAt(0));
+      await writeFile(join(workspace, "big.txt"), big);
+
+      const pending = await captureUndoBefore({
+        workspace,
+        toolCallId: "call_1",
+        toolId: "file-edit",
+        paths: ["big.txt"],
+      });
+      // Mutate the file so the checkpoint captures an "after".
+      big.fill("b".charCodeAt(0));
+      await writeFile(join(workspace, "big.txt"), big);
+      const entry = await commitUndoCheckpoint({ workspace, sessionId, pending });
+
+      const result = await restoreUndoCheckpoint({
+        workspace,
+        sessionId,
+        checkpointId: entry.id,
+        paths: ["big.txt"],
+      });
+      expect(result.restored).toEqual([]);
+      expect(result.conflicts).toEqual([{ path: "big.txt", reason: "missing_before_snapshot" }]);
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

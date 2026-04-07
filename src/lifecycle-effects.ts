@@ -65,6 +65,7 @@ function preToolSideEffects(ctx: RunContext, preCtx: PreToolContext): EffectOutp
 }
 
 function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectOutput | undefined {
+  if (postCtx.status !== "succeeded") return undefined;
   if (!WRITE_TOOL_SET.has(postCtx.toolId)) return undefined;
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
