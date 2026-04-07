@@ -120,7 +120,9 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-store-postgres.ts` — Postgres + pgvector MemoryStore implementation (feature-flagged)
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
-- `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity
+- `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering
+- `scripts/run-memory-bench.ts` — retrieval quality benchmark harness (Recall@K, NDCG@K)
+- `scripts/memory-bench-scenarios.ts` — benchmark dataset adapters (LongMemEval, LoCoMo)
 
 ## Further reading
 
