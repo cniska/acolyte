@@ -23,6 +23,7 @@ import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
+import { attachUndoCheckpointSideEffects } from "./undo-checkpoints";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
@@ -135,6 +136,17 @@ function createRunContext(
 
   session.featureFlags = ctx.features;
   attachLifecycleSideEffects(ctx, session);
+  if (ctx.features.undoCheckpoints) {
+    const sessionId = ctx.request.sessionId;
+    if (sessionId && ctx.workspace) {
+      attachUndoCheckpointSideEffects({
+        workspace: ctx.workspace,
+        sessionId,
+        session,
+        writeToolSet: WRITE_TOOL_SET,
+      });
+    }
+  }
 
   return ctx;
 }

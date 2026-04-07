@@ -3,7 +3,6 @@ import { join } from "node:path";
 import type { Effect, EffectResult, RunContext } from "./lifecycle-contract";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } from "./tool-session";
-import { captureUndoBefore, commitUndoCheckpoint, isFilePath, type PendingUndoCapture } from "./undo-checkpoints";
 import { formatWorkspaceCommand, renderCommandResult, runCommand, runCommandWithFiles } from "./workspace-profile";
 
 export const formatEffect: Effect = {
@@ -78,63 +77,9 @@ function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectO
   return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
 }
 
-async function collectUndoPaths(ctx: RunContext, preCtx: PreToolContext): Promise<string[]> {
-  const args = preCtx.args;
-  const paths: string[] = [];
-  if (preCtx.toolId === "file-edit" || preCtx.toolId === "file-create") {
-    const p = typeof args.path === "string" ? args.path.trim() : "";
-    if (p) paths.push(p);
-  } else if (preCtx.toolId === "file-delete") {
-    const ps = args.paths;
-    if (Array.isArray(ps)) {
-      for (const p of ps) if (typeof p === "string" && p.trim().length > 0) paths.push(p.trim());
-    }
-  } else if (preCtx.toolId === "code-edit") {
-    const p = typeof args.path === "string" ? args.path.trim() : "";
-    if (p && ctx.workspace && (await isFilePath(ctx.workspace, p))) paths.push(p);
-  }
-  return paths;
-}
-
 export function attachLifecycleSideEffects(ctx: RunContext, session: SessionContext): void {
-  const pendingUndo = new Map<string, PendingUndoCapture>();
-
   const prevBefore = session.onBeforeTool;
   const prevAfter = session.onAfterTool;
   session.onBeforeTool = (preCtx) => mergeEffectOutputs(prevBefore?.(preCtx), preToolSideEffects(ctx, preCtx));
   session.onAfterTool = (postCtx) => mergeEffectOutputs(prevAfter?.(postCtx), postToolSideEffects(ctx, postCtx));
-
-  const prevBeforeAsync = session.onBeforeToolAsync;
-  session.onBeforeToolAsync = async (preCtx) => {
-    await prevBeforeAsync?.(preCtx);
-    if (!ctx.features.undoCheckpoints) return;
-    if (!WRITE_TOOL_SET.has(preCtx.toolId)) return;
-    const sessionId = ctx.request.sessionId;
-    if (!sessionId || !ctx.workspace) return;
-
-    const paths = await collectUndoPaths(ctx, preCtx);
-    if (paths.length === 0) return;
-
-    const capture = await captureUndoBefore({
-      workspace: ctx.workspace,
-      toolCallId: preCtx.toolCallId,
-      toolId: preCtx.toolId,
-      paths,
-    });
-    pendingUndo.set(preCtx.toolCallId, capture);
-  };
-
-  const prevAfterAsync = session.onAfterToolAsync;
-  session.onAfterToolAsync = async (postCtx) => {
-    await prevAfterAsync?.(postCtx);
-    if (!ctx.features.undoCheckpoints) return;
-    if (!WRITE_TOOL_SET.has(postCtx.toolId)) return;
-    const sessionId = ctx.request.sessionId;
-    if (!sessionId || !ctx.workspace) return;
-
-    const pending = pendingUndo.get(postCtx.toolCallId);
-    if (!pending) return;
-    pendingUndo.delete(postCtx.toolCallId);
-    await commitUndoCheckpoint({ workspace: ctx.workspace, sessionId, pending });
-  };
 }
