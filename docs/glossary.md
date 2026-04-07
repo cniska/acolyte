@@ -47,7 +47,9 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Record | Persisted entity object stored by a persistence backend |
 | Registry | Composition layer that wires implementations into an agent-facing surface under shared contracts |
 | Resource ID | Typed cross-session identity key used for memory and execution scoping |
-| Semantic Recall | Relevance-ranked memory selection using embeddings and cosine similarity |
+| Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
+| TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |
+| Token Overlap | Keyword matching component of hybrid recall that catches exact term matches embeddings miss |
 | Session | One chat session in memory, including messages, model, token usage, and timestamps |
 | SessionRecord | One stored session record |
 | SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
