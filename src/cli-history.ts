@@ -3,7 +3,7 @@ import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output
 import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
-import type { SessionStore } from "./session-store";
+import type { SessionStore } from "./session-contract";
 
 type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;

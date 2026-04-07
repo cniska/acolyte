@@ -1,5 +1,5 @@
 import { test } from "bun:test";
-import type { SessionStore } from "./session-store";
+import type { SessionStore } from "./session-contract";
 import { sessionStoreContractTests } from "./session-store-contract.test-suite";
 import { createPostgresSessionStore } from "./session-store-postgres";
 

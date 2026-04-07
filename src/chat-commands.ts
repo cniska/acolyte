@@ -10,7 +10,7 @@ import { usageRows } from "./chat-commands-usage";
 import { createWorkspacesCommands } from "./chat-commands-workspaces";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
-import { createSession } from "./storage";
+import { createSession } from "./session-store";
 
 function createSessionsCommand(ctx: CommandContext): SlashCommand {
   return {

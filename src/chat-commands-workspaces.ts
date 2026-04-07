@@ -12,7 +12,7 @@ import { createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
-import { createSession } from "./storage";
+import { createSession } from "./session-store";
 import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
 
 async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
