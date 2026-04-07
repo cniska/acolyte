@@ -23,7 +23,10 @@ export function estimateTokenUsageFallback(prompt: string, output: string): Toke
   };
 }
 
-export async function resolveReferencedFileContext(userText: string): Promise<{
+export async function resolveReferencedFileContext(
+  userText: string,
+  options?: { workspace?: string },
+): Promise<{
   contexts: string[];
   unresolvedPaths: string[];
 }> {
@@ -32,7 +35,7 @@ export async function resolveReferencedFileContext(userText: string): Promise<{
   const unresolvedPaths: string[] = [];
   for (const pathInput of referencedPaths) {
     try {
-      const context = await formatFileContext(pathInput);
+      const context = await formatFileContext(pathInput, options?.workspace ?? process.cwd());
       contexts.push(context);
     } catch {
       unresolvedPaths.push(pathInput);
@@ -81,6 +84,7 @@ type RunAssistantTurnParams = {
   history: ChatMessage[];
   model: string;
   sessionId: string;
+  workspace?: string;
   useMemory?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
@@ -100,7 +104,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       model: params.model,
       sessionId: params.sessionId,
       useMemory: params.useMemory,
-      ...createWorkspaceSpecifier(),
+      ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },
     { signal: params.signal, onEvent: params.onEvent ?? (() => {}) },
   );
