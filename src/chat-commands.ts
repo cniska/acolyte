@@ -151,6 +151,10 @@ export type CommandContext = {
     addMemory: typeof addMemory;
     removeMemory: typeof removeMemory;
   };
+  workspacesApi?: {
+    resolveGitRepoRoot: typeof resolveGitRepoRoot;
+    createGitWorktree: typeof createGitWorktree;
+  };
 };
 
 function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
@@ -238,6 +242,12 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
 
+    const workspacesApi = {
+      resolveGitRepoRoot,
+      createGitWorktree,
+      ...ctx.workspacesApi,
+    };
+
     const parts = resolvedText.trim().split(/\s+/);
     const sub = parts[1] ?? "list";
 
@@ -263,7 +273,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const list = alignCols(grid);
       ctx.setRows((current) => [
         ...current,
-        createRow("system", { header: `Workspaces ${workspaces.length}`, sections: [], list }),
+        createRow("system", { header: t("chat.workspaces.header", { count: workspaces.length }), sections: [], list }),
       ]);
       return { stop: true, userText: text };
     }
@@ -333,8 +343,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         ]);
         return { stop: true, userText: text };
       }
-      const repoRoot = await resolveGitRepoRoot(process.cwd());
-      const created = await createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
+      const repoRoot = await workspacesApi.resolveGitRepoRoot(process.cwd());
+      const created = await workspacesApi.createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
       const next = createSession(appConfig.model);
       next.workspaceName = name;
       next.workspace = created.workspacePath;

@@ -45,6 +45,7 @@ export const EN_MESSAGES = {
   "chat.session.default_title": "New Session",
   "chat.session.locked": "Session is already open in another process (pid {pid}).",
   "chat.sessions.header": "Sessions {count}",
+  "chat.workspaces.header": "Workspaces {count}",
   "chat.skill.failed": "Failed to activate skill: {skill}",
   "chat.skill.label": "Skill",
   "chat.skill.not_found": "Skill not found: {skill}",
