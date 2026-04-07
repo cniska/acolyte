@@ -11,7 +11,7 @@ import {
   type MemoryRecord,
   type MemoryStore,
 } from "./memory-contract";
-import { embeddingToBuffer, embedText } from "./memory-embedding";
+import { bufferToEmbedding, cosineSimilarity, embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
@@ -41,15 +41,6 @@ async function getCachedStore(): Promise<MemoryStore> {
 }
 
 type DistillScope = "session" | "project" | "user";
-
-async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
-  try {
-    const vec = await embedText(content);
-    if (vec) await ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
-  } catch (error) {
-    log.warn("memory.distill.embed_failed", { id, error: String(error) });
-  }
-}
 
 const CHARS_PER_TOKEN_ESTIMATE = 4;
 const TEXT_SHRINK_RATIO = 0.9;
@@ -179,10 +170,44 @@ function resolveDistillScopeKey(
   return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
+export const CONTRADICTION_SIMILARITY_THRESHOLD = 0.85;
+
+export async function findContradictions(
+  ds: MemoryStore,
+  key: string,
+  newContent: string,
+  newEmbedding: Float32Array | null,
+): Promise<MemoryRecord[]> {
+  if (!newEmbedding) return [];
+  const existing = (await ds.list({ scopeKey: key })).filter((e) => e.kind === "observation");
+  if (existing.length === 0) return [];
+  const ids = existing.map((e) => e.id);
+  const embeddings = await ds.getEmbeddings(ids);
+  const normalized = normalizeMemoryText(newContent);
+  const contradictions: MemoryRecord[] = [];
+  for (const record of existing) {
+    const buf = embeddings.get(record.id);
+    if (!buf) continue;
+    const similarity = cosineSimilarity(newEmbedding, bufferToEmbedding(buf));
+    if (similarity >= CONTRADICTION_SIMILARITY_THRESHOLD && normalizeMemoryText(record.content) !== normalized) {
+      contradictions.push(record);
+    }
+  }
+  return contradictions;
+}
+
 async function commitDistillForKey(ds: MemoryStore, key: string, observed: string): Promise<number> {
   const existingEntries = await ds.list({ scopeKey: key });
   const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
   if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(observed)) return 0;
+
+  const vec = await embedText(observed);
+  const contradictions = await findContradictions(ds, key, observed, vec);
+  for (const stale of contradictions) {
+    await ds.remove(stale.id);
+    await ds.removeEmbedding(stale.id);
+    log.debug("memory.distill.contradiction_superseded", { key, staleId: stale.id, staleContent: stale.content });
+  }
 
   const observation: MemoryRecord = {
     id: `mem_${createId()}`,
@@ -193,8 +218,13 @@ async function commitDistillForKey(ds: MemoryStore, key: string, observed: strin
     tokenEstimate: estimateTokens(observed),
   };
   await ds.write(observation);
-  await embedAndStore(ds, observation.id, key, observed);
-  log.debug("memory.distill.observation_written", { key, id: observation.id, tokens: observation.tokenEstimate });
+  if (vec) await ds.writeEmbedding(observation.id, key, embeddingToBuffer(vec));
+  log.debug("memory.distill.observation_written", {
+    key,
+    id: observation.id,
+    tokens: observation.tokenEstimate,
+    superseded: contradictions.length,
+  });
   return observation.tokenEstimate;
 }
 

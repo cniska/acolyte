@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
-import { createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
+import { createMemoryDistiller, DISTILLER_PROMPT, findContradictions } from "./memory-distiller";
+import { embeddingToBuffer } from "./memory-embedding";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
@@ -326,6 +327,73 @@ describe("memoryDistiller", () => {
         expect(metrics, fixture.name).toMatchObject(fixture.expectedMetrics);
         expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
       }
+    });
+  });
+
+  describe("findContradictions", () => {
+    test("detects semantically similar but different content", async () => {
+      const similar = new Float32Array([1, 0, 0, 0]);
+      const existing: MemoryRecord = {
+        id: "mem_old",
+        scopeKey: "proj_test",
+        kind: "observation",
+        content: "project uses Jest for testing",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        tokenEstimate: 5,
+      };
+      const store = createMockStore([existing]);
+      store.getEmbeddings = async () => new Map([["mem_old", embeddingToBuffer(similar)]]);
+      const result = await findContradictions(store, "proj_test", "project uses Vitest for testing", similar);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("mem_old");
+    });
+
+    test("skips exact duplicates", async () => {
+      const vec = new Float32Array([1, 0, 0, 0]);
+      const existing: MemoryRecord = {
+        id: "mem_old",
+        scopeKey: "proj_test",
+        kind: "observation",
+        content: "project uses Bun",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        tokenEstimate: 4,
+      };
+      const store = createMockStore([existing]);
+      store.getEmbeddings = async () => new Map([["mem_old", embeddingToBuffer(vec)]]);
+      const result = await findContradictions(store, "proj_test", "project uses Bun", vec);
+      expect(result).toHaveLength(0);
+    });
+
+    test("skips when embedding is null", async () => {
+      const store = createMockStore([
+        {
+          id: "mem_old",
+          scopeKey: "proj_test",
+          kind: "observation",
+          content: "fact",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          tokenEstimate: 1,
+        },
+      ]);
+      const result = await findContradictions(store, "proj_test", "new fact", null);
+      expect(result).toHaveLength(0);
+    });
+
+    test("skips dissimilar records", async () => {
+      const newVec = new Float32Array([1, 0, 0, 0]);
+      const oldVec = new Float32Array([0, 1, 0, 0]);
+      const existing: MemoryRecord = {
+        id: "mem_old",
+        scopeKey: "proj_test",
+        kind: "observation",
+        content: "unrelated fact",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        tokenEstimate: 2,
+      };
+      const store = createMockStore([existing]);
+      store.getEmbeddings = async () => new Map([["mem_old", embeddingToBuffer(oldVec)]]);
+      const result = await findContradictions(store, "proj_test", "project uses Bun", newVec);
+      expect(result).toHaveLength(0);
     });
   });
 });
