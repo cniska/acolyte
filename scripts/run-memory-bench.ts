@@ -119,13 +119,18 @@ function printUsage(): void {
   console.log("Usage: bun run scripts/run-memory-bench.ts [--dataset <id>] [--k <n>] [--limit <n>] [--json]");
 }
 
+function safeIsoDate(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "2024-01-01T00:00:00.000Z" : d.toISOString();
+}
+
 function toMemoryRecord(obs: NormalizedObservation, index: number): MemoryRecord {
   return {
     id: `mem_bench_${index}`,
     scopeKey: "proj_bench",
     kind: "stored",
     content: obs.content,
-    createdAt: new Date(obs.timestamp).toISOString() || "2024-01-01T00:00:00.000Z",
+    createdAt: safeIsoDate(obs.timestamp),
     tokenEstimate: Math.ceil(obs.content.length / 4),
   };
 }

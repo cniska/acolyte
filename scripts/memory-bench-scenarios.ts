@@ -67,7 +67,7 @@ const longMemEvalInstanceSchema = z.object({
   question_id: z.string().min(1),
   question_type: z.string().min(1),
   question: z.string().min(1),
-  answer: z.string().min(1),
+  answer: z.union([z.string(), z.number()]),
   question_date: z.string().optional(),
   haystack_session_ids: z.array(z.string()),
   haystack_dates: z.array(z.string()).optional(),
@@ -130,7 +130,7 @@ const locomoTurnSchema = z.object({
 
 const locomoQaSchema = z.object({
   question: z.string(),
-  answer: z.union([z.string(), z.number()]),
+  answer: z.union([z.string(), z.number()]).optional(),
   evidence: z.array(z.string()),
   category: z.number(),
 });
@@ -140,8 +140,8 @@ const LOCOMO_FILE = "locomo10.json";
 
 function normalizeLoCoMo(raw: unknown[]): DatasetScenario[] {
   return raw.map((entry, convIdx) => {
-    const parsed = z.object({ conversation: z.record(z.unknown()), qa: z.array(locomoQaSchema) }).parse(entry);
-    const conv = parsed.conversation;
+    const parsed = z.object({ conversation: z.record(z.string(), z.any()), qa: z.array(locomoQaSchema) }).parse(entry);
+    const conv = parsed.conversation as Record<string, unknown>;
     const observations: NormalizedObservation[] = [];
     const turnById = new Map<string, string>();
 
