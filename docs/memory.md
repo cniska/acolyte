@@ -72,7 +72,23 @@ Memory records are embedded at write time using the provider embedding API. At q
 
 Both the SQLite and Postgres backends use this hybrid scoring. The Postgres path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
 
-Weights are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`).
+When observations have topic tags (assigned via `@topic` in the distiller), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
+
+Weights and thresholds are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`, `topicThreshold`, `minTopicFilterSize`).
+
+### Benchmark results
+
+Measured on LoCoMo (10 conversations, 1650 queries, 2541 observations) with `text-embedding-3-small`:
+
+| Configuration | R@5 | NDCG@5 |
+|---|---|---|
+| Pure cosine, raw turns | 0.599 | 0.480 |
+| Pure cosine, observations | 0.650 | 0.580 |
+| Hybrid scoring | 0.669 | 0.602 |
+| Hybrid + TF-IDF | 0.705 | 0.651 |
+| Hybrid + TF-IDF (large model) | 0.722 | 0.652 |
+
+Input quality (distillation) accounts for a larger gain than any retrieval algorithm.
 
 ## Storage
 
