@@ -1,7 +1,16 @@
-import { encoding_for_model } from "tiktoken";
+import { fileURLToPath } from "node:url";
+import { encoding_for_model, init } from "tiktoken/init";
 import type { ChatRequest } from "./api";
+import { instantiateWasmFile } from "./wasm-loader";
 
 type TokenEncoder = { encode(input: string): { length: number } };
+
+// Force WASM initialization via the exported `init` hook so compiled binaries
+// don't depend on Node-style filesystem discovery in `tiktoken.cjs`.
+const wasmFilePath = fileURLToPath(
+  (import.meta as ImportMeta & { resolve: (specifier: string) => string }).resolve("tiktoken/tiktoken_bg.wasm"),
+);
+await init((imports) => instantiateWasmFile(wasmFilePath, imports));
 
 const defaultEncoder: TokenEncoder = encoding_for_model("gpt-4o");
 let activeEncoder: TokenEncoder = defaultEncoder;
