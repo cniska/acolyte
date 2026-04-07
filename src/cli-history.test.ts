@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { historyMode } from "./cli-history";
-import type { Session } from "./session-contract";
-import type { SessionStore } from "./session-contract";
+import type { Session, SessionStore } from "./session-contract";
 import { dedent } from "./test-utils";
 
 type HistoryDeps = Parameters<typeof historyMode>[1];

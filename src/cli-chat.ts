@@ -8,9 +8,8 @@ import { nowIso } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionStore } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
-import type { SessionStore } from "./session-contract";
 import { createSession, getSessionStore } from "./session-store";
 import { clearScreen, printDim, printError } from "./ui";
 

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Session } from "./session-contract";
-import type { SessionStore } from "./session-contract";
+import type { Session, SessionStore } from "./session-contract";
 
 function makeSession(overrides: Partial<Session> & { id: string }): Session {
   return {

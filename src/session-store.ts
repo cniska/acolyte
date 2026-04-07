@@ -3,8 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
-import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
 import type { SessionStore } from "./session-contract";
+import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
 import { createId } from "./short-id";
 
 const DATA_DIR = join(resolveHomeDir(), ".acolyte");
@@ -52,8 +52,9 @@ export function createFileSessionStore(storePath?: string): SessionStore {
   return {
     async listSessions(options) {
       const state = await readState();
+      const sorted = [...state.sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       const limit = options?.limit;
-      return limit ? state.sessions.slice(0, limit) : state.sessions;
+      return limit ? sorted.slice(0, limit) : sorted;
     },
 
     async getSession(id) {

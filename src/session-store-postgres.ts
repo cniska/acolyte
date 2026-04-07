@@ -1,8 +1,7 @@
 import type postgres from "postgres";
 import type { Migration } from "./db-migrate";
 import { log } from "./log";
-import type { Session, SessionId } from "./session-contract";
-import type { SessionStore } from "./session-contract";
+import type { Session, SessionId, SessionStore } from "./session-contract";
 
 type SessionRow = {
   id: string;
