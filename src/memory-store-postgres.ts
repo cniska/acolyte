@@ -1,4 +1,5 @@
 import type postgres from "postgres";
+import type { Migration } from "./db-migrate";
 import { log } from "./log";
 import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
 import { bufferToEmbedding, embeddingToBuffer } from "./memory-embedding";
@@ -39,7 +40,7 @@ function bufferToVector(buf: Buffer): string {
   return `[${Array.from(arr).join(",")}]`;
 }
 
-const MIGRATIONS = [
+const MIGRATIONS: Migration[] = [
   {
     version: 1,
     up: `
@@ -66,12 +67,12 @@ const MIGRATIONS = [
   },
 ];
 
-async function migrateUp(sql: postgres.Sql): Promise<number> {
+async function migrateUp(sql: postgres.Sql, migrations: Migration[]): Promise<number> {
   await sql`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)`;
   const rows = await sql<{ version: number }[]>`SELECT version FROM schema_version LIMIT 1`;
   const current = rows[0]?.version ?? 0;
   if (rows.length === 0) await sql`INSERT INTO schema_version (version) VALUES (0)`;
-  const pending = MIGRATIONS.filter((m) => m.version > current).sort((a, b) => a.version - b.version);
+  const pending = migrations.filter((m) => m.version > current).sort((a, b) => a.version - b.version);
   for (const m of pending) {
     await sql.begin(async (tx) => {
       await tx.unsafe(m.up);
@@ -95,7 +96,7 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
 
   const sql = createSql(connectionUrl);
   await registerPgvector(sql);
-  const applied = await migrateUp(sql);
+  const applied = await migrateUp(sql, MIGRATIONS);
   if (applied > 0) log.debug("memory.postgres.migrated", { applied });
 
   return {
