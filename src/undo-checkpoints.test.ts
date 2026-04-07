@@ -59,4 +59,29 @@ describe("undo checkpoints", () => {
       await rm(workspace, { recursive: true, force: true });
     }
   });
+
+  test("prunes older checkpoints beyond max", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "acolyte-undo-prune-"));
+    const sessionId = "sess_prune";
+    try {
+      await writeFile(join(workspace, "a.txt"), "one\n", "utf8");
+      for (let i = 1; i <= 3; i++) {
+        const pending = await captureUndoBefore({
+          workspace,
+          toolCallId: `call_${i}`,
+          toolId: "file-edit",
+          paths: ["a.txt"],
+        });
+        await writeFile(join(workspace, "a.txt"), `v${i}\n`, "utf8");
+        await commitUndoCheckpoint({ workspace, sessionId, pending, maxCheckpoints: 2 });
+      }
+      const listed = await listUndoCheckpoints({ workspace, sessionId, limit: 10 });
+      expect(listed.length).toBe(2);
+      // Latest two calls remain.
+      expect(listed[0]?.toolCallId).toBe("call_3");
+      expect(listed[1]?.toolCallId).toBe("call_2");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
 });

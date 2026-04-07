@@ -88,6 +88,8 @@ export type PendingUndoCapture = {
   before: Map<string, Uint8Array | null>;
 };
 
+const DEFAULT_MAX_CHECKPOINTS = 50;
+
 export async function captureUndoBefore(options: {
   workspace: string;
   toolCallId: string;
@@ -107,6 +109,7 @@ export async function commitUndoCheckpoint(options: {
   workspace: string;
   sessionId: string;
   pending: PendingUndoCapture;
+  maxCheckpoints?: number;
 }): Promise<UndoCheckpointEntry> {
   const dir = checkpointsDir(options.workspace, options.sessionId);
   const seq = await nextSequence(dir);
@@ -154,7 +157,31 @@ export async function commitUndoCheckpoint(options: {
 
   await mkdir(checkpointDir, { recursive: true });
   await writeAtomic(join(checkpointDir, "meta.json"), JSON.stringify(meta, null, 2));
+
+  const max = options.maxCheckpoints ?? DEFAULT_MAX_CHECKPOINTS;
+  if (Number.isFinite(max) && max > 0) {
+    try {
+      await pruneOldCheckpoints(dir, max);
+    } catch {
+      // Non-fatal.
+    }
+  }
   return entry;
+}
+
+async function pruneOldCheckpoints(dir: string, max: number): Promise<void> {
+  if (!existsSync(dir)) return;
+  const entries = await readdir(dir, { withFileTypes: true });
+  const dirs = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .filter((name) => /^\d{6}_/.test(name))
+    .sort();
+  if (dirs.length <= max) return;
+  const toRemove = dirs.slice(0, Math.max(0, dirs.length - max));
+  for (const name of toRemove) {
+    await rm(join(dir, name), { recursive: true, force: true });
+  }
 }
 
 export async function listUndoCheckpoints(options: {
