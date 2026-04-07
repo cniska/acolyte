@@ -74,7 +74,19 @@ export async function runTool(
       throw error;
     }
 
-    const preOutput = session.onBeforeTool?.({ toolId, args });
+    const preOutput = session.onBeforeTool?.({ toolId, toolCallId, args });
+    if (session.onBeforeToolAsync) {
+      try {
+        await session.onBeforeToolAsync({ toolId, toolCallId, args });
+      } catch (error) {
+        session.onDebug?.("lifecycle.tool.hook_failed", {
+          hook: "before",
+          tool: toolId,
+          tool_call_id: toolCallId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     const cache = session.cache;
     const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
@@ -101,7 +113,19 @@ export async function runTool(
         cache.set(toolId, args, { result: taskResult });
         cache.populateSubEntries(toolId, args, taskResult);
       }
-      const postOutput = session.onAfterTool?.({ toolId, args: args, result: taskResult });
+      const postOutput = session.onAfterTool?.({ toolId, toolCallId, args: args, result: taskResult });
+      if (session.onAfterToolAsync) {
+        try {
+          await session.onAfterToolAsync({ toolId, toolCallId, args: args, result: taskResult });
+        } catch (error) {
+          session.onDebug?.("lifecycle.tool.hook_failed", {
+            hook: "after",
+            tool: toolId,
+            tool_call_id: toolCallId,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
       return { result: taskResult, effectOutput: append || undefined };
     } catch (error) {

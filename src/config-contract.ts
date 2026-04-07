@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type FeatureFlags, type ResolvedFeatureFlags, featureFlagsSchema } from "./feature-flags-contract";
+import { type FeatureFlags, featureFlagsSchema, type ResolvedFeatureFlags } from "./feature-flags-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const logFormatSchema = z.enum(["logfmt", "json"]);
