@@ -1,5 +1,5 @@
-import { homedir } from "node:os";
 import { slashCommandHelp } from "./chat-slash";
+import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
@@ -22,7 +22,7 @@ export const SHORTCUT_ITEMS = [
 
 export function shownCwd(): string {
   const cwd = process.cwd();
-  const home = homedir();
+  const home = resolveHomeDir();
   if (cwd === home) return "~";
   if (cwd.startsWith(`${home}/`)) return `~${cwd.slice(home.length)}`;
   return cwd;

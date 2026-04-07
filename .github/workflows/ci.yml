@@ -65,3 +65,37 @@ jobs:
         with:
           name: coverage
           path: coverage
+
+  compile:
+    name: Compile (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runner: ubuntu-latest
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+          - target: darwin-arm64
+            runner: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build --compile src/cli.ts --outfile acolyte --external react-devtools-core
+
+      - name: Smoke test binary
+        run: ACOLYTE_SMOKE_EXTENDED=1 bash scripts/smoke-compiled.sh

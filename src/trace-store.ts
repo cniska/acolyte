@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
+import { resolveHomeDir } from "./home-dir";
 import type { LogLine, TaskSummary } from "./log-parser";
 
 const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence"]);
@@ -208,7 +208,7 @@ export function closeDefaultTraceStore(): void {
 }
 
 export function defaultTraceDbPath(): string {
-  return join(homedir(), ".acolyte", "trace.db");
+  return join(resolveHomeDir(), ".acolyte", "trace.db");
 }
 
 export function openTraceStore(dbPath?: string): TraceStore | null {

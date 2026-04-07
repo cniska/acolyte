@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveHomeDir } from "./home-dir";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
 import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
@@ -11,7 +11,7 @@ function hasConfigFileCollision(scopeDir: string): boolean {
 
 export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: string }): StatusFields {
   const cwd = options?.cwd ?? process.cwd();
-  const homeDir = options?.homeDir ?? homedir();
+  const homeDir = options?.homeDir ?? resolveHomeDir();
   const diagnostics: StatusFields = {};
 
   const collisionScopes: string[] = [];

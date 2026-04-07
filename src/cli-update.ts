@@ -1,8 +1,9 @@
 import { chmod, copyFile, mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
+import { resolveHomeDir } from "./home-dir";
 import { palette } from "./palette";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
@@ -72,7 +73,7 @@ async function checkForUpdate(
   currentVersion: string,
   options?: { force?: boolean; homeDir?: string },
 ): Promise<UpdateInfo | null> {
-  const home = options?.homeDir ?? homedir();
+  const home = options?.homeDir ?? resolveHomeDir();
   const force = options?.force ?? false;
 
   if (!force) {

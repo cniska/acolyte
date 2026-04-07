@@ -48,6 +48,9 @@ jobs:
       - name: Build binary
         run: bun build --compile src/cli.ts --outfile acolyte --external react-devtools-core
 
+      - name: Smoke test binary
+        run: ACOLYTE_SMOKE_EXTENDED=1 bash scripts/smoke-compiled.sh
+
       - name: Package artifact
         run: |
           mkdir -p artifacts

@@ -1,10 +1,10 @@
 import { closeSync, openSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { PRIVATE_FILE_MODE } from "./file-ops";
+import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
 
@@ -68,7 +68,7 @@ export function apiUrlForPort(port: number): string {
   return `http://127.0.0.1:${port}`;
 }
 
-function daemonsDir(homeDir = homedir()): string {
+function daemonsDir(homeDir = resolveHomeDir()): string {
   return join(homeDir, ".acolyte", "daemons");
 }
 
@@ -76,15 +76,15 @@ function daemonFileName(port: number, suffix: string): string {
   return port === DEFAULT_PORT ? `server${suffix}` : `${port}${suffix}`;
 }
 
-function serverLockPath(port: number, homeDir = homedir()): string {
+function serverLockPath(port: number, homeDir = resolveHomeDir()): string {
   return join(daemonsDir(homeDir), daemonFileName(port, ".lock"));
 }
 
-function startupLockPath(port: number, homeDir = homedir()): string {
+function startupLockPath(port: number, homeDir = resolveHomeDir()): string {
   return join(daemonsDir(homeDir), daemonFileName(port, ".start.lock"));
 }
 
-export function serverLogPath(port: number, homeDir = homedir()): string {
+export function serverLogPath(port: number, homeDir = resolveHomeDir()): string {
   return join(daemonsDir(homeDir), daemonFileName(port, ".log"));
 }
 
@@ -236,7 +236,7 @@ async function waitForHealthyServerOrStaleStartupLock(
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
-async function cleanupLegacyLocks(homeDir = homedir()): Promise<void> {
+async function cleanupLegacyLocks(homeDir = resolveHomeDir()): Promise<void> {
   await rm(join(homeDir, ".acolyte", "server.lock"), { force: true });
   await rm(join(homeDir, ".acolyte", "server.start.lock"), { force: true });
   await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.lock`), { force: true });

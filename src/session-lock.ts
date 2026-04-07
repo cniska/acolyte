@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { PRIVATE_FILE_MODE } from "./file-ops";
+import { resolveHomeDir } from "./home-dir";
 
 type LockOptions = {
   homeDir?: string;
@@ -17,7 +17,7 @@ function isProcessAlive(pid: number): boolean {
 }
 
 function locksDir(options?: LockOptions): string {
-  return join(options?.homeDir ?? homedir(), ".acolyte", "locks");
+  return join(options?.homeDir ?? resolveHomeDir(), ".acolyte", "locks");
 }
 
 function lockPathForSession(sessionId: string, options?: LockOptions): string {
