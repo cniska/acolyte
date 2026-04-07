@@ -110,7 +110,7 @@ export type PhasePrepareResult = {
 };
 export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
 
-export type EffectResult = { type: "done"; lintOutput?: string };
+export type EffectResult = { type: "done"; output?: string };
 
 export type Effect = {
   id: string;

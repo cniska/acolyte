@@ -22,7 +22,7 @@ export const lintEffect: Effect = {
     const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
     if (!result.hasErrors) return { type: "done" };
     ctx.debug("lifecycle.effect.lint", { files: paths.length, has_errors: true });
-    return { type: "done", lintOutput: renderCommandResult(result) };
+    return { type: "done", output: `Lint errors:\n${renderCommandResult(result)}` };
   },
 };
 
@@ -69,12 +69,13 @@ function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectO
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
   const paths = [path];
-  let lintOutput: string | undefined;
+  const outputs: string[] = [];
   for (const effect of POST_EFFECTS) {
     const result = effect.run(ctx, paths);
-    if (result.lintOutput) lintOutput = result.lintOutput;
+    if (result.output) outputs.push(result.output);
   }
-  return lintOutput ? { append: `Lint errors:\n${lintOutput}` } : undefined;
+  const append = outputs.filter((out) => out.trim().length > 0).join("\n");
+  return append ? { append } : undefined;
 }
 
 export function attachLifecycleEffectHandlers(ctx: RunContext, session: SessionContext): void {
