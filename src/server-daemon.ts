@@ -210,7 +210,7 @@ async function startupLockAgeMs(path: string, lock: StartupLock | number): Promi
 async function clearStaleStartupLock(path: string, maxAgeMs?: number): Promise<boolean> {
   const lock = await readStartupLock(path);
   const ownerPid = typeof lock === "number" ? lock : (lock?.pid ?? null);
-  if (ownerPid && isProcessAlive(ownerPid)) {
+  if (lock !== null && ownerPid && isProcessAlive(ownerPid)) {
     if (maxAgeMs === undefined) return false;
     const ageMs = await startupLockAgeMs(path, lock);
     if (ageMs === null || ageMs < maxAgeMs) return false;
