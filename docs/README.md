@@ -24,6 +24,7 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 - [Sessions](./sessions.md) — chat context, message history, and session storage backends
 - [Tasks](./tasks.md) — task lifecycle, queue policy, and state transitions
 - [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
+- [Cloud Sync](./cloud.md) — portable agent identity via cloud-hosted memory and sessions
 
 ## Development
 
