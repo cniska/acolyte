@@ -72,9 +72,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
-  postgresUrl: z.string().trim().min(1).refine((s) => s.startsWith("postgres://") || s.startsWith("postgresql://"), {
-    message: "must be a postgresql:// or postgres:// connection URL",
-  }),
+  postgresUrl: nonEmptyStringSchema,
   features: featureFlagsSchema,
 };
 
