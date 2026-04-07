@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0 (2026-04-07)
+
+- refactor: drop legacy migrations, reset protocol (#118) (`1421a778`)
+- feat: add database migration framework (#119) (`51e864c4`)
+- fix(tui): dynamic model picker width, remove detail field (`fdb52a11`)
+- fix(daemon): heal stale startup locks (`57835a4b`)
+- fix(daemon): handle null startup lock (`842f5287`)
+- fix(tui): move existing DOM children (`a40b4d9d`)
+- fix(tui): redraw picker on height jumps (`0ea4c9f3`)
+
+
 ## 0.13.0 (2026-04-06)
 
 - feat(provider): add Vercel provider (#108) (`f2663713`)
