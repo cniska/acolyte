@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.0 (2026-04-08)
+
+- test(cli): add cli visual harness (#126) (`336dceaf`)
+- feat(memory): sync AGENTS.md via project memory (#127) (`02610013`)
+- feat: add parallel workspaces (#128) (`884ba4b2`)
+- feat(undo): session-level undo via checkpoints (#129) (`0779e45d`)
+- refactor(chat): table-driven slash dispatch (#132) (`a44c5f04`)
+- docs: add ChatRow to glossary (`d47c1251`)
+- refactor(chat): structured slash subcommands (#139) (`f11bea92`)
+- feat(memory): retrieval quality benchmark harness (#140) (`905cc619`)
+- feat(memory): hybrid retrieval scoring (#147) (`765eb660`)
+- feat(memory): Postgres + pgvector storage backend (#151) (`b18fe05a`)
+- feat(memory): TF-IDF weighted token overlap (#154) (`ab57a2ed`)
+- fix(memory): eliminate API calls from toolkit integration tests (`69cc8b65`)
+- feat(sessions): Postgres session storage backend (#156) (`5a7c897a`)
+- feat(cloud): add cloud client (#158) (`b5fb00a5`)
+- feat(memory): topic tags on observations (#161) (`0622e8e2`)
+- docs: update features for v0.16.0 (`a66ca1fa`)
+- docs: refresh benchmarks (`4b290882`)
+
+
 ## 0.15.0 (2026-04-07)
 
 - feat(cli): add --update and --no-update (#123) (`c3a2b740`)
