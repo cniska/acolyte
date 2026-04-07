@@ -296,6 +296,25 @@ export function memoryStoreContractTests(
       expect(await s.getEmbedding("mem_rm001")).toBeNull();
     });
 
+    test("getEmbeddings returns batch results", async () => {
+      const s = await getStore();
+      const emb1 = Buffer.from(new Float32Array([1, 0, 0]).buffer);
+      const emb2 = Buffer.from(new Float32Array([0, 1, 0]).buffer);
+      await s.writeEmbedding("mem_batch01", "sess_abc123", emb1);
+      await s.writeEmbedding("mem_batch02", "sess_abc123", emb2);
+      const map = await s.getEmbeddings(["mem_batch01", "mem_batch02", "mem_missing"]);
+      expect(map.size).toBe(2);
+      expect(map.has("mem_batch01")).toBe(true);
+      expect(map.has("mem_batch02")).toBe(true);
+      expect(map.has("mem_missing")).toBe(false);
+    });
+
+    test("getEmbeddings returns empty map for empty ids", async () => {
+      const s = await getStore();
+      const map = await s.getEmbeddings([]);
+      expect(map.size).toBe(0);
+    });
+
     test("remove record also removes embedding", async () => {
       const s = await getStore();
       await s.write({

@@ -98,5 +98,44 @@ if (!POSTGRES_TEST_URL) {
 
       await cleanup();
     });
+
+    test("filters by scopeKey", async () => {
+      const store = await createStore();
+
+      await store.write({
+        id: "mem_scope01",
+        scopeKey: "user_abc123",
+        kind: "stored",
+        content: "user memory",
+        createdAt: "2026-03-04T12:00:00.000Z",
+        tokenEstimate: 2,
+      });
+      await store.write({
+        id: "mem_scope02",
+        scopeKey: "proj_def456",
+        kind: "stored",
+        content: "project memory",
+        createdAt: "2026-03-04T12:00:01.000Z",
+        tokenEstimate: 2,
+      });
+
+      const vec = new Float32Array(1536).fill(0);
+      vec[0] = 1;
+      await store.writeEmbedding("mem_scope01", "user_abc123", embeddingToBuffer(vec));
+      await store.writeEmbedding("mem_scope02", "proj_def456", embeddingToBuffer(vec));
+
+      const queryVec = new Float32Array(1536).fill(0);
+      queryVec[0] = 1;
+
+      const results = await store.searchByEmbedding?.(queryVec, {
+        scopeKey: "user_abc123",
+        kind: "stored",
+        limit: 10,
+      });
+      expect(results).toHaveLength(1);
+      expect(results?.[0]?.id).toBe("mem_scope01");
+
+      await cleanup();
+    });
   });
 }

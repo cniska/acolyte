@@ -127,8 +127,6 @@ function serializeToml(config: Config): string {
     if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
     if (typeof config.features.undoCheckpoints === "boolean")
       lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
-    if (typeof config.features.undoCheckpoints === "boolean")
-      lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
     if (typeof config.features.parallelWorkspaces === "boolean")
       lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
     if (typeof config.features.postgresMemory === "boolean")

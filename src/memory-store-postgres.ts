@@ -175,8 +175,9 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
     },
 
     async searchByEmbedding(queryEmbedding, options) {
-      const vector = bufferToVector(embeddingToBuffer(queryEmbedding));
+      const vector = `[${Array.from(queryEmbedding).join(",")}]`;
       const { scopeKey, kind, limit } = options;
+      if (scopeKey && !safeScopeKey(scopeKey)) return [];
 
       let rows: MemoryRow[];
       if (scopeKey && kind) {

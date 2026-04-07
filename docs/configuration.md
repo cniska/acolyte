@@ -80,13 +80,7 @@ acolyte config set logFormat json
 
 ## Feature flags
 
-Feature flags are opt-in toggles for experimental behavior. They are configured under `[features]` in `config.toml`.
-
-### `features.syncAgents`
-
-When enabled:
-- `AGENTS.md` is synced into a deterministic project memory record (`mem_agentsmd`)
-- `AGENTS.md` is not automatically inlined into the system prompt; the model is expected to recall it via `memory-search` when needed
+Feature flags are opt-in toggles for experimental behavior, configured under `[features]` in `config.toml`.
 
 Enable via TOML:
 
@@ -98,53 +92,17 @@ syncAgents = true
 Enable via CLI:
 
 ```bash
-acolyte config set --project features.syncAgents true
+acolyte config set features.syncAgents true
 ```
 
-### `features.undoCheckpoints`
+### Available flags
 
-When enabled:
-- write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`
-- the model can list and restore checkpoints via `undo-list` and `undo-restore`
-
-Enable via TOML:
-
-```toml
-[features]
-undoCheckpoints = true
-```
-
-Enable via CLI:
-
-```bash
-acolyte config set --project features.undoCheckpoints true
-```
-
-### `features.parallelWorkspaces`
-
-When enabled:
-- Enables `/workspaces` chat commands that manage git worktrees and workspace-scoped sessions
-- `/workspaces new` syntax:
-  - Named workspace: `/workspaces new <name>`
-  - Named + prompt: `/workspaces new <name> -- <prompt>`
-  - Auto-name from prompt: `/workspaces new -- <prompt>`
-- Examples:
-  - `/workspaces new fix-auth`
-  - `/workspaces new fix-auth -- implement oauth callback`
-  - `/workspaces new -- fix auth flow`
-
-Enable via TOML:
-
-```toml
-[features]
-parallelWorkspaces = true
-```
-
-Enable via CLI:
-
-```bash
-acolyte config set --project features.parallelWorkspaces true
-```
+| Flag | Description |
+|------|-------------|
+| `syncAgents` | Sync `AGENTS.md` into a deterministic project memory record (`mem_agentsmd`). The model recalls it via `memory-search` instead of prompt injection. |
+| `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
+| `parallelWorkspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
+| `postgresMemory` | Use Postgres + pgvector for memory storage instead of SQLite. Requires `postgresUrl` and the `postgres`/`pgvector` optional dependencies. |
 
 ## All settable keys
 
@@ -161,6 +119,8 @@ acolyte config set --project features.parallelWorkspaces true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
+| `postgresUrl` | Postgres connection URL (required when `postgresMemory` is enabled) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
+| `features.postgresMemory` | opt-in: use Postgres + pgvector for memory storage |
