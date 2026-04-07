@@ -283,12 +283,14 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       const delimiterIndex = args.indexOf("--");
       let baseName: z.infer<typeof workspaceNameSchema>;
       let prompt = "";
+      let isExplicitName = false;
 
       if (delimiterIndex === -1) {
         if (args.length !== 1) return showUsage();
         const parsedName = workspaceNameSchema.safeParse(args[0]);
         if (!parsedName.success) return showUsage();
         baseName = parsedName.data;
+        isExplicitName = true;
       } else if (delimiterIndex === 0) {
         prompt = args.slice(1).join(" ").trim();
         if (prompt.length === 0) {
@@ -300,6 +302,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
         const parsedName = workspaceNameSchema.safeParse(args[0]);
         if (!parsedName.success) return showUsage();
         baseName = parsedName.data;
+        isExplicitName = true;
         prompt = args.slice(2).join(" ").trim();
       } else {
         ctx.setRows((current) => [
@@ -314,19 +317,24 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
           .map((s) => (typeof s.workspaceName === "string" && s.workspaceName.length > 0 ? s.workspaceName : null))
           .filter((s): s is string => typeof s === "string"),
       );
-      let name = baseName;
-      for (let n = 2; existing.has(name) && n < 100; n++) {
-        const suffix = `-${n}`;
-        const trimmed = `${baseName}`.slice(0, Math.max(1, 40 - suffix.length));
-        const candidate = `${trimmed}${suffix}`;
-        const parsed = workspaceNameSchema.safeParse(candidate);
-        if (!parsed.success) continue;
-        name = parsed.data;
-      }
-
-      if (existing.has(name)) {
+      if (isExplicitName && existing.has(baseName)) {
         ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.name_conflict"))]);
         return { stop: true, userText: text };
+      }
+      let name = baseName;
+      if (!isExplicitName) {
+        for (let n = 2; existing.has(name) && n < 100; n++) {
+          const suffix = `-${n}`;
+          const trimmed = `${baseName}`.slice(0, Math.max(1, 40 - suffix.length));
+          const candidate = `${trimmed}${suffix}`;
+          const parsed = workspaceNameSchema.safeParse(candidate);
+          if (!parsed.success) continue;
+          name = parsed.data;
+        }
+        if (existing.has(name)) {
+          ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.name_conflict"))]);
+          return { stop: true, userText: text };
+        }
       }
       let created: { workspacePath: string; branch: string };
       try {
