@@ -1,9 +1,15 @@
-export class CloudApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
+import { CodedError } from "./coded-error";
+import { CLOUD_ERROR_CODES, type CloudErrorCode } from "./error-contract";
+
+function cloudErrorCode(status: number): CloudErrorCode {
+  if (status === 401) return CLOUD_ERROR_CODES.unauthorized;
+  if (status === 403) return CLOUD_ERROR_CODES.forbidden;
+  return CLOUD_ERROR_CODES.requestFailed;
+}
+
+export class CloudApiError extends CodedError<CloudErrorCode, { status: number }> {
+  constructor(status: number, message: string) {
+    super(cloudErrorCode(status), message, { meta: { status } });
     this.name = "CloudApiError";
   }
 }
