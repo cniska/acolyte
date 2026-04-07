@@ -294,9 +294,10 @@ export async function updateMode(): Promise<void> {
   await performUpdate(currentVersion, update.latest, update.downloadUrl);
 }
 
-export async function checkAndUpdateOnStartup(): Promise<boolean> {
+export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
+  if (options?.skip) return false;
   if (process.env.ACOLYTE_SKIP_UPDATE === "1") return false;
-  if (process.argv.includes("--skip-update")) return false;
+  if (process.argv.includes("--skip-update") || process.argv.includes("--no-update")) return false;
 
   const currentVersion = resolveCliVersion();
   if (currentVersion === "dev") return false;

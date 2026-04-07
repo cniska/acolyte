@@ -59,3 +59,31 @@ export function parsePositional(args: string[], flagsWithValues: string[]): stri
   }
   return positional;
 }
+
+export type UpdateBehavior = "auto" | "force" | "skip";
+
+export type TopLevelArgs = {
+  command: string | undefined;
+  args: string[];
+  update: UpdateBehavior;
+};
+
+export function parseTopLevelArgs(argv: string[]): TopLevelArgs {
+  let update: UpdateBehavior = "auto";
+  const filtered: string[] = [];
+
+  for (const arg of argv) {
+    if (arg === "--update") {
+      if (update !== "skip") update = "force";
+      continue;
+    }
+    if (arg === "--no-update" || arg === "--skip-update") {
+      update = "skip";
+      continue;
+    }
+    filtered.push(arg);
+  }
+
+  const [command, ...args] = filtered;
+  return { command, args, update };
+}

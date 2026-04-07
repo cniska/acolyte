@@ -38,6 +38,8 @@ export function createUsageOptionRows(): Array<{ option: string; description: st
   return [
     { option: "-h, --help", description: t("cli.help.option.help") },
     { option: "-V, --version", description: t("cli.help.option.version") },
+    { option: "--update", description: t("cli.help.option.update") },
+    { option: "--no-update", description: t("cli.help.option.no_update") },
   ];
 }
 
