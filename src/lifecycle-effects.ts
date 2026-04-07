@@ -69,6 +69,7 @@ function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectO
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
   const paths = [path];
+  // Effect output is appended to the tool result string in agent-stream, so keep it stable and model-readable.
   const outputs: string[] = [];
   for (const effect of POST_EFFECTS) {
     const result = effect.run(ctx, paths);
