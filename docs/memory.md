@@ -90,6 +90,8 @@ Measured on LoCoMo (10 conversations, 1650 queries, 2541 observations) with `tex
 
 Input quality (distillation) accounts for a larger gain than any retrieval algorithm.
 
+Harness: `scripts/run-memory-bench.ts`. Adapters: `scripts/memory-bench-scenarios.ts`.
+
 ## Storage
 
 Two backends, selected via the `postgresMemory` feature flag (default: SQLite):
@@ -121,8 +123,6 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
 - `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering
-- `scripts/run-memory-bench.ts` — retrieval quality benchmark harness (Recall@K, NDCG@K)
-- `scripts/memory-bench-scenarios.ts` — benchmark dataset adapters (LongMemEval, LoCoMo)
 
 ## Further reading
 
