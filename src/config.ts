@@ -124,6 +124,8 @@ function serializeToml(config: Config): string {
     lines.push("");
     lines.push("[features]");
     if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
+    if (typeof config.features.parallelWorkspaces === "boolean")
+      lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -150,6 +152,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
     features: {
       syncAgents: features.syncAgents ?? false,
+      parallelWorkspaces: features.parallelWorkspaces ?? false,
     },
   };
 }
@@ -189,7 +192,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents"]),
+  features: new Set(["syncAgents", "parallelWorkspaces"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

@@ -101,6 +101,32 @@ Enable via CLI:
 acolyte config set --project features.syncAgents true
 ```
 
+### `features.parallelWorkspaces`
+
+When enabled:
+- Enables `/workspaces` chat commands that manage git worktrees and workspace-scoped sessions
+- `/workspaces new` syntax:
+  - Named workspace: `/workspaces new <name>`
+  - Named + prompt: `/workspaces new <name> -- <prompt>`
+  - Auto-name from prompt: `/workspaces new -- <prompt>`
+- Examples:
+  - `/workspaces new fix-auth`
+  - `/workspaces new fix-auth -- implement oauth callback`
+  - `/workspaces new -- fix auth flow`
+
+Enable via TOML:
+
+```toml
+[features]
+parallelWorkspaces = true
+```
+
+Enable via CLI:
+
+```bash
+acolyte config set --project features.parallelWorkspaces true
+```
+
 ## All settable keys
 
 | Key | Description |
@@ -117,3 +143,4 @@ acolyte config set --project features.syncAgents true
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
+| `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |

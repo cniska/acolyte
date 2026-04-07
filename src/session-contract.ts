@@ -40,6 +40,9 @@ export const sessionSchema = z.object({
   updatedAt: isoDateTimeSchema,
   model: z.string().min(1),
   title: z.string(),
+  workspace: z.string().min(1).optional(),
+  workspaceName: z.string().min(1).optional(),
+  workspaceBranch: z.string().min(1).optional(),
   messages: z.array(messageSchema),
   tokenUsage: z.array(sessionTokenUsageEntrySchema),
 });
@@ -50,6 +53,9 @@ export interface Session {
   updatedAt: IsoDateTimeString;
   model: string;
   title: string;
+  workspace?: string;
+  workspaceName?: string;
+  workspaceBranch?: string;
   messages: ChatMessage[];
   tokenUsage: SessionTokenUsageEntry[];
 }

@@ -7,6 +7,7 @@ import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-cont
 import type { MemoryOptions } from "./memory-ops";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
+import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 function createMemoryApi(overrides?: {
   listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
@@ -30,8 +31,6 @@ function createMemoryApi(overrides?: {
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
   };
 }
-
-import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);
@@ -492,6 +491,75 @@ describe("chat-commands", () => {
     expect(resumeResult.stop).toBe(true);
     expect(store.activeSessionId).toBe(original.id);
     expect(spies.currentSessionIds).toContain(original.id);
+  });
+
+  describe("/workspaces", () => {
+    function setParallelWorkspacesEnabled(enabled: boolean): () => void {
+      const cfg = appConfig as unknown as { features: { parallelWorkspaces: boolean } };
+      const prev = cfg.features.parallelWorkspaces;
+      cfg.features.parallelWorkspaces = enabled;
+      return () => {
+        cfg.features.parallelWorkspaces = prev;
+      };
+    }
+
+    test("is gated by features.parallelWorkspaces", async () => {
+      const restore = setParallelWorkspacesEnabled(false);
+      try {
+        const { rows, stop } = await runCommand("/workspaces");
+        expect(stop).toBe(true);
+        expect(
+          rows.some(
+            (row) =>
+              row.content ===
+              "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true",
+          ),
+        ).toBe(true);
+      } finally {
+        restore();
+      }
+    });
+
+    test("list renders existing workspace sessions", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const ws = createSession({
+          id: "sess_ws1",
+          title: "Fix auth",
+          workspaceName: "fix-auth",
+          workspace: "/tmp/ws/fix-auth",
+          workspaceBranch: "acolyte-ws/fix-auth",
+        });
+        const store = createStore({ sessions: [ws], activeSessionId: ws.id });
+        const { rows, stop } = await runCommand("/workspaces", { store });
+        expect(stop).toBe(true);
+        const headerRow = rows.find(
+          (row) => isCommandOutput(row.content) && row.content.header.startsWith("Workspaces "),
+        );
+        expect(Boolean(headerRow)).toBe(true);
+      } finally {
+        restore();
+      }
+    });
+
+    test("new reports errors from worktree creation instead of throwing", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const store = createStore({ sessions: [], activeSessionId: undefined });
+        const { createDir, cleanupDirs } = tempDir();
+        const tmp = createDir("acolyte-workspaces-nogit-");
+        const currentSession = createSession({ id: "sess_current", workspace: tmp });
+        const { rows, stop } = await runCommand("/workspaces new fix-auth", { store, currentSession });
+        expect(stop).toBe(true);
+        expect(
+          rows.some((row) => typeof row.content === "string" && row.content.startsWith("Failed to create workspace:")),
+        ).toBe(true);
+        expect(store.sessions.length).toBe(0);
+        cleanupDirs();
+      } finally {
+        restore();
+      }
+    });
   });
 
   describe("inline skill invocation", () => {

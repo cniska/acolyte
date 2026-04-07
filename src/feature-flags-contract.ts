@@ -11,6 +11,8 @@ const parseBoolSchema = z.preprocess((value) => {
 export const featureFlagsSchema = z.object({
   // When enabled, keep a single deterministic project-memory record in sync with AGENTS.md.
   syncAgents: parseBoolSchema.optional(),
+  // When enabled, allow managing parallel workspaces (git worktrees) from chat commands.
+  parallelWorkspaces: parseBoolSchema.optional(),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
