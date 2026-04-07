@@ -19,4 +19,3 @@ describe("workspaces-ops", () => {
     expect(workspaceNameSchema.safeParse(name).success).toBe(true);
   });
 });
-

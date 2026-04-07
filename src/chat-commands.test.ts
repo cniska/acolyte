@@ -509,9 +509,13 @@ describe("chat-commands", () => {
       try {
         const { rows, stop } = await runCommand("/workspaces");
         expect(stop).toBe(true);
-        expect(rows.some((row) => row.content === "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true")).toBe(
-          true,
-        );
+        expect(
+          rows.some(
+            (row) =>
+              row.content ===
+              "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true",
+          ),
+        ).toBe(true);
       } finally {
         restore();
       }
@@ -530,7 +534,9 @@ describe("chat-commands", () => {
         const store = createStore({ sessions: [ws], activeSessionId: ws.id });
         const { rows, stop } = await runCommand("/workspaces", { store });
         expect(stop).toBe(true);
-        const headerRow = rows.find((row) => isCommandOutput(row.content) && row.content.header.startsWith("Workspaces "));
+        const headerRow = rows.find(
+          (row) => isCommandOutput(row.content) && row.content.header.startsWith("Workspaces "),
+        );
         expect(Boolean(headerRow)).toBe(true);
       } finally {
         restore();

@@ -337,10 +337,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       }
 
       if (existing.has(name)) {
-        ctx.setRows((current) => [
-          ...current,
-          createRow("system", t("chat.workspaces.name_conflict")),
-        ]);
+        ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.name_conflict"))]);
         return { stop: true, userText: text };
       }
       let created: { workspacePath: string; branch: string };
@@ -382,7 +379,10 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       }
       const target = ctx.store.sessions.find((s) => s.workspaceName === name.data);
       if (!target) {
-        ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.not_found", { name: name.data }))]);
+        ctx.setRows((current) => [
+          ...current,
+          createRow("system", t("chat.workspaces.not_found", { name: name.data })),
+        ]);
         return { stop: true, userText: text };
       }
       ctx.store.activeSessionId = target.id;
@@ -396,10 +396,7 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       return { stop: true, userText: text };
     }
 
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", formatUsage("/workspaces [list|new|switch] ...")),
-    ]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces [list|new|switch] ..."))]);
     return { stop: true, userText: text };
   }
 
