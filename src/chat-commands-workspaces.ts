@@ -12,7 +12,7 @@ import { createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
-import { createSession } from "./storage";
+import { createSession } from "./session-store";
 import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
 
 async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
@@ -21,7 +21,7 @@ async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<C
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces [list|new|switch] ..."))]);
     return { stop: true, userText: text };
   }
-  const workspaces = ctx.store.sessions
+  const workspaces = ctx.sessionState.sessions
     .filter((s) => typeof s.workspaceName === "string" && s.workspaceName.length > 0)
     .map((s) => ({
       id: s.id,
@@ -34,7 +34,7 @@ async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<C
     return { stop: true, userText: text };
   }
   const grid = workspaces.map((ws) => {
-    const active = ws.id === ctx.store.activeSessionId ? "●" : " ";
+    const active = ws.id === ctx.sessionState.activeSessionId ? "●" : " ";
     const branch = ws.branch.length > 0 ? ws.branch : "—";
     const path = ws.path.length > 0 ? ws.path : "—";
     return [`${active} ${ws.name}`, branch, path];
@@ -94,7 +94,7 @@ async function handleNew(ctx: CommandContext, parsed: ParsedCommand): Promise<Co
     return { stop: true, userText: text };
   }
   const existing = new Set(
-    ctx.store.sessions
+    ctx.sessionState.sessions
       .map((s) => (typeof s.workspaceName === "string" && s.workspaceName.length > 0 ? s.workspaceName : null))
       .filter((s): s is string => typeof s === "string"),
   );
@@ -131,8 +131,8 @@ async function handleNew(ctx: CommandContext, parsed: ParsedCommand): Promise<Co
   next.workspace = created.workspacePath;
   next.workspaceBranch = created.branch;
   next.title = prompt.length > 0 ? prompt : name;
-  ctx.store.sessions.unshift(next);
-  ctx.store.activeSessionId = next.id;
+  ctx.sessionState.sessions.unshift(next);
+  ctx.sessionState.activeSessionId = next.id;
   ctx.setCurrentSession(next);
   ctx.setTokenUsage?.(() => []);
   ctx.clearTranscript(next.id);
@@ -156,12 +156,12 @@ async function handleSwitch(ctx: CommandContext, parsed: ParsedCommand): Promise
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces switch <name>"))]);
     return { stop: true, userText: text };
   }
-  const target = ctx.store.sessions.find((s) => s.workspaceName === name.data);
+  const target = ctx.sessionState.sessions.find((s) => s.workspaceName === name.data);
   if (!target) {
     ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.not_found", { name: name.data }))]);
     return { stop: true, userText: text };
   }
-  ctx.store.activeSessionId = target.id;
+  ctx.sessionState.activeSessionId = target.id;
   ctx.setCurrentSession(target);
   ctx.setTokenUsage?.(() => target.tokenUsage);
   ctx.clearTranscript(target.id);

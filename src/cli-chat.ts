@@ -8,9 +8,9 @@ import { nowIso } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
-import type { Session, SessionState } from "./session-contract";
+import type { Session, SessionState, SessionStore } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
-import { createSession, readStore, writeStore } from "./storage";
+import { createSession, getSessionStore } from "./session-store";
 import { clearScreen, printDim, printError } from "./ui";
 
 const CLI_VERSION = resolveCliVersion();
@@ -21,11 +21,11 @@ type ResumeTarget =
   | { kind: "ambiguous"; prefix: string; matches: Session[] };
 
 function resolveResumeTarget(
-  store: SessionState,
+  state: SessionState,
   options: { resumeLatest: boolean; resumePrefix?: string },
 ): ResumeTarget | null {
   if (options.resumePrefix) {
-    const matches = store.sessions.filter((item) => item.id.startsWith(options.resumePrefix ?? ""));
+    const matches = state.sessions.filter((item) => item.id.startsWith(options.resumePrefix ?? ""));
     if (matches.length === 0) return { kind: "not_found", prefix: options.resumePrefix };
     if (matches.length > 1) return { kind: "ambiguous", prefix: options.resumePrefix, matches };
     return { kind: "ok", session: matches[0] };
@@ -33,10 +33,10 @@ function resolveResumeTarget(
 
   if (!options.resumeLatest) return null;
 
-  const active = store.activeSessionId ? store.sessions.find((item) => item.id === store.activeSessionId) : undefined;
+  const active = state.activeSessionId ? state.sessions.find((item) => item.id === state.activeSessionId) : undefined;
   if (active) return { kind: "ok", session: active };
-  if (store.sessions.length > 0) {
-    const latest = store.sessions[0];
+  if (state.sessions.length > 0) {
+    const latest = state.sessions[0];
     if (latest) return { kind: "ok", session: latest };
   }
   return null;
@@ -52,10 +52,17 @@ export async function attachFileToSession(session: Session, filePath: string): P
   session.updatedAt = nowIso();
 }
 
+async function loadSessionState(store: SessionStore): Promise<SessionState> {
+  const sessions = await store.listSessions();
+  const activeSessionId = await store.getActiveSessionId();
+  return { sessions: [...sessions], activeSessionId };
+}
+
 export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
-  const store = await readStore();
+  const sessionStore = await getSessionStore();
+  const state = await loadSessionState(sessionStore);
   const model = appConfig.model;
-  const resolved = resolveResumeTarget(store, options);
+  const resolved = resolveResumeTarget(state, options);
   if (resolved?.kind === "not_found") {
     printError(t("chat.resume.not_found", { prefix: resolved.prefix }));
     process.exitCode = 1;
@@ -72,9 +79,9 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   const session = isResumed ? resolved.session : createSession(model);
   if (!isResumed) {
     // Start a fresh chat session by default to avoid cross-session transcript/context bleed.
-    store.sessions.unshift(session);
+    state.sessions.unshift(session);
   }
-  store.activeSessionId = session.id;
+  state.activeSessionId = session.id;
   const lock = acquireSessionLock(session.id);
   if (!lock.ok) {
     printError(t("chat.session.locked", { pid: lock.ownerPid ?? "unknown" }));
@@ -92,7 +99,8 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   else printDim(t("cli.server.already_running", { port: daemon.port, pid: daemon.pid }));
   const client = createClient({ apiUrl });
   const persist = async (): Promise<void> => {
-    await writeStore(store);
+    await sessionStore.saveSession(session);
+    await sessionStore.setActiveSessionId(state.activeSessionId);
   };
 
   try {
@@ -100,13 +108,13 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     await runChat({
       client,
       session,
-      store,
+      sessionState: state,
       persist,
       version: CLI_VERSION,
       useMemory: isResumed,
     });
     if (output.isTTY) clearScreen();
-    const resumeId = store.activeSessionId ?? session.id;
+    const resumeId = state.activeSessionId ?? session.id;
     printDim(t("chat.resume.with_command", { command: formatResumeCommand(resumeId) }));
   } finally {
     releaseSessionLock(session.id);

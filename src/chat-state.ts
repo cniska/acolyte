@@ -28,7 +28,7 @@ const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 export interface ChatAppProps {
   client: Client;
   session: Session;
-  store: SessionState;
+  sessionState: SessionState;
   persist: () => Promise<void>;
   version: string;
   useMemory?: boolean;
@@ -62,7 +62,7 @@ export interface ChatStateResult {
 }
 
 export function useChatState(props: ChatAppProps, exit: () => void): ChatStateResult {
-  const { client, session, store, persist, useMemory } = props;
+  const { client, session, sessionState, persist, useMemory } = props;
 
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const [rows, setRows] = useState<ChatRow[]>([]);
@@ -154,7 +154,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   );
 
   const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
-    store,
+    sessionState,
     currentSession,
     setCurrentSession,
     setTokenUsage,
@@ -173,7 +173,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const { handleSubmit, startAssistantTurn } = createMessageHandler({
     client,
-    store,
+    sessionState,
     currentSession,
     setCurrentSession,
     toRows,
@@ -339,7 +339,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     slashSuggestionIndex,
     showHelp,
     ctrlCPending,
-    activeSessionId: store.activeSessionId,
+    activeSessionId: sessionState.activeSessionId,
     footerContext,
     handleInputChange,
     handleInputSubmit,

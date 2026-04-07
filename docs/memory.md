@@ -60,7 +60,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
 - repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
-- distill record writes use the configured storage backend (SQLite or Postgres) for atomic persistence
+- distill record writes use the configured storage backend for atomic persistence
 - hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
 
 ## Recall
@@ -70,7 +70,7 @@ Memory records are embedded at write time using the provider embedding API. At q
 - **Cosine similarity** (weight 0.8) — semantic relevance via embedding distance
 - **TF-IDF token overlap** (weight 0.2) — exact keyword matching where rare tokens like proper nouns and tool names score higher than common words
 
-Both the SQLite and Postgres backends use this hybrid scoring. The Postgres path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
+Both the local SQLite and cloud backends use this hybrid scoring. The cloud path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
 
 When observations have topic tags (assigned via `@topic` in the distiller), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
 
@@ -94,10 +94,10 @@ Harness: `scripts/run-memory-bench.ts`. Adapters: `scripts/memory-bench-scenario
 
 ## Storage
 
-Two backends, selected via the `postgresMemory` feature flag (default: SQLite):
+Two backends, selected via the `cloudSync` feature flag (default: SQLite):
 
 - **SQLite** (default): `~/.acolyte/memory.db`, `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
-- **Postgres + pgvector** (feature-flagged): configured via `postgresUrl`, `vector(1536)` column type, native cosine distance search. Bring your own Postgres — Acolyte does not provision or manage the database.
+- **Cloud** (feature-flagged): configured via `cloudUrl` + `cloudToken`, backed by Postgres + pgvector. See [Cloud](cloud.md).
 
 ## Extension seams
 
@@ -119,7 +119,7 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and store factory
-- `src/memory-store-postgres.ts` — Postgres + pgvector MemoryStore implementation (feature-flagged)
+- `src/cloud-client.ts` — cloud API MemoryStore implementation (feature-flagged)
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
 - `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering

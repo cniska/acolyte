@@ -175,12 +175,10 @@ export function getMemoryStore(): Promise<MemoryStore> {
 
 async function resolveStore(): Promise<MemoryStore> {
   const { appConfig } = await import("./app-config");
-  if (appConfig.features.postgresMemory) {
-    const url = appConfig.postgresUrl;
-    if (!url) throw new Error("postgresUrl required when features.postgresMemory is enabled");
-    const { createPostgresMemoryStore } = await import("./memory-store-postgres");
-    log.debug("memory.store.opened", { provider: "postgres" });
-    return createPostgresMemoryStore(url);
+  if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
+    const { getCloudClient } = await import("./cloud-client");
+    log.debug("memory.store.opened", { provider: "cloud" });
+    return (await getCloudClient()).memory;
   }
   log.debug("memory.store.opened", { provider: "sqlite" });
   return createSqliteMemoryStore();

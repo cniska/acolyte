@@ -22,10 +22,10 @@ export function createPicker<K extends keyof PickerByKind>(config: CreatePickerC
   } as PickerByKind[K];
 }
 
-export function createResumePicker(store: SessionState): PickerState | null {
-  const items = store.sessions;
+export function createResumePicker(sessionState: SessionState): PickerState | null {
+  const items = sessionState.sessions;
   if (items.length === 0) return null;
-  const activeIndex = items.findIndex((item) => item.id === store.activeSessionId);
+  const activeIndex = items.findIndex((item) => item.id === sessionState.activeSessionId);
   const index = activeIndex >= 0 ? activeIndex : 0;
   const scrollOffset = Math.max(0, index - PICKER_PAGE_SIZE + 1);
   return { kind: "resume", items, index, scrollOffset };

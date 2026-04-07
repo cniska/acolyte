@@ -43,6 +43,13 @@ client → rpc server → task queue → lifecycle worker
 - **task queue:** enforces ordering, capacity, and cancellation boundaries
 - **lifecycle worker:** executes accepted tasks through lifecycle phases
 
+## Session flow
+
+- **create or resume:** resolve target session from ID prefix or active session
+- **lock:** acquire session lock to prevent concurrent modification
+- **persist:** save session state at checkpoints during chat
+- **details:** see [Sessions](./sessions.md)
+
 ## Task flow
 
 ```text
@@ -53,7 +60,7 @@ accept → queue → run → complete|fail|cancel
 - **queue:** hold until runnable under queue policy
 - **run:** execute lifecycle for active task
 - **complete|fail|cancel:** emit terminal state and persist task outcome
-- **details:** see [Sessions and tasks](./sessions-tasks.md)
+- **details:** see [Tasks](./tasks.md)
 
 ## Tool layering
 

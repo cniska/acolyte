@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { resolveResumeSession } from "./chat-commands-resume";
-import { createSession, createStore } from "./test-utils";
+import { createSession, createSessionState } from "./test-utils";
 
 function createUiStore() {
-  return createStore({
+  return createSessionState({
     activeSessionId: "sess_aaaa1111",
     sessions: [
       createSession({ id: "sess_aaaa1111", title: "First" }),

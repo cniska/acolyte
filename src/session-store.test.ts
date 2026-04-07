@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSessionState } from "./storage";
+import { parseSessionState } from "./session-store";
 
 describe("storage", () => {
   test("parseSessionState drops sessions missing tokenUsage", () => {

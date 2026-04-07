@@ -19,6 +19,16 @@ import type { Session, SessionState, SessionTokenUsageEntry } from "./session-co
 import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
+export function mockFetch(handler: (...args: Parameters<typeof fetch>) => Promise<Response>): {
+  fn: ReturnType<typeof mock>;
+  restore: () => void;
+} {
+  const previous = globalThis.fetch;
+  const fn = mock(handler);
+  globalThis.fetch = fn as unknown as typeof fetch;
+  return { fn, restore: () => (globalThis.fetch = previous) };
+}
+
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
   return {
@@ -224,7 +234,7 @@ export function createSession(overrides: Partial<Session> = {}): Session {
   };
 }
 
-export function createStore(overrides: Partial<SessionState> = {}): SessionState {
+export function createSessionState(overrides: Partial<SessionState> = {}): SessionState {
   const sessions = overrides.sessions ?? [
     createSession({ id: "sess_test001" }),
     createSession({ id: "sess_test002", title: "Second Session" }),
@@ -276,7 +286,7 @@ export type MessageHandlerHarness = {
   /** Every row that was ever present, even after clearTranscript. */
   allRows: ChatRow[];
   session: Session;
-  store: SessionState;
+  sessionState: SessionState;
   calls: {
     setInputHistory: number;
     setValue: string[];
@@ -296,7 +306,7 @@ export function createMessageHandlerHarness(overrides?: {
   isPending?: boolean;
   client?: Client;
   session?: Session;
-  store?: SessionState;
+  sessionState?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
   toRows?: (messages: ChatMessage[]) => ChatRow[];
 }): MessageHandlerHarness {
@@ -313,11 +323,12 @@ export function createMessageHandlerHarness(overrides?: {
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
   };
   const session = overrides?.session ?? createSession({ id: "sess_test" });
-  const store = overrides?.store ?? createStore({ activeSessionId: session.id, sessions: [session] });
+  const sessionState =
+    overrides?.sessionState ?? createSessionState({ activeSessionId: session.id, sessions: [session] });
   const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
   const { handleSubmit: handleMessage } = createMessageHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
-    store,
+    sessionState,
     currentSession: session,
     setCurrentSession: (next) => {
       calls.setCurrentSessionIds.push(next.id);
@@ -372,7 +383,7 @@ export function createMessageHandlerHarness(overrides?: {
       rows.splice(0, rows.length);
     },
   });
-  return { handleMessage, rows, allRows, session, store, calls, interrupt };
+  return { handleMessage, rows, allRows, session, sessionState, calls, interrupt };
 }
 
 export type PickerHandlerSpies = {
@@ -395,7 +406,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     assistantTurnTexts: [],
   };
   const handlers = createPickerHandlers({
-    store: createStore(),
+    sessionState: createSessionState(),
     currentSession: createSession(),
     setCurrentSession: (next) => {
       spies.currentSessions.push(next);
@@ -537,7 +548,7 @@ export function createCommandContext(
     text,
     resolvedText: text,
     client: createClient(),
-    store: createStore(),
+    sessionState: createSessionState(),
     currentSession: createSession(),
     setCurrentSession: (next) => {
       spies.currentSessionIds.push(next.id);

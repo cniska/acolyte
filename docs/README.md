@@ -21,8 +21,10 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 
 - [TUI](./tui.md) — React terminal UI with fuzzy search, autocomplete, model picker, and code editing
 - [Tooling](./tooling.md) — layered tool execution with contracts and effects
-- [Sessions and tasks](./sessions-tasks.md) — isolated, resumable session state and task execution
+- [Sessions](./sessions.md) — chat context, message history, and session storage backends
+- [Tasks](./tasks.md) — task lifecycle, queue policy, and state transitions
 - [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
+- [Cloud](./cloud.md) — portable agent identity via cloud-hosted memory and sessions
 
 ## Development
 

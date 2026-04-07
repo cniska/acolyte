@@ -24,7 +24,14 @@ export const LIFECYCLE_ERROR_CODES = {
 } as const;
 export type LifecycleErrorCode = (typeof LIFECYCLE_ERROR_CODES)[keyof typeof LIFECYCLE_ERROR_CODES];
 
-export type ErrorCode = ToolErrorCode | LifecycleErrorCode;
+export const CLOUD_ERROR_CODES = {
+  unauthorized: "E_CLOUD_UNAUTHORIZED",
+  forbidden: "E_CLOUD_FORBIDDEN",
+  requestFailed: "E_CLOUD_REQUEST_FAILED",
+} as const;
+export type CloudErrorCode = (typeof CLOUD_ERROR_CODES)[keyof typeof CLOUD_ERROR_CODES];
+
+export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode;
 
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
