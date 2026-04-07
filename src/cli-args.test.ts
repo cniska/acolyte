@@ -3,6 +3,7 @@ import {
   hasBoolFlag,
   hasHelpFlag,
   parseFlag,
+  parseGlobalArgsAndCommand,
   parsePositional,
   parseRepeatableFlag,
   parseRequiredFlag,
@@ -91,5 +92,31 @@ describe("parsePositional", () => {
 
   test("skips boolean flags", () => {
     expect(parsePositional(["--json", "task"], [])).toEqual(["task"]);
+  });
+});
+
+describe("parseGlobalArgsAndCommand", () => {
+  test("parses --update with no command", () => {
+    expect(parseGlobalArgsAndCommand(["--update"])).toEqual({ command: undefined, args: [], update: "force" });
+  });
+
+  test("parses --no-update with no command", () => {
+    expect(parseGlobalArgsAndCommand(["--no-update"])).toEqual({ command: undefined, args: [], update: "skip" });
+  });
+
+  test("strips global flags and preserves command and args", () => {
+    expect(parseGlobalArgsAndCommand(["--update", "run", "--model", "gpt-5-mini", "hi"])).toEqual({
+      command: "run",
+      args: ["--model", "gpt-5-mini", "hi"],
+      update: "force",
+    });
+  });
+
+  test("skip overrides force when both are present", () => {
+    expect(parseGlobalArgsAndCommand(["--update", "--no-update"])).toEqual({
+      command: undefined,
+      args: [],
+      update: "skip",
+    });
   });
 });

@@ -37,6 +37,8 @@ describe("cli-help", () => {
     expect(rows).toEqual([
       { option: "-h, --help", description: "print help" },
       { option: "-V, --version", description: "print version" },
+      { option: "--update", description: "check for updates before running" },
+      { option: "--no-update", description: "disable update checks" },
     ]);
   });
 

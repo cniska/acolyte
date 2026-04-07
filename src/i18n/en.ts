@@ -138,6 +138,8 @@ export const EN_MESSAGES = {
   "cli.help.label.description": "Description: {description}",
   "cli.help.label.usage": "Usage: {usage}",
   "cli.help.option.help": "print help",
+  "cli.help.option.no_update": "disable update checks",
+  "cli.help.option.update": "check for updates before running",
   "cli.help.option.version": "print version",
   "cli.help.section.commands": "Commands",
   "cli.help.section.options": "Options",

@@ -6,7 +6,7 @@ How Acolyte handles versioning, updates, and breaking changes.
 
 The CLI checks for updates on startup (at most once per 24 hours). When a newer version exists, it downloads the binary, verifies the checksum, replaces itself, stops the running server, and re-execs. The user sees a progress bar and then the new version starts normally.
 
-Skip the check with `--skip-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with `acolyte update`.
+Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with `acolyte update`.
 
 ## Version compatibility
 

@@ -122,6 +122,8 @@ describe("cli visual regression", () => {
       Options
         -h, --help             print help
         -V, --version          print version
+        --update               check for updates before running
+        --no-update            disable update checks
     `),
     );
   });
