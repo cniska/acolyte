@@ -11,6 +11,15 @@ const parseBoolSchema = z.preprocess((value) => {
 export const featureFlagsSchema = z.object({
   // When enabled, keep a single deterministic project-memory record in sync with AGENTS.md.
   syncAgents: parseBoolSchema.optional(),
+  // When enabled, capture write-tool checkpoints under .acolyte/undo/<sessionId> and allow undo tools.
+  undoCheckpoints: parseBoolSchema.optional(),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
+
+export const resolvedFeatureFlagsSchema = z.object({
+  syncAgents: parseBoolSchema.optional().default(false),
+  undoCheckpoints: parseBoolSchema.optional().default(false),
+});
+
+export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;

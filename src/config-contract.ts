@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type FeatureFlags, featureFlagsSchema } from "./feature-flags-contract";
+import { type FeatureFlags, type ResolvedFeatureFlags, featureFlagsSchema } from "./feature-flags-contract";
 import { type TranslationLocale, translationLocaleSchema } from "./i18n/locales";
 
 export const logFormatSchema = z.enum(["logfmt", "json"]);
@@ -56,7 +56,7 @@ export interface ResolvedConfig {
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
   embeddingModel: string;
-  features: Required<FeatureFlags>;
+  features: ResolvedFeatureFlags;
 }
 
 export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
