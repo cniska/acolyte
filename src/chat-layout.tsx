@@ -11,6 +11,7 @@ export const SHORTCUT_ITEMS = [
   { key: "/new", description: slashCommandHelp("/new") },
   { key: "/resume <id>", description: slashCommandHelp("/resume") },
   { key: "/sessions", description: slashCommandHelp("/sessions") },
+  { key: "/workspaces", description: slashCommandHelp("/workspaces") },
   { key: "/model", description: slashCommandHelp("/model") },
   { key: "/status", description: slashCommandHelp("/status") },
   { key: "/remember <text>", description: slashCommandHelp("/remember") },

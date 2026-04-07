@@ -40,7 +40,13 @@ describe("chat-slash helpers", () => {
   });
 
   test("suggestSlashCommands fuzzy-matches root and expands subcommands", () => {
-    expect(suggestSlashCommands("/mov")).toEqual(["/model", "/memory", "/memory list", "/memory add", "/memory all"]);
+    expect(suggestSlashCommands("/mov")).toEqual([
+      "/model",
+      "/workspaces",
+      "/workspaces list",
+      "/workspaces new",
+      "/workspaces switch",
+    ]);
     expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
     expect(suggestSlashCommands("/memry")).toEqual([
       "/memory",

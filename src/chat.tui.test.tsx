@@ -73,12 +73,12 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file             /remember <text>    save memory note
-        /new                start new session       /memory [scope]     show memory notes
-        /resume <id>        resume session          /usage              show token usage
-        /sessions           show sessions           /skills             show skills picker
+        @path               attach file             /status             show server status
+        /new                start new session       /remember <text>    save memory note
+        /resume <id>        resume session          /memory [scope]     show memory notes
+        /sessions           show sessions           /usage              show token usage
+        /workspaces         manage workspaces       /skills             show skills picker
         /model              change model            /exit               exit chat
-        /status             show server status
     `),
     );
   });
@@ -94,6 +94,7 @@ describe("chat tui visual regression: footer and help", () => {
         /new                start new session
         /resume <id>        resume session
         /sessions           show sessions
+        /workspaces         manage workspaces
         /model              change model
         /status             show server status
         /remember <text>    save memory note

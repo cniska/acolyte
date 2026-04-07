@@ -12,6 +12,7 @@ import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName } from "./skills";
+import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
 
 type MemoryContextScope = "all" | "user" | "project";
 
@@ -228,6 +229,129 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
 
   if (resolvedText === "/sessions") {
     ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
+    return { stop: true, userText: text };
+  }
+
+  if (resolvedText === "/workspaces" || resolvedText.startsWith("/workspaces ")) {
+    if (!appConfig.features.parallelWorkspaces) {
+      ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.disabled"))]);
+      return { stop: true, userText: text };
+    }
+
+    const parts = resolvedText.trim().split(/\s+/);
+    const sub = parts[1] ?? "list";
+
+    if (sub === "list" && parts.length <= 2) {
+      const workspaces = ctx.store.sessions
+        .filter((s) => typeof s.workspaceName === "string" && s.workspaceName.length > 0)
+        .map((s) => ({
+          id: s.id,
+          name: s.workspaceName ?? "",
+          branch: s.workspaceBranch ?? "",
+          path: s.workspace ?? "",
+        }));
+      if (workspaces.length === 0) {
+        ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.list.none"))]);
+        return { stop: true, userText: text };
+      }
+      const grid = workspaces.map((ws) => {
+        const active = ws.id === ctx.store.activeSessionId ? "●" : " ";
+        const branch = ws.branch.length > 0 ? ws.branch : "—";
+        const path = ws.path.length > 0 ? ws.path : "—";
+        return [`${active} ${ws.name}`, branch, path];
+      });
+      const list = alignCols(grid);
+      ctx.setRows((current) => [
+        ...current,
+        createRow("system", { header: `Workspaces ${workspaces.length}`, sections: [], list }),
+      ]);
+      return { stop: true, userText: text };
+    }
+
+    if (sub === "new") {
+      const first = parts[2];
+      const explicitName = workspaceNameSchema.safeParse(first);
+      const prompt = explicitName.success ? parts.slice(3).join(" ").trim() : parts.slice(2).join(" ").trim();
+      if (!explicitName.success && prompt.length === 0) {
+        ctx.setRows((current) => [
+          ...current,
+          createRow("system", formatUsage("/workspaces new <name> [prompt]")),
+        ]);
+        return { stop: true, userText: text };
+      }
+      const baseName = explicitName.success ? explicitName.data : suggestWorkspaceName(prompt);
+      const existing = new Set(
+        ctx.store.sessions
+          .map((s) => (typeof s.workspaceName === "string" && s.workspaceName.length > 0 ? s.workspaceName : null))
+          .filter((s): s is string => typeof s === "string"),
+      );
+      let name = baseName;
+      for (let n = 2; existing.has(name) && n < 100; n++) {
+        const suffix = `-${n}`;
+        const trimmed = `${baseName}`.slice(0, Math.max(1, 40 - suffix.length));
+        const candidate = `${trimmed}${suffix}`;
+        const parsed = workspaceNameSchema.safeParse(candidate);
+        if (!parsed.success) continue;
+        name = parsed.data;
+      }
+
+      if (existing.has(name)) {
+        ctx.setRows((current) => [
+          ...current,
+          createRow("system", t("chat.workspaces.name_conflict")),
+        ]);
+        return { stop: true, userText: text };
+      }
+      const repoRoot = await resolveGitRepoRoot(process.cwd());
+      const created = await createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
+      const next = createSession(appConfig.model);
+      next.workspaceName = name;
+      next.workspace = created.workspacePath;
+      next.workspaceBranch = created.branch;
+      next.title = prompt.length > 0 ? prompt : name;
+      ctx.store.sessions.unshift(next);
+      ctx.store.activeSessionId = next.id;
+      ctx.setCurrentSession(next);
+      ctx.setTokenUsage?.(() => []);
+      ctx.clearTranscript(next.id);
+      ctx.setRows(() => ctx.toRows(next.messages));
+      ctx.setShowHelp(() => false);
+      await ctx.persist();
+      ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.created", { name }))]);
+
+      if (prompt.length > 0 && ctx.startAssistantTurn) {
+        void ctx.startAssistantTurn(prompt);
+        return { stop: true, userText: prompt };
+      }
+      return { stop: true, userText: text };
+    }
+
+    if (sub === "switch") {
+      const name = workspaceNameSchema.safeParse(parts[2]);
+      if (!name.success || parts.length !== 3) {
+        ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces switch <name>"))]);
+        return { stop: true, userText: text };
+      }
+      const target = ctx.store.sessions.find((s) => s.workspaceName === name.data);
+      if (!target) {
+        ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.not_found", { name: name.data }))]);
+        return { stop: true, userText: text };
+      }
+      ctx.store.activeSessionId = target.id;
+      ctx.setCurrentSession(target);
+      ctx.setTokenUsage?.(() => target.tokenUsage);
+      ctx.clearTranscript(target.id);
+      ctx.setRows(() => ctx.toRows(target.messages));
+      ctx.setShowHelp(() => false);
+      await ctx.persist();
+      ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.switched", { name: name.data }))]);
+      return { stop: true, userText: text };
+    }
+
+    ctx.setRows((current) => [
+      ...current,
+      createRow("system", formatUsage("/workspaces [list|new|switch] ...")),
+    ]);
     return { stop: true, userText: text };
   }
 
