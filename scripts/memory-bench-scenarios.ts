@@ -138,6 +138,26 @@ const locomoQaSchema = z.object({
 const LOCOMO_URL = "https://raw.githubusercontent.com/snap-research/locomo/main/data/locomo10.json";
 const LOCOMO_FILE = "locomo10.json";
 
+function locomoSessionDate(conv: Record<string, unknown>, sessionNum: string): string {
+  const value = conv[`session_${sessionNum}_date_time`];
+  return typeof value === "string" ? value : "unknown";
+}
+
+function locomoQueries(
+  qa: z.infer<typeof locomoQaSchema>[],
+  convIdx: number,
+  resolveDiaId: (diaId: string) => string[],
+): NormalizedQuery[] {
+  return qa
+    .filter((q) => q.evidence.length > 0)
+    .map((q, qIdx) => ({
+      id: `conv${convIdx}_q${qIdx}`,
+      question: q.question,
+      relevantObservationIds: q.evidence.flatMap(resolveDiaId),
+    }))
+    .filter((q) => q.relevantObservationIds.length > 0);
+}
+
 function normalizeLoCoMo(raw: unknown[]): DatasetScenario[] {
   return raw.map((entry, convIdx) => {
     const parsed = z.object({ conversation: z.record(z.string(), z.any()), qa: z.array(locomoQaSchema) }).parse(entry);
@@ -145,14 +165,13 @@ function normalizeLoCoMo(raw: unknown[]): DatasetScenario[] {
     const observations: NormalizedObservation[] = [];
     const turnById = new Map<string, string>();
 
-    // Extract sessions from conversation object (session_1, session_2, ...)
     const sessionKeys = Object.keys(conv)
       .filter((k) => /^session_\d+$/.test(k))
       .sort((a, b) => Number(a.split("_")[1]) - Number(b.split("_")[1]));
 
     for (const sessionKey of sessionKeys) {
-      const dateKey = `${sessionKey}_date_time`;
-      const date = typeof conv[dateKey] === "string" ? (conv[dateKey] as string) : "unknown";
+      const sessionNum = sessionKey.split("_")[1];
+      const date = locomoSessionDate(conv, sessionNum);
       const turns = z.array(locomoTurnSchema).parse(conv[sessionKey]);
 
       for (const turn of turns) {
@@ -162,15 +181,10 @@ function normalizeLoCoMo(raw: unknown[]): DatasetScenario[] {
       }
     }
 
-    // Map QA evidence to observation IDs
-    const queries: NormalizedQuery[] = parsed.qa
-      .filter((qa) => qa.evidence.length > 0)
-      .map((qa, qIdx) => ({
-        id: `conv${convIdx}_q${qIdx}`,
-        question: qa.question,
-        relevantObservationIds: qa.evidence.map((e) => turnById.get(e)).filter((id): id is string => id !== undefined),
-      }))
-      .filter((q) => q.relevantObservationIds.length > 0);
+    const queries = locomoQueries(parsed.qa, convIdx, (diaId) => {
+      const id = turnById.get(diaId);
+      return id ? [id] : [];
+    });
 
     return { scenarioId: `conv${convIdx}`, observations, queries };
   });
@@ -216,8 +230,7 @@ function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
     let obsIndex = 0;
     for (const sessionKey of sessionKeys) {
       const sessionNum = sessionKey.match(/\d+/)?.[0] ?? "1";
-      const dateKey = `session_${sessionNum}_date_time`;
-      const date = typeof conv[dateKey] === "string" ? (conv[dateKey] as string) : "unknown";
+      const date = locomoSessionDate(conv, sessionNum);
       const speakers = obsData[sessionKey];
 
       for (const [speaker, facts] of Object.entries(speakers)) {
@@ -232,14 +245,7 @@ function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
       }
     }
 
-    const queries: NormalizedQuery[] = parsed.qa
-      .filter((qa) => qa.evidence.length > 0)
-      .map((qa, qIdx) => ({
-        id: `conv${convIdx}_q${qIdx}`,
-        question: qa.question,
-        relevantObservationIds: qa.evidence.flatMap((e) => diaIdToObsIds.get(e) ?? []),
-      }))
-      .filter((q) => q.relevantObservationIds.length > 0);
+    const queries = locomoQueries(parsed.qa, convIdx, (diaId) => diaIdToObsIds.get(diaId) ?? []);
 
     return { scenarioId: `conv${convIdx}`, observations, queries };
   });
