@@ -1,5 +1,3 @@
-export const CLOUD_SYNC_API_VERSION = "1";
-
 export const CLOUD_SYNC_ROUTES = {
   memories: {
     list: "/api/v1/memories",

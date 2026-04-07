@@ -33,7 +33,7 @@ export const appConfig = {
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,
   cloudUrl: fileConfig.cloudUrl,
-  cloudToken: fileConfig.cloudToken ?? env.ACOLYTE_CLOUD_TOKEN,
+  cloudToken: env.ACOLYTE_CLOUD_TOKEN,
 } as const;
 
 export function setModel(model: string): void {

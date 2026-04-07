@@ -15,6 +15,18 @@ export type CloudSyncClient = {
   del(path: string): Promise<unknown>;
 };
 
+let clientInstance: CloudSyncClient | null = null;
+
+export async function getCloudSyncClient(): Promise<CloudSyncClient> {
+  if (clientInstance) return clientInstance;
+  const { appConfig } = await import("./app-config");
+  const url = appConfig.cloudUrl;
+  const token = appConfig.cloudToken;
+  if (!url || !token) throw new Error("cloudUrl and cloudToken required when cloudSync is enabled");
+  clientInstance = createCloudSyncClient(url, token);
+  return clientInstance;
+}
+
 export function createCloudSyncClient(baseUrl: string, token: string): CloudSyncClient {
   const base = baseUrl.replace(/\/$/, "");
 

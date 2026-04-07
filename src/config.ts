@@ -121,7 +121,6 @@ function serializeToml(config: Config): string {
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
   if (config.cloudUrl) lines.push(`cloudUrl = ${JSON.stringify(config.cloudUrl)}`);
-  if (config.cloudToken) lines.push(`cloudToken = ${JSON.stringify(config.cloudToken)}`);
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
@@ -157,7 +156,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
     cloudUrl: config.cloudUrl,
-    cloudToken: config.cloudToken,
     features: resolvedFeatures,
   };
 }
@@ -211,8 +209,6 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   return { section, subKey };
 }
 
-const CONFIG_VALIDATORS: Partial<Record<keyof Config, (value: string) => string | null>> = {};
-
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
   const dotted = parseDottedKey(key);
@@ -239,8 +235,6 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     throw new Error(
       t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
     );
-  const validationError = CONFIG_VALIDATORS[topKey]?.(value);
-  if (validationError) throw new Error(validationError);
   const current = await readConfigForScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

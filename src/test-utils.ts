@@ -19,6 +19,16 @@ import type { Session, SessionState, SessionTokenUsageEntry } from "./session-co
 import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
+export function mockFetch(handler: (...args: Parameters<typeof fetch>) => Promise<Response>): {
+  fn: ReturnType<typeof mock>;
+  restore: () => void;
+} {
+  const previous = globalThis.fetch;
+  const fn = mock(handler);
+  globalThis.fetch = fn as unknown as typeof fetch;
+  return { fn, restore: () => (globalThis.fetch = previous) };
+}
+
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {
   const dirs: string[] = [];
   return {

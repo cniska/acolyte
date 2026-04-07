@@ -14,13 +14,12 @@ The CLI ships cloud store clients that talk to the cloud API over HTTP. The clou
 
 ```toml
 cloudUrl = "https://cloud.acolyte.sh"
-cloudToken = "eyJ..."
 
 [features]
 cloudSync = true
 ```
 
-The token can also be set via the `ACOLYTE_CLOUD_TOKEN` environment variable.
+The token is set via the `ACOLYTE_CLOUD_TOKEN` environment variable — it is never persisted to config files.
 
 When `cloudSync` is enabled with a valid `cloudUrl` and `cloudToken`, all memory and session operations route through the cloud API instead of local SQLite/JSON storage.
 
@@ -46,7 +45,7 @@ Deploy the cloud API to your own Vercel + Neon Postgres:
 
 ## API versioning
 
-The cloud API is versioned at `/api/v1/`. The CLI and API must agree on the version — see `CLOUD_SYNC_API_VERSION` in `src/cloud-sync-contract.ts`.
+The cloud API is versioned at `/api/v1/`. Routes are defined in `src/cloud-sync-contract.ts`.
 
 ## Key files
 

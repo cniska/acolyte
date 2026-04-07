@@ -120,7 +120,6 @@ acolyte config set features.syncAgents true
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
 | `cloudUrl` | Cloud sync API base URL (e.g. `https://cloud.acolyte.sh`) |
-| `cloudToken` | Cloud sync JWT token. Can also be set via `ACOLYTE_CLOUD_TOKEN` env var. |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |

@@ -169,10 +169,10 @@ export function getMemoryStore(): Promise<MemoryStore> {
 async function resolveStore(): Promise<MemoryStore> {
   const { appConfig } = await import("./app-config");
   if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
-    const { createCloudSyncClient } = await import("./cloud-sync-client");
+    const { getCloudSyncClient } = await import("./cloud-sync-client");
     const { createCloudMemoryStore } = await import("./memory-store-cloud");
     log.debug("memory.store.opened", { provider: "cloud" });
-    return createCloudMemoryStore(createCloudSyncClient(appConfig.cloudUrl, appConfig.cloudToken));
+    return createCloudMemoryStore(await getCloudSyncClient());
   }
   log.debug("memory.store.opened", { provider: "sqlite" });
   return createSqliteMemoryStore();

@@ -40,7 +40,6 @@ export interface Config {
   reasoning?: ReasoningLevel;
   embeddingModel?: string;
   cloudUrl?: string;
-  cloudToken?: string;
   features?: FeatureFlags;
 }
 
@@ -59,7 +58,6 @@ export interface ResolvedConfig {
   reasoning?: ReasoningLevel;
   embeddingModel: string;
   cloudUrl?: string;
-  cloudToken?: string;
   features: ResolvedFeatureFlags;
 }
 
@@ -76,7 +74,6 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
   cloudUrl: nonEmptyStringSchema,
-  cloudToken: nonEmptyStringSchema,
   features: featureFlagsSchema,
 };
 
@@ -101,7 +98,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
     cloudUrl: parseField(nonEmptyStringSchema, input.cloudUrl),
-    cloudToken: parseField(nonEmptyStringSchema, input.cloudToken),
     features: parseField(featureFlagsSchema, input.features),
   };
 }
