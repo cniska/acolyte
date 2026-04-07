@@ -1,28 +1,27 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryStore } from "./memory-contract";
 import { embeddingToBuffer } from "./memory-embedding";
-import { createPostgresMemoryStore } from "./memory-store-postgres";
 import { memoryStoreContractTests } from "./memory-store-contract.test-suite";
+import { createPostgresMemoryStore } from "./memory-store-postgres";
 
 const POSTGRES_TEST_URL = process.env.POSTGRES_TEST_URL;
 
 if (!POSTGRES_TEST_URL) {
   test.skip("skipping Postgres tests (POSTGRES_TEST_URL not set)", () => {});
 } else {
-  let stores: MemoryStore[] = [];
+  const url = POSTGRES_TEST_URL;
+  const stores: MemoryStore[] = [];
 
   async function createStore(): Promise<MemoryStore> {
-    const store = await createPostgresMemoryStore(POSTGRES_TEST_URL!);
+    const store = await createPostgresMemoryStore(url);
     stores.push(store);
     return store;
   }
 
   async function cleanup(): Promise<void> {
     if (stores.length === 0) return;
-    const last = stores[stores.length - 1];
-    // Truncate tables between tests for isolation
     const postgres = (await import("postgres")).default;
-    const sql = postgres(POSTGRES_TEST_URL!);
+    const sql = postgres(url);
     await sql`TRUNCATE memories, memory_embeddings`;
     await sql.end();
     for (const s of stores.splice(0)) s.close();
@@ -51,7 +50,6 @@ if (!POSTGRES_TEST_URL) {
         tokenEstimate: 3,
       });
 
-      // 1536-dim vectors: close is similar to query, far is orthogonal
       const queryVec = new Float32Array(1536).fill(0);
       queryVec[0] = 1;
 
@@ -65,10 +63,11 @@ if (!POSTGRES_TEST_URL) {
       await store.writeEmbedding("mem_close01", "user_abc123", embeddingToBuffer(closeVec));
       await store.writeEmbedding("mem_far001", "user_abc123", embeddingToBuffer(farVec));
 
-      const results = await store.searchByEmbedding!(queryVec, { kind: "stored", limit: 10 });
+      expect(store.searchByEmbedding).toBeDefined();
+      const results = await store.searchByEmbedding?.(queryVec, { kind: "stored", limit: 10 });
       expect(results).toHaveLength(2);
-      expect(results[0]?.id).toBe("mem_close01");
-      expect(results[1]?.id).toBe("mem_far001");
+      expect(results?.[0]?.id).toBe("mem_close01");
+      expect(results?.[1]?.id).toBe("mem_far001");
 
       await cleanup();
     });
@@ -94,7 +93,7 @@ if (!POSTGRES_TEST_URL) {
       const queryVec = new Float32Array(1536).fill(0);
       queryVec[0] = 1;
 
-      const results = await store.searchByEmbedding!(queryVec, { kind: "stored", limit: 2 });
+      const results = await store.searchByEmbedding?.(queryVec, { kind: "stored", limit: 2 });
       expect(results).toHaveLength(2);
 
       await cleanup();

@@ -1,12 +1,6 @@
 import type postgres from "postgres";
 import { log } from "./log";
-import {
-  type MemoryKind,
-  type MemoryRecord,
-  type MemoryStore,
-  safeScopeKey,
-  scopeFromKey,
-} from "./memory-contract";
+import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
 import { bufferToEmbedding, embeddingToBuffer } from "./memory-embedding";
 
 type Sql = postgres.Sql;
@@ -35,7 +29,10 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
 }
 
 function vectorToBuffer(vector: string): Buffer {
-  const nums = vector.replace(/^\[|\]$/g, "").split(",").map(Number);
+  const nums = vector
+    .replace(/^\[|\]$/g, "")
+    .split(",")
+    .map(Number);
   return embeddingToBuffer(new Float32Array(nums));
 }
 
