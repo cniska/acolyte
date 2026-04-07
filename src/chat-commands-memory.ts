@@ -37,7 +37,7 @@ export function resolveMemoryApi(ctx: CommandContext): {
   };
 }
 
-async function handleMemoryRm(
+async function handleMemoryRemove(
   ctx: CommandContext,
   memoryApi: ReturnType<typeof resolveMemoryApi>,
   parsed: ParsedCommand,
@@ -93,15 +93,15 @@ async function handleMemoryList(
   return { stop: true, userText: text };
 }
 
-async function handleRemember(
+async function handleMemoryAdd(
   ctx: CommandContext,
   memoryApi: ReturnType<typeof resolveMemoryApi>,
+  parsed: ParsedCommand,
 ): Promise<CommandResult> {
-  const { text, resolvedText } = ctx;
-  const parts = resolvedText.split(/\s+/).slice(1);
+  const { text } = ctx;
   let scope: MemoryScope = "user";
   const contentParts: string[] = [];
-  for (const part of parts) {
+  for (const part of parsed.args) {
     if (part === "--project") {
       scope = "project";
       continue;
@@ -116,7 +116,7 @@ async function handleRemember(
   if (!content) {
     ctx.setRows((current) => [
       ...current,
-      createRow("system", formatUsage("/remember [--user|--project] <memory text>")),
+      createRow("system", formatUsage("/memory add [--user|--project] <memory text>")),
     ]);
     return { stop: true, userText: text };
   }
@@ -142,7 +142,12 @@ function createMemoryGroup(ctx: CommandContext, memoryApi: ReturnType<typeof res
       {
         name: "rm",
         match: (sub) => sub === "rm",
-        run: (parsed) => handleMemoryRm(ctx, memoryApi, parsed),
+        run: (parsed) => handleMemoryRemove(ctx, memoryApi, parsed),
+      },
+      {
+        name: "add",
+        match: (sub) => sub === "add",
+        run: (parsed) => handleMemoryAdd(ctx, memoryApi, parsed),
       },
       {
         name: "list",
@@ -151,7 +156,7 @@ function createMemoryGroup(ctx: CommandContext, memoryApi: ReturnType<typeof res
       },
     ],
     fallback: async () => {
-      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [add|rm|all|user|project]"))]);
       return { stop: true, userText: ctx.text };
     },
   };
@@ -168,6 +173,5 @@ export function createMemoryCommands(
       match: (value) => value === "/memory" || value.startsWith("/memory "),
       run: () => dispatchSubcommandGroup(group, ctx.resolvedText),
     },
-    { name: "remember", match: (value) => value.startsWith("/remember"), run: () => handleRemember(ctx, memoryApi) },
   ];
 }

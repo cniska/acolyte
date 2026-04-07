@@ -47,7 +47,8 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/status`: show server status
 - `/usage`: show token usage
 - `/memory [all|user|project]`: show memory notes
-- `/remember [--user|--project] <text>`: save memory note
+- `/memory add [--user|--project] <text>`: save memory note
+- `/memory rm <id-prefix>`: remove memory note
 - `/skill <name>`: run a skill command
 - `/skills`: show skills picker
 - `/exit`: exit chat

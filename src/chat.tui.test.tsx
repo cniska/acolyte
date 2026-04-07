@@ -74,8 +74,8 @@ describe("chat tui visual regression: footer and help", () => {
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
         @path               attach file             /status             show server status
-        /new                start new session       /remember <text>    save memory note
-        /resume <id>        resume session          /memory [scope]     show memory notes
+        /new                start new session       /memory [scope]     show memory notes
+        /resume <id>        resume session          /memory add <text>  add memory note
         /sessions           show sessions           /usage              show token usage
         /workspaces         manage workspaces       /skills             show skills picker
         /model              change model            /exit               exit chat
@@ -97,8 +97,8 @@ describe("chat tui visual regression: footer and help", () => {
         /workspaces         manage workspaces
         /model              change model
         /status             show server status
-        /remember <text>    save memory note
         /memory [scope]     show memory notes
+        /memory add <text>  add memory note
         /usage              show token usage
         /skills             show skills picker
         /exit               exit chat
