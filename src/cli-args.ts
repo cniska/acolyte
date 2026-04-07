@@ -77,7 +77,7 @@ export function parseGlobalArgsAndCommand(argv: string[]): TopLevelArgs {
       if (update !== "skip") update = "force";
       continue;
     }
-    if (arg === "--no-update" || arg === "--skip-update") {
+    if (arg === "--no-update") {
       update = "skip";
       continue;
     }
