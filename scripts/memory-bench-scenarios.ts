@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-export type MemoryBenchDatasetId = "longmemeval" | "locomo";
+export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations";
 
 export type NormalizedObservation = {
   readonly id: string;
@@ -191,14 +191,88 @@ const locomoAdapter: DatasetAdapter = {
   },
 };
 
+function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
+  return raw.map((entry, convIdx) => {
+    const parsed = z
+      .object({
+        conversation: z.record(z.string(), z.any()),
+        observation: z.record(z.string(), z.any()),
+        qa: z.array(locomoQaSchema),
+      })
+      .parse(entry);
+    const conv = parsed.conversation as Record<string, unknown>;
+    const obsData = parsed.observation as Record<string, Record<string, [string, string][]>>;
+    const observations: NormalizedObservation[] = [];
+    const diaIdToObsIds = new Map<string, string[]>();
+
+    const sessionKeys = Object.keys(obsData)
+      .filter((k) => /^session_\d+_observation$/.test(k))
+      .sort((a, b) => {
+        const na = Number(a.match(/\d+/)?.[0]);
+        const nb = Number(b.match(/\d+/)?.[0]);
+        return na - nb;
+      });
+
+    let obsIndex = 0;
+    for (const sessionKey of sessionKeys) {
+      const sessionNum = sessionKey.match(/\d+/)?.[0] ?? "1";
+      const dateKey = `session_${sessionNum}_date_time`;
+      const date = typeof conv[dateKey] === "string" ? (conv[dateKey] as string) : "unknown";
+      const speakers = obsData[sessionKey];
+
+      for (const [speaker, facts] of Object.entries(speakers)) {
+        for (const [fact, diaId] of facts) {
+          const obsId = `conv${convIdx}_obs${obsIndex}`;
+          observations.push({ id: obsId, content: `[${speaker}] ${fact}`, timestamp: date });
+          const existing = diaIdToObsIds.get(diaId) ?? [];
+          existing.push(obsId);
+          diaIdToObsIds.set(diaId, existing);
+          obsIndex++;
+        }
+      }
+    }
+
+    const queries: NormalizedQuery[] = parsed.qa
+      .filter((qa) => qa.evidence.length > 0)
+      .map((qa, qIdx) => ({
+        id: `conv${convIdx}_q${qIdx}`,
+        question: qa.question,
+        relevantObservationIds: qa.evidence.flatMap((e) => diaIdToObsIds.get(e) ?? []),
+      }))
+      .filter((q) => q.relevantObservationIds.length > 0);
+
+    return { scenarioId: `conv${convIdx}`, observations, queries };
+  });
+}
+
+const locomoObservationsAdapter: DatasetAdapter = {
+  id: "locomo-observations",
+  name: "LoCoMo (observations)",
+  description: "10 long conversations using pre-extracted observations instead of raw turns",
+  async load(dataDir = DATA_DIR) {
+    const dir = join(dataDir, "locomo");
+    await ensureDir(dir);
+    const filePath = join(dir, LOCOMO_FILE);
+    await downloadIfMissing(LOCOMO_URL, filePath);
+    const raw = JSON.parse(await readFile(filePath, "utf8"));
+    const parsed = z.array(z.unknown()).parse(raw);
+    return {
+      id: "locomo-observations" as const,
+      name: "LoCoMo (observations)",
+      scenarios: normalizeLoCoMoObservations(parsed),
+    };
+  },
+};
+
 export const MEMORY_BENCH_ADAPTERS: Record<MemoryBenchDatasetId, DatasetAdapter> = {
   longmemeval: longMemEvalAdapter,
   locomo: locomoAdapter,
+  "locomo-observations": locomoObservationsAdapter,
 };
 
-export const MEMORY_BENCH_DATASET_IDS: MemoryBenchDatasetId[] = ["longmemeval", "locomo"];
+export const MEMORY_BENCH_DATASET_IDS: MemoryBenchDatasetId[] = ["longmemeval", "locomo", "locomo-observations"];
 
 export function parseDatasetId(value: string): MemoryBenchDatasetId {
-  if (value === "longmemeval" || value === "locomo") return value;
+  if (value === "longmemeval" || value === "locomo" || value === "locomo-observations") return value;
   throw new Error(`Unknown dataset: ${value}. Valid: ${MEMORY_BENCH_DATASET_IDS.join(", ")}`);
 }

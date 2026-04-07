@@ -6,7 +6,7 @@ import { parseArgs } from "./run-memory-bench";
 describe("parseArgs", () => {
   test("applies defaults", () => {
     expect(parseArgs([])).toEqual({
-      datasets: ["longmemeval", "locomo"],
+      datasets: ["longmemeval", "locomo", "locomo-observations"],
       kValues: [3, 5, 10],
       limit: null,
       embeddingModel: null,
