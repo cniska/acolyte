@@ -5,7 +5,7 @@ description: Implement features incrementally through vertical slices. Use when 
 
 # Build
 
-Build in thin vertical slices. Implement one piece, verify it, commit it, then move on. Never accumulate uncommitted work across multiple files.
+Build in thin vertical slices. Implement one piece, verify it, and commit it when commits are in scope. Never accumulate uncommitted work across multiple files.
 
 ## Workflow
 
@@ -13,8 +13,8 @@ Build in thin vertical slices. Implement one piece, verify it, commit it, then m
 2. **Read before writing.** Load the relevant files, understand existing patterns, check for utilities you can reuse.
 3. **Implement the slice.** Stay within its boundary — don't fix adjacent issues or refactor unrelated code.
 4. **Verify the slice.** Run the targeted tests, then the project's full verification. The build must pass after every slice.
-5. **Commit the slice.** One logical change per commit.
-6. **Repeat.** Pick the next slice. If the plan needs adjusting, adjust it before continuing.
+5. **Commit the slice (only if commits are in scope).** One logical change per commit.
+6. **Repeat.** If commits are not in scope, pause after each verified slice and ask before starting the next one.
 
 ## Slicing strategies
 
