@@ -7,6 +7,7 @@ import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-cont
 import type { MemoryOptions } from "./memory-ops";
 import type { SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills, resetSkillCache } from "./skills";
+import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 function createMemoryApi(overrides?: {
   listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
@@ -30,8 +31,6 @@ function createMemoryApi(overrides?: {
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
   };
 }
-
-import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {
   const { ctx, spies } = createCommandContext(text, overrides);

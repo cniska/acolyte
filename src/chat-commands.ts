@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { appConfig, setModel } from "./app-config";
+import { type ChatRow, createRow } from "./chat-contract";
 import { alignCols, formatCompactNumber } from "./chat-format";
 import { formatUsage } from "./cli-help";
 import type { Client } from "./client-contract";
@@ -12,14 +13,12 @@ import { addMemory, listMemories, removeMemory } from "./memory-ops";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { findSkillByName } from "./skills";
-import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
-
-type MemoryContextScope = "all" | "user" | "project";
-
-import { type ChatRow, createRow } from "./chat-contract";
 import type { StatusFields } from "./status-contract";
 import { createStatusOutput } from "./status-format";
 import { createSession } from "./storage";
+import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
+
+type MemoryContextScope = "all" | "user" | "project";
 
 export type ResumeResolution =
   | { kind: "usage" }
