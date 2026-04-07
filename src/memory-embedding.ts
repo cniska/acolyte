@@ -162,6 +162,17 @@ export function topicMatch(query: string, topic: string | null | undefined): boo
   return queryTokens.has(topic.toLowerCase());
 }
 
+export function filterByTopic<T extends { topic?: string | null }>(
+  query: string,
+  records: readonly T[],
+  minSize: number,
+): readonly T[] {
+  const queryTokens = tokenize(query);
+  if (queryTokens.size === 0) return records;
+  const matched = records.filter((r) => r.topic && queryTokens.has(r.topic.toLowerCase()));
+  return matched.length >= minSize ? matched : records;
+}
+
 export function computeIdf(documents: readonly string[]): Map<string, number> {
   const n = documents.length;
   if (n === 0) return new Map();

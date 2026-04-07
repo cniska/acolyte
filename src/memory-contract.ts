@@ -43,6 +43,7 @@ export type MemoryPolicy = {
   cosineWeight: number;
   tokenWeight: number;
   topicBoost: number;
+  minTopicFilterSize: number;
 };
 
 export const defaultMemoryPolicy: MemoryPolicy = {
@@ -53,6 +54,7 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   cosineWeight: 0.8,
   tokenWeight: 0.2,
   topicBoost: 0.15,
+  minTopicFilterSize: 5,
 };
 
 export function createMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {

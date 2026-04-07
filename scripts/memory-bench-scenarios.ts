@@ -8,6 +8,7 @@ export type NormalizedObservation = {
   readonly id: string;
   readonly content: string;
   readonly timestamp: string;
+  readonly topic?: string | null;
 };
 
 export type NormalizedQuery = {
@@ -205,17 +206,129 @@ const locomoAdapter: DatasetAdapter = {
   },
 };
 
+function deriveSessionTopic(summary: string, excludeNames?: ReadonlySet<string>): string | null {
+  const stopwords = new Set([
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "is",
+    "it",
+    "as",
+    "be",
+    "was",
+    "are",
+    "been",
+    "has",
+    "have",
+    "had",
+    "do",
+    "does",
+    "did",
+    "not",
+    "no",
+    "so",
+    "if",
+    "my",
+    "me",
+    "we",
+    "he",
+    "she",
+    "they",
+    "this",
+    "that",
+    "what",
+    "which",
+    "who",
+    "how",
+    "when",
+    "where",
+    "i",
+    "you",
+    "your",
+    "its",
+    "about",
+    "also",
+    "her",
+    "his",
+    "their",
+    "them",
+    "she",
+    "him",
+    "would",
+    "could",
+    "should",
+    "will",
+    "can",
+    "may",
+    "more",
+    "some",
+    "been",
+    "being",
+    "were",
+    "than",
+    "very",
+    "much",
+    "both",
+    "each",
+    "other",
+    "into",
+    "over",
+    "such",
+    "then",
+    "out",
+    "up",
+    "new",
+    "one",
+    "two",
+    "mentioned",
+    "conversation",
+    "discussed",
+    "talked",
+    "told",
+  ]);
+  const freq = new Map<string, number>();
+  for (const raw of summary.toLowerCase().split(/[\s\p{P}]+/u)) {
+    if (raw.length > 2 && !stopwords.has(raw) && !excludeNames?.has(raw)) freq.set(raw, (freq.get(raw) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [word, count] of freq) {
+    if (count > bestCount) {
+      bestCount = count;
+      best = word;
+    }
+  }
+  return best;
+}
+
 function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
   return raw.map((entry, convIdx) => {
     const parsed = z
       .object({
         conversation: z.record(z.string(), z.any()),
         observation: z.record(z.string(), z.any()),
+        session_summary: z.record(z.string(), z.any()).optional(),
         qa: z.array(locomoQaSchema),
       })
       .parse(entry);
     const conv = parsed.conversation as Record<string, unknown>;
     const obsData = parsed.observation as Record<string, Record<string, [string, string][]>>;
+    const summaries = (parsed.session_summary ?? {}) as Record<string, string>;
+    const speakerA = typeof conv.speaker_a === "string" ? conv.speaker_a.toLowerCase() : "";
+    const speakerB = typeof conv.speaker_b === "string" ? conv.speaker_b.toLowerCase() : "";
+    const speakerNames = new Set([speakerA, speakerB].filter((s) => s.length > 0));
     const observations: NormalizedObservation[] = [];
     const diaIdToObsIds = new Map<string, string[]>();
 
@@ -231,12 +344,15 @@ function normalizeLoCoMoObservations(raw: unknown[]): DatasetScenario[] {
     for (const sessionKey of sessionKeys) {
       const sessionNum = sessionKey.match(/\d+/)?.[0] ?? "1";
       const date = locomoSessionDate(conv, sessionNum);
+      const summaryKey = `session_${sessionNum}_summary`;
+      const topic =
+        typeof summaries[summaryKey] === "string" ? deriveSessionTopic(summaries[summaryKey], speakerNames) : null;
       const speakers = obsData[sessionKey];
 
       for (const [speaker, facts] of Object.entries(speakers)) {
         for (const [fact, diaId] of facts) {
           const obsId = `conv${convIdx}_obs${obsIndex}`;
-          observations.push({ id: obsId, content: `[${speaker}] ${fact}`, timestamp: date });
+          observations.push({ id: obsId, content: `[${speaker}] ${fact}`, timestamp: date, topic });
           const existing = diaIdToObsIds.get(diaId) ?? [];
           existing.push(obsId);
           diaIdToObsIds.set(diaId, existing);

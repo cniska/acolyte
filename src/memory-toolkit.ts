@@ -12,6 +12,7 @@ import {
   computeIdf,
   cosineSimilarity,
   embedText,
+  filterByTopic,
   tokenOverlap,
   topicMatch,
 } from "./memory-embedding";
@@ -56,11 +57,12 @@ export async function searchMemories(
     return results;
   }
 
-  const ids = filtered.map((r) => r.id);
+  const topicFiltered = filterByTopic(query, filtered, policy.minTopicFilterSize);
+  const ids = topicFiltered.map((r) => r.id);
   const embeddings = await store.getEmbeddings(ids);
-  const idf = computeIdf(filtered.map((r) => r.content));
+  const idf = computeIdf(topicFiltered.map((r) => r.content));
 
-  const scored = filtered.map((record) => {
+  const scored = topicFiltered.map((record) => {
     const buf = embeddings.get(record.id);
     const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
     const overlap = tokenOverlap(query, record.content, idf);

@@ -144,6 +144,7 @@ function toMemoryRecord(obs: NormalizedObservation, index: number): MemoryRecord
     content: obs.content,
     createdAt: safeIsoDate(obs.timestamp),
     tokenEstimate: Math.ceil(obs.content.length / 4),
+    topic: obs.topic ?? null,
   };
 }
 
