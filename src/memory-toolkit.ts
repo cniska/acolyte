@@ -9,7 +9,7 @@ import {
 } from "./memory-contract";
 import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -18,7 +18,7 @@ export async function searchMemories(
   query: string,
   options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
 ): Promise<MemoryRecord[]> {
-  const store = options?.store ?? getDefaultMemoryStore();
+  const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
   const all = await store.list({ kind: "stored" });
@@ -28,12 +28,21 @@ export async function searchMemories(
   const queryEmbedding = await embedText(query);
   if (!queryEmbedding) {
     const fallback = filtered.slice(0, limit);
-    store.touchRecalled(fallback.map((r) => r.id));
+    await store.touchRecalled(fallback.map((r) => r.id));
     return [...fallback];
   }
 
+  if (store.searchByEmbedding) {
+    const oversample = options?.scope ? limit * 2 : limit;
+    const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
+    const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
+    const results = scoped.slice(0, limit);
+    await store.touchRecalled(results.map((r) => r.id));
+    return results;
+  }
+
   const ids = filtered.map((r) => r.id);
-  const embeddings = store.getEmbeddings(ids);
+  const embeddings = await store.getEmbeddings(ids);
 
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
@@ -44,7 +53,7 @@ export async function searchMemories(
   });
   scored.sort((a, b) => b.score - a.score);
   const results = scored.slice(0, limit).map((s) => s.record);
-  store.touchRecalled(results.map((r) => r.id));
+  await store.touchRecalled(results.map((r) => r.id));
   return results;
 }
 

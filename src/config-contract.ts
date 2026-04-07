@@ -39,6 +39,7 @@ export interface Config {
   replyTimeoutMs?: number;
   reasoning?: ReasoningLevel;
   embeddingModel?: string;
+  postgresUrl?: string;
   features?: FeatureFlags;
 }
 
@@ -56,6 +57,7 @@ export interface ResolvedConfig {
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
   embeddingModel: string;
+  postgresUrl?: string;
   features: ResolvedFeatureFlags;
 }
 
@@ -71,6 +73,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
+  postgresUrl: nonEmptyStringSchema,
   features: featureFlagsSchema,
 };
 
@@ -94,6 +97,7 @@ export function toConfig(input: Record<string, unknown>): Config {
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
+    postgresUrl: parseField(nonEmptyStringSchema, input.postgresUrl),
     features: parseField(featureFlagsSchema, input.features),
   };
 }

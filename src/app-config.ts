@@ -32,6 +32,7 @@ export const appConfig = {
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,
+  postgresUrl: fileConfig.postgresUrl,
 } as const;
 
 export function setModel(model: string): void {

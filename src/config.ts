@@ -120,16 +120,17 @@ function serializeToml(config: Config): string {
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
+  if (config.postgresUrl) lines.push(`postgresUrl = ${JSON.stringify(config.postgresUrl)}`);
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
     if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
     if (typeof config.features.undoCheckpoints === "boolean")
       lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
-    if (typeof config.features.undoCheckpoints === "boolean")
-      lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
     if (typeof config.features.parallelWorkspaces === "boolean")
       lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
+    if (typeof config.features.postgresMemory === "boolean")
+      lines.push(`postgresMemory = ${config.features.postgresMemory}`);
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -155,6 +156,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
+    postgresUrl: config.postgresUrl,
     features: resolvedFeatures,
   };
 }
@@ -194,7 +196,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces"]),
+  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces", "postgresMemory"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {
@@ -207,6 +209,18 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   if (!allowed || !allowed.has(subKey)) return null;
   return { section, subKey };
 }
+
+function hasUrlPassword(value: string): boolean {
+  try {
+    return !!new URL(value).password;
+  } catch {
+    return false;
+  }
+}
+
+const CONFIG_VALIDATORS: Partial<Record<keyof Config, (value: string) => string | null>> = {
+  postgresUrl: (value) => (hasUrlPassword(value) ? t("cli.config.password_in_url") : null),
+};
 
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
@@ -234,6 +248,8 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     throw new Error(
       t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
     );
+  const validationError = CONFIG_VALIDATORS[topKey]?.(value);
+  if (validationError) throw new Error(validationError);
   const current = await readConfigForScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

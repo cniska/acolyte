@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { estimateTokens } from "./agent-input";
 import { log } from "./log";
 import type { MemoryStore } from "./memory-contract";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import { projectResourceIdFromWorkspace } from "./resource-id";
 
 export const AGENTS_MD_MEMORY_ID = "mem_agentsmd";
@@ -33,7 +33,8 @@ export async function syncAgentsMdToProjectMemory(options: {
   workspace: string;
   store?: MemoryStore;
 }): Promise<SyncResult> {
-  const { workspace, store = getDefaultMemoryStore() } = options;
+  const { workspace } = options;
+  const store = options.store ?? (await getMemoryStore());
   const snapshot = agentsPromptFromWorkspace(workspace);
   if (snapshot.kind === "absent") {
     if (lastSyncedPromptByWorkspace.has(workspace)) lastSyncedPromptByWorkspace.delete(workspace);

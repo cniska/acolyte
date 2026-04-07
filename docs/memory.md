@@ -60,13 +60,15 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
 - repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
-- distill record writes use SQLite with WAL mode for atomic persistence
-- hybrid recall: memory records are embedded at write time using the provider embedding API. At query time, entries are scored by a weighted blend of cosine similarity (0.8) and token overlap (0.2). Token overlap catches exact keyword matches that embeddings miss, such as proper nouns, tool names, and file paths. Records without embeddings fall back to recency ordering
+- distill record writes use the configured storage backend (SQLite or Postgres) for atomic persistence
+- semantic recall: memory records are embedded at write time using the provider embedding API. At query time, the SQLite backend scores entries by a weighted blend of cosine similarity (0.8) and token overlap (0.2). The Postgres backend uses native pgvector cosine distance (`<=>` operator) for similarity search. Records without embeddings fall back to recency ordering
 
 ## Storage
 
-- all memories: `~/.acolyte/memory.db` (SQLite, `memories` table, keyed by `scope_key`: `sess_*`, `proj_*`, or `user_*`)
-- embeddings: `memory_embeddings` table in `memory.db` (BLOB vectors, keyed by `id`)
+Two backends, selected via the `postgresMemory` feature flag (default: SQLite):
+
+- **SQLite** (default): `~/.acolyte/memory.db`, `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
+- **Postgres + pgvector** (feature-flagged): configured via `postgresUrl`, `vector(1536)` column type, native cosine distance search. Bring your own Postgres — Acolyte does not provision or manage the database.
 
 ## Extension seams
 
@@ -87,7 +89,8 @@ These tools are the primary interface for the model to access and manage memory 
 
 - `src/memory-ops.ts` — top-level memory operations (list, add, remove)
 - `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
-- `src/memory-store.ts` — SQLite-backed MemoryStore implementation and singleton factory
+- `src/memory-store.ts` — SQLite-backed MemoryStore implementation and store factory
+- `src/memory-store-postgres.ts` — Postgres + pgvector MemoryStore implementation (feature-flagged)
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
 - `src/memory-embedding.ts` — provider embedding API wrapper and cosine similarity

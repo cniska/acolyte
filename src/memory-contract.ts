@@ -80,12 +80,20 @@ export interface MemoryStore {
   list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
-  touchRecalled(ids: string[]): void;
-  writeEmbedding(id: string, scopeKey: string, embedding: Buffer): void;
-  removeEmbedding(id: string): void;
-  getEmbedding(id: string): Buffer | null;
-  getEmbeddings(ids: string[]): Map<string, Buffer>;
+  touchRecalled(ids: string[]): Promise<void>;
+  writeEmbedding(id: string, scopeKey: string, embedding: Buffer): Promise<void>;
+  removeEmbedding(id: string): Promise<void>;
+  getEmbedding(id: string): Promise<Buffer | null>;
+  getEmbeddings(ids: string[]): Promise<Map<string, Buffer>>;
+  searchByEmbedding?(
+    queryEmbedding: Float32Array,
+    options: { scopeKey?: string; kind?: MemoryKind; limit: number },
+  ): Promise<MemoryRecord[]>;
   close(): void;
+}
+
+export function safeScopeKey(scope: string): string | null {
+  return /^(sess|user|proj)_[a-z0-9]+$/.test(scope) ? scope : null;
 }
 
 export function scopeFromKey(key: string): MemoryScope {

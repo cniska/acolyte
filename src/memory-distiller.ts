@@ -12,7 +12,7 @@ import {
   type MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -31,13 +31,13 @@ Tag each fact with an observe directive on its own line, followed by the fact on
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
-let defaultStore: MemoryStore | null = null;
+let cachedStore: MemoryStore | null = null;
 
-function getDefaultStore(): MemoryStore {
-  if (!defaultStore) {
-    defaultStore = getDefaultMemoryStore();
+async function getCachedStore(): Promise<MemoryStore> {
+  if (!cachedStore) {
+    cachedStore = await getMemoryStore();
   }
-  return defaultStore;
+  return cachedStore;
 }
 
 type DistillScope = "session" | "project" | "user";
@@ -45,7 +45,7 @@ type DistillScope = "session" | "project" | "user";
 async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
   try {
     const vec = await embedText(content);
-    if (vec) ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
+    if (vec) await ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
   } catch (error) {
     log.warn("memory.distill.embed_failed", { id, error: String(error) });
   }
@@ -206,7 +206,6 @@ export type DistillerDeps = {
 };
 
 export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
-  const ds = deps.store ?? getDefaultStore();
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
@@ -214,6 +213,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
+      const ds = deps.store ?? (await getCachedStore());
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
       if (ctx.messages.length < policy.messageThreshold) return;
