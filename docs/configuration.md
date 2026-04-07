@@ -105,6 +105,10 @@ acolyte config set --project features.syncAgents true
 
 When enabled:
 - Enables `/workspaces` chat commands that manage git worktrees and workspace-scoped sessions
+- `/workspaces new` syntax:
+  - Named workspace: `/workspaces new <name>`
+  - Named + prompt: `/workspaces new <name> -- <prompt>`
+  - Auto-name from prompt: `/workspaces new -- <prompt>`
 - Examples:
   - `/workspaces new fix-auth`
   - `/workspaces new fix-auth -- implement oauth callback`
