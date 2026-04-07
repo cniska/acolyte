@@ -6,7 +6,14 @@ import type { ConfigScope } from "./config-contract";
 import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
 import { loadSkills, resetSkillCache } from "./skills";
-import { createCommandContext, createMessage, createSession, createStore, tempDir, writeSkill } from "./test-utils";
+import {
+  createCommandContext,
+  createMessage,
+  createSession,
+  createSessionState,
+  tempDir,
+  writeSkill,
+} from "./test-utils";
 
 function createMemoryApi(overrides?: {
   listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
@@ -93,14 +100,14 @@ describe("chat-commands", () => {
   });
 
   test("dispatchSlashCommand handles /sessions with compact system output", async () => {
-    const store = createStore({
+    const sessionState = createSessionState({
       activeSessionId: "sess_aaaa1111",
       sessions: [
         createSession({ id: "sess_aaaa1111", title: "First" }),
         createSession({ id: "sess_bbbb2222", title: "Second" }),
       ],
     });
-    const { rows, stop } = await runCommand("/sessions", { store });
+    const { rows, stop } = await runCommand("/sessions", { sessionState });
     expect(stop).toBe(true);
     const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Sessions 2");
     expect(row).toBeDefined();
@@ -310,8 +317,8 @@ describe("chat-commands", () => {
 
   test("dispatchSlashCommand /new resets rows to new-session status", async () => {
     const session = createSession({ id: "sess_current" });
-    const store = createStore({ sessions: [session], activeSessionId: session.id });
-    const { ctx, spies } = createCommandContext("/new", { store, currentSession: session });
+    const sessionState = createSessionState({ sessions: [session], activeSessionId: session.id });
+    const { ctx, spies } = createCommandContext("/new", { sessionState, currentSession: session });
 
     const result = await dispatchSlashCommand(ctx);
 
@@ -319,8 +326,8 @@ describe("chat-commands", () => {
     expect(spies.rows).toHaveLength(0);
     expect(spies.currentSessionIds).toHaveLength(1);
     expect(spies.tokenUsageSets).toEqual([[]]);
-    expect(store.sessions).toHaveLength(2);
-    expect(store.activeSessionId).toBe(spies.currentSessionIds[0]);
+    expect(sessionState.sessions).toHaveLength(2);
+    expect(sessionState.activeSessionId).toBe(spies.currentSessionIds[0]);
   });
 
   test("dispatchSlashCommand /resume with prefix restores matching session", async () => {
@@ -336,17 +343,17 @@ describe("chat-commands", () => {
         },
       ],
     });
-    const store = createStore({
+    const sessionState = createSessionState({
       sessions: [target, createSession({ id: "sess_other", title: "Other" })],
       activeSessionId: "sess_other",
     });
     const text = `/resume ${target.id.slice(0, 12)}`;
-    const { ctx, spies } = createCommandContext(text, { store });
+    const { ctx, spies } = createCommandContext(text, { sessionState });
 
     const result = await dispatchSlashCommand(ctx);
 
     expect(result.stop).toBe(true);
-    expect(store.activeSessionId).toBe(target.id);
+    expect(sessionState.activeSessionId).toBe(target.id);
     expect(spies.currentSessionIds).toEqual([target.id]);
     expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
   });
@@ -369,23 +376,23 @@ describe("chat-commands", () => {
       title: "Original Session",
       messages: [createMessage("assistant", "orig")],
     });
-    const store = createStore({
+    const sessionState = createSessionState({
       sessions: [original],
       activeSessionId: original.id,
     });
 
-    const { ctx: newCtx } = createCommandContext("/new", { store, currentSession: original });
+    const { ctx: newCtx } = createCommandContext("/new", { sessionState, currentSession: original });
     const newResult = await dispatchSlashCommand(newCtx);
     expect(newResult.stop).toBe(true);
-    const createdId = store.activeSessionId ?? "";
+    const createdId = sessionState.activeSessionId ?? "";
     expect(createdId.startsWith("sess_")).toBe(true);
     expect(createdId).not.toBe(original.id);
 
     const resumeText = `/resume ${original.id.slice(0, 12)}`;
-    const { ctx: resumeCtx, spies } = createCommandContext(resumeText, { store });
+    const { ctx: resumeCtx, spies } = createCommandContext(resumeText, { sessionState });
     const resumeResult = await dispatchSlashCommand(resumeCtx);
     expect(resumeResult.stop).toBe(true);
-    expect(store.activeSessionId).toBe(original.id);
+    expect(sessionState.activeSessionId).toBe(original.id);
     expect(spies.currentSessionIds).toContain(original.id);
   });
 
@@ -426,8 +433,8 @@ describe("chat-commands", () => {
           workspace: "/tmp/ws/fix-auth",
           workspaceBranch: "acolyte-ws/fix-auth",
         });
-        const store = createStore({ sessions: [ws], activeSessionId: ws.id });
-        const { rows, stop } = await runCommand("/workspaces", { store });
+        const sessionState = createSessionState({ sessions: [ws], activeSessionId: ws.id });
+        const { rows, stop } = await runCommand("/workspaces", { sessionState });
         expect(stop).toBe(true);
         const headerRow = rows.find(
           (row) => isCommandOutput(row.content) && row.content.header.startsWith("Workspaces "),
@@ -441,16 +448,16 @@ describe("chat-commands", () => {
     test("new reports errors from worktree creation instead of throwing", async () => {
       const restore = setParallelWorkspacesEnabled(true);
       try {
-        const store = createStore({ sessions: [], activeSessionId: undefined });
+        const sessionState = createSessionState({ sessions: [], activeSessionId: undefined });
         const { createDir, cleanupDirs } = tempDir();
         const tmp = createDir("acolyte-workspaces-nogit-");
         const currentSession = createSession({ id: "sess_current", workspace: tmp });
-        const { rows, stop } = await runCommand("/workspaces new fix-auth", { store, currentSession });
+        const { rows, stop } = await runCommand("/workspaces new fix-auth", { sessionState, currentSession });
         expect(stop).toBe(true);
         expect(
           rows.some((row) => typeof row.content === "string" && row.content.startsWith("Failed to create workspace:")),
         ).toBe(true);
-        expect(store.sessions.length).toBe(0);
+        expect(sessionState.sessions.length).toBe(0);
         cleanupDirs();
       } finally {
         restore();

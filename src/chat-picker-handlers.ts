@@ -11,7 +11,7 @@ import type { Session, SessionState, SessionTokenUsageEntry } from "./session-co
 import { loadSkills } from "./skills";
 
 export type CreatePickerHandlersInput = {
-  store: SessionState;
+  sessionState: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
@@ -52,7 +52,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   };
 
   const openResumePanel = (): void => {
-    const nextPicker = createResumePicker(input.store);
+    const nextPicker = createResumePicker(input.sessionState);
     if (!nextPicker) {
       input.setRows((current) => [...current, createRow("system", t("chat.picker.sessions.none"))]);
       return;
@@ -123,7 +123,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "resume": {
         const selected = state.items[state.index];
         if (selected) {
-          input.store.activeSessionId = selected.id;
+          input.sessionState.activeSessionId = selected.id;
           input.setCurrentSession(selected);
           input.setTokenUsage?.(() => selected.tokenUsage);
           input.clearTranscript(selected.id);

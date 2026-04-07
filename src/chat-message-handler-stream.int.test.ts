@@ -3,7 +3,13 @@ import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import type { StreamEvent } from "./client-contract";
-import { createClient, createMessage, createMessageHandlerHarness, createSession, createStore } from "./test-utils";
+import {
+  createClient,
+  createMessage,
+  createMessageHandlerHarness,
+  createSession,
+  createSessionState,
+} from "./test-utils";
 
 describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
@@ -199,7 +205,7 @@ describe("chat message handler stream behavior", () => {
 
   test("allows /new recovery after a timed-out turn", async () => {
     let replyCalls = 0;
-    const { handleMessage, allRows, store, calls } = createMessageHandlerHarness({
+    const { handleMessage, allRows, sessionState, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         reply: async () => {
@@ -220,7 +226,7 @@ describe("chat message handler stream behavior", () => {
       ),
     ).toBe(true);
     expect(calls.setCurrentSessionIds.length).toBe(1);
-    expect(store.activeSessionId).toBe(calls.setCurrentSessionIds[0]);
+    expect(sessionState.activeSessionId).toBe(calls.setCurrentSessionIds[0]);
   });
 
   test("allows /resume recovery after a timed-out turn", async () => {
@@ -229,7 +235,7 @@ describe("chat message handler stream behavior", () => {
       messages: [createMessage("assistant", "resumed")],
     });
     const session = createSession({ id: "sess_current" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session, target] });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session, target] });
     let replyCalls = 0;
     const { handleMessage, rows, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
@@ -240,7 +246,7 @@ describe("chat message handler stream behavior", () => {
         },
       }),
       session,
-      store,
+      sessionState,
       toRows: (messages) => messages.map((msg) => ({ id: msg.id, kind: msg.role, content: msg.content })),
     });
 
@@ -255,7 +261,7 @@ describe("chat message handler stream behavior", () => {
       ),
     ).toBe(true);
     expect(calls.setCurrentSessionIds).toEqual([target.id]);
-    expect(store.activeSessionId).toBe(target.id);
+    expect(sessionState.activeSessionId).toBe(target.id);
     expect(rows.some((row) => row.kind === "assistant" && row.content === "resumed")).toBe(true);
   });
 
@@ -459,7 +465,7 @@ describe("chat message handler stream behavior", () => {
       id: "sess_resume_B",
       messages: [createMessage("assistant", "old reply")],
     });
-    const store = createStore({ activeSessionId: sessionA.id, sessions: [sessionA, sessionB] });
+    const sessionState = createSessionState({ activeSessionId: sessionA.id, sessions: [sessionA, sessionB] });
     const rows: ChatRow[] = [];
     const allRows: ChatRow[] = [];
     let replyCount = 0;
@@ -488,7 +494,7 @@ describe("chat message handler stream behavior", () => {
     const makeHandler = () =>
       createMessageHandler({
         client,
-        store,
+        sessionState,
         currentSession,
         setCurrentSession: (next) => {
           currentSession = next;
@@ -527,7 +533,7 @@ describe("chat message handler stream behavior", () => {
 
     // Resume to session B (simulates /resume + React re-render)
     currentSession = sessionB;
-    store.activeSessionId = sessionB.id;
+    sessionState.activeSessionId = sessionB.id;
     rows.splice(0, rows.length);
 
     // Recreate handler with new session (simulates React re-render)

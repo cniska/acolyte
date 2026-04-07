@@ -10,14 +10,14 @@ import { usageRows } from "./chat-commands-usage";
 import { createWorkspacesCommands } from "./chat-commands-workspaces";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
-import { createSession } from "./storage";
+import { createSession } from "./session-store";
 
 function createSessionsCommand(ctx: CommandContext): SlashCommand {
   return {
     name: "sessions",
     match: (value) => value === "/sessions",
     run: async () => {
-      ctx.setRows((current) => [...current, ...sessionsRows(ctx.store, 10)]);
+      ctx.setRows((current) => [...current, ...sessionsRows(ctx.sessionState, 10)]);
       return { stop: true, userText: ctx.text };
     },
   };
@@ -71,8 +71,8 @@ function createNewCommand(ctx: CommandContext): SlashCommand {
     match: (value) => value === "/new",
     run: async () => {
       const next = createSession(appConfig.model);
-      ctx.store.sessions.unshift(next);
-      ctx.store.activeSessionId = next.id;
+      ctx.sessionState.sessions.unshift(next);
+      ctx.sessionState.activeSessionId = next.id;
       ctx.setCurrentSession(next);
       ctx.setTokenUsage?.(() => []);
       ctx.clearTranscript(next.id);

@@ -9,7 +9,7 @@ import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./con
 import { t } from "./i18n";
 import { type ResourceId, userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
-import type { createSession as createSessionType } from "./storage";
+import type { createSession as createSessionType } from "./session-store";
 
 const runArgsSchema = z.object({
   files: z.array(z.string().min(1)),

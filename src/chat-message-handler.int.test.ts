@@ -12,7 +12,7 @@ import {
   createMessage,
   createMessageHandlerHarness,
   createSession,
-  createStore,
+  createSessionState,
   testUuid,
 } from "./test-utils";
 
@@ -265,7 +265,7 @@ describe("chat message handler", () => {
     let interruptRegistered = false;
 
     const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
@@ -284,7 +284,7 @@ describe("chat message handler", () => {
           }),
         status: async () => ({}),
       }),
-      store,
+      sessionState,
       currentSession: session,
       setCurrentSession: () => {},
       toRows: () => [],
@@ -340,7 +340,7 @@ describe("chat message handler", () => {
     let callCount = 0;
 
     const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
@@ -365,7 +365,7 @@ describe("chat message handler", () => {
         },
         status: async () => ({}),
       }),
-      store,
+      sessionState,
       currentSession: session,
       setCurrentSession: () => {},
       toRows: () => [],
@@ -421,7 +421,7 @@ describe("chat message handler", () => {
     let replyCalls = 0;
 
     const session = createSession({ id: "sess_test" });
-    const store = createStore({ activeSessionId: session.id, sessions: [session] });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
@@ -431,7 +431,7 @@ describe("chat message handler", () => {
         },
         status: async () => ({}),
       }),
-      store,
+      sessionState,
       currentSession: session,
       setCurrentSession: () => {},
       toRows: () => [],
@@ -479,7 +479,7 @@ describe("chat message handler", () => {
 
     try {
       const session = createSession({ id: "sess_test" });
-      const store = createStore({ activeSessionId: session.id, sessions: [session] });
+      const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
 
       const { handleSubmit } = createMessageHandler({
         client: createClient({
@@ -490,7 +490,7 @@ describe("chat message handler", () => {
           },
           status: async () => ({}),
         }),
-        store,
+        sessionState,
         currentSession: session,
         setCurrentSession: () => {},
         toRows: () => [],

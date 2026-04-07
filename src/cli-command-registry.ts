@@ -33,9 +33,9 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
+import { createSession, getSessionStore } from "./session-store";
 import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { formatStatus } from "./status-format";
-import { createSession, readStore } from "./storage";
 import { openTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
@@ -154,7 +154,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       historyMode(args, {
         hasHelpFlag,
         printDim,
-        readStore,
+        getSessionStore,
         commandError,
         commandHelp,
       }),

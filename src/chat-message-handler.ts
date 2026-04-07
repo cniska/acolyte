@@ -22,7 +22,7 @@ import type { Session, SessionState, SessionTokenUsageEntry } from "./session-co
 
 type CreateMessageHandlerInput = {
   client: Client;
-  store: SessionState;
+  sessionState: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   toRows: (messages: ChatMessage[]) => ChatRow[];
@@ -274,7 +274,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       text,
       resolvedText: text,
       client: input.client,
-      store: input.store,
+      sessionState: input.sessionState,
       currentSession: input.currentSession,
       setCurrentSession: input.setCurrentSession,
       setTokenUsage: input.setTokenUsage,

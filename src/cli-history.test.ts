@@ -1,15 +1,34 @@
 import { describe, expect, test } from "bun:test";
 import { historyMode } from "./cli-history";
+import type { Session, SessionStore } from "./session-contract";
 import { dedent } from "./test-utils";
 
 type HistoryDeps = Parameters<typeof historyMode>[1];
+
+function createMockStore(sessions: Session[] = []): SessionStore {
+  return {
+    async listSessions(options) {
+      return options?.limit ? sessions.slice(0, options.limit) : sessions;
+    },
+    async getSession(id) {
+      return sessions.find((s) => s.id === id) ?? null;
+    },
+    async saveSession() {},
+    async removeSession() {},
+    async getActiveSessionId() {
+      return undefined;
+    },
+    async setActiveSessionId() {},
+    close() {},
+  };
+}
 
 function createDeps(overrides?: Partial<HistoryDeps>): { deps: HistoryDeps; output: () => string } {
   const lines: string[] = [];
   const deps: HistoryDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
-    readStore: async () => ({ activeSessionId: undefined, sessions: [] }),
+    getSessionStore: async () => createMockStore(),
     commandError: () => {},
     commandHelp: () => {},
     ...overrides,
@@ -50,30 +69,28 @@ describe("cli-history", () => {
   });
 
   test("sessions present prints formatted rows", async () => {
+    const sessions: Session[] = [
+      {
+        id: "aaa",
+        createdAt: "9999-01-01T00:00:00.000Z",
+        updatedAt: "9999-01-01T00:00:00.000Z",
+        title: "First session",
+        model: "gpt-4",
+        messages: [],
+        tokenUsage: [],
+      },
+      {
+        id: "bbb",
+        createdAt: "9999-01-01T00:00:00.000Z",
+        updatedAt: "9999-01-01T00:00:00.000Z",
+        title: "Second session",
+        model: "gpt-4",
+        messages: [],
+        tokenUsage: [],
+      },
+    ];
     const { deps, output } = createDeps({
-      readStore: async () => ({
-        activeSessionId: undefined,
-        sessions: [
-          {
-            id: "aaa",
-            createdAt: "9999-01-01T00:00:00.000Z",
-            updatedAt: "9999-01-01T00:00:00.000Z",
-            title: "First session",
-            model: "gpt-4",
-            messages: [],
-            tokenUsage: [],
-          },
-          {
-            id: "bbb",
-            createdAt: "9999-01-01T00:00:00.000Z",
-            updatedAt: "9999-01-01T00:00:00.000Z",
-            title: "Second session",
-            model: "gpt-4",
-            messages: [],
-            tokenUsage: [],
-          },
-        ],
-      }),
+      getSessionStore: async () => createMockStore(sessions),
     });
     await historyMode([], deps);
     expect(output()).toBe(
@@ -85,21 +102,19 @@ describe("cli-history", () => {
   });
 
   test("--json outputs JSON lines", async () => {
+    const sessions: Session[] = [
+      {
+        id: "aaa",
+        createdAt: "9999-01-01T00:00:00.000Z",
+        updatedAt: "9999-01-01T00:00:00.000Z",
+        title: "First",
+        model: "gpt-4",
+        messages: [],
+        tokenUsage: [],
+      },
+    ];
     const { deps, output } = createDeps({
-      readStore: async () => ({
-        activeSessionId: undefined,
-        sessions: [
-          {
-            id: "aaa",
-            createdAt: "9999-01-01T00:00:00.000Z",
-            updatedAt: "9999-01-01T00:00:00.000Z",
-            title: "First",
-            model: "gpt-4",
-            messages: [],
-            tokenUsage: [],
-          },
-        ],
-      }),
+      getSessionStore: async () => createMockStore(sessions),
     });
     await historyMode(["--json"], deps);
     const parsed = JSON.parse(output()) as Record<string, string>;
