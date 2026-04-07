@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createMessage } from "./chat-session";
 import { handlePrompt } from "./cli-prompt";
+import { captureCliOutput } from "./cli-test-harness";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
 import { expectIntent } from "./test-utils";
@@ -29,6 +30,18 @@ function createStreamingClient(events: StreamEvent[]): Client {
   };
 }
 
+async function runPromptAndCapture(
+  prompt: string,
+  session: Session,
+  client: Client,
+): Promise<{ ok: boolean; output: string }> {
+  let ok = false;
+  const output = await captureCliOutput(async () => {
+    ok = await handlePrompt(prompt, session, client);
+  });
+  return { ok, output };
+}
+
 describe("cli-prompt", () => {
   test("createMessage creates a timestamped chat message", () => {
     const message = createMessage("user", "hello");
@@ -51,122 +64,86 @@ describe("cli-prompt", () => {
       taskStatus: async () => null,
     };
 
-    const ok = await handlePrompt("hello", session, client);
+    const { ok } = await runPromptAndCapture("hello", session, client);
     expect(ok).toBe(true);
     expect(session.messages[session.messages.length - 1]?.kind).toBe("tool_payload");
   });
 
   test("checklist events print header and items", async () => {
-    const printed: string[] = [];
-    const originalWrite = process.stdout.write;
-    process.stdout.write = ((chunk: string) => {
-      printed.push(chunk);
-      return true;
-    }) as typeof process.stdout.write;
+    const events: StreamEvent[] = [
+      {
+        type: "checklist",
+        groupId: "grp_1",
+        groupTitle: "Build pipeline",
+        items: [
+          { id: "s1", label: "lint", status: "done", order: 0 },
+          { id: "s2", label: "test", status: "in_progress", order: 1 },
+          { id: "s3", label: "deploy", status: "pending", order: 2 },
+        ],
+      },
+    ];
 
-    try {
-      const events: StreamEvent[] = [
-        {
-          type: "checklist",
-          groupId: "grp_1",
-          groupTitle: "Build pipeline",
-          items: [
-            { id: "s1", label: "lint", status: "done", order: 0 },
-            { id: "s2", label: "test", status: "in_progress", order: 1 },
-            { id: "s3", label: "deploy", status: "pending", order: 2 },
-          ],
-        },
-      ];
+    const session = createTestSession();
+    const client = createStreamingClient(events);
+    const { output } = await runPromptAndCapture("run pipeline", session, client);
 
-      const session = createTestSession();
-      const client = createStreamingClient(events);
-      await handlePrompt("run pipeline", session, client);
-
-      const output = printed.join("");
-      expectIntent(output, [["build pipeline", "1/3"], ["lint"], ["test"], ["deploy"]]);
-    } finally {
-      process.stdout.write = originalWrite;
-    }
+    expectIntent(output, [["build pipeline", "1/3"], ["lint"], ["test"], ["deploy"]]);
   });
 
   test("text-delta renders before subsequent tool-output", async () => {
-    const printed: string[] = [];
-    const originalWrite = process.stdout.write;
-    process.stdout.write = ((chunk: string) => {
-      printed.push(chunk);
-      return true;
-    }) as typeof process.stdout.write;
+    const events: StreamEvent[] = [
+      { type: "text-delta", text: "Reading the file." },
+      {
+        type: "tool-output",
+        toolCallId: "call_1",
+        toolName: "file-read",
+        content: { kind: "tool-header" as const, labelKey: "tool.file_read.header", detail: "src/a.ts" },
+      },
+    ];
 
-    try {
-      const events: StreamEvent[] = [
-        { type: "text-delta", text: "Reading the file." },
-        {
-          type: "tool-output",
-          toolCallId: "call_1",
-          toolName: "file-read",
-          content: { kind: "tool-header" as const, labelKey: "tool.file_read.header", detail: "src/a.ts" },
-        },
-      ];
+    const session = createTestSession();
+    const client = createStreamingClient(events);
+    const { output } = await runPromptAndCapture("read a.ts", session, client);
 
-      const session = createTestSession();
-      const client = createStreamingClient(events);
-      await handlePrompt("read a.ts", session, client);
-
-      const output = printed.join("");
-      const textPos = output.indexOf("Reading the file.");
-      const toolPos = output.indexOf("src/a.ts");
-      expect(textPos).toBeGreaterThanOrEqual(0);
-      expect(toolPos).toBeGreaterThan(textPos);
-    } finally {
-      process.stdout.write = originalWrite;
-    }
+    const textPos = output.indexOf("Reading the file.");
+    const toolPos = output.indexOf("src/a.ts");
+    expect(textPos).toBeGreaterThanOrEqual(0);
+    expect(toolPos).toBeGreaterThan(textPos);
   });
 
   test("tool-output events with growing numWidth do not reprint earlier diffs", async () => {
-    const printed: string[] = [];
-    const originalWrite = process.stdout.write;
-    process.stdout.write = ((chunk: string) => {
-      printed.push(chunk);
-      return true;
-    }) as typeof process.stdout.write;
+    const callId = "call_1";
+    const toolName = "code-edit";
 
-    try {
-      const callId = "call_1";
-      const toolName = "code-edit";
+    const header: ToolOutputPart = {
+      kind: "edit-header",
+      labelKey: "tool.edit_code.header",
+      path: "src/foo.ts",
+      files: 1,
+      added: 2,
+      removed: 1,
+    };
 
-      const header: ToolOutputPart = {
-        kind: "edit-header",
-        labelKey: "tool.edit_code.header",
-        path: "src/foo.ts",
-        files: 1,
-        added: 2,
-        removed: 1,
-      };
+    // First diff: line 4, numWidth = 1
+    const diff1: ToolOutputPart = { kind: "diff", marker: "context", lineNumber: 4, text: "const a = 1;" };
+    // Second diff: line 5, numWidth still 1
+    const diff2: ToolOutputPart = { kind: "diff", marker: "add", lineNumber: 5, text: "const b = 2;" };
+    // Third diff at line 100 — numWidth jumps from 1 to 3, changing all earlier renders
+    const diff3: ToolOutputPart = { kind: "diff", marker: "add", lineNumber: 100, text: "const c = 3;" };
 
-      // First diff: line 4, numWidth = 1
-      const diff1: ToolOutputPart = { kind: "diff", marker: "context", lineNumber: 4, text: "const a = 1;" };
-      // Second diff: line 5, numWidth still 1
-      const diff2: ToolOutputPart = { kind: "diff", marker: "add", lineNumber: 5, text: "const b = 2;" };
-      // Third diff at line 100 — numWidth jumps from 1 to 3, changing all earlier renders
-      const diff3: ToolOutputPart = { kind: "diff", marker: "add", lineNumber: 100, text: "const c = 3;" };
+    const events: StreamEvent[] = [
+      { type: "tool-output", toolCallId: callId, toolName, content: header },
+      { type: "tool-output", toolCallId: callId, toolName, content: diff1 },
+      { type: "tool-output", toolCallId: callId, toolName, content: diff2 },
+      { type: "tool-output", toolCallId: callId, toolName, content: diff3 },
+    ];
 
-      const events: StreamEvent[] = [
-        { type: "tool-output", toolCallId: callId, toolName, content: header },
-        { type: "tool-output", toolCallId: callId, toolName, content: diff1 },
-        { type: "tool-output", toolCallId: callId, toolName, content: diff2 },
-        { type: "tool-output", toolCallId: callId, toolName, content: diff3 },
-      ];
+    const session = createTestSession();
+    const client = createStreamingClient(events);
+    const { output } = await runPromptAndCapture("rename foo", session, client);
 
-      const session = createTestSession();
-      const client = createStreamingClient(events);
-      await handlePrompt("rename foo", session, client);
-
-      const output = printed.join("");
-      // The edit-header text should appear only once
-      const headerMatches = output.match(/src\/foo\.ts/g) ?? [];
-      expect(headerMatches.length).toBe(1);
-    } finally {
-      process.stdout.write = originalWrite;
-    }
+    // The edit-header text should appear only once
+    const headerMatches = output.match(/src\/foo\.ts/g) ?? [];
+    expect(headerMatches.length).toBe(1);
   });
 });
