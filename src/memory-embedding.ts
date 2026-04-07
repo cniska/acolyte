@@ -156,6 +156,12 @@ export function tokenOverlap(query: string, content: string, idf?: ReadonlyMap<s
   return totalWeight === 0 ? 0 : weightedHits / totalWeight;
 }
 
+export function topicMatch(query: string, topic: string | null | undefined): boolean {
+  if (!topic) return false;
+  const queryTokens = tokenize(query);
+  return queryTokens.has(topic.toLowerCase());
+}
+
 export function computeIdf(documents: readonly string[]): Map<string, number> {
   const n = documents.length;
   if (n === 0) return new Map();

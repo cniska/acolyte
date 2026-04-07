@@ -30,6 +30,10 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_embeddings_scope ON memory_embeddings(scope);
     `,
   },
+  {
+    version: 2,
+    up: `ALTER TABLE memories ADD COLUMN topic TEXT;`,
+  },
 ];
 
 type MemoryRow = {
@@ -41,6 +45,7 @@ type MemoryRow = {
   created_at: string;
   token_estimate: number;
   last_recalled_at: string | null;
+  topic: string | null;
 };
 
 function rowToRecord(row: MemoryRow): MemoryRecord {
@@ -52,6 +57,7 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
     lastRecalledAt: row.last_recalled_at ?? null,
+    topic: row.topic ?? null,
   };
 }
 
@@ -72,9 +78,9 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     "SELECT * FROM memories WHERE scope_key = ? AND kind = ? ORDER BY created_at ASC",
   );
   const listAllStmt = db.prepare<MemoryRow, []>("SELECT * FROM memories ORDER BY created_at ASC");
-  const writeStmt = db.prepare<void, [string, string, string, string, string, string, number]>(
-    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  const writeStmt = db.prepare<void, [string, string, string, string, string, string, number, string | null]>(
+    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate, topic)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const removeStmt = db.prepare<void, [string]>("DELETE FROM memories WHERE id = ?");
   const writeEmbStmt = db.prepare<void, [string, string, Buffer]>(
@@ -110,6 +116,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
         record.content,
         record.createdAt,
         record.tokenEstimate,
+        record.topic ?? null,
       );
     },
     async touchRecalled(ids) {

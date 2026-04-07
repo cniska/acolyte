@@ -36,7 +36,7 @@ export function memoryStoreContractTests(
       await s.write(record);
       const records = await s.list({ scopeKey: "sess_abc123" });
       expect(records).toHaveLength(1);
-      expect(records[0]).toEqual({ ...record, lastRecalledAt: null });
+      expect(records[0]).toEqual({ ...record, lastRecalledAt: null, topic: null });
     });
 
     test("list returns records sorted chronologically", async () => {

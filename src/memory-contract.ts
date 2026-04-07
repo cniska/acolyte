@@ -42,6 +42,7 @@ export type MemoryPolicy = {
   malformedStreakWarningThreshold: number;
   cosineWeight: number;
   tokenWeight: number;
+  topicBoost: number;
 };
 
 export const defaultMemoryPolicy: MemoryPolicy = {
@@ -51,6 +52,7 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   malformedStreakWarningThreshold: 3,
   cosineWeight: 0.8,
   tokenWeight: 0.2,
+  topicBoost: 0.15,
 };
 
 export function createMemoryPolicy(override?: Partial<MemoryPolicy>): MemoryPolicy {
@@ -73,6 +75,7 @@ export const memoryRecordSchema = z.object({
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
   lastRecalledAt: isoDateTimeSchema.nullable().optional(),
+  topic: z.string().nullable().optional(),
 });
 export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
 

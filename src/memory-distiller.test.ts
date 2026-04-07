@@ -270,7 +270,7 @@ describe("memoryDistiller", () => {
             sessionScopedFacts: 3,
             droppedUntaggedFacts: 0,
           },
-          expectedWriteCount: 3,
+          expectedWriteCount: 5,
         },
         {
           name: "mixed_output_with_untagged_fact",

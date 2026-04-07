@@ -13,6 +13,7 @@ type MemoryRow = {
   created_at: string;
   token_estimate: number;
   last_recalled_at: string | null;
+  topic: string | null;
 };
 
 function rowToRecord(row: MemoryRow): MemoryRecord {
@@ -24,6 +25,7 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
     lastRecalledAt: row.last_recalled_at ?? null,
+    topic: row.topic ?? null,
   };
 }
 
@@ -59,6 +61,10 @@ const MIGRATIONS: Migration[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_embeddings_scope ON memory_embeddings(scope);
     `,
+  },
+  {
+    version: 2,
+    up: `ALTER TABLE memories ADD COLUMN topic TEXT;`,
   },
 ];
 
@@ -117,15 +123,16 @@ export async function createPostgresMemoryStore(connectionUrl: string): Promise<
       if (!safeScopeKey(record.scopeKey)) return;
       const scopeType = scope ?? scopeFromKey(record.scopeKey);
       await sql`
-        INSERT INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate)
-        VALUES (${record.id}, ${scopeType}, ${record.scopeKey}, ${record.kind}, ${record.content}, ${record.createdAt}, ${record.tokenEstimate})
+        INSERT INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate, topic)
+        VALUES (${record.id}, ${scopeType}, ${record.scopeKey}, ${record.kind}, ${record.content}, ${record.createdAt}, ${record.tokenEstimate}, ${record.topic ?? null})
         ON CONFLICT (id) DO UPDATE SET
           scope = EXCLUDED.scope,
           scope_key = EXCLUDED.scope_key,
           kind = EXCLUDED.kind,
           content = EXCLUDED.content,
           created_at = EXCLUDED.created_at,
-          token_estimate = EXCLUDED.token_estimate`;
+          token_estimate = EXCLUDED.token_estimate,
+          topic = EXCLUDED.topic`;
     },
 
     async remove(id) {
