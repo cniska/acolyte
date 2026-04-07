@@ -203,6 +203,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     }
     const soulPrompt = await createSoulPrompt({
       cwd: workspaceResolution.workspacePath,
+      includeAgents: !config.features.syncAgents,
+      agentsHint: config.features.syncAgents ? "memory" : "none",
     });
     const reply = await runLifecycle({
       request: lifecycleRequest,
