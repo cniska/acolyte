@@ -400,6 +400,7 @@ async function editCodeFile(
 ): Promise<EditCodeFileResult> {
   const langName = languageFromPath(absPath);
   if (!langName) return null;
+  await ensureDynamicLanguages();
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   const original = await readFile(absPath, "utf8");
   let current = original;
@@ -532,7 +533,6 @@ export async function editCode(input: {
     );
   }
 
-  await ensureDynamicLanguages();
   const result = await editCodeFile(absPath, input.workspace, input.edits, true);
   if (!result) {
     throw createToolError(TOOL_ERROR_CODES.editCodeNoMatch, `No AST matches found in ${input.path}`);
@@ -552,7 +552,6 @@ export async function editCode(input: {
 }
 
 async function editCodeDirectory(workspace: string, dirPath: string, edits: EditCodeEdit[]): Promise<EditCodeResult> {
-  await ensureDynamicLanguages();
   const files = await collectParseableFiles(dirPath);
   const diffs: string[] = [];
   let totalMatches = 0;
@@ -585,7 +584,6 @@ export async function scanCode(input: {
 }): Promise<ScanCodeResult> {
   const maxResults = input.maxResults ?? 50;
   const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
-
   await ensureDynamicLanguages();
 
   const results: ScanCodePatternResult[] = patterns.map((pattern) => ({ pattern, matches: [] }));
