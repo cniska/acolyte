@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { DISTILLER_PROMPT, splitScopedObservation } from "../src/memory-distiller";
+import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
 export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations" | "locomo-distilled";
 
@@ -434,33 +435,80 @@ async function distillLoCoMoConversation(
   return result;
 }
 
-function normalizeLoCoMoDistilled(
+async function matchEvidenceToFacts(turnText: string, facts: { obsId: string; content: string }[]): Promise<string[]> {
+  if (facts.length === 0) return [];
+  const turnVec = await embedText(turnText);
+  if (!turnVec) return [facts[0].obsId];
+  const scored: { obsId: string; score: number }[] = [];
+  for (const fact of facts) {
+    const factVec = await embedText(fact.content);
+    if (factVec) scored.push({ obsId: fact.obsId, score: cosineSimilarity(turnVec, factVec) });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored.filter((s) => s.score > 0.5).slice(0, 3);
+  return best.length > 0 ? best.map((s) => s.obsId) : scored.length > 0 ? [scored[0].obsId] : [];
+}
+
+async function normalizeLoCoMoDistilled(
   distilled: CachedDistillResult,
   conv: Record<string, unknown>,
   qa: z.infer<typeof locomoQaSchema>[],
   convIdx: number,
-): DatasetScenario {
+): Promise<DatasetScenario> {
   const observations: NormalizedObservation[] = [];
-  const sessionNumToObsIds = new Map<string, string[]>();
+  const sessionFacts = new Map<string, { obsId: string; content: string }[]>();
 
   let obsIndex = 0;
   for (const session of distilled.sessions) {
     const date = locomoSessionDate(conv, session.sessionNum);
-    const obsIds: string[] = [];
+    const facts: { obsId: string; content: string }[] = [];
     for (const fact of session.facts) {
       const obsId = `conv${convIdx}_dist${obsIndex}`;
       observations.push({ id: obsId, content: fact.content, timestamp: date, topic: fact.topic });
-      obsIds.push(obsId);
+      facts.push({ obsId, content: fact.content });
       obsIndex++;
     }
-    sessionNumToObsIds.set(session.sessionNum, obsIds);
+    sessionFacts.set(session.sessionNum, facts);
   }
 
-  const queries = locomoQueries(qa, convIdx, (diaId) => {
-    const sessionNum = diaId.split(":")[0]?.replace("D", "");
-    if (!sessionNum) return [];
-    return sessionNumToObsIds.get(sessionNum) ?? [];
-  });
+  const turnTextByDiaId = new Map<string, string>();
+  const sessionKeys = Object.keys(conv).filter((k) => /^session_\d+$/.test(k));
+  for (const sessionKey of sessionKeys) {
+    const turns = z.array(locomoTurnSchema).parse(conv[sessionKey]);
+    for (const turn of turns) turnTextByDiaId.set(turn.dia_id, turn.text);
+  }
+
+  const evidenceCache = new Map<string, string[]>();
+  for (const q of qa) {
+    for (const diaId of q.evidence) {
+      if (evidenceCache.has(diaId)) continue;
+      const sessionNum = diaId.split(":")[0]?.replace("D", "");
+      if (!sessionNum) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
+      const facts = sessionFacts.get(sessionNum);
+      if (!facts || facts.length === 0) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
+      const turnText = turnTextByDiaId.get(diaId) ?? "";
+      if (!turnText) {
+        evidenceCache.set(diaId, [facts[0].obsId]);
+        continue;
+      }
+      evidenceCache.set(diaId, await matchEvidenceToFacts(turnText, facts));
+    }
+  }
+
+  const queries: NormalizedQuery[] = qa
+    .filter((q) => q.evidence.length > 0)
+    .map((q, qIdx) => ({
+      id: `conv${convIdx}_q${qIdx}`,
+      question: q.question,
+      relevantObservationIds: [...new Set(q.evidence.flatMap((e) => evidenceCache.get(e) ?? []))],
+    }))
+    .filter((q) => q.relevantObservationIds.length > 0);
 
   return { scenarioId: `conv${convIdx}`, observations, queries };
 }
@@ -509,7 +557,7 @@ const locomoDistilledAdapter: DatasetAdapter = {
       const conv = entry.conversation as Record<string, unknown>;
       const cachePath = join(cacheDir, `conv${convIdx}.json`);
       const distilled = await distillLoCoMoConversation(conv, runner, cachePath);
-      scenarios.push(normalizeLoCoMoDistilled(distilled, conv, entry.qa, convIdx));
+      scenarios.push(await normalizeLoCoMoDistilled(distilled, conv, entry.qa, convIdx));
     }
 
     return { id: "locomo-distilled" as const, name: "LoCoMo (distilled)", scenarios };
