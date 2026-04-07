@@ -228,7 +228,7 @@ describe("touchRecalled", () => {
     const before = await store.list({ scopeKey: "user_abc123" });
     expect(before[0]?.lastRecalledAt).toBeNull();
 
-    store.touchRecalled(["mem_touch001"]);
+    await store.touchRecalled(["mem_touch001"]);
     const after = await store.list({ scopeKey: "user_abc123" });
     expect(after[0]?.lastRecalledAt).not.toBeNull();
   });
@@ -251,7 +251,7 @@ describe("touchRecalled", () => {
       createdAt: "2026-03-04T12:00:01.000Z",
       tokenEstimate: 3,
     });
-    store.touchRecalled(["mem_touched1"]);
+    await store.touchRecalled(["mem_touched1"]);
     const records = await store.list({ scopeKey: "user_abc123" });
     const touched = records.find((r) => r.id === "mem_touched1");
     const untouched = records.find((r) => r.id === "mem_untouchd");
@@ -259,9 +259,9 @@ describe("touchRecalled", () => {
     expect(untouched?.lastRecalledAt).toBeNull();
   });
 
-  test("no-ops on empty id list", () => {
+  test("no-ops on empty id list", async () => {
     const store = createStore();
-    expect(() => store.touchRecalled([])).not.toThrow();
+    await expect(store.touchRecalled([])).resolves.toBeUndefined();
   });
 });
 
@@ -269,8 +269,8 @@ describe("embedding storage", () => {
   test("writeEmbedding + getEmbedding round-trips", async () => {
     const store = createStore();
     const embedding = Buffer.from(new Float32Array([0.1, 0.2, 0.3]).buffer);
-    store.writeEmbedding("mem_emb001", "sess_abc123", embedding);
-    const result = store.getEmbedding("mem_emb001");
+    await store.writeEmbedding("mem_emb001", "sess_abc123", embedding);
+    const result = await store.getEmbedding("mem_emb001");
     expect(result).not.toBeNull();
     if (!result) throw new Error("expected embedding");
     const arr = new Float32Array(result.buffer, result.byteOffset, result.byteLength / 4);
@@ -281,16 +281,16 @@ describe("embedding storage", () => {
 
   test("getEmbedding returns null for missing record", async () => {
     const store = createStore();
-    expect(store.getEmbedding("mem_missing")).toBeNull();
+    expect(await store.getEmbedding("mem_missing")).toBeNull();
   });
 
   test("removeEmbedding deletes embedding", async () => {
     const store = createStore();
     const embedding = Buffer.from(new Float32Array([1, 2, 3]).buffer);
-    store.writeEmbedding("mem_rm001", "sess_abc123", embedding);
-    expect(store.getEmbedding("mem_rm001")).not.toBeNull();
-    store.removeEmbedding("mem_rm001");
-    expect(store.getEmbedding("mem_rm001")).toBeNull();
+    await store.writeEmbedding("mem_rm001", "sess_abc123", embedding);
+    expect(await store.getEmbedding("mem_rm001")).not.toBeNull();
+    await store.removeEmbedding("mem_rm001");
+    expect(await store.getEmbedding("mem_rm001")).toBeNull();
   });
 
   test("remove record also removes embedding", async () => {
@@ -304,9 +304,9 @@ describe("embedding storage", () => {
       tokenEstimate: 1,
     };
     await store.write(record);
-    store.writeEmbedding(record.id, "sess_abc123", Buffer.from(new Float32Array([1]).buffer));
-    expect(store.getEmbedding(record.id)).not.toBeNull();
+    await store.writeEmbedding(record.id, "sess_abc123", Buffer.from(new Float32Array([1]).buffer));
+    expect(await store.getEmbedding(record.id)).not.toBeNull();
     await store.remove(record.id);
-    expect(store.getEmbedding(record.id)).toBeNull();
+    expect(await store.getEmbedding(record.id)).toBeNull();
   });
 });

@@ -33,13 +33,13 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
       const idx = records.findIndex((r) => r.id === id);
       if (idx >= 0) records.splice(idx, 1);
     },
-    touchRecalled() {},
-    writeEmbedding() {},
-    removeEmbedding() {},
-    getEmbedding() {
+    async touchRecalled() {},
+    async writeEmbedding() {},
+    async removeEmbedding() {},
+    async getEmbedding() {
       return null;
     },
-    getEmbeddings() {
+    async getEmbeddings() {
       return new Map();
     },
     close() {},

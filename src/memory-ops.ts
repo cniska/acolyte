@@ -82,7 +82,7 @@ export async function addMemory(
 
   try {
     const vec = await embedText(trimmed);
-    if (vec) store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
+    if (vec) await store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
   } catch (error) {
     log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
   }

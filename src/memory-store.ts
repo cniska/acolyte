@@ -4,11 +4,7 @@ import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
 import { resolveHomeDir } from "./home-dir";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryStore, scopeFromKey } from "./memory-contract";
-
-export function safeScopeKey(scope: string): string | null {
-  return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
-}
+import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
 
 const MIGRATIONS: Migration[] = [
   {
@@ -116,7 +112,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
         record.tokenEstimate,
       );
     },
-    touchRecalled(ids) {
+    async touchRecalled(ids) {
       if (ids.length === 0) return;
       const now = new Date().toISOString();
       const placeholders = ids.map(() => "?").join(",");
@@ -126,18 +122,18 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       removeStmt.run(id);
       removeEmbStmt.run(id);
     },
-    writeEmbedding(id, scope, embedding) {
+    async writeEmbedding(id, scope, embedding) {
       if (!safeScopeKey(scope)) return;
       writeEmbStmt.run(id, scope, embedding);
     },
-    removeEmbedding(id) {
+    async removeEmbedding(id) {
       removeEmbStmt.run(id);
     },
-    getEmbedding(id) {
+    async getEmbedding(id) {
       const row = getEmbStmt.get(id);
       return row ? row.embedding : null;
     },
-    getEmbeddings(ids) {
+    async getEmbeddings(ids) {
       if (ids.length === 0) return new Map();
       const placeholders = ids.map(() => "?").join(",");
       const rows = db

@@ -45,7 +45,7 @@ type DistillScope = "session" | "project" | "user";
 async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
   try {
     const vec = await embedText(content);
-    if (vec) ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
+    if (vec) await ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
   } catch (error) {
     log.warn("memory.distill.embed_failed", { id, error: String(error) });
   }

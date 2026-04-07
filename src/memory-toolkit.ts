@@ -28,12 +28,12 @@ export async function searchMemories(
   const queryEmbedding = await embedText(query);
   if (!queryEmbedding) {
     const fallback = filtered.slice(0, limit);
-    store.touchRecalled(fallback.map((r) => r.id));
+    await store.touchRecalled(fallback.map((r) => r.id));
     return [...fallback];
   }
 
   const ids = filtered.map((r) => r.id);
-  const embeddings = store.getEmbeddings(ids);
+  const embeddings = await store.getEmbeddings(ids);
 
   const scored = filtered.map((record) => {
     const buf = embeddings.get(record.id);
@@ -44,7 +44,7 @@ export async function searchMemories(
   });
   scored.sort((a, b) => b.score - a.score);
   const results = scored.slice(0, limit).map((s) => s.record);
-  store.touchRecalled(results.map((r) => r.id));
+  await store.touchRecalled(results.map((r) => r.id));
   return results;
 }
 
