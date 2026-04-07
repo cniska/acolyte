@@ -23,3 +23,5 @@ export const resolvedFeatureFlagsSchema = z.object({
 });
 
 export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;
+
+export const DEFAULT_FEATURE_FLAGS: ResolvedFeatureFlags = resolvedFeatureFlagsSchema.parse({});

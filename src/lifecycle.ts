@@ -1,7 +1,7 @@
 import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import type { ResolvedFeatureFlags } from "./feature-flags-contract";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { t } from "./i18n";
 import type {
   LifecycleEventName,
@@ -28,7 +28,6 @@ import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-pro
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
-const DEFAULT_FEATURE_FLAGS: ResolvedFeatureFlags = { syncAgents: false, undoCheckpoints: false };
 
 export type LifecycleDeps = {
   resolveModel: typeof resolveModel;
