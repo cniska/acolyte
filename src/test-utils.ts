@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ChatResponse } from "./api";
-import type { CommandContext } from "./chat-commands";
+import type { CommandContext } from "./chat-commands-contract";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
