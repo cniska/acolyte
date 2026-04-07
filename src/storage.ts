@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
@@ -8,28 +8,12 @@ import type { SessionStore } from "./session-store";
 import { createId } from "./short-id";
 
 const DATA_DIR = join(resolveHomeDir(), ".acolyte");
-const STORE_PATH = join(DATA_DIR, "sessions.json");
 
 const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
 
 export function parseSessionState(input: SessionState): SessionState {
   const result = sessionStateSchema.safeParse(input);
   return result.success ? result.data : DEFAULT_SESSION_STATE;
-}
-
-async function readState(): Promise<SessionState> {
-  if (!existsSync(STORE_PATH)) return { ...DEFAULT_SESSION_STATE };
-  try {
-    const raw = await readFile(STORE_PATH, "utf8");
-    return parseSessionState(JSON.parse(raw) as SessionState);
-  } catch {
-    return { ...DEFAULT_SESSION_STATE };
-  }
-}
-
-async function writeState(state: SessionState): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(state, null, 2), "utf8");
 }
 
 export function createSession(model: string): Session {
@@ -46,7 +30,25 @@ export function createSession(model: string): Session {
   };
 }
 
-export function createFileSessionStore(): SessionStore {
+export function createFileSessionStore(storePath?: string): SessionStore {
+  const resolvedPath = storePath ?? join(DATA_DIR, "sessions.json");
+  const resolvedDir = dirname(resolvedPath);
+
+  async function readState(): Promise<SessionState> {
+    if (!existsSync(resolvedPath)) return { sessions: [], activeSessionId: undefined };
+    try {
+      const raw = await readFile(resolvedPath, "utf8");
+      return parseSessionState(JSON.parse(raw) as SessionState);
+    } catch {
+      return { sessions: [], activeSessionId: undefined };
+    }
+  }
+
+  async function writeState(state: SessionState): Promise<void> {
+    await mkdir(resolvedDir, { recursive: true });
+    await writeFile(resolvedPath, JSON.stringify(state, null, 2), "utf8");
+  }
+
   return {
     async listSessions(options) {
       const state = await readState();
@@ -109,5 +111,12 @@ export function getSessionStore(): Promise<SessionStore> {
 }
 
 async function resolveStore(): Promise<SessionStore> {
+  const { appConfig } = await import("./app-config");
+  if (appConfig.features.postgresSessions) {
+    const url = appConfig.postgresUrl;
+    if (!url) throw new Error("postgresUrl required when features.postgresSessions is enabled");
+    const { createPostgresSessionStore } = await import("./session-store-postgres");
+    return createPostgresSessionStore(url);
+  }
   return createFileSessionStore();
 }

@@ -131,6 +131,8 @@ function serializeToml(config: Config): string {
       lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
     if (typeof config.features.postgresMemory === "boolean")
       lines.push(`postgresMemory = ${config.features.postgresMemory}`);
+    if (typeof config.features.postgresSessions === "boolean")
+      lines.push(`postgresSessions = ${config.features.postgresSessions}`);
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -196,7 +198,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces", "postgresMemory"]),
+  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces", "postgresMemory", "postgresSessions"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {
