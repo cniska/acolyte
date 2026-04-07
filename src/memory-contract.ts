@@ -93,7 +93,7 @@ export interface MemoryStore {
 }
 
 export function safeScopeKey(scope: string): string | null {
-  return /^(sess|user|proj)_[a-z0-9_-]+$/.test(scope) ? scope : null;
+  return /^(sess|user|proj)_[a-z0-9]+$/.test(scope) ? scope : null;
 }
 
 export function scopeFromKey(key: string): MemoryScope {
