@@ -8,7 +8,7 @@ import {
   scopeFromKey,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { createId } from "./short-id";
 
@@ -47,7 +47,8 @@ function toMemoryEntry(record: {
 }
 
 export async function listMemories(options: MemoryOptions = {}): Promise<MemoryEntry[]> {
-  const { scope, workspace, store = getDefaultMemoryStore() } = options;
+  const { scope, workspace } = options;
+  const store = options.store ?? (await getMemoryStore());
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
@@ -65,7 +66,8 @@ export async function addMemory(
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Memory content cannot be empty");
 
-  const { scope = "user", workspace, store = getDefaultMemoryStore() } = options;
+  const { scope = "user", workspace } = options;
+  const store = options.store ?? (await getMemoryStore());
   const scopeKey =
     scope === "project" ? projectResourceIdFromWorkspace(workspace ?? process.cwd()) : defaultUserResourceId();
 
@@ -94,7 +96,8 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   const trimmed = id.trim();
   if (!trimmed) throw new Error("Memory id cannot be empty");
 
-  const { scope, workspace, store = getDefaultMemoryStore() } = options;
+  const { scope, workspace } = options;
+  const store = options.store ?? (await getMemoryStore());
   const keys = scopeKeysForScope(scope, workspace);
   for (const key of keys) {
     const records = await store.list({ scopeKey: key, kind: "stored" });

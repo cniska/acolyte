@@ -9,7 +9,7 @@ import {
 } from "./memory-contract";
 import { bufferToEmbedding, cosineSimilarity, embedText, tokenOverlap } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -18,7 +18,7 @@ export async function searchMemories(
   query: string,
   options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
 ): Promise<MemoryRecord[]> {
-  const store = options?.store ?? getDefaultMemoryStore();
+  const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
   const all = await store.list({ kind: "stored" });

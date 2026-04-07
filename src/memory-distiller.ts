@@ -12,7 +12,7 @@ import {
   type MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { getDefaultMemoryStore } from "./memory-store";
+import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -33,9 +33,9 @@ If a preference is project-scoped, use @observe project not @observe user. If un
 
 let defaultStore: MemoryStore | null = null;
 
-function getDefaultStore(): MemoryStore {
+async function getDefaultStore(): Promise<MemoryStore> {
   if (!defaultStore) {
-    defaultStore = getDefaultMemoryStore();
+    defaultStore = await getMemoryStore();
   }
   return defaultStore;
 }
@@ -206,7 +206,6 @@ export type DistillerDeps = {
 };
 
 export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
-  const ds = deps.store ?? getDefaultStore();
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
@@ -214,6 +213,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
+      const ds = deps.store ?? (await getDefaultStore());
       const key = resolveDistillScopeKey(commitScope, ctx);
       if (!key) return;
       if (ctx.messages.length < policy.messageThreshold) return;
