@@ -42,7 +42,7 @@ export type MemoryPolicy = {
   malformedStreakWarningThreshold: number;
   cosineWeight: number;
   tokenWeight: number;
-  topicBoost: number;
+  topicThreshold: number;
   minTopicFilterSize: number;
 };
 
@@ -53,7 +53,7 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   malformedStreakWarningThreshold: 3,
   cosineWeight: 0.8,
   tokenWeight: 0.2,
-  topicBoost: 0.15,
+  topicThreshold: 0.6,
   minTopicFilterSize: 5,
 };
 

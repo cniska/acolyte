@@ -12,15 +12,28 @@ import {
   computeIdf,
   cosineSimilarity,
   embedText,
-  filterByTopic,
+  filterByTopicEmbedding,
+  matchTopicsByEmbedding,
   tokenOverlap,
-  topicMatch,
 } from "./memory-embedding";
 import { addMemory, removeMemory } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
+
+async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
+  const topics = new Set<string>();
+  for (const r of records) {
+    if (r.topic) topics.add(r.topic);
+  }
+  const result = new Map<string, Float32Array>();
+  for (const topic of topics) {
+    const vec = await embedText(topic);
+    if (vec) result.set(topic, vec);
+  }
+  return result;
+}
 
 export async function searchMemories(
   query: string,
@@ -44,12 +57,14 @@ export async function searchMemories(
     const oversample = (options?.scope ? limit * 2 : limit) * 2;
     const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
     const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
-    const idf = computeIdf(scoped.map((r) => r.content));
-    const rescored = scoped.map((record, rank) => {
-      const positionScore = 1 - rank / scoped.length;
+    const pgTopicEmbeddings = await embedTopics(scoped);
+    const pgMatchedTopics = matchTopicsByEmbedding(queryEmbedding, pgTopicEmbeddings, policy.topicThreshold);
+    const pgTopicFiltered = filterByTopicEmbedding(scoped, pgMatchedTopics, policy.minTopicFilterSize);
+    const idf = computeIdf(pgTopicFiltered.map((r) => r.content));
+    const rescored = pgTopicFiltered.map((record, rank) => {
+      const positionScore = 1 - rank / pgTopicFiltered.length;
       const overlap = tokenOverlap(query, record.content, idf);
-      const boost = topicMatch(query, record.topic) ? policy.topicBoost : 0;
-      return { record, score: positionScore * policy.cosineWeight + overlap * policy.tokenWeight + boost };
+      return { record, score: positionScore * policy.cosineWeight + overlap * policy.tokenWeight };
     });
     rescored.sort((a, b) => b.score - a.score);
     const results = rescored.slice(0, limit).map((s) => s.record);
@@ -57,7 +72,9 @@ export async function searchMemories(
     return results;
   }
 
-  const topicFiltered = filterByTopic(query, filtered, policy.minTopicFilterSize);
+  const topicEmbeddings = await embedTopics(filtered);
+  const matchedTopics = matchTopicsByEmbedding(queryEmbedding, topicEmbeddings, policy.topicThreshold);
+  const topicFiltered = filterByTopicEmbedding(filtered, matchedTopics, policy.minTopicFilterSize);
   const ids = topicFiltered.map((r) => r.id);
   const embeddings = await store.getEmbeddings(ids);
   const idf = computeIdf(topicFiltered.map((r) => r.content));
@@ -66,8 +83,7 @@ export async function searchMemories(
     const buf = embeddings.get(record.id);
     const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
     const overlap = tokenOverlap(query, record.content, idf);
-    const boost = topicMatch(query, record.topic) ? policy.topicBoost : 0;
-    const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight + boost;
+    const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight;
     return { record, score };
   });
   scored.sort((a, b) => b.score - a.score);
