@@ -15,6 +15,16 @@ export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
 export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
 
 const nonEmptyStringSchema = z.string().trim().min(1);
+const dbUrlSchema = nonEmptyStringSchema.refine(
+  (s) => {
+    try {
+      return !new URL(s).password;
+    } catch {
+      return true;
+    }
+  },
+  { message: "postgresUrl must not contain a password — use PGPASSWORD env var instead" },
+);
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
     (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
@@ -72,7 +82,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
-  postgresUrl: nonEmptyStringSchema,
+  postgresUrl: dbUrlSchema,
   features: featureFlagsSchema,
 };
 

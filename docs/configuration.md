@@ -119,7 +119,7 @@ acolyte config set features.syncAgents true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
-| `postgresUrl` | Postgres connection URL (required when `postgresMemory` is enabled) |
+| `postgresUrl` | Postgres connection URL (required when `postgresMemory` is enabled). Must not contain a password — use `PGPASSWORD` env var. |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
