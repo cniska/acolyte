@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   CONFIG_SET_SCHEMAS,
@@ -10,6 +9,7 @@ import {
   type ResolvedConfig,
   toConfig,
 } from "./config-contract";
+import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 
 function createDefaultConfig() {
@@ -49,7 +49,7 @@ function resolvePaths(options?: ConfigOptions): {
   projectJsonPath: string;
   projectTomlPath: string;
 } {
-  const userDataDir = join(options?.homeDir ?? homedir(), ".acolyte");
+  const userDataDir = join(options?.homeDir ?? resolveHomeDir(), ".acolyte");
   const projectDataDir = join(options?.cwd ?? process.cwd(), ".acolyte");
   return {
     userDataDir,

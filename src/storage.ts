@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 import { type Session, type SessionState, sessionStateSchema } from "./session-contract";
 import type { SessionStore as SessionStorePort } from "./session-store";
 import { createId } from "./short-id";
 
-const DATA_DIR = join(homedir(), ".acolyte");
+const DATA_DIR = join(resolveHomeDir(), ".acolyte");
 const STORE_PATH = join(DATA_DIR, "sessions.json");
 
 const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };

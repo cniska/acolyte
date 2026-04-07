@@ -1,8 +1,8 @@
 import { appendFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
+import { resolveHomeDir } from "../home-dir";
 import { setLogSink } from "../log";
 import { DEFAULT_COLUMNS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
@@ -14,7 +14,7 @@ import { serializeSplit, stripAnsiLength } from "./serialize";
 import { ansi, kitty } from "./styles";
 
 function clientLogPath(): string {
-  return join(homedir(), ".acolyte", "client.log");
+  return join(resolveHomeDir(), ".acolyte", "client.log");
 }
 
 /** Count physical terminal rows, accounting for line wrapping. */

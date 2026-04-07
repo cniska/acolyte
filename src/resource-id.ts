@@ -1,6 +1,6 @@
-import { homedir } from "node:os";
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
+import { resolveHomeDir } from "./home-dir";
 import { domainIdSchema } from "./id-contract";
 
 export const userResourceIdSchema = domainIdSchema("user");
@@ -29,7 +29,7 @@ export function projectResourceIdFromWorkspace(workspace: string): ProjectResour
   return projectResourceIdSchema.parse(`proj_${hashValue(normalized)}`);
 }
 
-export function defaultUserResourceId(homeDir = homedir()): UserResourceId {
+export function defaultUserResourceId(homeDir = resolveHomeDir()): UserResourceId {
   return userResourceIdSchema.parse(`user_${hashValue(resolvePath(homeDir))}`);
 }
 
