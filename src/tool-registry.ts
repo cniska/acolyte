@@ -13,6 +13,7 @@ import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type { ChecklistListener, ToolCategory, ToolDefinition, ToolkitInput } from "./tool-contract";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createSessionContext, type SessionContext } from "./tool-session";
+import { createUndoToolkit } from "./undo-toolkit";
 import { createWebToolkit } from "./web-toolkit";
 
 // biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here
@@ -26,7 +27,8 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit> &
   ReturnType<typeof createMemoryToolkit> &
-  ReturnType<typeof createSkillToolkit>;
+  ReturnType<typeof createSkillToolkit> &
+  ReturnType<typeof createUndoToolkit>;
 
 export type Toolset = {
   [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
@@ -74,6 +76,10 @@ export const TOOLKIT_REGISTRY: {
     id: "shell",
     createToolkit: (input) => createShellToolkit(input),
   },
+  {
+    id: "undo",
+    createToolkit: (input) => createUndoToolkit(input),
+  },
 ];
 
 const noopOutput: ToolOutputListener = () => {};
@@ -84,10 +90,11 @@ function collectTools(
   session: SessionContext,
   onOutput: ToolOutputListener = noopOutput,
   onChecklist: ChecklistListener = noopChecklist,
+  sessionId?: string,
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
-    Object.assign(combined, toolkit.createToolkit({ workspace, session, onOutput, onChecklist }));
+    Object.assign(combined, toolkit.createToolkit({ workspace, session, sessionId, onOutput, onChecklist }));
   }
   return combined;
 }
@@ -145,7 +152,13 @@ export function toolsForAgent(options?: {
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   return {
-    tools: collectTools(workspace, session, options?.onOutput, options?.onChecklist) as unknown as Toolset,
+    tools: collectTools(
+      workspace,
+      session,
+      options?.onOutput,
+      options?.onChecklist,
+      options?.sessionId,
+    ) as unknown as Toolset,
     session,
   };
 }

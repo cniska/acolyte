@@ -3,6 +3,7 @@ import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
+import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitMetrics } from "./memory-contract";
@@ -133,6 +134,7 @@ export type LifecycleInput = {
   soulPrompt: string;
   workspace?: string;
   taskId?: string;
+  features?: ResolvedFeatureFlags;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;
@@ -145,6 +147,7 @@ export type RunContext = {
   readonly workspace: string | undefined;
   readonly taskId: string | undefined;
   readonly soulPrompt: string;
+  readonly features: ResolvedFeatureFlags;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly tools: Toolset;

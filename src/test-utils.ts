@@ -485,6 +485,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     workspace: undefined,
     taskId: undefined,
     soulPrompt: "",
+    features: { syncAgents: false, undoCheckpoints: false },
     emit: () => {},
     debug: () => {},
     tools: {} as RunContext["tools"],

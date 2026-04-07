@@ -27,6 +27,14 @@ function extractWrittenPaths(toolName: string, args: Record<string, unknown>): s
         .map((p) => normalizePath(p.trim()));
     }
   }
+  if (toolName === "undo-restore") {
+    const paths = args.paths;
+    if (Array.isArray(paths)) {
+      return paths
+        .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+        .map((p) => normalizePath(p.trim()));
+    }
+  }
   return [];
 }
 

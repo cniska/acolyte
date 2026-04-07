@@ -1,6 +1,7 @@
 import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
+import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { t } from "./i18n";
 import type {
   LifecycleEventName,
@@ -22,10 +23,12 @@ import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
+import { captureUndoBefore, commitUndoCheckpoint, isFilePath, type PendingUndoCapture } from "./undo-checkpoints";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const memoryCommitQueue = createInMemoryTaskQueue();
+const DEFAULT_FEATURE_FLAGS: ResolvedFeatureFlags = { syncAgents: false, undoCheckpoints: false };
 
 export type LifecycleDeps = {
   resolveModel: typeof resolveModel;
@@ -108,6 +111,7 @@ function createRunContext(
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
+    features: input.features ?? DEFAULT_FEATURE_FLAGS,
     emit: params.emit,
     debug: params.debug,
     tools: params.prepared.tools,
@@ -131,8 +135,54 @@ function createRunContext(
     toolOutputHandler: null,
   };
 
+  session.featureFlags = ctx.features;
+
+  const pendingUndo = new Map<string, PendingUndoCapture>();
+
   session.onBeforeTool = (preCtx) => runPreEffects(ctx, preCtx);
   session.onAfterTool = (toolResult) => runPostEffects(ctx, toolResult);
+  session.onBeforeToolAsync = async (preCtx) => {
+    if (!ctx.features.undoCheckpoints) return;
+    if (!WRITE_TOOL_SET.has(preCtx.toolId)) return;
+    const sessionId = ctx.request.sessionId;
+    if (!sessionId || !ctx.workspace) return;
+
+    const args = preCtx.args;
+    const paths: string[] = [];
+    if (preCtx.toolId === "file-edit" || preCtx.toolId === "file-create") {
+      const p = typeof args.path === "string" ? args.path.trim() : "";
+      if (p) paths.push(p);
+    } else if (preCtx.toolId === "file-delete") {
+      const ps = args.paths;
+      if (Array.isArray(ps)) {
+        for (const p of ps) if (typeof p === "string" && p.trim().length > 0) paths.push(p.trim());
+      }
+    } else if (preCtx.toolId === "code-edit") {
+      const p = typeof args.path === "string" ? args.path.trim() : "";
+      if (p && (await isFilePath(ctx.workspace, p))) paths.push(p);
+    }
+    if (paths.length === 0) return;
+
+    const capture = await captureUndoBefore({
+      workspace: ctx.workspace,
+      toolCallId: preCtx.toolCallId,
+      toolId: preCtx.toolId,
+      paths,
+    });
+    pendingUndo.set(preCtx.toolCallId, capture);
+  };
+
+  session.onAfterToolAsync = async (postCtx) => {
+    if (!ctx.features.undoCheckpoints) return;
+    if (!WRITE_TOOL_SET.has(postCtx.toolId)) return;
+    const sessionId = ctx.request.sessionId;
+    if (!sessionId || !ctx.workspace) return;
+
+    const pending = pendingUndo.get(postCtx.toolCallId);
+    if (!pending) return;
+    pendingUndo.delete(postCtx.toolCallId);
+    await commitUndoCheckpoint({ workspace: ctx.workspace, sessionId, pending });
+  };
 
   return ctx;
 }
