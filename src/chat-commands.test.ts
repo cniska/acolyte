@@ -494,6 +494,94 @@ describe("chat-commands", () => {
     expect(spies.currentSessionIds).toContain(original.id);
   });
 
+  describe("/workspaces", () => {
+    function setParallelWorkspacesEnabled(enabled: boolean): () => void {
+      const cfg = appConfig as unknown as { features: { parallelWorkspaces: boolean } };
+      const prev = cfg.features.parallelWorkspaces;
+      cfg.features.parallelWorkspaces = enabled;
+      return () => {
+        cfg.features.parallelWorkspaces = prev;
+      };
+    }
+
+    test("is gated by features.parallelWorkspaces", async () => {
+      const restore = setParallelWorkspacesEnabled(false);
+      try {
+        const { rows, stop } = await runCommand("/workspaces");
+        expect(stop).toBe(true);
+        expect(rows.some((row) => row.content === "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true")).toBe(
+          true,
+        );
+      } finally {
+        restore();
+      }
+    });
+
+    test("list renders existing workspace sessions", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const ws = createSession({
+          id: "sess_ws1",
+          title: "Fix auth",
+          workspaceName: "fix-auth",
+          workspace: "/tmp/ws/fix-auth",
+          workspaceBranch: "acolyte-ws/fix-auth",
+        });
+        const store = createStore({ sessions: [ws], activeSessionId: ws.id });
+        const { rows, stop } = await runCommand("/workspaces", { store });
+        expect(stop).toBe(true);
+        const headerRow = rows.find((row) => isCommandOutput(row.content) && row.content.header.startsWith("Workspaces "));
+        expect(Boolean(headerRow)).toBe(true);
+      } finally {
+        restore();
+      }
+    });
+
+    test("new <name> creates a workspace session", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const store = createStore({ sessions: [], activeSessionId: undefined });
+        await runCommand("/workspaces new fix-auth", {
+          store,
+          workspacesApi: {
+            resolveGitRepoRoot: async () => "/repo",
+            createGitWorktree: async () => ({ workspacePath: "/repo/.ws/fix-auth", branch: "acolyte-ws/fix-auth" }),
+          },
+        });
+        expect(store.sessions[0]?.workspaceName).toBe("fix-auth");
+        expect(store.sessions[0]?.workspaceBranch).toBe("acolyte-ws/fix-auth");
+        expect(store.sessions[0]?.workspace).toBe("/repo/.ws/fix-auth");
+      } finally {
+        restore();
+      }
+    });
+
+    test("new -- <prompt> auto-names and starts assistant turn", async () => {
+      const restore = setParallelWorkspacesEnabled(true);
+      try {
+        const store = createStore({ sessions: [], activeSessionId: undefined });
+        const assistantTurnTexts: string[] = [];
+        await runCommand("/workspaces new -- fix auth flow", {
+          store,
+          startAssistantTurn: async (text) => {
+            assistantTurnTexts.push(text);
+          },
+          workspacesApi: {
+            resolveGitRepoRoot: async () => "/repo",
+            createGitWorktree: async () => ({
+              workspacePath: "/repo/.ws/fix-auth-flow",
+              branch: "acolyte-ws/fix-auth-flow",
+            }),
+          },
+        });
+        expect(store.sessions[0]?.workspaceName).toBe("fix-auth-flow");
+        expect(assistantTurnTexts).toEqual(["fix auth flow"]);
+      } finally {
+        restore();
+      }
+    });
+  });
+
   describe("inline skill invocation", () => {
     const { createDir, cleanupDirs } = tempDir();
     afterEach(() => {
