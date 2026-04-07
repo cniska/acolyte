@@ -120,6 +120,30 @@ describe("memoryDistiller", () => {
       expect(sessionEntry?.content).not.toContain("Current task:");
     });
 
+    test("parses @topic tags and stores them on observations", async () => {
+      const store = createMockStore();
+      const source = createTestDistiller(store, async (systemPrompt) => {
+        if (systemPrompt !== DISTILLER_PROMPT) return "";
+        return [
+          "@observe project",
+          "@topic testing",
+          "project uses Vitest",
+          "@observe project",
+          "repo has 18k lines of code",
+        ].join("\n");
+      });
+      await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      const withTopic = store.written.find((e) => e.content === "project uses Vitest");
+      const withoutTopic = store.written.find((e) => e.content === "repo has 18k lines of code");
+      expect(withTopic?.topic).toBe("testing");
+      expect(withoutTopic?.topic).toBeNull();
+    });
+
     test("silently drops malformed scope tags and commits valid facts", async () => {
       const store = createMockStore();
       const source = createTestDistiller(store, async (systemPrompt) => {
