@@ -49,6 +49,8 @@ Shipped, user-visible capabilities.
 - three-scope persistent memory (session, project, user)
 - automatic observation via distiller with @observe directives
 - semantic recall with embeddings and cosine similarity ranking
+- hybrid retrieval scoring (cosine similarity + TF-IDF token overlap)
+- topic tags on observations for filtered recall
 
 ## Safety and control
 
@@ -62,3 +64,25 @@ Shipped, user-visible capabilities.
 - token usage reporting with prompt breakdown per turn
 - status command with JSON output
 - scoped debug logging with wildcard tag matching
+
+## Feature-flagged
+
+These capabilities are implemented but gated behind feature flags.
+
+### AGENTS.md sync (`syncAgents`)
+
+- sync AGENTS.md into project memory for on-demand recall
+
+### Undo checkpoints (`undoCheckpoints`)
+
+- session-level undo via write-tool checkpoints
+
+### Parallel workspaces (`parallelWorkspaces`)
+
+- git worktree management and workspace-scoped sessions
+
+### Cloud sync (`cloudSync`)
+
+- portable memory and sessions across machines
+- EdDSA JWT auth with user/team/org scope isolation
+- self-hostable via Vercel Edge + Neon Postgres
