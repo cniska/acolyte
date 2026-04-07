@@ -105,6 +105,10 @@ acolyte config set --project features.syncAgents true
 
 When enabled:
 - Enables `/workspaces` chat commands that manage git worktrees and workspace-scoped sessions
+- Examples:
+  - `/workspaces new fix-auth`
+  - `/workspaces new fix-auth -- implement oauth callback`
+  - `/workspaces new -- fix auth flow`
 
 Enable via TOML:
 
