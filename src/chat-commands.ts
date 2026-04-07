@@ -151,10 +151,6 @@ export type CommandContext = {
     addMemory: typeof addMemory;
     removeMemory: typeof removeMemory;
   };
-  workspacesApi?: {
-    resolveGitRepoRoot: typeof resolveGitRepoRoot;
-    createGitWorktree: typeof createGitWorktree;
-  };
 };
 
 function parseMemoryListScope(parts: string[]): MemoryContextScope | null {
@@ -241,12 +237,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.disabled"))]);
       return { stop: true, userText: text };
     }
-
-    const workspacesApi = {
-      resolveGitRepoRoot,
-      createGitWorktree,
-      ...ctx.workspacesApi,
-    };
 
     const parts = resolvedText.trim().split(/\s+/);
     const sub = parts[1] ?? "list";
@@ -341,8 +331,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
       }
       let created: { workspacePath: string; branch: string };
       try {
-        const repoRoot = await workspacesApi.resolveGitRepoRoot(process.cwd());
-        created = await workspacesApi.createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
+        const repoRoot = await resolveGitRepoRoot(ctx.currentSession.workspace ?? process.cwd());
+        created = await createGitWorktree({ repoRoot, name, baseRef: "HEAD" });
       } catch (error) {
         const reason = error instanceof Error ? error.message : "unknown error";
         ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.create_failed", { reason }))]);
