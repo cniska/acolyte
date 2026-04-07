@@ -52,5 +52,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 ## Testing
 
 - Unit: `bun run test:unit`, integration: `bun run test:int`, visual: `bun run test:tui`.
+- Unit tests should be pure: mock boundary effects (filesystem, subprocesses, network) instead of exercising them directly.
+- If a test needs real filesystem/process/network behavior, put it in `*.int.test.ts` (not `*.test.ts`).
 - Integration tests use real server/lifecycle/tool wiring with fake provider model calls.
 - Visual tests cover stable TUI rendering and interaction snapshots.
