@@ -435,10 +435,7 @@ async function distillLoCoMoConversation(
   return result;
 }
 
-function matchEvidenceToFacts(
-  turnVec: Float32Array,
-  facts: { obsId: string; vec: Float32Array }[],
-): string[] {
+function matchEvidenceToFacts(turnVec: Float32Array, facts: { obsId: string; vec: Float32Array }[]): string[] {
   if (facts.length === 0) return [];
   const scored = facts.map((f) => ({ obsId: f.obsId, score: cosineSimilarity(turnVec, f.vec) }));
   scored.sort((a, b) => b.score - a.score);
@@ -481,13 +478,25 @@ async function normalizeLoCoMoDistilled(
     for (const diaId of q.evidence) {
       if (evidenceCache.has(diaId)) continue;
       const sessionNum = diaId.split(":")[0]?.replace("D", "");
-      if (!sessionNum) { evidenceCache.set(diaId, []); continue; }
+      if (!sessionNum) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
       const factVecs = sessionFactVecs.get(sessionNum);
-      if (!factVecs || factVecs.length === 0) { evidenceCache.set(diaId, []); continue; }
+      if (!factVecs || factVecs.length === 0) {
+        evidenceCache.set(diaId, []);
+        continue;
+      }
       const turnText = turnTextByDiaId.get(diaId) ?? "";
-      if (!turnText) { evidenceCache.set(diaId, [factVecs[0].obsId]); continue; }
+      if (!turnText) {
+        evidenceCache.set(diaId, [factVecs[0].obsId]);
+        continue;
+      }
       const turnVec = await embedText(turnText);
-      if (!turnVec) { evidenceCache.set(diaId, [factVecs[0].obsId]); continue; }
+      if (!turnVec) {
+        evidenceCache.set(diaId, [factVecs[0].obsId]);
+        continue;
+      }
       evidenceCache.set(diaId, matchEvidenceToFacts(turnVec, factVecs));
     }
   }
