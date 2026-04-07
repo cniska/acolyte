@@ -23,7 +23,7 @@ import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
-import { attachUndoCheckpointSideEffects } from "./undo-checkpoints";
+import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
