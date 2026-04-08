@@ -38,7 +38,12 @@ export type ConfigOptions = {
 function mergeConfigScopes(base: Config, override: Config): Config {
   const merged: Config = { ...base };
   for (const [key, value] of Object.entries(override) as Array<[keyof Config, unknown]>) {
-    if (value !== undefined) merged[key] = value as never;
+    if (value === undefined) continue;
+    if (key === "features" && typeof value === "object" && typeof merged.features === "object") {
+      merged.features = { ...merged.features, ...(value as Config["features"]) };
+    } else {
+      merged[key] = value as never;
+    }
   }
   return merged;
 }
