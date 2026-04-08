@@ -51,10 +51,9 @@ function serverError(
 }
 
 function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  return crypto.timingSafeEqual(bufA, bufB);
+  const hashA = crypto.createHash("sha256").update(a).digest();
+  const hashB = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
 }
 
 function hasValidAuth(req: Request): boolean {
