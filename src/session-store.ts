@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
@@ -46,7 +46,9 @@ export function createFileSessionStore(storePath?: string): SessionStore {
 
   async function writeState(state: SessionState): Promise<void> {
     await mkdir(resolvedDir, { recursive: true });
-    await writeFile(resolvedPath, JSON.stringify(state, null, 2), "utf8");
+    const tmp = `${resolvedPath}.tmp`;
+    await writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
+    await rename(tmp, resolvedPath);
   }
 
   return {

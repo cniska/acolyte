@@ -308,13 +308,16 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   let proc: ReturnType<typeof Bun.spawn> | undefined;
   try {
     const logFd = openSync(logPath, "a", PRIVATE_FILE_MODE);
-    proc = Bun.spawn([process.execPath, "run", serverEntry], {
-      env: { ...process.env, PORT: String(port) },
-      stdout: logFd,
-      stderr: logFd,
-      detached: true,
-    });
-    closeSync(logFd);
+    try {
+      proc = Bun.spawn([process.execPath, "run", serverEntry], {
+        env: { ...process.env, PORT: String(port) },
+        stdout: logFd,
+        stderr: logFd,
+        detached: true,
+      });
+    } finally {
+      closeSync(logFd);
+    }
     proc.unref();
 
     await waitForHealthyServerOrSpawnExit(apiUrl, apiKey, timeoutMs, proc, logPath);
