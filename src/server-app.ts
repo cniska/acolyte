@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { appConfig } from "./app-config";
+import { decodeTokenSubject } from "./credentials";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
@@ -108,9 +109,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
-  const cloudUser = appConfig.cloudToken
-    ? (await import("./credentials")).decodeTokenSubject(appConfig.cloudToken)
-    : undefined;
+  const cloudUser = appConfig.cloudToken ? decodeTokenSubject(appConfig.cloudToken) : undefined;
   return {
     ok: true,
     providers,
