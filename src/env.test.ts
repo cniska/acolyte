@@ -26,7 +26,7 @@ describe("env parsing", () => {
     expect(parsed.AI_GATEWAY_API_KEY).toBe("sk-gw");
   });
 
-  test("parseEnv ignores legacy non-secret env keys", () => {
+  test("parseEnv ignores unknown env keys", () => {
     const parsed = parseEnv({
       ACOLYTE_MODEL: "openai/gpt-5-mini",
       ACOLYTE_API_URL: "http://localhost:6767",

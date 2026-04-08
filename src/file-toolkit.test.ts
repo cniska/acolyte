@@ -33,7 +33,7 @@ describe("file-read tool schema", () => {
 });
 
 describe("file-delete tool schema", () => {
-  test("requires paths array and rejects legacy single path input", () => {
+  test("requires paths array and rejects single path input", () => {
     const { tools } = toolsForAgent();
     const schema = tools.deleteFile.inputSchema;
     expect(() => schema.parse({ path: "src/agent.ts" })).toThrow();
