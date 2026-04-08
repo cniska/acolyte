@@ -17,15 +17,10 @@ export function migrateUp(db: Database, migrations: Migration[]): number {
   const current = row?.version ?? 0;
   const pending = migrations.filter((m) => m.version > current).sort((a, b) => a.version - b.version);
   for (const m of pending) {
-    db.run("BEGIN");
-    try {
+    db.transaction(() => {
       db.run(m.up);
       db.run("UPDATE schema_version SET version = ?", [m.version]);
-      db.run("COMMIT");
-    } catch (error) {
-      db.run("ROLLBACK");
-      throw error;
-    }
+    })();
   }
   return pending.length;
 }
