@@ -13,7 +13,6 @@ import {
   writeServerLock,
 } from "./daemon-ops";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
 import { PROTOCOL_VERSION } from "./protocol";
 
@@ -160,15 +159,6 @@ async function waitForHealthyServerOrStaleStartupLock(
 // \_(ᴗ _ᴗ)_/
 const DEFAULT_PORT = 6767;
 
-async function cleanupLegacyLocks(homeDir?: string): Promise<void> {
-  const home = homeDir ?? resolveHomeDir();
-  await rm(join(home, ".acolyte", "server.lock"), { force: true });
-  await rm(join(home, ".acolyte", "server.start.lock"), { force: true });
-  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.lock`), { force: true });
-  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.start.lock`), { force: true });
-  await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.log`), { force: true });
-}
-
 const MAX_STARTUP_RETRIES = 3;
 
 export async function ensureLocalServer(
@@ -180,8 +170,6 @@ export async function ensureLocalServer(
   const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
   const lockPath = serverLockPath(port, homeDir);
   const startLockPath = startupLockPath(port, homeDir);
-
-  await cleanupLegacyLocks(homeDir);
 
   const lock = await readServerLock(lockPath);
   if (lock) {
