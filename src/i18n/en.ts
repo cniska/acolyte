@@ -176,6 +176,7 @@ export const EN_MESSAGES = {
   "cli.server.not_running": "No server running on port {port}",
   "cli.server.restarted": "Restarted server on port {port} (pid {pid})",
   "cli.server.running": "Server running on port {port} (pid {pid})",
+  "cli.server.spawn_exited": "Server process exited before becoming healthy. Check logs: {logPath}",
   "cli.server.start_timeout": "Timed out waiting for server at {url}",
   "cli.server.started": "Started server on port {port} (pid {pid})",
   "cli.server.stop_manual": "Unable to stop server on port {port}. Stop it manually.",

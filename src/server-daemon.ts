@@ -144,9 +144,20 @@ async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEAL
   }
 }
 
-async function waitForHealthyServer(apiUrl: string, apiKey: string | undefined, timeoutMs: number): Promise<void> {
+async function waitForHealthyServerOrSpawnExit(
+  apiUrl: string,
+  apiKey: string | undefined,
+  timeoutMs: number,
+  proc: { exited: Promise<number>; readonly pid: number },
+  logPath: string,
+): Promise<void> {
+  let exited = false;
+  proc.exited.then(() => {
+    exited = true;
+  });
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (exited) throw new Error(t("cli.server.spawn_exited", { logPath }));
     if (await isServerHealthy(apiUrl, apiKey)) return;
     await Bun.sleep(120);
   }
@@ -291,7 +302,7 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   proc.unref();
 
   try {
-    await waitForHealthyServer(apiUrl, apiKey, timeoutMs);
+    await waitForHealthyServerOrSpawnExit(apiUrl, apiKey, timeoutMs, proc, logPath);
     await writeServerLock(lockPath, {
       pid: proc.pid,
       port,

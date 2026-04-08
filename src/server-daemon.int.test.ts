@@ -203,6 +203,26 @@ describe("server daemon internals", () => {
     }
   });
 
+  test("ensureLocalServer fails fast when spawned process exits immediately", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const reservation = startTestServer(() => new Response("reserved"));
+    const port = reservation.port;
+    reservation.stop();
+
+    const serverEntry = join(home, "crash-server.ts");
+    await writeFile(serverEntry, "process.exit(1);", "utf8");
+
+    await expect(
+      ensureLocalServer({
+        port,
+        apiKey: undefined,
+        serverEntry,
+        homeDir: home,
+        timeoutMs: 5_000,
+      }),
+    ).rejects.toThrow(/exited before becoming healthy/);
+  });
+
   test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
