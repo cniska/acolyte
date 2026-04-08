@@ -60,15 +60,22 @@ async function embedAndStore(ds: MemoryStore, id: string, scope: string, content
 const CHARS_PER_TOKEN_ESTIMATE = 4;
 const TEXT_SHRINK_RATIO = 0.9;
 
+function stripTrailingSurrogate(s: string): string {
+  if (s.length === 0) return s;
+  const last = s.charCodeAt(s.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) return s.slice(0, -1);
+  return s;
+}
+
 function clampToTokenEstimate(content: string, maxTokens: number): string {
   const text = content.trim();
   if (!text) return "";
   if (maxTokens <= 0) return "";
   if (estimateTokens(text) <= maxTokens) return text;
 
-  let clamped = text.slice(0, Math.max(1, maxTokens * CHARS_PER_TOKEN_ESTIMATE)).trim();
+  let clamped = stripTrailingSurrogate(text.slice(0, Math.max(1, maxTokens * CHARS_PER_TOKEN_ESTIMATE))).trim();
   while (clamped.length > 0 && estimateTokens(clamped) > maxTokens) {
-    clamped = clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO)).trim();
+    clamped = stripTrailingSurrogate(clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO))).trim();
   }
   return clamped;
 }
@@ -299,3 +306,5 @@ const defaultDistiller: MemoryDistiller = createMemoryDistiller();
 export function commitDistiller(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined> {
   return defaultDistiller.commit(ctx);
 }
+
+export const distillerInternals = { clampToTokenEstimate, splitScopedObservation };

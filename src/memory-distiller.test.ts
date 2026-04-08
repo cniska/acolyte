@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
-import { createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
+import { createMemoryDistiller, DISTILLER_PROMPT, distillerInternals } from "./memory-distiller";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
@@ -45,6 +45,18 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
     close() {},
   };
 }
+
+describe("clampToTokenEstimate", () => {
+  test("does not produce lone surrogates when clamping emoji text", () => {
+    // Mix single-byte and surrogate pair chars to force odd-boundary slicing.
+    // "a🎉" = 3 UTF-16 code units. Repeating gives lengths not divisible by 2.
+    const mixed = "a🎉".repeat(200);
+    const result = distillerInternals.clampToTokenEstimate(mixed, 5);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+    expect(result).not.toMatch(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
+  });
+});
 
 describe("memoryDistiller", () => {
   describe("commit", () => {
