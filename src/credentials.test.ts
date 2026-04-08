@@ -3,7 +3,13 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readCredentials, readCredentialsSync, removeCredential, writeCredential } from "./credentials";
+import {
+  decodeTokenSubject,
+  readCredentials,
+  readCredentialsSync,
+  removeCredential,
+  writeCredential,
+} from "./credentials";
 
 let tempDir: string;
 
@@ -65,6 +71,17 @@ describe("credentials", () => {
     await writeCredential("cloudToken", "tok_sync", home);
     const creds = readCredentialsSync(home);
     expect(creds).toEqual({ cloudToken: "tok_sync" });
+  });
+
+  test("decodeTokenSubject extracts sub from JWT", () => {
+    const payload = Buffer.from(JSON.stringify({ sub: "user@example.com", scope: "user" })).toString("base64url");
+    const token = `eyJhbGciOiJFZERTQSJ9.${payload}.fakesig`;
+    expect(decodeTokenSubject(token)).toBe("user@example.com");
+  });
+
+  test("decodeTokenSubject returns undefined for invalid token", () => {
+    expect(decodeTokenSubject("not-a-jwt")).toBeUndefined();
+    expect(decodeTokenSubject("")).toBeUndefined();
   });
 
   test("ignores comments and blank lines", async () => {

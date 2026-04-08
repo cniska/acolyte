@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { resolveHomeDir } from "./home-dir";
@@ -66,6 +66,17 @@ export async function writeCredential(key: keyof Credentials, value: string, hom
   await writeFile(path, serialize(existing), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
 }
 
+export function decodeTokenSubject(token: string): string | undefined {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return undefined;
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as { sub?: string };
+    return payload.sub;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function removeCredential(key: keyof Credentials, homeDir?: string): Promise<void> {
   const path = credentialsPath(homeDir);
   const existing = await readCredentials(homeDir);
@@ -73,7 +84,6 @@ export async function removeCredential(key: keyof Credentials, homeDir?: string)
   const content = serialize(existing);
   if (content.length === 0) {
     try {
-      const { unlink } = await import("node:fs/promises");
       await unlink(path);
     } catch {}
     return;

@@ -108,6 +108,9 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
+  const cloudUser = appConfig.cloudToken
+    ? (await import("./credentials")).decodeTokenSubject(appConfig.cloudToken)
+    : undefined;
   return {
     ok: true,
     providers,
@@ -120,6 +123,8 @@ async function createStatusPayload(): Promise<StatusPayload> {
     tasks_detached: taskSummary.detached,
     rpc_queue_length: getRpcQueuedTaskCount(),
     ...resourceDiagnostics,
+    ...(appConfig.features.cloudSync && cloudUser ? { cloud_user: cloudUser } : {}),
+    ...(appConfig.features.cloudSync && appConfig.cloudUrl ? { cloud_url: appConfig.cloudUrl } : {}),
   };
 }
 

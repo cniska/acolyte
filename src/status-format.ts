@@ -4,17 +4,19 @@ import { t } from "./i18n";
 import type { StatusFields } from "./status-contract";
 
 const STATUS_KEY_LABEL_MAP: Record<string, string> = {
-  active_skill: t("chat.status.label.active_skill"),
-  capabilities: t("chat.status.label.capabilities"),
-  memory: t("chat.status.label.memory"),
-  model: t("chat.status.label.model"),
-  protocol_version: t("chat.status.label.protocol_version"),
-  providers: t("chat.status.label.providers"),
-  rpc_queue_length: t("chat.status.label.rpc_queue_length"),
-  service: t("chat.status.label.service"),
-  tasks_detached: t("chat.status.label.tasks_detached"),
-  tasks_running: t("chat.status.label.tasks_running"),
-  tasks_total: t("chat.status.label.tasks_total"),
+  active_skill: t("status.label.active_skill"),
+  capabilities: t("status.label.capabilities"),
+  cloud_url: t("status.label.cloud_url"),
+  cloud_user: t("status.label.cloud_user"),
+  memory: t("status.label.memory"),
+  model: t("status.label.model"),
+  protocol_version: t("status.label.protocol_version"),
+  providers: t("status.label.providers"),
+  rpc_queue_length: t("status.label.rpc_queue_length"),
+  service: t("status.label.service"),
+  tasks_detached: t("status.label.tasks_detached"),
+  tasks_running: t("status.label.tasks_running"),
+  tasks_total: t("status.label.tasks_total"),
 };
 
 export function formatStatus(fields: StatusFields): string {
