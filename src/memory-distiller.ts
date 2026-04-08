@@ -1,6 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
+import { clampToTokenEstimate, type DistillScope, normalizeMemoryText, splitScopedObservation } from "./distill-ops";
 import { log } from "./log";
 import {
   defaultMemoryPolicy,
@@ -12,7 +13,6 @@ import {
   type MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
-import { clampToTokenEstimate, type DistillScope, normalizeMemoryText, splitScopedObservation } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";

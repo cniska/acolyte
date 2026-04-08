@@ -1,4 +1,4 @@
-import { access, chmod, copyFile, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
+import { access, chmod, copyFile, lstat, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -55,6 +55,8 @@ export async function extractBinary(tarPath: string, outDir: string): Promise<st
   }
   const binaryPath = join(outDir, "acolyte");
   await access(binaryPath);
+  const stat = await lstat(binaryPath);
+  if (!stat.isFile()) throw new Error("Extracted acolyte is not a regular file");
   const entries = await readdir(outDir);
   const unexpected = entries.filter((e) => e !== "acolyte");
   if (unexpected.length > 0) throw new Error(`Unexpected files in archive: ${unexpected.join(", ")}`);

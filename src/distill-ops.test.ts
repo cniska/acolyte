@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clampToTokenEstimate, splitScopedObservation } from "./memory-ops";
+import { clampToTokenEstimate, splitScopedObservation } from "./distill-ops";
 
 describe("clampToTokenEstimate", () => {
   test("does not produce lone surrogates when clamping emoji text", () => {
