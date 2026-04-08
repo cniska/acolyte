@@ -249,12 +249,12 @@ function renderError(message: string): void {
 }
 
 function reexec(): never {
-  Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
+  const result = Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
   });
-  process.exit(0);
+  process.exit(result.exitCode ?? 1);
 }
 
 async function performUpdate(currentVersion: string, latest: string, downloadUrl: string): Promise<void> {
