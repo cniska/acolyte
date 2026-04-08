@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cliUpdateInternals } from "./cli-update";
@@ -62,5 +63,76 @@ describe("verifyChecksum", () => {
     } finally {
       server.stop();
     }
+  });
+});
+
+describe("extractBinary", () => {
+  test("rejects archive containing path traversal entries", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const outDir = join(dir, "out");
+    await mkdir(outDir, { recursive: true });
+
+    // Use python to create a tar with a literal ../../ entry (not possible with tar CLI)
+    const tarPath = join(dir, "malicious.tar.gz");
+    const py = Bun.spawn(
+      [
+        "python3",
+        "-c",
+        [
+          "import tarfile, io, sys",
+          `tf = tarfile.open(sys.argv[1], 'w:gz')`,
+          `info = tarfile.TarInfo(name='acolyte'); info.size = 5`,
+          `tf.addfile(info, io.BytesIO(b'legit'))`,
+          `info2 = tarfile.TarInfo(name='../../escaped.txt'); info2.size = 5`,
+          `tf.addfile(info2, io.BytesIO(b'pwned'))`,
+          `tf.close()`,
+        ].join("\n"),
+        tarPath,
+      ],
+      { stdout: "ignore", stderr: "ignore" },
+    );
+    await py.exited;
+
+    await expect(cliUpdateInternals.extractBinary(tarPath, outDir)).rejects.toThrow(/unsafe archive entry/i);
+  });
+
+  test("rejects archive missing the acolyte binary", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const outDir = join(dir, "out");
+    await mkdir(outDir, { recursive: true });
+
+    const srcDir = join(dir, "src");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(join(srcDir, "not-acolyte"), "wrong-name");
+
+    const tarPath = join(dir, "wrong.tar.gz");
+    const proc = Bun.spawn(["tar", "czf", tarPath, "-C", srcDir, "not-acolyte"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    await proc.exited;
+
+    await expect(cliUpdateInternals.extractBinary(tarPath, outDir)).rejects.toThrow();
+  });
+
+  test("accepts valid archive with only the acolyte binary", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const outDir = join(dir, "out");
+    await mkdir(outDir, { recursive: true });
+
+    const srcDir = join(dir, "src");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(join(srcDir, "acolyte"), "valid-binary");
+
+    const tarPath = join(dir, "good.tar.gz");
+    const proc = Bun.spawn(["tar", "czf", tarPath, "-C", srcDir, "acolyte"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    await proc.exited;
+
+    const result = await cliUpdateInternals.extractBinary(tarPath, outDir);
+    expect(result).toBe(join(outDir, "acolyte"));
+    expect(existsSync(join(outDir, "acolyte"))).toBe(true);
   });
 });

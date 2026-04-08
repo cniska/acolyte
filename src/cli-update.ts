@@ -140,7 +140,19 @@ async function downloadToFile(url: string, dest: string, onProgress?: ProgressCa
   await writer.end();
 }
 
+async function validateArchiveEntries(tarPath: string): Promise<void> {
+  const proc = Bun.spawn(["tar", "tzf", tarPath], { stdout: "pipe", stderr: "ignore" });
+  const stdout = await new Response(proc.stdout).text();
+  await proc.exited;
+  for (const entry of stdout.split("\n").filter(Boolean)) {
+    if (entry.includes("..") || entry.startsWith("/")) {
+      throw new Error(`Unsafe archive entry: ${entry}`);
+    }
+  }
+}
+
 async function extractBinary(tarPath: string, outDir: string): Promise<string> {
+  await validateArchiveEntries(tarPath);
   const proc = Bun.spawn(["tar", "xzf", tarPath, "-C", outDir], {
     stdout: "ignore",
     stderr: "pipe",
@@ -307,7 +319,7 @@ export async function updateMode(): Promise<void> {
   await performUpdate(currentVersion, update);
 }
 
-export const cliUpdateInternals = { verifyChecksum };
+export const cliUpdateInternals = { verifyChecksum, extractBinary };
 
 export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
   if (options?.skip) return false;
