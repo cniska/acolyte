@@ -7,7 +7,7 @@ import { domainIdSchema } from "./id-contract";
 export const sessionIdSchema = domainIdSchema("sess");
 export type SessionId = z.infer<typeof sessionIdSchema>;
 
-const tokenUsageSchema = z.object({
+export const tokenUsageSchema = z.object({
   inputTokens: z.number(),
   outputTokens: z.number(),
   totalTokens: z.number(),

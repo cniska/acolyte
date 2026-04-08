@@ -1,3 +1,5 @@
+import { field } from "./field";
+import { HTTP_STATUS } from "./http-status";
 import type { Provider } from "./provider-contract";
 
 export type RateLimiterConfig = {
@@ -24,9 +26,6 @@ export function clearSharedRateLimiters(): void {
 function jitter(ms: number): number {
   return ms * (0.5 + Math.random() * 0.5);
 }
-
-import { field } from "./field";
-import { HTTP_STATUS } from "./http-status";
 
 function isRateLimitError(error: unknown): boolean {
   if (field(error, "status") === HTTP_STATUS.tooManyRequests) return true;
