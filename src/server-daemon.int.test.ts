@@ -415,6 +415,46 @@ describe("server daemon internals", () => {
     }
   });
 
+  test("server exits cleanly on SIGTERM", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const reservation = startTestServer(() => new Response("reserved"));
+    const port = reservation.port;
+    reservation.stop();
+
+    const serverEntry = join(home, "sigterm-server.ts");
+    await writeFile(
+      serverEntry,
+      [
+        "Bun.serve({",
+        `  port: Number(process.env.PORT),`,
+        "  fetch(request) {",
+        '    if (new URL(request.url).pathname === "/v1/status") {',
+        `      return Response.json({ ok: true, protocol_version: ${JSON.stringify(PROTOCOL_VERSION)} });`,
+        "    }",
+        '    return new Response("ok");',
+        "  },",
+        "});",
+        'process.on("SIGTERM", () => process.exit(0));',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await ensureLocalServer({
+      port,
+      apiKey: undefined,
+      serverEntry,
+      homeDir: home,
+      timeoutMs: 5_000,
+    });
+    expect(result.started).toBe(true);
+    expect(serverDaemonInternals.isProcessAlive(result.pid)).toBe(true);
+
+    // Send SIGTERM and verify clean exit
+    process.kill(result.pid, "SIGTERM");
+    await Bun.sleep(200);
+    expect(serverDaemonInternals.isProcessAlive(result.pid)).toBe(false);
+  });
+
   test("listRunningDaemons returns alive daemons and cleans dead locks", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const dir = serverDaemonInternals.daemonsDir(home);
