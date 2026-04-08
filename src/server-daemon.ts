@@ -273,7 +273,9 @@ async function cleanupLegacyLocks(homeDir = resolveHomeDir()): Promise<void> {
   await rm(join(daemonsDir(homeDir), `${DEFAULT_PORT}.log`), { force: true });
 }
 
-export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<EnsureLocalServerResult> {
+const MAX_STARTUP_RETRIES = 3;
+
+export async function ensureLocalServer(input: EnsureLocalServerInput, retryCount = 0): Promise<EnsureLocalServerResult> {
   const { port, apiKey, serverEntry, homeDir, timeoutMs: inputTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
@@ -301,7 +303,8 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
   if (!startupClaimed) {
     const waitResult = await waitForHealthyServerOrStaleStartupLock(apiUrl, apiKey, timeoutMs, startLockPath);
     if (waitResult === "retry") {
-      return ensureLocalServer(input);
+      if (retryCount >= MAX_STARTUP_RETRIES) throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
+      return ensureLocalServer(input, retryCount + 1);
     }
     const waitedLock = await readServerLock(lockPath);
     return { port, pid: waitedLock?.pid ?? 0, started: false };
