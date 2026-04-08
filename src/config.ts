@@ -167,7 +167,9 @@ export async function readConfig(options?: ConfigOptions): Promise<Config> {
     const userConfig = await readConfigForScope("user", options);
     const projectConfig = await readConfigForScope("project", options);
     return mergeConfigScopes(userConfig, projectConfig);
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: failed to parse config file, using defaults. ${message}`);
     return {};
   }
 }
@@ -177,7 +179,9 @@ export function readConfigSync(options?: ConfigOptions): Config {
     const userConfig = readConfigForScopeSync("user", options);
     const projectConfig = readConfigForScopeSync("project", options);
     return mergeConfigScopes(userConfig, projectConfig);
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: failed to parse config file, using defaults. ${message}`);
     return {};
   }
 }

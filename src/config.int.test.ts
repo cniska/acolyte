@@ -89,14 +89,23 @@ describe("config store", () => {
     expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
-  test("readConfigSync falls back to empty config on parse errors", () => {
+  test("readConfigSync warns to stderr and falls back on parse errors", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = join(home, ".acolyte");
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "not valid toml = {", "utf8");
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
-    expect(loaded).toEqual({});
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      const loaded = readConfigSync({ homeDir: home, cwd: home });
+      expect(loaded).toEqual({});
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toContain("failed to parse config file");
+    } finally {
+      console.warn = origWarn;
+    }
   });
 
   test("setConfigValue updates TOML when config.toml exists", async () => {
