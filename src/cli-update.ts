@@ -13,8 +13,8 @@ const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest"
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
 
-type UpdateInfo = { available: boolean; latest: string; downloadUrl: string };
-type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string };
+type UpdateInfo = { available: boolean; latest: string; downloadUrl: string; checksumUrl: string | null };
+type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string; checksumUrl?: string };
 type GitHubRelease = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
 type InstallResult = { success: boolean; error?: string };
 
@@ -82,7 +82,12 @@ async function checkForUpdate(
       const age = Date.now() - new Date(cached.checkedAt).getTime();
       if (age < CHECK_INTERVAL_MS) {
         const available = compareSemver(currentVersion, cached.latest);
-        return { available, latest: cached.latest, downloadUrl: cached.downloadUrl };
+        return {
+          available,
+          latest: cached.latest,
+          downloadUrl: cached.downloadUrl,
+          checksumUrl: cached.checksumUrl ?? null,
+        };
       }
     }
   }
@@ -94,17 +99,20 @@ async function checkForUpdate(
   const assetName = resolveAssetName();
   const asset = release.assets.find((a) => a.name === assetName);
   if (!asset) return null;
+  const checksumAsset = release.assets.find((a) => a.name === `${assetName.replace(/\.tar\.gz$/, "")}.sha256`);
 
   await writeCache(home, {
     checkedAt: new Date().toISOString(),
     latest: version,
     downloadUrl: asset.browser_download_url,
+    checksumUrl: checksumAsset?.browser_download_url,
   });
 
   return {
     available: compareSemver(currentVersion, version),
     latest: version,
     downloadUrl: asset.browser_download_url,
+    checksumUrl: checksumAsset?.browser_download_url ?? null,
   };
 }
 
@@ -172,17 +180,20 @@ async function verifyChecksum(filePath: string, checksumUrl: string): Promise<vo
   }
 }
 
-async function installUpdate(downloadUrl: string, onProgress?: ProgressCallback): Promise<InstallResult> {
+async function installUpdate(
+  downloadUrl: string,
+  checksumUrl: string | null,
+  onProgress?: ProgressCallback,
+): Promise<InstallResult> {
   const binaryPath = process.execPath;
   const tmp = tmpdir();
   const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
   const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
   const newBinaryPath = `${binaryPath}.new`;
-  const checksumUrl = downloadUrl.replace(/\.tar\.gz$/, ".sha256");
 
   try {
     await downloadToFile(downloadUrl, tarPath, onProgress);
-    await verifyChecksum(tarPath, checksumUrl);
+    if (checksumUrl) await verifyChecksum(tarPath, checksumUrl);
 
     await mkdir(extractDir, { recursive: true });
     const extractedPath = await extractBinary(tarPath, extractDir);
@@ -262,10 +273,10 @@ function reexec(): never {
   process.exit(result.exitCode ?? 1);
 }
 
-async function performUpdate(currentVersion: string, latest: string, downloadUrl: string): Promise<void> {
-  renderHeader(currentVersion, latest);
+async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {
+  renderHeader(currentVersion, update.latest);
 
-  const result = await installUpdate(downloadUrl, (received, total) => {
+  const result = await installUpdate(update.downloadUrl, update.checksumUrl, (received, total) => {
     renderProgress(received, total);
   });
 
@@ -274,7 +285,7 @@ async function performUpdate(currentVersion: string, latest: string, downloadUrl
     return;
   }
 
-  renderDone(latest);
+  renderDone(update.latest);
   await stopAllLocalServers();
   reexec();
 }
@@ -293,7 +304,7 @@ export async function updateMode(): Promise<void> {
     return;
   }
 
-  await performUpdate(currentVersion, update.latest, update.downloadUrl);
+  await performUpdate(currentVersion, update);
 }
 
 export const cliUpdateInternals = { verifyChecksum };
@@ -309,6 +320,6 @@ export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Pro
   const update = await checkForUpdate(currentVersion);
   if (!update?.available) return false;
 
-  await performUpdate(currentVersion, update.latest, update.downloadUrl);
+  await performUpdate(currentVersion, update);
   return true;
 }
