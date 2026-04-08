@@ -141,11 +141,13 @@ async function downloadToFile(url: string, dest: string, onProgress?: ProgressCa
 }
 
 async function validateArchiveEntries(tarPath: string): Promise<void> {
-  const proc = Bun.spawn(["tar", "tzf", tarPath], { stdout: "pipe", stderr: "ignore" });
+  const proc = Bun.spawn(["tar", "tzf", tarPath], { stdout: "pipe", stderr: "pipe" });
   const stdout = await new Response(proc.stdout).text();
-  await proc.exited;
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) throw new Error(`Failed to list archive entries (exit ${exitCode})`);
   for (const entry of stdout.split("\n").filter(Boolean)) {
-    if (entry.includes("..") || entry.startsWith("/")) {
+    const segments = entry.split("/");
+    if (segments.some((s) => s === "..") || entry.startsWith("/")) {
       throw new Error(`Unsafe archive entry: ${entry}`);
     }
   }
