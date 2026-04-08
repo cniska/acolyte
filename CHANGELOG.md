@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.17.0 (2026-04-09)
+
+- fix(daemon): fail fast when spawned server exits before becoming healthy (`2e3d5904`)
+- fix(server): exit on startup failure instead of hanging (`fd25aa89`)
+- fix(daemon): release startup lock on spawn failure (`2c690153`)
+- fix(daemon): stop lockless server via shutdown endpoint (`099d6b74`)
+- feat(cloud): add login and logout commands (#162) (`b207c346`)
+- fix(daemon): always stop locked process on stop (`1b29beac`)
+- fix: harden file I/O and lock acquisition (`7f6fafa0`)
+- fix: detect Vercel AI Gateway rate limits (#163) (`7afa1753`)
+- fix(update): fail on checksum verification errors (`c260f1f0`)
+- fix(test): block real API calls in test suite (`55d6d127`)
+- fix(config): warn on malformed config instead of silent fallback (`0360cb89`)
+- docs: add src/ README with module map (`95048bf2`)
+- docs(src): add file suffix patterns, ops convention, contract examples (`7a5a688b`)
+- fix: harden critical subsystems (#164) (`dcbbb6f0`)
+- chore(docs): update benchmarks 2026-04-09 (`64b03a78`)
+
+
 ## 0.16.0 (2026-04-08)
 
 - test(cli): add cli visual harness (#126) (`336dceaf`)
