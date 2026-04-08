@@ -25,6 +25,8 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
+const MAX_LOCK_ATTEMPTS = 2;
+
 function locksDir(options?: LockOptions): string {
   return join(options?.homeDir ?? resolveHomeDir(), ".acolyte", "locks");
 }
@@ -43,7 +45,7 @@ export function acquireSessionLock(
   const lockPath = lockPathForSession(sessionId, options);
   const myPid = process.pid;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_LOCK_ATTEMPTS; attempt += 1) {
     // Try exclusive create to avoid TOCTOU races.
     try {
       const fd = openSync(lockPath, "wx", PRIVATE_FILE_MODE);

@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { appConfig } from "./app-config";
 import { decodeTokenSubject } from "./credentials";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
@@ -8,6 +7,7 @@ import { errorToLogFields, log } from "./log";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
+import { hasValidAuth as checkAuth } from "./server-auth";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler, json } from "./server-http";
@@ -48,28 +48,6 @@ function serverError(
     ...errorToLogFields(error),
   });
   return json({ errorMessage: publicMessage, errorId, errorCode, error: streamError }, status);
-}
-
-function safeEqual(a: string, b: string): boolean {
-  const hashA = new Bun.CryptoHasher("sha256").update(a).digest();
-  const hashB = new Bun.CryptoHasher("sha256").update(b).digest();
-  // node:crypto — Bun has no native timingSafeEqual
-  return timingSafeEqual(Buffer.from(hashA), Buffer.from(hashB));
-}
-
-function hasValidAuth(req: Request): boolean {
-  if (!API_KEY) return true;
-
-  const auth = req.headers.get("authorization");
-  if (auth && safeEqual(auth, `Bearer ${API_KEY}`)) return true;
-
-  const protocol = req.headers.get("sec-websocket-protocol") ?? "";
-  for (const proto of protocol.split(",")) {
-    const trimmed = proto.trim();
-    if (trimmed.startsWith("bearer.") && safeEqual(trimmed.slice(7), API_KEY)) return true;
-  }
-
-  return false;
 }
 
 function transitionTaskState(
@@ -148,7 +126,7 @@ export async function startServer(): Promise<void> {
   let server: Bun.Server<RpcConnectionState>;
   const fetchHandler = createServerFetchHandler({
     createStatusPayload,
-    hasValidAuth,
+    hasValidAuth: (req: Request) => checkAuth(req, API_KEY),
     isChatRequest,
     runChatRequest,
     serverError,
