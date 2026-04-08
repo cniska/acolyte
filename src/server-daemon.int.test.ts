@@ -291,6 +291,32 @@ describe("server daemon internals", () => {
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 
+  test("stopLocalServer shuts down healthy server when lock pid is dead", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    let shutdownCalled = false;
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status") return compatibleStatusResponse();
+      if (url.pathname === "/v1/admin/shutdown") {
+        shutdownCalled = true;
+        server.stop();
+        return Response.json({ ok: true });
+      }
+      return new Response("ok");
+    });
+    // Lock exists but its PID is dead — server is actually running on the port
+    const lockPath = serverDaemonInternals.serverLockPath(server.port, home);
+    await mkdir(join(lockPath, ".."), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({ pid: 999999, port: server.port, startedAt: "2026-02-28T00:00:00.000Z" }),
+      "utf8",
+    );
+    const result = await stopLocalServer({ port: server.port, homeDir: home });
+    expect(result.stopped).toBe(true);
+    expect(shutdownCalled).toBe(true);
+  });
+
   test("stopLocalServer kills alive process even when endpoint is unhealthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     // Start a subprocess that just sleeps

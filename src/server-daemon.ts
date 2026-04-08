@@ -393,6 +393,8 @@ export async function stopLocalServer(input: { port: number; apiKey?: string; ho
     // Ignore; lock cleanup still proceeds.
   }
   await rm(lockPath, { force: true });
+  // If the lock PID was dead but a server is still healthy (stale lock), shut it down.
+  if (!isProcessAlive(lock.pid)) await requestGracefulShutdown(apiUrl, apiKey);
   return { stopped: true, pid: lock.pid };
 }
 
