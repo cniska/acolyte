@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createMarkerScenarioHandler,
@@ -10,10 +9,10 @@ import {
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { waitForServer } from "../scripts/wait-server";
+import { tempDir } from "./test-utils";
 
 const repoRoot = process.cwd();
-const tmpHomes: string[] = [];
-const tmpProjects: string[] = [];
+const dirs = tempDir();
 const serverProcs: Bun.Subprocess[] = [];
 
 afterEach(async () => {
@@ -21,16 +20,7 @@ afterEach(async () => {
     proc.kill();
     await proc.exited.catch(() => {});
   }
-  while (tmpHomes.length > 0) {
-    const dir = tmpHomes.pop();
-    if (!dir) continue;
-    await rm(dir, { recursive: true, force: true });
-  }
-  while (tmpProjects.length > 0) {
-    const dir = tmpProjects.pop();
-    if (!dir) continue;
-    await rm(dir, { recursive: true, force: true });
-  }
+  dirs.cleanupDirs();
 });
 
 function randomTestPort(): number {
@@ -42,10 +32,8 @@ type RpcTestServerOptions = {
 };
 
 async function startServerForRpcTest(port: number, apiKey: string, options?: RpcTestServerOptions): Promise<void> {
-  const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
-  const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
-  tmpHomes.push(home);
-  tmpProjects.push(project);
+  const home = dirs.createDir("acolyte-rpc-home-");
+  const project = dirs.createDir("acolyte-rpc-project-");
   await prepareRpcTestProject(project, port, options?.providerBaseUrl);
   await startRpcTestServerProcess(home, project, apiKey, port, options);
 }
@@ -394,10 +382,8 @@ describe("server rpc websocket queue", () => {
       async (providerBaseUrl) => {
         const port = randomTestPort();
         const apiKey = "rpc_test_key";
-        const home = await mkdtemp(join(tmpdir(), "acolyte-rpc-home-"));
-        const project = await mkdtemp(join(tmpdir(), "acolyte-rpc-project-"));
-        tmpHomes.push(home);
-        tmpProjects.push(project);
+        const home = dirs.createDir("acolyte-rpc-home-");
+        const project = dirs.createDir("acolyte-rpc-project-");
         await prepareRpcTestProject(project, port, providerBaseUrl);
 
         const proc = await startRpcTestServerProcess(home, project, apiKey, port, { providerBaseUrl });

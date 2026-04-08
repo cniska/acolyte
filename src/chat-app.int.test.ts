@@ -1,12 +1,16 @@
-import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getCachedRepoPathCandidates, invalidateRepoPathCandidates } from "./chat-file-ref";
+import { tempDir } from "./test-utils";
+
+const dirs = tempDir();
+
+afterEach(dirs.cleanupDirs);
 
 describe("chat-ui integration helpers", () => {
   test("getCachedRepoPathCandidates refreshes after invalidation", async () => {
-    const root = await mkdtemp(join(tmpdir(), "acolyte-at-cache-"));
+    const root = dirs.createDir("acolyte-at-cache-");
     await mkdir(join(root, "src"), { recursive: true });
     await writeFile(join(root, "src", "a.ts"), "a", "utf8");
     const first = await getCachedRepoPathCandidates(root);

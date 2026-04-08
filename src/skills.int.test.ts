@@ -40,11 +40,11 @@ describe("skills loader", () => {
     expect(helper?.source).toBe("project");
   });
 
-  test("does not scan legacy ./skills directory", async () => {
-    const dir = createDir("acolyte-skills-dedup-");
-    const legacyDir = join(dir, "skills", "demo");
-    mkdirSync(legacyDir, { recursive: true });
-    writeFileSync(join(legacyDir, "SKILL.md"), "---\nname: demo\ndescription: From skills/\n---", "utf8");
+  test("only scans .agents/skills directory", async () => {
+    const dir = createDir("acolyte-skills-scope-");
+    const ignoredDir = join(dir, "skills", "demo");
+    mkdirSync(ignoredDir, { recursive: true });
+    writeFileSync(join(ignoredDir, "SKILL.md"), "---\nname: demo\ndescription: From skills/\n---", "utf8");
     const agentDir = join(dir, ".agents", "skills", "demo");
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(join(agentDir, "SKILL.md"), "---\nname: demo\ndescription: From .agents/skills/\n---", "utf8");

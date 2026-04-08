@@ -1,6 +1,5 @@
-import { afterAll, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import {
@@ -12,16 +11,19 @@ import {
   searchFiles,
   writeTextFile,
 } from "./file-ops";
-import { testUuid } from "./test-utils";
+import { tempDir, testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
 const tempFiles: string[] = [];
 const tempDirs: string[] = [];
+const dirs = tempDir();
 
 afterAll(async () => {
   await Promise.all(tempFiles.map(async (f) => rm(f, { force: true })));
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
+
+afterEach(dirs.cleanupDirs);
 
 describe("path validation", () => {
   test("readFileContent blocks paths outside workspace", async () => {
@@ -400,8 +402,7 @@ describe("searchFiles", () => {
   });
 
   test("accepts canonical absolute paths inside a symlinked workspace root", async () => {
-    const root = await mkdtemp(join(tmpdir(), "acolyte-search-sandbox-"));
-    tempDirs.push(root);
+    const root = dirs.createDir("acolyte-search-sandbox-");
     const realWorkspace = join(root, "real-workspace");
     const linkWorkspace = join(root, "workspace-link");
     const filePath = join(realWorkspace, "inside.ts");

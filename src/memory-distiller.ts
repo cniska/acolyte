@@ -1,6 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
+import { clampToTokenEstimate, type DistillScope, normalizeMemoryText, splitScopedObservation } from "./distill-ops";
 import { log } from "./log";
 import {
   defaultMemoryPolicy,
@@ -46,8 +47,6 @@ async function getCachedStore(): Promise<MemoryStore> {
   return cachedStore;
 }
 
-type DistillScope = "session" | "project" | "user";
-
 async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
   try {
     const vec = await embedText(content);
@@ -55,98 +54,6 @@ async function embedAndStore(ds: MemoryStore, id: string, scope: string, content
   } catch (error) {
     log.warn("memory.distill.embed_failed", { id, error: String(error) });
   }
-}
-
-const CHARS_PER_TOKEN_ESTIMATE = 4;
-const TEXT_SHRINK_RATIO = 0.9;
-
-function clampToTokenEstimate(content: string, maxTokens: number): string {
-  const text = content.trim();
-  if (!text) return "";
-  if (maxTokens <= 0) return "";
-  if (estimateTokens(text) <= maxTokens) return text;
-
-  let clamped = text.slice(0, Math.max(1, maxTokens * CHARS_PER_TOKEN_ESTIMATE)).trim();
-  while (clamped.length > 0 && estimateTokens(clamped) > maxTokens) {
-    clamped = clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO)).trim();
-  }
-  return clamped;
-}
-
-function normalizeMemoryText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function parseObserveDirective(line: string): DistillScope | null {
-  const match = line.trim().match(/^@observe\s+(project|user|session)$/i);
-  return match ? (match[1].toLowerCase() as DistillScope) : null;
-}
-
-function parseTopicDirective(line: string): string | null {
-  const match = line.trim().match(/^@topic\s+(\S+)$/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
-function hasMalformedObserveDirective(line: string): boolean {
-  return /^@observe\b/i.test(line.trim()) && !parseObserveDirective(line);
-}
-
-type ParsedFact = { scope: DistillScope; content: string; topic: string | null };
-
-type SplitResult = {
-  facts: ParsedFact[];
-  sessionCount: number;
-  projectCount: number;
-  userCount: number;
-  droppedUntaggedCount: number;
-  droppedMalformedCount: number;
-};
-
-export function splitScopedObservation(observed: string): SplitResult {
-  const lines = observed
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const facts: ParsedFact[] = [];
-  let droppedUntaggedCount = 0;
-  let droppedMalformedCount = 0;
-  let pendingScope: DistillScope | null = null;
-  let pendingTopic: string | null = null;
-  for (const line of lines) {
-    const scope = parseObserveDirective(line);
-    if (scope) {
-      pendingScope = scope;
-      pendingTopic = null;
-      continue;
-    }
-    if (hasMalformedObserveDirective(line)) {
-      droppedMalformedCount += 1;
-      pendingScope = null;
-      pendingTopic = null;
-      continue;
-    }
-    const topic = parseTopicDirective(line);
-    if (topic) {
-      pendingTopic = topic;
-      continue;
-    }
-    if (!pendingScope) {
-      droppedUntaggedCount += 1;
-      continue;
-    }
-    facts.push({ scope: pendingScope, content: line, topic: pendingTopic });
-    pendingScope = null;
-    pendingTopic = null;
-  }
-
-  return {
-    facts,
-    sessionCount: facts.filter((f) => f.scope === "session").length,
-    projectCount: facts.filter((f) => f.scope === "project").length,
-    userCount: facts.filter((f) => f.scope === "user").length,
-    droppedUntaggedCount,
-    droppedMalformedCount,
-  };
 }
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
@@ -229,7 +136,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
-  let malformedRejectStreak = 0;
+  const malformedStreaks = new Map<string, number>();
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
@@ -263,13 +170,14 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
       }
       if (scoped.droppedMalformedCount > 0) {
-        malformedRejectStreak += 1;
+        const streak = (malformedStreaks.get(key) ?? 0) + 1;
+        malformedStreaks.set(key, streak);
         log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
-        if (malformedRejectStreak >= policy.malformedStreakWarningThreshold) {
-          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: malformedRejectStreak });
+        if (streak >= policy.malformedStreakWarningThreshold) {
+          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: streak });
         }
       } else {
-        malformedRejectStreak = 0;
+        malformedStreaks.delete(key);
       }
       let totalTokens = promptTokens;
       for (const fact of scoped.facts) {

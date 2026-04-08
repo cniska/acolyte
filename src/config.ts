@@ -35,10 +35,23 @@ export type ConfigOptions = {
   scope?: ConfigScope;
 };
 
-function mergeConfigScopes(base: Config, override: Config): Config {
-  const merged: Config = { ...base };
-  for (const [key, value] of Object.entries(override) as Array<[keyof Config, unknown]>) {
-    if (value !== undefined) merged[key] = value as never;
+function shallowMerge<T extends object>(base: T, override: T): T {
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    if (value === undefined) continue;
+    const existing = (merged as Record<string, unknown>)[key];
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value) &&
+      typeof existing === "object" &&
+      existing !== null &&
+      !Array.isArray(existing)
+    ) {
+      (merged as Record<string, unknown>)[key] = { ...existing, ...value };
+    } else {
+      (merged as Record<string, unknown>)[key] = value;
+    }
   }
   return merged;
 }
@@ -166,7 +179,7 @@ export async function readConfig(options?: ConfigOptions): Promise<Config> {
   try {
     const userConfig = await readConfigForScope("user", options);
     const projectConfig = await readConfigForScope("project", options);
-    return mergeConfigScopes(userConfig, projectConfig);
+    return shallowMerge(userConfig, projectConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Warning: failed to parse config file, using defaults. ${message}`);
@@ -178,7 +191,7 @@ export function readConfigSync(options?: ConfigOptions): Config {
   try {
     const userConfig = readConfigForScopeSync("user", options);
     const projectConfig = readConfigForScopeSync("project", options);
-    return mergeConfigScopes(userConfig, projectConfig);
+    return shallowMerge(userConfig, projectConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Warning: failed to parse config file, using defaults. ${message}`);

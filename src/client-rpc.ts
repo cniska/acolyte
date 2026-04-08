@@ -212,6 +212,7 @@ export class RpcClient implements Client {
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         ws.removeEventListener("message", onMessage);
         ws.removeEventListener("close", onClose);
+        ws.removeEventListener("error", onError);
         if (options.signal) options.signal.removeEventListener("abort", onAbort);
       };
       const onAbort = () => {
@@ -237,6 +238,10 @@ export class RpcClient implements Client {
       const onClose = () => {
         cleanup();
         reject(createRemoteError("RPC stream closed before final reply", { taskId: acceptedTaskId }));
+      };
+      const onError = () => {
+        cleanup();
+        reject(createRemoteError("RPC WebSocket error", { taskId: acceptedTaskId }));
       };
       const onMessage = (event: MessageEvent) => {
         resetTimeout();
@@ -280,6 +285,7 @@ export class RpcClient implements Client {
 
       ws.addEventListener("message", onMessage);
       ws.addEventListener("close", onClose);
+      ws.addEventListener("error", onError);
       if (options.signal) {
         if (options.signal.aborted) {
           onAbort();

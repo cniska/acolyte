@@ -1,24 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { tempDir } from "./test-utils";
 
-const tmpHomes: string[] = [];
-const tmpProjects: string[] = [];
+const dirs = tempDir();
 const repoRoot = process.cwd();
 
-afterEach(async () => {
-  while (tmpHomes.length > 0) {
-    const dir = tmpHomes.pop();
-    if (!dir) continue;
-    await rm(dir, { recursive: true, force: true });
-  }
-  while (tmpProjects.length > 0) {
-    const dir = tmpProjects.pop();
-    if (!dir) continue;
-    await rm(dir, { recursive: true, force: true });
-  }
-});
+afterEach(dirs.cleanupDirs);
 
 async function runCliWithInput(
   home: string,
@@ -51,10 +39,8 @@ async function runCliWithInput(
 }
 
 async function createTestEnv(): Promise<{ home: string; project: string }> {
-  const home = await mkdtemp(join(tmpdir(), "acolyte-cli-init-home-"));
-  const project = await mkdtemp(join(tmpdir(), "acolyte-cli-init-project-"));
-  tmpHomes.push(home);
-  tmpProjects.push(project);
+  const home = dirs.createDir("acolyte-cli-init-home-");
+  const project = dirs.createDir("acolyte-cli-init-project-");
   await mkdir(join(home, ".acolyte"), { recursive: true });
   return { home, project };
 }

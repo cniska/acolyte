@@ -1,5 +1,4 @@
-import { chmod, copyFile, mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
@@ -8,15 +7,15 @@ import { palette } from "./palette";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
 import { printOutput } from "./ui";
+import { installUpdate } from "./update-ops";
 
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
 
-type UpdateInfo = { available: boolean; latest: string; downloadUrl: string };
-type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string };
+type UpdateInfo = { available: boolean; latest: string; downloadUrl: string; checksumUrl: string | null };
+type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string; checksumUrl?: string };
 type GitHubRelease = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
-type InstallResult = { success: boolean; error?: string };
 
 export function resolveAssetName(): string {
   const platform = process.platform === "darwin" ? "darwin" : "linux";
@@ -82,7 +81,12 @@ async function checkForUpdate(
       const age = Date.now() - new Date(cached.checkedAt).getTime();
       if (age < CHECK_INTERVAL_MS) {
         const available = compareSemver(currentVersion, cached.latest);
-        return { available, latest: cached.latest, downloadUrl: cached.downloadUrl };
+        return {
+          available,
+          latest: cached.latest,
+          downloadUrl: cached.downloadUrl,
+          checksumUrl: cached.checksumUrl ?? null,
+        };
       }
     }
   }
@@ -94,119 +98,21 @@ async function checkForUpdate(
   const assetName = resolveAssetName();
   const asset = release.assets.find((a) => a.name === assetName);
   if (!asset) return null;
+  const checksumAsset = release.assets.find((a) => a.name === `${assetName.replace(/\.tar\.gz$/, "")}.sha256`);
 
   await writeCache(home, {
     checkedAt: new Date().toISOString(),
     latest: version,
     downloadUrl: asset.browser_download_url,
+    checksumUrl: checksumAsset?.browser_download_url,
   });
 
   return {
     available: compareSemver(currentVersion, version),
     latest: version,
     downloadUrl: asset.browser_download_url,
+    checksumUrl: checksumAsset?.browser_download_url ?? null,
   };
-}
-
-type ProgressCallback = (received: number, total: number) => void;
-
-async function downloadToFile(url: string, dest: string, onProgress?: ProgressCallback): Promise<void> {
-  const res = await fetch(url, {
-    headers: { "user-agent": "acolyte-cli" },
-    redirect: "follow",
-  });
-  if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
-
-  const total = Number(res.headers.get("content-length") ?? 0);
-  let received = 0;
-
-  const file = Bun.file(dest);
-  const writer = file.writer();
-
-  for await (const chunk of res.body) {
-    writer.write(chunk);
-    received += chunk.byteLength;
-    if (onProgress && total > 0) onProgress(received, total);
-  }
-
-  await writer.end();
-}
-
-async function extractBinary(tarPath: string, outDir: string): Promise<string> {
-  const proc = Bun.spawn(["tar", "xzf", tarPath, "-C", outDir], {
-    stdout: "ignore",
-    stderr: "pipe",
-  });
-  const exitCode = await proc.exited;
-  if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text();
-    throw new Error(`Extract failed (exit ${exitCode}): ${stderr}`);
-  }
-  return join(outDir, "acolyte");
-}
-
-async function verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
-  const res = await fetch(checksumUrl, {
-    headers: { "user-agent": "acolyte-cli" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`Checksum fetch failed: ${res.status}`);
-  const expected = (await res.text()).trim().split(/\s+/)[0];
-  if (!expected) throw new Error("Checksum file is empty or malformed");
-
-  const hasher = new Bun.CryptoHasher("sha256");
-  const file = Bun.file(filePath);
-  const stream = file.stream();
-  for await (const chunk of stream) {
-    hasher.update(chunk);
-  }
-  const actual = hasher.digest("hex");
-
-  if (expected !== actual) {
-    throw new Error(`Checksum mismatch: expected ${expected}, got ${actual}`);
-  }
-}
-
-async function installUpdate(downloadUrl: string, onProgress?: ProgressCallback): Promise<InstallResult> {
-  const binaryPath = process.execPath;
-  const tmp = tmpdir();
-  const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
-  const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
-  const newBinaryPath = `${binaryPath}.new`;
-  const checksumUrl = downloadUrl.replace(/\.tar\.gz$/, ".sha256");
-
-  try {
-    await downloadToFile(downloadUrl, tarPath, onProgress);
-    await verifyChecksum(tarPath, checksumUrl);
-
-    await mkdir(extractDir, { recursive: true });
-    const extractedPath = await extractBinary(tarPath, extractDir);
-
-    await copyFile(extractedPath, newBinaryPath);
-    await chmod(newBinaryPath, 0o755);
-    await rename(newBinaryPath, binaryPath);
-
-    return { success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    try {
-      await unlink(newBinaryPath);
-    } catch {
-      // ignore
-    }
-    return { success: false, error: message };
-  } finally {
-    try {
-      await unlink(tarPath);
-    } catch {
-      // ignore
-    }
-    try {
-      await rm(extractDir, { recursive: true, force: true });
-    } catch {
-      // ignore
-    }
-  }
 }
 
 const BRAND = colorToFg(palette.brand);
@@ -249,18 +155,18 @@ function renderError(message: string): void {
 }
 
 function reexec(): never {
-  Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
+  const result = Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
   });
-  process.exit(0);
+  process.exit(result.exitCode ?? 1);
 }
 
-async function performUpdate(currentVersion: string, latest: string, downloadUrl: string): Promise<void> {
-  renderHeader(currentVersion, latest);
+async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {
+  renderHeader(currentVersion, update.latest);
 
-  const result = await installUpdate(downloadUrl, (received, total) => {
+  const result = await installUpdate(update.downloadUrl, update.checksumUrl, (received, total) => {
     renderProgress(received, total);
   });
 
@@ -269,7 +175,7 @@ async function performUpdate(currentVersion: string, latest: string, downloadUrl
     return;
   }
 
-  renderDone(latest);
+  renderDone(update.latest);
   await stopAllLocalServers();
   reexec();
 }
@@ -288,10 +194,8 @@ export async function updateMode(): Promise<void> {
     return;
   }
 
-  await performUpdate(currentVersion, update.latest, update.downloadUrl);
+  await performUpdate(currentVersion, update);
 }
-
-export const cliUpdateInternals = { verifyChecksum };
 
 export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
   if (options?.skip) return false;
@@ -304,6 +208,6 @@ export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Pro
   const update = await checkForUpdate(currentVersion);
   if (!update?.available) return false;
 
-  await performUpdate(currentVersion, update.latest, update.downloadUrl);
+  await performUpdate(currentVersion, update);
   return true;
 }

@@ -306,6 +306,22 @@ describe("config store", () => {
     expect(resolved.features.syncAgents).toBe(false);
   });
 
+  test("project features merge with user features instead of replacing", async () => {
+    const home = createDir("acolyte-config-home-");
+    const project = createDir("acolyte-config-project-");
+    const userDataDir = join(home, ".acolyte");
+    const projectDataDir = join(project, ".acolyte");
+    mkdirSync(userDataDir, { recursive: true });
+    mkdirSync(projectDataDir, { recursive: true });
+
+    writeFileSync(join(userDataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+    writeFileSync(join(projectDataDir, "config.toml"), ["[features]", "cloudSync = true"].join("\n"), "utf8");
+
+    const loaded = await readConfig({ homeDir: home, cwd: project });
+    expect(loaded.features?.syncAgents).toBe(true);
+    expect(loaded.features?.cloudSync).toBe(true);
+  });
+
   test("project config overrides user config", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");

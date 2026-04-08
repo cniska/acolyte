@@ -164,12 +164,17 @@ export function getMemoryStore(): Promise<MemoryStore> {
   if (storeInstance) return Promise.resolve(storeInstance);
   if (storePromise) return storePromise;
 
-  storePromise = resolveStore().then((store) => {
-    storeInstance = store;
-    storePromise = null;
-    process.on("exit", () => storeInstance?.close());
-    return store;
-  });
+  storePromise = resolveStore()
+    .then((store) => {
+      storeInstance = store;
+      storePromise = null;
+      process.on("exit", () => storeInstance?.close());
+      return store;
+    })
+    .catch((error) => {
+      storePromise = null;
+      throw error;
+    });
   return storePromise;
 }
 

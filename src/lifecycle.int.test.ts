@@ -1,6 +1,5 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createMessagePayload,
@@ -13,29 +12,34 @@ import {
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps } from "./test-utils";
+import { createLifecycleDeps, tempDir } from "./test-utils";
 import { runTool } from "./tool-execution";
 import type { SessionContext } from "./tool-session";
 import { listUndoCheckpoints } from "./undo-checkpoints";
+
+const dirs = tempDir();
 
 let fake: FakeProviderServer;
 let workspace: string;
 let savedBaseUrl: string;
 let savedApiKey: string | undefined;
 
-beforeAll(async () => {
-  workspace = await mkdtemp(join(tmpdir(), "acolyte-lifecycle-int-"));
-  await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-
+beforeAll(() => {
   savedBaseUrl = appConfig.openai.baseUrl;
   savedApiKey = appConfig.openai.apiKey;
 });
 
-afterAll(async () => {
+beforeEach(async () => {
+  workspace = dirs.createDir("acolyte-lifecycle-int-");
+  await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
+});
+
+afterAll(() => {
   (appConfig.openai as { baseUrl: string }).baseUrl = savedBaseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
-  await rm(workspace, { recursive: true, force: true });
 });
+
+afterEach(dirs.cleanupDirs);
 
 function setupFakeProvider(handler: (ctx: FakeProviderRequestContext) => Record<string, unknown>): void {
   if (fake) fake.stop();
@@ -244,49 +248,45 @@ exit 1
   });
 
   test("captures undo checkpoint after write tool when enabled", async () => {
-    const undoWorkspace = await mkdtemp(join(tmpdir(), "acolyte-lifecycle-undo-"));
-    try {
-      await mkdir(join(undoWorkspace, ".acolyte"), { recursive: true });
-      await writeFile(join(undoWorkspace, "a.txt"), "one\n", "utf8");
+    const undoWorkspace = dirs.createDir("acolyte-lifecycle-undo-");
+    await mkdir(join(undoWorkspace, ".acolyte"), { recursive: true });
+    await writeFile(join(undoWorkspace, "a.txt"), "one\n", "utf8");
 
-      const deps = createLifecycleDeps({
-        phaseGenerate: mock(async (ctx: { session: SessionContext; result?: unknown }) => {
-          await runTool(ctx.session, "file-edit", "call_1", { path: "a.txt" }, async () => {
-            await writeFile(join(undoWorkspace, "a.txt"), "two\n", "utf8");
-            return { ok: true };
-          });
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx: { session: SessionContext; result?: unknown }) => {
+        await runTool(ctx.session, "file-edit", "call_1", { path: "a.txt" }, async () => {
+          await writeFile(join(undoWorkspace, "a.txt"), "two\n", "utf8");
+          return { ok: true };
+        });
 
-          (ctx as { result?: unknown }).result = { text: "done", toolCalls: [], signal: "done" };
-        }),
-      });
+        (ctx as { result?: unknown }).result = { text: "done", toolCalls: [], signal: "done" };
+      }),
+    });
 
-      await runLifecycle(
-        {
-          request: {
-            model: "gpt-5-mini",
-            message: "test",
-            history: [],
-            useMemory: false,
-            sessionId: "sess_undo",
-          },
-          soulPrompt: "SOUL",
-          workspace: undoWorkspace,
-          features: {
-            syncAgents: false,
-            undoCheckpoints: true,
-            parallelWorkspaces: false,
-            cloudSync: false,
-          },
+    await runLifecycle(
+      {
+        request: {
+          model: "gpt-5-mini",
+          message: "test",
+          history: [],
+          useMemory: false,
+          sessionId: "sess_undo",
         },
-        deps,
-      );
+        soulPrompt: "SOUL",
+        workspace: undoWorkspace,
+        features: {
+          syncAgents: false,
+          undoCheckpoints: true,
+          parallelWorkspaces: false,
+          cloudSync: false,
+        },
+      },
+      deps,
+    );
 
-      const checkpoints = await listUndoCheckpoints({ workspace: undoWorkspace, sessionId: "sess_undo", limit: 10 });
-      expect(checkpoints.length).toBe(1);
-      expect(checkpoints[0]?.toolId).toBe("file-edit");
-      expect(checkpoints[0]?.paths).toEqual(["a.txt"]);
-    } finally {
-      await rm(undoWorkspace, { recursive: true, force: true });
-    }
+    const checkpoints = await listUndoCheckpoints({ workspace: undoWorkspace, sessionId: "sess_undo", limit: 10 });
+    expect(checkpoints.length).toBe(1);
+    expect(checkpoints[0]?.toolId).toBe("file-edit");
+    expect(checkpoints[0]?.paths).toEqual(["a.txt"]);
   });
 });

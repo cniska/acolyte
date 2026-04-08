@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { DISTILLER_PROMPT, splitScopedObservation } from "../src/memory-distiller";
+import { splitScopedObservation } from "../src/distill-ops";
+import { DISTILLER_PROMPT } from "../src/memory-distiller";
 import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
 export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations" | "locomo-distilled";

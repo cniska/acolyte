@@ -1,4 +1,10 @@
 import { setLogSink } from "./log";
+import {
+  DEFAULT_ANTHROPIC_BASE_URL,
+  DEFAULT_GOOGLE_BASE_URL,
+  DEFAULT_OPENAI_BASE_URL,
+  DEFAULT_VERCEL_BASE_URL,
+} from "./provider-constants";
 
 setLogSink(() => {});
 
@@ -10,7 +16,12 @@ delete process.env.AI_GATEWAY_API_KEY;
 
 // Guard: block outbound requests to known LLM provider APIs.
 // Tests that need HTTP should use startTestServer() for local endpoints.
-const BLOCKED_HOSTS = ["api.openai.com", "api.anthropic.com", "generativelanguage.googleapis.com"];
+const BLOCKED_HOSTS = [
+  DEFAULT_OPENAI_BASE_URL,
+  DEFAULT_ANTHROPIC_BASE_URL,
+  DEFAULT_GOOGLE_BASE_URL,
+  DEFAULT_VERCEL_BASE_URL,
+].map((url) => new URL(url).hostname);
 const originalFetch = globalThis.fetch;
 const guardedFetch = Object.assign(
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
