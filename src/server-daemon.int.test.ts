@@ -3,7 +3,14 @@ import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "./protocol";
-import { ensureLocalServer, localServerStatus, serverDaemonInternals, stopLocalServer } from "./server-daemon";
+import {
+  ensureLocalServer,
+  listRunningDaemons,
+  localServerStatus,
+  serverDaemonInternals,
+  stopAllLocalServers,
+  stopLocalServer,
+} from "./server-daemon";
 import { startTestServer } from "./test-utils";
 
 function compatibleStatusResponse(): Response {
@@ -335,6 +342,63 @@ describe("server daemon internals", () => {
       await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
     } finally {
       staleServer.stop();
+    }
+  });
+
+  test("stopAllLocalServers stops multiple daemons by lock", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const dir = serverDaemonInternals.daemonsDir(home);
+    await mkdir(dir, { recursive: true });
+
+    const procA = Bun.spawn(["sleep", "60"], { detached: true });
+    const procB = Bun.spawn(["sleep", "60"], { detached: true });
+    try {
+      await writeFile(
+        serverDaemonInternals.serverLockPath(9001, home),
+        JSON.stringify({ pid: procA.pid, port: 9001, startedAt: "2026-01-01T00:00:00.000Z" }),
+      );
+      await writeFile(
+        serverDaemonInternals.serverLockPath(9002, home),
+        JSON.stringify({ pid: procB.pid, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
+      );
+
+      const stopped = await stopAllLocalServers({ homeDir: home });
+      expect(stopped).toHaveLength(2);
+      expect(stopped.map((s) => s.port).sort()).toEqual([9001, 9002]);
+    } finally {
+      procA.kill();
+      procB.kill();
+      await procA.exited.catch(() => {});
+      await procB.exited.catch(() => {});
+    }
+  });
+
+  test("listRunningDaemons returns alive daemons and cleans dead locks", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const dir = serverDaemonInternals.daemonsDir(home);
+    await mkdir(dir, { recursive: true });
+
+    // Alive daemon
+    const proc = Bun.spawn(["sleep", "60"], { detached: true });
+    await writeFile(
+      serverDaemonInternals.serverLockPath(9001, home),
+      JSON.stringify({ pid: proc.pid, port: 9001, startedAt: "2026-01-01T00:00:00.000Z" }),
+    );
+    // Dead daemon
+    await writeFile(
+      serverDaemonInternals.serverLockPath(9002, home),
+      JSON.stringify({ pid: 999999, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
+    );
+
+    try {
+      const daemons = await listRunningDaemons({ homeDir: home });
+      expect(daemons).toHaveLength(1);
+      expect(daemons[0]?.pid).toBe(proc.pid);
+      // Dead lock should be cleaned up
+      await expect(Bun.file(serverDaemonInternals.serverLockPath(9002, home)).exists()).resolves.toBe(false);
+    } finally {
+      proc.kill();
+      await proc.exited.catch(() => {});
     }
   });
 });
