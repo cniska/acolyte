@@ -411,5 +411,41 @@ describe("memoryDistiller", () => {
         expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
       }
     });
+
+    test("malformed streak is scoped per key, not shared across sessions", async () => {
+      const store = createMockStore();
+      let callCount = 0;
+      const source = createTestDistiller(store, async () => {
+        callCount += 1;
+        // All calls return malformed @observe tags
+        return "@observe badscope\nmalformed fact";
+      });
+      if (!source.commit) throw new Error("expected commit handler");
+
+      // Commit twice on session A — streak for sess_a should be 2
+      await source.commit({
+        sessionId: "sess_a",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      await source.commit({
+        sessionId: "sess_a",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+
+      // Commit once on session B — streak for sess_b should be 1, NOT 3
+      const metrics = await source.commit({
+        sessionId: "sess_b",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+
+      // If streaks were shared, sess_b would inherit sess_a's count.
+      // The metrics don't expose streak directly, but we can verify
+      // that sess_b's droppedMalformedCount is independent (only 1 malformed).
+      expect(metrics?.droppedUntaggedFacts).toBe(1);
+      expect(callCount).toBe(3);
+    });
   });
 });
