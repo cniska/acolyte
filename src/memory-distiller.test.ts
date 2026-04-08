@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
-import { createMemoryDistiller, DISTILLER_PROMPT, distillerInternals } from "./memory-distiller";
+import {
+  clampToTokenEstimate,
+  createMemoryDistiller,
+  DISTILLER_PROMPT,
+  splitScopedObservation,
+} from "./memory-distiller";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
@@ -51,7 +56,7 @@ describe("clampToTokenEstimate", () => {
     // Mix single-byte and surrogate pair chars to force odd-boundary slicing.
     // "a🎉" = 3 UTF-16 code units. Repeating gives lengths not divisible by 2.
     const mixed = "a🎉".repeat(200);
-    const result = distillerInternals.clampToTokenEstimate(mixed, 5);
+    const result = clampToTokenEstimate(mixed, 5);
     expect(result.length).toBeGreaterThan(0);
     expect(result).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
     expect(result).not.toMatch(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
@@ -59,7 +64,7 @@ describe("clampToTokenEstimate", () => {
 });
 
 describe("splitScopedObservation", () => {
-  const split = distillerInternals.splitScopedObservation;
+  const split = splitScopedObservation;
 
   test("parses scoped observations into facts", () => {
     const result = split("@observe project\nuses bun\n@observe user\nprefers terse output");

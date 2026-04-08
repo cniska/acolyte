@@ -308,4 +308,4 @@ export function commitDistiller(ctx: MemoryCommitContext): Promise<MemoryCommitM
   return defaultDistiller.commit(ctx);
 }
 
-export const distillerInternals = { clampToTokenEstimate, splitScopedObservation };
+export { clampToTokenEstimate };
