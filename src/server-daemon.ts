@@ -152,9 +152,14 @@ async function waitForHealthyServerOrSpawnExit(
   logPath: string,
 ): Promise<void> {
   let exited = false;
-  proc.exited.then(() => {
-    exited = true;
-  });
+  proc.exited.then(
+    () => {
+      exited = true;
+    },
+    () => {
+      exited = true;
+    },
+  );
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (exited) throw new Error(t("cli.server.spawn_exited", { logPath }));
