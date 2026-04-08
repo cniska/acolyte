@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { appConfig } from "./app-config";
 import { decodeTokenSubject } from "./credentials";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
@@ -51,9 +51,10 @@ function serverError(
 }
 
 function safeEqual(a: string, b: string): boolean {
-  const hashA = crypto.createHash("sha256").update(a).digest();
-  const hashB = crypto.createHash("sha256").update(b).digest();
-  return crypto.timingSafeEqual(hashA, hashB);
+  const hashA = new Bun.CryptoHasher("sha256").update(a).digest();
+  const hashB = new Bun.CryptoHasher("sha256").update(b).digest();
+  // node:crypto — Bun has no native timingSafeEqual
+  return timingSafeEqual(Buffer.from(hashA), Buffer.from(hashB));
 }
 
 function hasValidAuth(req: Request): boolean {
