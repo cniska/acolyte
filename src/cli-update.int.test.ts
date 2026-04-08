@@ -1,10 +1,37 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tempDir } from "./test-utils";
-import { validateArchiveEntries } from "./update-ops";
+import { computeFileChecksum, validateArchiveEntries } from "./update-ops";
 
 const dirs = tempDir();
 afterEach(dirs.cleanupDirs);
+
+describe("computeFileChecksum", () => {
+  test("returns correct sha256 for known content", async () => {
+    const dir = dirs.createDir("acolyte-checksum-");
+    const filePath = join(dir, "test.bin");
+    await writeFile(filePath, "test-content", "utf8");
+
+    const hasher = new Bun.CryptoHasher("sha256");
+    hasher.update("test-content");
+    const expected = hasher.digest("hex");
+
+    expect(await computeFileChecksum(filePath)).toBe(expected);
+  });
+
+  test("returns different hash for different content", async () => {
+    const dir = dirs.createDir("acolyte-checksum-");
+    const fileA = join(dir, "a.bin");
+    const fileB = join(dir, "b.bin");
+    await writeFile(fileA, "content-a", "utf8");
+    await writeFile(fileB, "content-b", "utf8");
+
+    const hashA = await computeFileChecksum(fileA);
+    const hashB = await computeFileChecksum(fileB);
+    expect(hashA).not.toBe(hashB);
+  });
+});
 
 describe("validateArchiveEntries", () => {
   test("rejects archive with path traversal entry", async () => {
