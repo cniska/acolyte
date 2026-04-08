@@ -1,6 +1,7 @@
 import { invariant } from "./assert";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
+import { field } from "./field";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
 
@@ -44,14 +45,10 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
       code?: string;
       kind?: string;
     };
-    if (typeof error === "object" && error !== null && "code" in error) {
-      const code = (error as { code?: unknown }).code;
-      if (typeof code === "string" && code.length > 0) wrapped.code = code;
-    }
-    if (typeof error === "object" && error !== null && "kind" in error) {
-      const kind = (error as { kind?: unknown }).kind;
-      if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
-    }
+    const code = field(error, "code");
+    if (typeof code === "string" && code.length > 0) wrapped.code = code;
+    const kind = field(error, "kind");
+    if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;
     throw wrapped;
   }
 }

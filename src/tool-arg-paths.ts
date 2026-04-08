@@ -1,3 +1,5 @@
+import { field } from "./field";
+
 export const WORKSPACE_SCOPE = "__workspace__";
 
 export function normalizePath(p: string): string {
@@ -12,7 +14,7 @@ export function extractReadPaths(args: Record<string, unknown>, opts?: { normali
   const out: string[] = [];
   for (const entry of paths) {
     if (!entry || typeof entry !== "object") continue;
-    const path = (entry as { path?: unknown }).path;
+    const path = field(entry, "path");
     if (typeof path === "string" && path.trim().length > 0) {
       out.push(shouldNormalize ? normalizePath(path.trim()) : path.trim());
     }

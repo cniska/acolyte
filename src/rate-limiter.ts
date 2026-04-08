@@ -25,10 +25,7 @@ function jitter(ms: number): number {
   return ms * (0.5 + Math.random() * 0.5);
 }
 
-function field(obj: unknown, key: string): unknown {
-  if (typeof obj !== "object" || obj === null) return undefined;
-  return key in obj ? (obj as Record<string, unknown>)[key] : undefined;
-}
+import { field } from "./field";
 
 function isRateLimitError(error: unknown): boolean {
   if (field(error, "status") === 429) return true;
