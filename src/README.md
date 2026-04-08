@@ -6,7 +6,7 @@ Flat directory, ~200 modules, no nesting.
 
 Flat makes scanning fast — both for humans and AI agents. Every module is one `grep` away, no tree navigation required. The naming convention (`<domain>-<concern>.ts`) carries the structure without folders, and avoids import path churn while module boundaries are still shifting.
 
-As the codebase grows, the plan is to introduce light module folders. See #134.
+As the codebase grows, the plan is to introduce light module folders. See [#134](https://github.com/cniska/acolyte/issues/134).
 
 ## Naming convention
 
@@ -30,9 +30,9 @@ Files are named `<domain>-<concern>.ts`. The domain prefix groups related module
 | `server-*` | HTTP server, RPC, daemon lifecycle | `server.ts` |
 | `client-*` | RPC client, contract validation | `client-rpc.ts` |
 | `session-*` | Session persistence and token accounting | `session-store.ts` |
-| `config*` | User/project configuration (TOML) | `config.ts` |
+| `config-*` | User/project configuration (TOML) | `config.ts` |
 | `provider-*` | LLM provider detection and model routing | `provider-config.ts` |
-| `rate-limiter*` | Rate limit detection, retry, preemptive pacing | `rate-limiter.ts` |
+| `rate-limiter-*` | Rate limit detection, retry, preemptive pacing | `rate-limiter.ts` |
 | `workspace-*` | Workspace detection, sandboxing, profiles | `workspace-sandbox.ts` |
 | `rpc-*` | WebSocket RPC protocol | `rpc-protocol.ts` |
 | `task-*` | Background task queue and registry | `task-queue.ts` |
@@ -40,9 +40,13 @@ Files are named `<domain>-<concern>.ts`. The domain prefix groups related module
 | `skill-*` | Skill loading and activation | `skills.ts` |
 | `cloud-*` | Cloud API client | `cloud-client.ts` |
 
-## Contracts
+## File suffixes
 
-Files ending in `-contract.ts` define types, schemas, and constants shared across module boundaries. They have no runtime dependencies on implementation modules. Read these first to understand a domain.
+| Suffix | Role | Examples |
+| --- | --- | --- |
+| `*-contract.ts` | Types, schemas, and constants shared across boundaries. Start here when learning a domain. | `lifecycle-contract.ts`, `tool-contract.ts`, `session-contract.ts` |
+| `*-ops.ts` | Domain operations. Keeps testable logic separate from wiring. | `file-ops.ts`, `code-ops.ts`, `memory-ops.ts` |
+| `*-toolkit.ts` | Tool definitions registered with the agent. Thin wrappers over ops. | `file-toolkit.ts`, `git-toolkit.ts` |
 
 ## Test files
 
