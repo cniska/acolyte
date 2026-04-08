@@ -1,12 +1,14 @@
-import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { parseExitCode, runShellCommand } from "./shell-ops";
-import { testUuid } from "./test-utils";
+import { tempDir, testUuid } from "./test-utils";
 
 const WORKSPACE = resolve(process.cwd());
+const dirs = tempDir();
+
+afterEach(dirs.cleanupDirs);
 
 describe("runShellCommand", () => {
   test("runs in-workspace commands", async () => {
@@ -115,20 +117,16 @@ describe("runShellCommand", () => {
   });
 
   test("allows nested relative paths within workspace", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-shell-sandbox-"));
+    const dir = dirs.createDir("acolyte-shell-sandbox-");
     const workspaceDir = join(dir, "workspace");
     const nestedDir = join(workspaceDir, "nested");
     const nestedFile = join(nestedDir, "note.txt");
     await mkdir(nestedDir, { recursive: true });
     await writeFile(nestedFile, "nested-ok\n", "utf8");
 
-    try {
-      const output = await runShellCommand(workspaceDir, { cmd: "cat", args: ["nested/note.txt"] });
-      expect(output).toContain("exit_code=0");
-      expect(output).toContain("nested-ok");
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
+    const output = await runShellCommand(workspaceDir, { cmd: "cat", args: ["nested/note.txt"] });
+    expect(output).toContain("exit_code=0");
+    expect(output).toContain("nested-ok");
   });
 });
 
