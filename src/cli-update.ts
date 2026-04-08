@@ -1,4 +1,4 @@
-import { chmod, copyFile, mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { access, chmod, copyFile, mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stdout } from "node:process";
@@ -142,7 +142,12 @@ async function extractBinary(tarPath: string, outDir: string): Promise<string> {
     const stderr = await new Response(proc.stderr).text();
     throw new Error(`Extract failed (exit ${exitCode}): ${stderr}`);
   }
-  return join(outDir, "acolyte");
+  const binaryPath = join(outDir, "acolyte");
+  await access(binaryPath);
+  const entries = await readdir(outDir);
+  const unexpected = entries.filter((e) => e !== "acolyte");
+  if (unexpected.length > 0) throw new Error(`Unexpected files in archive: ${unexpected.join(", ")}`);
+  return binaryPath;
 }
 
 async function verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
