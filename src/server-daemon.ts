@@ -291,17 +291,19 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
 
   const logPath = serverLogPath(port, homeDir);
   await mkdir(join(logPath, ".."), { recursive: true });
-  const logFd = openSync(logPath, "a", PRIVATE_FILE_MODE);
-  const proc = Bun.spawn([process.execPath, "run", serverEntry], {
-    env: { ...process.env, PORT: String(port) },
-    stdout: logFd,
-    stderr: logFd,
-    detached: true,
-  });
-  closeSync(logFd);
-  proc.unref();
 
+  let proc: ReturnType<typeof Bun.spawn> | undefined;
   try {
+    const logFd = openSync(logPath, "a", PRIVATE_FILE_MODE);
+    proc = Bun.spawn([process.execPath, "run", serverEntry], {
+      env: { ...process.env, PORT: String(port) },
+      stdout: logFd,
+      stderr: logFd,
+      detached: true,
+    });
+    closeSync(logFd);
+    proc.unref();
+
     await waitForHealthyServerOrSpawnExit(apiUrl, apiKey, timeoutMs, proc, logPath);
     await writeServerLock(lockPath, {
       pid: proc.pid,
@@ -310,8 +312,10 @@ export async function ensureLocalServer(input: EnsureLocalServerInput): Promise<
     });
     return { port, pid: proc.pid, started: true };
   } catch (error) {
-    proc.kill();
-    await proc.exited.catch(() => {});
+    if (proc) {
+      proc.kill();
+      await proc.exited.catch(() => {});
+    }
     throw error;
   } finally {
     await releaseStartupLock(startLockPath);

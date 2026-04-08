@@ -223,6 +223,34 @@ describe("server daemon internals", () => {
     ).rejects.toThrow(/exited before becoming healthy/);
   });
 
+  test("ensureLocalServer releases startup lock when spawn throws", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const reservation = startTestServer(() => new Response("reserved"));
+    const port = reservation.port;
+    reservation.stop();
+
+    const startLockPath = serverDaemonInternals.startupLockPath(port, home);
+    const origExecPath = process.execPath;
+
+    try {
+      // Force Bun.spawn to throw ENOENT by using a nonexistent binary
+      Object.defineProperty(process, "execPath", { value: "/nonexistent/binary", configurable: true });
+      await expect(
+        ensureLocalServer({
+          port,
+          apiKey: undefined,
+          serverEntry: "server.ts",
+          homeDir: home,
+          timeoutMs: 5_000,
+        }),
+      ).rejects.toThrow();
+    } finally {
+      Object.defineProperty(process, "execPath", { value: origExecPath, configurable: true });
+    }
+
+    await expect(Bun.file(startLockPath).exists()).resolves.toBe(false);
+  });
+
   test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
