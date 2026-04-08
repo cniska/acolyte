@@ -146,28 +146,24 @@ async function extractBinary(tarPath: string, outDir: string): Promise<string> {
 }
 
 async function verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
-  try {
-    const res = await fetch(checksumUrl, {
-      headers: { "user-agent": "acolyte-cli" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) return;
-    const expected = (await res.text()).trim().split(/\s+/)[0];
-    if (!expected) return;
+  const res = await fetch(checksumUrl, {
+    headers: { "user-agent": "acolyte-cli" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`Checksum fetch failed: ${res.status}`);
+  const expected = (await res.text()).trim().split(/\s+/)[0];
+  if (!expected) throw new Error("Checksum file is empty or malformed");
 
-    const hasher = new Bun.CryptoHasher("sha256");
-    const file = Bun.file(filePath);
-    const stream = file.stream();
-    for await (const chunk of stream) {
-      hasher.update(chunk);
-    }
-    const actual = hasher.digest("hex");
+  const hasher = new Bun.CryptoHasher("sha256");
+  const file = Bun.file(filePath);
+  const stream = file.stream();
+  for await (const chunk of stream) {
+    hasher.update(chunk);
+  }
+  const actual = hasher.digest("hex");
 
-    if (expected !== actual) {
-      throw new Error(`Checksum mismatch: expected ${expected}, got ${actual}`);
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Checksum mismatch")) throw error;
+  if (expected !== actual) {
+    throw new Error(`Checksum mismatch: expected ${expected}, got ${actual}`);
   }
 }
 
@@ -294,6 +290,8 @@ export async function updateMode(): Promise<void> {
 
   await performUpdate(currentVersion, update.latest, update.downloadUrl);
 }
+
+export const cliUpdateInternals = { verifyChecksum };
 
 export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
   if (options?.skip) return false;
