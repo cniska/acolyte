@@ -71,6 +71,8 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
+  distillModel: nonEmptyStringSchema,
+  replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
   features: featureFlagsSchema,
 };
 
