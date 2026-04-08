@@ -12,6 +12,7 @@ import {
   type MemoryStore,
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
+import { clampToTokenEstimate, type DistillScope, normalizeMemoryText, splitScopedObservation } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
@@ -46,8 +47,6 @@ async function getCachedStore(): Promise<MemoryStore> {
   return cachedStore;
 }
 
-type DistillScope = "session" | "project" | "user";
-
 async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
   try {
     const vec = await embedText(content);
@@ -55,105 +54,6 @@ async function embedAndStore(ds: MemoryStore, id: string, scope: string, content
   } catch (error) {
     log.warn("memory.distill.embed_failed", { id, error: String(error) });
   }
-}
-
-const CHARS_PER_TOKEN_ESTIMATE = 4;
-const TEXT_SHRINK_RATIO = 0.9;
-
-function stripTrailingSurrogate(s: string): string {
-  if (s.length === 0) return s;
-  const last = s.charCodeAt(s.length - 1);
-  if (last >= 0xd800 && last <= 0xdbff) return s.slice(0, -1);
-  return s;
-}
-
-function clampToTokenEstimate(content: string, maxTokens: number): string {
-  const text = content.trim();
-  if (!text) return "";
-  if (maxTokens <= 0) return "";
-  if (estimateTokens(text) <= maxTokens) return text;
-
-  let clamped = stripTrailingSurrogate(text.slice(0, Math.max(1, maxTokens * CHARS_PER_TOKEN_ESTIMATE))).trim();
-  while (clamped.length > 0 && estimateTokens(clamped) > maxTokens) {
-    clamped = stripTrailingSurrogate(clamped.slice(0, Math.floor(clamped.length * TEXT_SHRINK_RATIO))).trim();
-  }
-  return clamped;
-}
-
-function normalizeMemoryText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function parseObserveDirective(line: string): DistillScope | null {
-  const match = line.trim().match(/^@observe\s+(project|user|session)$/i);
-  return match ? (match[1].toLowerCase() as DistillScope) : null;
-}
-
-function parseTopicDirective(line: string): string | null {
-  const match = line.trim().match(/^@topic\s+(\S+)$/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
-function hasMalformedObserveDirective(line: string): boolean {
-  return /^@observe\b/i.test(line.trim()) && !parseObserveDirective(line);
-}
-
-type ParsedFact = { scope: DistillScope; content: string; topic: string | null };
-
-type SplitResult = {
-  facts: ParsedFact[];
-  sessionCount: number;
-  projectCount: number;
-  userCount: number;
-  droppedUntaggedCount: number;
-  droppedMalformedCount: number;
-};
-
-export function splitScopedObservation(observed: string): SplitResult {
-  const lines = observed
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const facts: ParsedFact[] = [];
-  let droppedUntaggedCount = 0;
-  let droppedMalformedCount = 0;
-  let pendingScope: DistillScope | null = null;
-  let pendingTopic: string | null = null;
-  for (const line of lines) {
-    const scope = parseObserveDirective(line);
-    if (scope) {
-      pendingScope = scope;
-      pendingTopic = null;
-      continue;
-    }
-    if (hasMalformedObserveDirective(line)) {
-      droppedMalformedCount += 1;
-      pendingScope = null;
-      pendingTopic = null;
-      continue;
-    }
-    const topic = parseTopicDirective(line);
-    if (topic) {
-      pendingTopic = topic;
-      continue;
-    }
-    if (!pendingScope) {
-      droppedUntaggedCount += 1;
-      continue;
-    }
-    facts.push({ scope: pendingScope, content: line, topic: pendingTopic });
-    pendingScope = null;
-    pendingTopic = null;
-  }
-
-  return {
-    facts,
-    sessionCount: facts.filter((f) => f.scope === "session").length,
-    projectCount: facts.filter((f) => f.scope === "project").length,
-    userCount: facts.filter((f) => f.scope === "user").length,
-    droppedUntaggedCount,
-    droppedMalformedCount,
-  };
 }
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
@@ -307,5 +207,3 @@ const defaultDistiller: MemoryDistiller = createMemoryDistiller();
 export function commitDistiller(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined> {
   return defaultDistiller.commit(ctx);
 }
-
-export { clampToTokenEstimate };

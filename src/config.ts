@@ -35,11 +35,11 @@ export type ConfigOptions = {
   scope?: ConfigScope;
 };
 
-function shallowMerge<T extends Record<string, unknown>>(base: T, override: T): T {
+function shallowMerge<T extends object>(base: T, override: T): T {
   const merged = { ...base };
   for (const [key, value] of Object.entries(override)) {
     if (value === undefined) continue;
-    const existing = merged[key];
+    const existing = (merged as Record<string, unknown>)[key];
     if (
       typeof value === "object" &&
       value !== null &&
@@ -55,7 +55,6 @@ function shallowMerge<T extends Record<string, unknown>>(base: T, override: T): 
   }
   return merged;
 }
-
 
 function resolvePaths(options?: ConfigOptions): {
   userDataDir: string;
