@@ -43,35 +43,37 @@ export function acquireSessionLock(
   const lockPath = lockPathForSession(sessionId, options);
   const myPid = process.pid;
 
-  // Try exclusive create first to avoid TOCTOU races.
-  try {
-    const fd = openSync(lockPath, "wx", PRIVATE_FILE_MODE);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    // Try exclusive create to avoid TOCTOU races.
     try {
-      writeFileSync(fd, String(myPid));
-    } finally {
-      closeSync(fd);
+      const fd = openSync(lockPath, "wx", PRIVATE_FILE_MODE);
+      try {
+        writeFileSync(fd, String(myPid));
+      } finally {
+        closeSync(fd);
+      }
+      return { ok: true };
+    } catch (error) {
+      if ((error as { code?: string }).code !== "EEXIST") throw error;
     }
-    return { ok: true };
-  } catch (error) {
-    if ((error as { code?: string }).code !== "EEXIST") throw error;
-  }
 
-  // Lock file exists — check if owner is still alive.
-  try {
-    const ownerRaw = readFileSync(lockPath, "utf8").trim();
-    const ownerPid = Number.parseInt(ownerRaw, 10);
-    if (Number.isFinite(ownerPid) && ownerPid !== myPid && isProcessAlive(ownerPid)) return { ok: false, ownerPid };
-    unlinkSync(lockPath);
-  } catch {
+    // Lock file exists — check if owner is still alive.
     try {
+      const ownerRaw = readFileSync(lockPath, "utf8").trim();
+      const ownerPid = Number.parseInt(ownerRaw, 10);
+      if (Number.isFinite(ownerPid) && ownerPid !== myPid && isProcessAlive(ownerPid)) return { ok: false, ownerPid };
       unlinkSync(lockPath);
     } catch {
-      // ignore best-effort cleanup
+      try {
+        unlinkSync(lockPath);
+      } catch {
+        // ignore best-effort cleanup
+      }
     }
   }
 
-  writeFileSync(lockPath, String(myPid), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
-  return { ok: true };
+  // Both attempts failed — another process won the race.
+  return { ok: false, ownerPid: 0 };
 }
 
 export function sweepStaleSessionLocks(options?: LockOptions): { removed: number; kept: number } {
