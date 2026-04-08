@@ -164,6 +164,19 @@ async function waitForHealthyServerOrSpawnExit(
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
+async function requestGracefulShutdown(apiUrl: string, apiKey?: string): Promise<boolean> {
+  if (!(await isServerHealthy(apiUrl, apiKey))) return false;
+  try {
+    await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
+      method: "POST",
+      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
+    });
+  } catch {
+    // Server may close before the response completes — that's expected.
+  }
+  return true;
+}
+
 async function tryAcquireStartupLock(path: string, port: number): Promise<boolean> {
   await mkdir(join(path, ".."), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -355,7 +368,10 @@ export async function stopLocalServer(input: { port: number; apiKey?: string; ho
   const lockPath = serverLockPath(port, homeDir);
   const lock = await readServerLock(lockPath);
 
-  if (!lock) return { stopped: false, pid: null };
+  if (!lock) {
+    if (await requestGracefulShutdown(apiUrl, apiKey)) return { stopped: true, pid: null };
+    return { stopped: false, pid: null };
+  }
 
   const healthy = await isServerHealthy(apiUrl, apiKey);
   if (!healthy) {

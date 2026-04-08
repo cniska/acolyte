@@ -251,6 +251,22 @@ describe("server daemon internals", () => {
     await expect(Bun.file(startLockPath).exists()).resolves.toBe(false);
   });
 
+  test("stopLocalServer stops a healthy server even without a lock file", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status") return compatibleStatusResponse();
+      if (url.pathname === "/v1/admin/shutdown") {
+        server.stop();
+        return Response.json({ ok: true });
+      }
+      return new Response("ok");
+    });
+    // No lock file written — server is running but lock is missing
+    const result = await stopLocalServer({ port: server.port, homeDir: home });
+    expect(result.stopped).toBe(true);
+  });
+
   test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
