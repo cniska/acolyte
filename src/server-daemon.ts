@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
+import { field } from "./field";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
@@ -134,8 +135,7 @@ async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEAL
     if (!response.ok) return false;
     const payload = await response.json().catch(() => null);
     if (!payload || typeof payload !== "object") return false;
-    const protocolVersion =
-      "protocol_version" in payload ? (payload as { protocol_version?: unknown }).protocol_version : undefined;
+    const protocolVersion = field(payload, "protocol_version");
     return protocolVersion === PROTOCOL_VERSION;
   } catch {
     return false;

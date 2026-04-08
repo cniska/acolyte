@@ -1,3 +1,5 @@
+import { field } from "./field";
+import { HTTP_STATUS } from "./http-status";
 import type { Provider } from "./provider-contract";
 
 export type RateLimiterConfig = {
@@ -26,18 +28,15 @@ function jitter(ms: number): number {
 }
 
 function isRateLimitError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const status = "status" in error ? (error as { status?: unknown }).status : undefined;
-  if (status === 429) return true;
-  const code = "code" in error ? (error as { code?: unknown }).code : undefined;
-  return code === "rate_limit_exceeded" || code === "RATE_LIMIT_EXCEEDED";
+  if (field(error, "status") === HTTP_STATUS.tooManyRequests) return true;
+  if (field(error, "statusCode") === HTTP_STATUS.tooManyRequests) return true;
+  const code = field(error, "code");
+  return typeof code === "string" && code.toLowerCase() === "rate_limit_exceeded";
 }
 
 function retryAfterMs(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null) return undefined;
-  const headers = "headers" in error ? (error as { headers?: unknown }).headers : undefined;
-  if (typeof headers !== "object" || headers === null) return undefined;
-  const retryAfter = "retry-after" in headers ? (headers as Record<string, unknown>)["retry-after"] : undefined;
+  const headers = field(error, "headers");
+  const retryAfter = field(headers, "retry-after");
   if (typeof retryAfter === "string") {
     const seconds = Number.parseFloat(retryAfter);
     if (Number.isFinite(seconds) && seconds > 0) return seconds * 1_000;

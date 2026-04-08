@@ -1,4 +1,5 @@
 import type { ChatRequest } from "./api";
+import { HTTP_STATUS } from "./http-status";
 import { log } from "./log";
 import type { RunChatHandlers, StatusPayload } from "./server-contract";
 
@@ -25,14 +26,14 @@ type RouteContext = {
 type RouteHandler = (ctx: RouteContext) => Promise<Response | undefined | null>;
 
 function unauthorized(): Response {
-  return new Response("Unauthorized", { status: 401 });
+  return new Response("Unauthorized", { status: HTTP_STATUS.unauthorized });
 }
 
 function badRequest(message: string): Response {
-  return new Response(message, { status: 400 });
+  return new Response(message, { status: HTTP_STATUS.badRequest });
 }
 
-export function json<T>(body: T, status = 200): Response {
+export function json<T>(body: T, status: number = HTTP_STATUS.ok): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -172,6 +173,6 @@ export function createServerFetchHandler(deps: ServerHttpDeps): (req: Request) =
       const response = await routeHandler(ctx);
       if (response !== null && response !== undefined) return response;
     }
-    return new Response("Not Found", { status: 404 });
+    return new Response("Not Found", { status: HTTP_STATUS.notFound });
   };
 }

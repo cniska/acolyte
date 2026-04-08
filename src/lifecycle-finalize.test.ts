@@ -23,14 +23,13 @@ describe("ChatResponse error field", () => {
     expect(response?.error).toBeUndefined();
   });
 
-  test("parseChatResponse ignores non-string error", () => {
+  test("parseChatResponse rejects non-string error", () => {
     const response = parseChatResponse({
       output: "Hello",
       model: "gpt-5-mini",
       error: 42,
     });
-    expect(response).not.toBeNull();
-    expect(response?.error).toBeUndefined();
+    expect(response).toBeNull();
   });
 });
 
