@@ -319,6 +319,48 @@ describe("server daemon internals", () => {
     }
   });
 
+  test("ensureLocalServer gives up after max startup retries", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const reservation = startTestServer(() => new Response("not acolyte"));
+    const port = reservation.port;
+    reservation.stop();
+
+    // Create a stale startup lock owned by a dead process so each attempt clears it and retries
+    const startLockPath = serverDaemonInternals.startupLockPath(port, home);
+    await mkdir(join(startLockPath, ".."), { recursive: true });
+
+    // Use a server entry that creates a new startup lock on each spawn (simulating contention)
+    const serverEntry = join(home, "lock-stealer.ts");
+    await writeFile(
+      serverEntry,
+      [
+        `import { writeFileSync } from "node:fs";`,
+        `writeFileSync(${JSON.stringify(startLockPath)}, JSON.stringify({ pid: process.pid, port: ${port}, startedAt: new Date().toISOString() }));`,
+        `// Never become healthy — just hold the lock and exit`,
+        `process.exit(1);`,
+      ].join("\n"),
+      "utf8",
+    );
+
+    // Pre-create a stale lock so the first attempt can't claim it and enters the wait/retry path
+    await writeFile(
+      startLockPath,
+      JSON.stringify({ pid: 999999, port, startedAt: new Date(Date.now() - 60_000).toISOString() }),
+    );
+    const staleAt = new Date(Date.now() - 60_000);
+    await utimes(startLockPath, staleAt, staleAt);
+
+    await expect(
+      ensureLocalServer({
+        port,
+        apiKey: undefined,
+        serverEntry,
+        homeDir: home,
+        timeoutMs: 2_000,
+      }),
+    ).rejects.toThrow();
+  });
+
   test("localServerStatus removes lock when status payload is protocol-incompatible", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const staleServer = startTestServer(() => Response.json({ ok: true, protocolVersion: "1" }));
