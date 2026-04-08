@@ -58,6 +58,54 @@ describe("clampToTokenEstimate", () => {
   });
 });
 
+describe("splitScopedObservation", () => {
+  const split = distillerInternals.splitScopedObservation;
+
+  test("parses scoped observations into facts", () => {
+    const result = split("@observe project\nuses bun\n@observe user\nprefers terse output");
+    expect(result.projectCount).toBe(1);
+    expect(result.userCount).toBe(1);
+    expect(result.facts).toHaveLength(2);
+    expect(result.facts[0]).toMatchObject({ scope: "project", content: "uses bun" });
+  });
+
+  test("drops untagged lines without a preceding @observe", () => {
+    const result = split("orphan line\n@observe session\ntagged line");
+    expect(result.droppedUntaggedCount).toBe(1);
+    expect(result.sessionCount).toBe(1);
+  });
+
+  test("drops malformed @observe directives", () => {
+    const result = split("@observe badscope\nfollowing line");
+    expect(result.droppedMalformedCount).toBe(1);
+    expect(result.droppedUntaggedCount).toBe(1);
+    expect(result.facts).toHaveLength(0);
+  });
+
+  test("handles @observe at end of input with no content", () => {
+    const result = split("@observe project");
+    expect(result.facts).toHaveLength(0);
+    expect(result.projectCount).toBe(0);
+  });
+
+  test("handles @topic directive", () => {
+    const result = split("@observe project\n@topic testing\nuses bun test");
+    expect(result.facts[0]).toMatchObject({ scope: "project", content: "uses bun test", topic: "testing" });
+  });
+
+  test("@topic without preceding @observe — content is dropped as untagged", () => {
+    const result = split("@topic orphan\nsome content");
+    expect(result.droppedUntaggedCount).toBe(1);
+    expect(result.facts).toHaveLength(0);
+  });
+
+  test("multiple @observe in sequence — only last one applies", () => {
+    const result = split("@observe project\n@observe user\nactual fact");
+    expect(result.userCount).toBe(1);
+    expect(result.projectCount).toBe(0);
+  });
+});
+
 describe("memoryDistiller", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {

@@ -275,7 +275,10 @@ async function cleanupLegacyLocks(homeDir = resolveHomeDir()): Promise<void> {
 
 const MAX_STARTUP_RETRIES = 3;
 
-export async function ensureLocalServer(input: EnsureLocalServerInput, retryCount = 0): Promise<EnsureLocalServerResult> {
+export async function ensureLocalServer(
+  input: EnsureLocalServerInput,
+  retryCount = 0,
+): Promise<EnsureLocalServerResult> {
   const { port, apiKey, serverEntry, homeDir, timeoutMs: inputTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
