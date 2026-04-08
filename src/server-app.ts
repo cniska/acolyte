@@ -185,6 +185,11 @@ export async function startServer(): Promise<void> {
   process.on("unhandledRejection", (reason) => {
     log.error("unhandled rejection", errorToLogFields(reason instanceof Error ? reason : new Error(String(reason))));
   });
+  process.on("SIGTERM", () => {
+    log.info("server shutdown via SIGTERM");
+    closeDefaultTraceStore();
+    server.stop(true);
+  });
 
   log.info("server listening", { url: `http://${HOST}:${server.port}` });
 }
