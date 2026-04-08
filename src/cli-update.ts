@@ -1,5 +1,4 @@
-import { access, chmod, copyFile, mkdir, readdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
@@ -8,6 +7,7 @@ import { palette } from "./palette";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
 import { printOutput } from "./ui";
+import { installUpdate } from "./update-ops";
 
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -16,7 +16,6 @@ const FETCH_TIMEOUT_MS = 5_000;
 type UpdateInfo = { available: boolean; latest: string; downloadUrl: string; checksumUrl: string | null };
 type CachedCheck = { checkedAt: string; latest: string; downloadUrl: string; checksumUrl?: string };
 type GitHubRelease = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
-type InstallResult = { success: boolean; error?: string };
 
 export function resolveAssetName(): string {
   const platform = process.platform === "darwin" ? "darwin" : "linux";
@@ -116,129 +115,6 @@ async function checkForUpdate(
   };
 }
 
-type ProgressCallback = (received: number, total: number) => void;
-
-async function downloadToFile(url: string, dest: string, onProgress?: ProgressCallback): Promise<void> {
-  const res = await fetch(url, {
-    headers: { "user-agent": "acolyte-cli" },
-    redirect: "follow",
-  });
-  if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
-
-  const total = Number(res.headers.get("content-length") ?? 0);
-  let received = 0;
-
-  const file = Bun.file(dest);
-  const writer = file.writer();
-
-  for await (const chunk of res.body) {
-    writer.write(chunk);
-    received += chunk.byteLength;
-    if (onProgress && total > 0) onProgress(received, total);
-  }
-
-  await writer.end();
-}
-
-async function validateArchiveEntries(tarPath: string): Promise<void> {
-  const proc = Bun.spawn(["tar", "tzf", tarPath], { stdout: "pipe", stderr: "pipe" });
-  const stdout = await new Response(proc.stdout).text();
-  const exitCode = await proc.exited;
-  if (exitCode !== 0) throw new Error(`Failed to list archive entries (exit ${exitCode})`);
-  for (const entry of stdout.split("\n").filter(Boolean)) {
-    const segments = entry.split("/");
-    if (segments.some((s) => s === "..") || entry.startsWith("/")) {
-      throw new Error(`Unsafe archive entry: ${entry}`);
-    }
-  }
-}
-
-async function extractBinary(tarPath: string, outDir: string): Promise<string> {
-  await validateArchiveEntries(tarPath);
-  const proc = Bun.spawn(["tar", "xzf", tarPath, "-C", outDir], {
-    stdout: "ignore",
-    stderr: "pipe",
-  });
-  const exitCode = await proc.exited;
-  if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text();
-    throw new Error(`Extract failed (exit ${exitCode}): ${stderr}`);
-  }
-  const binaryPath = join(outDir, "acolyte");
-  await access(binaryPath);
-  const entries = await readdir(outDir);
-  const unexpected = entries.filter((e) => e !== "acolyte");
-  if (unexpected.length > 0) throw new Error(`Unexpected files in archive: ${unexpected.join(", ")}`);
-  return binaryPath;
-}
-
-async function verifyChecksum(filePath: string, checksumUrl: string): Promise<void> {
-  const res = await fetch(checksumUrl, {
-    headers: { "user-agent": "acolyte-cli" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`Checksum fetch failed: ${res.status}`);
-  const expected = (await res.text()).trim().split(/\s+/)[0];
-  if (!expected) throw new Error("Checksum file is empty or malformed");
-
-  const hasher = new Bun.CryptoHasher("sha256");
-  const file = Bun.file(filePath);
-  const stream = file.stream();
-  for await (const chunk of stream) {
-    hasher.update(chunk);
-  }
-  const actual = hasher.digest("hex");
-
-  if (expected !== actual) {
-    throw new Error(`Checksum mismatch: expected ${expected}, got ${actual}`);
-  }
-}
-
-async function installUpdate(
-  downloadUrl: string,
-  checksumUrl: string | null,
-  onProgress?: ProgressCallback,
-): Promise<InstallResult> {
-  const binaryPath = process.execPath;
-  const tmp = tmpdir();
-  const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
-  const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
-  const newBinaryPath = `${binaryPath}.new`;
-
-  try {
-    await downloadToFile(downloadUrl, tarPath, onProgress);
-    if (checksumUrl) await verifyChecksum(tarPath, checksumUrl);
-
-    await mkdir(extractDir, { recursive: true });
-    const extractedPath = await extractBinary(tarPath, extractDir);
-
-    await copyFile(extractedPath, newBinaryPath);
-    await chmod(newBinaryPath, 0o755);
-    await rename(newBinaryPath, binaryPath);
-
-    return { success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    try {
-      await unlink(newBinaryPath);
-    } catch {
-      // ignore
-    }
-    return { success: false, error: message };
-  } finally {
-    try {
-      await unlink(tarPath);
-    } catch {
-      // ignore
-    }
-    try {
-      await rm(extractDir, { recursive: true, force: true });
-    } catch {
-      // ignore
-    }
-  }
-}
-
 const BRAND = colorToFg(palette.brand);
 const GREEN = colorToFg(palette.green);
 const RED = colorToFg(palette.red);
@@ -320,8 +196,6 @@ export async function updateMode(): Promise<void> {
 
   await performUpdate(currentVersion, update);
 }
-
-export { extractBinary, verifyChecksum };
 
 export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
   if (options?.skip) return false;

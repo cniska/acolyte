@@ -1,75 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { extractBinary, verifyChecksum } from "./cli-update";
-import { startTestServer, tempDir } from "./test-utils";
+import { tempDir } from "./test-utils";
+import { validateArchiveEntries } from "./update-ops";
 
 const dirs = tempDir();
 afterEach(dirs.cleanupDirs);
 
-describe("verifyChecksum", () => {
-  test("throws when checksum endpoint returns non-ok status", async () => {
-    const dir = dirs.createDir("acolyte-update-");
-    const filePath = join(dir, "test.tar.gz");
-    await writeFile(filePath, "test-content", "utf8");
-
-    const server = startTestServer(() => new Response("not found", { status: 404 }));
-    try {
-      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).rejects.toThrow();
-    } finally {
-      server.stop();
-    }
-  });
-
-  test("throws when checksum endpoint is unreachable", async () => {
-    const dir = dirs.createDir("acolyte-update-");
-    const filePath = join(dir, "test.tar.gz");
-    await writeFile(filePath, "test-content", "utf8");
-
-    await expect(verifyChecksum(filePath, "http://127.0.0.1:1/checksum")).rejects.toThrow();
-  });
-
-  test("throws when checksum does not match", async () => {
-    const dir = dirs.createDir("acolyte-update-");
-    const filePath = join(dir, "test.tar.gz");
-    await writeFile(filePath, "test-content", "utf8");
-
-    const server = startTestServer(() => new Response("deadbeef  test.tar.gz\n"));
-    try {
-      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).rejects.toThrow(
-        /checksum mismatch/i,
-      );
-    } finally {
-      server.stop();
-    }
-  });
-
-  test("passes when checksum matches", async () => {
-    const dir = dirs.createDir("acolyte-update-");
-    const filePath = join(dir, "test.tar.gz");
-    const content = "test-content";
-    await writeFile(filePath, content, "utf8");
-
-    const hasher = new Bun.CryptoHasher("sha256");
-    hasher.update(content);
-    const expected = hasher.digest("hex");
-
-    const server = startTestServer(() => new Response(`${expected}  test.tar.gz\n`));
-    try {
-      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).resolves.toBeUndefined();
-    } finally {
-      server.stop();
-    }
-  });
-});
-
-describe("extractBinary", () => {
-  test("rejects archive containing path traversal entries", async () => {
-    const dir = dirs.createDir("acolyte-extract-");
-    const outDir = join(dir, "out");
-    await mkdir(outDir, { recursive: true });
-
+describe("validateArchiveEntries", () => {
+  test("rejects archive with path traversal entry", async () => {
+    const dir = dirs.createDir("acolyte-archive-");
     const tarPath = join(dir, "malicious.tar.gz");
     const py = Bun.spawn(
       [
@@ -90,46 +29,29 @@ describe("extractBinary", () => {
     );
     await py.exited;
 
-    await expect(extractBinary(tarPath, outDir)).rejects.toThrow(/unsafe archive entry/i);
+    await expect(validateArchiveEntries(tarPath)).rejects.toThrow(/unsafe archive entry/i);
   });
 
-  test("rejects archive missing the acolyte binary", async () => {
-    const dir = dirs.createDir("acolyte-extract-");
-    const outDir = join(dir, "out");
-    await mkdir(outDir, { recursive: true });
+  test("accepts archive with safe entries", async () => {
+    const dir = dirs.createDir("acolyte-archive-");
+    const tarPath = join(dir, "safe.tar.gz");
+    const py = Bun.spawn(
+      [
+        "python3",
+        "-c",
+        [
+          "import tarfile, io, sys",
+          `tf = tarfile.open(sys.argv[1], 'w:gz')`,
+          `info = tarfile.TarInfo(name='acolyte'); info.size = 5`,
+          `tf.addfile(info, io.BytesIO(b'legit'))`,
+          `tf.close()`,
+        ].join("\n"),
+        tarPath,
+      ],
+      { stdout: "ignore", stderr: "ignore" },
+    );
+    await py.exited;
 
-    const srcDir = join(dir, "src");
-    await mkdir(srcDir, { recursive: true });
-    await writeFile(join(srcDir, "not-acolyte"), "wrong-name");
-
-    const tarPath = join(dir, "wrong.tar.gz");
-    const proc = Bun.spawn(["tar", "czf", tarPath, "-C", srcDir, "not-acolyte"], {
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await proc.exited;
-
-    await expect(extractBinary(tarPath, outDir)).rejects.toThrow();
-  });
-
-  test("accepts valid archive with only the acolyte binary", async () => {
-    const dir = dirs.createDir("acolyte-extract-");
-    const outDir = join(dir, "out");
-    await mkdir(outDir, { recursive: true });
-
-    const srcDir = join(dir, "src");
-    await mkdir(srcDir, { recursive: true });
-    await writeFile(join(srcDir, "acolyte"), "valid-binary");
-
-    const tarPath = join(dir, "good.tar.gz");
-    const proc = Bun.spawn(["tar", "czf", tarPath, "-C", srcDir, "acolyte"], {
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await proc.exited;
-
-    const result = await extractBinary(tarPath, outDir);
-    expect(result).toBe(join(outDir, "acolyte"));
-    expect(existsSync(join(outDir, "acolyte"))).toBe(true);
+    await expect(validateArchiveEntries(tarPath)).resolves.toBeUndefined();
   });
 });
