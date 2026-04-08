@@ -1,10 +1,11 @@
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { field } from "./field";
 
 export function extractVersionFromPackageJsonText(text: string): string | null {
   try {
-    const parsed = JSON.parse(text) as { version?: unknown };
-    return typeof parsed.version === "string" && parsed.version.trim().length > 0 ? parsed.version.trim() : null;
+    const version = field(JSON.parse(text), "version");
+    return typeof version === "string" && version.trim().length > 0 ? version.trim() : null;
   } catch {
     return null;
   }

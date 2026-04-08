@@ -63,9 +63,7 @@ async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEAL
     });
     if (!response.ok) return false;
     const payload = await response.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return false;
-    const protocolVersion = field(payload, "protocol_version");
-    return protocolVersion === PROTOCOL_VERSION;
+    return field(payload, "protocol_version") === PROTOCOL_VERSION;
   } catch {
     return false;
   } finally {
