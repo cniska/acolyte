@@ -84,5 +84,6 @@ These capabilities are implemented but gated behind feature flags.
 ### Cloud sync (`cloudSync`)
 
 - portable memory and sessions across machines
+- login/logout commands with device-code auth flow
 - EdDSA JWT auth with user/team/org scope isolation
 - self-hostable via Vercel Edge + Neon Postgres
