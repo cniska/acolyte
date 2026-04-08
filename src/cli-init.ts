@@ -1,6 +1,7 @@
 import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
 import { join } from "node:path";
 import { promptHidden } from "./cli-prompt-hidden";
+import { upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import {
@@ -34,28 +35,6 @@ function parseInitProvider(value: string | undefined): Provider | null {
 
 function envKeyForProvider(provider: Provider): ProviderApiEnvKey {
   return providerApiEnvKeyByProvider[provider];
-}
-
-function upsertDotEnvValue(existing: string, key: string, value: string): string {
-  const lines = existing.length > 0 ? existing.split(/\r?\n/) : [];
-  const matcher = new RegExp(`^\\s*${key}\\s*=`);
-  const nextLines: string[] = [];
-  let replaced = false;
-
-  for (const line of lines) {
-    if (matcher.test(line)) {
-      if (!replaced) {
-        nextLines.push(`${key}=${value}`);
-        replaced = true;
-      }
-      continue;
-    }
-    nextLines.push(line);
-  }
-
-  if (!replaced) nextLines.push(`${key}=${value}`);
-  const cleaned = nextLines.filter((line, index, arr) => !(index === arr.length - 1 && line.trim() === ""));
-  return `${cleaned.join("\n")}\n`;
 }
 
 function hasAnyProviderApiKey(existing: string): boolean {
@@ -111,7 +90,7 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     process.exitCode = 1;
     return;
   }
-  const next = upsertDotEnvValue(existing, envKey, apiKey);
+  const next = upsertDotenvValue(existing, envKey, apiKey);
   await writeFile(envPath, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
 
   printDim(t("cli.init.saved", { envKey, path: envPath }));
