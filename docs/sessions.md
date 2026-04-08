@@ -32,7 +32,7 @@ Each store tracks an active session ID — the most recently used session. Resum
 Two backends, selected via the `cloudSync` feature flag (default: file):
 
 - **File** (default): `~/.acolyte/sessions.json`, entire state read/written as JSON
-- **Cloud** (feature-flagged): configured via `cloudUrl` + `cloudToken`, backed by Postgres with JSONB messages. See [Cloud](cloud.md).
+- **Cloud** (feature-flagged): configured via `acolyte login`, backed by Postgres with JSONB messages. See [Cloud](cloud.md).
 
 The `SessionStore` interface provides granular operations (`listSessions`, `getSession`, `saveSession`, `removeSession`, active session tracking).
 
