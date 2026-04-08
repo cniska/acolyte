@@ -22,25 +22,18 @@ describe("safeEqual", () => {
 });
 
 describe("hasValidAuth", () => {
+  // Note: hasValidAuth reads API_KEY from module scope at import time.
+  // In tests, API keys are cleared by test-preload.ts, so API_KEY is undefined.
+  // When no key is configured, all requests are allowed. Full keyed-path testing
+  // requires the RPC integration tests which start a real server with a key.
+
   test("allows any request when no API key is configured", () => {
     const req = new Request("http://localhost/v1/status");
     expect(hasValidAuth(req)).toBe(true);
   });
 
-  test("rejects request with wrong bearer token when key is set", () => {
-    const original = process.env.ACOLYTE_API_KEY;
-    process.env.ACOLYTE_API_KEY = "test-key";
-    try {
-      // hasValidAuth reads from the module-level API_KEY which is captured at import time,
-      // so this test only verifies the no-key path. Full auth testing requires integration tests.
-      const req = new Request("http://localhost/v1/status", {
-        headers: { authorization: "Bearer wrong-key" },
-      });
-      // With no API key set at module init, all requests are allowed
-      expect(hasValidAuth(req)).toBe(true);
-    } finally {
-      if (original !== undefined) process.env.ACOLYTE_API_KEY = original;
-      else delete process.env.ACOLYTE_API_KEY;
-    }
+  test("allows request without auth header when no key is configured", () => {
+    const req = new Request("http://localhost/v1/chat", { method: "POST" });
+    expect(hasValidAuth(req)).toBe(true);
   });
 });
