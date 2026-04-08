@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
@@ -61,6 +61,7 @@ export async function writeCredential(key: keyof Credentials, value: string, hom
   const dir = join(homeDir ?? resolveHomeDir(), ".acolyte");
   await mkdir(dir, { recursive: true });
   await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await chmod(path, PRIVATE_FILE_MODE);
 }
 
 export function decodeTokenSubject(token: string): string | undefined {
@@ -90,4 +91,5 @@ export async function removeCredential(key: keyof Credentials, homeDir?: string)
     return;
   }
   await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await chmod(path, PRIVATE_FILE_MODE);
 }
