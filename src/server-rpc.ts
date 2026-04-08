@@ -110,8 +110,11 @@ function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcD
       isCancelled: () => input.state.aborted,
       shouldYield: () => rpcQueuePolicy.shouldYield(queue),
     }),
-    onEvent: input.emitEvent,
+    onEvent: (event) => {
+      if (!input.state.aborted) input.emitEvent(event);
+    },
     onDone: (reply) => {
+      if (input.state.aborted) return;
       deps.transitionTaskState(
         input.taskId,
         {
@@ -123,6 +126,7 @@ function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcD
       input.emitDone(reply);
     },
     onError: (payload) => {
+      if (input.state.aborted) return;
       deps.transitionTaskState(
         input.taskId,
         { state: "failed", summary: payload.errorMessage },
@@ -291,7 +295,11 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       const message = envelope.message;
 
       const sendForId = (id: RpcRequestId, payload: Record<string, unknown>): void => {
-        ws.send(JSON.stringify({ id, ...payload }));
+        try {
+          ws.send(JSON.stringify({ id, ...payload }));
+        } catch {
+          // Socket may be closed; safe to ignore.
+        }
       };
       const send = (payload: Record<string, unknown>): void => sendForId(message.id, payload);
 
