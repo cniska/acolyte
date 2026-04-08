@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   decodeTokenSubject,
@@ -10,16 +8,13 @@ import {
   removeCredential,
   writeCredential,
 } from "./credentials";
+import { tempDir } from "./test-utils";
 
-let tempDir: string;
+const dirs = tempDir();
+afterEach(dirs.cleanupDirs);
 
-afterEach(() => {
-  if (tempDir) rmSync(tempDir, { recursive: true, force: true });
-});
-
-async function createTempHome(): Promise<string> {
-  tempDir = await mkdtemp(join(tmpdir(), "creds-test-"));
-  return tempDir;
+function createTempHome(): string {
+  return dirs.createDir("creds-test-");
 }
 
 describe("credentials", () => {
@@ -28,14 +23,14 @@ describe("credentials", () => {
   });
 
   test("writeCredential creates file and readCredentials reads it", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudToken", "tok_abc123", home);
     const creds = await readCredentials(home);
     expect(creds).toEqual({ cloudToken: "tok_abc123" });
   });
 
   test("writeCredential preserves existing credentials", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudUrl", "https://cloud.example.com", home);
     await writeCredential("cloudToken", "tok_abc123", home);
     const creds = await readCredentials(home);
@@ -43,7 +38,7 @@ describe("credentials", () => {
   });
 
   test("writeCredential overwrites existing value", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudToken", "old", home);
     await writeCredential("cloudToken", "new", home);
     const creds = await readCredentials(home);
@@ -51,7 +46,7 @@ describe("credentials", () => {
   });
 
   test("removeCredential removes a single credential", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudUrl", "https://cloud.example.com", home);
     await writeCredential("cloudToken", "tok_abc123", home);
     await removeCredential("cloudToken", home);
@@ -60,14 +55,14 @@ describe("credentials", () => {
   });
 
   test("removeCredential deletes file when last credential removed", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudToken", "tok_abc123", home);
     await removeCredential("cloudToken", home);
     expect(existsSync(join(home, ".acolyte", "credentials"))).toBe(false);
   });
 
   test("readCredentialsSync reads file correctly", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudToken", "tok_sync", home);
     const creds = readCredentialsSync(home);
     expect(creds).toEqual({ cloudToken: "tok_sync" });
@@ -85,7 +80,7 @@ describe("credentials", () => {
   });
 
   test("credential file is written with 0o600 permissions", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     await writeCredential("cloudToken", "tok_private", home);
     const filePath = join(home, ".acolyte", "credentials");
     const mode = statSync(filePath).mode & 0o777;
@@ -93,7 +88,7 @@ describe("credentials", () => {
   });
 
   test("ignores comments and blank lines", async () => {
-    const home = await createTempHome();
+    const home = createTempHome();
     const dir = join(home, ".acolyte");
     mkdirSync(dir, { recursive: true });
     const { writeFile } = await import("node:fs/promises");

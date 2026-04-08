@@ -1,52 +1,52 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { cliUpdateInternals } from "./cli-update";
-import { startTestServer } from "./test-utils";
+import { extractBinary, verifyChecksum } from "./cli-update";
+import { startTestServer, tempDir } from "./test-utils";
+
+const dirs = tempDir();
+afterEach(dirs.cleanupDirs);
 
 describe("verifyChecksum", () => {
   test("throws when checksum endpoint returns non-ok status", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-update-"));
+    const dir = dirs.createDir("acolyte-update-");
     const filePath = join(dir, "test.tar.gz");
     await writeFile(filePath, "test-content", "utf8");
 
     const server = startTestServer(() => new Response("not found", { status: 404 }));
     try {
-      await expect(
-        cliUpdateInternals.verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`),
-      ).rejects.toThrow();
+      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).rejects.toThrow();
     } finally {
       server.stop();
     }
   });
 
   test("throws when checksum endpoint is unreachable", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-update-"));
+    const dir = dirs.createDir("acolyte-update-");
     const filePath = join(dir, "test.tar.gz");
     await writeFile(filePath, "test-content", "utf8");
 
-    await expect(cliUpdateInternals.verifyChecksum(filePath, "http://127.0.0.1:1/checksum")).rejects.toThrow();
+    await expect(verifyChecksum(filePath, "http://127.0.0.1:1/checksum")).rejects.toThrow();
   });
 
   test("throws when checksum does not match", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-update-"));
+    const dir = dirs.createDir("acolyte-update-");
     const filePath = join(dir, "test.tar.gz");
     await writeFile(filePath, "test-content", "utf8");
 
     const server = startTestServer(() => new Response("deadbeef  test.tar.gz\n"));
     try {
-      await expect(
-        cliUpdateInternals.verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`),
-      ).rejects.toThrow(/checksum mismatch/i);
+      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).rejects.toThrow(
+        /checksum mismatch/i,
+      );
     } finally {
       server.stop();
     }
   });
 
   test("passes when checksum matches", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-update-"));
+    const dir = dirs.createDir("acolyte-update-");
     const filePath = join(dir, "test.tar.gz");
     const content = "test-content";
     await writeFile(filePath, content, "utf8");
@@ -57,9 +57,7 @@ describe("verifyChecksum", () => {
 
     const server = startTestServer(() => new Response(`${expected}  test.tar.gz\n`));
     try {
-      await expect(
-        cliUpdateInternals.verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`),
-      ).resolves.toBeUndefined();
+      await expect(verifyChecksum(filePath, `http://127.0.0.1:${server.port}/checksum`)).resolves.toBeUndefined();
     } finally {
       server.stop();
     }
@@ -68,11 +66,10 @@ describe("verifyChecksum", () => {
 
 describe("extractBinary", () => {
   test("rejects archive containing path traversal entries", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const dir = dirs.createDir("acolyte-extract-");
     const outDir = join(dir, "out");
     await mkdir(outDir, { recursive: true });
 
-    // Use python to create a tar with a literal ../../ entry (not possible with tar CLI)
     const tarPath = join(dir, "malicious.tar.gz");
     const py = Bun.spawn(
       [
@@ -93,11 +90,11 @@ describe("extractBinary", () => {
     );
     await py.exited;
 
-    await expect(cliUpdateInternals.extractBinary(tarPath, outDir)).rejects.toThrow(/unsafe archive entry/i);
+    await expect(extractBinary(tarPath, outDir)).rejects.toThrow(/unsafe archive entry/i);
   });
 
   test("rejects archive missing the acolyte binary", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const dir = dirs.createDir("acolyte-extract-");
     const outDir = join(dir, "out");
     await mkdir(outDir, { recursive: true });
 
@@ -112,11 +109,11 @@ describe("extractBinary", () => {
     });
     await proc.exited;
 
-    await expect(cliUpdateInternals.extractBinary(tarPath, outDir)).rejects.toThrow();
+    await expect(extractBinary(tarPath, outDir)).rejects.toThrow();
   });
 
   test("accepts valid archive with only the acolyte binary", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-extract-"));
+    const dir = dirs.createDir("acolyte-extract-");
     const outDir = join(dir, "out");
     await mkdir(outDir, { recursive: true });
 
@@ -131,7 +128,7 @@ describe("extractBinary", () => {
     });
     await proc.exited;
 
-    const result = await cliUpdateInternals.extractBinary(tarPath, outDir);
+    const result = await extractBinary(tarPath, outDir);
     expect(result).toBe(join(outDir, "acolyte"));
     expect(existsSync(join(outDir, "acolyte"))).toBe(true);
   });

@@ -321,7 +321,7 @@ export async function updateMode(): Promise<void> {
   await performUpdate(currentVersion, update);
 }
 
-export const cliUpdateInternals = { verifyChecksum, extractBinary };
+export { extractBinary, verifyChecksum };
 
 export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
   if (options?.skip) return false;

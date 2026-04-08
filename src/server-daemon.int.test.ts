@@ -1,6 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
@@ -11,7 +10,10 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
-import { startTestServer } from "./test-utils";
+import { startTestServer, tempDir } from "./test-utils";
+
+const dirs = tempDir();
+afterEach(dirs.cleanupDirs);
 
 function compatibleStatusResponse(): Response {
   return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION });
@@ -19,7 +21,7 @@ function compatibleStatusResponse(): Response {
 
 describe("server daemon internals", () => {
   test("clearStaleStartupLock removes invalid owner lock", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-daemon-lock-"));
+    const dir = dirs.createDir("acolyte-daemon-lock-");
     const path = join(dir, "6767.start.lock");
     await writeFile(path, "not-a-pid", "utf8");
     await expect(serverDaemonInternals.clearStaleStartupLock(path)).resolves.toBe(true);
@@ -27,7 +29,7 @@ describe("server daemon internals", () => {
   });
 
   test("clearStaleStartupLock keeps lock when owner process is alive", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "acolyte-daemon-lock-"));
+    const dir = dirs.createDir("acolyte-daemon-lock-");
     const path = join(dir, "6767.start.lock");
     await writeFile(path, String(process.pid), "utf8");
     await expect(serverDaemonInternals.clearStaleStartupLock(path)).resolves.toBe(false);
@@ -35,7 +37,7 @@ describe("server daemon internals", () => {
   });
 
   test("localServerStatus removes stale server lock when endpoint is not healthy", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
@@ -56,7 +58,7 @@ describe("server daemon internals", () => {
   });
 
   test("localServerStatus reports running when lock and server are healthy", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const server = startTestServer(() => compatibleStatusResponse());
     const lockPath = serverDaemonInternals.serverLockPath(server.port, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
@@ -81,7 +83,7 @@ describe("server daemon internals", () => {
   });
 
   test("localServerStatus removes lock when pid is dead", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const server = startTestServer(() => compatibleStatusResponse());
     const lockPath = serverDaemonInternals.serverLockPath(server.port, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
@@ -108,7 +110,7 @@ describe("server daemon internals", () => {
   });
 
   test("localServerStatus reports not running when no lock and no server", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     await expect(localServerStatus({ port: 9, homeDir: home })).resolves.toEqual({
       running: false,
       pid: null,
@@ -117,7 +119,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer reuses healthy locked server", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const server = startTestServer(() => compatibleStatusResponse());
     const lockPath = serverDaemonInternals.serverLockPath(server.port, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
@@ -145,7 +147,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer reuses healthy server without lock", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const server = startTestServer(() => compatibleStatusResponse());
     try {
       await expect(
@@ -162,7 +164,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer recovers from a stale startup lock with a live owner pid", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
@@ -211,7 +213,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer fails fast when spawned process exits immediately", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
@@ -231,7 +233,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer releases startup lock when spawn throws", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
@@ -259,7 +261,7 @@ describe("server daemon internals", () => {
   });
 
   test("stopLocalServer stops a healthy server even without a lock file", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const server = startTestServer((req) => {
       const url = new URL(req.url);
       if (url.pathname === "/v1/status") return compatibleStatusResponse();
@@ -275,7 +277,7 @@ describe("server daemon internals", () => {
   });
 
   test("stopLocalServer cleans up lock when pid is dead and endpoint is not healthy", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
@@ -292,7 +294,7 @@ describe("server daemon internals", () => {
   });
 
   test("stopLocalServer shuts down healthy server when lock pid is dead", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     let shutdownCalled = false;
     const server = startTestServer((req) => {
       const url = new URL(req.url);
@@ -318,7 +320,7 @@ describe("server daemon internals", () => {
   });
 
   test("stopLocalServer kills alive process even when endpoint is unhealthy", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     // Start a subprocess that just sleeps
     const proc = Bun.spawn(["sleep", "60"], { detached: true });
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
@@ -346,7 +348,7 @@ describe("server daemon internals", () => {
   });
 
   test("ensureLocalServer gives up after max startup retries", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const reservation = startTestServer(() => new Response("not acolyte"));
     const port = reservation.port;
     reservation.stop();
@@ -388,7 +390,7 @@ describe("server daemon internals", () => {
   });
 
   test("localServerStatus removes lock when status payload is protocol-incompatible", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const staleServer = startTestServer(() => Response.json({ ok: true, protocolVersion: "1" }));
     const lockPath = serverDaemonInternals.serverLockPath(staleServer.port, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
@@ -414,7 +416,7 @@ describe("server daemon internals", () => {
   });
 
   test("stopAllLocalServers stops multiple daemons by lock", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const dir = serverDaemonInternals.daemonsDir(home);
     await mkdir(dir, { recursive: true });
 
@@ -442,7 +444,7 @@ describe("server daemon internals", () => {
   });
 
   test("listRunningDaemons returns alive daemons and cleans dead locks", async () => {
-    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    const home = dirs.createDir("acolyte-daemon-home-");
     const dir = serverDaemonInternals.daemonsDir(home);
     await mkdir(dir, { recursive: true });
 

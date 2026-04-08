@@ -192,5 +192,3 @@ export async function startServer(): Promise<void> {
 
   log.info("server listening", { url: `http://${HOST}:${server.port}` });
 }
-
-export const serverAppInternals = { safeEqual, hasValidAuth };
