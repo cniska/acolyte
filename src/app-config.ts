@@ -1,7 +1,9 @@
 import { readResolvedConfigSync } from "./config";
+import { readCredentialsSync } from "./credentials";
 import { env } from "./env";
 
 const fileConfig = readResolvedConfigSync();
+const credentials = readCredentialsSync();
 
 export const appConfig = {
   locale: fileConfig.locale,
@@ -32,8 +34,8 @@ export const appConfig = {
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,
-  cloudUrl: fileConfig.cloudUrl,
-  cloudToken: env.ACOLYTE_CLOUD_TOKEN,
+  cloudUrl: env.ACOLYTE_CLOUD_URL ?? credentials.cloudUrl,
+  cloudToken: env.ACOLYTE_CLOUD_TOKEN ?? credentials.cloudToken,
 } as const;
 
 export function setModel(model: string): void {

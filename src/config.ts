@@ -120,7 +120,6 @@ function serializeToml(config: Config): string {
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
-  if (config.cloudUrl) lines.push(`cloudUrl = ${JSON.stringify(config.cloudUrl)}`);
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
@@ -155,7 +154,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
-    cloudUrl: config.cloudUrl,
     features: resolvedFeatures,
   };
 }

@@ -39,7 +39,6 @@ export interface Config {
   replyTimeoutMs?: number;
   reasoning?: ReasoningLevel;
   embeddingModel?: string;
-  cloudUrl?: string;
   features?: FeatureFlags;
 }
 
@@ -57,7 +56,6 @@ export interface ResolvedConfig {
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
   embeddingModel: string;
-  cloudUrl?: string;
   features: ResolvedFeatureFlags;
 }
 
@@ -73,7 +71,6 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
-  cloudUrl: nonEmptyStringSchema,
   features: featureFlagsSchema,
 };
 
@@ -97,7 +94,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
-    cloudUrl: parseField(nonEmptyStringSchema, input.cloudUrl),
     features: parseField(featureFlagsSchema, input.features),
   };
 }
