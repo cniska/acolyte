@@ -26,10 +26,11 @@ function jitter(ms: number): number {
 }
 
 import { field } from "./field";
+import { HTTP_STATUS } from "./http-status";
 
 function isRateLimitError(error: unknown): boolean {
-  if (field(error, "status") === 429) return true;
-  if (field(error, "statusCode") === 429) return true;
+  if (field(error, "status") === HTTP_STATUS.tooManyRequests) return true;
+  if (field(error, "statusCode") === HTTP_STATUS.tooManyRequests) return true;
   const code = field(error, "code");
   return typeof code === "string" && code.toLowerCase() === "rate_limit_exceeded";
 }
