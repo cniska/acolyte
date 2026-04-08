@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -82,6 +82,14 @@ describe("credentials", () => {
   test("decodeTokenSubject returns undefined for invalid token", () => {
     expect(decodeTokenSubject("not-a-jwt")).toBeUndefined();
     expect(decodeTokenSubject("")).toBeUndefined();
+  });
+
+  test("credential file is written with 0o600 permissions", async () => {
+    const home = await createTempHome();
+    await writeCredential("cloudToken", "tok_private", home);
+    const filePath = join(home, ".acolyte", "credentials");
+    const mode = statSync(filePath).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 
   test("ignores comments and blank lines", async () => {
