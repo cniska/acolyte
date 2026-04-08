@@ -267,21 +267,49 @@ describe("server daemon internals", () => {
     expect(result.stopped).toBe(true);
   });
 
-  test("stopLocalServer returns false and removes stale lock when endpoint is not healthy", async () => {
+  test("stopLocalServer cleans up lock when pid is dead and endpoint is not healthy", async () => {
     const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
     const lockPath = serverDaemonInternals.serverLockPath(9, home);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
       JSON.stringify({
-        pid: process.pid,
+        pid: 999999,
         port: 9,
         startedAt: "2026-02-28T00:00:00.000Z",
       }),
       "utf8",
     );
-    await expect(stopLocalServer({ port: 9, homeDir: home })).resolves.toEqual({ stopped: false, pid: null });
+    await expect(stopLocalServer({ port: 9, homeDir: home })).resolves.toEqual({ stopped: true, pid: 999999 });
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+  });
+
+  test("stopLocalServer kills alive process even when endpoint is unhealthy", async () => {
+    const home = await mkdtemp(join(tmpdir(), "acolyte-daemon-home-"));
+    // Start a subprocess that just sleeps
+    const proc = Bun.spawn(["sleep", "60"], { detached: true });
+    const lockPath = serverDaemonInternals.serverLockPath(9, home);
+    await mkdir(join(lockPath, ".."), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: proc.pid,
+        port: 9,
+        startedAt: "2026-02-28T00:00:00.000Z",
+      }),
+      "utf8",
+    );
+    try {
+      const result = await stopLocalServer({ port: 9, homeDir: home });
+      expect(result).toEqual({ stopped: true, pid: proc.pid });
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
+      // Give SIGTERM a moment to land
+      await Bun.sleep(50);
+      expect(serverDaemonInternals.isProcessAlive(proc.pid)).toBe(false);
+    } finally {
+      proc.kill();
+      await proc.exited.catch(() => {});
+    }
   });
 
   test("localServerStatus removes lock when status payload is protocol-incompatible", async () => {

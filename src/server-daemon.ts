@@ -373,12 +373,6 @@ export async function stopLocalServer(input: { port: number; apiKey?: string; ho
     return { stopped: false, pid: null };
   }
 
-  const healthy = await isServerHealthy(apiUrl, apiKey);
-  if (!healthy) {
-    await rm(lockPath, { force: true });
-    return { stopped: false, pid: null };
-  }
-
   try {
     if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
   } catch {
