@@ -4,7 +4,7 @@ import {
   DEFAULT_GOOGLE_BASE_URL,
   DEFAULT_OPENAI_BASE_URL,
   DEFAULT_VERCEL_BASE_URL,
-} from "./provider-defaults";
+} from "./provider-constants";
 
 setLogSink(() => {});
 

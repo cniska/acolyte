@@ -7,7 +7,7 @@ import { errorToLogFields, log } from "./log";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
-import { hasValidAuth as checkAuth } from "./server-auth";
+import { hasValidAuth } from "./server-auth";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import type { StatusPayload } from "./server-contract";
 import { createServerFetchHandler, json } from "./server-http";
@@ -126,7 +126,7 @@ export async function startServer(): Promise<void> {
   let server: Bun.Server<RpcConnectionState>;
   const fetchHandler = createServerFetchHandler({
     createStatusPayload,
-    hasValidAuth: (req: Request) => checkAuth(req, API_KEY),
+    hasValidAuth: (req: Request) => hasValidAuth(req, API_KEY),
     isChatRequest,
     runChatRequest,
     serverError,

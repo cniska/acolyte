@@ -21,9 +21,6 @@ const SERVER_START_TIMEOUT_MS = 10_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
 const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 
-// Re-export for external consumers (cli-daemon.ts, etc.)
-export { serverLogPath } from "./daemon-ops";
-
 type EnsureLocalServerInput = {
   port: number;
   apiKey?: string;

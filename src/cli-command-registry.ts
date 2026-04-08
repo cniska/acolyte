@@ -25,6 +25,7 @@ import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { removeCredential, writeCredential } from "./credentials";
+import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
 import {
@@ -32,7 +33,6 @@ import {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
-  serverLogPath,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
