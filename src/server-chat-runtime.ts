@@ -6,6 +6,7 @@ import { appConfig } from "./app-config";
 import { readResolvedConfigSync } from "./config";
 import { createDebugLogger } from "./debug-flags";
 import { createStreamError, errorIdSchema, parseError } from "./error-handling";
+import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
@@ -215,12 +216,12 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       runControl,
       onEvent: (event) => {
         if (runControl?.isCancelled()) return;
-        if ((event as { type?: string }).type === "tool-output")
+        if (field(event, "type") === "tool-output")
           debug.log("tool-stream-forward", {
             task_id: handlers.taskId ?? null,
             type: "tool-output",
-            tool: (event as { toolName?: unknown }).toolName,
-            tool_call_id: (event as { toolCallId?: unknown }).toolCallId,
+            tool: field(event, "toolName"),
+            tool_call_id: field(event, "toolCallId"),
           });
         handlers.onEvent(event as Record<string, unknown>);
       },

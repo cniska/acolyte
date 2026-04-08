@@ -16,6 +16,10 @@ describe("isRateLimitError", () => {
     expect(isRateLimitError({ status: 429 })).toBe(true);
   });
 
+  test("detects 429 statusCode (AI SDK format)", () => {
+    expect(isRateLimitError({ statusCode: 429 })).toBe(true);
+  });
+
   test("detects rate_limit_exceeded code", () => {
     expect(isRateLimitError({ code: "rate_limit_exceeded" })).toBe(true);
     expect(isRateLimitError({ code: "RATE_LIMIT_EXCEEDED" })).toBe(true);

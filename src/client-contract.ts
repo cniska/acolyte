@@ -3,6 +3,7 @@ import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./
 import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
+import { promptBreakdownSchema, tokenUsageSchema } from "./session-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
@@ -19,44 +20,17 @@ export const pendingStateSchema = z.discriminatedUnion("kind", [
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;
 
-type UsageLikePayload = {
-  inputTokens?: unknown;
-  outputTokens?: unknown;
-  totalTokens?: unknown;
-  inputBudgetTokens?: unknown;
-  inputTruncated?: unknown;
-};
-
-type ParsedUsagePayload = {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  inputBudgetTokens?: number;
-  inputTruncated?: boolean;
-};
-
 export interface ClientOptions {
   apiUrl: string;
   apiKey?: string;
   replyTimeoutMs?: number;
 }
 
-const streamUsageEventSchema = z
-  .object({
-    type: z.literal("usage"),
-    inputTokens: z.number().optional(),
-    outputTokens: z.number().optional(),
-    promptTokens: z.number().optional(),
-    completionTokens: z.number().optional(),
-  })
-  .refine(
-    (value) =>
-      (typeof value.inputTokens === "number" && typeof value.outputTokens === "number") ||
-      (typeof value.promptTokens === "number" && typeof value.completionTokens === "number"),
-    {
-      message: "usage event missing token counters",
-    },
-  );
+const streamUsageEventSchema = z.object({
+  type: z.literal("usage"),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+});
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text-delta"), text: z.string() }),
@@ -173,69 +147,23 @@ export function parseRpcServerMessage(raw: unknown): z.infer<typeof rpcServerMes
 
 export function parseStreamEvent(raw: unknown): StreamEvent | null {
   const result = streamEventSchema.safeParse(raw);
-  if (!result.success) return null;
-  const event = result.data;
-  if (event.type === "usage") {
-    const parsed = parseUsagePayload(event);
-    return parsed ? { type: "usage", inputTokens: parsed.inputTokens, outputTokens: parsed.outputTokens } : null;
-  }
-  return event;
+  return result.success ? result.data : null;
 }
 
-function parseUsageNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function parseUsagePayload(raw: unknown): ParsedUsagePayload | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const usage = raw as UsageLikePayload;
-  const inputTokens = parseUsageNumber(usage.inputTokens);
-  const outputTokens = parseUsageNumber(usage.outputTokens);
-  if (typeof inputTokens !== "number" || typeof outputTokens !== "number") return undefined;
-  return {
-    inputTokens,
-    outputTokens,
-    totalTokens: parseUsageNumber(usage.totalTokens) ?? inputTokens + outputTokens,
-    ...(typeof usage.inputBudgetTokens === "number" ? { inputBudgetTokens: usage.inputBudgetTokens } : {}),
-    ...(typeof usage.inputTruncated === "boolean" ? { inputTruncated: usage.inputTruncated } : {}),
-  };
-}
+const chatResponseSchema = z.object({
+  output: z.string(),
+  model: z.string().min(1),
+  state: chatResponseStateSchema.catch("done"),
+  usage: tokenUsageSchema.optional(),
+  promptBreakdown: promptBreakdownSchema.optional(),
+  toolCalls: z.array(z.string()).optional(),
+  modelCalls: z.number().optional(),
+  error: z.string().optional(),
+});
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {
-  if (!payload || typeof payload !== "object") return null;
-  const json = payload as Partial<ChatResponse>;
-  if (typeof json.output !== "string") return null;
-  if (typeof json.model !== "string" || json.model.trim().length === 0) return null;
-  const parsedUsage = json.usage ? parseUsagePayload(json.usage) : undefined;
-  return {
-    output: json.output,
-    model: json.model,
-    modelCalls: typeof json.modelCalls === "number" ? json.modelCalls : undefined,
-    toolCalls: Array.isArray((json as { toolCalls?: unknown }).toolCalls)
-      ? ((json as { toolCalls?: unknown[] }).toolCalls ?? []).filter((item): item is string => typeof item === "string")
-      : undefined,
-    usage: parsedUsage,
-    promptBreakdown:
-      json.promptBreakdown &&
-      typeof json.promptBreakdown === "object" &&
-      typeof (json.promptBreakdown as { budgetTokens?: unknown }).budgetTokens === "number" &&
-      typeof (json.promptBreakdown as { usedTokens?: unknown }).usedTokens === "number" &&
-      typeof (json.promptBreakdown as { systemTokens?: unknown }).systemTokens === "number" &&
-      typeof (json.promptBreakdown as { toolTokens?: unknown }).toolTokens === "number" &&
-      typeof (json.promptBreakdown as { memoryTokens?: unknown }).memoryTokens === "number" &&
-      typeof (json.promptBreakdown as { messageTokens?: unknown }).messageTokens === "number"
-        ? {
-            budgetTokens: (json.promptBreakdown as { budgetTokens: number }).budgetTokens,
-            usedTokens: (json.promptBreakdown as { usedTokens: number }).usedTokens,
-            systemTokens: (json.promptBreakdown as { systemTokens: number }).systemTokens,
-            toolTokens: (json.promptBreakdown as { toolTokens: number }).toolTokens,
-            memoryTokens: (json.promptBreakdown as { memoryTokens: number }).memoryTokens,
-            messageTokens: (json.promptBreakdown as { messageTokens: number }).messageTokens,
-          }
-        : undefined,
-    state: chatResponseStateSchema.catch("done").parse(json.state),
-    error: typeof json.error === "string" ? json.error : undefined,
-  };
+  const result = chatResponseSchema.safeParse(payload);
+  return result.success ? result.data : null;
 }
 
 export function validateFinalChatResponse(payload: unknown, message: string): ChatResponse {

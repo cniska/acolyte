@@ -9,6 +9,7 @@ import {
   validateFinalChatResponse,
 } from "./client-contract";
 import { connectionHelpMessage } from "./error-messages";
+import { field } from "./field";
 import { createRpcRequestId } from "./rpc-protocol";
 import type { StatusFields } from "./status-contract";
 import type { TaskId, TaskRecord } from "./task-contract";
@@ -115,7 +116,7 @@ export class RpcClient implements Client {
       const onMessage = (event: MessageEvent) => {
         const raw = this.parseRawSocketData(event);
         if (!raw || typeof raw !== "object") return;
-        const rawId = "id" in raw ? (raw as { id?: unknown }).id : undefined;
+        const rawId = field(raw, "id");
         if (rawId !== id) return;
         const msg = parseRpcServerMessage(raw);
         if (!msg) {

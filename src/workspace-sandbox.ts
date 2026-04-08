@@ -1,6 +1,7 @@
 import { lstatSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
+import { field } from "./field";
 import { createToolError } from "./tool-error";
 
 const sandboxRootCache = new Map<string, string>();
@@ -14,9 +15,7 @@ const SANDBOX_VIOLATION_MESSAGES = {
 type SandboxViolationMessageKey = keyof typeof SANDBOX_VIOLATION_MESSAGES;
 
 function isNotFoundError(error: unknown): boolean {
-  return (
-    typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT"
-  );
+  return field(error, "code") === "ENOENT";
 }
 
 function pathEntryExists(pathInput: string): boolean {
