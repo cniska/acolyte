@@ -18,14 +18,12 @@ The cloud API is a separate repo ([acolyte-cloud](https://github.com/cniska/acol
 
 ## Configuration
 
-```toml
-cloudUrl = "https://cloud.acolyte.sh"
-
-[features]
-cloudSync = true
+```bash
+acolyte config set features.cloudSync true  # enable cloud sync (preview)
+acolyte login                               # store token and cloud URL
 ```
 
-The token is set via the `ACOLYTE_CLOUD_TOKEN` environment variable — it is never persisted to config files.
+Credentials are stored in `~/.acolyte/credentials` (mode 0600). Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
 
 ## Authentication
 
@@ -76,4 +74,5 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 ## Key files
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
-- `src/app-config.ts` — `cloudUrl`, `cloudToken`, and `cloudSync` feature flag
+- `src/credentials.ts` — credentials file read/write (`~/.acolyte/credentials`)
+- `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag

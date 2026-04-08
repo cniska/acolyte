@@ -1,5 +1,7 @@
 import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
 import { join } from "node:path";
+import { promptHidden } from "./cli-prompt-hidden";
+import { upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import {
@@ -35,78 +37,8 @@ function envKeyForProvider(provider: Provider): ProviderApiEnvKey {
   return providerApiEnvKeyByProvider[provider];
 }
 
-function upsertDotEnvValue(existing: string, key: string, value: string): string {
-  const lines = existing.length > 0 ? existing.split(/\r?\n/) : [];
-  const matcher = new RegExp(`^\\s*${key}\\s*=`);
-  const nextLines: string[] = [];
-  let replaced = false;
-
-  for (const line of lines) {
-    if (matcher.test(line)) {
-      if (!replaced) {
-        nextLines.push(`${key}=${value}`);
-        replaced = true;
-      }
-      continue;
-    }
-    nextLines.push(line);
-  }
-
-  if (!replaced) nextLines.push(`${key}=${value}`);
-  const cleaned = nextLines.filter((line, index, arr) => !(index === arr.length - 1 && line.trim() === ""));
-  return `${cleaned.join("\n")}\n`;
-}
-
 function hasAnyProviderApiKey(existing: string): boolean {
   return PROVIDER_ENV_KEYS.some((key) => new RegExp(`^\\s*${key}\\s*=`, "m").test(existing));
-}
-
-async function promptHidden(question: string): Promise<string | undefined> {
-  if (!process.stdin.isTTY) return prompt(question)?.trim();
-
-  return new Promise((resolve) => {
-    let value = "";
-
-    const cleanup = (): void => {
-      process.stdin.off("data", onData);
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
-    };
-
-    const onData = (chunk: Buffer): void => {
-      const text = chunk.toString("utf8");
-      for (const char of text) {
-        if (char === "\u0003") {
-          process.stdout.write("\n");
-          cleanup();
-          process.exitCode = 1;
-          resolve(undefined);
-          return;
-        }
-        if (char === "\r" || char === "\n") {
-          process.stdout.write("\n");
-          if (value.trim().length === 0) {
-            value = "";
-            process.stdout.write(question);
-            return;
-          }
-          cleanup();
-          resolve(value.trim());
-          return;
-        }
-        if (char === "\u007f") {
-          value = value.slice(0, -1);
-          continue;
-        }
-        value += char;
-      }
-    };
-
-    process.stdout.write(question);
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on("data", onData);
-  });
 }
 
 export async function initMode(args: string[], deps: InitModeDeps): Promise<void> {
@@ -158,7 +90,7 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     process.exitCode = 1;
     return;
   }
-  const next = upsertDotEnvValue(existing, envKey, apiKey);
+  const next = upsertDotenvValue(existing, envKey, apiKey);
   await writeFile(envPath, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
 
   printDim(t("cli.init.saved", { envKey, path: envPath }));

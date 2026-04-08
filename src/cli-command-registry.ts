@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
-import { hasHelpFlag } from "./cli-args";
+import { hasHelpFlag, parseFlag } from "./cli-args";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
@@ -9,9 +9,11 @@ import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
+import { loginMode, logoutMode } from "./cli-login";
 import { logsMode } from "./cli-logs";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
+import { promptHidden } from "./cli-prompt-hidden";
 import { runMode, runResourceId } from "./cli-run";
 import { requestLocalServerShutdown } from "./cli-server";
 import { skillMode } from "./cli-skill";
@@ -22,6 +24,7 @@ import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
 import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
+import { removeCredential, writeCredential } from "./credentials";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
 import {
@@ -106,6 +109,46 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         writeFile,
       }),
   },
+  ...(appConfig.features.cloudSync
+    ? {
+        login: {
+          help: {
+            command: "login",
+            usage: "acolyte login [--token <value>] [--url <value>]",
+            description: t("cli.help.desc.login"),
+            examples: ["acolyte login", "acolyte login --token tok_abc --url https://cloud.example.com"],
+          },
+          handler: (args: string[]) =>
+            loginMode(args, {
+              hasHelpFlag,
+              parseFlag,
+              prompt: (message) => prompt(message),
+              printDim,
+              printError,
+              promptHidden,
+              writeCredential,
+              commandError,
+              commandHelp,
+            }),
+        },
+        logout: {
+          help: {
+            command: "logout",
+            usage: "acolyte logout",
+            description: t("cli.help.desc.logout"),
+            examples: ["acolyte logout"],
+          },
+          handler: (args: string[]) =>
+            logoutMode(args, {
+              hasHelpFlag,
+              printDim,
+              removeCredential,
+              commandError,
+              commandHelp,
+            }),
+        },
+      }
+    : {}),
   resume: {
     help: {
       command: "resume [id]",

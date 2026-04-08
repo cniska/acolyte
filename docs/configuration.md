@@ -102,7 +102,7 @@ acolyte config set features.syncAgents true
 | `syncAgents` | Sync `AGENTS.md` into a deterministic project memory record (`mem_agentsmd`). The model recalls it via `memory-search` instead of prompt injection. |
 | `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
 | `parallelWorkspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
-| `cloudSync` | Use the cloud API for memory and session storage. Requires `cloudUrl` and `cloudToken`. |
+| `cloudSync` | Use the cloud API for memory and session storage. Requires `acolyte login` and `acolyte link`. |
 
 ## All settable keys
 
@@ -119,7 +119,6 @@ acolyte config set features.syncAgents true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
-| `cloudUrl` | Cloud sync API base URL (e.g. `https://cloud.acolyte.sh`) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
