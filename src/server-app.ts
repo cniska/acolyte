@@ -162,13 +162,18 @@ export async function startServer(): Promise<void> {
       server.upgrade(req, { data: { authed: true, activeChats: new Map(), runningChatId: null, queue: [] } }),
   });
 
-  server = Bun.serve<RpcConnectionState>({
-    port: PORT,
-    hostname: HOST,
-    idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
-    fetch: fetchHandler,
-    websocket: rpcWebsocketHandlers,
-  });
+  try {
+    server = Bun.serve<RpcConnectionState>({
+      port: PORT,
+      hostname: HOST,
+      idleTimeout: SERVER_IDLE_TIMEOUT_SECONDS,
+      fetch: fetchHandler,
+      websocket: rpcWebsocketHandlers,
+    });
+  } catch (error) {
+    log.error("server failed to start", errorToLogFields(error instanceof Error ? error : new Error(String(error))));
+    process.exit(1);
+  }
 
   process.on("uncaughtException", (error) => {
     log.error("uncaught exception", errorToLogFields(error));
