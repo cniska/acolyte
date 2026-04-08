@@ -236,7 +236,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
-  let malformedRejectStreak = 0;
+  const malformedStreaks = new Map<string, number>();
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
@@ -270,13 +270,14 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
       }
       if (scoped.droppedMalformedCount > 0) {
-        malformedRejectStreak += 1;
+        const streak = (malformedStreaks.get(key) ?? 0) + 1;
+        malformedStreaks.set(key, streak);
         log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
-        if (malformedRejectStreak >= policy.malformedStreakWarningThreshold) {
-          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: malformedRejectStreak });
+        if (streak >= policy.malformedStreakWarningThreshold) {
+          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: streak });
         }
       } else {
-        malformedRejectStreak = 0;
+        malformedStreaks.delete(key);
       }
       let totalTokens = promptTokens;
       for (const fact of scoped.facts) {
