@@ -7,8 +7,6 @@ import type { SessionStore } from "./session-contract";
 import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
 import { createId } from "./short-id";
 
-const DATA_DIR = dataDir();
-
 const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
 
 export function parseSessionState(input: SessionState): SessionState {
@@ -31,7 +29,7 @@ export function createSession(model: string): Session {
 }
 
 export function createFileSessionStore(storePath?: string): SessionStore {
-  const resolvedPath = storePath ?? join(DATA_DIR, "sessions.json");
+  const resolvedPath = storePath ?? join(dataDir(), "sessions.json");
   const resolvedDir = dirname(resolvedPath);
 
   async function readState(): Promise<SessionState> {
