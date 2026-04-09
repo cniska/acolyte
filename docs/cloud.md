@@ -23,7 +23,7 @@ acolyte config set features.cloudSync true  # enable cloud sync (preview)
 acolyte login                               # store token and cloud URL
 ```
 
-Credentials are stored in `~/.acolyte/credentials` (mode 0600). Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
 
 ## Authentication
 
@@ -74,5 +74,5 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 ## Key files
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
-- `src/credentials.ts` — credentials file read/write (`~/.acolyte/credentials`)
+- `src/credentials.ts` — credentials file read/write
 - `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag

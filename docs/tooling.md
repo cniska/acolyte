@@ -37,7 +37,7 @@ Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`
 - **Key**: deterministic `toolName:stableJSON(args)` — object keys sorted for stability
 - **Invalidation**: write tools (`file-edit`, `file-create`, `file-delete`) evict entries with overlapping paths; `shell-run` clears the entire cache
 - **L1 (in-memory)**: per-task LRU with a default cap of 256 entries, discarded when the task ends
-- **L2 (SQLite)**: persists path-tracked entries (`file-read`, `code-scan`) across tasks within a session in `~/.acolyte/tool.db`, cleared on session switch
+- **L2 (SQLite)**: persists path-tracked entries (`file-read`, `code-scan`) across tasks within a session in `tool.db` (see [Paths](paths.md)), cleared on session switch
 
 This reduces redundant I/O and avoids re-sending identical tool results to the model.
 

@@ -96,7 +96,7 @@ Harness: `scripts/run-memory-bench.ts`. Adapters: `scripts/memory-bench-scenario
 
 Two backends, selected via the `cloudSync` feature flag (default: SQLite):
 
-- **SQLite** (default): `~/.acolyte/memory.db`, `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
+- **SQLite** (default): `memory.db` in the data directory (see [Paths](paths.md)), `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
 - **Cloud** (feature-flagged): configured via `acolyte login`, backed by Postgres + pgvector. See [Cloud](cloud.md).
 
 ## Extension seams
