@@ -11,8 +11,8 @@ import {
 } from "./config-contract";
 import { errorMessage } from "./error-contract";
 import { featureFlagsSchema, resolvedFeatureFlagsSchema } from "./feature-flags-contract";
-import { configDir } from "./paths";
 import { t } from "./i18n";
+import { configDir } from "./paths";
 
 function createDefaultConfig() {
   return {

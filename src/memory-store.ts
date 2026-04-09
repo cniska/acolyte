@@ -2,9 +2,9 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
-import { dataDir } from "./paths";
 import { log } from "./log";
 import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
+import { dataDir } from "./paths";
 
 const MIGRATIONS: Migration[] = [
   {

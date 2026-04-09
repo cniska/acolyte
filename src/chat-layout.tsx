@@ -1,6 +1,6 @@
 import { slashCommandHelp } from "./chat-slash";
-import { resolveHomeDir } from "./paths";
 import { t } from "./i18n";
+import { resolveHomeDir } from "./paths";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */

@@ -2,8 +2,8 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
-import { dataDir } from "./paths";
 import type { LogLine, TaskSummary } from "./log-parser";
+import { dataDir } from "./paths";
 
 const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence"]);
 
