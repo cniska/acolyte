@@ -1,5 +1,8 @@
+import type { CallbackResult } from "./cli-callback-server";
 import type { Credentials } from "./credentials";
 import { t } from "./i18n";
+
+const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
 
 type LoginModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -11,6 +14,9 @@ type LoginModeDeps = {
   writeCredential: (key: keyof Credentials, value: string, homeDir?: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
+  createId: () => string;
+  startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
+  openBrowser: (url: string) => void;
 };
 
 export async function loginMode(args: string[], deps: LoginModeDeps): Promise<void> {
@@ -22,23 +28,50 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
   const flagToken = deps.parseFlag(args, "--token");
   const flagUrl = deps.parseFlag(args, "--url");
 
-  const token = flagToken ?? (await deps.promptHidden(t("cli.login.prompt.token")));
-  if (!token) {
-    deps.printError(t("cli.login.token.empty"));
-    process.exitCode = 1;
+  // Full bypass with flags
+  if (flagToken && flagUrl) {
+    await deps.writeCredential("cloudToken", flagToken);
+    await deps.writeCredential("cloudUrl", flagUrl);
+    deps.printDim(t("cli.login.saved"));
     return;
   }
 
-  const url = flagUrl ?? deps.prompt(t("cli.login.prompt.url"))?.trim();
-  if (!url) {
-    deps.printError(t("cli.login.url.empty"));
-    process.exitCode = 1;
-    return;
-  }
+  // Prompt for URL with default
+  const urlInput = flagUrl ?? deps.prompt(t("cli.login.prompt.url"))?.trim();
+  const url = urlInput || DEFAULT_CLOUD_URL;
 
-  await deps.writeCredential("cloudToken", token);
-  await deps.writeCredential("cloudUrl", url);
-  deps.printDim(t("cli.login.saved"));
+  if (url === DEFAULT_CLOUD_URL) {
+    // OAuth flow
+    const state = deps.createId();
+    const { port, result } = await deps.startCallbackServer(state);
+    const authUrl = `${url}/auth/cli?port=${port}&state=${state}`;
+
+    deps.printDim(t("cli.login.opening.browser"));
+    deps.openBrowser(authUrl);
+    deps.printDim(t("cli.login.waiting"));
+
+    try {
+      const { token, username } = await result;
+      await deps.writeCredential("cloudToken", token);
+      await deps.writeCredential("cloudUrl", url);
+      deps.printDim(t("cli.login.welcome", { username }));
+    } catch {
+      deps.printError(t("cli.login.timeout"));
+      process.exitCode = 1;
+    }
+  } else {
+    // Manual token flow for custom URLs
+    const token = flagToken ?? (await deps.promptHidden(t("cli.login.prompt.token")));
+    if (!token) {
+      deps.printError(t("cli.login.token.empty"));
+      process.exitCode = 1;
+      return;
+    }
+
+    await deps.writeCredential("cloudToken", token);
+    await deps.writeCredential("cloudUrl", url);
+    deps.printDim(t("cli.login.saved"));
+  }
 }
 
 type LogoutModeDeps = {

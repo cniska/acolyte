@@ -9,8 +9,11 @@ import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
+import { startCallbackServer } from "./cli-callback-server";
 import { loginMode, logoutMode } from "./cli-login";
+import { createId } from "./short-id";
 import { logsMode } from "./cli-logs";
+import { openBrowser } from "./open-browser";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { promptHidden } from "./cli-prompt-hidden";
@@ -129,6 +132,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               writeCredential,
               commandError,
               commandHelp,
+              createId,
+              startCallbackServer,
+              openBrowser,
             }),
         },
         logout: {
