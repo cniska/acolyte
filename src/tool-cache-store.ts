@@ -2,8 +2,8 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
-import { resolveHomeDir } from "./home-dir";
 import { log } from "./log";
+import { dataDir } from "./paths";
 
 export interface ToolCacheStore {
   get(key: string): string | null;
@@ -33,7 +33,7 @@ const MIGRATIONS: Migration[] = [
 ];
 
 export function createToolCacheStore(dbPath?: string): ToolCacheStore {
-  const resolvedPath = dbPath ?? join(resolveHomeDir(), ".acolyte", "tool.db");
+  const resolvedPath = dbPath ?? join(dataDir(), "tool.db");
   mkdirSync(dirname(resolvedPath), { recursive: true });
   const db = new Database(resolvedPath, { create: true });
   db.run("PRAGMA journal_mode = WAL");

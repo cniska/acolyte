@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { testEnvForHome } from "./int-test-utils";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const dirs = tempDir();
@@ -18,7 +20,7 @@ function runCli(
     cwd: project,
     env: {
       ...process.env,
-      HOME: home,
+      ...testEnvForHome(home),
       NO_COLOR: "1",
     },
     stdout: "pipe",
@@ -34,7 +36,7 @@ function runCli(
 async function createTestEnv(): Promise<{ home: string; project: string }> {
   const home = dirs.createDir("acolyte-cli-help-home-");
   const project = dirs.createDir("acolyte-cli-help-project-");
-  await mkdir(join(home, ".acolyte"), { recursive: true });
+  await mkdir(configDir({ HOME: home }), { recursive: true });
   return { home, project };
 }
 

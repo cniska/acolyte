@@ -1,7 +1,7 @@
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
-import { resolveHomeDir } from "./home-dir";
 import { domainIdSchema } from "./id-contract";
+import { resolveHomeDir } from "./paths";
 
 export const userResourceIdSchema = domainIdSchema("user");
 export type UserResourceId = z.infer<typeof userResourceIdSchema>;

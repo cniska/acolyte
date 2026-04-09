@@ -3,6 +3,7 @@ import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   clearStaleStartupLock,
+  DEFAULT_PORT,
   daemonsDir,
   isProcessAlive,
   readServerLock,
@@ -149,10 +150,6 @@ async function waitForHealthyServerOrStaleStartupLock(
   }
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
-
-// 6        7
-// \_(ᴗ _ᴗ)_/
-const DEFAULT_PORT = 6767;
 
 const MAX_STARTUP_RETRIES = 3;
 

@@ -1,13 +1,11 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
+import { dataDir } from "./paths";
 import type { SessionStore } from "./session-contract";
 import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
 import { createId } from "./short-id";
-
-const DATA_DIR = join(resolveHomeDir(), ".acolyte");
 
 const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
 
@@ -31,7 +29,7 @@ export function createSession(model: string): Session {
 }
 
 export function createFileSessionStore(storePath?: string): SessionStore {
-  const resolvedPath = storePath ?? join(DATA_DIR, "sessions.json");
+  const resolvedPath = storePath ?? join(dataDir(), "sessions.json");
   const resolvedDir = dirname(resolvedPath);
 
   async function readState(): Promise<SessionState> {

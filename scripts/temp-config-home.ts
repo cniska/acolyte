@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { testEnvForHome } from "../src/int-test-utils";
+import { configDir } from "../src/paths";
 import { reserveFreePort } from "./port-utils";
 
 type TomlValue = string | number | boolean;
@@ -8,7 +10,7 @@ type TomlValue = string | number | boolean;
 export type TempConfigHome = {
   homeDir: string;
   port: number;
-  env: Record<string, string>;
+  env: Record<string, string | undefined>;
   configPath: string;
 };
 
@@ -27,12 +29,12 @@ export async function createTempConfigHome(
   extraEnv: Record<string, string> = {},
 ): Promise<TempConfigHome> {
   const homeDir = await mkdtemp(join(tmpdir(), prefix));
-  const configDir = join(homeDir, ".acolyte");
+  const testConfigDir = configDir({ HOME: homeDir });
   const port = reserveFreePort();
   const resolvedConfig = { ...config, port };
-  const configPath = join(configDir, "config.toml");
+  const configPath = join(testConfigDir, "config.toml");
 
-  await mkdir(configDir, { recursive: true });
+  await mkdir(testConfigDir, { recursive: true });
   await writeFile(configPath, `${toTomlRecord(resolvedConfig)}\n`, "utf8");
 
   return {
@@ -40,8 +42,8 @@ export async function createTempConfigHome(
     port,
     configPath,
     env: {
-      ...(process.env as Record<string, string>),
-      HOME: homeDir,
+      ...process.env,
+      ...testEnvForHome(homeDir),
       NO_COLOR: "1",
       ...extraEnv,
     },

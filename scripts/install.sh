@@ -2,7 +2,6 @@
 set -eu
 
 REPO="cniska/acolyte"
-INSTALL_DIR="${HOME}/.acolyte/bin"
 
 main() {
   platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -19,6 +18,12 @@ main() {
     arm64|aarch64) arch="arm64" ;;
     *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
   esac
+
+  if [ "$platform" = "linux" ]; then
+    INSTALL_DIR="${HOME}/.local/bin"
+  else
+    INSTALL_DIR="${HOME}/.acolyte/bin"
+  fi
 
   asset="acolyte-${platform}-${arch}.tar.gz"
 

@@ -2,8 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
-import { resolveHomeDir } from "./home-dir";
 import { palette } from "./palette";
+import { stateDir } from "./paths";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi, colorToFg } from "./tui/styles";
 import { printOutput } from "./ui";
@@ -36,23 +36,22 @@ export function compareSemver(current: string, latest: string): boolean {
   return lPatch > cPatch;
 }
 
-function cachePath(homeDir: string): string {
-  return join(homeDir, ".acolyte", "update-check.json");
+function cachePath(baseDir: string): string {
+  return join(baseDir, "update-check.json");
 }
 
-async function readCache(homeDir: string): Promise<CachedCheck | null> {
+async function readCache(baseDir: string): Promise<CachedCheck | null> {
   try {
-    const raw = await readFile(cachePath(homeDir), "utf8");
+    const raw = await readFile(cachePath(baseDir), "utf8");
     return JSON.parse(raw) as CachedCheck;
   } catch {
     return null;
   }
 }
 
-async function writeCache(homeDir: string, data: CachedCheck): Promise<void> {
-  const dir = join(homeDir, ".acolyte");
-  await mkdir(dir, { recursive: true });
-  await writeFile(cachePath(homeDir), JSON.stringify(data), "utf8");
+async function writeCache(baseDir: string, data: CachedCheck): Promise<void> {
+  await mkdir(baseDir, { recursive: true });
+  await writeFile(cachePath(baseDir), JSON.stringify(data), "utf8");
 }
 
 async function fetchLatestRelease(): Promise<GitHubRelease | null> {
@@ -70,9 +69,9 @@ async function fetchLatestRelease(): Promise<GitHubRelease | null> {
 
 async function checkForUpdate(
   currentVersion: string,
-  options?: { force?: boolean; homeDir?: string },
+  options?: { force?: boolean; stateDir?: string },
 ): Promise<UpdateInfo | null> {
-  const home = options?.homeDir ?? resolveHomeDir();
+  const home = options?.stateDir ?? stateDir();
   const force = options?.force ?? false;
 
   if (!force) {

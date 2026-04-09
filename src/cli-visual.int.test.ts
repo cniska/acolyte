@@ -200,8 +200,8 @@ describe("cli visual regression", () => {
   });
 
   test("memory list renders stored entry rows", async () => {
-    await withCliTestEnv(async ({ run, homeDir }) => {
-      const dbPath = join(homeDir, ".acolyte", "memory.db");
+    await withCliTestEnv(async ({ run, homeDir, dataDir }) => {
+      const dbPath = join(dataDir, "memory.db");
       const store = createSqliteMemoryStore(dbPath);
       const scopeKey = defaultUserResourceId(homeDir);
       await store.write(
@@ -484,8 +484,8 @@ describe("cli visual regression", () => {
   });
 
   test("trace command filters by task id from store", async () => {
-    await withCliTestEnv(async ({ run, homeDir }) => {
-      const store = createTraceStore(join(homeDir, ".acolyte", "trace.db"));
+    await withCliTestEnv(async ({ run, dataDir }) => {
+      const store = createTraceStore(join(dataDir, "trace.db"));
       store.write({
         timestamp: "2026-03-19T10:00:00Z",
         taskId: "task_abc",
@@ -534,8 +534,8 @@ describe("cli visual regression", () => {
   });
 
   test("trace default lists recent tasks", async () => {
-    await withCliTestEnv(async ({ run, homeDir }) => {
-      const store = createTraceStore(join(homeDir, ".acolyte", "trace.db"));
+    await withCliTestEnv(async ({ run, dataDir }) => {
+      const store = createTraceStore(join(dataDir, "trace.db"));
       store.write({
         timestamp: "9999-01-01T00:00:00Z",
         taskId: "task_latest",

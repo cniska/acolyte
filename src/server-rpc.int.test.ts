@@ -9,6 +9,8 @@ import {
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { waitForServer } from "../scripts/wait-server";
+import { testEnvForHome } from "./int-test-utils";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const repoRoot = process.cwd();
@@ -52,13 +54,13 @@ async function startRpcTestServerProcess(
   port: number,
   options?: RpcTestServerOptions,
 ): Promise<Bun.Subprocess> {
-  await mkdir(join(home, ".acolyte"), { recursive: true });
+  await mkdir(configDir({ HOME: home }), { recursive: true });
 
   const proc = Bun.spawn([process.execPath, "run", join(repoRoot, "src/server.ts")], {
     cwd: project,
     env: {
       ...process.env,
-      HOME: home,
+      ...testEnvForHome(home),
       ACOLYTE_API_KEY: apiKey,
       OPENAI_API_KEY: "sk-test-rpc",
       OPENAI_BASE_URL: options?.providerBaseUrl ?? process.env.OPENAI_BASE_URL,

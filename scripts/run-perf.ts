@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { StreamEvent } from "../src/client-contract";
 import { createClient } from "../src/client-factory";
+import { testEnvForHome } from "../src/int-test-utils";
 import { withFakeProviderServer } from "./fake-provider-server";
 import { PERF_SCENARIO_LIST, type Scenario, type ScenarioId } from "./perf-scenarios";
 import { average, median, percentile, runTimedCommand, toPrettyJson } from "./perf-test-utils";
@@ -133,7 +134,7 @@ async function startPerfServer(
 ): Promise<{ stop: () => Promise<void> }> {
   const env = {
     ...process.env,
-    HOME: homeDir,
+    ...testEnvForHome(homeDir),
     NO_COLOR: "1",
     OPENAI_BASE_URL: providerBaseUrl,
     OPENAI_API_KEY: "test-key",
