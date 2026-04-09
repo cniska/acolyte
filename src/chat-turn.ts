@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -11,7 +10,7 @@ import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
-import { isWithinSandboxRoot } from "./workspace-sandbox";
+import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
@@ -37,8 +36,8 @@ export async function resolveReferencedFileContext(
   const unresolvedPaths: string[] = [];
   const workspace = options?.workspace ?? process.cwd();
   for (const pathInput of referencedPaths) {
-    if (!isWithinSandboxRoot(resolve(workspace, pathInput), workspace)) continue;
     try {
+      ensurePathWithinSandbox(pathInput, workspace);
       const context = await formatFileContext(pathInput, workspace);
       contexts.push(context);
     } catch {
