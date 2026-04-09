@@ -182,31 +182,21 @@ export class CloudClient {
     if (cursor) {
       const newMessages = session.messages.slice(cursor.messageCount);
       const newTokenUsage = session.tokenUsage.slice(cursor.tokenUsageCount);
-      if (newMessages.length === 0 && newTokenUsage.length === 0) {
-        await this.patch(ROUTES.sessions.append(session.id), {
-          body: {
-            updatedAt: session.updatedAt,
-            model: session.model,
-            title: session.title,
-            workspace: session.workspace,
-            workspaceName: session.workspaceName,
-            workspaceBranch: session.workspaceBranch,
-          },
-        });
-      } else {
-        await this.patch(ROUTES.sessions.append(session.id), {
-          body: {
-            ...(newMessages.length > 0 ? { messages: newMessages } : {}),
-            ...(newTokenUsage.length > 0 ? { tokenUsage: newTokenUsage } : {}),
-            updatedAt: session.updatedAt,
-            model: session.model,
-            title: session.title,
-            workspace: session.workspace,
-            workspaceName: session.workspaceName,
-            workspaceBranch: session.workspaceBranch,
-          },
-        });
-      }
+      const metadata = {
+        updatedAt: session.updatedAt,
+        model: session.model,
+        title: session.title,
+        workspace: session.workspace,
+        workspaceName: session.workspaceName,
+        workspaceBranch: session.workspaceBranch,
+      };
+      await this.patch(ROUTES.sessions.append(session.id), {
+        body: {
+          ...(newMessages.length > 0 ? { messages: newMessages } : {}),
+          ...(newTokenUsage.length > 0 ? { tokenUsage: newTokenUsage } : {}),
+          ...metadata,
+        },
+      });
     } else {
       await this.post(ROUTES.sessions.save, { body: session });
     }
