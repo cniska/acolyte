@@ -27,6 +27,14 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     commandHelp: (name) => {
       calls.push(`commandHelp:${name}`);
     },
+    createId: () => "test_state",
+    startCallbackServer: async () => ({
+      port: 9999,
+      result: Promise.resolve({ token: "tok_oauth", email: "test@example.com" }),
+    }),
+    openBrowser: () => {
+      calls.push("openBrowser");
+    },
     ...overrides,
   };
   return { deps, output: () => lines.join("\n"), calls };
@@ -63,36 +71,57 @@ describe("loginMode", () => {
     expect(calls).toEqual(["commandHelp:login"]);
   });
 
-  test("empty token sets exit code", async () => {
-    const { deps, output } = createLoginDeps({ promptHidden: async () => undefined });
-    await loginMode([], deps);
-    expect(process.exitCode).toBe(1);
-    expect(output()).toContain("empty");
-  });
-
-  test("empty url sets exit code", async () => {
-    const { deps, output } = createLoginDeps({ promptHidden: async () => "tok_abc", prompt: () => null });
-    await loginMode([], deps);
-    expect(process.exitCode).toBe(1);
-    expect(output()).toContain("empty");
-  });
-
-  test("saves token and url from prompts", async () => {
-    const { deps, calls, output } = createLoginDeps({
-      promptHidden: async () => "tok_abc",
-      prompt: () => "https://cloud.example.com",
-    });
-    await loginMode([], deps);
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
-    expect(output()).toContain("Logged in");
-  });
-
-  test("saves token and url from flags", async () => {
+  test("flags bypass oauth and store directly", async () => {
     const flags: Record<string, string> = { "--token": "tok_flag", "--url": "https://cloud.example.com" };
     const { deps, calls, output } = createLoginDeps({ parseFlag: (_args, flag) => flags[flag] });
     await loginMode(["--token", "tok_flag", "--url", "https://cloud.example.com"], deps);
     expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).not.toContain("openBrowser");
     expect(output()).toContain("Logged in");
+  });
+
+  test("default url triggers oauth flow", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+    });
+    await loginMode([], deps);
+    expect(calls).toContain("openBrowser");
+    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(output()).toContain("test@example.com");
+  });
+
+  test("custom url falls back to manual token", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "https://custom.example.com",
+      promptHidden: async () => "tok_manual",
+    });
+    await loginMode([], deps);
+    expect(calls).not.toContain("openBrowser");
+    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(output()).toContain("Logged in");
+  });
+
+  test("custom url with empty token sets exit code", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "https://custom.example.com",
+      promptHidden: async () => undefined,
+    });
+    await loginMode([], deps);
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("empty");
+  });
+
+  test("oauth timeout sets exit code", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: Promise.reject(new Error("timeout")),
+      }),
+    });
+    await loginMode([], deps);
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("timed out");
   });
 });
 

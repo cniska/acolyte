@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
 import { hasHelpFlag, parseFlag } from "./cli-args";
+import { startCallbackServer } from "./cli-callback-server";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
@@ -28,6 +29,7 @@ import { removeCredential, writeCredential } from "./credentials";
 import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
+import { openBrowser } from "./open-browser";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -37,6 +39,7 @@ import {
   stopLocalServer,
 } from "./server-daemon";
 import { createSession, getSessionStore } from "./session-store";
+import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
@@ -129,6 +132,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               writeCredential,
               commandError,
               commandHelp,
+              createId,
+              startCallbackServer,
+              openBrowser,
             }),
         },
         logout: {
