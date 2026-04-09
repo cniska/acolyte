@@ -94,6 +94,7 @@ export const EN_MESSAGES = {
   "chat.worked": "Worked {duration}{suffix}",
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",
   "cli.config.invalid_value": "Invalid value for {key}: {reason}",
+  "cli.config.parse_failed": "Failed to parse {scope} config: {reason}",
   "cli.config.keys": "Keys: {keys}",
   "cli.config.removed": "Removed config {key} ({scope}).",
   "cli.config.saved": "Saved config {key} ({scope}).",
