@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { errorMessage } from "./error-contract";
 import { gitAdd, gitCommit, gitDiff, gitLog, gitShow, gitStatusShort } from "./git-ops";
 import { t } from "./i18n";
 import type { ToolkitInput } from "./tool-contract";
@@ -47,7 +48,7 @@ async function runGitOp(operation: GitOp, execute: () => Promise<string>): Promi
   try {
     return await execute();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     throw new Error(`[git-ops:${operation}] ${message}`);
   }
 }

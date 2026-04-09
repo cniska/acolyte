@@ -1,5 +1,5 @@
 import { invariant } from "./assert";
-import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
 import { field } from "./field";
 import { ToolError } from "./tool-error";
@@ -40,7 +40,7 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
   try {
     return await task();
   } catch (error) {
-    const baseMessage = error instanceof Error ? error.message : String(error);
+    const baseMessage = errorMessage(error);
     const wrapped = new Error(`${toolId} failed: ${baseMessage}`) as Error & {
       code?: string;
       kind?: string;
@@ -81,7 +81,7 @@ export async function runTool(
           hook: "before",
           tool: toolId,
           tool_call_id: toolCallId,
-          message: error instanceof Error ? error.message : String(error),
+          message: errorMessage(error),
         });
       }
     }
@@ -111,7 +111,7 @@ export async function runTool(
               hook: "after",
               tool: toolId,
               tool_call_id: toolCallId,
-              message: error instanceof Error ? error.message : String(error),
+              message: errorMessage(error),
             });
           }
         }
@@ -169,7 +169,7 @@ export async function runTool(
             hook: "after",
             tool: toolId,
             tool_call_id: toolCallId,
-            message: error instanceof Error ? error.message : String(error),
+            message: errorMessage(error),
           });
         }
       }

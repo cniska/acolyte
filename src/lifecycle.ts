@@ -1,5 +1,5 @@
 import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
-import { LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { t } from "./i18n";
@@ -81,7 +81,7 @@ export function scheduleMemoryCommit(
   }).catch((error) => {
     debug("lifecycle.memory.commit_failed", {
       ...debugFields,
-      message: error instanceof Error ? error.message : String(error),
+      message: errorMessage(error),
     });
   });
 }
