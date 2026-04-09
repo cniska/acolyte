@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const dirs = tempDir();
@@ -41,7 +42,7 @@ async function runCliWithInput(
 async function createTestEnv(): Promise<{ home: string; project: string }> {
   const home = dirs.createDir("acolyte-cli-init-home-");
   const project = dirs.createDir("acolyte-cli-init-project-");
-  await mkdir(join(home, ".acolyte"), { recursive: true });
+  await mkdir(configDir({ HOME: home }), { recursive: true });
   return { home, project };
 }
 

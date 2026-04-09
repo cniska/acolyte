@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { configDir, dataDir, stateDir } from "./paths";
 import type { SessionState } from "./session-contract";
 import { stripAnsi } from "./tui/serialize";
 import { trimRightLines } from "./tui-test-utils";
@@ -34,6 +35,9 @@ export async function runCliPlain(args: readonly string[], options: RunCliPlainO
 
 export type CliTestEnv = {
   homeDir: string;
+  configDir: string;
+  dataDir: string;
+  stateDir: string;
   workspaceDir: string;
   run: (args: readonly string[], options?: { env?: Record<string, string | undefined> }) => Promise<string>;
   writeSessionsStore: (sessionState: SessionState) => Promise<void>;
@@ -42,6 +46,10 @@ export type CliTestEnv = {
 export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Promise<T> {
   const homeDir = await mkdtemp(join(tmpdir(), "acolyte-cli-home-"));
   const workspaceDir = await mkdtemp(join(tmpdir(), "acolyte-cli-cwd-"));
+  const testEnv = { HOME: homeDir };
+  const testConfigDir = configDir(testEnv);
+  const testDataDir = dataDir(testEnv);
+  const testStateDir = stateDir(testEnv);
   const run = (args: readonly string[], options?: { env?: Record<string, string | undefined> }): Promise<string> =>
     runCliPlain(args, {
       cwd: workspaceDir,
@@ -51,13 +59,20 @@ export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Pr
       },
     });
   const writeSessionsStore = async (record: SessionState): Promise<void> => {
-    const dataDir = join(homeDir, ".acolyte");
-    await mkdir(dataDir, { recursive: true });
-    await writeFile(join(dataDir, "sessions.json"), JSON.stringify(record, null, 2), "utf8");
+    await mkdir(testDataDir, { recursive: true });
+    await writeFile(join(testDataDir, "sessions.json"), JSON.stringify(record, null, 2), "utf8");
   };
 
   try {
-    return await fn({ homeDir, workspaceDir, run, writeSessionsStore });
+    return await fn({
+      homeDir,
+      configDir: testConfigDir,
+      dataDir: testDataDir,
+      stateDir: testStateDir,
+      workspaceDir,
+      run,
+      writeSessionsStore,
+    });
   } finally {
     await rm(homeDir, { recursive: true, force: true });
     await rm(workspaceDir, { recursive: true, force: true });

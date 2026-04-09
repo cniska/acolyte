@@ -9,6 +9,7 @@ import {
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { waitForServer } from "../scripts/wait-server";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const repoRoot = process.cwd();
@@ -52,7 +53,7 @@ async function startRpcTestServerProcess(
   port: number,
   options?: RpcTestServerOptions,
 ): Promise<Bun.Subprocess> {
-  await mkdir(join(home, ".acolyte"), { recursive: true });
+  await mkdir(configDir({ HOME: home }), { recursive: true });
 
   const proc = Bun.spawn([process.execPath, "run", join(repoRoot, "src/server.ts")], {
     cwd: project,

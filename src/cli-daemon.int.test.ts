@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { reserveFreePort } from "../scripts/port-utils";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const dirs = tempDir();
@@ -35,10 +36,10 @@ function runCli(
 async function createTestEnv(): Promise<{ home: string; project: string; port: number }> {
   const home = dirs.createDir("acolyte-cli-daemon-home-");
   const project = dirs.createDir("acolyte-cli-daemon-project-");
-  const acolyteDir = join(home, ".acolyte");
-  await mkdir(acolyteDir, { recursive: true });
+  const testConfigDir = configDir({ HOME: home });
+  await mkdir(testConfigDir, { recursive: true });
   const port = reserveFreePort();
-  await writeFile(join(acolyteDir, "config.toml"), `port = ${port}\n`, "utf8");
+  await writeFile(join(testConfigDir, "config.toml"), `port = ${port}\n`, "utf8");
   return { home, project, port };
 }
 
