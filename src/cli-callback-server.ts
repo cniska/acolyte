@@ -5,11 +5,11 @@ export type CallbackResult = {
 
 const TIMEOUT_MS = 120_000;
 
+const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
+
 const SUCCESS_HTML = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Acolyte</title>
-<style>body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#fafafa}
-.card{text-align:center}h1{margin:0 0 8px}p{color:#888}</style></head>
-<body><div class="card"><h1>Signed in</h1><p>You can close this tab and return to the terminal.</p></div></body></html>`;
+<html><head><meta charset="utf-8"><title>Acolyte</title></head>
+<body><script>window.location.replace("${DEFAULT_CLOUD_URL}/dashboard")</script></body></html>`;
 
 const ERROR_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Acolyte</title>
