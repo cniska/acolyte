@@ -5,7 +5,9 @@ import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { stateDirFromHome } from "./paths";
 
-const DEFAULT_PORT = 6767;
+// 6        7
+// \_(ᴗ _ᴗ)_/
+export const DEFAULT_PORT = 6767;
 
 export type ServerLock = {
   pid: number;
