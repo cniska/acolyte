@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { testEnvForHome } from "./int-test-utils";
 import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
@@ -19,7 +20,7 @@ function runCli(
     cwd: project,
     env: {
       ...process.env,
-      HOME: home,
+      ...testEnvForHome(home),
       NO_COLOR: "1",
     },
     stdout: "pipe",

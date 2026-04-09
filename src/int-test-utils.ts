@@ -11,6 +11,19 @@ type RunCliPlainOptions = {
   env?: Record<string, string | undefined>;
 };
 
+export function testEnvForHome(
+  homeDir: string,
+  extra?: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  return {
+    HOME: homeDir,
+    XDG_CONFIG_HOME: undefined,
+    XDG_DATA_HOME: undefined,
+    XDG_STATE_HOME: undefined,
+    ...extra,
+  };
+}
+
 export async function runCliPlain(args: readonly string[], options: RunCliPlainOptions = {}): Promise<string> {
   const env = {
     ...process.env,
@@ -53,10 +66,7 @@ export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Pr
   const run = (args: readonly string[], options?: { env?: Record<string, string | undefined> }): Promise<string> =>
     runCliPlain(args, {
       cwd: workspaceDir,
-      env: {
-        HOME: homeDir,
-        ...options?.env,
-      },
+      env: testEnvForHome(homeDir, options?.env),
     });
   const writeSessionsStore = async (record: SessionState): Promise<void> => {
     await mkdir(testDataDir, { recursive: true });
