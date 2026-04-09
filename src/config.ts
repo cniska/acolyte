@@ -176,8 +176,8 @@ export function readResolvedConfigSync(options?: ConfigOptions): ResolvedConfig 
   return resolveConfig(readConfigSync(options));
 }
 
-function wrapConfigError(scope: string, error: unknown): never {
-  throw new Error(t("cli.config.parse_failed", { scope, reason: errorMessage(error) }));
+function wrapError(scope: string, error: unknown): Error {
+  return new Error(t("cli.config.parse_failed", { scope, reason: errorMessage(error) }));
 }
 
 export async function readConfig(options?: ConfigOptions): Promise<Config> {
@@ -186,12 +186,12 @@ export async function readConfig(options?: ConfigOptions): Promise<Config> {
   try {
     userConfig = await readConfigForScope("user", options);
   } catch (error) {
-    wrapConfigError("user", error);
+    throw wrapError("user", error);
   }
   try {
     projectConfig = await readConfigForScope("project", options);
   } catch (error) {
-    wrapConfigError("project", error);
+    throw wrapError("project", error);
   }
   return shallowMerge(userConfig, projectConfig);
 }
@@ -202,12 +202,12 @@ export function readConfigSync(options?: ConfigOptions): Config {
   try {
     userConfig = readConfigForScopeSync("user", options);
   } catch (error) {
-    wrapConfigError("user", error);
+    throw wrapError("user", error);
   }
   try {
     projectConfig = readConfigForScopeSync("project", options);
   } catch (error) {
-    wrapConfigError("project", error);
+    throw wrapError("project", error);
   }
   return shallowMerge(userConfig, projectConfig);
 }
