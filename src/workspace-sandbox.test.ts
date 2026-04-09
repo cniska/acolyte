@@ -3,7 +3,7 @@ import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { expectToThrowJSON, tempDir } from "./test-utils";
-import { clearWorkspaceSandboxCache, ensurePathWithinSandbox } from "./workspace-sandbox";
+import { clearWorkspaceSandboxCache, ensurePathWithinSandbox, isWithinSandboxRoot } from "./workspace-sandbox";
 
 const dirs = tempDir();
 
@@ -89,5 +89,15 @@ describe("workspace-sandbox", () => {
       code: TOOL_ERROR_CODES.sandboxViolation,
       kind: ERROR_KINDS.sandboxViolation,
     });
+  });
+
+  test("isWithinSandboxRoot rejects traversal", () => {
+    expect(isWithinSandboxRoot("/etc/passwd", "/workspace/project")).toBe(false);
+    expect(isWithinSandboxRoot("/workspace/other", "/workspace/project")).toBe(false);
+  });
+
+  test("isWithinSandboxRoot allows paths within root", () => {
+    expect(isWithinSandboxRoot("/workspace/project/src/index.ts", "/workspace/project")).toBe(true);
+    expect(isWithinSandboxRoot("/workspace/project", "/workspace/project")).toBe(true);
   });
 });

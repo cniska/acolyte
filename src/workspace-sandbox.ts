@@ -49,7 +49,7 @@ function nearestExistingPath(pathInput: string): string {
   return current;
 }
 
-function isWithinSandboxRoot(targetPath: string, sandboxRoot: string): boolean {
+export function isWithinSandboxRoot(targetPath: string, sandboxRoot: string): boolean {
   const rel = relative(sandboxRoot, targetPath);
   if (rel === "") return true;
   return !rel.startsWith("..") && !isAbsolute(rel);
