@@ -51,10 +51,10 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
     deps.printDim(t("cli.login.waiting"));
 
     try {
-      const { token, username } = await result;
+      const { token, email } = await result;
       await deps.writeCredential("cloudToken", token);
       await deps.writeCredential("cloudUrl", url);
-      deps.printDim(t("cli.login.welcome", { username }));
+      deps.printDim(t("cli.login.welcome", { email }));
     } catch {
       deps.printError(t("cli.login.timeout"));
       process.exitCode = 1;

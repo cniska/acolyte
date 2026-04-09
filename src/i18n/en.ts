@@ -143,7 +143,7 @@ export const EN_MESSAGES = {
   "cli.login.opening.browser": "Opening browser to sign in…",
   "cli.login.waiting": "Waiting for authentication…",
   "cli.login.timeout": "Authentication timed out. Please try again.",
-  "cli.login.welcome": "Logged in as {username}.",
+  "cli.login.welcome": "Logged in as {email}.",
   "cli.login.token.empty": "Token cannot be empty.",
   "cli.login.url.empty": "URL cannot be empty.",
   "cli.logout.done": "Logged out.",

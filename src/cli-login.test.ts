@@ -31,7 +31,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     createId: () => "test_state",
     startCallbackServer: async () => ({
       port: 9999,
-      result: Promise.resolve({ token: "tok_oauth", username: "testuser" }),
+      result: Promise.resolve({ token: "tok_oauth", email: "test@example.com" }),
     }),
     openBrowser: () => {
       calls.push("openBrowser");
@@ -88,7 +88,7 @@ describe("loginMode", () => {
     await loginMode([], deps);
     expect(calls).toContain("openBrowser");
     expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
-    expect(output()).toContain("testuser");
+    expect(output()).toContain("test@example.com");
   });
 
   test("custom url falls back to manual token", async () => {

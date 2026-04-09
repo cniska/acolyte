@@ -1,6 +1,6 @@
 export type CallbackResult = {
   token: string;
-  username: string;
+  email: string;
 };
 
 const TIMEOUT_MS = 120_000;
@@ -50,7 +50,8 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
         }
 
         clearTimeout(timeout);
-        resolveResult({ token, username: username ?? "unknown" });
+        const email = url.searchParams.get("email");
+        resolveResult({ token, email: email || "unknown" });
 
         // Shut down after response is sent
         setTimeout(() => server.stop(), 100);
