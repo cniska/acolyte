@@ -25,7 +25,7 @@ jobs:
           - target: darwin-arm64
             runner: macos-latest
           - target: darwin-x64
-            runner: macos-13
+            runner: macos-26-intel
           - target: linux-x64
             runner: ubuntu-latest
 
