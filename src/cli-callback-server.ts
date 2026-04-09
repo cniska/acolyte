@@ -5,7 +5,7 @@ export type CallbackResult = {
 
 const TIMEOUT_MS = 120_000;
 
-const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
+export const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
 
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Acolyte</title></head>
@@ -43,7 +43,6 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
 
         const token = url.searchParams.get("token");
         const state = url.searchParams.get("state");
-        const username = url.searchParams.get("username");
 
         if (!token || !state || state !== expectedState) {
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });

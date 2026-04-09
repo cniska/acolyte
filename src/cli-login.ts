@@ -1,8 +1,6 @@
-import type { CallbackResult } from "./cli-callback-server";
+import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
 import type { Credentials } from "./credentials";
 import { t } from "./i18n";
-
-const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
 
 type LoginModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;

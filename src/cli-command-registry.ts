@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { createMessage } from "./chat-session";
 import { hasHelpFlag, parseFlag } from "./cli-args";
+import { startCallbackServer } from "./cli-callback-server";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
 import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contract";
@@ -9,11 +10,8 @@ import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
 import { initMode } from "./cli-init";
-import { startCallbackServer } from "./cli-callback-server";
 import { loginMode, logoutMode } from "./cli-login";
-import { createId } from "./short-id";
 import { logsMode } from "./cli-logs";
-import { openBrowser } from "./open-browser";
 import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { promptHidden } from "./cli-prompt-hidden";
@@ -31,6 +29,7 @@ import { removeCredential, writeCredential } from "./credentials";
 import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
+import { openBrowser } from "./open-browser";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -40,6 +39,7 @@ import {
   stopLocalServer,
 } from "./server-daemon";
 import { createSession, getSessionStore } from "./session-store";
+import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";

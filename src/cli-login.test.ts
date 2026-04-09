@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { CallbackResult } from "./cli-callback-server";
 import { loginMode, logoutMode } from "./cli-login";
 
 afterEach(() => {
