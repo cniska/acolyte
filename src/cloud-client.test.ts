@@ -88,11 +88,76 @@ describe("cloud sync client", () => {
     expect(url).toContain("limit=10");
   });
 
-  test("session.saveSession sends POST", async () => {
+  test("session.saveSession sends POST on first save", async () => {
     const fn = jsonFetch(200, { ok: true });
     const client = new CloudClient("https://api.example.com", "t");
     await client.session.saveSession({ id: "sess_1" } as never);
     const [, init] = callArgs(fn);
     expect(init.method).toBe("POST");
+  });
+
+  test("session.saveSession sends PATCH append after first save", async () => {
+    const fn = jsonFetch(200, { ok: true });
+    const client = new CloudClient("https://api.example.com", "t");
+    const session = {
+      id: "sess_1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      model: "gpt-5-mini",
+      title: "test",
+      messages: [{ id: "msg_1", role: "user", content: "hello", kind: "text", timestamp: "2026-01-01T00:00:00.000Z" }],
+      tokenUsage: [],
+    } as never;
+    await client.session.saveSession(session);
+    expect(callArgs(fn, 0)[1].method).toBe("POST");
+
+    (session as { updatedAt: string }).updatedAt = "2026-01-01T00:01:00.000Z";
+    await client.session.saveSession(session);
+    const [url, init] = callArgs(fn, 1);
+    expect(init.method).toBe("PATCH");
+    expect(url).toContain("/sess_1/append");
+  });
+
+  test("session.saveSession append sends only new messages", async () => {
+    const fn = jsonFetch(200, { ok: true });
+    const client = new CloudClient("https://api.example.com", "t");
+    const msg1 = { id: "msg_1", role: "user", content: "hello", kind: "text", timestamp: "2026-01-01T00:00:00.000Z" };
+    const msg2 = { id: "msg_2", role: "assistant", content: "hi", kind: "text", timestamp: "2026-01-01T00:00:01.000Z" };
+    const session = {
+      id: "sess_1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      model: "gpt-5-mini",
+      title: "test",
+      messages: [msg1],
+      tokenUsage: [],
+    };
+    await client.session.saveSession(session as never);
+
+    session.messages.push(msg2 as never);
+    session.updatedAt = "2026-01-01T00:01:00.000Z";
+    await client.session.saveSession(session as never);
+
+    const [, init] = callArgs(fn, 1);
+    const body = JSON.parse(init.body as string);
+    expect(body.messages).toHaveLength(1);
+    expect(body.messages[0].id).toBe("msg_2");
+  });
+
+  test("gzips large request bodies", async () => {
+    const fn = jsonFetch(200, { ok: true });
+    const client = new CloudClient("https://api.example.com", "t");
+    const largeContent = "x".repeat(2000);
+    const record = {
+      id: "mem_1",
+      scopeKey: "user_x",
+      kind: "stored" as const,
+      content: largeContent,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      tokenEstimate: 5,
+    };
+    await client.memory.write(record);
+    const [, init] = callArgs(fn);
+    expect((init.headers as Record<string, string>)["content-encoding"]).toBe("gzip");
   });
 });

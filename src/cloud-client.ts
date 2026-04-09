@@ -5,6 +5,8 @@ import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSche
 import { embeddingToBuffer } from "./memory-embedding";
 import { type Session, type SessionId, type SessionStore, sessionIdSchema, sessionSchema } from "./session-contract";
 
+const GZIP_THRESHOLD = 1024;
+
 const ROUTES = {
   memories: {
     list: "/api/v1/memories",
@@ -23,6 +25,7 @@ const ROUTES = {
     save: "/api/v1/sessions",
     get: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}`,
     remove: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}`,
+    append: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}/append`,
     getActive: "/api/v1/sessions/active",
     setActive: "/api/v1/sessions/active",
   },
@@ -46,9 +49,12 @@ const sessionListSchema = z.array(sessionSchema);
 const embeddingsResponseSchema = z.object({ embeddings: z.record(z.string(), z.string()) });
 const activeSessionSchema = z.object({ id: z.string().nullable() });
 
+type SyncCursor = { messageCount: number; tokenUsageCount: number };
+
 export class CloudClient {
   private readonly base: string;
   private readonly token: string;
+  private readonly syncCursors = new Map<string, SyncCursor>();
 
   constructor(baseUrl: string, token: string) {
     this.base = baseUrl.replace(/\/$/, "");
@@ -150,18 +156,64 @@ export class CloudClient {
   }
 
   private async listSessions(options?: { limit?: number }): Promise<readonly Session[]> {
-    return this.get(ROUTES.sessions.list, {
+    const sessions = await this.get(ROUTES.sessions.list, {
       schema: sessionListSchema,
       params: { limit: options?.limit?.toString() },
     });
+    for (const s of sessions) {
+      this.syncCursors.set(s.id, { messageCount: s.messages.length, tokenUsageCount: s.tokenUsage.length });
+    }
+    return sessions;
   }
 
   private async getSession(id: SessionId): Promise<Session | null> {
-    return this.get(ROUTES.sessions.get(id), { schema: sessionSchema.nullable() });
+    const session = await this.get(ROUTES.sessions.get(id), { schema: sessionSchema.nullable() });
+    if (session) {
+      this.syncCursors.set(session.id, {
+        messageCount: session.messages.length,
+        tokenUsageCount: session.tokenUsage.length,
+      });
+    }
+    return session;
   }
 
   private async saveSession(session: Session): Promise<void> {
-    await this.post(ROUTES.sessions.save, { body: session });
+    const cursor = this.syncCursors.get(session.id);
+    if (cursor) {
+      const newMessages = session.messages.slice(cursor.messageCount);
+      const newTokenUsage = session.tokenUsage.slice(cursor.tokenUsageCount);
+      if (newMessages.length === 0 && newTokenUsage.length === 0) {
+        await this.patch(ROUTES.sessions.append(session.id), {
+          body: {
+            updatedAt: session.updatedAt,
+            model: session.model,
+            title: session.title,
+            workspace: session.workspace,
+            workspaceName: session.workspaceName,
+            workspaceBranch: session.workspaceBranch,
+          },
+        });
+      } else {
+        await this.patch(ROUTES.sessions.append(session.id), {
+          body: {
+            ...(newMessages.length > 0 ? { messages: newMessages } : {}),
+            ...(newTokenUsage.length > 0 ? { tokenUsage: newTokenUsage } : {}),
+            updatedAt: session.updatedAt,
+            model: session.model,
+            title: session.title,
+            workspace: session.workspace,
+            workspaceName: session.workspaceName,
+            workspaceBranch: session.workspaceBranch,
+          },
+        });
+      }
+    } else {
+      await this.post(ROUTES.sessions.save, { body: session });
+    }
+    this.syncCursors.set(session.id, {
+      messageCount: session.messages?.length ?? 0,
+      tokenUsageCount: session.tokenUsage?.length ?? 0,
+    });
   }
 
   private async removeSession(id: SessionId): Promise<void> {
@@ -191,14 +243,19 @@ export class CloudClient {
       const query = qs.toString();
       if (query) url = `${url}?${query}`;
     }
-    const res = await fetch(url, {
-      method,
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        ...(options?.body !== undefined ? { "content-type": "application/json" } : {}),
-      },
-      body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
-    });
+    let body: BodyInit | undefined;
+    const headers: Record<string, string> = { authorization: `Bearer ${this.token}` };
+    if (options?.body !== undefined) {
+      const json = JSON.stringify(options.body);
+      headers["content-type"] = "application/json";
+      if (json.length >= GZIP_THRESHOLD) {
+        body = Bun.gzipSync(Buffer.from(json));
+        headers["content-encoding"] = "gzip";
+      } else {
+        body = json;
+      }
+    }
+    const res = await fetch(url, { method, headers, body });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new CloudApiError(res.status, `Cloud API ${method} ${path} failed (${res.status}): ${text}`);
@@ -217,6 +274,10 @@ export class CloudClient {
 
   private post<T = void>(path: string, options?: { schema?: z.ZodType<T>; body?: unknown }): Promise<T> {
     return this.request("POST", path, options);
+  }
+
+  private patch(path: string, options?: { body?: unknown }): Promise<void> {
+    return this.request("PATCH", path, options);
   }
 
   private put(path: string, options?: { body?: unknown }): Promise<void> {
