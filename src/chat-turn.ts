@@ -10,6 +10,7 @@ import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
+import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;
 
@@ -33,9 +34,11 @@ export async function resolveReferencedFileContext(
   const referencedPaths = extractAtReferencePaths(userText);
   const contexts: string[] = [];
   const unresolvedPaths: string[] = [];
+  const workspace = options?.workspace ?? process.cwd();
   for (const pathInput of referencedPaths) {
     try {
-      const context = await formatFileContext(pathInput, options?.workspace ?? process.cwd());
+      ensurePathWithinSandbox(pathInput, workspace);
+      const context = await formatFileContext(pathInput, workspace);
       contexts.push(context);
     } catch {
       unresolvedPaths.push(pathInput);

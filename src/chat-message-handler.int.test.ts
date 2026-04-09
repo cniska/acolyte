@@ -406,6 +406,12 @@ describe("chat message handler", () => {
     expect(interruptRegistered).toBe(true);
     interruptHandler();
     await firstPending;
+
+    // The interrupted user message should be removed from session history
+    // so the model doesn't try to answer it on the next turn.
+    const historyBeforeSecond = session.messages.map((m) => `${m.role}:${m.content}`);
+    expect(historyBeforeSecond).not.toContainEqual("user:First question");
+
     await handleSubmit("Second question");
 
     expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
@@ -531,5 +537,64 @@ describe("chat message handler", () => {
     } finally {
       await rm(fixturePath, { force: true });
     }
+  });
+
+  test("interrupt handler stays registered during remote task followup", async () => {
+    let interruptHandler: (() => void) | null = null;
+    const session = createSession({ id: "sess_test" });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
+
+    const { handleSubmit } = createMessageHandler({
+      client: createClient({
+        replyStream: async () => {
+          const error = new Error("Remote task") as Error & { taskId: string };
+          error.taskId = "task_abc";
+          throw error;
+        },
+        taskStatus: async () => ({
+          id: "task_abc",
+          state: "running" as const,
+          createdAt: "2026-02-20T00:00:00.000Z",
+          updatedAt: "2026-02-20T00:00:00.000Z",
+        }),
+      }),
+      sessionState,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        updater([]);
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openModelPanel: () => {},
+      tokenUsage: [],
+      isPending: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
+      setRunningUsage: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: (handler) => {
+        interruptHandler = handler;
+      },
+      clearTranscript: () => {},
+    });
+
+    await handleSubmit("test remote");
+
+    // Interrupt handler must still be registered so the user can Ctrl+C
+    // to cancel the remote task polling.
+    expect(interruptHandler).not.toBeNull();
   });
 });

@@ -155,6 +155,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
+      // Clear the pending indicator in the same synchronous block as
+      // adding the worked/status rows so React batches them into one
+      // commit — avoids a frame where both "Working" and "Worked" show.
+      input.setPendingState(null);
       input.setRows((current) => [...current, ...turn.rows]);
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
@@ -163,6 +167,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     } catch (error) {
       const remoteTaskId = remoteTaskIdFromError(error);
       if (!isAbortError(error) && remoteTaskId) {
+        const followupController = new AbortController();
         const startedFollowup = await startRemoteTaskFollowup({
           client: input.client,
           remoteTaskId,
@@ -170,8 +175,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           setPendingState: input.setPendingState,
           persist: input.persist,
           onStopPending: stopPending,
+          signal: followupController.signal,
         });
         if (startedFollowup) {
+          input.setInterrupt(() => followupController.abort());
           keepPendingForRemoteTask = true;
           return;
         }
@@ -182,6 +189,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         input.currentSession.messages.push(partialMessage);
         input.currentSession.updatedAt = input.nowIso();
         await input.persist().catch(() => {});
+      } else if (isAbortError(error)) {
+        // No assistant content was generated — remove the orphaned user
+        // message so the model doesn't try to answer it on the next turn.
+        const idx = input.currentSession.messages.lastIndexOf(userMessage);
+        if (idx >= 0) input.currentSession.messages.splice(idx, 1);
       }
       if (isAbortError(error)) {
         streamState.finalize();
@@ -200,8 +212,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         ]);
       }
     } finally {
-      input.setInterrupt(null);
       if (!keepPendingForRemoteTask) {
+        input.setInterrupt(null);
         stopPending();
         input.setPendingState(null);
       }
