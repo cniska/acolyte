@@ -46,10 +46,6 @@ export function configDirFromHome(homeDir?: string): string {
   return homeDir ? join(homeDir, ".acolyte") : configDir();
 }
 
-export function dataDirFromHome(homeDir?: string): string {
-  return homeDir ? join(homeDir, ".acolyte") : dataDir();
-}
-
 export function stateDirFromHome(homeDir?: string): string {
   return homeDir ? join(homeDir, ".acolyte") : stateDir();
 }
