@@ -4,7 +4,7 @@ Error handling in Acolyte is split by boundary, not bundled into one module.
 
 ## Contract model
 
-Error codes and kinds are generic contracts shared across tools, lifecycle, and transport-facing parsing. Tools include recovery guidance directly in error messages. The model reads the error and decides what to do.
+Error codes and kinds are generic contracts shared across tools, lifecycle, and transport-facing parsing. The model reads error messages and decides what to do.
 
 ## Runtime model
 
@@ -12,7 +12,7 @@ Runtime code throws coded errors, not untyped string failures, when the failure 
 
 ## Lifecycle boundary
 
-Lifecycle consumes tool errors generically through error categories. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code. The model sees all tool errors and makes recovery decisions.
+Lifecycle consumes tool errors generically through error categories. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code.
 
 ## Design rule
 

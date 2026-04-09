@@ -31,7 +31,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
 | Embedding | Provider-generated vector representation of a memory record used for semantic recall |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
-| Host | Runtime environment around the model that provides tools, lifecycle structure, memory, and recovery |
+| Host | Runtime environment around the model that provides tools, lifecycle structure, and memory |
 | Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
@@ -60,7 +60,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |
 | Token Overlap | Keyword matching component of hybrid recall that catches exact term matches embeddings miss |
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
-| Tool Recovery | Structured recovery payload attached to a tool failure when the tool knows the corrective action |
 | Toolkit | Group of domain tools exposed through adapters and composition |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

@@ -22,15 +22,16 @@ Events are append-only and ordered per request.
 - `tool-output`: incremental tool output for the call id
 - `tool-result`: tool completion (success/error, structured error detail)
 - `text-delta`: assistant text stream chunks
+- `usage`: token usage for the current generation step
+- `checklist`: inline task checklist with group ID, title, and items
 - `error`: terminal stream error
-- `done`: terminal success with final reply
 
 ## Invariants
 
-- Every request has exactly one terminal event: `done` or `error`.
+- Every request completes with either a `chat.done` or `chat.error` RPC message.
 - `tool-output`/`tool-result` reference a prior `tool-call` id.
 - Unknown event fields are ignored by clients (forward compatibility).
-- Error detail payloads are structured and stable for recovery decisions.
+- Error detail payloads are structured and stable.
 
 ## Versioning
 
