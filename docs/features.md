@@ -17,6 +17,7 @@ Shipped, user-visible capabilities.
 - custom terminal renderer with React reconciler and structured output
 - auto-update on startup with progress UI
 - update flags to force or skip auto-update (--update, --no-update)
+- XDG Base Directory support on Linux
 - one-line install script
 
 ## Agent execution
@@ -84,6 +85,6 @@ These capabilities are implemented but gated behind feature flags.
 ### Cloud sync (`cloudSync`)
 
 - portable memory and sessions across machines
-- login/logout commands with device-code auth flow
+- login/logout commands with browser-based OAuth
 - EdDSA JWT auth with user/team/org scope isolation
 - self-hostable via Vercel Edge + Neon Postgres
