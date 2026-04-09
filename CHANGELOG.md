@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.18.0 (2026-04-09)
+
+- fix(config): crash on malformed config file (#166) (`6827e50a`)
+- feat(install): XDG Base Directory support on Linux (#170) (`90b8994c`)
+- feat(login): browser-based OAuth with manual fallback (#172) (`8624fcd9`)
+- feat(cloud): incremental session sync with gzip compression (#173) (`5bb5ec28`)
+- feat(ci): add Intel Mac (darwin-x64) to build matrix (`bedd061f`)
+- fix(ci): use macos-26-intel runner for darwin-x64 (`dbea63d5`)
+- fix(chat): harden chat subsystem (#174) (`e51cd5dd`)
+- docs: update features for v0.18.0 (`a97e629b`)
+
+
 ## 0.17.0 (2026-04-09)
 
 - fix(daemon): fail fast when spawned server exits before becoming healthy (`2e3d5904`)
