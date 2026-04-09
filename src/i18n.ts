@@ -1,4 +1,3 @@
-import { appConfig } from "./app-config";
 import type { EN_MESSAGES } from "./i18n/en";
 import { TRANSLATIONS, type TranslationLocale } from "./i18n/locales";
 
@@ -40,9 +39,15 @@ export function createTranslator(locale: TranslationLocale): Translator {
   return (key, ...args) => translate(templates, key, args[0] as Record<string, TranslationValue> | undefined);
 }
 
+let activeLocale: TranslationLocale = "en";
+
+export function setLocale(locale: TranslationLocale): void {
+  activeLocale = locale;
+}
+
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
   return translate(
-    TRANSLATIONS[appConfig.locale] ?? TRANSLATIONS.en,
+    TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en,
     key,
     args[0] as Record<string, TranslationValue> | undefined,
   );
@@ -50,5 +55,5 @@ export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>)
 
 /** Translate a dynamic key without compile-time key checking. Falls back to the key itself when not found. */
 export function tDynamic(key: string, vars?: Record<string, TranslationValue>): string {
-  return translate(TRANSLATIONS[appConfig.locale] ?? TRANSLATIONS.en, key, vars);
+  return translate(TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en, key, vars);
 }
