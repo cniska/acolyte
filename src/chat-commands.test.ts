@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
+import { appConfig, setModel } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
@@ -311,7 +311,20 @@ describe("chat-commands", () => {
       expect(writes).toEqual([{ key: "model", value: "gpt-5.2", scope: "project" }]);
       expect(appConfig.model).toBe("gpt-5.2");
     } finally {
-      (appConfig as { model: string }).model = previousModel;
+      setModel(previousModel);
+    }
+  });
+
+  test("dispatchSlashCommand /model <id> persists session", async () => {
+    const previousModel = appConfig.model;
+    try {
+      const { persistCalls, stop } = await runCommand("/model gpt-5.2", {
+        persistModelConfig: async () => {},
+      });
+      expect(stop).toBe(true);
+      expect(persistCalls).toBe(1);
+    } finally {
+      setModel(previousModel);
     }
   });
 

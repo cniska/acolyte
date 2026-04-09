@@ -98,9 +98,13 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));
   else printDim(t("cli.server.already_running", { port: daemon.port, pid: daemon.pid }));
   const client = createClient({ apiUrl });
+  let activeSession = session;
   const persist = async (): Promise<void> => {
-    await sessionStore.saveSession(session);
+    await sessionStore.saveSession(activeSession);
     await sessionStore.setActiveSessionId(state.activeSessionId);
+  };
+  const onSessionChange = (next: Session): void => {
+    activeSession = next;
   };
 
   try {
@@ -110,6 +114,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
       session,
       sessionState: state,
       persist,
+      onSessionChange,
       version: CLI_VERSION,
       useMemory: isResumed,
     });

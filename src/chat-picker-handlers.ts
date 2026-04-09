@@ -107,6 +107,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           setModel(nextModel);
           const nextSession: Session = { ...input.currentSession, model: nextModel, updatedAt: input.nowIso() };
           input.setCurrentSession(nextSession);
+          await input.persist();
           input.setRows((current) => [
             ...current,
             createRow("system", t("chat.model.changed", { model: formatModel(nextModel) })),
