@@ -72,8 +72,12 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       loading: true,
     });
     input.setShowHelp(false);
-    const picker = await createModelPicker();
-    input.setPicker(picker);
+    try {
+      const picker = await createModelPicker();
+      input.setPicker(picker);
+    } catch {
+      input.setPicker(null);
+    }
   };
 
   const writeConfig = input.persistConfig ?? ((key, value, scope) => setConfigValue(key, value, { scope }));
