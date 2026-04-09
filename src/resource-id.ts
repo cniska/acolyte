@@ -1,6 +1,6 @@
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
-import { resolveHomeDir } from "./home-dir";
+import { resolveHomeDir } from "./paths";
 import { domainIdSchema } from "./id-contract";
 
 export const userResourceIdSchema = domainIdSchema("user");

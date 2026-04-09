@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { resolveHomeDir } from "./home-dir";
+import { configDir } from "./paths";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
 import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
@@ -11,12 +11,12 @@ function hasConfigFileCollision(scopeDir: string): boolean {
 
 export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: string }): StatusFields {
   const cwd = options?.cwd ?? process.cwd();
-  const homeDir = options?.homeDir ?? resolveHomeDir();
+  const userConfigDir = options?.homeDir ? join(options.homeDir, ".acolyte") : configDir();
   const diagnostics: StatusFields = {};
 
   const collisionScopes: string[] = [];
   if (hasConfigFileCollision(join(cwd, ".acolyte"))) collisionScopes.push("project");
-  if (hasConfigFileCollision(join(homeDir, ".acolyte"))) collisionScopes.push("user");
+  if (hasConfigFileCollision(userConfigDir)) collisionScopes.push("user");
   if (collisionScopes.length > 0) diagnostics["resources.config.collisions"] = collisionScopes.join(",");
 
   if (loadAgentsPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.agents"] = "missing_or_unreadable";

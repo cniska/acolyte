@@ -1,5 +1,5 @@
 import { slashCommandHelp } from "./chat-slash";
-import { resolveHomeDir } from "./home-dir";
+import { resolveHomeDir } from "./paths";
 import { t } from "./i18n";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 

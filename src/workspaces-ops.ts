@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { resolveHomeDir } from "./home-dir";
+import { dataDir } from "./paths";
 import { projectResourceIdFromWorkspace } from "./resource-id";
 import { createId } from "./short-id";
 import { runCommand } from "./tool-utils";
@@ -42,7 +42,7 @@ export async function resolveGitRepoRoot(cwd = process.cwd()): Promise<string> {
 
 export function projectWorktreesDir(repoRoot: string): string {
   const projId = projectResourceIdFromWorkspace(repoRoot);
-  return join(resolveHomeDir(), ".acolyte", "projects", projId, "worktrees");
+  return join(dataDir(), "projects", projId, "worktrees");
 }
 
 export async function createGitWorktree(options: {
