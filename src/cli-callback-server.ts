@@ -9,7 +9,7 @@ const DEFAULT_CLOUD_URL = "https://app.acolyte.sh";
 
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Acolyte</title></head>
-<body><script>window.location.replace("${DEFAULT_CLOUD_URL}/dashboard")</script></body></html>`;
+<body style="margin:0;background:#0a0a0a"><script>window.location.replace("${DEFAULT_CLOUD_URL}/dashboard")</script></body></html>`;
 
 const ERROR_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Acolyte</title>
