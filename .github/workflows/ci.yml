@@ -79,6 +79,8 @@ jobs:
             runner: ubuntu-latest
           - target: darwin-arm64
             runner: macos-latest
+          - target: darwin-x64
+            runner: macos-13
 
     steps:
       - name: Checkout
