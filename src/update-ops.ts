@@ -1,6 +1,7 @@
 import { access, chmod, copyFile, lstat, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { errorMessage } from "./error-contract";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
@@ -116,7 +117,7 @@ export async function installUpdate(
 
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     try {
       await unlink(newBinaryPath);
     } catch {

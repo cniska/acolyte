@@ -9,6 +9,7 @@ import {
   type ResolvedConfig,
   toConfig,
 } from "./config-contract";
+import { errorMessage } from "./error-contract";
 import { featureFlagsSchema, resolvedFeatureFlagsSchema } from "./feature-flags-contract";
 import { resolveHomeDir } from "./home-dir";
 import { t } from "./i18n";
@@ -175,28 +176,40 @@ export function readResolvedConfigSync(options?: ConfigOptions): ResolvedConfig 
   return resolveConfig(readConfigSync(options));
 }
 
+function wrapError(scope: string, error: unknown): Error {
+  return new Error(t("cli.config.parse_failed", { scope, reason: errorMessage(error) }));
+}
+
 export async function readConfig(options?: ConfigOptions): Promise<Config> {
+  let userConfig: Config;
+  let projectConfig: Config;
   try {
-    const userConfig = await readConfigForScope("user", options);
-    const projectConfig = await readConfigForScope("project", options);
-    return shallowMerge(userConfig, projectConfig);
+    userConfig = await readConfigForScope("user", options);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Warning: failed to parse config file, using defaults. ${message}`);
-    return {};
+    throw wrapError("user", error);
   }
+  try {
+    projectConfig = await readConfigForScope("project", options);
+  } catch (error) {
+    throw wrapError("project", error);
+  }
+  return shallowMerge(userConfig, projectConfig);
 }
 
 export function readConfigSync(options?: ConfigOptions): Config {
+  let userConfig: Config;
+  let projectConfig: Config;
   try {
-    const userConfig = readConfigForScopeSync("user", options);
-    const projectConfig = readConfigForScopeSync("project", options);
-    return shallowMerge(userConfig, projectConfig);
+    userConfig = readConfigForScopeSync("user", options);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Warning: failed to parse config file, using defaults. ${message}`);
-    return {};
+    throw wrapError("user", error);
   }
+  try {
+    projectConfig = readConfigForScopeSync("project", options);
+  } catch (error) {
+    throw wrapError("project", error);
+  }
+  return shallowMerge(userConfig, projectConfig);
 }
 
 export async function writeConfig(config: Config, options?: ConfigOptions): Promise<void> {
