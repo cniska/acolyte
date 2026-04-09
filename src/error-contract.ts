@@ -41,3 +41,7 @@ export const ERROR_KINDS = {
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
