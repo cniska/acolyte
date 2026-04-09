@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { stateDir } from "./paths";
+import { stateDirFromHome } from "./paths";
 
 const DEFAULT_PORT = 6767;
 
@@ -31,12 +31,8 @@ const startupLockSchema = z.object({
   startedAt: isoDateTimeSchema,
 });
 
-function resolveStateDir(homeDir?: string): string {
-  return homeDir ? join(homeDir, ".acolyte") : stateDir();
-}
-
 export function daemonsDir(homeDir?: string): string {
-  return join(resolveStateDir(homeDir), "daemons");
+  return join(stateDirFromHome(homeDir), "daemons");
 }
 
 function daemonFileName(port: number, suffix: string): string {

@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { configDir } from "./paths";
+import { configDirFromHome } from "./paths";
 
 const CREDENTIALS_FILE = "credentials";
 
@@ -17,12 +17,8 @@ export type Credentials = {
   cloudToken?: string;
 };
 
-function resolveConfigDir(homeDir?: string): string {
-  return homeDir ? join(homeDir, ".acolyte") : configDir();
-}
-
 function credentialsPath(homeDir?: string): string {
-  return join(resolveConfigDir(homeDir), CREDENTIALS_FILE);
+  return join(configDirFromHome(homeDir), CREDENTIALS_FILE);
 }
 
 function parseCredentials(content: string): Credentials {
@@ -62,7 +58,7 @@ export async function writeCredential(key: keyof Credentials, value: string, hom
     content = await readFile(path, "utf8");
   } catch {}
   const next = upsertDotenvValue(content, KEY_MAP[key], value);
-  const dir = resolveConfigDir(homeDir);
+  const dir = configDirFromHome(homeDir);
   await mkdir(dir, { recursive: true });
   await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
   await chmod(path, PRIVATE_FILE_MODE);

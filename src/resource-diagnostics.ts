@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { configDir } from "./paths";
+import { configDirFromHome } from "./paths";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
 import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
@@ -11,7 +11,7 @@ function hasConfigFileCollision(scopeDir: string): boolean {
 
 export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: string }): StatusFields {
   const cwd = options?.cwd ?? process.cwd();
-  const userConfigDir = options?.homeDir ? join(options.homeDir, ".acolyte") : configDir();
+  const userConfigDir = configDirFromHome(options?.homeDir);
   const diagnostics: StatusFields = {};
 
   const collisionScopes: string[] = [];
