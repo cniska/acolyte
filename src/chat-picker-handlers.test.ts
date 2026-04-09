@@ -65,4 +65,25 @@ describe("chat picker handlers", () => {
     expect(spies.currentSessions.at(-1)?.model).toBe("gpt-5.2");
     expect(spies.rows.some((row) => row.content === "Changed model to gpt-5.2.")).toBe(true);
   });
+
+  test("model change persists session", async () => {
+    const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
+    const sessionState = createSessionState({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const { handlers, spies } = createPickerHandlerHarness({
+      sessionState,
+      currentSession,
+      persistConfig: async () => {},
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "model",
+      items: [{ label: "gpt-5.2", value: "gpt-5.2" }],
+      filtered: [{ label: "gpt-5.2", value: "gpt-5.2" }],
+      query: "",
+      index: 0,
+      scrollOffset: 0,
+    });
+
+    expect(spies.persistCalls).toBe(1);
+  });
 });

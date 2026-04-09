@@ -392,6 +392,7 @@ export type PickerHandlerSpies = {
   currentSessions: Session[];
   rowsDirectSets: ChatRow[][];
   assistantTurnTexts: string[];
+  persistCalls: number;
 };
 
 export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandlersInput>): {
@@ -404,6 +405,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     currentSessions: [],
     rowsDirectSets: [],
     assistantTurnTexts: [],
+    persistCalls: 0,
   };
   const handlers = createPickerHandlers({
     sessionState: createSessionState(),
@@ -424,7 +426,9 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     },
     setShowHelp: () => {},
     setValue: () => {},
-    persist: async () => {},
+    persist: async () => {
+      spies.persistCalls++;
+    },
     toRows: () => [],
     nowIso: () => "2026-02-20T00:00:00.000Z",
     activateSkill: async () => true,
@@ -442,6 +446,7 @@ export type CommandContextSpies = {
   openedModel: boolean;
   currentSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
+  persistCalls: number;
 };
 
 export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): LifecycleDeps {
@@ -543,6 +548,7 @@ export function createCommandContext(
     openedModel: false,
     currentSessionIds: [],
     tokenUsageSets: [],
+    persistCalls: 0,
   };
   const ctx: CommandContext = {
     text,
@@ -562,7 +568,9 @@ export function createCommandContext(
     },
     setShowHelp: () => {},
     setValue: () => {},
-    persist: async () => {},
+    persist: async () => {
+      spies.persistCalls++;
+    },
     exit: () => {},
     openSkillsPanel: async () => {},
     openResumePanel: () => {},

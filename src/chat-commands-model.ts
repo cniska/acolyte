@@ -43,6 +43,7 @@ async function handleModelSet(ctx: CommandContext): Promise<CommandResult> {
       updatedAt: nowIso(),
     };
     ctx.setCurrentSession(nextSession);
+    await ctx.persist();
     ctx.setRows((current) => [...current, createRow("system", t("chat.model.changed", { model: formatModel(model) }))]);
   } catch (error) {
     ctx.setRows((current) => [

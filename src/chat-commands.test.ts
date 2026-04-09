@@ -315,6 +315,19 @@ describe("chat-commands", () => {
     }
   });
 
+  test("dispatchSlashCommand /model <id> persists session", async () => {
+    const previousModel = appConfig.model;
+    try {
+      const { persistCalls, stop } = await runCommand("/model gpt-5.2", {
+        persistModelConfig: async () => {},
+      });
+      expect(stop).toBe(true);
+      expect(persistCalls).toBe(1);
+    } finally {
+      (appConfig as { model: string }).model = previousModel;
+    }
+  });
+
   test("dispatchSlashCommand /new resets rows to new-session status", async () => {
     const session = createSession({ id: "sess_current" });
     const sessionState = createSessionState({ sessions: [session], activeSessionId: session.id });

@@ -30,6 +30,7 @@ export interface ChatAppProps {
   session: Session;
   sessionState: SessionState;
   persist: () => Promise<void>;
+  onSessionChange?: (next: Session) => void;
   version: string;
   useMemory?: boolean;
 }
@@ -65,6 +66,13 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const { client, session, sessionState, persist, useMemory } = props;
 
   const [currentSession, setCurrentSession] = useState<Session>(session);
+  const updateSession = useCallback(
+    (next: Session) => {
+      setCurrentSession(next);
+      props.onSessionChange?.(next);
+    },
+    [props.onSessionChange],
+  );
   const [rows, setRows] = useState<ChatRow[]>([]);
 
   const {
@@ -156,7 +164,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     sessionState,
     currentSession,
-    setCurrentSession,
+    setCurrentSession: updateSession,
     setTokenUsage,
     setRows,
     setRowsDirect: setRows,
@@ -175,7 +183,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     client,
     sessionState,
     currentSession,
-    setCurrentSession,
+    setCurrentSession: updateSession,
     toRows,
     setRows,
     setShowHelp,
