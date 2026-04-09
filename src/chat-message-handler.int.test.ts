@@ -406,6 +406,12 @@ describe("chat message handler", () => {
     expect(interruptRegistered).toBe(true);
     interruptHandler();
     await firstPending;
+
+    // The interrupted user message should be removed from session history
+    // so the model doesn't try to answer it on the next turn.
+    const historyBeforeSecond = session.messages.map((m) => `${m.role}:${m.content}`);
+    expect(historyBeforeSecond).not.toContainEqual("user:First question");
+
     await handleSubmit("Second question");
 
     expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
