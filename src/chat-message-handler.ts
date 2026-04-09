@@ -167,6 +167,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     } catch (error) {
       const remoteTaskId = remoteTaskIdFromError(error);
       if (!isAbortError(error) && remoteTaskId) {
+        const followupController = new AbortController();
         const startedFollowup = await startRemoteTaskFollowup({
           client: input.client,
           remoteTaskId,
@@ -174,8 +175,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           setPendingState: input.setPendingState,
           persist: input.persist,
           onStopPending: stopPending,
+          signal: followupController.signal,
         });
         if (startedFollowup) {
+          input.setInterrupt(() => followupController.abort());
           keepPendingForRemoteTask = true;
           return;
         }
@@ -209,8 +212,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         ]);
       }
     } finally {
-      input.setInterrupt(null);
       if (!keepPendingForRemoteTask) {
+        input.setInterrupt(null);
         stopPending();
         input.setPendingState(null);
       }

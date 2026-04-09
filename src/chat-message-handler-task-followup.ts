@@ -12,6 +12,7 @@ type StartRemoteTaskFollowupInput = {
   setPendingState: (next: PendingState | null) => void;
   persist: () => Promise<void>;
   onStopPending: () => void;
+  signal?: AbortSignal;
 };
 
 const MAX_POLL_ITERATIONS = 300;
@@ -30,6 +31,13 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
     try {
       for (let pollCount = 0; pollCount < MAX_POLL_ITERATIONS; pollCount += 1) {
         await Bun.sleep(POLL_INTERVAL_MS);
+        if (input.signal?.aborted) {
+          input.setRows((current) => [
+            ...current,
+            createRow("system", t("chat.task.followup.running_hint"), { dim: true }),
+          ]);
+          return;
+        }
         const next = await input.client.taskStatus(input.remoteTaskId);
         if (!next || next.state === "running" || next.state === "detached") continue;
         if (next.state === "failed") {
