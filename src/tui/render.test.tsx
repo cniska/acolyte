@@ -197,7 +197,7 @@ describe("render", () => {
     expect(joined).not.toContain("A4");
   });
 
-  test("forceRedraw starts from the absolute top-left corner", async () => {
+  test("height jumps use normal erase instead of forceRedraw", async () => {
     const writes = await withMockedStdout(
       async () => {
         const { render } = await import("./render");
@@ -234,8 +234,9 @@ describe("render", () => {
     );
 
     const redrawWrite = writes.find((write) => write.includes("B1")) ?? "";
-    expect(redrawWrite).toContain(ansi.cursorTo(0, 0));
-    expect(redrawWrite).not.toContain(ansi.cursorUp(6));
+    expect(redrawWrite).toContain("B1");
+    // Normal erase+rewrite, not forceRedraw (which would duplicate scrollback).
+    expect(redrawWrite).not.toContain(ansi.cursorTo(0, 0));
   });
 
   test("force redraw preserves static lines when opening the picker", async () => {
@@ -315,6 +316,67 @@ describe("render", () => {
     expect(joined).toContain("static line 2");
     expect(joined).toContain("transcript line");
     expect(joined).toContain("Model:");
-    expect(frameWrites.some((write) => write.includes(ansi.cursorTo(0, 0)))).toBe(true);
+    // Normal erase+rewrite is used instead of forceRedraw to avoid
+    // duplicating content that has been pushed to the scrollback buffer.
+    expect(frameWrites.some((write) => write.includes(ansi.cursorTo(0, 0)))).toBe(false);
+  });
+
+  test("height jumps do not duplicate static items in scrollback", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        // Simulate a chat turn: static header is flushed, then the active
+        // region grows by several rows at once (pending indicator + response
+        // row added in one commit).  Before the fix, the height-jump guard
+        // called forceRedraw which re-emitted static items, duplicating
+        // them in the scrollback.
+        function App(): React.JSX.Element {
+          const [phase, setPhase] = useState<"idle" | "streaming" | "done">("idle");
+
+          useEffect(() => {
+            const t1 = setTimeout(() => setPhase("streaming"), 20);
+            const t2 = setTimeout(() => setPhase("done"), 40);
+            const t3 = setTimeout(() => app.unmount(), 80);
+            return () => {
+              clearTimeout(t1);
+              clearTimeout(t2);
+              clearTimeout(t3);
+            };
+          }, []);
+
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>
+                <tui-text>HEADER</tui-text>
+              </tui-static>
+              <tui-text>prompt</tui-text>
+              {phase !== "idle" && <tui-text>response line 1</tui-text>}
+              {phase !== "idle" && <tui-text>response line 2</tui-text>}
+              {phase !== "idle" && <tui-text>response line 3</tui-text>}
+              {phase === "done" && <tui-text>worked</tui-text>}
+              {phase === "done" && <tui-text>status extra 1</tui-text>}
+              {phase === "done" && <tui-text>status extra 2</tui-text>}
+              <tui-text>───────</tui-text>
+              <tui-text>input</tui-text>
+              <tui-text>───────</tui-text>
+              <tui-text>footer</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns: 40, rows: 12 },
+    );
+
+    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const allOutput = frameWrites.join("");
+
+    // HEADER must appear exactly once — never duplicated by forceRedraw.
+    const headerCount = allOutput.split("HEADER").length - 1;
+    expect(headerCount).toBe(1);
   });
 });

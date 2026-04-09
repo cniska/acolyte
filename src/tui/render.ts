@@ -191,23 +191,22 @@ export function render(node: ReactNode): RenderInstance {
     // Only re-render the active region if it changed.
     if (active === lastActive) return;
 
-    const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
-    if (Math.abs(nextActiveLineCount - lastActiveLineCount) > 1) {
-      forceRedraw();
-      return;
-    }
-
     const allLines = active.split("\n");
 
     // If content shrank or rewrote the previously frozen prefix, the
-    // append-only overflow assumption no longer holds. Repaint the whole
-    // visible area so stale frozen lines are cleared as well.
+    // append-only overflow assumption no longer holds.  Erase the full
+    // viewport (frozen lines may still be visible at the top) and reset
+    // tracking so the normal render path treats all lines as live.
+    // We intentionally avoid forceRedraw here because it re-emits all
+    // static items, duplicating content already in the scrollback buffer.
     if (
       frozenLineCount > 0 &&
       (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
     ) {
-      forceRedraw();
-      return;
+      syncWrite(`${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`);
+      lastActiveLineCount = 0;
+      frozenLineCount = 0;
+      frozenOverflowText = "";
     }
 
     // Determine the live (on-screen, erasable) portion of the active output.
