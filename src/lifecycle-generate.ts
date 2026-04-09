@@ -3,7 +3,7 @@ import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
-import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -131,11 +131,10 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
       text_chars: ctx.result.text.trim().length,
     });
   } catch (error) {
-    const errorMsg = errorMessage(error);
-    const errorCode =
-      error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
-    captureError(ctx, errorMsg, { source: "generate", code: errorCode });
-    ctx.debug("lifecycle.generate.error", { model: ctx.model, error: errorMsg });
+    const message = errorMessage(error);
+    const code = errorCode(error);
+    captureError(ctx, message, { source: "generate", code });
+    ctx.debug("lifecycle.generate.error", { model: ctx.model, error: message });
   }
 }
 
