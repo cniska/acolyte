@@ -14,8 +14,8 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 const ERROR_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Acolyte</title>
 <style>body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#fafafa}
-.card{text-align:center}h1{margin:0 0 8px;color:#ef4444}p{color:#888}</style></head>
-<body><div class="card"><h1>Error</h1><p>Invalid or expired callback. Please try again.</p></div></body></html>`;
+.card{text-align:center}h1{font-size:2.25rem;font-weight:600;margin:0 0 12px}p{color:#737373;margin:8px 0;line-height:1.5}code{font-family:ui-monospace,monospace;font-size:13px;background:#171717;padding:2px 6px;border-radius:4px;color:#d4d4d4}</style></head>
+<body><div class="card"><h1>Something went wrong</h1><p>The login session expired or was invalid.</p><p>Run <code>acolyte login</code> to try again.</p></div></body></html>`;
 
 export function startCallbackServer(expectedState: string): Promise<{ port: number; result: Promise<CallbackResult> }> {
   return new Promise((resolveStart) => {
