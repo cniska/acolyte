@@ -29,6 +29,7 @@ const STREAM_FLUSH_MS = 50;
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
 }): MessageStreamState {
+  let closed = false;
   // --- agent streaming state ---
   let activeRowId: string | null = null;
   let agentContent = "";
@@ -76,16 +77,19 @@ export function createMessageStreamState(input: {
 
   return {
     onDelta: (delta) => {
+      if (closed) return;
       if (delta.length === 0) return;
       agentContent += delta;
       if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
     },
 
     onToolCall: () => {
+      if (closed) return;
       sealAgentRow();
     },
 
     onOutput: (entry) => {
+      if (closed) return;
       const update = toolOutput.push(entry);
       if (!update) return;
 
@@ -125,6 +129,7 @@ export function createMessageStreamState(input: {
     },
 
     onToolResult: (entry) => {
+      if (closed) return;
       const budgetExhausted =
         entry.isError &&
         (entry.errorCode === LIFECYCLE_ERROR_CODES.budgetExhausted || entry.error?.category === "budget-exhausted");
@@ -145,6 +150,7 @@ export function createMessageStreamState(input: {
     },
 
     onChecklist: (entry) => {
+      if (closed) return;
       const content = { groupId: entry.groupId, groupTitle: entry.groupTitle, items: entry.items };
       const existingRowId = checklistRowIdByGroupId.get(entry.groupId);
       if (!existingRowId) {
@@ -158,6 +164,7 @@ export function createMessageStreamState(input: {
     },
 
     onProgressError: (error) => {
+      if (closed) return;
       input.setRows((current) => {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
@@ -168,6 +175,7 @@ export function createMessageStreamState(input: {
     streamedText: () => agentContent,
 
     finalize: () => {
+      if (closed) return [];
       sealAgentRow();
       const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
@@ -176,10 +184,13 @@ export function createMessageStreamState(input: {
       }
       const ids = [...agentRowIds];
       agentRowIds.length = 0;
+      closed = true;
       return ids;
     },
 
     dispose: () => {
+      if (closed) return;
+      closed = true;
       cancelFlushTimer();
       const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();

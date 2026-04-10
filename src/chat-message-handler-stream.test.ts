@@ -228,4 +228,40 @@ describe("chat-message-handler-stream", () => {
     expect(rows).toHaveLength(0);
     state.dispose();
   });
+
+  test("ignores late deltas after finalize", async () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onDelta("first");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows.filter((row) => row.kind === "assistant")).toHaveLength(1);
+
+    const ids = state.finalize();
+    const removeSet = new Set(ids);
+    const replaced = rows.filter((row) => !removeSet.has(row.id));
+    replaced.push({ id: "final_assistant", kind: "assistant", content: "final" });
+    setRows(() => replaced);
+
+    state.onDelta("late delta that should be ignored");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows.filter((row) => row.kind === "assistant")).toHaveLength(1);
+    expect(rows[0]?.content).toBe("final");
+  });
+
+  test("ignores late tool output after finalize", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    const ids = state.finalize();
+    expect(ids).toHaveLength(0);
+
+    state.onOutput({
+      toolCallId: "call_late",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
+    });
+
+    expect(rows).toHaveLength(0);
+  });
 });
