@@ -134,24 +134,37 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Full-screen erase and re-render.  Called on terminal focus-in to
-   *  repair display corruption caused by xterm resolving auto-margin
-   *  pending-wrap state during tab switches.  Re-flushes static items
-   *  (header, completed messages) because the erase may have cleared
-   *  them from the visible area. */
+  function viewportTail(staticItems: string[], active: string, rows: number, cols: number): string {
+    const lines = [...staticItems, ...active.split("\n")];
+    if (lines.length === 0) return "";
+    const kept: string[] = [];
+    let usedRows = 0;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i] ?? "";
+      const lineRows = linePhysRows(line, cols);
+      if (usedRows > 0 && usedRows + lineRows > rows) break;
+      kept.push(line);
+      usedRows += lineRows;
+      if (usedRows >= rows) break;
+    }
+    return kept.reverse().join("\n");
+  }
+
+  /** Full-screen repaint for focus-in recovery. Repaint only the visible
+   *  viewport tail to avoid re-flushing historic static transcript rows
+   *  into scrollback on every focus event. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
     const { staticItems, active } = serializeSplit(root);
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const rows = stdout.rows ?? 24;
     const maxLiveRows = rows - 1;
+    const viewport = viewportTail(staticItems, active, Math.max(1, rows), cols);
 
     // Move to the visible origin and erase everything. Absolute positioning is
     // more robust than relative cursor-up when prior output left terminals in
     // ambiguous wrap states.
-    let buf = `${ansi.cursorTo(0, 0)}${ansi.eraseDown}`;
-    for (const item of staticItems) buf += `${item}\n`;
-    buf += active;
+    const buf = `${ansi.cursorTo(0, 0)}${ansi.eraseDown}${viewport}`;
 
     syncWrite(buf);
     flushedStaticCount = staticItems.length;

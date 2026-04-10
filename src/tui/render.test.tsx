@@ -6,7 +6,7 @@ import { ansi } from "./styles";
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
-  options: { columns?: number; rows?: number } = {},
+  options: { columns?: number; rows?: number; stdinTty?: boolean } = {},
 ): Promise<string[]> {
   const writes: string[] = [];
   const columns = options.columns ?? 120;
@@ -16,10 +16,20 @@ function withMockedStdout(
     isTTY: Object.getOwnPropertyDescriptor(process.stdout, "isTTY"),
     columns: Object.getOwnPropertyDescriptor(process.stdout, "columns"),
     rows: Object.getOwnPropertyDescriptor(process.stdout, "rows"),
+    stdinIsTTY: Object.getOwnPropertyDescriptor(process.stdin, "isTTY"),
+    stdinSetRawMode: process.stdin.setRawMode,
+    stdinResume: process.stdin.resume,
+    stdinPause: process.stdin.pause,
   };
   Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
   Object.defineProperty(process.stdout, "columns", { value: columns, configurable: true });
   Object.defineProperty(process.stdout, "rows", { value: rows, configurable: true });
+  if (options.stdinTty) {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    process.stdin.setRawMode = (() => process.stdin) as typeof process.stdin.setRawMode;
+    process.stdin.resume = (() => process.stdin) as typeof process.stdin.resume;
+    process.stdin.pause = (() => process.stdin) as typeof process.stdin.pause;
+  }
   process.stdout.write = ((data: string) => {
     writes.push(data);
     return true;
@@ -28,6 +38,10 @@ function withMockedStdout(
     process.stdout.write = saved.write;
     for (const key of ["isTTY", "columns", "rows"] as const)
       if (saved[key]) Object.defineProperty(process.stdout, key, saved[key]);
+    if (saved.stdinIsTTY) Object.defineProperty(process.stdin, "isTTY", saved.stdinIsTTY);
+    process.stdin.setRawMode = saved.stdinSetRawMode;
+    process.stdin.resume = saved.stdinResume;
+    process.stdin.pause = saved.stdinPause;
   };
   return Promise.resolve(fn(writes)).then(
     () => {
@@ -116,6 +130,91 @@ function replayVisibleScreen(writes: string[], rows: number, columns: number): s
 
   for (const write of writes) applyWrite(write);
   return screen.map((line) => line.join("").trimEnd());
+}
+
+function replayScrollback(writes: string[], rows: number, columns: number): string[] {
+  const screen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));
+  const scrollback: string[] = [];
+  let row = 0;
+  let col = 0;
+
+  const scroll = (): void => {
+    const first = screen.shift();
+    scrollback.push((first ?? []).join("").trimEnd());
+    screen.push(Array.from({ length: columns }, () => " "));
+    row = rows - 1;
+  };
+
+  const eraseDown = (): void => {
+    const currentRow = screen[row];
+    if (currentRow) {
+      for (let c = col; c < columns; c++) currentRow[c] = " ";
+    }
+    for (let r = row + 1; r < rows; r++) {
+      const nextRow = screen[r];
+      if (!nextRow) continue;
+      for (let c = 0; c < columns; c++) nextRow[c] = " ";
+    }
+  };
+
+  const applyWrite = (data: string): void => {
+    let index = 0;
+    while (index < data.length) {
+      const char = data[index];
+      if (char === "\x1b" && data[index + 1] === "[") {
+        let end = index + 2;
+        while (end < data.length) {
+          const code = data.charCodeAt(end);
+          if (code >= 0x40 && code <= 0x7e) break;
+          end += 1;
+        }
+        if (end >= data.length) break;
+        const sequence = data.slice(index + 2, end);
+        const finalByte = data[end];
+        const paramText = sequence.replace(/^\?/, "");
+        if (finalByte === "A") {
+          const param = paramText.length > 0 ? Number.parseInt(paramText, 10) : 1;
+          row = Math.max(0, row - (Number.isFinite(param) ? param : 1));
+        } else if (finalByte === "J") {
+          eraseDown();
+        } else if (finalByte === "H") {
+          const [rowText, colText] = paramText.split(";");
+          const nextRow = Number.parseInt(rowText ?? "1", 10);
+          const nextCol = Number.parseInt(colText ?? "1", 10);
+          row = Math.max(0, Math.min(rows - 1, (Number.isFinite(nextRow) ? nextRow : 1) - 1));
+          col = Math.max(0, Math.min(columns - 1, (Number.isFinite(nextCol) ? nextCol : 1) - 1));
+        }
+        index = end + 1;
+        continue;
+      }
+      if (char === "\r") {
+        col = 0;
+        index += 1;
+        continue;
+      }
+      if (char === "\n") {
+        row += 1;
+        col = 0;
+        if (row >= rows) scroll();
+        index += 1;
+        continue;
+      }
+      if (col >= columns) {
+        row += 1;
+        col = 0;
+        if (row >= rows) scroll();
+      }
+      if (row >= 0 && row < rows && col >= 0 && col < columns) {
+        const currentRow = screen[row];
+        if (currentRow) currentRow[col] = char;
+      }
+      col += 1;
+      index += 1;
+    }
+  };
+
+  for (const write of writes) applyWrite(write);
+  return scrollback;
 }
 
 describe("render", () => {
@@ -377,6 +476,57 @@ describe("render", () => {
 
     // HEADER must appear exactly once — never duplicated by forceRedraw.
     const headerCount = allOutput.split("HEADER").length - 1;
+    expect(headerCount).toBe(1);
+  });
+
+  test("focus-in redraw does not duplicate static transcript in scrollback", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          useEffect(() => {
+            const focusTimer = setTimeout(() => {
+              process.stdin.emit("data", Buffer.from("\x1b[I"));
+            }, 20);
+            const unmountTimer = setTimeout(() => {
+              app.unmount();
+            }, 60);
+            return () => {
+              clearTimeout(focusTimer);
+              clearTimeout(unmountTimer);
+            };
+          }, []);
+
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>
+                <tui-text>HEADER_FOCUS</tui-text>
+                <tui-text>line 1</tui-text>
+                <tui-text>line 2</tui-text>
+                <tui-text>line 3</tui-text>
+                <tui-text>line 4</tui-text>
+                <tui-text>line 5</tui-text>
+                <tui-text>line 6</tui-text>
+                <tui-text>line 7</tui-text>
+                <tui-text>line 8</tui-text>
+                <tui-text>line 9</tui-text>
+              </tui-static>
+              <tui-text>active prompt</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns: 40, rows: 6, stdinTty: true },
+    );
+
+    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const scrollback = replayScrollback(frameWrites, 6, 40).join("\n");
+    const headerCount = scrollback.split("HEADER_FOCUS").length - 1;
     expect(headerCount).toBe(1);
   });
 });
