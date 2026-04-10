@@ -40,9 +40,9 @@ Shipped, user-visible capabilities.
 - find/search/read files with gitignore awareness
 - edit/create/delete files
 - AST-based structural code editing with workspace-wide scope
-- Git status/diff/log/show/add/commit
-- Shell and test execution
-- Web search/fetch
+- git status/diff/log/show/add/commit
+- shell and test execution
+- web search/fetch
 
 ## Memory
 
