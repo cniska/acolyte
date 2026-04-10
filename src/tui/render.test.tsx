@@ -98,6 +98,12 @@ function replayVisibleScreen(writes: string[], rows: number, columns: number): s
           row = Math.max(0, row - (Number.isFinite(param) ? param : 1));
         } else if (finalByte === "J") {
           eraseDown();
+        } else if (finalByte === "H") {
+          const [rowText, colText] = paramText.split(";");
+          const nextRow = Number.parseInt(rowText ?? "1", 10);
+          const nextCol = Number.parseInt(colText ?? "1", 10);
+          row = Math.max(0, Math.min(rows - 1, (Number.isFinite(nextRow) ? nextRow : 1) - 1));
+          col = Math.max(0, Math.min(columns - 1, (Number.isFinite(nextCol) ? nextCol : 1) - 1));
         }
         index = end + 1;
         continue;
@@ -528,5 +534,61 @@ describe("render", () => {
     const scrollback = replayScrollback(frameWrites, 6, 40).join("\n");
     const headerCount = scrollback.split("HEADER_FOCUS").length - 1;
     expect(headerCount).toBe(1);
+  });
+
+  test("focus-in redraw preserves visible viewport placement", async () => {
+    const rows = 8;
+    const columns = 40;
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          useEffect(() => {
+            const focusTimer = setTimeout(() => {
+              process.stdin.emit("data", Buffer.from("\x1b[I"));
+            }, 20);
+            const unmountTimer = setTimeout(() => {
+              app.unmount();
+            }, 60);
+            return () => {
+              clearTimeout(focusTimer);
+              clearTimeout(unmountTimer);
+            };
+          }, []);
+
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>
+                <tui-text>S1</tui-text>
+                <tui-text>S2</tui-text>
+                <tui-text>S3</tui-text>
+                <tui-text>S4</tui-text>
+                <tui-text>S5</tui-text>
+                <tui-text>S6</tui-text>
+                <tui-text>S7</tui-text>
+              </tui-static>
+              <tui-text>A1</tui-text>
+              <tui-text>A2</tui-text>
+              <tui-text>A3</tui-text>
+              <tui-text>INPUT</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns, rows, stdinTty: true },
+    );
+
+    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const redrawIndex = frameWrites.findIndex((write) => write.includes(ansi.cursorTo(0, 0)));
+    expect(redrawIndex).toBeGreaterThan(0);
+
+    const before = replayVisibleScreen(frameWrites.slice(0, redrawIndex), rows, columns).join("\n");
+    const after = replayVisibleScreen(frameWrites, rows, columns).join("\n");
+    expect(after).toBe(before);
   });
 });

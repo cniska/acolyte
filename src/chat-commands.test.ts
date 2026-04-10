@@ -383,6 +383,33 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No session found for prefix: missing")).toBe(true);
   });
 
+  test("dispatchSlashCommand /resume no-ops when target session is already active", async () => {
+    const target = createSession({
+      id: "sess_active",
+      messages: [createMessage("assistant", "hello")],
+    });
+    const sessionState = createSessionState({
+      sessions: [target],
+      activeSessionId: target.id,
+    });
+    let clearCalls = 0;
+    const text = `/resume ${target.id.slice(0, 12)}`;
+    const { ctx, spies } = createCommandContext(text, {
+      sessionState,
+      currentSession: target,
+      clearTranscript: () => {
+        clearCalls++;
+      },
+    });
+
+    const result = await dispatchSlashCommand(ctx);
+
+    expect(result.stop).toBe(true);
+    expect(spies.currentSessionIds).toEqual([]);
+    expect(clearCalls).toBe(0);
+    expect(spies.rows).toEqual([]);
+  });
+
   test("dispatchSlashCommand supports /new then /resume round-trip", async () => {
     const original = createSession({
       id: "sess_original",

@@ -38,6 +38,26 @@ describe("chat picker handlers", () => {
     expect(spies.pickerValues.at(-1)).toBeNull();
   });
 
+  test("handlePickerSelect resume no-ops for already active session", async () => {
+    const first = createSession({ id: "sess_first" });
+    const sessionState = createSessionState({ sessions: [first], activeSessionId: first.id });
+    let clearCalls = 0;
+    const { handlers, spies } = createPickerHandlerHarness({
+      sessionState,
+      currentSession: first,
+      clearTranscript: () => {
+        clearCalls++;
+      },
+    });
+
+    await handlers.handlePickerSelect({ kind: "resume", items: [first], index: 0, scrollOffset: 0 });
+    expect(sessionState.activeSessionId).toBe(first.id);
+    expect(spies.currentSessions).toEqual([]);
+    expect(spies.rowsDirectSets).toEqual([]);
+    expect(clearCalls).toBe(0);
+    expect(spies.pickerValues.at(-1)).toBeNull();
+  });
+
   test("handlePickerSelect model applies selected model", async () => {
     const currentSession = createSession({ id: "sess_current", model: "gpt-5-mini" });
     const sessionState = createSessionState({ sessions: [currentSession], activeSessionId: currentSession.id });

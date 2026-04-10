@@ -128,6 +128,10 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       case "resume": {
         const selected = state.items[state.index];
         if (selected) {
+          if (selected.id === input.currentSession.id) {
+            input.setPicker(null);
+            return;
+          }
           input.sessionState.activeSessionId = selected.id;
           input.setCurrentSession(selected);
           input.setTokenUsage?.(() => selected.tokenUsage);
