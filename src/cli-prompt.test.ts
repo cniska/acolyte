@@ -146,4 +146,41 @@ describe("cli-prompt", () => {
     const headerMatches = output.match(/src\/foo\.ts/g) ?? [];
     expect(headerMatches.length).toBe(1);
   });
+
+  test("streamed output strips lifecycle signal lines", async () => {
+    const session = createTestSession();
+    const client: Client = {
+      replyStream: async (_input, options) => {
+        options.onEvent({ type: "text-delta", text: "Resolved from memory.\n@signal done" });
+        return { state: "done" as const, output: "Resolved from memory.\n@signal done", model: "gpt-5-mini" };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    const { output } = await runPromptAndCapture("memory question", session, client);
+    expect(output.includes("@signal done")).toBe(false);
+    expect(output.includes("Resolved from memory.")).toBe(true);
+    expect(session.messages.at(-1)?.role).toBe("assistant");
+    expect(session.messages.at(-1)?.content).toBe("Resolved from memory.");
+  });
+
+  test("streamed output deduplicates repeated assistant chunks", async () => {
+    const session = createTestSession();
+    const answer = "Most important principles: SRP, YAGNI, DAMP over DRY.";
+    const client: Client = {
+      replyStream: async (_input, options) => {
+        options.onEvent({ type: "text-delta", text: answer });
+        options.onEvent({ type: "text-delta", text: "\n" });
+        options.onEvent({ type: "text-delta", text: answer });
+        return { state: "done" as const, output: answer, model: "gpt-5-mini" };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    const { output } = await runPromptAndCapture("principles?", session, client);
+    const matches = output.match(/SRP, YAGNI, DAMP over DRY\./g) ?? [];
+    expect(matches.length).toBe(1);
+  });
 });

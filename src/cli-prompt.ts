@@ -8,6 +8,12 @@ import { nowIso } from "./datetime";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
+import {
+  appendLifecycleTextDelta,
+  createLifecycleTextStreamState,
+  extractLifecycleSignal,
+  finalizeLifecycleText,
+} from "./lifecycle-signal";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { createToolOutputState, formatToolOutput } from "./tool-output-content";
@@ -32,8 +38,10 @@ function createAgentStreamRenderer(): {
   streamedText: () => string;
 } {
   let agentStreamStarted = false;
-  let agentStreamText = "";
+  let renderedText = "";
+  let lastMeaningfulChunk = "";
   let atLineStart = true;
+  const lifecycleTextState = createLifecycleTextStreamState();
 
   const writeRaw = (text: string): void => {
     if (text.length === 0) return;
@@ -56,26 +64,49 @@ function createAgentStreamRenderer(): {
     }
   };
 
+  const dedupeChunk = (chunk: string): string => {
+    if (chunk.length === 0) return "";
+    if (chunk === "\n" && renderedText.endsWith("\n")) return "";
+    if (renderedText.endsWith(chunk) || renderedText.endsWith(`\n${chunk}`)) return "";
+    const trimmed = chunk.trim();
+    if (trimmed.length > 0 && trimmed === lastMeaningfulChunk) return "";
+
+    let overlap = Math.min(renderedText.length, chunk.length);
+    while (overlap > 0 && !renderedText.endsWith(chunk.slice(0, overlap))) overlap--;
+    const append = chunk.slice(overlap);
+    if (append.trim().length > 0) lastMeaningfulChunk = append.trim();
+    return append;
+  };
+
+  const renderChunk = (chunk: string): void => {
+    const deduped = dedupeChunk(chunk);
+    if (deduped.length === 0) return;
+    renderedText += deduped;
+    writeRaw(deduped);
+  };
+
   return {
     onDelta: (delta) => {
       if (delta.length === 0) return;
-      agentStreamText += delta;
-      writeRaw(delta);
+      const visible = appendLifecycleTextDelta(lifecycleTextState, delta);
+      renderChunk(visible);
     },
     renderReply: async (replyOutput, hasPrintedProgress) => {
+      const finalized = finalizeLifecycleText(lifecycleTextState);
+      if (finalized.text.length > 0) renderChunk(finalized.text);
       if (!atLineStart) process.stdout.write("\n");
       printOutput("");
       if (hasPrintedProgress) printOutput("");
-      const missingTail = missingAgentStreamTail(agentStreamText, replyOutput);
+      const missingTail = missingAgentStreamTail(renderedText, replyOutput);
       if (missingTail.length > 0) {
-        writeRaw(missingTail);
+        renderChunk(missingTail);
         if (!atLineStart) process.stdout.write("\n");
       } else if (!agentStreamStarted) {
         const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
         await streamText(formatAgentReplyOutput(replyOutput, wrapWidth));
       }
     },
-    streamedText: () => agentStreamText,
+    streamedText: () => renderedText,
   };
 }
 
@@ -164,12 +195,13 @@ export async function handlePrompt(
       },
     );
 
+    const { text: finalOutput } = extractLifecycleSignal(reply.output);
     if (reply.error) {
       printError(reply.error);
     } else {
-      await agentRenderer.renderReply(reply.output, hasPrintedToolProgress);
+      await agentRenderer.renderReply(finalOutput, hasPrintedToolProgress);
     }
-    const assistantMessage = createMessage("assistant", reply.output);
+    const assistantMessage = createMessage("assistant", finalOutput);
     session.messages.push(
       (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
     );
