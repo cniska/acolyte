@@ -69,5 +69,6 @@ export function printError(content: string): void {
 }
 
 export function clearScreen(): void {
-  write("\x1b[2J\x1b[H");
+  // 3J clears scrollback in terminals that support it; 2J+H clears viewport and homes cursor.
+  write("\x1b[3J\x1b[2J\x1b[H");
 }

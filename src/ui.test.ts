@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { tokenizeStreamContent } from "./ui";
+import { clearScreen, setUiSink } from "./ui";
 
-describe("ui stream helpers", () => {
-  test("tokenizeStreamContent preserves whitespace tokens including newlines", () => {
-    const tokens = tokenizeStreamContent("• 1. first\n2. second");
-    expect(tokens).toEqual(["•", " ", "1.", " ", "first", "\n", "2.", " ", "second"]);
+describe("ui", () => {
+  test("clearScreen clears scrollback and viewport", () => {
+    const chunks: string[] = [];
+    setUiSink((chunk) => {
+      chunks.push(chunk);
+    });
+    try {
+      clearScreen();
+    } finally {
+      setUiSink(null);
+    }
+    expect(chunks).toEqual(["\x1b[3J\x1b[2J\x1b[H"]);
   });
 });
