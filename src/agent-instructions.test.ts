@@ -11,6 +11,7 @@ describe("createInstructions", () => {
       ["dedicated project tools", "shell only when it helps"],
       ["implementation intent is clear", "stay with it", "task is complete"],
       ["asks for explanation or planning only", "answer directly"],
+      ["depend on prior conversation or project history", "memory-search", "if nothing matches", "don't know yet"],
       ["smallest", "root-cause", "matches local conventions"],
       ["unrelated or speculative detours"],
       ["avoid repeating tool calls", "new information"],

@@ -99,7 +99,7 @@ function createMemorySearchTool(input: ToolkitInput) {
     category: "meta",
     description: "Search all memories by relevance. Returns entries ranked by semantic similarity to the query.",
     instruction:
-      "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions.",
+      "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions. Run it when answering may depend on prior history.",
     inputSchema: z.object({
       query: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
       scope: memoryScopeSchema.extract(["user", "project"]).optional(),

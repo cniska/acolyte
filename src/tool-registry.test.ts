@@ -145,7 +145,12 @@ describe("localization baseline", () => {
     expectIntent(webFetchInstruction, [["read specific urls"]]);
     expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);
     expectIntent(checklistUpdateInstruction, [["checklist-update"], ["status"], ["checklist-create"]]);
-    expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
+    expectIntent(memorySearchInstruction, [
+      ["memory-search"],
+      ["recall"],
+      ["prior context"],
+      ["answering may depend on prior history"],
+    ]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
     expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
   });
