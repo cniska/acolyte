@@ -584,11 +584,58 @@ describe("render", () => {
 
     const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
     const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
-    const redrawIndex = frameWrites.findIndex((write) => write.includes(ansi.cursorTo(0, 0)));
-    expect(redrawIndex).toBeGreaterThan(0);
-
-    const before = replayVisibleScreen(frameWrites.slice(0, redrawIndex), rows, columns).join("\n");
-    const after = replayVisibleScreen(frameWrites, rows, columns).join("\n");
+    const inputWriteIndices = frameWrites
+      .map((write, index) => (write.includes("INPUT") ? index : -1))
+      .filter((index) => index >= 0);
+    expect(inputWriteIndices.length).toBeGreaterThanOrEqual(2);
+    const firstInputWrite = inputWriteIndices[0] ?? 0;
+    const secondInputWrite = inputWriteIndices[1] ?? 0;
+    const before = replayVisibleScreen(frameWrites.slice(0, firstInputWrite + 1), rows, columns).join("\n");
+    const after = replayVisibleScreen(frameWrites.slice(0, secondInputWrite + 1), rows, columns).join("\n");
     expect(after).toBe(before);
+  });
+
+  test("focus-in redraw does not pin short content to terminal top", async () => {
+    const rows = 8;
+    const columns = 40;
+    const writes = await withMockedStdout(
+      async () => {
+        // Simulate existing scrollback before the TUI starts.
+        for (let i = 1; i <= 20; i++) process.stdout.write(`PRE${i}\n`);
+
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          useEffect(() => {
+            const focusTimer = setTimeout(() => {
+              process.stdin.emit("data", Buffer.from("\x1b[I"));
+            }, 20);
+            const unmountTimer = setTimeout(() => {
+              app.unmount();
+            }, 60);
+            return () => {
+              clearTimeout(focusTimer);
+              clearTimeout(unmountTimer);
+            };
+          }, []);
+          return (
+            <tui-box flexDirection="column">
+              <tui-text>line A</tui-text>
+              <tui-text>line B</tui-text>
+              <tui-text>INPUT</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns, rows, stdinTty: true },
+    );
+
+    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const visible = replayVisibleScreen(frameWrites, rows, columns).join("\n");
+    const topLine = visible.split("\n")[0] ?? "";
+    expect(topLine.startsWith("PRE")).toBe(true);
   });
 });

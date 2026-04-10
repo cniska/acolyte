@@ -134,40 +134,18 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  function viewportTail(staticItems: string[], active: string, rows: number, cols: number): string {
-    const lines = [...staticItems, ...active.split("\n")];
-    if (lines.length === 0) return "";
-    const kept: string[] = [];
-    let usedRows = 0;
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i] ?? "";
-      const lineRows = linePhysRows(line, cols);
-      if (usedRows > 0 && usedRows + lineRows > rows) break;
-      kept.push(line);
-      usedRows += lineRows;
-      if (usedRows >= rows) break;
-    }
-    return kept.reverse().join("\n");
-  }
-
-  /** Full-screen repaint for focus-in recovery. Repaint only the visible
-   *  viewport tail to avoid re-flushing historic static transcript rows
-   *  into scrollback on every focus event. */
+  /** Focus-in repaint for xterm pending-wrap recovery.
+   *  Repaint only the active region from its current origin to preserve
+   *  terminal placement and avoid re-flushing static transcript rows. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    const { staticItems, active } = serializeSplit(root);
+    const { active } = serializeSplit(root);
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const rows = stdout.rows ?? 24;
     const maxLiveRows = rows - 1;
-    const viewport = viewportTail(staticItems, active, Math.max(1, rows), cols);
-
-    // Move to the visible origin and erase everything. Absolute positioning is
-    // more robust than relative cursor-up when prior output left terminals in
-    // ambiguous wrap states.
-    const buf = `${ansi.cursorTo(0, 0)}${ansi.eraseDown}${viewport}`;
+    const buf = `${eraseSequence()}${active}`;
 
     syncWrite(buf);
-    flushedStaticCount = staticItems.length;
     frozenLineCount = 0;
     frozenOverflowText = "";
     lastActive = active;
