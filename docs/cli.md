@@ -6,8 +6,8 @@ The CLI is the primary interface for working with Acolyte.
 
 - `acolyte`: start interactive chat
 - `acolyte init [provider]`: initialize provider API key
-- `acolyte login`: authenticate with the cloud
-- `acolyte logout`: remove cloud credentials
+- `acolyte login`: authenticate with the cloud (feature-flagged: `features.cloudSync`)
+- `acolyte logout`: remove cloud credentials (feature-flagged: `features.cloudSync`)
 - `acolyte resume [id]`: continue a previous session
 - `acolyte run "<prompt>"`: one-shot execution
 - `acolyte run --file <path> "<prompt>"`: one-shot with file context
@@ -18,7 +18,9 @@ The CLI is the primary interface for working with Acolyte.
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte skill <name> [prompt]`: run a prompt with an active skill
 - `acolyte logs`: view server logs
+- `acolyte tool <tool-id> [args...]`: run a tool directly
 - `acolyte trace list|task <id>`: inspect server lifecycle traces
+- `acolyte update`: update to latest version
 
 Run `acolyte <command> help` for detailed usage.
 

@@ -43,6 +43,7 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/clear`: clear transcript
 - `/resume`: resume a previous session
 - `/sessions`: show sessions
+- `/workspaces`: manage parallel workspaces (feature-flagged)
 - `/model [id]`: change model
 - `/status`: show server status
 - `/usage`: show token usage

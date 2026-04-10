@@ -56,7 +56,7 @@ acolyte config set --project model openai-compatible/<model>
 ## Localization
 
 - `locale`: active UI language (defaults to `en`).
-- Locale catalogs are loaded from `src/i18n/locales/*.json` at startup, with `en` fallback.
+- English messages are defined in `src/i18n/en.ts`. Additional locales are loaded from `src/i18n/locales/*.json` at startup.
 
 ## Logging
 
@@ -119,6 +119,8 @@ acolyte config set features.syncAgents true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
+| `distillModel` | model used for memory distillation |
+| `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |

@@ -27,8 +27,8 @@ Keep user-facing copy translatable while keeping protocol and tool contracts lan
 ## Current behavior
 
 - Locale is configurable via config (`locale` key, for example `acolyte config set locale en`).
-- Locale files are discovered automatically from `src/i18n/locales/*.json`.
-- Adding a new locale requires only adding one JSON file named `<locale>.json` with a complete catalog.
+- English messages are defined in `src/i18n/en.ts`. Additional locales are discovered from `src/i18n/locales/*.json`.
+- Adding a new locale requires adding one JSON file named `<locale>.json` with a complete catalog matching the English key set.
 - Locale tags use BCP-47 style with `-` separators (for example `en`, `en-GB`, `fi-FI`).
 
 ## Key naming

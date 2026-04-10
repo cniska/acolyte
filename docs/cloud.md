@@ -27,20 +27,7 @@ Credentials are stored in the config directory as `credentials` (mode 0600). See
 
 ## Authentication
 
-EdDSA JWT tokens (Ed25519) with scope claims:
-
-- `sub` — user ID
-- `tid` — team ID (optional, for team-scoped access)
-- `oid` — org ID (optional, for org-scoped access)
-- `scope` — active scope (`user`, `team`, or `org`)
-
-All data is isolated by `owner_id` derived from the active scope:
-
-| Scope | Owner ID source |
-|-------|----------------|
-| `user` (default) | `sub` |
-| `team` | `tid` |
-| `org` | `oid` |
+EdDSA JWT tokens (Ed25519) with a `sub` claim identifying the user. All data is isolated by `owner_id` derived from the token subject.
 
 ## API
 
@@ -63,9 +50,9 @@ The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: 
 | | GET | `/api/v1/sessions/active` | Get active session |
 | | PUT | `/api/v1/sessions/active` | Set active session |
 
-## Multi-tenant isolation
+## Data isolation
 
-Every table is keyed by `(owner_id, id)`. The auth middleware derives `owner_id` from JWT scope claims before any query runs. There is no cross-tenant data access path.
+Every table is keyed by `(owner_id, id)`. The auth middleware derives `owner_id` from the JWT subject before any query runs. There is no cross-user data access path.
 
 ## Self-hosting
 

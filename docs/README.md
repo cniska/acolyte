@@ -15,7 +15,7 @@ Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable 
 - [Architecture](./architecture.md) — headless daemon with typed RPC connecting CLI, editors, and custom clients
 - [Workspace](./workspace.md) — workspace root resolution, sandboxing, and profile behavior
 - [Lifecycle](./lifecycle.md) — how each task flows through resolve, prepare, generate, and finalize
-- [Errors](./errors.md) — error contracts, runtime classes, and recovery boundaries
+- [Errors](./errors.md) — error contracts and runtime classes
 
 ## Runtime
 
