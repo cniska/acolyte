@@ -288,6 +288,35 @@ describe("chat message handler stream behavior", () => {
     );
   });
 
+  test("replaces streamed assistant rows with one final row and never shows @signal", async () => {
+    const finalOutput = "All done.";
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (_input, options) => {
+          options.onEvent({ type: "text-delta", text: "All done.\n@signal done" });
+          options.onEvent({
+            type: "tool-call",
+            toolCallId: "call_1",
+            toolName: "file-read",
+            args: { path: "a.ts" },
+          });
+          options.onEvent({ type: "text-delta", text: "All done." });
+          return { state: "done" as const, model: "gpt-5-mini", output: finalOutput };
+        },
+      }),
+    });
+
+    await handleMessage("finish");
+
+    const assistantRows = rows.filter((row) => row.kind === "assistant" && typeof row.content === "string");
+    expect(assistantRows).toHaveLength(1);
+    expect(assistantRows[0]?.content).toBe(finalOutput);
+    expect(assistantRows.some((row) => typeof row.content === "string" && row.content.includes("@signal done"))).toBe(
+      false,
+    );
+  });
+
   test("suppresses budget-exhausted tool attempts", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({

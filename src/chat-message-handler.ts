@@ -59,6 +59,22 @@ function remoteTaskIdFromError(error: unknown): string | null {
   return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
 }
 
+function finalizeAssistantRows(params: {
+  current: ChatRow[];
+  streamingRowIds: string[];
+  assistantContent: string;
+  trailingRows: ChatRow[];
+}): ChatRow[] {
+  const removeSet = new Set(params.streamingRowIds);
+  const insertIndex = removeSet.size > 0 ? params.current.findIndex((row) => removeSet.has(row.id)) : -1;
+  const filtered = params.current.filter((row) => !removeSet.has(row.id));
+  const assistantRow = createRow("assistant", params.assistantContent);
+  if (insertIndex >= 0) filtered.splice(insertIndex, 0, assistantRow);
+  else filtered.push(assistantRow);
+  if (params.trailingRows.length > 0) filtered.push(...params.trailingRows);
+  return filtered;
+}
+
 export function createMessageHandler(input: CreateMessageHandlerInput): {
   handleSubmit: (raw: string) => Promise<void>;
   startAssistantTurn: (userText: string) => Promise<void>;
@@ -151,7 +167,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      streamState.finalize();
+      const streamingRowIds = streamState.finalize();
 
       input.currentSession.messages.push(assistantMessage);
       input.currentSession.updatedAt = input.nowIso();
@@ -159,7 +175,14 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // adding the worked/status rows so React batches them into one
       // commit — avoids a frame where both "Working" and "Worked" show.
       input.setPendingState(null);
-      input.setRows((current) => [...current, ...turn.rows]);
+      input.setRows((current) =>
+        finalizeAssistantRows({
+          current,
+          streamingRowIds,
+          assistantContent: assistantMessage.content,
+          trailingRows: turn.rows,
+        }),
+      );
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
