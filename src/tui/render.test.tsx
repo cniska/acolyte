@@ -34,11 +34,21 @@ function withMockedStdout(
     writes.push(data);
     return true;
   }) as typeof process.stdout.write;
+
+  const restoreOwnProperty = (target: object, key: string, descriptor: PropertyDescriptor | undefined): void => {
+    if (descriptor) {
+      Object.defineProperty(target, key, descriptor);
+      return;
+    }
+    Reflect.deleteProperty(target, key);
+  };
+
   const restore = () => {
     process.stdout.write = saved.write;
-    for (const key of ["isTTY", "columns", "rows"] as const)
-      if (saved[key]) Object.defineProperty(process.stdout, key, saved[key]);
-    if (saved.stdinIsTTY) Object.defineProperty(process.stdin, "isTTY", saved.stdinIsTTY);
+    for (const key of ["isTTY", "columns", "rows"] as const) {
+      restoreOwnProperty(process.stdout, key, saved[key]);
+    }
+    restoreOwnProperty(process.stdin, "isTTY", saved.stdinIsTTY);
     process.stdin.setRawMode = saved.stdinSetRawMode;
     process.stdin.resume = saved.stdinResume;
     process.stdin.pause = saved.stdinPause;
