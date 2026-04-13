@@ -27,7 +27,6 @@ Review test adequacy for changed code.
 - tests duplicating coverage without distinct scenarios
 - fragile tests (timing, ordering, absolute paths)
 - using the wrong test type (filesystem/process/network in unit tests) — move those to integration tests
-- calling tool functions directly in integration tests instead of dispatching through the tool registry
 - missing cleanup (temp files, cache state)
 - mocking internals instead of testing through the real contract — mock at boundaries only
 - test names that don't read as specifications
