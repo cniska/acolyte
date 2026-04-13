@@ -8,6 +8,7 @@ import {
   removeCredential,
   writeCredential,
 } from "./credentials";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const dirs = tempDir();
@@ -59,7 +60,7 @@ describe("credentials", () => {
     const env = { HOME: home };
     await writeCredential("cloudToken", "tok_abc123", env);
     await removeCredential("cloudToken", env);
-    expect(existsSync(join(home, ".acolyte", "credentials"))).toBe(false);
+    expect(existsSync(join(configDir(env), "credentials"))).toBe(false);
   });
 
   test("readCredentialsSync reads file correctly", async () => {
@@ -84,18 +85,18 @@ describe("credentials", () => {
     const home = createTempHome();
     const env = { HOME: home };
     await writeCredential("cloudToken", "tok_private", env);
-    const filePath = join(home, ".acolyte", "credentials");
+    const filePath = join(configDir(env), "credentials");
     const mode = statSync(filePath).mode & 0o777;
     expect(mode).toBe(0o600);
   });
 
   test("ignores comments and blank lines", async () => {
-    const home = createTempHome();
-    const dir = join(home, ".acolyte");
+    const env = { HOME: createTempHome() };
+    const dir = configDir(env);
     mkdirSync(dir, { recursive: true });
     const { writeFile } = await import("node:fs/promises");
     await writeFile(join(dir, "credentials"), "# comment\n\nACOLYTE_CLOUD_TOKEN=tok\n", "utf8");
-    const creds = await readCredentials({ HOME: home });
+    const creds = await readCredentials(env);
     expect(creds).toEqual({ cloudToken: "tok" });
   });
 });

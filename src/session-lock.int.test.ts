@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { stateDir } from "./paths";
 import { acquireSessionLock, releaseSessionLock, sweepStaleSessionLocks } from "./session-lock";
 import { tempDir } from "./test-utils";
 
@@ -21,9 +22,9 @@ describe("session lock", () => {
   test("reclaims stale lock from non-running pid", () => {
     const homeDir = createTempHome();
     const env = { HOME: homeDir };
-    const locksDir = join(homeDir, ".acolyte", "locks");
+    const locksDir = join(stateDir(env), "locks");
     mkdirSync(locksDir, { recursive: true });
-    const lockPath = join(homeDir, ".acolyte", "locks", "sess_test.lock");
+    const lockPath = join(stateDir(env), "locks", "sess_test.lock");
     writeFileSync(lockPath, "999999");
     const result = acquireSessionLock("sess_test", { env });
     expect(result.ok).toBe(true);
@@ -35,9 +36,9 @@ describe("session lock", () => {
     const env = { HOME: homeDir };
     const sleeper = Bun.spawn(["sleep", "2"], { stdout: "ignore", stderr: "ignore" });
     try {
-      const locksDir = join(homeDir, ".acolyte", "locks");
+      const locksDir = join(stateDir(env), "locks");
       mkdirSync(locksDir, { recursive: true });
-      const lockPath = join(homeDir, ".acolyte", "locks", "sess_test.lock");
+      const lockPath = join(stateDir(env), "locks", "sess_test.lock");
       writeFileSync(lockPath, String(sleeper.pid));
       const result = acquireSessionLock("sess_test", { env });
       expect(result.ok).toBe(false);
@@ -51,7 +52,7 @@ describe("session lock", () => {
   test("sweepStaleSessionLocks removes dead and malformed locks, keeps live locks", () => {
     const homeDir = createTempHome();
     const env = { HOME: homeDir };
-    const locksDir = join(homeDir, ".acolyte", "locks");
+    const locksDir = join(stateDir(env), "locks");
     mkdirSync(locksDir, { recursive: true });
 
     const stalePath = join(locksDir, "sess_stale.lock");
