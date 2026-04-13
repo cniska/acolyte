@@ -154,25 +154,15 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Repaint the active region on focus-in.  Static items are already in
-   *  terminal scrollback — re-emitting them would cause the output to
-   *  exceed the viewport and scroll, duplicating content on each tab
-   *  switch.  The trailing \r in syncWrite defuses the auto-margin
-   *  pending-wrap state that would otherwise make relative cursor-up
-   *  unreliable after tab switches. */
+  /** Repaint the active region on focus-in.  Invalidates frozen overflow
+   *  state (may be stale after tab switch) and delegates to commitRender
+   *  which handles viewport overflow correctly. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    const { staticItems, active } = serializeSplit(root);
-    const cols = stdout.columns ?? DEFAULT_COLUMNS;
-    const maxLiveRows = (stdout.rows ?? 24) - 1;
-
     frozenLineCount = 0;
     frozenOverflowText = "";
-    flushedStaticCount = staticItems.length;
-
-    syncWrite(eraseSequence() + active);
-    lastActive = active;
-    lastActiveLineCount = Math.min(physicalRowCount(active, cols), maxLiveRows);
+    lastActive = "";
+    commitRender();
   }
 
   function commitRender() {
