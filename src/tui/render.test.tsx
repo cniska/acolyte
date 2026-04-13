@@ -379,4 +379,43 @@ describe("render", () => {
     const headerCount = allOutput.split("HEADER").length - 1;
     expect(headerCount).toBe(1);
   });
+
+  test("frozen-content reset and repaint happen in a single syncWrite", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          const [lines, setLines] = useState(["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]);
+
+          useEffect(() => {
+            const t1 = setTimeout(() => setLines(["B1", "B2", "B3", "B4"]), 20);
+            const t2 = setTimeout(() => app.unmount(), 60);
+            return () => {
+              clearTimeout(t1);
+              clearTimeout(t2);
+            };
+          }, []);
+
+          return (
+            <tui-box flexDirection="column">
+              {lines.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const redrawWrite = writes.find((w) => w.includes("B1")) ?? "";
+    expect(redrawWrite).toContain("B1");
+    // Erase must be in the SAME write as B1 — atomic within one BSU/ESU block.
+    const hasErase = redrawWrite.includes(ansi.eraseDown) || redrawWrite.includes(`${ansi.cursorUp(1)}`);
+    expect(hasErase).toBe(true);
+  });
 });
