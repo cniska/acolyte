@@ -203,7 +203,7 @@ describe("cli visual regression", () => {
     await withCliTestEnv(async ({ run, homeDir, dataDir }) => {
       const dbPath = join(dataDir, "memory.db");
       const store = createSqliteMemoryStore(dbPath);
-      const scopeKey = defaultUserResourceId(homeDir);
+      const scopeKey = defaultUserResourceId({ HOME: homeDir });
       await store.write(
         {
           id: "mem_abc123",

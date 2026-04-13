@@ -25,8 +25,8 @@ describe("resource id", () => {
   });
 
   test("defaultUserResourceId is deterministic for homeDir", () => {
-    const a = defaultUserResourceId("/home/test-user");
-    const b = defaultUserResourceId("/home/test-user");
+    const a = defaultUserResourceId({ HOME: "/home/test-user" });
+    const b = defaultUserResourceId({ HOME: "/home/test-user" });
     expect(a).toBe(b);
     expect(a.startsWith("user_")).toBe(true);
   });

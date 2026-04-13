@@ -16,6 +16,7 @@ import {
 import { field } from "./field";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
+import type { Env } from "./paths";
 import { PROTOCOL_VERSION } from "./protocol";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
@@ -26,7 +27,7 @@ type EnsureLocalServerInput = {
   port: number;
   apiKey?: string;
   serverEntry: string;
-  homeDir?: string;
+  env?: Env;
   timeoutMs?: number;
 };
 
@@ -157,11 +158,11 @@ export async function ensureLocalServer(
   input: EnsureLocalServerInput,
   retryCount = 0,
 ): Promise<EnsureLocalServerResult> {
-  const { port, apiKey, serverEntry, homeDir, timeoutMs: inputTimeoutMs } = input;
+  const { port, apiKey, serverEntry, env, timeoutMs: inputTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
-  const lockPath = serverLockPath(port, homeDir);
-  const startLockPath = startupLockPath(port, homeDir);
+  const lockPath = serverLockPath(port, env);
+  const startLockPath = startupLockPath(port, env);
 
   const lock = await readServerLock(lockPath);
   if (lock) {
@@ -189,7 +190,7 @@ export async function ensureLocalServer(
     return { port, pid: waitedLock?.pid ?? 0, started: false };
   }
 
-  const logPath = serverLogPath(port, homeDir);
+  const logPath = serverLogPath(port, env);
   await mkdir(join(logPath, ".."), { recursive: true });
 
   let proc: ReturnType<typeof Bun.spawn> | undefined;
@@ -228,11 +229,11 @@ export async function ensureLocalServer(
 export async function localServerStatus(input: {
   port: number;
   apiKey?: string;
-  homeDir?: string;
+  env?: Env;
 }): Promise<LocalServerStatus> {
-  const { port, apiKey, homeDir } = input;
+  const { port, apiKey, env } = input;
   const apiUrl = apiUrlForPort(port);
-  const lockPath = serverLockPath(port, homeDir);
+  const lockPath = serverLockPath(port, env);
   const lock = await readServerLock(lockPath);
 
   if (lock) {
@@ -252,10 +253,10 @@ export async function localServerStatus(input: {
   return { running: false, pid: null, port };
 }
 
-export async function stopLocalServer(input: { port: number; apiKey?: string; homeDir?: string }): Promise<StopResult> {
-  const { port, apiKey, homeDir } = input;
+export async function stopLocalServer(input: { port: number; apiKey?: string; env?: Env }): Promise<StopResult> {
+  const { port, apiKey, env } = input;
   const apiUrl = apiUrlForPort(port);
-  const lockPath = serverLockPath(port, homeDir);
+  const lockPath = serverLockPath(port, env);
   const lock = await readServerLock(lockPath);
 
   if (!lock) {
@@ -284,9 +285,9 @@ function portFromLockEntry(entry: string): number | undefined {
 
 export async function stopAllLocalServers(input?: {
   apiKey?: string;
-  homeDir?: string;
+  env?: Env;
 }): Promise<Array<{ port: number; pid: number }>> {
-  const dir = daemonsDir(input?.homeDir);
+  const dir = daemonsDir(input?.env);
   let entries: string[];
   try {
     entries = await readdir(dir);
@@ -298,7 +299,7 @@ export async function stopAllLocalServers(input?: {
   for (const entry of entries) {
     const port = portFromLockEntry(entry);
     if (port === undefined) continue;
-    const result = await stopLocalServer({ port, apiKey: input?.apiKey, homeDir: input?.homeDir });
+    const result = await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env });
     if (result.stopped && result.pid !== null) {
       stopped.push({ port, pid: result.pid });
     }
@@ -307,9 +308,9 @@ export async function stopAllLocalServers(input?: {
 }
 
 export async function listRunningDaemons(input?: {
-  homeDir?: string;
+  env?: Env;
 }): Promise<Array<{ port: number; pid: number; startedAt: string }>> {
-  const dir = daemonsDir(input?.homeDir);
+  const dir = daemonsDir(input?.env);
   let entries: string[];
   try {
     entries = await readdir(dir);
@@ -321,7 +322,7 @@ export async function listRunningDaemons(input?: {
   for (const entry of entries) {
     const port = portFromLockEntry(entry);
     if (port === undefined) continue;
-    const lockPath = serverLockPath(port, input?.homeDir);
+    const lockPath = serverLockPath(port, input?.env);
     const lock = await readServerLock(lockPath);
     if (!lock) continue;
     if (!isProcessAlive(lock.pid)) {

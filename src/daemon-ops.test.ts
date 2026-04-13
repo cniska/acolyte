@@ -3,11 +3,11 @@ import { isProcessAlive, parseServerLock, serverLogPath } from "./daemon-ops";
 
 describe("daemon ops", () => {
   test("serverLogPath uses server.log for default port", () => {
-    expect(serverLogPath(6767, "/tmp/acolyte-home")).toBe("/tmp/acolyte-home/.acolyte/daemons/server.log");
+    expect(serverLogPath(6767, { HOME: "/tmp/acolyte-home" })).toBe("/tmp/acolyte-home/.acolyte/daemons/server.log");
   });
 
   test("serverLogPath uses port number for non-default port", () => {
-    expect(serverLogPath(8080, "/tmp/acolyte-home")).toBe("/tmp/acolyte-home/.acolyte/daemons/8080.log");
+    expect(serverLogPath(8080, { HOME: "/tmp/acolyte-home" })).toBe("/tmp/acolyte-home/.acolyte/daemons/8080.log");
   });
 
   test("parseServerLock accepts valid payload", () => {

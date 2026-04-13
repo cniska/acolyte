@@ -26,7 +26,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "anthropic/claude-sonnet-4",
       port: 7777,
@@ -43,7 +43,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
       port: 7777,
@@ -57,7 +57,7 @@ describe("config store", () => {
     writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
@@ -71,7 +71,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
       port: 7777,
@@ -85,7 +85,7 @@ describe("config store", () => {
     writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
@@ -95,7 +95,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "not valid toml = {", "utf8");
 
-    expect(() => readConfigSync({ homeDir: home, cwd: home })).toThrow(/user config/);
+    expect(() => readConfigSync({ env: { HOME: home }, cwd: home })).toThrow(/user config/);
   });
 
   test("setConfigValue updates TOML when config.toml exists", async () => {
@@ -104,7 +104,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
 
-    await setConfigValue("port", "7777", { homeDir: home, cwd: home });
+    await setConfigValue("port", "7777", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).toContain("port = 7777");
@@ -116,7 +116,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\nport = 7777\n', "utf8");
 
-    await unsetConfigValue("port", { homeDir: home, cwd: home });
+    await unsetConfigValue("port", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).not.toContain("port =");
@@ -134,7 +134,7 @@ describe("config store", () => {
         port: 7777,
         ...({ apiKey: "secret-should-not-persist" } as unknown as Record<string, string>),
       } as unknown as { model: string; port: number; apiKey: string },
-      { homeDir: home, cwd: home },
+      { env: { HOME: home }, cwd: home },
     );
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
@@ -153,7 +153,7 @@ describe("config store", () => {
         model: "openai/gpt-5-mini",
         port: 7777,
       },
-      { homeDir: home, cwd: home },
+      { env: { HOME: home }, cwd: home },
     );
 
     expect(existsSync(join(dataDir, "config.toml"))).toBe(true);
@@ -183,7 +183,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.port).toBe(7777);
     expect(loaded.locale).toBe("en");
     expect(loaded.model).toBe("openai/gpt-5-mini");
@@ -199,10 +199,10 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.features).toEqual({ syncAgents: true });
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(true);
   });
 
@@ -212,7 +212,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
@@ -230,7 +230,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.2\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.temperature).toBe(0.2);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
@@ -242,7 +242,7 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.1\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.temperature).toBe(0.1);
   });
@@ -253,7 +253,9 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await expect(setConfigValue("bogus", "value", { homeDir: home, cwd: home })).rejects.toThrow("Unknown config key");
+    await expect(setConfigValue("bogus", "value", { env: { HOME: home }, cwd: home })).rejects.toThrow(
+      "Unknown config key",
+    );
   });
 
   test("setConfigValue supports locale", async () => {
@@ -262,8 +264,8 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("locale", "en", { homeDir: home, cwd: home });
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    await setConfigValue("locale", "en", { env: { HOME: home }, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.locale).toBe("en");
   });
 
@@ -273,12 +275,12 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("features.syncAgents", "true", { homeDir: home, cwd: home });
+    await setConfigValue("features.syncAgents", "true", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain("[features]");
     expect(rawToml).toContain("syncAgents = true");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(true);
   });
 
@@ -288,11 +290,11 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
 
-    await unsetConfigValue("features.syncAgents", { homeDir: home, cwd: home });
+    await unsetConfigValue("features.syncAgents", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).not.toContain("[features]");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(false);
   });
 
@@ -307,7 +309,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), ["[features]", "cloudSync = true"].join("\n"), "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.features?.syncAgents).toBe(true);
     expect(loaded.features?.cloudSync).toBe(true);
   });
@@ -331,7 +333,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
     expect(loaded.replyTimeoutMs).toBe(200000);
   });
@@ -347,7 +349,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), ["port = 7777", 'model = "openai/gpt-5-mini"'].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
     expect(loaded.port).toBe(7777);
   });
@@ -361,7 +363,7 @@ describe("config store", () => {
     mkdirSync(projectDataDir, { recursive: true });
 
     writeFileSync(join(userDataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
-    await setConfigValue("model", "anthropic/claude-sonnet-4", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("model", "anthropic/claude-sonnet-4", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
     const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
@@ -372,14 +374,14 @@ describe("config store", () => {
   test("setConfigValue validates external values with zod", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    await expect(setConfigValue("port", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("port", "not-a-number", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for port",
     );
 
-    await expect(setConfigValue("temperature", "3", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("temperature", "3", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for temperature",
     );
-    await expect(setConfigValue("locale", "xx", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("locale", "xx", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for locale",
     );
   });
@@ -390,9 +392,9 @@ describe("config store", () => {
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.2", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.2", { env: { HOME: home }, cwd: project, scope: "project" });
 
-    const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
+    const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
     expect(loaded.temperature).toBe(0.2);
   });
 
@@ -402,10 +404,10 @@ describe("config store", () => {
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.4", { homeDir: home, cwd: project, scope: "project" });
-    await unsetConfigValue("temperature", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.4", { env: { HOME: home }, cwd: project, scope: "project" });
+    await unsetConfigValue("temperature", { env: { HOME: home }, cwd: project, scope: "project" });
 
-    const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
+    const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
     expect(loaded.temperature).toBeUndefined();
   });
 
@@ -420,7 +422,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), "port = 6767\n", "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), "port = 7777\n", "utf8");
 
-    await unsetConfigValue("port", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("port", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
     const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");

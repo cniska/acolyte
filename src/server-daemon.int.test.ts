@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { clearStaleStartupLock, daemonsDir, isProcessAlive, serverLockPath, startupLockPath } from "./daemon-ops";
+import type { Env } from "./paths";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
   ensureLocalServer,
@@ -17,6 +18,10 @@ afterEach(dirs.cleanupDirs);
 
 function compatibleStatusResponse(): Response {
   return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION });
+}
+
+function testEnv(homeDir: string): Env {
+  return { HOME: homeDir };
 }
 
 describe("server daemon", () => {
@@ -37,8 +42,8 @@ describe("server daemon", () => {
   });
 
   test("localServerStatus removes stale server lock when endpoint is not healthy", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    const lockPath = serverLockPath(9, home);
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const lockPath = serverLockPath(9, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -49,7 +54,7 @@ describe("server daemon", () => {
       }),
       "utf8",
     );
-    await expect(localServerStatus({ port: 9, homeDir: home })).resolves.toEqual({
+    await expect(localServerStatus({ port: 9, env })).resolves.toEqual({
       running: false,
       pid: null,
       port: 9,
@@ -58,9 +63,9 @@ describe("server daemon", () => {
   });
 
   test("localServerStatus reports running when lock and server are healthy", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const server = startTestServer(() => compatibleStatusResponse());
-    const lockPath = serverLockPath(server.port, home);
+    const lockPath = serverLockPath(server.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -72,7 +77,7 @@ describe("server daemon", () => {
       "utf8",
     );
     try {
-      await expect(localServerStatus({ port: server.port, homeDir: home })).resolves.toEqual({
+      await expect(localServerStatus({ port: server.port, env })).resolves.toEqual({
         running: true,
         pid: process.pid,
         port: server.port,
@@ -83,9 +88,9 @@ describe("server daemon", () => {
   });
 
   test("localServerStatus removes lock when pid is dead", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const server = startTestServer(() => compatibleStatusResponse());
-    const lockPath = serverLockPath(server.port, home);
+    const lockPath = serverLockPath(server.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -97,8 +102,7 @@ describe("server daemon", () => {
       "utf8",
     );
     try {
-      // Lock is cleared because pid 999999 is dead, but server is healthy so it reports running with null pid
-      await expect(localServerStatus({ port: server.port, homeDir: home })).resolves.toEqual({
+      await expect(localServerStatus({ port: server.port, env })).resolves.toEqual({
         running: true,
         pid: null,
         port: server.port,
@@ -110,8 +114,8 @@ describe("server daemon", () => {
   });
 
   test("localServerStatus reports not running when no lock and no server", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    await expect(localServerStatus({ port: 9, homeDir: home })).resolves.toEqual({
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    await expect(localServerStatus({ port: 9, env })).resolves.toEqual({
       running: false,
       pid: null,
       port: 9,
@@ -119,9 +123,9 @@ describe("server daemon", () => {
   });
 
   test("ensureLocalServer reuses healthy locked server", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const server = startTestServer(() => compatibleStatusResponse());
-    const lockPath = serverLockPath(server.port, home);
+    const lockPath = serverLockPath(server.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -138,7 +142,7 @@ describe("server daemon", () => {
           port: server.port,
           apiKey: undefined,
           serverEntry: join(process.cwd(), "src/server.ts"),
-          homeDir: home,
+          env,
         }),
       ).resolves.toEqual({ port: server.port, pid: process.pid, started: false });
     } finally {
@@ -147,7 +151,7 @@ describe("server daemon", () => {
   });
 
   test("ensureLocalServer reuses healthy server without lock", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const server = startTestServer(() => compatibleStatusResponse());
     try {
       await expect(
@@ -155,7 +159,7 @@ describe("server daemon", () => {
           port: server.port,
           apiKey: undefined,
           serverEntry: join(process.cwd(), "src/server.ts"),
-          homeDir: home,
+          env,
         }),
       ).resolves.toEqual({ port: server.port, pid: 0, started: false });
     } finally {
@@ -165,10 +169,11 @@ describe("server daemon", () => {
 
   test("ensureLocalServer recovers from a stale startup lock with a live owner pid", async () => {
     const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(home);
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
-    const startLockPath = startupLockPath(port, home);
+    const startLockPath = startupLockPath(port, env);
     await mkdir(join(startLockPath, ".."), { recursive: true });
     await writeFile(startLockPath, String(process.pid), "utf8");
     const staleAt = new Date(Date.now() - 60_000);
@@ -197,7 +202,7 @@ describe("server daemon", () => {
         port,
         apiKey: undefined,
         serverEntry,
-        homeDir: home,
+        env,
         timeoutMs: 1_500,
       });
       startedPid = result.pid;
@@ -207,13 +212,14 @@ describe("server daemon", () => {
       await expect(Bun.file(startLockPath).exists()).resolves.toBe(false);
     } finally {
       if (startedPid !== null && startedPid > 0) {
-        await stopLocalServer({ port, homeDir: home });
+        await stopLocalServer({ port, env });
       }
     }
   });
 
   test("ensureLocalServer fails fast when spawned process exits immediately", async () => {
     const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(home);
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
@@ -226,7 +232,7 @@ describe("server daemon", () => {
         port,
         apiKey: undefined,
         serverEntry,
-        homeDir: home,
+        env,
         timeoutMs: 5_000,
       }),
     ).rejects.toThrow(/exited before becoming healthy/);
@@ -234,22 +240,22 @@ describe("server daemon", () => {
 
   test("ensureLocalServer releases startup lock when spawn throws", async () => {
     const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(home);
     const reservation = startTestServer(() => new Response("reserved"));
     const port = reservation.port;
     reservation.stop();
 
-    const startLockPath = startupLockPath(port, home);
+    const startLockPath = startupLockPath(port, env);
     const origExecPath = process.execPath;
 
     try {
-      // Force Bun.spawn to throw ENOENT by using a nonexistent binary
       Object.defineProperty(process, "execPath", { value: "/nonexistent/binary", configurable: true });
       await expect(
         ensureLocalServer({
           port,
           apiKey: undefined,
           serverEntry: "server.ts",
-          homeDir: home,
+          env,
           timeoutMs: 5_000,
         }),
       ).rejects.toThrow();
@@ -261,7 +267,7 @@ describe("server daemon", () => {
   });
 
   test("stopLocalServer stops a healthy server even without a lock file", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const server = startTestServer((req) => {
       const url = new URL(req.url);
       if (url.pathname === "/v1/status") return compatibleStatusResponse();
@@ -271,14 +277,13 @@ describe("server daemon", () => {
       }
       return new Response("ok");
     });
-    // No lock file written — server is running but lock is missing
-    const result = await stopLocalServer({ port: server.port, homeDir: home });
+    const result = await stopLocalServer({ port: server.port, env });
     expect(result.stopped).toBe(true);
   });
 
   test("stopLocalServer cleans up lock when pid is dead and endpoint is not healthy", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    const lockPath = serverLockPath(9, home);
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const lockPath = serverLockPath(9, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -289,12 +294,12 @@ describe("server daemon", () => {
       }),
       "utf8",
     );
-    await expect(stopLocalServer({ port: 9, homeDir: home })).resolves.toEqual({ stopped: true, pid: 999999 });
+    await expect(stopLocalServer({ port: 9, env })).resolves.toEqual({ stopped: true, pid: 999999 });
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 
   test("stopLocalServer shuts down healthy server when lock pid is dead", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     let shutdownCalled = false;
     const server = startTestServer((req) => {
       const url = new URL(req.url);
@@ -306,24 +311,22 @@ describe("server daemon", () => {
       }
       return new Response("ok");
     });
-    // Lock exists but its PID is dead — server is actually running on the port
-    const lockPath = serverLockPath(server.port, home);
+    const lockPath = serverLockPath(server.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
       JSON.stringify({ pid: 999999, port: server.port, startedAt: "2026-02-28T00:00:00.000Z" }),
       "utf8",
     );
-    const result = await stopLocalServer({ port: server.port, homeDir: home });
+    const result = await stopLocalServer({ port: server.port, env });
     expect(result.stopped).toBe(true);
     expect(shutdownCalled).toBe(true);
   });
 
   test("stopLocalServer kills alive process even when endpoint is unhealthy", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    // Start a subprocess that just sleeps
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const proc = Bun.spawn(["sleep", "60"], { detached: true });
-    const lockPath = serverLockPath(9, home);
+    const lockPath = serverLockPath(9, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -335,10 +338,9 @@ describe("server daemon", () => {
       "utf8",
     );
     try {
-      const result = await stopLocalServer({ port: 9, homeDir: home });
+      const result = await stopLocalServer({ port: 9, env });
       expect(result).toEqual({ stopped: true, pid: proc.pid });
       await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
-      // Give SIGTERM a moment to land
       await Bun.sleep(50);
       expect(isProcessAlive(proc.pid)).toBe(false);
     } finally {
@@ -349,28 +351,25 @@ describe("server daemon", () => {
 
   test("ensureLocalServer gives up after max startup retries", async () => {
     const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(home);
     const reservation = startTestServer(() => new Response("not acolyte"));
     const port = reservation.port;
     reservation.stop();
 
-    // Create a stale startup lock owned by a dead process so each attempt clears it and retries
-    const startLockPath = startupLockPath(port, home);
+    const startLockPath = startupLockPath(port, env);
     await mkdir(join(startLockPath, ".."), { recursive: true });
 
-    // Use a server entry that creates a new startup lock on each spawn (simulating contention)
     const serverEntry = join(home, "lock-stealer.ts");
     await writeFile(
       serverEntry,
       [
         `import { writeFileSync } from "node:fs";`,
         `writeFileSync(${JSON.stringify(startLockPath)}, JSON.stringify({ pid: process.pid, port: ${port}, startedAt: new Date().toISOString() }));`,
-        `// Never become healthy — just hold the lock and exit`,
         `process.exit(1);`,
       ].join("\n"),
       "utf8",
     );
 
-    // Pre-create a stale lock so the first attempt can't claim it and enters the wait/retry path
     await writeFile(
       startLockPath,
       JSON.stringify({ pid: 999999, port, startedAt: new Date(Date.now() - 60_000).toISOString() }),
@@ -383,16 +382,16 @@ describe("server daemon", () => {
         port,
         apiKey: undefined,
         serverEntry,
-        homeDir: home,
+        env,
         timeoutMs: 2_000,
       }),
     ).rejects.toThrow();
   });
 
   test("localServerStatus removes lock when status payload is protocol-incompatible", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const staleServer = startTestServer(() => Response.json({ ok: true, protocolVersion: "1" }));
-    const lockPath = serverLockPath(staleServer.port, home);
+    const lockPath = serverLockPath(staleServer.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
       lockPath,
@@ -404,7 +403,7 @@ describe("server daemon", () => {
       "utf8",
     );
     try {
-      await expect(localServerStatus({ port: staleServer.port, homeDir: home })).resolves.toEqual({
+      await expect(localServerStatus({ port: staleServer.port, env })).resolves.toEqual({
         running: false,
         pid: null,
         port: staleServer.port,
@@ -416,23 +415,23 @@ describe("server daemon", () => {
   });
 
   test("stopAllLocalServers stops multiple daemons by lock", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    const dir = daemonsDir(home);
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const dir = daemonsDir(env);
     await mkdir(dir, { recursive: true });
 
     const procA = Bun.spawn(["sleep", "60"], { detached: true });
     const procB = Bun.spawn(["sleep", "60"], { detached: true });
     try {
       await writeFile(
-        serverLockPath(9001, home),
+        serverLockPath(9001, env),
         JSON.stringify({ pid: procA.pid, port: 9001, startedAt: "2026-01-01T00:00:00.000Z" }),
       );
       await writeFile(
-        serverLockPath(9002, home),
+        serverLockPath(9002, env),
         JSON.stringify({ pid: procB.pid, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
       );
 
-      const stopped = await stopAllLocalServers({ homeDir: home });
+      const stopped = await stopAllLocalServers({ env });
       expect(stopped).toHaveLength(2);
       expect(stopped.map((s) => s.port).sort()).toEqual([9001, 9002]);
     } finally {
@@ -444,28 +443,25 @@ describe("server daemon", () => {
   });
 
   test("listRunningDaemons returns alive daemons and cleans dead locks", async () => {
-    const home = dirs.createDir("acolyte-daemon-home-");
-    const dir = daemonsDir(home);
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const dir = daemonsDir(env);
     await mkdir(dir, { recursive: true });
 
-    // Alive daemon
     const proc = Bun.spawn(["sleep", "60"], { detached: true });
     await writeFile(
-      serverLockPath(9001, home),
+      serverLockPath(9001, env),
       JSON.stringify({ pid: proc.pid, port: 9001, startedAt: "2026-01-01T00:00:00.000Z" }),
     );
-    // Dead daemon
     await writeFile(
-      serverLockPath(9002, home),
+      serverLockPath(9002, env),
       JSON.stringify({ pid: 999999, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
     );
 
     try {
-      const daemons = await listRunningDaemons({ homeDir: home });
+      const daemons = await listRunningDaemons({ env });
       expect(daemons).toHaveLength(1);
       expect(daemons[0]?.pid).toBe(proc.pid);
-      // Dead lock should be cleaned up
-      await expect(Bun.file(serverLockPath(9002, home)).exists()).resolves.toBe(false);
+      await expect(Bun.file(serverLockPath(9002, env)).exists()).resolves.toBe(false);
     } finally {
       proc.kill();
       await proc.exited.catch(() => {});

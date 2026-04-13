@@ -10,10 +10,10 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { stateDirFromHome } from "./paths";
+import { type Env, stateDir } from "./paths";
 
 type LockOptions = {
-  homeDir?: string;
+  env?: Env;
 };
 
 function isProcessAlive(pid: number): boolean {
@@ -28,7 +28,7 @@ function isProcessAlive(pid: number): boolean {
 const MAX_LOCK_ATTEMPTS = 2;
 
 function locksDir(options?: LockOptions): string {
-  return join(stateDirFromHome(options?.homeDir), "locks");
+  return join(stateDir(options?.env), "locks");
 }
 
 function lockPathForSession(sessionId: string, options?: LockOptions): string {

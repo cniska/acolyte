@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { configDirFromHome } from "./paths";
+import { configDir, type Env } from "./paths";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
 import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
@@ -9,9 +9,9 @@ function hasConfigFileCollision(scopeDir: string): boolean {
   return existsSync(join(scopeDir, "config.toml")) && existsSync(join(scopeDir, "config.json"));
 }
 
-export function collectResourceDiagnostics(options?: { cwd?: string; homeDir?: string }): StatusFields {
+export function collectResourceDiagnostics(options?: { cwd?: string; env?: Env }): StatusFields {
   const cwd = options?.cwd ?? process.cwd();
-  const userConfigDir = configDirFromHome(options?.homeDir);
+  const userConfigDir = configDir(options?.env);
   const diagnostics: StatusFields = {};
 
   const collisionScopes: string[] = [];

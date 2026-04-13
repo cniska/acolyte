@@ -12,7 +12,7 @@ import {
 import { errorMessage } from "./error-contract";
 import { featureFlagsSchema, resolvedFeatureFlagsSchema } from "./feature-flags-contract";
 import { t } from "./i18n";
-import { configDirFromHome } from "./paths";
+import { configDir, type Env } from "./paths";
 
 function createDefaultConfig() {
   return {
@@ -31,7 +31,7 @@ function createDefaultConfig() {
 }
 
 export type ConfigOptions = {
-  homeDir?: string;
+  env?: Env;
   cwd?: string;
   scope?: ConfigScope;
 };
@@ -65,7 +65,7 @@ function resolvePaths(options?: ConfigOptions): {
   projectJsonPath: string;
   projectTomlPath: string;
 } {
-  const userDataDir = configDirFromHome(options?.homeDir);
+  const userDataDir = configDir(options?.env);
   const projectDataDir = join(options?.cwd ?? process.cwd(), ".acolyte");
   return {
     userDataDir,

@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { configDirFromHome } from "./paths";
+import { configDir, type Env } from "./paths";
 
 const CREDENTIALS_FILE = "credentials";
 
@@ -17,8 +17,8 @@ export type Credentials = {
   cloudToken?: string;
 };
 
-function credentialsPath(homeDir?: string): string {
-  return join(configDirFromHome(homeDir), CREDENTIALS_FILE);
+function credentialsPath(env?: Env): string {
+  return join(configDir(env), CREDENTIALS_FILE);
 }
 
 function parseCredentials(content: string): Credentials {
@@ -31,8 +31,8 @@ function parseCredentials(content: string): Credentials {
   return creds;
 }
 
-export function readCredentialsSync(homeDir?: string): Credentials {
-  const path = credentialsPath(homeDir);
+export function readCredentialsSync(env?: Env): Credentials {
+  const path = credentialsPath(env);
   if (!existsSync(path)) return {};
   try {
     return parseCredentials(readFileSync(path, "utf8"));
@@ -41,8 +41,8 @@ export function readCredentialsSync(homeDir?: string): Credentials {
   }
 }
 
-export async function readCredentials(homeDir?: string): Promise<Credentials> {
-  const path = credentialsPath(homeDir);
+export async function readCredentials(env?: Env): Promise<Credentials> {
+  const path = credentialsPath(env);
   if (!existsSync(path)) return {};
   try {
     return parseCredentials(await readFile(path, "utf8"));
@@ -51,14 +51,14 @@ export async function readCredentials(homeDir?: string): Promise<Credentials> {
   }
 }
 
-export async function writeCredential(key: keyof Credentials, value: string, homeDir?: string): Promise<void> {
-  const path = credentialsPath(homeDir);
+export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
+  const path = credentialsPath(env);
   let content = "";
   try {
     content = await readFile(path, "utf8");
   } catch {}
   const next = upsertDotenvValue(content, KEY_MAP[key], value);
-  const dir = configDirFromHome(homeDir);
+  const dir = configDir(env);
   await mkdir(dir, { recursive: true });
   await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
   await chmod(path, PRIVATE_FILE_MODE);
@@ -75,8 +75,8 @@ export function decodeTokenSubject(token: string): string | undefined {
   }
 }
 
-export async function removeCredential(key: keyof Credentials, homeDir?: string): Promise<void> {
-  const path = credentialsPath(homeDir);
+export async function removeCredential(key: keyof Credentials, env?: Env): Promise<void> {
+  const path = credentialsPath(env);
   let content = "";
   try {
     content = await readFile(path, "utf8");

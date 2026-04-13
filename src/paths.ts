@@ -41,11 +41,3 @@ export function stateDir(env: Env = process.env, platform: Platform = resolvePla
   }
   return join(resolveHomeDir(env), ".acolyte");
 }
-
-export function configDirFromHome(homeDir?: string): string {
-  return homeDir ? join(homeDir, ".acolyte") : configDir();
-}
-
-export function stateDirFromHome(homeDir?: string): string {
-  return homeDir ? join(homeDir, ".acolyte") : stateDir();
-}
