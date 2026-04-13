@@ -2,12 +2,14 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gitLog, gitShow } from "./git-ops";
-import { testUuid } from "./test-utils";
-import { runCommand } from "./tool-utils";
+import { tempDir, testUuid } from "./test-utils";
+import { collectWorkspaceFiles, runCommand } from "./tool-utils";
 
 const tempDirs: string[] = [];
+const dirs = tempDir();
 
 afterAll(async () => {
+  dirs.cleanupDirs();
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
@@ -59,5 +61,70 @@ describe("gitShow", () => {
     expect(output).toContain("second");
     expect(output).toContain("diff --git a/a.txt b/a.txt");
     expect(output).toContain("+a changed");
+  });
+});
+
+async function createWorkspace(files: Record<string, string>): Promise<string> {
+  const root = dirs.createDir("acolyte-tool-utils-");
+  for (const [relPath, content] of Object.entries(files)) {
+    const abs = join(root, relPath);
+    await mkdir(abs.slice(0, abs.lastIndexOf("/")), { recursive: true });
+    await writeFile(abs, content);
+  }
+  return root;
+}
+
+describe("collectWorkspaceFiles — gitignore integration", () => {
+  test("respects .gitignore patterns", async () => {
+    const root = await createWorkspace({
+      ".gitignore": "dist/\n*.log\n",
+      "src/index.ts": "",
+      "dist/bundle.js": "",
+      "error.log": "",
+    });
+
+    const files = await collectWorkspaceFiles(root);
+    expect(files).toContain("src/index.ts");
+    expect(files).not.toContain("dist/bundle.js");
+    expect(files).not.toContain("error.log");
+    expect(files).toContain(".gitignore");
+  });
+
+  test("respects nested .gitignore files", async () => {
+    const root = await createWorkspace({
+      "src/.gitignore": "*.generated.ts\n",
+      "src/foo.ts": "",
+      "src/foo.generated.ts": "",
+      "lib/foo.generated.ts": "",
+    });
+
+    const files = await collectWorkspaceFiles(root);
+    expect(files).toContain("src/foo.ts");
+    expect(files).not.toContain("src/foo.generated.ts");
+    expect(files).toContain("lib/foo.generated.ts");
+  });
+
+  test("traverses hidden directories not in IGNORED_DIRS", async () => {
+    const root = await createWorkspace({
+      ".github/workflows/ci.yml": "",
+      "src/index.ts": "",
+    });
+
+    const files = await collectWorkspaceFiles(root);
+    expect(files).toContain(".github/workflows/ci.yml");
+    expect(files).toContain("src/index.ts");
+  });
+
+  test("always excludes .git and node_modules regardless of .gitignore", async () => {
+    const root = await createWorkspace({
+      "src/index.ts": "",
+      "node_modules/pkg/index.js": "",
+      ".git/config": "",
+    });
+
+    const files = await collectWorkspaceFiles(root);
+    expect(files).toContain("src/index.ts");
+    expect(files.some((f) => f.startsWith("node_modules/"))).toBe(false);
+    expect(files.some((f) => f.startsWith(".git/"))).toBe(false);
   });
 });
