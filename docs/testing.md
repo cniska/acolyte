@@ -15,6 +15,12 @@ Use the smallest test type that gives strong confidence.
 - If a test needs real fs/process/network behavior, use `*.int.test.ts` instead.
 - Prefer mocks for UI/layout-focused unit tests.
 
+## Integration test boundary
+
+- Tool integration tests must dispatch through `toolsForAgent({ workspace })` and call `tools.<name>.execute()`, not the underlying function directly. This exercises budget checks, hooks, caching, and call logging — the same path production uses.
+- Effect integration tests must wire handlers via `attachLifecycleEffectHandlers(ctx, session)` and verify behavior through debug events, not call `effect.run()` directly.
+- Direct function calls (e.g., `editFile()`, `runShellCommand()`) belong in unit tests when testing the function contract itself. Integration tests test wiring.
+
 ## Commands
 
 - Full baseline: `bun run verify`
