@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { mkdir, symlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { tempDir, testUuid } from "./test-utils";
+import { tempDir } from "./test-utils";
 import { toolsForAgent } from "./tool-registry";
 
 const dirs = tempDir();
@@ -20,15 +20,11 @@ describe("shell-run through registry dispatch", () => {
 
   test("allows workspace paths", async () => {
     const workspace = dirs.createDir("acolyte-shell-ws-");
-    const filePath = join(workspace, `test-${testUuid()}.txt`);
-    try {
-      await writeFile(filePath, "ok\n", "utf8");
-      const { tools } = toolsForAgent({ workspace });
-      const result = await tools.runCommand.execute({ cmd: "cat", args: [filePath] }, "call_2");
-      expect((result.result as Record<string, unknown>).output).toContain("ok");
-    } finally {
-      await rm(filePath, { force: true });
-    }
+    const filePath = join(workspace, "test.txt");
+    await writeFile(filePath, "ok\n", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.runCommand.execute({ cmd: "cat", args: [filePath] }, "call_2");
+    expect((result.result as Record<string, unknown>).output).toContain("ok");
   });
 
   test("rejects with timeout error when command exceeds limit", async () => {
@@ -55,16 +51,12 @@ describe("shell-run through registry dispatch", () => {
 
   test("blocks bare relative symlink escapes", async () => {
     const workspace = dirs.createDir("acolyte-shell-symlink-");
-    const linkPath = join(workspace, `test-link-${testUuid()}`);
-    try {
-      await symlink("/etc/hosts", linkPath);
-      const { tools } = toolsForAgent({ workspace });
-      await expect(
-        tools.runCommand.execute({ cmd: "cat", args: [basename(linkPath)] }, "call_6"),
-      ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.sandboxViolation });
-    } finally {
-      await rm(linkPath, { force: true });
-    }
+    const linkPath = join(workspace, "escape-link");
+    await symlink("/etc/hosts", linkPath);
+    const { tools } = toolsForAgent({ workspace });
+    await expect(tools.runCommand.execute({ cmd: "cat", args: ["escape-link"] }, "call_6")).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+    });
   });
 
   test("allows nested relative paths within workspace", async () => {
