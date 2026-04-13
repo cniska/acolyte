@@ -117,15 +117,13 @@ export type StreamEvent =
   | ErrorEvent;
 
 export interface Client {
-  replyStream(
-    input: ChatRequest,
-    options: {
-      onEvent: (event: StreamEvent) => void;
-      signal?: AbortSignal;
-    },
-  ): Promise<ChatResponse>;
+  replyStream(input: {
+    request: ChatRequest;
+    onEvent: (event: StreamEvent) => void;
+    signal?: AbortSignal;
+  }): Promise<ChatResponse>;
   status(): Promise<StatusFields>;
-  taskStatus(params: { taskId: TaskId }): Promise<TaskRecord | null>;
+  taskStatus(input: { taskId: TaskId }): Promise<TaskRecord | null>;
 }
 
 export type RemoteErrorMetadata = {

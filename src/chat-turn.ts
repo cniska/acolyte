@@ -100,8 +100,8 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
 }> {
-  const reply = await params.client.replyStream(
-    {
+  const reply = await params.client.replyStream({
+    request: {
       message: params.userText,
       history: params.history,
       model: params.model,
@@ -109,8 +109,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       useMemory: params.useMemory,
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },
-    { signal: params.signal, onEvent: params.onEvent ?? (() => {}) },
-  );
+    signal: params.signal,
+    onEvent: params.onEvent ?? (() => {}),
+  });
 
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
   const assistantMessage: ChatMessage =

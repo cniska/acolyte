@@ -246,32 +246,21 @@ export function createSessionState(overrides: Partial<SessionState> = {}): Sessi
 }
 
 export function createClient(overrides?: {
-  reply?: (
-    input: Parameters<Client["replyStream"]>[0],
-    options?: { signal?: AbortSignal },
-  ) => ReturnType<Client["replyStream"]>;
   replyStream?: Client["replyStream"];
   status?: Client["status"];
   events?: StreamEvent[];
   taskStatus?: Client["taskStatus"];
 }): Client {
-  const reply =
-    overrides?.reply ??
-    (async () => ({
-      model: "gpt-5-mini",
-      output: "ok",
-      state: "done" as const,
-    }));
   const replyStream =
     overrides?.replyStream ??
-    (async (input, options) => {
+    (async (input) => {
       const events = overrides?.events;
       if (events) {
         for (const event of events) {
-          options.onEvent(event);
+          input.onEvent(event);
         }
       }
-      return reply(input, { signal: options.signal });
+      return { model: "gpt-5-mini", output: "ok", state: "done" as const };
     });
   return {
     replyStream,

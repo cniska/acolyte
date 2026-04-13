@@ -141,9 +141,9 @@ describe("chat message handler", () => {
     const { handleMessage } = createMessageHandlerHarness({
       session,
       client: createClient({
-        reply: async (input) => {
-          requestedModel = input.model;
-          return { state: "done" as const, model: input.model, output: "ok" };
+        replyStream: async (input) => {
+          requestedModel = input.request.model;
+          return { state: "done" as const, model: input.request.model, output: "ok" };
         },
       }),
     });
@@ -211,11 +211,11 @@ describe("chat message handler", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
+        replyStream: async (params) => {
           const turn = replyCount++;
           const events = eventsByTurn[turn] ?? [];
           for (const event of events) {
-            options.onEvent(event);
+            params.onEvent(event);
           }
           return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
@@ -269,18 +269,18 @@ describe("chat message handler", () => {
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
-        reply: async (_input, options) =>
+        replyStream: async (input) =>
           await new Promise((_, reject) => {
             const abort = (): void => {
               const error = new Error("Aborted");
               error.name = "AbortError";
               reject(error);
             };
-            if (options?.signal?.aborted) {
+            if (input.signal?.aborted) {
               abort();
               return;
             }
-            options?.signal?.addEventListener("abort", abort, { once: true });
+            input.signal?.addEventListener("abort", abort, { once: true });
           }),
         status: async () => ({}),
       }),
@@ -344,7 +344,7 @@ describe("chat message handler", () => {
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
-        replyStream: async (_input, options) => {
+        replyStream: async (params) => {
           const call = callCount++;
           if (call === 0) {
             return await new Promise((_, reject) => {
@@ -353,14 +353,14 @@ describe("chat message handler", () => {
                 error.name = "AbortError";
                 reject(error);
               };
-              if (options?.signal?.aborted) {
+              if (params.signal?.aborted) {
                 abort();
                 return;
               }
-              options?.signal?.addEventListener("abort", abort, { once: true });
+              params.signal?.addEventListener("abort", abort, { once: true });
             });
           }
-          options.onEvent({ type: "text-delta", text: "Second answer." });
+          params.onEvent({ type: "text-delta", text: "Second answer." });
           return { state: "done" as const, model: "gpt-5-mini", output: "Second answer." };
         },
         status: async () => ({}),
@@ -431,7 +431,7 @@ describe("chat message handler", () => {
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
-        reply: async () => {
+        replyStream: async () => {
           replyCalls += 1;
           return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
@@ -489,9 +489,9 @@ describe("chat message handler", () => {
 
       const { handleSubmit } = createMessageHandler({
         client: createClient({
-          replyStream: async (_input, options) => {
+          replyStream: async (params) => {
             replyCalls += 1;
-            options.onEvent({ type: "text-delta", text: "ok" });
+            params.onEvent({ type: "text-delta", text: "ok" });
             return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
           },
           status: async () => ({}),

@@ -161,9 +161,9 @@ export class RpcClient implements Client {
     });
   }
 
-  async taskStatus(params: { taskId: TaskId }): Promise<TaskRecord | null> {
+  async taskStatus(input: { taskId: TaskId }): Promise<TaskRecord | null> {
     return await this.runUnaryRequest<TaskRecord | null>({
-      request: (id) => ({ id, type: "task.status", payload: { taskId: params.taskId } }),
+      request: (id) => ({ id, type: "task.status", payload: { taskId: input.taskId } }),
       closeError: "RPC connection closed before task status response",
       resolve: (msg) => {
         if (msg.type === "task.status.result") {
@@ -176,13 +176,12 @@ export class RpcClient implements Client {
     });
   }
 
-  async replyStream(
-    input: ChatRequest,
-    options: {
-      onEvent: (event: import("./client-contract").StreamEvent) => void;
-      signal?: AbortSignal;
-    },
-  ): Promise<ChatResponse> {
+  async replyStream(input: {
+    request: ChatRequest;
+    onEvent: (event: import("./client-contract").StreamEvent) => void;
+    signal?: AbortSignal;
+  }): Promise<ChatResponse> {
+    const { request, onEvent, signal } = input;
     const ws = await this.openSocket();
     const id = createRpcRequestId();
     let acceptedTaskId: TaskId | undefined;
@@ -206,7 +205,7 @@ export class RpcClient implements Client {
         ws.removeEventListener("message", onMessage);
         ws.removeEventListener("close", onClose);
         ws.removeEventListener("error", onError);
-        if (options.signal) options.signal.removeEventListener("abort", onAbort);
+        if (signal) signal.removeEventListener("abort", onAbort);
       };
       const onAbort = () => {
         try {
@@ -242,21 +241,21 @@ export class RpcClient implements Client {
         if (!msg || msg.id !== id) return;
         if (msg.type === "chat.accepted") {
           acceptedTaskId = msg.taskId;
-          options.onEvent({ type: "status", state: { kind: "accepted" } });
+          onEvent({ type: "status", state: { kind: "accepted" } });
           return;
         }
         if (msg.type === "chat.queued") {
-          options.onEvent({ type: "status", state: { kind: "queued", position: msg.position } });
+          onEvent({ type: "status", state: { kind: "queued", position: msg.position } });
           return;
         }
         if (msg.type === "chat.started") {
-          options.onEvent({ type: "status", state: { kind: "running" } });
+          onEvent({ type: "status", state: { kind: "running" } });
           return;
         }
         if (msg.type === "chat.abort.result") return;
         if (msg.type === "chat.event") {
           const parsed = parseStreamEvent(msg.event);
-          if (parsed) options.onEvent(parsed);
+          if (parsed) onEvent(parsed);
           return;
         }
         cleanup();
@@ -279,14 +278,14 @@ export class RpcClient implements Client {
       ws.addEventListener("message", onMessage);
       ws.addEventListener("close", onClose);
       ws.addEventListener("error", onError);
-      if (options.signal) {
-        if (options.signal.aborted) {
+      if (signal) {
+        if (signal.aborted) {
           onAbort();
           return;
         }
-        options.signal.addEventListener("abort", onAbort, { once: true });
+        signal.addEventListener("abort", onAbort, { once: true });
       }
-      ws.send(JSON.stringify({ id, type: "chat.start", payload: { request: input } }));
+      ws.send(JSON.stringify({ id, type: "chat.start", payload: { request } }));
     });
   }
 }
