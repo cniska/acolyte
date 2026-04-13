@@ -182,16 +182,16 @@ async function runScenario(
   const client = createClient({ apiUrl });
 
   try {
-    const reply = await client.replyStream(
-      {
+    const reply = await client.replyStream({
+      request: {
         message: scenario.prompt,
         history: [],
         model: PERF_MODEL,
         sessionId: buildPerfSessionId(scenario.id, run),
         workspace: workspaceDir,
       },
-      { onEvent: (_event: StreamEvent) => {} },
-    );
+      onEvent: (_event: StreamEvent) => {},
+    });
 
     return {
       scenarioId: scenario.id,

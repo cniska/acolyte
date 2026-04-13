@@ -74,14 +74,12 @@ describe("rpc websocket lifecycle", () => {
 
     const client = createClient({ apiUrl: "http://localhost:6767" });
     const receivedEventTypes: string[] = [];
-    const reply = await client.replyStream(
-      { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc" },
-      {
-        onEvent: (event) => {
-          receivedEventTypes.push(event.type);
-        },
+    const reply = await client.replyStream({
+      request: { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpc" },
+      onEvent: (event) => {
+        receivedEventTypes.push(event.type);
       },
-    );
+    });
 
     expect(reply.output).toBe("done");
     expect(receivedEventTypes).toEqual(["status", "status", "status", "status", "tool-call"]);
@@ -128,10 +126,11 @@ describe("rpc websocket lifecycle", () => {
     const client = createClient({ apiUrl: "http://localhost:6767" });
     const controller = new AbortController();
 
-    const run = client.replyStream(
-      { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcabort" },
-      { onEvent: () => {}, signal: controller.signal },
-    );
+    const run = client.replyStream({
+      request: { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcabort" },
+      onEvent: () => {},
+      signal: controller.signal,
+    });
 
     for (let i = 0; i < 100 && !sent.some((msg) => msg.type === "chat.start"); i++) {
       await Promise.resolve();
@@ -204,14 +203,12 @@ describe("rpc websocket lifecycle", () => {
     const receivedEventTypes: string[] = [];
 
     try {
-      await client.replyStream(
-        { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcdisconnect" },
-        {
-          onEvent: (event) => {
-            receivedEventTypes.push(event.type);
-          },
+      await client.replyStream({
+        request: { message: "hi", history: [], model: "gpt-5-mini", sessionId: "sess_rpcdisconnect" },
+        onEvent: (event) => {
+          receivedEventTypes.push(event.type);
         },
-      );
+      });
       throw new Error("expected replyStream to reject");
     } catch (error) {
       const rpcError = error as Error & { taskId?: string };
@@ -275,7 +272,7 @@ describe("rpc websocket lifecycle", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     const client = createClient({ apiUrl: "http://localhost:6767" });
-    const task = await client.taskStatus("task_123");
+    const task = await client.taskStatus({ taskId: "task_123" });
     expect(task?.id).toBe("task_123");
     expect(task?.state).toBe("running");
   });

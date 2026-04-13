@@ -11,8 +11,8 @@ import {
 import { connectionHelpMessage } from "./error-messages";
 import { field } from "./field";
 import { createRpcRequestId } from "./rpc-protocol";
-import type { StatusFields } from "./status-contract";
-import type { TaskId, TaskRecord } from "./task-contract";
+import { parseStatusFields, type StatusFields } from "./status-contract";
+import { parseTaskRecord, type TaskId, type TaskRecord } from "./task-contract";
 
 type RpcServerMessage = NonNullable<ReturnType<typeof parseRpcServerMessage>>;
 
@@ -152,18 +152,8 @@ export class RpcClient implements Client {
       closeError: "RPC connection closed before status response",
       resolve: (msg) => {
         if (msg.type === "status.result") {
-          const fields: StatusFields = {};
-          for (const [key, value] of Object.entries(msg.status)) {
-            if (key === "ok") continue;
-            if (typeof value === "string" || typeof value === "number") {
-              fields[key] = value;
-              continue;
-            }
-            if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
-              fields[key] = value;
-            }
-          }
-          return fields;
+          const fields = parseStatusFields(msg.status);
+          return fields ?? new Error("Invalid status response");
         }
         if (msg.type === "error") return new Error(msg.error);
         return new Error(`Unexpected RPC response: ${msg.type}`);
@@ -171,25 +161,27 @@ export class RpcClient implements Client {
     });
   }
 
-  async taskStatus(taskId: TaskId): Promise<TaskRecord | null> {
+  async taskStatus(input: { taskId: TaskId }): Promise<TaskRecord | null> {
     return await this.runUnaryRequest<TaskRecord | null>({
-      request: (id) => ({ id, type: "task.status", payload: { taskId } }),
+      request: (id) => ({ id, type: "task.status", payload: { taskId: input.taskId } }),
       closeError: "RPC connection closed before task status response",
       resolve: (msg) => {
-        if (msg.type === "task.status.result") return msg.task;
+        if (msg.type === "task.status.result") {
+          if (msg.task === null || msg.task === undefined) return null;
+          return parseTaskRecord(msg.task) ?? new Error("Invalid task record");
+        }
         if (msg.type === "error") return new Error(msg.error);
         return new Error(`Unexpected RPC response: ${msg.type}`);
       },
     });
   }
 
-  async replyStream(
-    input: ChatRequest,
-    options: {
-      onEvent: (event: import("./client-contract").StreamEvent) => void;
-      signal?: AbortSignal;
-    },
-  ): Promise<ChatResponse> {
+  async replyStream(input: {
+    request: ChatRequest;
+    onEvent: (event: import("./client-contract").StreamEvent) => void;
+    signal?: AbortSignal;
+  }): Promise<ChatResponse> {
+    const { request, onEvent, signal } = input;
     const ws = await this.openSocket();
     const id = createRpcRequestId();
     let acceptedTaskId: TaskId | undefined;
@@ -213,7 +205,7 @@ export class RpcClient implements Client {
         ws.removeEventListener("message", onMessage);
         ws.removeEventListener("close", onClose);
         ws.removeEventListener("error", onError);
-        if (options.signal) options.signal.removeEventListener("abort", onAbort);
+        if (signal) signal.removeEventListener("abort", onAbort);
       };
       const onAbort = () => {
         try {
@@ -249,21 +241,21 @@ export class RpcClient implements Client {
         if (!msg || msg.id !== id) return;
         if (msg.type === "chat.accepted") {
           acceptedTaskId = msg.taskId;
-          options.onEvent({ type: "status", state: { kind: "accepted" } });
+          onEvent({ type: "status", state: { kind: "accepted" } });
           return;
         }
         if (msg.type === "chat.queued") {
-          options.onEvent({ type: "status", state: { kind: "queued", position: msg.position } });
+          onEvent({ type: "status", state: { kind: "queued", position: msg.position } });
           return;
         }
         if (msg.type === "chat.started") {
-          options.onEvent({ type: "status", state: { kind: "running" } });
+          onEvent({ type: "status", state: { kind: "running" } });
           return;
         }
         if (msg.type === "chat.abort.result") return;
         if (msg.type === "chat.event") {
           const parsed = parseStreamEvent(msg.event);
-          if (parsed) options.onEvent(parsed);
+          if (parsed) onEvent(parsed);
           return;
         }
         cleanup();
@@ -286,14 +278,14 @@ export class RpcClient implements Client {
       ws.addEventListener("message", onMessage);
       ws.addEventListener("close", onClose);
       ws.addEventListener("error", onError);
-      if (options.signal) {
-        if (options.signal.aborted) {
+      if (signal) {
+        if (signal.aborted) {
           onAbort();
           return;
         }
-        options.signal.addEventListener("abort", onAbort, { once: true });
+        signal.addEventListener("abort", onAbort, { once: true });
       }
-      ws.send(JSON.stringify({ id, type: "chat.start", payload: { request: input } }));
+      ws.send(JSON.stringify({ id, type: "chat.start", payload: { request } }));
     });
   }
 }

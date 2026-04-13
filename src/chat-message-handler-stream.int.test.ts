@@ -15,21 +15,21 @@ describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
             args: { cmd: "echo", args: ["hi"] },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "shell-run",
             content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
-          options.onEvent({ type: "text-delta", text: "done" });
+          input.onEvent({ type: "text-delta", text: "done" });
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
@@ -49,7 +49,7 @@ describe("chat message handler stream behavior", () => {
   test("does not add generic tool rows when progress stream is empty", async () => {
     const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
-        reply: async () => ({
+        replyStream: async () => ({
           state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
@@ -69,20 +69,20 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_search",
             toolName: "file-search",
             args: { pattern: "needle" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_search",
             toolName: "file-search",
             isError: false,
           });
-          options.onEvent({ type: "text-delta", text: "No matches found." });
+          input.onEvent({ type: "text-delta", text: "No matches found." });
           return { state: "done" as const, model: "gpt-5-mini", output: "No matches found." };
         },
       }),
@@ -98,7 +98,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
+        replyStream: async () => {
           throw new Error("insufficient_quota: You exceeded your current quota");
         },
       }),
@@ -118,7 +118,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
+        replyStream: async () => {
           throw new Error("Remote server stream timed out after 120000ms");
         },
       }),
@@ -144,10 +144,10 @@ describe("chat message handler stream behavior", () => {
     } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
+        replyStream: async (input) => {
           callCount += 1;
           if (callCount === 1) throw new Error("Remote server stream timed out after 120000ms");
-          options.onEvent({ type: "text-delta", text: "ok" });
+          input.onEvent({ type: "text-delta", text: "ok" });
           return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
       }),
@@ -172,7 +172,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
+        replyStream: async () => {
           throw Object.assign(new Error("RPC stream closed before final reply"), { taskId: "rpc_task_1" });
         },
         taskStatus: async () => {
@@ -208,7 +208,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, allRows, sessionState, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
+        replyStream: async () => {
           replyCalls += 1;
           throw new Error("Remote server stream timed out after 120000ms");
         },
@@ -240,7 +240,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => {
+        replyStream: async () => {
           replyCalls += 1;
           throw new Error("Remote server stream timed out after 120000ms");
         },
@@ -270,14 +270,13 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [
-          { type: "text-delta", text: "This is a long streamed answer that should not be truncated at finalize." },
-        ],
-        reply: async () => ({
-          state: "done" as const,
-          model: "gpt-5-mini",
-          output: finalOutput,
-        }),
+        replyStream: async (input) => {
+          input.onEvent({
+            type: "text-delta",
+            text: "This is a long streamed answer that should not be truncated at finalize.",
+          });
+          return { state: "done" as const, model: "gpt-5-mini", output: finalOutput };
+        },
       }),
     });
 
@@ -292,22 +291,23 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: { paths: [{ path: "a.ts" }] } },
-          {
+        replyStream: async (input) => {
+          input.onEvent({
+            type: "tool-call",
+            toolCallId: "call_1",
+            toolName: "file-read",
+            args: { paths: [{ path: "a.ts" }] },
+          });
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
             toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
             error: { code: "E_GUARD_BLOCKED", category: "budget-exhausted" },
-          },
-        ],
-        reply: async () => ({
-          state: "done" as const,
-          model: "gpt-5-mini",
-          output: "done",
-        }),
+          });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
       }),
     });
 
@@ -321,35 +321,36 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        events: [
-          { type: "tool-call", toolCallId: "call_blocked", toolName: "file-read", args: { paths: [{ path: "a.ts" }] } },
-          {
+        replyStream: async (input) => {
+          input.onEvent({
+            type: "tool-call",
+            toolCallId: "call_blocked",
+            toolName: "file-read",
+            args: { paths: [{ path: "a.ts" }] },
+          });
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_blocked",
             toolName: "file-read",
             isError: true,
             errorCode: "E_GUARD_BLOCKED",
             error: { code: "E_GUARD_BLOCKED", category: "budget-exhausted" },
-          },
-          { type: "tool-call", toolCallId: "call_ok", toolName: "file-edit", args: { path: "b.ts" } },
-          {
+          });
+          input.onEvent({ type: "tool-call", toolCallId: "call_ok", toolName: "file-edit", args: { path: "b.ts" } });
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_ok",
             toolName: "file-edit",
             content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "b.ts" },
-          },
-          {
+          });
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_ok",
             toolName: "file-edit",
             content: { kind: "diff", lineNumber: 2, marker: "add", text: "export const b = 2;" },
-          },
-        ],
-        reply: async () => ({
-          state: "done" as const,
-          model: "gpt-5-mini",
-          output: "done",
-        }),
+          });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
       }),
     });
 
@@ -409,11 +410,11 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
+        replyStream: async (input) => {
           const turn = replyCount++;
           const events = eventsByTurn[turn] ?? [];
           for (const event of events) {
-            options.onEvent(event);
+            input.onEvent(event);
           }
           return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
@@ -436,7 +437,7 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, session, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        reply: async () => ({
+        replyStream: async () => ({
           state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
@@ -472,10 +473,10 @@ describe("chat message handler stream behavior", () => {
 
     const client = createClient({
       status: async () => ({}),
-      replyStream: async (_input, options) => {
+      replyStream: async (input) => {
         replyCount += 1;
-        options.onEvent({ type: "status", state: { kind: "running" } });
-        options.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
+        input.onEvent({ type: "status", state: { kind: "running" } });
+        input.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
         return { state: "done" as const, model: "gpt-5-mini", output: `reply-${replyCount}` };
       },
     });
@@ -552,22 +553,22 @@ describe("chat message handler stream behavior", () => {
   test("assistant text row stays before tool rows after finalization", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({ type: "text-delta", text: "I will run the command." });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({ type: "text-delta", text: "I will run the command." });
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
             args: { cmd: "echo", args: ["hi"] },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "shell-run",
             content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
             toolName: "shell-run",
@@ -590,16 +591,16 @@ describe("chat message handler stream behavior", () => {
   test("batched tool calls each get their own tool row", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
           // Two tool calls in the same batch, different toolCallIds
-          options.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_A",
             toolName: "code-edit",
             args: { path: "a.ts" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_A",
             toolName: "code-edit",
@@ -612,18 +613,18 @@ describe("chat message handler stream behavior", () => {
               removed: 1,
             },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_A",
             toolName: "code-edit",
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_B",
             toolName: "code-edit",
             args: { path: "b.ts" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_B",
             toolName: "code-edit",
@@ -636,7 +637,7 @@ describe("chat message handler stream behavior", () => {
               removed: 1,
             },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_B",
             toolName: "code-edit",

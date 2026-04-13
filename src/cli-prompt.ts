@@ -96,8 +96,8 @@ export async function handlePrompt(
     const snapshotByCallId = new Map<string, string>();
     let hasPrintedToolProgress = false;
 
-    const reply = await client.replyStream(
-      {
+    const reply = await client.replyStream({
+      request: {
         message: prompt,
         history: session.messages,
         model: session.model,
@@ -105,64 +105,60 @@ export async function handlePrompt(
         resourceId: options?.resourceId,
         ...createWorkspaceSpecifier(options?.workspace),
       },
-      {
-        onEvent: (event) => {
-          switch (event.type) {
-            case "text-delta":
-              agentRenderer.onDelta(event.text);
-              break;
-            case "tool-output": {
-              const update = toolOutput.push(event);
-              if (!update) break;
-              if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail)
-                break;
-              const rendered = formatToolOutput(update.items);
-              if (!rendered) break;
-              const previous = snapshotByCallId.get(event.toolCallId);
-              snapshotByCallId.set(event.toolCallId, rendered);
-              if (previous) {
-                const current = rendered.trimEnd();
-                const before = previous.trimEnd();
-                if (current === before) break;
-                if (current.startsWith(`${before}\n`)) {
-                  printIndentedDim(current.slice(before.length + 1));
-                  hasPrintedToolProgress = true;
-                  break;
-                }
-                // Padding or formatting changed earlier lines — print only new trailing lines.
-                const currentLines = current.split("\n");
-                const previousLines = before.split("\n");
-                if (currentLines.length > previousLines.length) {
-                  printIndentedDim(currentLines.slice(previousLines.length).join("\n"));
-                  hasPrintedToolProgress = true;
-                  break;
-                }
+      onEvent: (event) => {
+        switch (event.type) {
+          case "text-delta":
+            agentRenderer.onDelta(event.text);
+            break;
+          case "tool-output": {
+            const update = toolOutput.push(event);
+            if (!update) break;
+            if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail) break;
+            const rendered = formatToolOutput(update.items);
+            if (!rendered) break;
+            const previous = snapshotByCallId.get(event.toolCallId);
+            snapshotByCallId.set(event.toolCallId, rendered);
+            if (previous) {
+              const current = rendered.trimEnd();
+              const before = previous.trimEnd();
+              if (current === before) break;
+              if (current.startsWith(`${before}\n`)) {
+                printIndentedDim(current.slice(before.length + 1));
+                hasPrintedToolProgress = true;
                 break;
               }
-              printDim(`• ${rendered.split("\n")[0] ?? ""}`);
-              if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
-              hasPrintedToolProgress = true;
+              const currentLines = current.split("\n");
+              const previousLines = before.split("\n");
+              if (currentLines.length > previousLines.length) {
+                printIndentedDim(currentLines.slice(previousLines.length).join("\n"));
+                hasPrintedToolProgress = true;
+                break;
+              }
               break;
             }
-            case "checklist": {
-              const { header, items } = formatChecklist(event);
-              printDim(`• ${header}`);
-              for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
-              hasPrintedToolProgress = true;
-              break;
-            }
-            case "tool-result": {
-              const budgetExhausted =
-                event.isError === true &&
-                (event.errorCode === LIFECYCLE_ERROR_CODES.budgetExhausted ||
-                  event.error?.category === "budget-exhausted");
-              if (budgetExhausted) toolOutput.delete(event.toolCallId);
-              break;
-            }
+            printDim(`• ${rendered.split("\n")[0] ?? ""}`);
+            if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
+            hasPrintedToolProgress = true;
+            break;
           }
-        },
+          case "checklist": {
+            const { header, items } = formatChecklist(event);
+            printDim(`• ${header}`);
+            for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
+            hasPrintedToolProgress = true;
+            break;
+          }
+          case "tool-result": {
+            const budgetExhausted =
+              event.isError === true &&
+              (event.errorCode === LIFECYCLE_ERROR_CODES.budgetExhausted ||
+                event.error?.category === "budget-exhausted");
+            if (budgetExhausted) toolOutput.delete(event.toolCallId);
+            break;
+          }
+        }
       },
-    );
+    });
 
     if (reply.error) {
       printError(reply.error);

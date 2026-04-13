@@ -10,9 +10,9 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Refactoring auth module",
@@ -45,10 +45,10 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
           // set-checklist creates with all pending
-          options.onEvent({
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Build pipeline",
@@ -58,7 +58,7 @@ describe("checklist integration", () => {
             ],
           });
           // checklist-update updates individual items
-          options.onEvent({
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Build pipeline",
@@ -88,15 +88,15 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_a",
             groupTitle: "Phase A",
             items: [{ id: "a1", label: "step A1", status: "pending", order: 0 }],
           });
-          options.onEvent({
+          input.onEvent({
             type: "checklist",
             groupId: "grp_b",
             groupTitle: "Phase B",
@@ -121,21 +121,21 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "pending", order: 0 }],
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "file-read",
             args: { path: "a.ts" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "file-read",
@@ -161,27 +161,27 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "edit file", status: "in_progress", order: 0 }],
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "file-edit",
             args: { path: "a.ts" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "file-edit",
             content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "a.ts" },
           });
-          options.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
             toolName: "file-edit",
@@ -204,9 +204,9 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Steps",
@@ -227,9 +227,9 @@ describe("checklist integration", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (_input, options) => {
-          options.onEvent({ type: "status", state: { kind: "running" } });
-          options.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "checklist",
             groupId: "grp_1",
             groupTitle: "Steps",

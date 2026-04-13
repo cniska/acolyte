@@ -36,6 +36,11 @@ export const taskRecordSchema = z.object({
 
 export type TaskRecord = Readonly<z.infer<typeof taskRecordSchema>>;
 
+export function parseTaskRecord(payload: unknown): TaskRecord | null {
+  const result = taskRecordSchema.safeParse(payload);
+  return result.success ? result.data : null;
+}
+
 export function isTerminalTaskState(state: TaskState): boolean {
   return TERMINAL_TASK_STATES.includes(state as (typeof TERMINAL_TASK_STATES)[number]);
 }

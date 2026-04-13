@@ -18,3 +18,15 @@ export const statusPayloadSchema = z
 
 export type StatusFields = Record<string, string | number | string[]>;
 export type StatusPayload = z.infer<typeof statusPayloadSchema>;
+
+export function parseStatusFields(payload: unknown): StatusFields | null {
+  const result = statusPayloadSchema.safeParse(payload);
+  if (!result.success) return null;
+  const fields: StatusFields = {};
+  for (const [key, value] of Object.entries(result.data)) {
+    if (key === "ok") continue;
+    if (typeof value === "string" || typeof value === "number") fields[key] = value;
+    else if (Array.isArray(value)) fields[key] = value;
+  }
+  return fields;
+}
