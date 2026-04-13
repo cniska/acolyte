@@ -13,6 +13,8 @@ import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
 import { ansi, kitty } from "./styles";
 
+const KITTY_TERMINALS = ["kitty", "WezTerm", "ghostty", "iTerm.app"];
+
 function clientLogPath(): string {
   return join(stateDir(), "client.log");
 }
@@ -50,6 +52,8 @@ export function render(node: ReactNode): RenderInstance {
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
+  const termProgram = process.env.TERM_PROGRAM ?? "";
+  const useKittyProtocol = stdout.isTTY && KITTY_TERMINALS.includes(termProgram);
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
@@ -113,7 +117,7 @@ export function render(node: ReactNode): RenderInstance {
   };
 
   if (stdout.isTTY) {
-    stdout.write(kitty.enable(1));
+    if (useKittyProtocol) stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
     stdout.write(ansi.bracketedPasteEnable);
     stdout.write(ansi.focusReportEnable);
@@ -293,7 +297,7 @@ export function render(node: ReactNode): RenderInstance {
       stdout.removeListener("resize", onResize);
       stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
-      stdout.write(kitty.disable);
+      if (useKittyProtocol) stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
     }
@@ -310,7 +314,7 @@ export function render(node: ReactNode): RenderInstance {
     if (stdout.isTTY) {
       stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
-      stdout.write(kitty.disable);
+      if (useKittyProtocol) stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
     }
