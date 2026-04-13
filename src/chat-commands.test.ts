@@ -1,11 +1,10 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { appConfig, setModel } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
 import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
-import { resetSkillCache } from "./skills";
 import { createCommandContext, createMessage, createSession, createSessionState } from "./test-utils";
 
 function createMemoryApi(overrides?: {
@@ -450,6 +449,5 @@ describe("chat-commands", () => {
         restore();
       }
     });
-
   });
 });
