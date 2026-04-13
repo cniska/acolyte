@@ -17,6 +17,13 @@ describe("chat-content helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe("");
   });
 
+  test("sanitizeAssistantContent strips @signal lines", () => {
+    expect(sanitizeAssistantContent("Done.\n\n@signal done")).toBe("Done.");
+    expect(sanitizeAssistantContent("Nothing to do.\n@signal no_op")).toBe("Nothing to do.");
+    expect(sanitizeAssistantContent("Cannot proceed.\n\n@signal blocked")).toBe("Cannot proceed.");
+    expect(sanitizeAssistantContent("@signal done")).toBe("");
+  });
+
   test("wrapText wraps long lines at word boundaries", () => {
     const text = "one two three four five six seven eight nine ten";
     const wrapped = wrapText(text, 30);
