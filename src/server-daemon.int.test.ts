@@ -102,6 +102,7 @@ describe("server daemon", () => {
       "utf8",
     );
     try {
+      // Lock is cleared because pid 999999 is dead, but server is healthy so it reports running with null pid
       await expect(localServerStatus({ port: server.port, env })).resolves.toEqual({
         running: true,
         pid: null,
@@ -277,6 +278,7 @@ describe("server daemon", () => {
       }
       return new Response("ok");
     });
+    // No lock file written — server is running but lock is missing
     const result = await stopLocalServer({ port: server.port, env });
     expect(result.stopped).toBe(true);
   });
@@ -311,6 +313,7 @@ describe("server daemon", () => {
       }
       return new Response("ok");
     });
+    // Lock exists but its PID is dead — server is actually running on the port
     const lockPath = serverLockPath(server.port, env);
     await mkdir(join(lockPath, ".."), { recursive: true });
     await writeFile(
