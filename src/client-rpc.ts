@@ -12,7 +12,7 @@ import { connectionHelpMessage } from "./error-messages";
 import { field } from "./field";
 import { createRpcRequestId } from "./rpc-protocol";
 import { parseStatusFields, type StatusFields } from "./status-contract";
-import type { TaskId, TaskRecord } from "./task-contract";
+import { parseTaskRecord, type TaskId, type TaskRecord } from "./task-contract";
 
 type RpcServerMessage = NonNullable<ReturnType<typeof parseRpcServerMessage>>;
 
@@ -166,7 +166,10 @@ export class RpcClient implements Client {
       request: (id) => ({ id, type: "task.status", payload: { taskId } }),
       closeError: "RPC connection closed before task status response",
       resolve: (msg) => {
-        if (msg.type === "task.status.result") return msg.task;
+        if (msg.type === "task.status.result") {
+          if (msg.task === null || msg.task === undefined) return null;
+          return parseTaskRecord(msg.task) ?? new Error("Invalid task record");
+        }
         if (msg.type === "error") return new Error(msg.error);
         return new Error(`Unexpected RPC response: ${msg.type}`);
       },
