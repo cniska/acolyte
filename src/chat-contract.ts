@@ -7,7 +7,7 @@ import { toolOutputPartSchema } from "./tool-output-content";
 
 export const roleSchema = z.enum(["system", "user", "assistant"]);
 export type Role = z.infer<typeof roleSchema>;
-export const messageKindSchema = z.enum(["text", "tool_payload"]);
+export const messageKindSchema = z.enum(["text", "tool_payload", "status"]);
 export type MessageKind = z.infer<typeof messageKindSchema>;
 export const messageIdSchema = domainIdSchema("msg");
 export type MessageId = z.infer<typeof messageIdSchema>;

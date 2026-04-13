@@ -1,6 +1,7 @@
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { nowIso } from "./datetime";
 import { remapDomainId } from "./id-contract";
+import { palette } from "./palette";
 import { createId } from "./short-id";
 
 export function createMessage(role: ChatMessage["role"], content: string): ChatMessage {
@@ -21,6 +22,13 @@ export function toRows(messages: ChatMessage[]): ChatRow[] {
         id: remapDomainId(message.id, "row"),
         kind: message.role,
         content: message.content,
+      });
+    } else if (message.kind === "status") {
+      rows.push({
+        id: remapDomainId(message.id, "row"),
+        kind: "status",
+        content: message.content,
+        style: { marker: palette.success, dim: true },
       });
     }
   }
