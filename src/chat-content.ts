@@ -4,7 +4,6 @@ export function sanitizeAssistantContent(content: string): string {
   const cleaned = content
     .split("\n")
     .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
-    .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))
     .join("\n")
     .trimEnd();
   return cleaned;
