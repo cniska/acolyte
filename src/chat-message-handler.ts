@@ -154,6 +154,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       streamState.finalize();
 
       input.currentSession.messages.push(assistantMessage);
+      for (const row of turn.rows) {
+        if (row.kind === "status" && typeof row.content === "string") {
+          const msg = input.createMessage("system", row.content);
+          msg.kind = "status";
+          input.currentSession.messages.push(msg);
+        }
+      }
       input.currentSession.updatedAt = input.nowIso();
       // Clear the pending indicator in the same synchronous block as
       // adding the worked/status rows so React batches them into one

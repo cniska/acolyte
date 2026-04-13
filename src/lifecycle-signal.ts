@@ -3,7 +3,10 @@ import type { LifecycleSignal } from "./lifecycle-contract";
 const SIGNAL_RE = /(?:^|\n)@signal\s+(done|no_op|blocked)\s*(?:\n|$)/;
 const SIGNAL_PREFIXES = ["@signal done", "@signal no_op", "@signal blocked"] as const;
 
-// Strip the @signal line and everything after it; return only the text before it.
+export function stripSignalLine(text: string): string {
+  return extractLifecycleSignal(text).text;
+}
+
 export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal; text: string } {
   const match = text.match(SIGNAL_RE);
   if (!match) return { text };

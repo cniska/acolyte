@@ -21,6 +21,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Term | Definition |
 |---|---|
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
+| Chat Promotion | State transition that moves completed chat rows from the active (re-rendered) region to static (write-once scrollback) |
 | ChatRow | One display block in the chat transcript; may render as many visual lines (e.g. a usage summary or status panel) |
 | Cloud Sync | Feature that syncs memory and sessions to a hosted cloud API for portable agent identity across machines |
 | CloudClient | HTTP client that implements `MemoryStore` and `SessionStore` against the cloud API |
@@ -31,6 +32,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
 | Embedding | Provider-generated vector representation of a memory record used for semantic recall |
 | Entry | Runtime or pipeline item used during processing and not necessarily persisted |
+| Frozen Overflow | TUI renderer optimization where active content lines that exceed the viewport are written once to scrollback and excluded from subsequent re-renders |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, and memory |
 | Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |

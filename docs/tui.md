@@ -28,12 +28,14 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 - **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree
 - **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes)
 - **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions
-- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are flushed to scrollback and only the bottom portion is re-rendered
-- **resize:** terminal dimensions are read from `stdout.columns`/`stdout.rows` on each commit — no SIGWINCH handler needed
+- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion is re-rendered (see [Frozen Overflow](glossary.md)). Erase and repaint are atomic within a single DEC 2026 synchronized output block to prevent flicker
+- **resize:** a debounced resize listener resets frozen overflow state and triggers a re-render with updated dimensions
+- **focus repair:** on terminal focus-in (tab switch), frozen overflow state is invalidated and the active region is repainted via the normal commit path
+- **DEC 2026:** synchronized output (BSU/ESU) wraps all terminal writes to prevent partial-frame rendering. Skipped in tmux where DEC 2026 is not supported
 
 ## Input handling
 
-Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). Prefers the [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) for unambiguous modifier reporting, with fallback to legacy escape sequences for terminals that don't support it. The dispatcher fans out to all registered handlers via `InputContext`.
+Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). Supports the [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) for unambiguous modifier reporting, enabled only on terminals with full support (kitty, WezTerm, ghostty, iTerm). The dispatcher fans out to all registered handlers via `InputContext`.
 
 Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
 

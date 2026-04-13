@@ -13,6 +13,8 @@ import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
 import { ansi, kitty } from "./styles";
 
+const KITTY_TERMINALS = ["kitty", "WezTerm", "ghostty", "iTerm.app"];
+
 function clientLogPath(): string {
   return join(stateDir(), "client.log");
 }
@@ -50,6 +52,8 @@ export function render(node: ReactNode): RenderInstance {
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
+  const termProgram = process.env.TERM_PROGRAM ?? "";
+  const useKittyProtocol = stdout.isTTY && KITTY_TERMINALS.includes(termProgram);
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
@@ -99,11 +103,25 @@ export function render(node: ReactNode): RenderInstance {
     stdin.on("data", onStdinData);
   }
 
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const onResize = () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null;
+      frozenLineCount = 0;
+      frozenOverflowText = "";
+      lastActive = "";
+      commitRender();
+    }, 16);
+  };
+
   if (stdout.isTTY) {
-    stdout.write(kitty.enable(1));
+    if (useKittyProtocol) stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
     stdout.write(ansi.bracketedPasteEnable);
     stdout.write(ansi.focusReportEnable);
+    stdout.on("resize", onResize);
   }
 
   function countRows(output: string): number {
@@ -121,44 +139,34 @@ export function render(node: ReactNode): RenderInstance {
     return visible === 0 ? 1 : Math.ceil(visible / cols);
   }
 
+  const useSyncOutput = stdout.isTTY && !process.env.TMUX;
+
   function syncWrite(data: string) {
-    if (stdout.isTTY) {
-      const normalized = data.replace(/\r?\n/g, "\r\n");
-      // Trailing \r defuses auto-margin pending-wrap state left when a
-      // line fills exactly `columns` characters.  Without it, the next
-      // cursorUp may overshoot (pending-wrap counts as the next row in
-      // some terminals), causing eraseSequence to eat into static content.
+    if (!stdout.isTTY) {
+      stdout.write(data);
+      return;
+    }
+    const normalized = data.replace(/\r?\n/g, "\r\n");
+    // Trailing \r defuses auto-margin pending-wrap state left when a
+    // line fills exactly `columns` characters.  Without it, the next
+    // cursorUp may overshoot (pending-wrap counts as the next row in
+    // some terminals), causing eraseSequence to eat into static content.
+    if (useSyncOutput) {
       stdout.write(`${ansi.syncStart}${normalized}\r${ansi.syncEnd}`);
     } else {
-      stdout.write(data);
+      stdout.write(`${normalized}\r`);
     }
   }
 
-  /** Full-screen erase and re-render.  Called on terminal focus-in to
-   *  repair display corruption caused by xterm resolving auto-margin
-   *  pending-wrap state during tab switches.  Re-flushes static items
-   *  (header, completed messages) because the erase may have cleared
-   *  them from the visible area. */
+  /** Repaint the active region on focus-in.  Invalidates frozen overflow
+   *  state (may be stale after tab switch) and delegates to commitRender
+   *  which handles viewport overflow correctly. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    const { staticItems, active } = serializeSplit(root);
-    const cols = stdout.columns ?? DEFAULT_COLUMNS;
-    const rows = stdout.rows ?? 24;
-    const maxLiveRows = rows - 1;
-
-    // Move to the visible origin and erase everything. Absolute positioning is
-    // more robust than relative cursor-up when prior output left terminals in
-    // ambiguous wrap states.
-    let buf = `${ansi.cursorTo(0, 0)}${ansi.eraseDown}`;
-    for (const item of staticItems) buf += `${item}\n`;
-    buf += active;
-
-    syncWrite(buf);
-    flushedStaticCount = staticItems.length;
     frozenLineCount = 0;
     frozenOverflowText = "";
-    lastActive = active;
-    lastActiveLineCount = Math.min(physicalRowCount(active, cols), maxLiveRows);
+    lastActive = "";
+    commitRender();
   }
 
   function commitRender() {
@@ -193,26 +201,22 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If content shrank or rewrote the previously frozen prefix, the
-    // append-only overflow assumption no longer holds.  Erase the full
-    // viewport (frozen lines may still be visible at the top) and reset
-    // tracking so the normal render path treats all lines as live.
-    // We intentionally avoid forceRedraw here because it re-emits all
-    // static items, duplicating content already in the scrollback buffer.
+    // If the frozen prefix was invalidated (content shrank or changed),
+    // defer the viewport erase into the render syncWrite below so
+    // erase+paint is atomic within one BSU/ESU block.
+    let frozenResetErase = "";
     if (
       frozenLineCount > 0 &&
       (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
     ) {
-      syncWrite(`${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`);
+      frozenResetErase = `${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`;
       lastActiveLineCount = 0;
       frozenLineCount = 0;
       frozenOverflowText = "";
     }
 
-    // Determine the live (on-screen, erasable) portion of the active output.
     const liveLines = allLines.slice(frozenLineCount);
 
-    // Count physical rows from the bottom to find what fits on screen.
     let physRows = 0;
     let splitIdx = 0;
     for (let i = liveLines.length - 1; i >= 0; i--) {
@@ -224,19 +228,18 @@ export function render(node: ReactNode): RenderInstance {
       physRows += rows;
     }
 
+    const erase = frozenResetErase || eraseSequence();
+
     if (splitIdx === 0) {
-      syncWrite(eraseSequence() + liveLines.join("\n"));
+      syncWrite(erase + liveLines.join("\n"));
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     } else {
-      // Overflow: flush top lines to scrollback (they are stable during
-      // streaming — content is append-only), then re-render only the
-      // bottom portion that fits on screen.
       const overflow = liveLines.slice(0, splitIdx);
       const onScreen = liveLines.slice(splitIdx);
       frozenLineCount += splitIdx;
       const overflowText = overflow.join("\n");
       frozenOverflowText += `${overflowText}\n`;
-      syncWrite(`${eraseSequence()}${overflowText}\n${onScreen.join("\n")}`);
+      syncWrite(`${erase}${overflowText}\n${onScreen.join("\n")}`);
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
 
@@ -275,6 +278,7 @@ export function render(node: ReactNode): RenderInstance {
   function cleanup() {
     setLogSink(null);
     setOnCommit(null);
+    if (resizeTimer) clearTimeout(resizeTimer);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
     process.removeListener("exit", onExit);
@@ -284,9 +288,10 @@ export function render(node: ReactNode): RenderInstance {
       stdin.pause();
     }
     if (stdout.isTTY) {
+      stdout.removeListener("resize", onResize);
       stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
-      stdout.write(kitty.disable);
+      if (useKittyProtocol) stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
     }
@@ -303,7 +308,7 @@ export function render(node: ReactNode): RenderInstance {
     if (stdout.isTTY) {
       stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
-      stdout.write(kitty.disable);
+      if (useKittyProtocol) stdout.write(kitty.disable);
       stdout.write(ansi.cursorShow);
       stdout.write("\n");
     }
