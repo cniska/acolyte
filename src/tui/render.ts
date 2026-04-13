@@ -135,16 +135,22 @@ export function render(node: ReactNode): RenderInstance {
     return visible === 0 ? 1 : Math.ceil(visible / cols);
   }
 
+  const useSyncOutput = stdout.isTTY && !process.env.TMUX;
+
   function syncWrite(data: string) {
-    if (stdout.isTTY) {
-      const normalized = data.replace(/\r?\n/g, "\r\n");
-      // Trailing \r defuses auto-margin pending-wrap state left when a
-      // line fills exactly `columns` characters.  Without it, the next
-      // cursorUp may overshoot (pending-wrap counts as the next row in
-      // some terminals), causing eraseSequence to eat into static content.
+    if (!stdout.isTTY) {
+      stdout.write(data);
+      return;
+    }
+    const normalized = data.replace(/\r?\n/g, "\r\n");
+    // Trailing \r defuses auto-margin pending-wrap state left when a
+    // line fills exactly `columns` characters.  Without it, the next
+    // cursorUp may overshoot (pending-wrap counts as the next row in
+    // some terminals), causing eraseSequence to eat into static content.
+    if (useSyncOutput) {
       stdout.write(`${ansi.syncStart}${normalized}\r${ansi.syncEnd}`);
     } else {
-      stdout.write(data);
+      stdout.write(`${normalized}\r`);
     }
   }
 

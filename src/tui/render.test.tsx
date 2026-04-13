@@ -440,4 +440,26 @@ describe("render", () => {
     const resizeTestWrites = frameWrites.filter((w) => w.includes("resize test"));
     expect(resizeTestWrites.length).toBeGreaterThanOrEqual(2);
   });
+
+  test("syncWrite skips BSU/ESU when TMUX is set", async () => {
+    const savedTmux = process.env.TMUX;
+    process.env.TMUX = "/tmp/tmux-1000/default,12345,0";
+    try {
+      const writes = await withMockedStdout(async () => {
+        const { render } = await import("./render");
+        const app = render(h("tui-text", null, "tmux test"));
+        await new Promise((r) => setTimeout(r, 100));
+        app.unmount();
+      });
+      const renderWrites = writes.filter((w) => w.includes("tmux test"));
+      expect(renderWrites.length).toBeGreaterThan(0);
+      for (const w of renderWrites) {
+        expect(w.includes(ansi.syncStart)).toBe(false);
+        expect(w.includes(ansi.syncEnd)).toBe(false);
+      }
+    } finally {
+      if (savedTmux === undefined) delete process.env.TMUX;
+      else process.env.TMUX = savedTmux;
+    }
+  });
 });
