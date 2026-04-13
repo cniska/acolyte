@@ -211,11 +211,11 @@ describe("chat message handler", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (params) => {
+        replyStream: async (input) => {
           const turn = replyCount++;
           const events = eventsByTurn[turn] ?? [];
           for (const event of events) {
-            params.onEvent(event);
+            input.onEvent(event);
           }
           return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
@@ -344,7 +344,7 @@ describe("chat message handler", () => {
 
     const { handleSubmit } = createMessageHandler({
       client: createClient({
-        replyStream: async (params) => {
+        replyStream: async (input) => {
           const call = callCount++;
           if (call === 0) {
             return await new Promise((_, reject) => {
@@ -353,14 +353,14 @@ describe("chat message handler", () => {
                 error.name = "AbortError";
                 reject(error);
               };
-              if (params.signal?.aborted) {
+              if (input.signal?.aborted) {
                 abort();
                 return;
               }
-              params.signal?.addEventListener("abort", abort, { once: true });
+              input.signal?.addEventListener("abort", abort, { once: true });
             });
           }
-          params.onEvent({ type: "text-delta", text: "Second answer." });
+          input.onEvent({ type: "text-delta", text: "Second answer." });
           return { state: "done" as const, model: "gpt-5-mini", output: "Second answer." };
         },
         status: async () => ({}),
@@ -489,9 +489,9 @@ describe("chat message handler", () => {
 
       const { handleSubmit } = createMessageHandler({
         client: createClient({
-          replyStream: async (params) => {
+          replyStream: async (input) => {
             replyCalls += 1;
-            params.onEvent({ type: "text-delta", text: "ok" });
+            input.onEvent({ type: "text-delta", text: "ok" });
             return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
           },
           status: async () => ({}),

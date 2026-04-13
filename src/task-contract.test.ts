@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isTerminalTaskState, taskRecordSchema, taskStateSchema } from "./task-contract";
+import { isTerminalTaskState, parseTaskRecord, taskRecordSchema, taskStateSchema } from "./task-contract";
 
 describe("task state contract", () => {
   test("accepts all planned task states", () => {
@@ -31,6 +31,23 @@ describe("task state contract", () => {
       updatedAt: "2026-02-28T00:00:01.000Z",
     });
     expect(parsed.success).toBe(false);
+  });
+
+  test("parseTaskRecord returns record for valid input", () => {
+    const record = parseTaskRecord({
+      id: "task_123",
+      state: "running",
+      createdAt: "2026-02-28T00:00:00.000Z",
+      updatedAt: "2026-02-28T00:00:01.000Z",
+    });
+    expect(record?.id).toBe("task_123");
+    expect(record?.state).toBe("running");
+  });
+
+  test("parseTaskRecord returns null for invalid input", () => {
+    expect(parseTaskRecord({})).toBeNull();
+    expect(parseTaskRecord(null)).toBeNull();
+    expect(parseTaskRecord({ id: "bad", state: "running" })).toBeNull();
   });
 
   test("detects terminal vs non-terminal states", () => {

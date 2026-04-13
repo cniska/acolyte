@@ -15,21 +15,21 @@ describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (params) => {
-          params.onEvent({ type: "status", state: { kind: "running" } });
-          params.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
             args: { cmd: "echo", args: ["hi"] },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "shell-run",
             content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
-          params.onEvent({ type: "text-delta", text: "done" });
+          input.onEvent({ type: "text-delta", text: "done" });
           return { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
@@ -69,20 +69,20 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (params) => {
-          params.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_search",
             toolName: "file-search",
             args: { pattern: "needle" },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_search",
             toolName: "file-search",
             isError: false,
           });
-          params.onEvent({ type: "text-delta", text: "No matches found." });
+          input.onEvent({ type: "text-delta", text: "No matches found." });
           return { state: "done" as const, model: "gpt-5-mini", output: "No matches found." };
         },
       }),
@@ -144,10 +144,10 @@ describe("chat message handler stream behavior", () => {
     } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (params) => {
+        replyStream: async (input) => {
           callCount += 1;
           if (callCount === 1) throw new Error("Remote server stream timed out after 120000ms");
-          params.onEvent({ type: "text-delta", text: "ok" });
+          input.onEvent({ type: "text-delta", text: "ok" });
           return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
       }),
@@ -410,11 +410,11 @@ describe("chat message handler stream behavior", () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
-        replyStream: async (params) => {
+        replyStream: async (input) => {
           const turn = replyCount++;
           const events = eventsByTurn[turn] ?? [];
           for (const event of events) {
-            params.onEvent(event);
+            input.onEvent(event);
           }
           return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
         },
@@ -473,10 +473,10 @@ describe("chat message handler stream behavior", () => {
 
     const client = createClient({
       status: async () => ({}),
-      replyStream: async (params) => {
+      replyStream: async (input) => {
         replyCount += 1;
-        params.onEvent({ type: "status", state: { kind: "running" } });
-        params.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
+        input.onEvent({ type: "status", state: { kind: "running" } });
+        input.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
         return { state: "done" as const, model: "gpt-5-mini", output: `reply-${replyCount}` };
       },
     });
@@ -553,22 +553,22 @@ describe("chat message handler stream behavior", () => {
   test("assistant text row stays before tool rows after finalization", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (params) => {
-          params.onEvent({ type: "status", state: { kind: "running" } });
-          params.onEvent({ type: "text-delta", text: "I will run the command." });
-          params.onEvent({
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
+          input.onEvent({ type: "text-delta", text: "I will run the command." });
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_1",
             toolName: "shell-run",
             args: { cmd: "echo", args: ["hi"] },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_1",
             toolName: "shell-run",
             content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_1",
             toolName: "shell-run",
@@ -591,16 +591,16 @@ describe("chat message handler stream behavior", () => {
   test("batched tool calls each get their own tool row", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (params) => {
-          params.onEvent({ type: "status", state: { kind: "running" } });
+        replyStream: async (input) => {
+          input.onEvent({ type: "status", state: { kind: "running" } });
           // Two tool calls in the same batch, different toolCallIds
-          params.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_A",
             toolName: "code-edit",
             args: { path: "a.ts" },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_A",
             toolName: "code-edit",
@@ -613,18 +613,18 @@ describe("chat message handler stream behavior", () => {
               removed: 1,
             },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_A",
             toolName: "code-edit",
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-call",
             toolCallId: "call_B",
             toolName: "code-edit",
             args: { path: "b.ts" },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-output",
             toolCallId: "call_B",
             toolName: "code-edit",
@@ -637,7 +637,7 @@ describe("chat message handler stream behavior", () => {
               removed: 1,
             },
           });
-          params.onEvent({
+          input.onEvent({
             type: "tool-result",
             toolCallId: "call_B",
             toolName: "code-edit",

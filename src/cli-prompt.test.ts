@@ -21,8 +21,8 @@ function createTestSession(): Session {
 
 function createStreamingClient(events: StreamEvent[]): Client {
   return {
-    replyStream: async (params) => {
-      for (const event of events) params.onEvent(event);
+    replyStream: async (input) => {
+      for (const event of events) input.onEvent(event);
       return { state: "done" as const, output: "done", model: "gpt-5-mini", toolCalls: ["code-edit"] };
     },
     status: async () => ({}),
