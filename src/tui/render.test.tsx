@@ -118,6 +118,32 @@ function replayVisibleScreen(writes: string[], rows: number, columns: number): s
   return screen.map((line) => line.join("").trimEnd());
 }
 
+function extractFrameWrites(writes: string[]): string[] {
+  const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+  return cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+}
+
+function OverflowShrinkApp(props: { onUnmount: () => void }): React.JSX.Element {
+  const [lines, setLines] = useState(["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setLines(["B1", "B2", "B3", "B4"]), 20);
+    const t2 = setTimeout(() => props.onUnmount(), 60);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [props.onUnmount]);
+
+  return (
+    <tui-box flexDirection="column">
+      {lines.map((line) => (
+        <tui-text key={line}>{line}</tui-text>
+      ))}
+    </tui-box>
+  );
+}
+
 describe("render", () => {
   test("commitRender wraps output in sync markers", async () => {
     const writes = await withMockedStdout(async () => {
@@ -152,41 +178,13 @@ describe("render", () => {
     const writes = await withMockedStdout(
       async () => {
         const { render } = await import("./render");
-
-        function App(): React.JSX.Element {
-          const [lines, setLines] = useState(["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]);
-
-          useEffect(() => {
-            const updateTimer = setTimeout(() => {
-              setLines(["B1", "B2", "B3", "B4"]);
-            }, 20);
-            const unmountTimer = setTimeout(() => {
-              app.unmount();
-            }, 60);
-            return () => {
-              clearTimeout(updateTimer);
-              clearTimeout(unmountTimer);
-            };
-          }, []);
-
-          return (
-            <tui-box flexDirection="column">
-              {lines.map((line) => (
-                <tui-text key={line}>{line}</tui-text>
-              ))}
-            </tui-box>
-          );
-        }
-
-        const app = render(<App />);
+        const app = render(<OverflowShrinkApp onUnmount={() => app.unmount()} />);
         await app.waitUntilExit();
       },
       { columns: 20, rows: 6 },
     );
 
-    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
-    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
-    const visible = replayVisibleScreen(frameWrites, 6, 20);
+    const visible = replayVisibleScreen(extractFrameWrites(writes), 6, 20);
     const joined = visible.join("\n");
 
     expect(joined).toContain("B1");
@@ -201,33 +199,7 @@ describe("render", () => {
     const writes = await withMockedStdout(
       async () => {
         const { render } = await import("./render");
-
-        function App(): React.JSX.Element {
-          const [lines, setLines] = useState(["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]);
-
-          useEffect(() => {
-            const updateTimer = setTimeout(() => {
-              setLines(["B1", "B2", "B3", "B4"]);
-            }, 20);
-            const unmountTimer = setTimeout(() => {
-              app.unmount();
-            }, 60);
-            return () => {
-              clearTimeout(updateTimer);
-              clearTimeout(unmountTimer);
-            };
-          }, []);
-
-          return (
-            <tui-box flexDirection="column">
-              {lines.map((line) => (
-                <tui-text key={line}>{line}</tui-text>
-              ))}
-            </tui-box>
-          );
-        }
-
-        const app = render(<App />);
+        const app = render(<OverflowShrinkApp onUnmount={() => app.unmount()} />);
         await app.waitUntilExit();
       },
       { columns: 20, rows: 6 },
@@ -307,8 +279,7 @@ describe("render", () => {
       { columns: 80, rows: 24 },
     );
 
-    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
-    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const frameWrites = extractFrameWrites(writes);
     const visible = replayVisibleScreen(frameWrites, 24, 80);
     const joined = visible.join("\n");
 
@@ -371,8 +342,7 @@ describe("render", () => {
       { columns: 40, rows: 12 },
     );
 
-    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
-    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const frameWrites = extractFrameWrites(writes);
     const allOutput = frameWrites.join("");
 
     // HEADER must appear exactly once — never duplicated by forceRedraw.
@@ -435,8 +405,7 @@ describe("render", () => {
       { columns: 80, rows: 24 },
     );
 
-    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
-    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const frameWrites = extractFrameWrites(writes);
     const resizeTestWrites = frameWrites.filter((w) => w.includes("resize test"));
     expect(resizeTestWrites.length).toBeGreaterThanOrEqual(2);
   });
