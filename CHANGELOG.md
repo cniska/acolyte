@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.1 (2026-04-13)
+
+- docs: fix docs review drift (#180) (`eb6b9b47`)
+- fix(tui): harden chat renderer (#181) (`75cfc3c7`)
+
+
 ## 0.18.0 (2026-04-09)
 
 - fix(config): crash on malformed config file (#166) (`6827e50a`)
