@@ -21,7 +21,7 @@ describe("resource diagnostics", () => {
     writeFileSync(join(projectConfig, "config.toml"), 'model = "gpt-5-mini"\n', "utf8");
     writeFileSync(join(projectConfig, "config.json"), '{"model":"gpt-5"}\n', "utf8");
 
-    const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
+    const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
     expect(diagnostics["resources.config.collisions"]).toBe("project");
   });
 
@@ -29,7 +29,7 @@ describe("resource diagnostics", () => {
     const cwd = createDir("acolyte-resdiag-prompts-");
     const home = createDir("acolyte-resdiag-home-");
 
-    const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
+    const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
     expect(diagnostics["resources.prompt.agents"]).toBe("missing_or_unreadable");
   });
 
@@ -39,7 +39,7 @@ describe("resource diagnostics", () => {
     writeSkill(cwd, "bad", "---\nname: Bad\ndescription: Invalid skill name\n---");
 
     await loadSkills(cwd);
-    const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
+    const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
     expect(diagnostics["resources.skills.invalid"]).toBe(1);
     expect(diagnostics["resources.skills.status"]).toBeUndefined();
   });
@@ -51,7 +51,7 @@ describe("resource diagnostics", () => {
     writeSkill(cwd, "demo", "---\nname: demo\ndescription: Demo skill\n---");
 
     await loadSkills(cwd);
-    const diagnostics = collectResourceDiagnostics({ cwd, homeDir: home });
+    const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
     expect(diagnostics).toEqual({});
   });
 });

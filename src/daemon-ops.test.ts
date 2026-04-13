@@ -1,13 +1,17 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { isProcessAlive, parseServerLock, serverLogPath } from "./daemon-ops";
+import { stateDir } from "./paths";
 
 describe("daemon ops", () => {
   test("serverLogPath uses server.log for default port", () => {
-    expect(serverLogPath(6767, "/tmp/acolyte-home")).toBe("/tmp/acolyte-home/.acolyte/daemons/server.log");
+    const env = { HOME: "/tmp/acolyte-home" };
+    expect(serverLogPath(6767, env)).toBe(join(stateDir(env), "daemons", "server.log"));
   });
 
   test("serverLogPath uses port number for non-default port", () => {
-    expect(serverLogPath(8080, "/tmp/acolyte-home")).toBe("/tmp/acolyte-home/.acolyte/daemons/8080.log");
+    const env = { HOME: "/tmp/acolyte-home" };
+    expect(serverLogPath(8080, env)).toBe(join(stateDir(env), "daemons", "8080.log"));
   });
 
   test("parseServerLock accepts valid payload", () => {

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { PRIVATE_FILE_MODE } from "./file-ops";
-import { stateDirFromHome } from "./paths";
+import { type Env, stateDir } from "./paths";
 
 // 6        7
 // \_(ᴗ _ᴗ)_/
@@ -33,24 +33,24 @@ const startupLockSchema = z.object({
   startedAt: isoDateTimeSchema,
 });
 
-export function daemonsDir(homeDir?: string): string {
-  return join(stateDirFromHome(homeDir), "daemons");
+export function daemonsDir(env?: Env): string {
+  return join(stateDir(env), "daemons");
 }
 
 function daemonFileName(port: number, suffix: string): string {
   return port === DEFAULT_PORT ? `server${suffix}` : `${port}${suffix}`;
 }
 
-export function serverLockPath(port: number, homeDir?: string): string {
-  return join(daemonsDir(homeDir), daemonFileName(port, ".lock"));
+export function serverLockPath(port: number, env?: Env): string {
+  return join(daemonsDir(env), daemonFileName(port, ".lock"));
 }
 
-export function startupLockPath(port: number, homeDir?: string): string {
-  return join(daemonsDir(homeDir), daemonFileName(port, ".start.lock"));
+export function startupLockPath(port: number, env?: Env): string {
+  return join(daemonsDir(env), daemonFileName(port, ".start.lock"));
 }
 
-export function serverLogPath(port: number, homeDir?: string): string {
-  return join(daemonsDir(homeDir), daemonFileName(port, ".log"));
+export function serverLogPath(port: number, env?: Env): string {
+  return join(daemonsDir(env), daemonFileName(port, ".log"));
 }
 
 export function parseServerLock(raw: string): ServerLock | null {

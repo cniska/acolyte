@@ -9,7 +9,7 @@ type LoginModeDeps = {
   printDim: (message: string) => void;
   printError: (message: string) => void;
   promptHidden: (question: string) => Promise<string | undefined>;
-  writeCredential: (key: keyof Credentials, value: string, homeDir?: string) => Promise<void>;
+  writeCredential: (key: keyof Credentials, value: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
   createId: () => string;
@@ -75,7 +75,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
 type LogoutModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
-  removeCredential: (key: keyof Credentials, homeDir?: string) => Promise<void>;
+  removeCredential: (key: keyof Credentials) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };

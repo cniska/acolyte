@@ -10,6 +10,7 @@ import {
   unsetConfigValue,
   writeConfig,
 } from "./config";
+import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -18,7 +19,7 @@ afterEach(cleanupDirs);
 describe("config store", () => {
   test("reads non-secret settings from config.toml", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
@@ -26,7 +27,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "anthropic/claude-sonnet-4",
       port: 7777,
@@ -35,7 +36,7 @@ describe("config store", () => {
 
   test("ignores apiKey in file config (secrets are env-only)", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
@@ -43,7 +44,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
       port: 7777,
@@ -52,18 +53,18 @@ describe("config store", () => {
 
   test("prefers config.toml when both TOML and JSON exist", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
   test("falls back to JSON when TOML is absent", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.json"),
@@ -71,7 +72,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: home });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: home });
     expect(loaded).toEqual({
       model: "openai/gpt-5-mini",
       port: 7777,
@@ -80,31 +81,31 @@ describe("config store", () => {
 
   test("readConfigSync prefers TOML over JSON", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "google/gemini-2.5-pro"', "utf8");
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.model).toBe("google/gemini-2.5-pro");
   });
 
   test("readConfigSync throws on malformed config with scope", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "not valid toml = {", "utf8");
 
-    expect(() => readConfigSync({ homeDir: home, cwd: home })).toThrow(/user config/);
+    expect(() => readConfigSync({ env: { HOME: home }, cwd: home })).toThrow(/user config/);
   });
 
   test("setConfigValue updates TOML when config.toml exists", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
 
-    await setConfigValue("port", "7777", { homeDir: home, cwd: home });
+    await setConfigValue("port", "7777", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).toContain("port = 7777");
@@ -112,11 +113,11 @@ describe("config store", () => {
 
   test("unsetConfigValue removes field from TOML when config.toml exists", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\nport = 7777\n', "utf8");
 
-    await unsetConfigValue("port", { homeDir: home, cwd: home });
+    await unsetConfigValue("port", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
     expect(rawToml).not.toContain("port =");
@@ -124,7 +125,7 @@ describe("config store", () => {
 
   test("writeConfig sanitizes unexpected secret fields before persisting", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
 
@@ -134,7 +135,7 @@ describe("config store", () => {
         port: 7777,
         ...({ apiKey: "secret-should-not-persist" } as unknown as Record<string, string>),
       } as unknown as { model: string; port: number; apiKey: string },
-      { homeDir: home, cwd: home },
+      { env: { HOME: home }, cwd: home },
     );
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain('model = "openai/gpt-5-mini"');
@@ -144,7 +145,7 @@ describe("config store", () => {
 
   test("writeConfig writes TOML by default when only JSON existed", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.json"), JSON.stringify({ model: "openai/gpt-5-mini" }, null, 2), "utf8");
 
@@ -153,7 +154,7 @@ describe("config store", () => {
         model: "openai/gpt-5-mini",
         port: 7777,
       },
-      { homeDir: home, cwd: home },
+      { env: { HOME: home }, cwd: home },
     );
 
     expect(existsSync(join(dataDir, "config.toml"))).toBe(true);
@@ -164,7 +165,7 @@ describe("config store", () => {
 
   test("reads non-secret runtime knobs from config.toml", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(
       join(dataDir, "config.toml"),
@@ -183,7 +184,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.port).toBe(7777);
     expect(loaded.locale).toBe("en");
     expect(loaded.model).toBe("openai/gpt-5-mini");
@@ -195,24 +196,24 @@ describe("config store", () => {
 
   test("reads feature flags from [features] section in config.toml", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
 
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.features).toEqual({ syncAgents: true });
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(true);
   });
 
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
@@ -226,11 +227,11 @@ describe("config store", () => {
 
   test("readResolvedConfigSync uses top-level temperature when set", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.2\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.temperature).toBe(0.2);
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
@@ -238,68 +239,70 @@ describe("config store", () => {
 
   test("readResolvedConfigSync uses top-level temperature from config", () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.1\n', "utf8");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
     expect(resolved.temperature).toBe(0.1);
   });
 
   test("setConfigValue rejects internal config keys", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await expect(setConfigValue("bogus", "value", { homeDir: home, cwd: home })).rejects.toThrow("Unknown config key");
+    await expect(setConfigValue("bogus", "value", { env: { HOME: home }, cwd: home })).rejects.toThrow(
+      "Unknown config key",
+    );
   });
 
   test("setConfigValue supports locale", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("locale", "en", { homeDir: home, cwd: home });
-    const loaded = readConfigSync({ homeDir: home, cwd: home });
+    await setConfigValue("locale", "en", { env: { HOME: home }, cwd: home });
+    const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
     expect(loaded.locale).toBe("en");
   });
 
   test("setConfigValue supports dotted feature flags keys", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("features.syncAgents", "true", { homeDir: home, cwd: home });
+    await setConfigValue("features.syncAgents", "true", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain("[features]");
     expect(rawToml).toContain("syncAgents = true");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(true);
   });
 
   test("unsetConfigValue supports dotted feature flags keys", async () => {
     const home = createDir("acolyte-config-home-");
-    const dataDir = join(home, ".acolyte");
+    const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
 
-    await unsetConfigValue("features.syncAgents", { homeDir: home, cwd: home });
+    await unsetConfigValue("features.syncAgents", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).not.toContain("[features]");
 
-    const resolved = readResolvedConfigSync({ homeDir: home, cwd: home });
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
     expect(resolved.features.syncAgents).toBe(false);
   });
 
   test("project features merge with user features instead of replacing", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    const userDataDir = join(home, ".acolyte");
+    const userDataDir = configDir({ HOME: home });
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
@@ -307,7 +310,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), ["[features]", "cloudSync = true"].join("\n"), "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.features?.syncAgents).toBe(true);
     expect(loaded.features?.cloudSync).toBe(true);
   });
@@ -315,7 +318,7 @@ describe("config store", () => {
   test("project config overrides user config", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    const userDataDir = join(home, ".acolyte");
+    const userDataDir = configDir({ HOME: home });
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
@@ -331,7 +334,7 @@ describe("config store", () => {
       "utf8",
     );
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
     expect(loaded.replyTimeoutMs).toBe(200000);
   });
@@ -339,7 +342,7 @@ describe("config store", () => {
   test("project config does not clear user values when project key is missing", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    const userDataDir = join(home, ".acolyte");
+    const userDataDir = configDir({ HOME: home });
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
@@ -347,7 +350,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), ["port = 7777", 'model = "openai/gpt-5-mini"'].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n', "utf8");
 
-    const loaded = await readConfig({ homeDir: home, cwd: project });
+    const loaded = await readConfig({ env: { HOME: home }, cwd: project });
     expect(loaded.model).toBe("anthropic/claude-sonnet-4");
     expect(loaded.port).toBe(7777);
   });
@@ -355,13 +358,13 @@ describe("config store", () => {
   test("setConfigValue writes to project scope without mutating user scope", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    const userDataDir = join(home, ".acolyte");
+    const userDataDir = configDir({ HOME: home });
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
 
     writeFileSync(join(userDataDir, "config.toml"), 'model = "openai/gpt-5-mini"\n', "utf8");
-    await setConfigValue("model", "anthropic/claude-sonnet-4", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("model", "anthropic/claude-sonnet-4", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
     const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
@@ -372,14 +375,14 @@ describe("config store", () => {
   test("setConfigValue validates external values with zod", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    await expect(setConfigValue("port", "not-a-number", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("port", "not-a-number", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for port",
     );
 
-    await expect(setConfigValue("temperature", "3", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("temperature", "3", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for temperature",
     );
-    await expect(setConfigValue("locale", "xx", { homeDir: home, cwd: project })).rejects.toThrow(
+    await expect(setConfigValue("locale", "xx", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for locale",
     );
   });
@@ -390,9 +393,9 @@ describe("config store", () => {
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.2", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.2", { env: { HOME: home }, cwd: project, scope: "project" });
 
-    const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
+    const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
     expect(loaded.temperature).toBe(0.2);
   });
 
@@ -402,17 +405,17 @@ describe("config store", () => {
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.4", { homeDir: home, cwd: project, scope: "project" });
-    await unsetConfigValue("temperature", { homeDir: home, cwd: project, scope: "project" });
+    await setConfigValue("temperature", "0.4", { env: { HOME: home }, cwd: project, scope: "project" });
+    await unsetConfigValue("temperature", { env: { HOME: home }, cwd: project, scope: "project" });
 
-    const loaded = await readConfigForScope("project", { homeDir: home, cwd: project });
+    const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
     expect(loaded.temperature).toBeUndefined();
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
-    const userDataDir = join(home, ".acolyte");
+    const userDataDir = configDir({ HOME: home });
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
@@ -420,7 +423,7 @@ describe("config store", () => {
     writeFileSync(join(userDataDir, "config.toml"), "port = 6767\n", "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), "port = 7777\n", "utf8");
 
-    await unsetConfigValue("port", { homeDir: home, cwd: project, scope: "project" });
+    await unsetConfigValue("port", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const userToml = readFileSync(join(userDataDir, "config.toml"), "utf8");
     const projectToml = readFileSync(join(projectDataDir, "config.toml"), "utf8");
