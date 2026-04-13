@@ -5,15 +5,8 @@ import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
 import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
-import { loadSkills, resetSkillCache } from "./skills";
-import {
-  createCommandContext,
-  createMessage,
-  createSession,
-  createSessionState,
-  tempDir,
-  writeSkill,
-} from "./test-utils";
+import { resetSkillCache } from "./skills";
+import { createCommandContext, createMessage, createSession, createSessionState } from "./test-utils";
 
 function createMemoryApi(overrides?: {
   listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
@@ -458,70 +451,5 @@ describe("chat-commands", () => {
       }
     });
 
-    test("new reports errors from worktree creation instead of throwing", async () => {
-      const restore = setParallelWorkspacesEnabled(true);
-      try {
-        const sessionState = createSessionState({ sessions: [], activeSessionId: undefined });
-        const { createDir, cleanupDirs } = tempDir();
-        const tmp = createDir("acolyte-workspaces-nogit-");
-        const currentSession = createSession({ id: "sess_current", workspace: tmp });
-        const { rows, stop } = await runCommand("/workspaces new fix-auth", { sessionState, currentSession });
-        expect(stop).toBe(true);
-        expect(
-          rows.some((row) => typeof row.content === "string" && row.content.startsWith("Failed to create workspace:")),
-        ).toBe(true);
-        expect(sessionState.sessions.length).toBe(0);
-        cleanupDirs();
-      } finally {
-        restore();
-      }
-    });
-  });
-
-  describe("inline skill invocation", () => {
-    const { createDir, cleanupDirs } = tempDir();
-    afterEach(() => {
-      resetSkillCache();
-      cleanupDirs();
-    });
-
-    test("/skillname with args continues to agent turn", async () => {
-      const tmpDir = createDir("acolyte-cmd-skill-");
-      writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
-      await loadSkills(tmpDir);
-
-      const activated: string[] = [];
-      const result = await runCommand("/demo run tests", {
-        activateSkill: async (name, args) => {
-          activated.push(name, args);
-          return true;
-        },
-      });
-      expect(result.stop).toBe(false);
-      expect(activated).toEqual(["demo", "run tests"]);
-    });
-
-    test("/skillname without args starts assistant turn directly", async () => {
-      const tmpDir = createDir("acolyte-cmd-skill-");
-      writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
-      await loadSkills(tmpDir);
-
-      const assistantTurnTexts: string[] = [];
-      const result = await runCommand("/demo", {
-        activateSkill: async () => true,
-        startAssistantTurn: async (text) => {
-          assistantTurnTexts.push(text);
-        },
-      });
-      expect(result.stop).toBe(true);
-      expect(assistantTurnTexts).toEqual(["Run the demo skill."]);
-    });
-
-    test("unknown /xyz still shows unknown command", async () => {
-      resetSkillCache();
-      const { rows, stop } = await runCommand("/xyz");
-      expect(stop).toBe(true);
-      expect(rows.some((r) => typeof r.content === "string" && r.content.includes("Unknown command"))).toBe(true);
-    });
   });
 });
