@@ -4,7 +4,22 @@ import {
   createLifecycleTextStreamState,
   extractLifecycleSignal,
   finalizeLifecycleText,
+  stripSignalLine,
 } from "./lifecycle-signal";
+
+describe("stripSignalLine", () => {
+  test("returns text before the signal", () => {
+    expect(stripSignalLine("Done.\n@signal done")).toBe("Done.");
+  });
+
+  test("returns empty string when only a signal is present", () => {
+    expect(stripSignalLine("@signal no_op")).toBe("");
+  });
+
+  test("returns full text when no signal is present", () => {
+    expect(stripSignalLine("No signal here.")).toBe("No signal here.");
+  });
+});
 
 describe("extractLifecycleSignal", () => {
   test("strips a trailing signal and returns text before it", () => {
@@ -88,5 +103,27 @@ describe("lifecycle text streaming", () => {
     // Stream ends without completing the signal — emit the buffered partial as text.
     // The preceding \n is included in the buffer since it's part of the potential signal delimiter.
     expect(finalizeLifecycleText(state)).toEqual({ text: "\n@sig" });
+  });
+
+  test("strips signal regardless of where the delta boundary falls", () => {
+    const signal = "\n@signal done";
+    for (let split = 1; split < signal.length; split++) {
+      const state = createLifecycleTextStreamState();
+      const left = `Text.${signal.slice(0, split)}`;
+      const right = signal.slice(split);
+      let visible = appendLifecycleTextDelta(state, left);
+      visible += appendLifecycleTextDelta(state, right);
+      const fin = finalizeLifecycleText(state);
+      expect(fin.signal).toBe("done");
+      expect((visible + fin.text).trim()).toBe("Text.");
+    }
+  });
+
+  test("signal without trailing newline is caught at finalization", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "Result.\n@signal done");
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBe("done");
+    expect(fin.text).toBe("");
   });
 });
