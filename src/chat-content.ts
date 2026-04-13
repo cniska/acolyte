@@ -1,10 +1,7 @@
 export { type MarkupToken, tokenize } from "./chat-tokenizer";
 
-import { stripSignalLine } from "./lifecycle-signal";
-
 export function sanitizeAssistantContent(content: string): string {
-  const stripped = stripSignalLine(content);
-  const cleaned = stripped
+  const cleaned = content
     .split("\n")
     .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
     .filter((line) => !/^\s*(Tools used:|Evidence:)/.test(line))

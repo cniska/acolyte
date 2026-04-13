@@ -17,11 +17,8 @@ describe("chat-content helpers", () => {
     expect(sanitizeAssistantContent(raw)).toBe("");
   });
 
-  test("sanitizeAssistantContent strips @signal lines", () => {
-    expect(sanitizeAssistantContent("Done.\n\n@signal done")).toBe("Done.");
-    expect(sanitizeAssistantContent("Nothing to do.\n@signal no_op")).toBe("Nothing to do.");
-    expect(sanitizeAssistantContent("Cannot proceed.\n\n@signal blocked")).toBe("Cannot proceed.");
-    expect(sanitizeAssistantContent("@signal done")).toBe("");
+  test("sanitizeAssistantContent does not strip @signal (handled by lifecycle layer)", () => {
+    expect(sanitizeAssistantContent("Done.\n\n@signal done")).toContain("@signal done");
   });
 
   test("wrapText wraps long lines at word boundaries", () => {

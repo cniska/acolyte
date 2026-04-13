@@ -89,4 +89,68 @@ describe("lifecycle text streaming", () => {
     // The preceding \n is included in the buffer since it's part of the potential signal delimiter.
     expect(finalizeLifecycleText(state)).toEqual({ text: "\n@sig" });
   });
+
+  test("strips signal regardless of where the delta boundary falls", () => {
+    const signal = "\n@signal done";
+    for (let split = 1; split < signal.length; split++) {
+      const state = createLifecycleTextStreamState();
+      const left = `Text.${signal.slice(0, split)}`;
+      const right = signal.slice(split);
+      let visible = appendLifecycleTextDelta(state, left);
+      visible += appendLifecycleTextDelta(state, right);
+      const fin = finalizeLifecycleText(state);
+      expect(fin.signal).toBe("done");
+      expect((visible + fin.text).trim()).toBe("Text.");
+    }
+  });
+
+  test("signal without trailing newline is caught at finalization", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "Result.\n@signal done");
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBe("done");
+    expect(fin.text).toBe("");
+  });
+
+  test("mid-line @signal is not stripped", () => {
+    const state = createLifecycleTextStreamState();
+    const visible = appendLifecycleTextDelta(state, "see @signal done for details");
+    expect(visible).toContain("@signal done");
+    expect(finalizeLifecycleText(state).signal).toBeUndefined();
+  });
+
+  test("empty deltas do not break signal detection", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "Done.");
+    appendLifecycleTextDelta(state, "");
+    appendLifecycleTextDelta(state, "\n@signal");
+    appendLifecycleTextDelta(state, "");
+    appendLifecycleTextDelta(state, " done");
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBe("done");
+  });
+
+  test("only the first signal is consumed", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "A\n@signal done\nB\n@signal blocked");
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBe("done");
+  });
+
+  test("signal with extra whitespace before newline", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "Done.\n@signal done  ");
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBe("done");
+  });
+
+  test("partial signal prefix abandoned at finalize does not leak signal keyword", () => {
+    const state = createLifecycleTextStreamState();
+    appendLifecycleTextDelta(state, "Text\n@signal ");
+    // Stream ends with incomplete signal — no valid signal name follows.
+    const fin = finalizeLifecycleText(state);
+    expect(fin.signal).toBeUndefined();
+    // The partial text is emitted since it's not a valid signal.
+    expect(fin.text).toContain("@signal");
+  });
 });
