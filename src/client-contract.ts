@@ -125,7 +125,7 @@ export interface Client {
     },
   ): Promise<ChatResponse>;
   status(): Promise<StatusFields>;
-  taskStatus(taskId: TaskId): Promise<TaskRecord | null>;
+  taskStatus(params: { taskId: TaskId }): Promise<TaskRecord | null>;
 }
 
 export type RemoteErrorMetadata = {

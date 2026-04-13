@@ -161,9 +161,9 @@ export class RpcClient implements Client {
     });
   }
 
-  async taskStatus(taskId: TaskId): Promise<TaskRecord | null> {
+  async taskStatus(params: { taskId: TaskId }): Promise<TaskRecord | null> {
     return await this.runUnaryRequest<TaskRecord | null>({
-      request: (id) => ({ id, type: "task.status", payload: { taskId } }),
+      request: (id) => ({ id, type: "task.status", payload: { taskId: params.taskId } }),
       closeError: "RPC connection closed before task status response",
       resolve: (msg) => {
         if (msg.type === "task.status.result") {

@@ -275,7 +275,7 @@ describe("rpc websocket lifecycle", () => {
 
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     const client = createClient({ apiUrl: "http://localhost:6767" });
-    const task = await client.taskStatus("task_123");
+    const task = await client.taskStatus({ taskId: "task_123" });
     expect(task?.id).toBe("task_123");
     expect(task?.state).toBe("running");
   });
