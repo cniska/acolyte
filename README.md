@@ -8,7 +8,7 @@
 
 An open-source, terminal-first AI coding agent with a single-pass lifecycle, on-demand memory, and transparent execution. Every decision visible, every behavior overridable.
 
-![Acolyte CLI](docs/assets/cli.png)
+![Acolyte CLI](docs/assets/demo.gif)
 
 ## Install
 
