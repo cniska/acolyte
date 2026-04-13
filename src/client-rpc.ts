@@ -11,7 +11,7 @@ import {
 import { connectionHelpMessage } from "./error-messages";
 import { field } from "./field";
 import { createRpcRequestId } from "./rpc-protocol";
-import type { StatusFields } from "./status-contract";
+import { parseStatusFields, type StatusFields } from "./status-contract";
 import type { TaskId, TaskRecord } from "./task-contract";
 
 type RpcServerMessage = NonNullable<ReturnType<typeof parseRpcServerMessage>>;
@@ -152,18 +152,8 @@ export class RpcClient implements Client {
       closeError: "RPC connection closed before status response",
       resolve: (msg) => {
         if (msg.type === "status.result") {
-          const fields: StatusFields = {};
-          for (const [key, value] of Object.entries(msg.status)) {
-            if (key === "ok") continue;
-            if (typeof value === "string" || typeof value === "number") {
-              fields[key] = value;
-              continue;
-            }
-            if (Array.isArray(value) && value.every((entry) => typeof entry === "string")) {
-              fields[key] = value;
-            }
-          }
-          return fields;
+          const fields = parseStatusFields(msg.status);
+          return fields ?? new Error("Invalid status response");
         }
         if (msg.type === "error") return new Error(msg.error);
         return new Error(`Unexpected RPC response: ${msg.type}`);
