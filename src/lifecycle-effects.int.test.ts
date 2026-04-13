@@ -15,11 +15,11 @@ describe("lifecycle effects through tool dispatch", () => {
     await writeFile(join(workspace, "demo.ts"), "const   x=1\n", "utf8");
 
     const { tools, session } = toolsForAgent({ workspace });
-    const debugEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
+    const debugEvents: Array<{ event: string }> = [];
     const ctx = createRunContext({
       workspace,
       session,
-      debug: (event, data) => debugEvents.push({ event, data }),
+      debug: (event) => debugEvents.push({ event }),
       policy: {
         ...createRunContext().policy,
         formatCommand: { bin: "bunx", args: ["biome", "check", "--write", "$FILES"] },

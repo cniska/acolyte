@@ -16,7 +16,10 @@ describe("editCode", () => {
     const { tools } = toolsForAgent({ workspace });
     await expect(
       tools.editCode.execute(
-        { path: "/etc/hosts", edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }] },
+        {
+          path: "/etc/hosts",
+          edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }],
+        },
         "call_1",
       ),
     ).rejects.toMatchObject({
@@ -33,7 +36,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($ARG)" }] },
       "call_2",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('logger.debug("hello")');
     expect(content).not.toContain("console.log");
@@ -73,7 +76,7 @@ describe("editCode", () => {
       },
       "call_3",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const result = 1;");
     expect(content).toContain("return result;");
@@ -115,7 +118,7 @@ describe("editCode", () => {
       },
       "call_4",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("for (const patternResult of items)");
     expect(content).toContain("output.push(patternResult.toUpperCase());");
@@ -156,7 +159,7 @@ describe("editCode", () => {
       },
       "call_5",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("for (const patternResult of items)");
     expect(content).toContain("output.push(patternResult.toUpperCase());");
@@ -183,7 +186,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "rename", from: "item", to: "entry", withinSymbol: "Processor" }] },
       "call_6",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("(entry) => entry.toUpperCase()");
   });
@@ -208,7 +211,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }] },
       "call_7",
     );
-    expect(result.result.matches).toBe(5);
+    expect((result.result as Record<string, unknown>).matches).toBe(5);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const patternResult = items[0] ?? '';");
     expect(content).toContain("const { result: alias, other = patternResult } = source;");
@@ -251,7 +254,7 @@ describe("editCode", () => {
       },
       "call_8",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('defaultAlias = "acolyte-mini";');
     expect(content).toContain("return this.defaultAlias + config.alias;");
@@ -281,7 +284,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "rename", from: "label", to: "displayLabel", withinSymbol: "ProviderConfig" }] },
       "call_9",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("displayLabel() {");
     expect(content).toContain("return this.labelText + config.label;");
@@ -314,7 +317,7 @@ describe("editCode", () => {
       },
       "call_10",
     );
-    expect(result.result.matches).toBe(3);
+    expect((result.result as Record<string, unknown>).matches).toBe(3);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('defaultAlias = "x";');
     expect(content).toContain("const alias = this.defaultAlias;");
@@ -347,7 +350,7 @@ describe("editCode", () => {
       },
       "call_11",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const localAlias = this.alias;");
     expect(content).toContain("return { alias: localAlias, member: this.alias, other: config.alias };");
@@ -428,7 +431,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }] },
       "call_14",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const scanFile = ({ result: patternResult }: { result: string }) => {");
     expect(content).toContain("return patternResult.toUpperCase();");
@@ -454,7 +457,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "rename", from: "result", to: "patternResult", withinSymbol: "scanFile" }] },
       "call_15",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("const patternResult = items[0] ?? '';");
     expect(content).toContain("return [patternResult, String(resultCount)];");
@@ -494,7 +497,7 @@ describe("editCode", () => {
       },
       "call_16",
     );
-    expect(result.result.matches).toBe(1);
+    expect((result.result as Record<string, unknown>).matches).toBe(1);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('defaultAlias = "acolyte-mini";');
     expect(content).toContain('const alias = "outside";');
@@ -525,7 +528,7 @@ describe("editCode", () => {
       },
       "call_17",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('logger.debug("first");');
     expect(content).toContain('logger.debug("second");');
@@ -577,7 +580,7 @@ describe("editCode", () => {
       },
       "call_18",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('logger.debug("first");');
     expect(content).toContain('logger.debug("second");');
@@ -626,7 +629,7 @@ describe("editCode", () => {
       },
       "call_19",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('logger.debug("inner");');
     expect(content).toContain('logger.debug("outer");');
@@ -680,9 +683,9 @@ describe("editCode", () => {
       { path: workspace, edits: [{ op: "rename", from: "oldName", to: "newName" }] },
       "call_22",
     );
-    expect(result.result.matches).toBe(2);
-    expect(result.result.output).toContain("a.ts");
-    expect(result.result.output).toContain("b.ts");
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
+    expect((result.result as Record<string, unknown>).output).toContain("a.ts");
+    expect((result.result as Record<string, unknown>).output).toContain("b.ts");
     const aContent = await readFile(join(workspace, "a.ts"), "utf8");
     const bContent = await readFile(join(workspace, "b.ts"), "utf8");
     expect(aContent).toContain("newName");
@@ -695,10 +698,13 @@ describe("editCode", () => {
     await writeFile(join(workspace, "main.ts"), "import { oldName } from './lib';\noldName();\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.editCode.execute(
-      { path: join(workspace, "lib.ts"), edits: [{ op: "rename", from: "oldName", to: "newName", scope: "workspace" }] },
+      {
+        path: join(workspace, "lib.ts"),
+        edits: [{ op: "rename", from: "oldName", to: "newName", scope: "workspace" }],
+      },
       "call_23",
     );
-    expect(result.result.matches).toBeGreaterThanOrEqual(3);
+    expect((result.result as Record<string, unknown>).matches).toBeGreaterThanOrEqual(3);
     const libContent = await readFile(join(workspace, "lib.ts"), "utf8");
     const mainContent = await readFile(join(workspace, "main.ts"), "utf8");
     expect(libContent).toContain("newName");
@@ -718,7 +724,7 @@ describe("editCode", () => {
       },
       "call_24",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const aContent = await readFile(join(workspace, "a.ts"), "utf8");
     const bContent = await readFile(join(workspace, "b.ts"), "utf8");
     expect(aContent).toContain("logger.info");
@@ -762,7 +768,10 @@ describe("editCode", () => {
     const { tools } = toolsForAgent({ workspace });
     await expect(
       tools.editCode.execute(
-        { path: filePath, edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($MISSING)" }] },
+        {
+          path: filePath,
+          edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.debug($MISSING)" }],
+        },
         "call_27",
       ),
     ).rejects.toMatchObject({
@@ -779,7 +788,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "replace", rule: "sum($$$ARGS)", replacement: "total($$$ARGS)" }] },
       "call_28",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("total(a, b);");
     expect(content).toContain("total(c);");
@@ -795,7 +804,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "replace", rule: "print($ARG)", replacement: "log($ARG)" }] },
       "call_29",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain('log("hello")');
     expect(content).not.toContain("print");
@@ -810,7 +819,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "replace", rule: "println!($ARGS)", replacement: "eprintln!($ARGS)" }] },
       "call_30",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("eprintln!");
     expect(content).not.toMatch(/(?<!e)println!/);
@@ -825,7 +834,7 @@ describe("editCode", () => {
       { path: filePath, edits: [{ op: "replace", rule: "println($ARG)", replacement: "print($ARG)" }] },
       "call_31",
     );
-    expect(result.result.matches).toBe(2);
+    expect((result.result as Record<string, unknown>).matches).toBe(2);
     const content = await readFile(filePath, "utf8");
     expect(content).toContain("print(");
     expect(content).not.toContain("println(");
@@ -851,7 +860,7 @@ describe("editCode", () => {
       },
       "call_32",
     );
-    expect(result.result.affectedSymbols).toEqual(["processItems"]);
+    expect((result.result as Record<string, unknown>).affectedSymbols).toEqual(["processItems"]);
   });
 });
 
@@ -884,7 +893,7 @@ describe("scanCode", () => {
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_35");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("scanned=1 matches=2");
     expect(output).toContain('{$ARG="hello"}');
   });
@@ -895,7 +904,7 @@ describe("scanCode", () => {
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_36");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("scanned=1 matches=0");
     expect(output).toContain("No matches.");
   });
@@ -907,7 +916,7 @@ describe("scanCode", () => {
     await writeFile(join(workspace, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [workspace], patterns: ["console.log($ARG)"] }, "call_37");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("scanned=2 matches=2");
   });
 
@@ -921,7 +930,7 @@ describe("scanCode", () => {
       { paths: [filePath], patterns: ["console.log($ARG)"], maxResults: 3 },
       "call_38",
     );
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("matches=3");
   });
 
@@ -934,7 +943,7 @@ describe("scanCode", () => {
       { paths: [filePath], patterns: ["export function $NAME() {}", "console.log($ARG)"] },
       "call_39",
     );
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("matches=2");
     expect(output).toContain("{$NAME=hello}");
     expect(output).toContain('{$ARG="test"}');
@@ -950,7 +959,7 @@ describe("scanCode", () => {
     );
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_40");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("[processItems]");
   });
 
@@ -964,7 +973,7 @@ describe("scanCode", () => {
     );
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_41");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("[run]");
   });
 
@@ -974,7 +983,7 @@ describe("scanCode", () => {
     await writeFile(filePath, "console.log('top-level');\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_42");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).not.toMatch(/\[.*\]/);
     expect(output).toContain("console.log('top-level')");
   });
@@ -985,7 +994,7 @@ describe("scanCode", () => {
     await writeFile(filePath, 'type Status = "active" | "inactive";\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute({ paths: [filePath], patterns: ['"active"'] }, "call_43");
-    const output = result.result.output;
+    const output = (result.result as Record<string, unknown>).output;
     expect(output).toContain("[Status]");
   });
 });
