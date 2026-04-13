@@ -201,12 +201,6 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If content shrank or rewrote the previously frozen prefix, the
-    // append-only overflow assumption no longer holds.  Erase the full
-    // viewport (frozen lines may still be visible at the top) and reset
-    // tracking so the normal render path treats all lines as live.
-    // We intentionally avoid forceRedraw here because it re-emits all
-    // static items, duplicating content already in the scrollback buffer.
     // If the frozen prefix was invalidated (content shrank or changed),
     // defer the viewport erase into the render syncWrite below so
     // erase+paint is atomic within one BSU/ESU block.
