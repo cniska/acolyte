@@ -99,11 +99,25 @@ export function render(node: ReactNode): RenderInstance {
     stdin.on("data", onStdinData);
   }
 
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const onResize = () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null;
+      frozenLineCount = 0;
+      frozenOverflowText = "";
+      lastActive = "";
+      commitRender();
+    }, 16);
+  };
+
   if (stdout.isTTY) {
     stdout.write(kitty.enable(1));
     stdout.write(ansi.cursorHide);
     stdout.write(ansi.bracketedPasteEnable);
     stdout.write(ansi.focusReportEnable);
+    stdout.on("resize", onResize);
   }
 
   function countRows(output: string): number {
@@ -276,6 +290,7 @@ export function render(node: ReactNode): RenderInstance {
   function cleanup() {
     setLogSink(null);
     setOnCommit(null);
+    if (resizeTimer) clearTimeout(resizeTimer);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
     process.removeListener("exit", onExit);
@@ -285,6 +300,7 @@ export function render(node: ReactNode): RenderInstance {
       stdin.pause();
     }
     if (stdout.isTTY) {
+      stdout.removeListener("resize", onResize);
       stdout.write(ansi.focusReportDisable);
       stdout.write(ansi.bracketedPasteDisable);
       stdout.write(kitty.disable);

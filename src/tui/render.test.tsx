@@ -418,4 +418,26 @@ describe("render", () => {
     const hasErase = redrawWrite.includes(ansi.eraseDown) || redrawWrite.includes(`${ansi.cursorUp(1)}`);
     expect(hasErase).toBe(true);
   });
+
+  test("resize triggers a re-render with updated dimensions", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        const app = render(h("tui-text", null, "resize test"));
+        await new Promise((r) => setTimeout(r, 30));
+
+        Object.defineProperty(process.stdout, "columns", { value: 60, configurable: true });
+        process.stdout.emit("resize");
+        await new Promise((r) => setTimeout(r, 50));
+        app.unmount();
+      },
+      { columns: 80, rows: 24 },
+    );
+
+    const cleanupStart = writes.findIndex((write) => write.includes(ansi.cursorShow));
+    const frameWrites = cleanupStart >= 0 ? writes.slice(0, cleanupStart) : writes;
+    const resizeTestWrites = frameWrites.filter((w) => w.includes("resize test"));
+    expect(resizeTestWrites.length).toBeGreaterThanOrEqual(2);
+  });
 });
