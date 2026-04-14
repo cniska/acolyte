@@ -13,7 +13,13 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
+import {
+  type GenerateOptions,
+  type GenerateResult,
+  type RunContext,
+  type StreamChunk,
+  totalPromptBreakdownTokens,
+} from "./lifecycle-contract";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
@@ -45,13 +51,7 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 }
 
 function emitInputTokens(ctx: RunContext): number {
-  const breakdownTotal =
-    ctx.promptBreakdownTotals.systemTokens +
-    ctx.promptBreakdownTotals.toolTokens +
-    ctx.promptBreakdownTotals.skillTokens +
-    ctx.promptBreakdownTotals.memoryTokens +
-    ctx.promptBreakdownTotals.messageTokens;
-  return Math.max(ctx.inputTokensAccum, breakdownTotal);
+  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
 }
 
 function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {

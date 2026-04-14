@@ -5,7 +5,6 @@ import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
-import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-content";
@@ -66,6 +65,27 @@ export type PromptUsage = {
   includedHistoryMessages: number;
   totalHistoryMessages: number;
 };
+export type PromptBreakdownTotals = {
+  systemTokens: number;
+  toolTokens: number;
+  skillTokens: number;
+  memoryTokens: number;
+  messageTokens: number;
+};
+
+export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
+  return {
+    systemTokens: 0,
+    toolTokens: 0,
+    skillTokens: 0,
+    memoryTokens: 0,
+    messageTokens: 0,
+  };
+}
+
+export function totalPromptBreakdownTokens(totals: PromptBreakdownTotals): number {
+  return totals.systemTokens + totals.toolTokens + totals.skillTokens + totals.memoryTokens + totals.messageTokens;
+}
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
