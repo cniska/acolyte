@@ -1,21 +1,21 @@
 import type { ActiveSkill } from "./skill-contract";
 
 const SKILL_TRIGGERS: Record<string, string[]> = {
-  build: ["implement", "add feature", "build", "create feature", "new feature", "add functionality"],
-  debug: ["debug", "fix bug", "broken", "failing test", "error", "not working", "investigate"],
+  build: ["implement", "add feature", "create feature", "new feature", "add functionality"],
+  debug: ["debug", "fix bug", "broken", "failing test", "not working", "investigate"],
   tdd: ["test first", "red green", "tdd", "test driven"],
-  git: ["commit", "branch", "rebase", "merge", "cherry pick", "squash", "git"],
+  git: ["commit", "rebase", "cherry pick", "squash", "git log", "git diff"],
   review: ["review", "pull request", "pr review", "code review"],
-  plan: ["plan", "design", "scope", "break down", "decompose"],
-  explore: ["explore", "understand", "how does", "what does", "walk me through"],
-  simplify: ["simplify", "reduce complexity", "clean up", "refactor"],
-  security: ["security", "vulnerability", "auth", "injection", "xss", "csrf"],
+  plan: ["plan this", "scope", "break down", "decompose"],
+  explore: ["explore", "how does", "what does", "walk me through"],
+  simplify: ["simplify", "reduce complexity", "clean up"],
+  security: ["security review", "vulnerability", "injection", "xss", "csrf"],
   tests: ["test coverage", "missing tests", "add tests", "test quality"],
-  style: ["naming", "code style", "consistency", "conventions"],
-  docs: ["documentation", "update docs", "readme", "changelog"],
-  architecture: ["architecture", "module boundary", "dependency", "coupling"],
-  deprecation: ["deprecate", "remove", "replace", "migrate away"],
-  design: ["interface", "api design", "contract", "public api"],
+  style: ["code style", "style review", "naming conventions"],
+  docs: ["documentation", "update docs"],
+  architecture: ["architecture", "module boundary"],
+  deprecation: ["deprecate", "migrate away", "phase out"],
+  design: ["api design", "design interface", "public api"],
 };
 
 function buildTriggerPatterns(): { name: string; pattern: RegExp }[] {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { matchSkillTriggers } from "./skill-triggers";
+import { createSkillSuggestion, matchSkillTriggers } from "./skill-triggers";
 
 describe("matchSkillTriggers", () => {
   test("matches build skill from keyword", () => {
@@ -37,5 +37,28 @@ describe("matchSkillTriggers", () => {
     const matches = matchSkillTriggers("implement the feature and commit", [{ name: "build", instructions: "..." }]);
     expect(matches).not.toContain("build");
     expect(matches).toContain("git");
+  });
+
+  test("does not match common words used in non-skill context", () => {
+    expect(matchSkillTriggers("add error handling to the endpoint")).not.toContain("debug");
+    expect(matchSkillTriggers("remove this line from the file")).not.toContain("deprecation");
+  });
+});
+
+describe("createSkillSuggestion", () => {
+  test("returns null when no triggers match", () => {
+    expect(createSkillSuggestion("hello world")).toBeNull();
+  });
+
+  test("returns directive suggestion for single match", () => {
+    const result = createSkillSuggestion("implement the login feature");
+    expect(result).toBe("Use `skill-activate` to load `build` before starting.");
+  });
+
+  test("returns batched suggestion for multiple matches", () => {
+    const result = createSkillSuggestion("review the pull request and fix bug");
+    expect(result).toContain("`debug`");
+    expect(result).toContain("`review`");
+    expect(result).toMatch(/^Use `skill-activate` to load .+ before starting\.$/);
   });
 });
