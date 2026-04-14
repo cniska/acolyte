@@ -181,7 +181,6 @@ export function createAgentInput(
     skillTokens: number;
     memoryTokens: number;
     messageTokens: number;
-    inputTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
   };
@@ -254,7 +253,6 @@ export function createAgentInput(
       skillTokens: includedSkillTokens,
       memoryTokens: 0,
       messageTokens: Math.max(0, inputTokens - includedSkillTokens),
-      inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
     },

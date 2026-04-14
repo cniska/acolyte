@@ -61,7 +61,6 @@ export type PromptUsage = {
   skillTokens: number;
   memoryTokens: number;
   messageTokens: number;
-  inputTruncated: boolean;
   includedHistoryMessages: number;
   totalHistoryMessages: number;
 };

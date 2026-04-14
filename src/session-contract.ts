@@ -14,7 +14,6 @@ export const tokenUsageSchema = z.object({
   outputTokens: tokenCountSchema,
   totalTokens: tokenCountSchema,
   inputBudgetTokens: tokenCountSchema.optional(),
-  inputTruncated: z.boolean().optional(),
 });
 
 export const promptBreakdownSchema = z.object({

@@ -12,7 +12,6 @@ describe("chat-commands-usage", () => {
         outputTokens: 40,
         totalTokens: 140,
         inputBudgetTokens: 300,
-        inputTruncated: false,
       },
       promptBreakdown: {
         budgetTokens: 300,
@@ -44,7 +43,6 @@ describe("chat-commands-usage", () => {
         outputTokens: 40,
         totalTokens: 940,
         inputBudgetTokens: 1000,
-        inputTruncated: true,
       },
     };
     const [row] = usageRows(usage);

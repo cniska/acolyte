@@ -67,7 +67,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       outputTokens,
       totalTokens: inputTokens + outputTokens,
       inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
-      inputTruncated: ctx.promptUsage.inputTruncated,
     },
     promptBreakdown: {
       budgetTokens: ctx.promptUsage.inputBudgetTokens,
