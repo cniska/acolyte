@@ -70,29 +70,6 @@ describe("skills loader", () => {
     expect(skills.filter((s) => s.source === "project")).toHaveLength(0);
   });
 
-  test("parses optional fields: license, compatibility, metadata, allowed-tools", async () => {
-    const dir = createDir("acolyte-skills-optional-");
-    const fm = [
-      "---",
-      "name: full",
-      "description: Full spec skill",
-      "license: MIT",
-      "compatibility: Requires git",
-      "allowed-tools: Bash Read Write",
-      "metadata:",
-      "  author: test-org",
-      '  version: "1.0"',
-      "---",
-    ].join("\n");
-    writeSkill(dir, "full", fm);
-    const skills = await listSkills(dir);
-    const full = skills.find((s) => s.name === "full");
-    expect(full?.license).toBe("MIT");
-    expect(full?.compatibility).toBe("Requires git");
-    expect(full?.allowedTools).toEqual(["Bash", "Read", "Write"]);
-    expect(full?.metadata).toEqual({ author: "test-org", version: "1.0" });
-  });
-
   test("project skill overrides bundled skill with same name", async () => {
     const dir = createDir("acolyte-skills-override-");
     writeSkill(dir, "build", "---\nname: build\ndescription: Custom build\n---", "# Custom");

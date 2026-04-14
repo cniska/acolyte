@@ -13,10 +13,6 @@ export interface SkillMeta {
   description: string;
   path: string;
   source: SkillSource;
-  license?: string;
-  compatibility?: string;
-  metadata?: Record<string, string>;
-  allowedTools?: string[];
 }
 
 export interface SkillLoadDiagnostics {
@@ -32,10 +28,6 @@ export interface SkillLoadDiagnostics {
 interface ParsedFrontmatter {
   name?: string;
   description?: string;
-  license?: string;
-  compatibility?: string;
-  metadata?: Record<string, string>;
-  allowedTools?: string[];
 }
 
 const SKILL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
@@ -69,29 +61,9 @@ function parseFrontmatter(input: string): ParsedFrontmatter | null {
   if (endIdx < 0) return null;
 
   const out: ParsedFrontmatter = {};
-  let metadataMap: Record<string, string> | null = null;
 
   for (let i = 1; i < endIdx; i++) {
     const line = lines[i];
-    const isIndented = line.startsWith("  ") || line.startsWith("\t");
-
-    // Indented lines belong to the current metadata map
-    if (isIndented && metadataMap !== null) {
-      const colonIdx = line.indexOf(":");
-      if (colonIdx > 0) {
-        const key = line.slice(0, colonIdx).trim();
-        const value = line
-          .slice(colonIdx + 1)
-          .trim()
-          .replace(/^["']|["']$/g, "");
-        if (key && value) metadataMap[key] = value;
-      }
-      continue;
-    }
-
-    // Non-indented line — close any open metadata map
-    metadataMap = null;
-
     const colonIdx = line.indexOf(":");
     if (colonIdx <= 0) continue;
     const key = line.slice(0, colonIdx).trim();
@@ -106,22 +78,6 @@ function parseFrontmatter(input: string): ParsedFrontmatter | null {
         break;
       case "description":
         if (value) out.description = value;
-        break;
-      case "license":
-        if (value) out.license = value;
-        break;
-      case "compatibility":
-        if (value) out.compatibility = value;
-        break;
-      case "allowed-tools":
-        if (value) out.allowedTools = value.split(/\s+/).filter(Boolean);
-        break;
-      case "metadata":
-        if (!value) {
-          // Start collecting indented sub-keys
-          metadataMap = {};
-          out.metadata = metadataMap;
-        }
         break;
     }
   }
@@ -200,10 +156,6 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
         description,
         path: skillPath,
         source: "project",
-        ...(fm.license ? { license: fm.license } : {}),
-        ...(fm.compatibility ? { compatibility: fm.compatibility } : {}),
-        ...(fm.metadata && Object.keys(fm.metadata).length > 0 ? { metadata: fm.metadata } : {}),
-        ...(fm.allowedTools && fm.allowedTools.length > 0 ? { allowedTools: fm.allowedTools } : {}),
       });
     } catch {
       diagnostics.readErrors += 1;
