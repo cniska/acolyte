@@ -1,6 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
-import { createMessage } from "./chat-session";
 import { hasHelpFlag, parseFlag } from "./cli-args";
 import { startCallbackServer } from "./cli-callback-server";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
@@ -318,7 +317,6 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         attachFileToSession,
         compactText,
         createClient,
-        createMessage,
         createSession,
         ensureLocalServer,
         findSkillByName,

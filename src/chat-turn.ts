@@ -1,6 +1,5 @@
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
-import type { ActiveSkill } from "./session-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatTokenCount } from "./chat-format";
@@ -9,7 +8,7 @@ import { formatDuration } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import type { Session, SessionTokenUsageEntry } from "./session-contract";
+import type { ActiveSkill, Session, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
