@@ -16,6 +16,8 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly description: string;
   readonly instruction: string;
   readonly inputSchema: z.ZodType<TInput>;
+  /** Raw JSON Schema to send to the model instead of converting inputSchema via z.toJSONSchema. Used by MCP tools that already have a native JSON Schema. */
+  readonly rawInputSchema?: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly outputBudget?: ToolOutputBudget;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;

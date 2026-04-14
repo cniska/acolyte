@@ -23,8 +23,9 @@ import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
-function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
-  const { $schema: _, ...rest } = z.toJSONSchema(schema);
+function toolInputJsonSchema(tool: ToolDefinition): LanguageModelV3FunctionTool["inputSchema"] {
+  if (tool.rawInputSchema) return tool.rawInputSchema as LanguageModelV3FunctionTool["inputSchema"];
+  const { $schema: _, ...rest } = z.toJSONSchema(tool.inputSchema);
   return rest as LanguageModelV3FunctionTool["inputSchema"];
 }
 
@@ -33,7 +34,7 @@ function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageMo
     type: "function" as const,
     name: tool.id,
     description: tool.description,
-    inputSchema: toolInputJsonSchema(tool.inputSchema),
+    inputSchema: toolInputJsonSchema(tool),
   }));
 }
 
