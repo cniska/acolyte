@@ -21,5 +21,7 @@ describe("phasePrepare", () => {
       mcpListings: [],
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
+    expect(prepared.promptUsage.toolTokens).toBeGreaterThan(0);
+    expect(prepared.promptUsage.messageTokens).toBe(prepared.promptUsage.inputTokens);
   });
 });

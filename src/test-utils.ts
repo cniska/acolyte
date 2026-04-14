@@ -12,9 +12,8 @@ import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import type { LifecycleDeps } from "./lifecycle";
-import type { LifecycleInput, RunContext } from "./lifecycle-contract";
+import { createEmptyPromptBreakdownTotals, type LifecycleInput, type RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
-import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
@@ -457,9 +456,9 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
         inputBudgetTokens: 8000,
         systemPromptTokens: 0,
         toolTokens: 0,
+        skillTokens: 0,
         memoryTokens: 0,
         messageTokens: 0,
-        inputTruncated: false,
         includedHistoryMessages: 0,
         totalHistoryMessages: 0,
       },
@@ -516,10 +515,10 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
       inputTokens: 0,
       systemPromptTokens: 0,
       toolTokens: 0,
+      skillTokens: 0,
       memoryTokens: 0,
       messageTokens: 0,
       inputBudgetTokens: 8000,
-      inputTruncated: false,
       includedHistoryMessages: 0,
       totalHistoryMessages: 0,
     },
