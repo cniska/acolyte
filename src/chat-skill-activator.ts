@@ -4,9 +4,9 @@ import type { ActiveSkill, Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { toolLabelKey } from "./tool-output-format";
 
-export function addActiveSkill(session: Session, skill: ActiveSkill): void {
-  const skills = session.activeSkills ?? [];
-  session.activeSkills = [...skills.filter((s) => s.name !== skill.name), skill];
+export function addActiveSkill(target: { activeSkills?: ActiveSkill[] }, skill: ActiveSkill): void {
+  const skills = target.activeSkills ?? [];
+  target.activeSkills = [...skills.filter((s) => s.name !== skill.name), skill];
 }
 
 type CreateSkillActivatorDeps = {

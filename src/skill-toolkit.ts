@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { addActiveSkill } from "./chat-skill-activator";
 import { compactText } from "./compact-text";
 import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET, type SkillSource } from "./skills";
 import type { ToolkitInput } from "./tool-contract";
@@ -70,11 +71,7 @@ function createActivateSkillTool(input: ToolkitInput) {
         });
         const raw = await readSkillInstructions(skill.path, toolInput.args);
         const instructions = compactText(raw, SKILL_BUDGET);
-        const skills = input.session.activeSkills ?? [];
-        input.session.activeSkills = [
-          ...skills.filter((s) => s.name !== skill.name),
-          { name: skill.name, instructions },
-        ];
+        addActiveSkill(input.session, { name: skill.name, instructions });
         return {
           kind: "skill-activate" as const,
           name: skill.name,
