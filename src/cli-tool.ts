@@ -60,7 +60,6 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
     string,
     {
       id: string;
-      inputSchema: { parse: (v: unknown) => unknown };
       execute: (input: unknown, callId: string) => Promise<unknown>;
     }
   >;
@@ -74,8 +73,7 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
   try {
     // Bypass runTool intentionally — CLI tool invocations skip budget checks and cache for direct debugging.
     const rawInput = coerceInput(toolId, rest);
-    const input = tool.inputSchema.parse(rawInput);
-    const result = await tool.execute(input, `cli_${toolId}`);
+    const result = await tool.execute(rawInput, `cli_${toolId}`);
     const detail = rest.join(" ").slice(0, 60) || undefined;
     printToolResult(toolId, resultToString(result), detail);
   } catch (error) {

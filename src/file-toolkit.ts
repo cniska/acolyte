@@ -231,7 +231,11 @@ function createEditFileTool(input: ToolkitInput) {
         .array(
           z.union([
             z.object({ find: z.string().min(1), replace: z.string() }),
-            z.object({ startLine: z.number().int().min(1), endLine: z.number().int().min(1), replace: z.string() }),
+            z.object({
+              startLine: z.number().int().min(1, "Line numbers must be >= 1"),
+              endLine: z.number().int().min(1, "Line numbers must be >= 1"),
+              replace: z.string(),
+            }),
           ]),
         )
         .min(1),

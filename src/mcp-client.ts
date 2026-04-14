@@ -128,7 +128,7 @@ function bindMcpToolDefinition(
   sessionId?: string,
 ): AnyToolDefinition {
   const toolId = buildToolId(serverName, mcpTool.name);
-  const rawInputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
+  const inputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
   const description = sanitizeDescription(mcpTool.description, `Call ${mcpTool.name} on MCP server "${serverName}"`);
 
   return createTool({
@@ -137,8 +137,7 @@ function bindMcpToolDefinition(
     category: "network",
     description,
     instruction: `Use ${toolId} to call the "${mcpTool.name}" tool on the "${serverName}" MCP server.`,
-    inputSchema: z.object({}).passthrough(),
-    rawInputSchema,
+    inputSchema,
     outputSchema: z.object({
       kind: z.literal("mcp-call"),
       server: z.string(),
