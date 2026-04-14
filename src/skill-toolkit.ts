@@ -70,7 +70,11 @@ function createActivateSkillTool(input: ToolkitInput) {
         });
         const raw = await readSkillInstructions(skill.path, toolInput.args);
         const instructions = compactText(raw, SKILL_BUDGET);
-        input.session.activeSkill = { name: skill.name, instructions };
+        const skills = input.session.activeSkills ?? [];
+        input.session.activeSkills = [
+          ...skills.filter((s) => s.name !== skill.name),
+          { name: skill.name, instructions },
+        ];
         return {
           kind: "skill-activate" as const,
           name: skill.name,

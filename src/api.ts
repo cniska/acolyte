@@ -17,7 +17,7 @@ export interface ChatRequest {
   readonly model: string;
   readonly sessionId?: SessionId;
   readonly resourceId?: ResourceId;
-  readonly activeSkill?: ActiveSkill;
+  readonly activeSkills?: ActiveSkill[];
   /** When true, stored memories and distill observations are included in context. */
   readonly useMemory?: boolean;
   /** Client working directory. Falls back to server CWD when omitted. */

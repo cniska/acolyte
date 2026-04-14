@@ -50,7 +50,7 @@ export const sessionSchema = z.object({
   workspace: z.string().min(1).optional(),
   workspaceName: z.string().min(1).optional(),
   workspaceBranch: z.string().min(1).optional(),
-  activeSkill: activeSkillSchema.optional(),
+  activeSkills: z.array(activeSkillSchema).optional(),
   messages: z.array(messageSchema),
   tokenUsage: z.array(sessionTokenUsageEntrySchema),
 });
@@ -64,7 +64,7 @@ export interface Session {
   workspace?: string;
   workspaceName?: string;
   workspaceBranch?: string;
-  activeSkill?: ActiveSkill;
+  activeSkills?: ActiveSkill[];
   messages: ChatMessage[];
   tokenUsage: SessionTokenUsageEntry[];
 }

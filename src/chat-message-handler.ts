@@ -106,7 +106,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         history: [...fileContextMessages, ...input.currentSession.messages],
         model: input.currentSession.model,
         sessionId: input.currentSession.id,
-        activeSkill: input.currentSession.activeSkill,
+        activeSkills: input.currentSession.activeSkills,
         workspace: input.currentSession.workspace,
         useMemory: input.useMemory,
         signal: controller.signal,

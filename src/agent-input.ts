@@ -160,7 +160,6 @@ export function createAgentInput(
     inputTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
-    activeSkillName?: string;
   };
 } {
   const contextMaxTokens = options.contextMaxTokens;
@@ -174,8 +173,8 @@ export function createAgentInput(
   const userTokens = estimateTokens(userLine);
   let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
 
-  if (req.activeSkill) {
-    const skillLine = `SYSTEM: Active skill (${req.activeSkill.name}):\n${truncateByTokens(req.activeSkill.instructions, budget.maxSkillContextTokens)}`;
+  for (const skill of req.activeSkills ?? []) {
+    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncateByTokens(skill.instructions, budget.maxSkillContextTokens)}`;
     const skillTokens = estimateTokens(skillLine);
     if (skillTokens <= remaining) {
       lines.push(skillLine);
@@ -225,7 +224,6 @@ export function createAgentInput(
       inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
-      activeSkillName: req.activeSkill?.name,
     },
   };
 }

@@ -124,7 +124,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(parsed.model ?? appModel);
-  session.activeSkill = { name: skill.name, instructions: compacted };
+  session.activeSkills = [{ name: skill.name, instructions: compacted }];
 
   const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, serverEntry });
   const apiUrl = apiUrlForPort(serverPort);

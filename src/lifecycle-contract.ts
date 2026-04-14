@@ -64,7 +64,6 @@ export type PromptUsage = {
   inputTruncated: boolean;
   includedHistoryMessages: number;
   totalHistoryMessages: number;
-  activeSkillName?: string;
 };
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };

@@ -54,7 +54,7 @@ export type SessionContext = {
   onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
   onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
   workspaceProfile?: WorkspaceProfile;
-  activeSkill?: ActiveSkill;
+  activeSkills?: ActiveSkill[];
 };
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {

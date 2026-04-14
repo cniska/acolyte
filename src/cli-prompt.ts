@@ -102,7 +102,7 @@ export async function handlePrompt(
         history: session.messages,
         model: session.model,
         sessionId: session.id,
-        activeSkill: session.activeSkill,
+        activeSkills: session.activeSkills,
         resourceId: options?.resourceId,
         ...createWorkspaceSpecifier(options?.workspace),
       },

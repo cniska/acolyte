@@ -49,23 +49,24 @@ describe("createAgentInput", () => {
     expect(input).toContain("…");
   });
 
-  test("returns activeSkillName in usage when activeSkill present", () => {
+  test("includes skill context in input when activeSkills present", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "use repo conventions",
       history: [],
-      activeSkill: { name: "build", instructions: "keep slices small." },
+      activeSkills: [{ name: "build", instructions: "keep slices small." }],
     };
 
-    const { usage } = createAgentInput(req, defaultOptions);
-    expect(usage.activeSkillName).toBe("build");
+    const { input } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("SYSTEM: Active skill (build)");
+    expect(input).toContain("keep slices small.");
   });
 
   test("keeps pinned skill context before recent chat when budget is tight", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "use repo conventions",
-      activeSkill: { name: "build", instructions: "keep slices small." },
+      activeSkills: [{ name: "build", instructions: "keep slices small." }],
       history: [
         {
           id: "msg_user",

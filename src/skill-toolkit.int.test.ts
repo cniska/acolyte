@@ -81,7 +81,7 @@ describe("skill-activate", () => {
     expect(result.name).toBe("build");
     expect(result.source).toBe("bundled");
     expect(result.instructions.length).toBeGreaterThan(0);
-    expect(input.session.activeSkill).toEqual({ name: "build", instructions: result.instructions });
+    expect(input.session.activeSkills).toEqual([{ name: "build", instructions: result.instructions }]);
   });
 
   test("returns instructions for project skill", async () => {

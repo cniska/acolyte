@@ -1,8 +1,13 @@
 import { type ChatRow, createRow } from "./chat-contract";
 import { type CompactBudget, compactText } from "./compact-text";
-import type { Session } from "./session-contract";
+import type { ActiveSkill, Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skills";
 import { toolLabelKey } from "./tool-output-format";
+
+export function addActiveSkill(session: Session, skill: ActiveSkill): void {
+  const skills = session.activeSkills ?? [];
+  session.activeSkills = [...skills.filter((s) => s.name !== skill.name), skill];
+}
 
 type CreateSkillActivatorDeps = {
   skillBudget?: CompactBudget;
@@ -32,7 +37,7 @@ export function createSkillActivator(
     try {
       const instructions = await readSkillInstructions(skill.path, args || undefined);
       const compactedInstructions = compactText(instructions, skillBudget);
-      input.currentSession.activeSkill = { name: skill.name, instructions: compactedInstructions };
+      addActiveSkill(input.currentSession, { name: skill.name, instructions: compactedInstructions });
       input.currentSession.updatedAt = input.nowIso();
       input.setRows((current) => [...current, skillActivationRow(skill.name)]);
       await input.persist();

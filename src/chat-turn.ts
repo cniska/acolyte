@@ -87,7 +87,7 @@ type RunAssistantTurnParams = {
   history: ChatMessage[];
   model: string;
   sessionId: string;
-  activeSkill?: ActiveSkill;
+  activeSkills?: ActiveSkill[];
   workspace?: string;
   useMemory?: boolean;
   signal?: AbortSignal;
@@ -107,7 +107,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       history: params.history,
       model: params.model,
       sessionId: params.sessionId,
-      activeSkill: params.activeSkill,
+      activeSkills: params.activeSkills,
       useMemory: params.useMemory,
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },
