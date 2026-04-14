@@ -13,8 +13,13 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
-import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
-import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
+import {
+  type GenerateOptions,
+  type GenerateResult,
+  type RunContext,
+  type StreamChunk,
+  totalPromptBreakdownTokens,
+} from "./lifecycle-contract";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
@@ -99,7 +104,6 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.currentError = undefined;
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   const prompt = ctx.baseAgentInput;
-  addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
     type: "usage",

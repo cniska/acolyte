@@ -38,6 +38,17 @@ Project uses Vitest for unit tests
 
 If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
 
+export function createDistillInput(messages: readonly { role: string; content: string }[], output: string): string {
+  return [...messages, { role: "assistant", content: output }].map((m) => `${m.role}: ${m.content}`).join("\n\n");
+}
+
+export function estimateDistillPromptTokens(
+  messages: readonly { role: string; content: string }[],
+  output: string,
+): number {
+  return estimateTokens(DISTILLER_PROMPT) + estimateTokens(createDistillInput(messages, output));
+}
+
 let cachedStore: MemoryStore | null = null;
 
 async function getCachedStore(): Promise<MemoryStore> {
@@ -146,13 +157,11 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       if (ctx.messages.length < policy.messageThreshold) return;
 
       const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
-      const distillInput = [...recentMessages, { role: "assistant", content: ctx.output }]
-        .map((m) => `${m.role}: ${m.content}`)
-        .join("\n\n");
+      const distillInput = createDistillInput(recentMessages, ctx.output);
       const observedRaw = await runner(DISTILLER_PROMPT, distillInput);
       const observed = clampToTokenEstimate(observedRaw, policy.maxOutputTokens);
       if (!observed.trim()) return;
-      const promptTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput) + estimateTokens(observed);
+      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output) + estimateTokens(observed);
       if (commitScope !== "session") {
         const usage = await commitFact(ds, key, observed, null);
         const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;

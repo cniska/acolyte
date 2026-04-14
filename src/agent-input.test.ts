@@ -57,9 +57,52 @@ describe("createAgentInput", () => {
       activeSkills: [{ name: "build", instructions: "keep slices small." }],
     };
 
-    const { input } = createAgentInput(req, defaultOptions);
+    const { input, usage } = createAgentInput(req, defaultOptions);
     expect(input).toContain("SYSTEM: Active skill (build)");
     expect(input).toContain("keep slices small.");
+    expect(usage.skillTokens).toBeGreaterThan(0);
+    expect(usage.messageTokens).toBeLessThan(usage.inputTokens);
+  });
+
+  test("reports provided tool token reservation in usage", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "use tools",
+      history: [],
+    };
+
+    const { usage } = createAgentInput(req, {
+      ...defaultOptions,
+      toolTokens: 321,
+      systemPromptTokens: 123,
+    });
+    expect(usage.toolTokens).toBe(321);
+    expect(usage.systemPromptTokens).toBe(123);
+  });
+
+  test("reports requested system/tool tokens even when they exceed context budget", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_history",
+          role: "assistant",
+          content: "HISTORY_SENTINEL",
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+      ],
+    };
+
+    const { input, usage } = createAgentInput(req, {
+      ...defaultOptions,
+      contextMaxTokens: 100,
+      systemPromptTokens: 70,
+      toolTokens: 60,
+    });
+    expect(usage.systemPromptTokens).toBe(70);
+    expect(usage.toolTokens).toBe(60);
+    expect(input).not.toContain("HISTORY_SENTINEL");
   });
 
   test("keeps pinned skill context before recent chat when budget is tight", () => {

@@ -8,7 +8,6 @@ export interface TokenUsage {
   readonly outputTokens: number;
   readonly totalTokens: number;
   readonly inputBudgetTokens?: number;
-  readonly inputTruncated?: boolean;
 }
 
 export interface ChatRequest {

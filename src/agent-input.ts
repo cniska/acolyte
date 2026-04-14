@@ -46,6 +46,28 @@ export function estimateTokens(input: string): number {
   return activeEncoder.encode(input).length;
 }
 
+type PromptTokenBudget = {
+  consume: (tokens: number) => void;
+  remaining: () => number;
+};
+
+function createPromptTokenBudget(total: number): PromptTokenBudget {
+  let remaining = Math.max(0, Math.floor(total));
+
+  const clampRequest = (tokens: number): number => Math.max(0, Math.floor(tokens));
+
+  const consume = (tokens: number): void => {
+    const requested = clampRequest(tokens);
+    if (requested === 0 || remaining === 0) return;
+    remaining = Math.max(0, remaining - requested);
+  };
+
+  return {
+    consume,
+    remaining: () => remaining,
+  };
+}
+
 function truncateByTokens(input: string, maxTokens: number): string {
   if (maxTokens <= 0) return "";
   if (estimateTokens(input) <= maxTokens) return input;
@@ -156,34 +178,39 @@ export function createAgentInput(
     inputBudgetTokens: number;
     systemPromptTokens: number;
     toolTokens: number;
+    skillTokens: number;
     memoryTokens: number;
     messageTokens: number;
-    inputTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
   };
 } {
   const contextMaxTokens = options.contextMaxTokens;
-  const systemPromptTokens = options.systemPromptTokens ?? 0;
-  const toolTokens = options.toolTokens ?? 0;
+  const requestedSystemTokens = options.systemPromptTokens ?? 0;
+  const requestedToolTokens = options.toolTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
+  let includedSkillTokens = 0;
   const budget = options.budget;
+  const tokenBudget = createPromptTokenBudget(contextMaxTokens);
+  tokenBudget.consume(requestedSystemTokens);
+  tokenBudget.consume(requestedToolTokens);
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
-  let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
+  tokenBudget.consume(userTokens);
 
   for (const skill of req.activeSkills ?? []) {
     const truncated = truncateByTokens(skill.instructions, budget.maxSkillContextTokens);
     const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncated}`;
     const skillTokens = estimateTokens(skillLine);
-    if (skillTokens > remaining) {
-      log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining });
+    if (skillTokens > tokenBudget.remaining()) {
+      log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining: tokenBudget.remaining() });
     } else {
       if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
       lines.push(skillLine);
-      remaining -= skillTokens;
+      tokenBudget.consume(skillTokens);
+      includedSkillTokens += skillTokens;
     }
   }
 
@@ -193,17 +220,16 @@ export function createAgentInput(
   const filesResult = collectLinesWithinBudget(
     relevantFiles,
     usedIds,
-    remaining,
+    tokenBudget.remaining(),
     budget.maxAttachmentMessageTokens,
     budget.maxHistoryMessages,
   );
   lines.push(...filesResult.lines);
-  remaining -= filesResult.consumedTokens;
 
   const recentResult = collectLinesWithinBudget(
     req.history,
     usedIds,
-    remaining,
+    tokenBudget.remaining(),
     budget.maxMessageTokens,
     budget.maxHistoryMessages,
   );
@@ -222,11 +248,11 @@ export function createAgentInput(
     usage: {
       inputTokens,
       inputBudgetTokens: contextMaxTokens,
-      systemPromptTokens,
-      toolTokens: 0,
+      systemPromptTokens: requestedSystemTokens,
+      toolTokens: requestedToolTokens,
+      skillTokens: includedSkillTokens,
       memoryTokens: 0,
-      messageTokens: inputTokens,
-      inputTruncated: usedIds.size < req.history.length,
+      messageTokens: Math.max(0, inputTokens - includedSkillTokens),
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
     },

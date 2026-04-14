@@ -1,9 +1,8 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
-import type { RunContext } from "./lifecycle-contract";
+import { type RunContext, totalPromptBreakdownTokens } from "./lifecycle-contract";
 import { stripSignalLine } from "./lifecycle-signal";
-import { totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
@@ -68,13 +67,13 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       outputTokens,
       totalTokens: inputTokens + outputTokens,
       inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
-      inputTruncated: ctx.promptUsage.inputTruncated,
     },
     promptBreakdown: {
       budgetTokens: ctx.promptUsage.inputBudgetTokens,
       usedTokens: inputTokens,
       systemTokens: ctx.promptBreakdownTotals.systemTokens,
       toolTokens: ctx.promptBreakdownTotals.toolTokens,
+      skillTokens: ctx.promptBreakdownTotals.skillTokens,
       memoryTokens: ctx.promptBreakdownTotals.memoryTokens,
       messageTokens: ctx.promptBreakdownTotals.messageTokens,
     },
