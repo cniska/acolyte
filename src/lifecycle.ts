@@ -278,7 +278,8 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const { model } = deps.resolveModel(input.request.model);
 
-  const mcpListings = await listMcpTools(sandboxWorkspace, input.request.sessionId);
+  const features = input.features ?? DEFAULT_FEATURE_FLAGS;
+  const mcpListings = features.mcp ? await listMcpTools(sandboxWorkspace, input.request.sessionId) : [];
 
   const prepared = deps.phasePrepare({
     request: input.request,

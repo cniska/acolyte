@@ -17,6 +17,8 @@ export const featureFlagsSchema = z.object({
   parallelWorkspaces: parseBoolSchema.optional(),
   // When enabled, use the cloud API for memory and session storage.
   cloudSync: parseBoolSchema.optional(),
+  // When enabled, connect to MCP servers configured in .mcp.json.
+  mcp: parseBoolSchema.optional(),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -26,6 +28,7 @@ export const resolvedFeatureFlagsSchema = z.object({
   undoCheckpoints: parseBoolSchema.optional().default(false),
   parallelWorkspaces: parseBoolSchema.optional().default(false),
   cloudSync: parseBoolSchema.optional().default(false),
+  mcp: parseBoolSchema.optional().default(true),
 });
 
 export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;

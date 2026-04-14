@@ -279,6 +279,7 @@ exit 1
           undoCheckpoints: true,
           parallelWorkspaces: false,
           cloudSync: false,
+          mcp: false,
         },
       },
       deps,
