@@ -2,7 +2,7 @@ import { z } from "zod";
 import { errorIdSchema } from "./error-handling";
 import { domainIdSchema } from "./id-contract";
 import { resourceIdSchema } from "./resource-id";
-import { sessionIdSchema } from "./session-contract";
+import { activeSkillSchema, sessionIdSchema } from "./session-contract";
 import { createId } from "./short-id";
 import { statusPayloadSchema } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
@@ -21,6 +21,7 @@ const chatRequestSchema = z
     model: z.string().max(200),
     sessionId: sessionIdSchema.optional(),
     resourceId: resourceIdSchema.optional(),
+    activeSkill: activeSkillSchema.optional(),
     useMemory: z.boolean().optional(),
     workspace: z.string().max(4096).optional(),
   })

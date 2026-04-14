@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
-import type { PromptBreakdown, SessionId } from "./session-contract";
+import type { ActiveSkill, PromptBreakdown, SessionId } from "./session-contract";
 
 export interface TokenUsage {
   readonly inputTokens: number;
@@ -17,6 +17,7 @@ export interface ChatRequest {
   readonly model: string;
   readonly sessionId?: SessionId;
   readonly resourceId?: ResourceId;
+  readonly activeSkill?: ActiveSkill;
   /** When true, stored memories and distill observations are included in context. */
   readonly useMemory?: boolean;
   /** Client working directory. Falls back to server CWD when omitted. */

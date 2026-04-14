@@ -189,6 +189,7 @@ export class CloudClient {
         workspace: session.workspace,
         workspaceName: session.workspaceName,
         workspaceBranch: session.workspaceBranch,
+        activeSkill: session.activeSkill,
       };
       await this.patch(ROUTES.sessions.append(session.id), {
         body: {

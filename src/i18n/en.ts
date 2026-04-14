@@ -242,6 +242,7 @@ export const EN_MESSAGES = {
   "tool.label.git_show": "Git Show",
   "tool.label.git_status": "Git Status",
   "tool.label.shell_run": "Run",
+  "tool.label.skill": "Skill",
   "tool.label.test_run": "Run (Test)",
   "tool.label.memory_add": "Add (Memory)",
   "tool.label.memory_remove": "Remove (Memory)",
