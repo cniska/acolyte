@@ -161,7 +161,6 @@ export function createAgentInput(
     includedHistoryMessages: number;
     totalHistoryMessages: number;
     activeSkillName?: string;
-    skillInstructionChars?: number;
   };
 } {
   const contextMaxTokens = options.contextMaxTokens;
@@ -227,7 +226,6 @@ export function createAgentInput(
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
       activeSkillName: req.activeSkill?.name,
-      skillInstructionChars: req.activeSkill?.instructions.length,
     },
   };
 }

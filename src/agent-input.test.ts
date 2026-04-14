@@ -59,7 +59,6 @@ describe("createAgentInput", () => {
 
     const { usage } = createAgentInput(req, defaultOptions);
     expect(usage.activeSkillName).toBe("build");
-    expect(usage.skillInstructionChars).toBe("keep slices small.".length);
   });
 
   test("keeps pinned skill context before recent chat when budget is tight", () => {

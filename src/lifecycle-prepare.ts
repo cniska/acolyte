@@ -52,7 +52,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   if (requestInput.usage.activeSkillName) {
     input.debug("lifecycle.skill.context", {
       skill_name: requestInput.usage.activeSkillName,
-      instruction_chars: requestInput.usage.skillInstructionChars ?? 0,
     });
   }
 

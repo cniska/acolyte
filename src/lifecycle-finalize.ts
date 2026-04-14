@@ -48,7 +48,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     lifecycle_signal: ctx.result?.signal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
     active_skill: ctx.promptUsage.activeSkillName ?? null,
-    skill_instruction_chars: ctx.promptUsage.skillInstructionChars ?? null,
     last_error_code: ctx.currentError?.code ?? null,
     last_error_category: ctx.currentError?.category ?? null,
     timeout_error_count: ctx.errorStats.timeout,

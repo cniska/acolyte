@@ -65,7 +65,6 @@ export type PromptUsage = {
   includedHistoryMessages: number;
   totalHistoryMessages: number;
   activeSkillName?: string;
-  skillInstructionChars?: number;
 };
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
