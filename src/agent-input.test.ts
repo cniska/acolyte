@@ -78,6 +78,31 @@ describe("createAgentInput", () => {
     expect(usage.systemPromptTokens).toBe(123);
   });
 
+  test("reports requested system/tool tokens even when they exceed context budget", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "continue",
+      history: [
+        {
+          id: "msg_history",
+          role: "assistant",
+          content: "HISTORY_SENTINEL",
+          timestamp: "2026-02-20T10:00:00.000Z",
+        },
+      ],
+    };
+
+    const { input, usage } = createAgentInput(req, {
+      ...defaultOptions,
+      contextMaxTokens: 100,
+      systemPromptTokens: 70,
+      toolTokens: 60,
+    });
+    expect(usage.systemPromptTokens).toBe(70);
+    expect(usage.toolTokens).toBe(60);
+    expect(input).not.toContain("HISTORY_SENTINEL");
+  });
+
   test("keeps pinned skill context before recent chat when budget is tight", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
