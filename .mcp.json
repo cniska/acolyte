@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "fs": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/christofferniska/code/acolyte-2"]
+    }
+  }
+}

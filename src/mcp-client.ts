@@ -175,7 +175,7 @@ export async function listMcpTools(workspace: string, sessionId?: string): Promi
   const config = readMcpConfig(workspace);
   const listings: McpToolListing[] = [];
 
-  for (const [serverName, serverConfig] of Object.entries(config.servers)) {
+  for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
     if (isInsecureRemoteHttp(serverConfig)) {
       log.warn("mcp.server.insecure_http", { server: serverName, url: (serverConfig as McpHttpServerConfig).url });
       continue;
@@ -189,7 +189,11 @@ export async function listMcpTools(workspace: string, sessionId?: string): Promi
         const transport = createEphemeralTransport(serverConfig);
         try {
           await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
-          const { tools } = await withDeadline(client.listTools(), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/listTools`);
+          const { tools } = await withDeadline(
+            client.listTools(),
+            MCP_CONNECT_TIMEOUT_MS,
+            `mcp/${serverName}/listTools`,
+          );
           listings.push({ serverName, config: serverConfig, tools });
         } finally {
           try {

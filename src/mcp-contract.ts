@@ -19,6 +19,6 @@ export type McpStdioServerConfig = z.infer<typeof mcpStdioServerSchema>;
 export type McpHttpServerConfig = z.infer<typeof mcpHttpServerSchema>;
 
 export const mcpConfigSchema = z.object({
-  servers: z.record(z.string(), mcpServerSchema).default({}),
+  mcpServers: z.record(z.string(), mcpServerSchema).default({}),
 });
 export type McpConfig = z.infer<typeof mcpConfigSchema>;
