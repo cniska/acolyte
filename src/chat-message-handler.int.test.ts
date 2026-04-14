@@ -422,72 +422,35 @@ describe("chat message handler", () => {
     ]);
   });
 
-  test("stops before server call when all @references are unresolved", async () => {
-    const rows: ChatRow[] = [];
+  test("shows warning for unresolved @references but continues turn", async () => {
     let replyCalls = 0;
-
-    const session = createSession({ id: "sess_test" });
-    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
-
-    const { handleSubmit } = createMessageHandler({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async () => {
+        replyStream: async (input) => {
           replyCalls += 1;
+          input.onEvent({ type: "text-delta", text: "ok" });
           return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
         },
         status: async () => ({}),
       }),
-      sessionState,
-      currentSession: session,
-      setCurrentSession: () => {},
-      toRows: () => [],
-      setRows: (updater) => {
-        rows.splice(0, rows.length, ...updater(rows));
-      },
-      setShowHelp: () => {},
-      setValue: () => {},
-      persist: async () => {},
-      exit: () => {},
-      openSkillsPanel: async () => {},
-      activateSkill: async () => true,
-      openResumePanel: () => {},
-      openModelPanel: () => {},
-      tokenUsage: [],
-      isPending: false,
-      setInputHistory: () => {},
-      setInputHistoryIndex: () => {},
-      setInputHistoryDraft: () => {},
-      onStartPending: () => {},
-      onStopPending: () => {},
-      setPendingState: () => {},
-      setRunningUsage: () => {},
-      setTokenUsage: () => {},
-      createMessage,
-      nowIso: () => "2026-02-20T00:00:00.000Z",
-      setInterrupt: () => {},
-      clearTranscript: () => {},
     });
 
-    await handleSubmit("review @definitely-not-a-real-file-xyz");
+    await handleMessage("review @definitely-not-a-real-file-xyz");
 
-    expect(replyCalls).toBe(0);
+    expect(replyCalls).toBe(1);
     expect(rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found"))).toBe(
       true,
     );
   });
 
-  test("continues with resolved @references even when some are unresolved", async () => {
-    const rows: ChatRow[] = [];
+  test("shows warning for unresolved @references alongside resolved ones", async () => {
     let replyCalls = 0;
     const fixture = `tmp-chat-handleMessage-${testUuid()}.txt`;
     const fixturePath = join(process.cwd(), fixture);
     await writeFile(fixturePath, "fixture");
 
     try {
-      const session = createSession({ id: "sess_test" });
-      const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
-
-      const { handleSubmit } = createMessageHandler({
+      const { handleMessage, rows } = createMessageHandlerHarness({
         client: createClient({
           replyStream: async (input) => {
             replyCalls += 1;
@@ -496,38 +459,9 @@ describe("chat message handler", () => {
           },
           status: async () => ({}),
         }),
-        sessionState,
-        currentSession: session,
-        setCurrentSession: () => {},
-        toRows: () => [],
-        setRows: (updater) => {
-          rows.splice(0, rows.length, ...updater(rows));
-        },
-        setShowHelp: () => {},
-        setValue: () => {},
-        persist: async () => {},
-        exit: () => {},
-        openSkillsPanel: async () => {},
-        activateSkill: async () => true,
-        openResumePanel: () => {},
-        openModelPanel: () => {},
-        tokenUsage: [],
-        isPending: false,
-        setInputHistory: () => {},
-        setInputHistoryIndex: () => {},
-        setInputHistoryDraft: () => {},
-        onStartPending: () => {},
-        onStopPending: () => {},
-        setPendingState: () => {},
-        setRunningUsage: () => {},
-        setTokenUsage: () => {},
-        createMessage,
-        nowIso: () => "2026-02-20T00:00:00.000Z",
-        setInterrupt: () => {},
-        clearTranscript: () => {},
       });
 
-      await handleSubmit(`review @${fixture} and @definitely-not-a-real-file-xyz`);
+      await handleMessage(`review @${fixture} and @definitely-not-a-real-file-xyz`);
 
       expect(replyCalls).toBe(1);
       expect(

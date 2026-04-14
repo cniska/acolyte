@@ -1,3 +1,5 @@
+import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -5,7 +7,6 @@ import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatTokenCount } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
 import { formatDuration } from "./datetime";
-import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry } from "./session-contract";
@@ -25,27 +26,34 @@ export function estimateTokenUsageFallback(prompt: string, output: string): Toke
   };
 }
 
-export async function resolveReferencedFileContext(
+export async function resolveAtReferenceDirective(
   userText: string,
   options?: { workspace?: string },
 ): Promise<{
-  contexts: string[];
+  directive: string | null;
   unresolvedPaths: string[];
 }> {
   const referencedPaths = extractAtReferencePaths(userText);
-  const contexts: string[] = [];
+  if (referencedPaths.length === 0) return { directive: null, unresolvedPaths: [] };
+  const fileRefs: string[] = [];
+  const dirRefs: string[] = [];
   const unresolvedPaths: string[] = [];
   const workspace = options?.workspace ?? process.cwd();
   for (const pathInput of referencedPaths) {
     try {
       ensurePathWithinSandbox(pathInput, workspace);
-      const context = await formatFileContext(pathInput, workspace);
-      contexts.push(context);
+      const info = await stat(resolve(workspace, pathInput));
+      if (info.isDirectory()) dirRefs.push(pathInput);
+      else fileRefs.push(pathInput);
     } catch {
       unresolvedPaths.push(pathInput);
     }
   }
-  return { contexts, unresolvedPaths };
+  if (fileRefs.length === 0 && dirRefs.length === 0) return { directive: null, unresolvedPaths };
+  const lines = ["Read the following before responding:"];
+  for (const ref of fileRefs) lines.push(`- ${ref} (file-read)`);
+  for (const ref of dirRefs) lines.push(`- ${ref} (file-find)`);
+  return { directive: lines.join("\n"), unresolvedPaths };
 }
 
 export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {

@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { appendInputHistory, applyUserTurn, createInputHistory, runAssistantTurn } from "./chat-turn";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  appendInputHistory,
+  applyUserTurn,
+  createInputHistory,
+  resolveAtReferenceDirective,
+  runAssistantTurn,
+} from "./chat-turn";
 import type { Session } from "./session-contract";
+import { tempDir } from "./test-utils";
 
 describe("chat turn helpers", () => {
   test("appendInputHistory avoids duplicate consecutive entries", () => {
@@ -38,6 +47,44 @@ describe("chat turn helpers", () => {
     expect(session.title).toBe("hello there");
     expect(result.row.kind).toBe("user");
     expect(result.row.content).toBe("hello there");
+  });
+
+  describe("resolveAtReferenceDirective", () => {
+    const { createDir, cleanupDirs } = tempDir();
+
+    test("returns directive with file-read for files and file-find for directories", async () => {
+      const root = createDir("acolyte-at-ref-");
+      const file = join(root, "demo.ts");
+      writeFileSync(file, "const x = 1;\n", "utf8");
+      mkdirSync(join(root, "src"), { recursive: true });
+
+      const result = await resolveAtReferenceDirective(`review @demo.ts and @src/`, {
+        workspace: root,
+      });
+
+      expect(result.directive).toContain("file-read");
+      expect(result.directive).toContain("demo.ts");
+      expect(result.directive).toContain("file-find");
+      expect(result.directive).toContain("src/");
+      expect(result.unresolvedPaths).toEqual([]);
+      cleanupDirs();
+    });
+
+    test("returns null directive when no @ references", async () => {
+      const result = await resolveAtReferenceDirective("just a normal message");
+      expect(result.directive).toBeNull();
+      expect(result.unresolvedPaths).toEqual([]);
+    });
+
+    test("reports unresolved paths for missing files", async () => {
+      const root = createDir("acolyte-at-ref-missing-");
+      const result = await resolveAtReferenceDirective("review @nonexistent.ts", {
+        workspace: root,
+      });
+      expect(result.directive).toBeNull();
+      expect(result.unresolvedPaths).toEqual(["nonexistent.ts"]);
+      cleanupDirs();
+    });
   });
 
   test("runAssistantTurn ignores reply progress payload rows", async () => {
