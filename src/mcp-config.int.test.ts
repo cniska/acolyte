@@ -63,17 +63,17 @@ describe("readMcpConfig", () => {
     expect(config.mcpServers.bad).toBeUndefined();
   });
 
-  test("project servers override user servers by name", async () => {
-    const workspace = dirs.createDir("acolyte-mcp-override-");
+  test("reads multiple servers", async () => {
+    const workspace = dirs.createDir("acolyte-mcp-multi-");
     await writeJson(join(workspace, ".mcp.json"), {
       mcpServers: {
-        figma: { type: "stdio", command: "project-npx" },
+        figma: { type: "stdio", command: "npx" },
         notion: { type: "http", url: "https://notion.example.com/mcp" },
       },
     });
 
     const config = readMcpConfig(workspace);
-    expect(config.mcpServers.figma).toMatchObject({ command: "project-npx" });
+    expect(config.mcpServers.figma).toMatchObject({ command: "npx" });
     expect(config.mcpServers.notion).toMatchObject({ type: "http" });
   });
 });

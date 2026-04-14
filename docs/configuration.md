@@ -80,11 +80,7 @@ acolyte config set logFormat json
 
 ## MCP servers
 
-Connect Acolyte to external services (Figma, Jira, Notion, Chrome DevTools, etc.) via MCP servers. Configure servers under the `mcpServers` key — project-level config takes precedence over user-level by server name.
-
-Paths:
-- User: config dir + `mcp.json`
-- Project: `<cwd>/.mcp.json`
+Connect Acolyte to external services (Figma, Jira, Notion, Chrome DevTools, etc.) via MCP servers. Configure servers under the `mcpServers` key in `.mcp.json` at the project root.
 
 Two transports are supported:
 - `stdio` — server runs as a local subprocess (`command`, `args`, optional `env`). Only a minimal set of environment variables is forwarded to the subprocess (`PATH`, `HOME`, `SHELL`, `TERM`, `USER`, `LANG`, `LC_ALL`, `TMPDIR`, `XDG_RUNTIME_DIR`) plus any explicitly configured in `env`.
