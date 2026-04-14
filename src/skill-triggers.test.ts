@@ -29,16 +29,12 @@ describe("matchSkillTriggers", () => {
   });
 
   test("skips already active skills", () => {
-    const matches = matchSkillTriggers("implement the feature", [
-      { name: "build", instructions: "..." },
-    ]);
+    const matches = matchSkillTriggers("implement the feature", [{ name: "build", instructions: "..." }]);
     expect(matches).not.toContain("build");
   });
 
   test("suggests non-active skills even when some are active", () => {
-    const matches = matchSkillTriggers("implement the feature and commit", [
-      { name: "build", instructions: "..." },
-    ]);
+    const matches = matchSkillTriggers("implement the feature and commit", [{ name: "build", instructions: "..." }]);
     expect(matches).not.toContain("build");
     expect(matches).toContain("git");
   });

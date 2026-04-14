@@ -1,4 +1,4 @@
-import type { ActiveSkill } from "./session-contract";
+import type { ActiveSkill } from "./skill-contract";
 
 const SKILL_TRIGGERS: Record<string, string[]> = {
   build: ["implement", "add feature", "build", "create feature", "new feature", "add functionality"],
@@ -33,4 +33,10 @@ export function matchSkillTriggers(message: string, activeSkills?: ActiveSkill[]
   return triggerPatterns
     .filter(({ name, pattern }) => !activeNames.has(name) && pattern.test(message))
     .map(({ name }) => name);
+}
+
+export function createSkillSuggestions(message: string, activeSkills?: ActiveSkill[]): string[] {
+  return matchSkillTriggers(message, activeSkills).map(
+    (name) => `Use \`skill-activate\` to load \`${name}\` before starting.`,
+  );
 }
