@@ -4,6 +4,7 @@ import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET, 
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
+import { toolLabelKey } from "./tool-output-format";
 
 const skillSourceSchema = z.enum(["bundled", "project"]) satisfies z.ZodType<SkillSource>;
 
@@ -59,9 +60,14 @@ function createActivateSkillTool(input: ToolkitInput) {
     }),
     outputBudget: { maxChars: 4_000, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "skill-activate", toolCallId, toolInput, async () => {
+      return runTool(input.session, "skill-activate", toolCallId, toolInput, async (callId) => {
         const skill = findSkillByName(toolInput.name);
         if (!skill) throw new Error(`skill not found: "${toolInput.name}"`);
+        input.onOutput({
+          toolName: "skill-activate",
+          content: { kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skill.name },
+          toolCallId: callId,
+        });
         const raw = await readSkillInstructions(skill.path, toolInput.args);
         const instructions = compactText(raw, SKILL_BUDGET);
         input.session.activeSkill = { name: skill.name, instructions };
