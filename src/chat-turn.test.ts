@@ -62,10 +62,9 @@ describe("chat turn helpers", () => {
         workspace: root,
       });
 
-      expect(result.directive).toContain("file-read");
-      expect(result.directive).toContain("demo.ts");
-      expect(result.directive).toContain("file-find");
-      expect(result.directive).toContain("src/");
+      expect(result.directive).toContain("Use `file-read` on demo.ts");
+      expect(result.directive).toContain("Use `file-find` on src/");
+      expect(result.directive).toContain("before responding.");
       expect(result.unresolvedPaths).toEqual([]);
       cleanupDirs();
     });

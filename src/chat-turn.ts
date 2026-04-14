@@ -50,10 +50,10 @@ export async function resolveAtReferenceDirective(
     }
   }
   if (fileRefs.length === 0 && dirRefs.length === 0) return { directive: null, unresolvedPaths };
-  const lines = ["Read the following before responding:"];
-  for (const ref of fileRefs) lines.push(`- ${ref} (file-read)`);
-  for (const ref of dirRefs) lines.push(`- ${ref} (file-find)`);
-  return { directive: lines.join("\n"), unresolvedPaths };
+  const parts: string[] = [];
+  if (fileRefs.length > 0) parts.push(`Use \`file-read\` on ${fileRefs.join(", ")}`);
+  if (dirRefs.length > 0) parts.push(`Use \`file-find\` on ${dirRefs.join(", ")}`);
+  return { directive: `${parts.join(". ")} before responding.`, unresolvedPaths };
 }
 
 export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {
