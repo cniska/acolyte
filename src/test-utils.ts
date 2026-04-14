@@ -12,7 +12,7 @@ import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import type { LifecycleDeps } from "./lifecycle";
-import { createEmptyPromptBreakdownTotals, type RunContext } from "./lifecycle-contract";
+import { createEmptyPromptBreakdownTotals, type LifecycleInput, type RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { Toolset } from "./tool-registry";
@@ -483,6 +483,15 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
         output: ctx.result?.text ?? "",
       }),
     ),
+    ...overrides,
+  };
+}
+
+export function createLifecycleInput(overrides: Partial<LifecycleInput> = {}): LifecycleInput {
+  return {
+    request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
+    soulPrompt: "",
+    features: DEFAULT_FEATURE_FLAGS,
     ...overrides,
   };
 }

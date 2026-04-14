@@ -10,7 +10,7 @@ import { t } from "./i18n";
 import { userResourceIdFor } from "./resource-id";
 import type { apiUrlForPort as apiUrlForPortType, ensureLocalServer as ensureLocalServerType } from "./server-daemon";
 import type { createSession as createSessionType } from "./session-store";
-import type { findSkillByName as findSkillByNameType, loadSkills as loadSkillsType } from "./skills";
+import type { findSkillByName as findSkillByNameType, loadSkills as loadSkillsType } from "./skill-ops";
 
 type ParsedSkillArgs = { skillName: string; files: string[]; prompt: string; workspace?: string; model?: string };
 

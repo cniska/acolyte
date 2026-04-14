@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
-import type { ActiveSkill, PromptBreakdown, SessionId } from "./session-contract";
+import type { PromptBreakdown, SessionId } from "./session-contract";
+import type { ActiveSkill } from "./skill-contract";
 
 export interface TokenUsage {
   readonly inputTokens: number;

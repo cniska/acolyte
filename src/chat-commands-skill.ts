@@ -1,7 +1,7 @@
 import type { CommandContext, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
-import { findSkillByName } from "./skills";
+import { findSkillByName } from "./skill-ops";
 
 export async function handleSkillActivation(ctx: CommandContext): Promise<CommandResult | null> {
   if (!ctx.activateSkill) return null;

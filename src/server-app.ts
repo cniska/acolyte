@@ -4,6 +4,7 @@ import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling
 import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
 import { errorToLogFields, log } from "./log";
+import { closeAllMcpSessions } from "./mcp-session";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
@@ -133,6 +134,7 @@ export async function startServer(): Promise<void> {
     shutdownServer: () => {
       setTimeout(() => {
         try {
+          void closeAllMcpSessions();
           closeDefaultTraceStore();
           server.stop(true);
         } catch {
@@ -166,6 +168,7 @@ export async function startServer(): Promise<void> {
   process.on("SIGTERM", () => {
     log.info("server shutdown via SIGTERM");
     closeDefaultTraceStore();
+    void closeAllMcpSessions();
     server.stop(true);
   });
 

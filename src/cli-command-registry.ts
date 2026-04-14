@@ -39,7 +39,7 @@ import {
 } from "./server-daemon";
 import { createSession, getSessionStore } from "./session-store";
 import { createId } from "./short-id";
-import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skills";
+import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";

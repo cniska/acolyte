@@ -14,7 +14,8 @@ import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
-import { loadSkills } from "./skills";
+import { isActiveSkillsPayload } from "./skill-contract";
+import { loadSkills } from "./skill-ops";
 import { createSoulPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
@@ -121,7 +122,7 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     Array.isArray(req.history) &&
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
-    (req.activeSkills === undefined || Array.isArray(req.activeSkills)) &&
+    (req.activeSkills === undefined || isActiveSkillsPayload(req.activeSkills)) &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );

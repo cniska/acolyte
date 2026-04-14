@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
 import type { RunToolResult } from "./tool-execution";
 import { compactToolOutput } from "./tool-output";
@@ -15,7 +15,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly category: ToolCategory;
   readonly description: string;
   readonly instruction: string;
-  readonly inputSchema: z.ZodType<TInput>;
+  readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly outputBudget?: ToolOutputBudget;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
@@ -45,11 +45,30 @@ export type ToolCache = {
   stats(): { hits: number; misses: number; invalidations: number; evictions: number; size: number };
 };
 
-export function createTool<TInput, TOutput>(config: ToolDefinition<TInput, TOutput>): ToolDefinition<TInput, TOutput> {
+type CreateToolConfig<TInput, TOutput> = Omit<ToolDefinition<TInput, TOutput>, "inputSchema"> & {
+  inputSchema: z.ZodType<TInput> | Record<string, unknown>;
+};
+
+function isZodSchema(s: unknown): s is z.ZodType {
+  return typeof s === "object" && s !== null && typeof (s as Record<string, unknown>).safeParse === "function";
+}
+
+function toJsonSchema(schema: z.ZodType | Record<string, unknown>): Record<string, unknown> {
+  if (!isZodSchema(schema)) return schema;
+  const { $schema: _, ...rest } = z.toJSONSchema(schema);
+  return rest;
+}
+
+export function createTool<TInput, TOutput>(
+  config: CreateToolConfig<TInput, TOutput>,
+): ToolDefinition<TInput, TOutput> {
+  const inputParser = isZodSchema(config.inputSchema) ? config.inputSchema : undefined;
   return {
     ...config,
+    inputSchema: toJsonSchema(config.inputSchema),
     execute: async (input, toolCallId) => {
-      const runResult = await config.execute(input, toolCallId);
+      const parsedInput = inputParser ? (inputParser.parse(input) as TInput) : input;
+      const runResult = await config.execute(parsedInput, toolCallId);
       const parsed = config.outputSchema.parse(runResult.result);
       if (config.outputBudget && parsed && typeof parsed === "object" && "output" in parsed) {
         const record = parsed as Record<string, unknown>;

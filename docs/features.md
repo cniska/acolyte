@@ -43,6 +43,7 @@ Shipped, user-visible capabilities.
 - git status/diff/log/show/add/commit
 - shell and test execution
 - web search/fetch
+- MCP client: connect to external services via stdio or HTTP MCP servers
 
 ## Memory
 

@@ -5,6 +5,7 @@ import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
+import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-content";
@@ -119,6 +120,7 @@ export type PhasePrepareInput = {
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
   onChecklist: ChecklistListener;
+  mcpListings: McpToolListing[];
 };
 export type PhasePrepareResult = {
   session: SessionContext;
@@ -152,7 +154,7 @@ export type LifecycleInput = {
   soulPrompt: string;
   workspace?: string;
   taskId?: string;
-  features?: ResolvedFeatureFlags;
+  features: ResolvedFeatureFlags;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;

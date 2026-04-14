@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { loadSkills, resetSkillCache } from "./skill-ops";
 import { createSkillToolkit } from "./skill-toolkit";
-import { loadSkills, resetSkillCache } from "./skills";
 import { tempDir } from "./test-utils";
 import type { ToolkitInput } from "./tool-contract";
 import { createSessionContext } from "./tool-session";

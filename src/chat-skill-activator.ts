@@ -1,7 +1,8 @@
 import { type ChatRow, createRow } from "./chat-contract";
 import { type CompactBudget, compactText } from "./compact-text";
-import type { ActiveSkill, Session } from "./session-contract";
-import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skills";
+import type { Session } from "./session-contract";
+import type { ActiveSkill } from "./skill-contract";
+import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
 import { toolLabelKey } from "./tool-output-format";
 
 export function addActiveSkill(target: { activeSkills?: ActiveSkill[] }, skill: ActiveSkill): void {

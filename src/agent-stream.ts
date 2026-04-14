@@ -7,7 +7,6 @@ import type {
   LanguageModelV3ToolCallPart,
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
-import { z } from "zod";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import { serializeToolError } from "./error-handling";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
@@ -23,17 +22,12 @@ import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
-function toolInputJsonSchema(schema: z.ZodType): LanguageModelV3FunctionTool["inputSchema"] {
-  const { $schema: _, ...rest } = z.toJSONSchema(schema);
-  return rest as LanguageModelV3FunctionTool["inputSchema"];
-}
-
 function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageModelV3FunctionTool[] {
   return Object.values(tools).map((tool) => ({
     type: "function" as const,
     name: tool.id,
     description: tool.description,
-    inputSchema: toolInputJsonSchema(tool.inputSchema),
+    inputSchema: tool.inputSchema as LanguageModelV3FunctionTool["inputSchema"],
   }));
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { logLifecycleDebugEntry, runChatRequest } from "./server-chat-runtime";
+import { isChatRequest, logLifecycleDebugEntry, runChatRequest } from "./server-chat-runtime";
 import type { StreamErrorPayload } from "./server-contract";
 
 describe("server chat runtime", () => {
@@ -46,5 +46,24 @@ describe("server chat runtime", () => {
     } finally {
       (appConfig.vercel as { apiKey: string | undefined }).apiKey = savedKey;
     }
+  });
+
+  test("isChatRequest rejects malformed activeSkills entries", () => {
+    expect(
+      isChatRequest({
+        model: "gpt-5-mini",
+        message: "hi",
+        history: [],
+        activeSkills: [1],
+      }),
+    ).toBe(false);
+    expect(
+      isChatRequest({
+        model: "gpt-5-mini",
+        message: "hi",
+        history: [],
+        activeSkills: [{ name: "build" }],
+      }),
+    ).toBe(false);
   });
 });

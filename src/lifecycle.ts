@@ -1,7 +1,6 @@
 import { ensureRealTokenEncoder } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { t } from "./i18n";
 import type {
   LifecycleEventName,
@@ -16,6 +15,7 @@ import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
+import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
@@ -109,7 +109,7 @@ function createRunContext(
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
-    features: input.features ?? DEFAULT_FEATURE_FLAGS,
+    features: input.features,
     emit: params.emit,
     debug: params.debug,
     tools: params.prepared.tools,
@@ -281,6 +281,8 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const { model } = deps.resolveModel(input.request.model);
 
+  const mcpListings = input.features.mcp ? await listMcpTools(sandboxWorkspace, input.request.sessionId) : [];
+
   const prepared = deps.phasePrepare({
     request: input.request,
     workspace: input.workspace,
@@ -295,6 +297,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onChecklist: (event) => {
       emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
     },
+    mcpListings,
   });
 
   const ctx = createRunContext(input, {
