@@ -262,7 +262,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.promptBreakdownTotals.memoryTokens).toBeGreaterThan(0);
     expect(ctx.promptUsage.memoryTokens).toBeGreaterThan(0);
   });
 
@@ -307,7 +306,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.promptBreakdownTotals.memoryTokens).toBe(0);
     expect(ctx.promptUsage.memoryTokens).toBe(0);
   });
 });

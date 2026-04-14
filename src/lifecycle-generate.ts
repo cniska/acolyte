@@ -16,9 +16,9 @@ import {
 import {
   type GenerateOptions,
   type GenerateResult,
+  promptUsageTotalTokens,
   type RunContext,
   type StreamChunk,
-  totalPromptBreakdownTokens,
 } from "./lifecycle-contract";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
@@ -51,7 +51,7 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 }
 
 function emitInputTokens(ctx: RunContext): number {
-  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
+  return Math.max(ctx.inputTokensAccum, promptUsageTotalTokens(ctx.promptUsage));
 }
 
 function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
@@ -255,7 +255,6 @@ function accountMemoryRecallTokens(ctx: RunContext, toolName: string, result: un
   if (!serialized) return;
   const tokens = estimateTokens(serialized);
   ctx.promptUsage.memoryTokens += tokens;
-  ctx.promptBreakdownTotals.memoryTokens += tokens;
 }
 
 function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {

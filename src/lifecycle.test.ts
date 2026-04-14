@@ -23,10 +23,10 @@ describe("runLifecycle", () => {
   test("accounts memory tokens when distilling", async () => {
     const deps = createLifecycleDeps({
       phaseFinalize: mock(
-        (ctx: { promptBreakdownTotals: { memoryTokens: number } }): ChatResponse => ({
+        (ctx: { promptUsage: { memoryTokens: number } }): ChatResponse => ({
           state: "done",
           model: "gpt-5-mini",
-          output: String(ctx.promptBreakdownTotals.memoryTokens),
+          output: String(ctx.promptUsage.memoryTokens),
         }),
       ),
     });
@@ -45,22 +45,15 @@ describe("runLifecycle", () => {
 
   test("adds distill tokens on top of existing memory tokens", async () => {
     const deps = createLifecycleDeps({
-      phaseGenerate: mock(
-        async (ctx: {
-          promptBreakdownTotals: { memoryTokens: number };
-          promptUsage: { memoryTokens: number };
-          result?: unknown;
-        }) => {
-          ctx.promptBreakdownTotals.memoryTokens = 5;
-          ctx.promptUsage.memoryTokens = 5;
-          ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
-        },
-      ),
+      phaseGenerate: mock(async (ctx: { promptUsage: { memoryTokens: number }; result?: unknown }) => {
+        ctx.promptUsage.memoryTokens = 5;
+        ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+      }),
       phaseFinalize: mock(
-        (ctx: { promptBreakdownTotals: { memoryTokens: number } }): ChatResponse => ({
+        (ctx: { promptUsage: { memoryTokens: number } }): ChatResponse => ({
           state: "done",
           model: "gpt-5-mini",
-          output: String(ctx.promptBreakdownTotals.memoryTokens),
+          output: String(ctx.promptUsage.memoryTokens),
         }),
       ),
     });

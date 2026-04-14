@@ -1,7 +1,7 @@
 import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
-import { type RunContext, totalPromptBreakdownTokens } from "./lifecycle-contract";
+import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { stripSignalLine } from "./lifecycle-signal";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
@@ -15,7 +15,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const promptInputTokens = totalPromptBreakdownTokens(ctx.promptBreakdownTotals);
+  const { promptUsage } = ctx;
+  const promptInputTokens = promptUsageTotalTokens(promptUsage);
   const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
 
@@ -69,13 +70,13 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
     },
     promptBreakdown: {
-      budgetTokens: ctx.promptUsage.inputBudgetTokens,
+      budgetTokens: promptUsage.inputBudgetTokens,
       usedTokens: inputTokens,
-      systemTokens: ctx.promptBreakdownTotals.systemTokens,
-      toolTokens: ctx.promptBreakdownTotals.toolTokens,
-      skillTokens: ctx.promptBreakdownTotals.skillTokens,
-      memoryTokens: ctx.promptBreakdownTotals.memoryTokens,
-      messageTokens: ctx.promptBreakdownTotals.messageTokens,
+      systemTokens: promptUsage.systemPromptTokens,
+      toolTokens: promptUsage.toolTokens,
+      skillTokens: promptUsage.skillTokens,
+      memoryTokens: promptUsage.memoryTokens,
+      messageTokens: promptUsage.messageTokens,
     },
   };
 }

@@ -65,27 +65,11 @@ export type PromptUsage = {
   includedHistoryMessages: number;
   totalHistoryMessages: number;
 };
-export type PromptBreakdownTotals = {
-  systemTokens: number;
-  toolTokens: number;
-  skillTokens: number;
-  memoryTokens: number;
-  messageTokens: number;
-};
 
-export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
-  return {
-    systemTokens: 0,
-    toolTokens: 0,
-    skillTokens: 0,
-    memoryTokens: 0,
-    messageTokens: 0,
-  };
+export function promptUsageTotalTokens(usage: PromptUsage): number {
+  return usage.systemPromptTokens + usage.toolTokens + usage.skillTokens + usage.memoryTokens + usage.messageTokens;
 }
 
-export function totalPromptBreakdownTokens(totals: PromptBreakdownTotals): number {
-  return totals.systemTokens + totals.toolTokens + totals.skillTokens + totals.memoryTokens + totals.messageTokens;
-}
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
 export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
@@ -181,7 +165,6 @@ export type RunContext = {
   modelCallCount: number;
   inputTokensAccum: number;
   outputTokensAccum: number;
-  promptBreakdownTotals: PromptBreakdownTotals;
   streamingChars: number;
   lastUsageEmitChars: number;
   currentError?: LifecycleError;

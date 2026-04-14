@@ -121,13 +121,6 @@ function createRunContext(
     modelCallCount: 0,
     inputTokensAccum: 0,
     outputTokensAccum: 0,
-    promptBreakdownTotals: {
-      systemTokens: params.prepared.promptUsage.systemPromptTokens,
-      toolTokens: params.prepared.promptUsage.toolTokens,
-      skillTokens: params.prepared.promptUsage.skillTokens,
-      memoryTokens: params.prepared.promptUsage.memoryTokens,
-      messageTokens: params.prepared.promptUsage.messageTokens,
-    },
     streamingChars: 0,
     lastUsageEmitChars: 0,
     errorStats: createErrorStats(),
@@ -171,7 +164,6 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   ];
   const distillTokens = estimateDistillPromptTokens(messages, output);
   ctx.promptUsage.memoryTokens += distillTokens;
-  ctx.promptBreakdownTotals.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
       sessionId: ctx.request.sessionId,

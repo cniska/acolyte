@@ -34,7 +34,7 @@ describe("ChatResponse error field", () => {
 });
 
 describe("phaseFinalize", () => {
-  test("uses prompt breakdown totals for token accounting", () => {
+  test("derives prompt breakdown from promptUsage for token accounting", () => {
     const ctx = createRunContext({
       promptUsage: {
         inputTokens: 12,
@@ -47,7 +47,6 @@ describe("phaseFinalize", () => {
         includedHistoryMessages: 3,
         totalHistoryMessages: 6,
       },
-      promptBreakdownTotals: { systemTokens: 48, toolTokens: 20, skillTokens: 0, memoryTokens: 0, messageTokens: 12 },
       inputTokensAccum: 0,
       outputTokensAccum: 0,
       result: { text: "done", toolCalls: [] },
@@ -58,6 +57,15 @@ describe("phaseFinalize", () => {
     expect(response.usage?.inputTokens).toBe(80);
     expect(response.usage?.totalTokens).toBe(81);
     expect(response.promptBreakdown?.usedTokens).toBe(80);
+    expect(response.promptBreakdown).toEqual({
+      budgetTokens: 100,
+      usedTokens: 80,
+      systemTokens: 48,
+      toolTokens: 20,
+      skillTokens: 0,
+      memoryTokens: 0,
+      messageTokens: 12,
+    });
   });
 
   test("includes promptBreakdown when currentError is set", () => {
@@ -73,7 +81,6 @@ describe("phaseFinalize", () => {
         includedHistoryMessages: 3,
         totalHistoryMessages: 6,
       },
-      promptBreakdownTotals: { systemTokens: 48, toolTokens: 20, skillTokens: 0, memoryTokens: 0, messageTokens: 12 },
       inputTokensAccum: 0,
       outputTokensAccum: 0,
       currentError: { message: "tool failed", category: "other" },
@@ -85,45 +92,6 @@ describe("phaseFinalize", () => {
     expect(response.error).toBe("tool failed");
     expect(response.promptBreakdown).toBeDefined();
     expect(response.promptBreakdown?.usedTokens).toBe(80);
-  });
-
-  test("uses accumulated prompt breakdown totals across multiple model calls", () => {
-    const ctx = createRunContext({
-      baseAgentInput: "USER: first prompt",
-      promptUsage: {
-        inputTokens: 12,
-        systemPromptTokens: 48,
-        toolTokens: 20,
-        skillTokens: 0,
-        memoryTokens: 0,
-        messageTokens: 12,
-        inputBudgetTokens: 100,
-        includedHistoryMessages: 3,
-        totalHistoryMessages: 6,
-      },
-      inputTokensAccum: 120,
-      promptBreakdownTotals: {
-        systemTokens: 80,
-        toolTokens: 40,
-        skillTokens: 0,
-        memoryTokens: 0,
-        messageTokens: 34,
-      },
-      result: { text: "done", toolCalls: [] },
-    });
-
-    const response = phaseFinalize(ctx);
-
-    expect(response.usage?.inputTokens).toBe(154);
-    expect(response.promptBreakdown).toEqual({
-      budgetTokens: 100,
-      usedTokens: 154,
-      systemTokens: 80,
-      toolTokens: 40,
-      skillTokens: 0,
-      memoryTokens: 0,
-      messageTokens: 34,
-    });
   });
 
   test("sets state to awaiting-input when signal is blocked", () => {
