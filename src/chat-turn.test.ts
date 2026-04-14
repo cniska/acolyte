@@ -4,8 +4,8 @@ import { join } from "node:path";
 import {
   appendInputHistory,
   applyUserTurn,
+  createAtReferenceSuggestion,
   createInputHistory,
-  resolveAtReferenceDirective,
   runAssistantTurn,
 } from "./chat-turn";
 import type { Session } from "./session-contract";
@@ -49,38 +49,38 @@ describe("chat turn helpers", () => {
     expect(result.row.content).toBe("hello there");
   });
 
-  describe("resolveAtReferenceDirective", () => {
+  describe("createAtReferenceSuggestion", () => {
     const { createDir, cleanupDirs } = tempDir();
 
-    test("returns directive with file-read for files and file-find for directories", async () => {
+    test("returns suggestion with file-read for files and file-find for directories", async () => {
       const root = createDir("acolyte-at-ref-");
       const file = join(root, "demo.ts");
       writeFileSync(file, "const x = 1;\n", "utf8");
       mkdirSync(join(root, "src"), { recursive: true });
 
-      const result = await resolveAtReferenceDirective(`review @demo.ts and @src/`, {
+      const result = await createAtReferenceSuggestion(`review @demo.ts and @src/`, {
         workspace: root,
       });
 
-      expect(result.directive).toContain("Use `file-read` on demo.ts");
-      expect(result.directive).toContain("Use `file-find` on src/");
-      expect(result.directive).toContain("before responding.");
+      expect(result.suggestion).toContain("Use `file-read` on demo.ts");
+      expect(result.suggestion).toContain("Use `file-find` on src/");
+      expect(result.suggestion).toContain("before responding.");
       expect(result.unresolvedPaths).toEqual([]);
       cleanupDirs();
     });
 
-    test("returns null directive when no @ references", async () => {
-      const result = await resolveAtReferenceDirective("just a normal message");
-      expect(result.directive).toBeNull();
+    test("returns null suggestion when no @ references", async () => {
+      const result = await createAtReferenceSuggestion("just a normal message");
+      expect(result.suggestion).toBeNull();
       expect(result.unresolvedPaths).toEqual([]);
     });
 
     test("reports unresolved paths for missing files", async () => {
       const root = createDir("acolyte-at-ref-missing-");
-      const result = await resolveAtReferenceDirective("review @nonexistent.ts", {
+      const result = await createAtReferenceSuggestion("review @nonexistent.ts", {
         workspace: root,
       });
-      expect(result.directive).toBeNull();
+      expect(result.suggestion).toBeNull();
       expect(result.unresolvedPaths).toEqual(["nonexistent.ts"]);
       cleanupDirs();
     });

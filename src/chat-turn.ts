@@ -26,15 +26,15 @@ export function estimateTokenUsageFallback(prompt: string, output: string): Toke
   };
 }
 
-export async function resolveAtReferenceDirective(
+export async function createAtReferenceSuggestion(
   userText: string,
   options?: { workspace?: string },
 ): Promise<{
-  directive: string | null;
+  suggestion: string | null;
   unresolvedPaths: string[];
 }> {
   const referencedPaths = extractAtReferencePaths(userText);
-  if (referencedPaths.length === 0) return { directive: null, unresolvedPaths: [] };
+  if (referencedPaths.length === 0) return { suggestion: null, unresolvedPaths: [] };
   const fileRefs: string[] = [];
   const dirRefs: string[] = [];
   const unresolvedPaths: string[] = [];
@@ -49,11 +49,11 @@ export async function resolveAtReferenceDirective(
       unresolvedPaths.push(pathInput);
     }
   }
-  if (fileRefs.length === 0 && dirRefs.length === 0) return { directive: null, unresolvedPaths };
+  if (fileRefs.length === 0 && dirRefs.length === 0) return { suggestion: null, unresolvedPaths };
   const parts: string[] = [];
   if (fileRefs.length > 0) parts.push(`Use \`file-read\` on ${fileRefs.join(", ")}`);
   if (dirRefs.length > 0) parts.push(`Use \`file-find\` on ${dirRefs.join(", ")}`);
-  return { directive: `${parts.join(". ")} before responding.`, unresolvedPaths };
+  return { suggestion: `${parts.join(". ")} before responding.`, unresolvedPaths };
 }
 
 export function unresolvedPathRows(unresolvedPaths: string[]): ChatRow[] {

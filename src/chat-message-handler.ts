@@ -9,7 +9,7 @@ import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import {
   appendInputHistory,
   applyUserTurn,
-  resolveAtReferenceDirective,
+  createAtReferenceSuggestion,
   runAssistantTurn,
   unresolvedPathRows,
 } from "./chat-turn";
@@ -89,10 +89,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const userMessage = input.createMessage("user", userText);
     input.currentSession.messages.push(userMessage);
     input.currentSession.updatedAt = input.nowIso();
-    const { directive, unresolvedPaths } = await resolveAtReferenceDirective(userText, {
+    const { suggestion: fileSuggestion, unresolvedPaths } = await createAtReferenceSuggestion(userText, {
       workspace: input.currentSession.workspace,
     });
-    const directiveMessages: ChatMessage[] = directive ? [input.createMessage("system", directive)] : [];
     if (unresolvedPaths.length > 0) input.setRows((current) => [...current, ...unresolvedPathRows(unresolvedPaths)]);
     input.setPendingState({ kind: "running" });
     const controller = new AbortController();
@@ -110,11 +109,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       const suggestions: string[] = [];
       const skillSuggestion = createSkillSuggestion(userText, input.currentSession.activeSkills);
       if (skillSuggestion) suggestions.push(skillSuggestion);
+      if (fileSuggestion) suggestions.push(fileSuggestion);
 
       const turn = await runAssistantTurn({
         client: input.client,
         userText,
-        history: [...directiveMessages, ...input.currentSession.messages],
+        history: input.currentSession.messages,
         model: input.currentSession.model,
         sessionId: input.currentSession.id,
         activeSkills: input.currentSession.activeSkills,
