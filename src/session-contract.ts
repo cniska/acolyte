@@ -34,6 +34,13 @@ export const sessionTokenUsageEntrySchema = z.object({
   modelCalls: z.number().optional(),
 });
 
+export const activeSkillSchema = z.object({
+  name: z.string().min(1),
+  instructions: z.string().min(1),
+});
+
+export type ActiveSkill = z.infer<typeof activeSkillSchema>;
+
 export const sessionSchema = z.object({
   id: sessionIdSchema,
   createdAt: isoDateTimeSchema,
@@ -43,6 +50,7 @@ export const sessionSchema = z.object({
   workspace: z.string().min(1).optional(),
   workspaceName: z.string().min(1).optional(),
   workspaceBranch: z.string().min(1).optional(),
+  activeSkills: z.array(activeSkillSchema).optional(),
   messages: z.array(messageSchema),
   tokenUsage: z.array(sessionTokenUsageEntrySchema),
 });
@@ -56,6 +64,7 @@ export interface Session {
   workspace?: string;
   workspaceName?: string;
   workspaceBranch?: string;
+  activeSkills?: ActiveSkill[];
   messages: ChatMessage[];
   tokenUsage: SessionTokenUsageEntry[];
 }

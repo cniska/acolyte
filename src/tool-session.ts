@@ -1,5 +1,6 @@
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { INITIAL_MAX_STEPS, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
+import type { ActiveSkill } from "./session-contract";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
 
@@ -53,6 +54,7 @@ export type SessionContext = {
   onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
   onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
   workspaceProfile?: WorkspaceProfile;
+  activeSkills?: ActiveSkill[];
 };
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {

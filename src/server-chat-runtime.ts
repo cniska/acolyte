@@ -121,6 +121,7 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     Array.isArray(req.history) &&
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
+    (req.activeSkills === undefined || Array.isArray(req.activeSkills)) &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );

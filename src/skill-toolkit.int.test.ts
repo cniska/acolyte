@@ -12,11 +12,13 @@ type SkillActivateResult = { kind: string; name: string; source: string; instruc
 
 const { createDir, cleanupDirs } = tempDir();
 
-function createToolkitInput(workspace: string): ToolkitInput {
+type OutputEvent = { toolName: string; content: unknown; toolCallId?: string };
+
+function createToolkitInput(workspace: string, outputs?: OutputEvent[]): ToolkitInput {
   return {
     workspace,
     session: createSessionContext(),
-    onOutput: () => {},
+    onOutput: (event) => outputs?.push(event),
     onChecklist: () => {},
   };
 }
@@ -67,10 +69,11 @@ describe("skill-list", () => {
 });
 
 describe("skill-activate", () => {
-  test("returns instructions for bundled skill", async () => {
+  test("returns instructions for bundled skill and sets session activeSkill", async () => {
     const dir = createDir("acolyte-skill-activate-");
     await loadSkills(dir);
-    const toolkit = createSkillToolkit(createToolkitInput(dir));
+    const input = createToolkitInput(dir);
+    const toolkit = createSkillToolkit(input);
     const { result } = (await toolkit.activateSkill.execute({ name: "build" }, "call-4")) as {
       result: SkillActivateResult;
     };
@@ -78,6 +81,7 @@ describe("skill-activate", () => {
     expect(result.name).toBe("build");
     expect(result.source).toBe("bundled");
     expect(result.instructions.length).toBeGreaterThan(0);
+    expect(input.session.activeSkills).toEqual([{ name: "build", instructions: result.instructions }]);
   });
 
   test("returns instructions for project skill", async () => {
@@ -110,6 +114,19 @@ describe("skill-activate", () => {
     await loadSkills(dir);
     const toolkit = createSkillToolkit(createToolkitInput(dir));
     await expect(toolkit.activateSkill.execute({ name: "nonexistent" }, "call-7")).rejects.toThrow("skill not found");
+  });
+
+  test("emits tool-header output on activation", async () => {
+    const dir = createDir("acolyte-skill-activate-output-");
+    await loadSkills(dir);
+    const outputs: OutputEvent[] = [];
+    const input = createToolkitInput(dir, outputs);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ name: "build" }, "call-output");
+    const header = outputs.find((o) => (o.content as { kind: string }).kind === "tool-header");
+    expect(header).toBeDefined();
+    expect(header?.toolName).toBe("skill-activate");
+    expect((header?.content as { detail: string }).detail).toBe("build");
   });
 
   test("substitutes arguments in instructions", async () => {

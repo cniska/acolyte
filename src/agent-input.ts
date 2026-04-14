@@ -1,4 +1,5 @@
 import type { ChatRequest } from "./api";
+import { log } from "./log";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
@@ -61,10 +62,6 @@ function truncateByTokens(input: string, maxTokens: number): string {
 
 function isRelevantFileContext(content: string): boolean {
   return content.startsWith("Attached file:") || content.startsWith("Attached directory:");
-}
-
-function isSkillContext(content: string): boolean {
-  return content.startsWith("Active skill (");
 }
 
 function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
@@ -164,8 +161,6 @@ export function createAgentInput(
     inputTruncated: boolean;
     includedHistoryMessages: number;
     totalHistoryMessages: number;
-    activeSkillName?: string;
-    skillInstructionChars?: number;
   };
 } {
   const contextMaxTokens = options.contextMaxTokens;
@@ -179,16 +174,18 @@ export function createAgentInput(
   const userTokens = estimateTokens(userLine);
   let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
 
-  const skillMessages = req.history.filter((message) => message.role === "system" && isSkillContext(message.content));
-  const skillResult = collectLinesWithinBudget(
-    skillMessages,
-    usedIds,
-    remaining,
-    budget.maxSkillContextTokens,
-    budget.maxHistoryMessages,
-  );
-  lines.push(...skillResult.lines);
-  remaining -= skillResult.consumedTokens;
+  for (const skill of req.activeSkills ?? []) {
+    const truncated = truncateByTokens(skill.instructions, budget.maxSkillContextTokens);
+    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncated}`;
+    const skillTokens = estimateTokens(skillLine);
+    if (skillTokens > remaining) {
+      log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining });
+    } else {
+      if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
+      lines.push(skillLine);
+      remaining -= skillTokens;
+    }
+  }
 
   const relevantFiles = req.history.filter(
     (message) => message.role === "system" && isRelevantFileContext(message.content),
@@ -217,17 +214,6 @@ export function createAgentInput(
   const input = lines.join("\n");
   const inputTokens = estimateTokens(input);
 
-  let activeSkillName: string | undefined;
-  let skillInstructionChars: number | undefined;
-  for (const msg of skillMessages) {
-    const match = msg.content.match(/^Active skill \(([^)]+)\):/);
-    if (match) {
-      activeSkillName = match[1];
-      skillInstructionChars = msg.content.length;
-      break;
-    }
-  }
-
   // inputTokens covers only the composed input (history + user message); it
   // excludes system prompt tokens, which are accounted for separately via
   // options.systemPromptTokens and returned as usage.systemPromptTokens.
@@ -243,8 +229,6 @@ export function createAgentInput(
       inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
-      activeSkillName,
-      skillInstructionChars,
     },
   };
 }

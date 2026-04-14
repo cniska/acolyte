@@ -1,5 +1,4 @@
 import type { appConfig as appConfigType } from "./app-config";
-import type { createMessage as createMessageType } from "./chat-session";
 import { parseRepeatableFlag, parseRequiredFlag } from "./cli-args";
 import type { attachFileToSession as attachFileToSessionType } from "./cli-chat";
 import { formatRunSummary } from "./cli-format";
@@ -21,7 +20,6 @@ type SkillModeDeps = {
   attachFileToSession: typeof attachFileToSessionType;
   compactText: (text: string, budget: CompactBudget) => string;
   createClient: typeof createClientType;
-  createMessage: typeof createMessageType;
   createSession: typeof createSessionType;
   ensureLocalServer: typeof ensureLocalServerType;
   findSkillByName: typeof findSkillByNameType;
@@ -75,7 +73,6 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
     attachFileToSession,
     compactText,
     createClient,
-    createMessage,
     createSession,
     ensureLocalServer,
     findSkillByName,
@@ -127,7 +124,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(parsed.model ?? appModel);
-  session.messages.push(createMessage("system", `Active skill (${skill.name}):\n${compacted}`));
+  session.activeSkills = [{ name: skill.name, instructions: compacted }];
 
   const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, serverEntry });
   const apiUrl = apiUrlForPort(serverPort);

@@ -389,6 +389,12 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
+  test("skill-activate with name", () => {
+    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }])).toBe(
+      "Skill build",
+    );
+  });
+
   test("truncated without unit", () => {
     const items: ToolOutputPart[] = [
       { kind: "tool-header", labelKey: "tool.label.file_find", detail: "*.ts" },
@@ -652,5 +658,9 @@ describe("tool output TUI — chat (Ink rendering)", () => {
             … +5 lines
       `),
     );
+  });
+
+  test("skill-activate with name", () => {
+    expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }])).toBe("• Skill build");
   });
 });

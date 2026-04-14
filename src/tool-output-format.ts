@@ -21,6 +21,7 @@ const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
   "git-add": "tool.label.git_add",
   "git-commit": "tool.label.git_commit",
   "shell-run": "tool.label.shell_run",
+  "skill-activate": "tool.label.skill",
   "web-search": "tool.label.web_search",
   "web-fetch": "tool.label.web_fetch",
   "code-scan": "tool.label.code_scan",

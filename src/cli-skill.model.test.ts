@@ -11,7 +11,6 @@ function createSkillDeps(): { deps: SkillDeps; calls: { errors: string[]; dims: 
     attachFileToSession: async () => undefined as never,
     compactText: (t) => t,
     createClient: () => ({}) as never,
-    createMessage: (_role: string, _content: string) => ({}) as never,
     createSession: (model?: string) =>
       ({ id: "sess_123", title: "skill", createdAt: "", updatedAt: "", messages: [], tokenUsage: [], model }) as never,
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),

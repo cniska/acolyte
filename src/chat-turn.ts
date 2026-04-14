@@ -8,7 +8,7 @@ import { formatDuration } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import type { Session, SessionTokenUsageEntry } from "./session-contract";
+import type { ActiveSkill, Session, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
@@ -87,6 +87,7 @@ type RunAssistantTurnParams = {
   history: ChatMessage[];
   model: string;
   sessionId: string;
+  activeSkills?: ActiveSkill[];
   workspace?: string;
   useMemory?: boolean;
   signal?: AbortSignal;
@@ -106,6 +107,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       history: params.history,
       model: params.model,
       sessionId: params.sessionId,
+      activeSkills: params.activeSkills,
       useMemory: params.useMemory,
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },

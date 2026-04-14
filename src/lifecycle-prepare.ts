@@ -49,10 +49,9 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     history_messages: input.request.history.length,
   });
 
-  if (requestInput.usage.activeSkillName) {
+  if (input.request.activeSkills?.length) {
     input.debug("lifecycle.skill.context", {
-      skill_name: requestInput.usage.activeSkillName,
-      instruction_chars: requestInput.usage.skillInstructionChars ?? 0,
+      skill_names: input.request.activeSkills.map((s) => s.name),
     });
   }
 
