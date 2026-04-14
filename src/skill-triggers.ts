@@ -35,8 +35,9 @@ export function matchSkillTriggers(message: string, activeSkills?: ActiveSkill[]
     .map(({ name }) => name);
 }
 
-export function createSkillSuggestions(message: string, activeSkills?: ActiveSkill[]): string[] {
-  return matchSkillTriggers(message, activeSkills).map(
-    (name) => `Use \`skill-activate\` to load \`${name}\` before starting.`,
-  );
+export function createSkillSuggestion(message: string, activeSkills?: ActiveSkill[]): string | null {
+  const matches = matchSkillTriggers(message, activeSkills);
+  if (matches.length === 0) return null;
+  const names = matches.map((n) => `\`${n}\``).join(", ");
+  return `Use \`skill-activate\` to load ${names} before starting.`;
 }

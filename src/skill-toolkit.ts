@@ -47,7 +47,7 @@ function createActivateSkillTool(input: ToolkitInput) {
     category: "meta",
     description: "Activate one or more skills by name to load structured guidance into context.",
     instruction:
-      "Use `skill-activate` when you recognize that a skill's structured guidance would help with the current task. Use `skill-list` first to discover available skills.",
+      "Use `skill-activate` with one or more skill names to load structured guidance. Use `skill-list` to discover project-specific skills.",
     inputSchema: z.object({
       names: z.array(z.string().min(1)).min(1),
       args: z.string().optional(),
