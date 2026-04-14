@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { isToolOutput } from "./chat-contract";
 import { addActiveSkill, skillActivationRow } from "./chat-skill-activator";
-import type { ActiveSkill } from "./session-contract";
+import type { ActiveSkill } from "./skill-contract";
 
 describe("skillActivationRow", () => {
   test("creates a tool row with skill header", () => {

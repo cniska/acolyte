@@ -1,13 +1,12 @@
 import { z } from "zod";
 import { addActiveSkill } from "./chat-skill-activator";
 import { compactText } from "./compact-text";
-import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET, type SkillSource } from "./skills";
+import { skillSourceSchema } from "./skill-contract";
+import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { toolLabelKey } from "./tool-output-format";
-
-const skillSourceSchema = z.enum(["bundled", "project"]) satisfies z.ZodType<SkillSource>;
 
 function createListSkillsTool(input: ToolkitInput) {
   return createTool({

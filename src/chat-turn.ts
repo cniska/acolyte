@@ -8,8 +8,9 @@ import { formatDuration } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import type { ActiveSkill, Session, SessionTokenUsageEntry } from "./session-contract";
+import type { Session, SessionTokenUsageEntry } from "./session-contract";
 import { createId } from "./short-id";
+import type { ActiveSkill } from "./skill-contract";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 const AVERAGE_CHARS_PER_TOKEN = 4;

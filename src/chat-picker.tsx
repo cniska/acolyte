@@ -5,7 +5,7 @@ import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
-import type { SkillMeta } from "./skills";
+import type { SkillMeta } from "./skill-contract";
 import { Box, Text } from "./tui";
 
 export type ModelPickerItem = {

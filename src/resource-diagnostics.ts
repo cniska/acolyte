@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { configDir, type Env } from "./paths";
-import { getLoadedSkills, getSkillLoadDiagnostics } from "./skills";
+import { getLoadedSkills, getSkillLoadDiagnostics } from "./skill-ops";
 import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
 

@@ -20,7 +20,7 @@ import { nowIso } from "./datetime";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { loadSkills } from "./skills";
+import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;

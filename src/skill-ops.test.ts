@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { substituteArguments, validateSkillName } from "./skills";
+import { validateSkillName } from "./skill-contract";
+import { substituteArguments } from "./skill-ops";
 
 describe("validateSkillName", () => {
   test("accepts valid names", () => {

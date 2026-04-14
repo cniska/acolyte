@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
-import { loadSkills, resetSkillCache } from "./skills";
+import { loadSkills, resetSkillCache } from "./skill-ops";
 import { createCommandContext, createSession, createSessionState, tempDir, writeSkill } from "./test-utils";
 
 async function runCommand(text: string, overrides: Parameters<typeof createCommandContext>[1] = {}) {

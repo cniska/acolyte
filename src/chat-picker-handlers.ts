@@ -8,7 +8,7 @@ import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import { loadSkills } from "./skills";
+import { loadSkills } from "./skill-ops";
 
 export type CreatePickerHandlersInput = {
   sessionState: SessionState;

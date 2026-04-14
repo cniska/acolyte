@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { isKnownSlashToken, shouldAutocompleteSlashSubmit, slashCommandHelp, suggestSlashCommands } from "./chat-slash";
-import { resetSkillCache } from "./skills";
+import { resetSkillCache } from "./skill-ops";
 
 beforeEach(() => resetSkillCache());
 

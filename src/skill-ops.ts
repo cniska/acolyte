@@ -3,54 +3,19 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
 import type { CompactBudget } from "./compact-text";
+import {
+  createEmptySkillLoadDiagnostics,
+  type SkillLoadDiagnostics,
+  type SkillMeta,
+  validateSkillName,
+} from "./skill-contract";
 
 export const SKILL_BUDGET: CompactBudget = { maxChars: 4_000, maxLines: 120 };
 
-export type SkillSource = "bundled" | "project";
-
-export interface SkillMeta {
-  name: string;
-  description: string;
-  path: string;
-  source: SkillSource;
-}
-
-export interface SkillLoadDiagnostics {
-  scannedDirs: number;
-  loaded: number;
-  invalid: number;
-  duplicates: number;
-  readErrors: number;
-  missingSkillFiles: number;
-  scannedAt: string | null;
-}
-
-interface ParsedFrontmatter {
+type ParsedFrontmatter = {
   name?: string;
   description?: string;
-}
-
-const SKILL_NAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-
-function createEmptySkillLoadDiagnostics(): SkillLoadDiagnostics {
-  return {
-    scannedDirs: 0,
-    loaded: 0,
-    invalid: 0,
-    duplicates: 0,
-    readErrors: 0,
-    missingSkillFiles: 0,
-    scannedAt: null,
-  };
-}
-
-export function validateSkillName(name: string, dirName: string): string | null {
-  if (name.length === 0 || name.length > 64) return `name must be 1-64 characters (got ${name.length})`;
-  if (!SKILL_NAME_RE.test(name)) return `name contains invalid characters: "${name}"`;
-  if (name.includes("--")) return `name must not contain consecutive hyphens: "${name}"`;
-  if (name !== dirName) return `name "${name}" must match directory "${dirName}"`;
-  return null;
-}
+};
 
 function parseFrontmatter(input: string): ParsedFrontmatter | null {
   const trimmed = input.trimStart();

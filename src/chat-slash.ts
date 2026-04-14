@@ -1,5 +1,5 @@
 import { t } from "./i18n";
-import { getLoadedSkills } from "./skills";
+import { getLoadedSkills } from "./skill-ops";
 
 const CHAT_SLASH_COMMANDS = [
   "/new",

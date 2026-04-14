@@ -3,6 +3,7 @@ import type { TokenUsage } from "./api";
 import { type ChatMessage, type MessageId, messageIdSchema, messageSchema } from "./chat-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
+import { type ActiveSkill, activeSkillSchema } from "./skill-contract";
 
 export const sessionIdSchema = domainIdSchema("sess");
 export type SessionId = z.infer<typeof sessionIdSchema>;
@@ -35,13 +36,6 @@ export const sessionTokenUsageEntrySchema = z.object({
 
   modelCalls: z.number().optional(),
 });
-
-export const activeSkillSchema = z.object({
-  name: z.string().min(1),
-  instructions: z.string().min(1),
-});
-
-export type ActiveSkill = z.infer<typeof activeSkillSchema>;
 
 export const sessionSchema = z.object({
   id: sessionIdSchema,
