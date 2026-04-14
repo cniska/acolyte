@@ -1,5 +1,6 @@
 import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
+import type { ActiveSkill } from "./session-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatTokenCount } from "./chat-format";
@@ -87,6 +88,7 @@ type RunAssistantTurnParams = {
   history: ChatMessage[];
   model: string;
   sessionId: string;
+  activeSkill?: ActiveSkill;
   workspace?: string;
   useMemory?: boolean;
   signal?: AbortSignal;
@@ -106,6 +108,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       history: params.history,
       model: params.model,
       sessionId: params.sessionId,
+      activeSkill: params.activeSkill,
       useMemory: params.useMemory,
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },

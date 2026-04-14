@@ -63,10 +63,6 @@ function isRelevantFileContext(content: string): boolean {
   return content.startsWith("Attached file:") || content.startsWith("Attached directory:");
 }
 
-function isSkillContext(content: string): boolean {
-  return content.startsWith("Active skill (");
-}
-
 function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
   return message.kind === "tool_payload";
 }
@@ -179,16 +175,14 @@ export function createAgentInput(
   const userTokens = estimateTokens(userLine);
   let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
 
-  const skillMessages = req.history.filter((message) => message.role === "system" && isSkillContext(message.content));
-  const skillResult = collectLinesWithinBudget(
-    skillMessages,
-    usedIds,
-    remaining,
-    budget.maxSkillContextTokens,
-    budget.maxHistoryMessages,
-  );
-  lines.push(...skillResult.lines);
-  remaining -= skillResult.consumedTokens;
+  if (req.activeSkill) {
+    const skillLine = `SYSTEM: Active skill (${req.activeSkill.name}):\n${truncateByTokens(req.activeSkill.instructions, budget.maxSkillContextTokens)}`;
+    const skillTokens = estimateTokens(skillLine);
+    if (skillTokens <= remaining) {
+      lines.push(skillLine);
+      remaining -= skillTokens;
+    }
+  }
 
   const relevantFiles = req.history.filter(
     (message) => message.role === "system" && isRelevantFileContext(message.content),
@@ -217,17 +211,6 @@ export function createAgentInput(
   const input = lines.join("\n");
   const inputTokens = estimateTokens(input);
 
-  let activeSkillName: string | undefined;
-  let skillInstructionChars: number | undefined;
-  for (const msg of skillMessages) {
-    const match = msg.content.match(/^Active skill \(([^)]+)\):/);
-    if (match) {
-      activeSkillName = match[1];
-      skillInstructionChars = msg.content.length;
-      break;
-    }
-  }
-
   // inputTokens covers only the composed input (history + user message); it
   // excludes system prompt tokens, which are accounted for separately via
   // options.systemPromptTokens and returned as usage.systemPromptTokens.
@@ -243,8 +226,8 @@ export function createAgentInput(
       inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
-      activeSkillName,
-      skillInstructionChars,
+      activeSkillName: req.activeSkill?.name,
+      skillInstructionChars: req.activeSkill?.instructions.length,
     },
   };
 }
