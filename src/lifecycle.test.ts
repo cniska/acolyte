@@ -2,19 +2,14 @@ import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
 import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps } from "./test-utils";
+import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
     const deps = createLifecycleDeps();
 
     const response = await runLifecycle(
-      {
-        request: { model: "gpt-5-mini", message: "test", history: [] },
-        soulPrompt: "SOUL",
-        workspace: process.cwd(),
-        taskId: "task_test",
-      },
+      createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" }),
       deps,
     );
 
@@ -37,11 +32,11 @@ describe("runLifecycle", () => {
     });
 
     const response = await runLifecycle(
-      {
+      createLifecycleInput({
         request: { model: "gpt-5-mini", message: "test", history: [] },
         soulPrompt: "SOUL",
         workspace: process.cwd(),
-      },
+      }),
       deps,
     );
 
@@ -71,11 +66,11 @@ describe("runLifecycle", () => {
     });
 
     const response = await runLifecycle(
-      {
+      createLifecycleInput({
         request: { model: "gpt-5-mini", message: "test", history: [] },
         soulPrompt: "SOUL",
         workspace: process.cwd(),
-      },
+      }),
       deps,
     );
 
@@ -205,12 +200,7 @@ describe("scheduleMemoryCommit", () => {
 });
 
 describe("runLifecycle yield", () => {
-  const baseInput = {
-    request: { model: "gpt-5-mini" as const, message: "test", history: [] as never[] },
-    soulPrompt: "SOUL",
-    workspace: process.cwd(),
-    taskId: "task_test",
-  };
+  const baseInput = createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" });
 
   test("skips acceptResult when runControl yields", async () => {
     const deps = createLifecycleDeps();

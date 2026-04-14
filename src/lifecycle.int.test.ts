@@ -12,7 +12,7 @@ import {
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps, tempDir } from "./test-utils";
+import { createLifecycleDeps, createLifecycleInput, tempDir } from "./test-utils";
 import { runTool } from "./tool-execution";
 import type { SessionContext } from "./tool-session";
 import { listUndoCheckpoints } from "./undo-checkpoints";
@@ -49,11 +49,7 @@ function setupFakeProvider(handler: (ctx: FakeProviderRequestContext) => Record<
 }
 
 function run(message: string) {
-  return runLifecycle({
-    request: { model: "gpt-5-mini", message, history: [] },
-    soulPrompt: "",
-    workspace,
-  });
+  return runLifecycle(createLifecycleInput({ request: { model: "gpt-5-mini", message, history: [] }, workspace }));
 }
 
 async function writeExecutableScript(name: string, body: string): Promise<string> {
@@ -158,14 +154,13 @@ printf '%s\n' "$@" > "${formatLog}"
       return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 6.\n\n@signal done");
     });
 
-    await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 6", history: [] },
-      soulPrompt: "",
-      workspace,
-      lifecyclePolicy: {
-        formatCommand: { bin: "/bin/sh", args: [formatScript, "$FILES"] },
-      },
-    });
+    await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "update x to 6", history: [] },
+        workspace,
+        lifecyclePolicy: { formatCommand: { bin: "/bin/sh", args: [formatScript, "$FILES"] } },
+      }),
+    );
 
     expect(turnCount).toBe(2);
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
@@ -201,14 +196,13 @@ exit 1
       return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
     });
 
-    const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "update x to 7", history: [] },
-      soulPrompt: "",
-      workspace,
-      lifecyclePolicy: {
-        lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] },
-      },
-    });
+    const reply = await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "update x to 7", history: [] },
+        workspace,
+        lifecyclePolicy: { lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] } },
+      }),
+    );
 
     expect(turnCount).toBe(2);
     expect(reply.output).toContain("Updated x to 7.");
@@ -220,13 +214,14 @@ exit 1
     });
 
     const debugEvents: string[] = [];
-    const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "hi", history: [] },
-      soulPrompt: "",
-      workspace,
-      runControl: createRunControl({ shouldYield: () => true }),
-      onDebug: (entry) => debugEvents.push(entry.event),
-    });
+    const reply = await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "hi", history: [] },
+        workspace,
+        runControl: createRunControl({ shouldYield: () => true }),
+        onDebug: (entry) => debugEvents.push(entry.event),
+      }),
+    );
 
     expect(reply.output).toContain("Hello there.");
     expect(debugEvents).toContain("lifecycle.yield");
@@ -237,12 +232,13 @@ exit 1
       return createMessagePayload(ctx.model, ctx.responseCounter, "  ");
     });
 
-    const reply = await runLifecycle({
-      request: { model: "gpt-5-mini", message: "hi", history: [] },
-      soulPrompt: "",
-      workspace,
-      runControl: createRunControl({ shouldYield: () => true }),
-    });
+    const reply = await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "hi", history: [] },
+        workspace,
+        runControl: createRunControl({ shouldYield: () => true }),
+      }),
+    );
 
     expect(reply.output).toBe("Yielding to a newer pending message.");
   });
@@ -264,22 +260,12 @@ exit 1
     });
 
     await runLifecycle(
-      {
-        request: {
-          model: "gpt-5-mini",
-          message: "test",
-          history: [],
-          sessionId: "sess_undo",
-        },
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "test", history: [], sessionId: "sess_undo" },
         soulPrompt: "SOUL",
         workspace: undoWorkspace,
-        features: {
-          syncAgents: false,
-          undoCheckpoints: true,
-          parallelWorkspaces: false,
-          cloudSync: false,
-        },
-      },
+        features: { syncAgents: false, undoCheckpoints: true, parallelWorkspaces: false, cloudSync: false, mcp: false },
+      }),
       deps,
     );
 
