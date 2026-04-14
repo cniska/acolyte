@@ -62,6 +62,22 @@ describe("createAgentInput", () => {
     expect(input).toContain("keep slices small.");
   });
 
+  test("reports provided tool token reservation in usage", () => {
+    const req: ChatRequest = {
+      model: "gpt-5-mini",
+      message: "use tools",
+      history: [],
+    };
+
+    const { usage } = createAgentInput(req, {
+      ...defaultOptions,
+      toolTokens: 321,
+      systemPromptTokens: 123,
+    });
+    expect(usage.toolTokens).toBe(321);
+    expect(usage.systemPromptTokens).toBe(123);
+  });
+
   test("keeps pinned skill context before recent chat when budget is tight", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
