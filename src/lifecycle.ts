@@ -1,4 +1,4 @@
-import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
+import { ensureRealTokenEncoder } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
@@ -17,7 +17,7 @@ import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
-import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
+import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { WRITE_TOOL_SET } from "./tool-registry";
@@ -173,10 +173,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const distillInput = [...messages, { role: "assistant", content: output }]
-    .map((m) => `${m.role}: ${m.content}`)
-    .join("\n\n");
-  const memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
+  const memoryTokens = estimateDistillPromptTokens(messages, output);
   ctx.promptUsage.memoryTokens = memoryTokens;
   ctx.promptBreakdownTotals.memoryTokens = memoryTokens;
   scheduleMemoryCommit(
