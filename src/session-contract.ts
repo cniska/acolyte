@@ -16,13 +16,13 @@ export const tokenUsageSchema = z.object({
 });
 
 export const promptBreakdownSchema = z.object({
-  budgetTokens: z.number(),
-  usedTokens: z.number(),
-  systemTokens: z.number(),
-  toolTokens: z.number(),
+  budgetTokens: z.number().default(0),
+  usedTokens: z.number().default(0),
+  systemTokens: z.number().default(0),
+  toolTokens: z.number().default(0),
   skillTokens: z.number().default(0),
-  memoryTokens: z.number(),
-  messageTokens: z.number(),
+  memoryTokens: z.number().default(0),
+  messageTokens: z.number().default(0),
 });
 
 export type PromptBreakdown = z.infer<typeof promptBreakdownSchema>;

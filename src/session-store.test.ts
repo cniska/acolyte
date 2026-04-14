@@ -52,6 +52,43 @@ describe("storage", () => {
     expect(normalized.sessions[0]?.tokenUsage[0]?.modelCalls).toBe(2);
   });
 
+  test("parseSessionState backfills missing promptBreakdown skillTokens", () => {
+    const normalized = parseSessionState({
+      activeSessionId: "sess_1",
+      sessions: [
+        {
+          id: "sess_1",
+          createdAt: "2026-02-24T00:00:00.000Z",
+          updatedAt: "2026-02-24T00:00:00.000Z",
+          model: "gpt-5-mini",
+          title: "New Session",
+          messages: [],
+          tokenUsage: [
+            {
+              id: "msg_1",
+              usage: {
+                inputTokens: 10,
+                outputTokens: 5,
+                totalTokens: 15,
+              },
+              promptBreakdown: {
+                budgetTokens: 100,
+                usedTokens: 10,
+                systemTokens: 4,
+                toolTokens: 3,
+                memoryTokens: 1,
+                messageTokens: 2,
+              },
+            },
+          ],
+        },
+      ] as never,
+    });
+
+    expect(normalized.sessions).toHaveLength(1);
+    expect(normalized.sessions[0]?.tokenUsage[0]?.promptBreakdown?.skillTokens).toBe(0);
+  });
+
   test("parseSessionState defaults missing message kind to text", () => {
     const normalized = parseSessionState({
       activeSessionId: "sess_1",
