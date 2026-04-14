@@ -1,6 +1,5 @@
 import { createAgentInput, estimateTokens } from "./agent-input";
 import type { PhasePrepareInput, PhasePrepareResult } from "./lifecycle-contract";
-import { createSkillSuggestion } from "./skill-triggers";
 import { toolsForAgent } from "./tool-registry";
 
 /** Approximate overhead for BASE_INSTRUCTIONS + runtime instructions. */
@@ -39,7 +38,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
       maxSkillContextTokens: policy.maxSkillContextTokens,
     },
   });
-  let baseAgentInput = requestInput.input;
+  const baseAgentInput = requestInput.input;
 
   session.toolTimeoutMs = input.policy.toolTimeoutMs;
 
@@ -53,12 +52,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     input.debug("lifecycle.skill.context", {
       skill_names: input.request.activeSkills.map((s) => s.name),
     });
-  }
-
-  const skillSuggestion = createSkillSuggestion(input.request.message, input.request.activeSkills);
-  if (skillSuggestion) {
-    baseAgentInput = `${skillSuggestion}\n\n${baseAgentInput}`;
-    input.debug("lifecycle.skill.suggestion", { suggestion: skillSuggestion });
   }
 
   return { session, tools, baseAgentInput, promptUsage: requestInput.usage };

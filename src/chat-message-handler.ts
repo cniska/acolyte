@@ -19,6 +19,7 @@ import { log } from "./log";
 import { addMemory } from "./memory-ops";
 import { palette } from "./palette";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import { createSkillSuggestion } from "./skill-triggers";
 
 type CreateMessageHandlerInput = {
   client: Client;
@@ -111,6 +112,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     let keepPendingForRemoteTask = false;
 
     try {
+      const suggestions: string[] = [];
+      const skillSuggestion = createSkillSuggestion(userText, input.currentSession.activeSkills);
+      if (skillSuggestion) suggestions.push(skillSuggestion);
+
       const turn = await runAssistantTurn({
         client: input.client,
         userText,
@@ -118,6 +123,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         model: input.currentSession.model,
         sessionId: input.currentSession.id,
         activeSkills: input.currentSession.activeSkills,
+        suggestions,
         workspace: input.currentSession.workspace,
         useMemory: input.useMemory,
         signal: controller.signal,

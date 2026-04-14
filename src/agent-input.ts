@@ -214,6 +214,14 @@ export function createAgentInput(
     }
   }
 
+  for (const suggestion of req.suggestions ?? []) {
+    const suggestionTokens = estimateTokens(suggestion);
+    if (suggestionTokens <= tokenBudget.remaining()) {
+      lines.push(suggestion);
+      tokenBudget.consume(suggestionTokens);
+    }
+  }
+
   const relevantFiles = req.history.filter(
     (message) => message.role === "system" && isRelevantFileContext(message.content),
   );
