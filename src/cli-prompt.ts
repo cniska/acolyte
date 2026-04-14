@@ -10,6 +10,7 @@ import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
+import { createSkillSuggestion } from "./skill-triggers";
 import { createToolOutputState, formatToolOutput } from "./tool-output-content";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
@@ -96,6 +97,10 @@ export async function handlePrompt(
     const snapshotByCallId = new Map<string, string>();
     let hasPrintedToolProgress = false;
 
+    const suggestions: string[] = [];
+    const skillSuggestion = createSkillSuggestion(prompt, session.activeSkills);
+    if (skillSuggestion) suggestions.push(skillSuggestion);
+
     const reply = await client.replyStream({
       request: {
         message: prompt,
@@ -103,6 +108,7 @@ export async function handlePrompt(
         model: session.model,
         sessionId: session.id,
         activeSkills: session.activeSkills,
+        suggestions,
         resourceId: options?.resourceId,
         ...createWorkspaceSpecifier(options?.workspace),
       },

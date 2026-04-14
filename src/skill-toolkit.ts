@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { addActiveSkill } from "./chat-skill-activator";
 import { compactText } from "./compact-text";
-import { skillSourceSchema } from "./skill-contract";
+import { type SkillSource, skillSourceSchema } from "./skill-contract";
 import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -45,38 +45,41 @@ function createActivateSkillTool(input: ToolkitInput) {
     id: "skill-activate",
     toolkit: "skill",
     category: "meta",
-    description: "Activate a skill by name to load its structured guidance into context.",
+    description: "Activate one or more skills by name to load structured guidance into context.",
     instruction:
-      "Use `skill-activate` when you recognize that a skill's structured guidance would help with the current task. Use `skill-list` first to discover available skills.",
+      "Use `skill-activate` with one or more skill names to load structured guidance. Use `skill-list` to discover project-specific skills.",
     inputSchema: z.object({
-      name: z.string().min(1),
+      names: z.array(z.string().min(1)).min(1),
       args: z.string().optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("skill-activate"),
-      name: z.string(),
-      source: skillSourceSchema,
-      instructions: z.string(),
+      activated: z.array(
+        z.object({
+          name: z.string(),
+          source: skillSourceSchema,
+          instructions: z.string(),
+        }),
+      ),
     }),
-    outputBudget: { maxChars: 4_000, maxLines: 120 },
+    outputBudget: { maxChars: 8_000, maxLines: 240 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-activate", toolCallId, toolInput, async (callId) => {
-        const skill = findSkillByName(toolInput.name);
-        if (!skill) throw new Error(`skill not found: "${toolInput.name}"`);
-        input.onOutput({
-          toolName: "skill-activate",
-          content: { kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skill.name },
-          toolCallId: callId,
-        });
-        const raw = await readSkillInstructions(skill.path, toolInput.args);
-        const instructions = compactText(raw, SKILL_BUDGET);
-        addActiveSkill(input.session, { name: skill.name, instructions });
-        return {
-          kind: "skill-activate" as const,
-          name: skill.name,
-          source: skill.source,
-          instructions,
-        };
+        const activated: { name: string; source: SkillSource; instructions: string }[] = [];
+        for (const skillName of toolInput.names) {
+          const skill = findSkillByName(skillName);
+          if (!skill) throw new Error(`skill not found: "${skillName}"`);
+          input.onOutput({
+            toolName: "skill-activate",
+            content: { kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skill.name },
+            toolCallId: callId,
+          });
+          const raw = await readSkillInstructions(skill.path, toolInput.args);
+          const instructions = compactText(raw, SKILL_BUDGET);
+          addActiveSkill(input.session, { name: skill.name, instructions });
+          activated.push({ name: skill.name, source: skill.source, instructions });
+        }
+        return { kind: "skill-activate" as const, activated };
       });
     },
   });

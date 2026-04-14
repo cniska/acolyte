@@ -23,6 +23,7 @@ const chatRequestSchema = z
     sessionId: sessionIdSchema.optional(),
     resourceId: resourceIdSchema.optional(),
     activeSkills: z.array(activeSkillSchema).optional(),
+    suggestions: z.array(z.string().max(1_000)).max(10).optional(),
     useMemory: z.boolean().optional(),
     workspace: z.string().max(4096).optional(),
   })
