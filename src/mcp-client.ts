@@ -18,6 +18,11 @@ import type { SessionContext } from "./tool-session";
 // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
 type AnyToolDefinition = ToolDefinition<any, any>;
 
+const MCP_CLIENT_INFO = { name: "acolyte", version: "1.0" } as const;
+const MCP_CONNECT_TIMEOUT_MS = 10_000;
+const MCP_DESCRIPTION_MAX_CHARS = 512;
+const STDIO_ENV_ALLOWLIST = ["PATH", "HOME", "SHELL", "TERM", "USER", "LANG", "LC_ALL", "TMPDIR", "XDG_RUNTIME_DIR"];
+
 export type McpToolListing = {
   serverName: string;
   config: McpServerConfig;
@@ -31,10 +36,27 @@ function createTransport(config: McpServerConfig) {
   return createHttpTransport(config);
 }
 
+function withDeadline<T>(task: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    task.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 function createStdioTransport(config: McpStdioServerConfig) {
   const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined) env[k] = v;
+  for (const key of STDIO_ENV_ALLOWLIST) {
+    const val = process.env[key];
+    if (val !== undefined) env[key] = val;
   }
   if (config.env) Object.assign(env, config.env);
   return new StdioClientTransport({
@@ -42,6 +64,22 @@ function createStdioTransport(config: McpStdioServerConfig) {
     args: config.args ?? [],
     env,
   });
+}
+
+export function isInsecureRemoteHttp(config: McpServerConfig): boolean {
+  if (config.type !== "http") return false;
+  const url = new URL(config.url);
+  if (url.protocol === "https:") return false;
+  const host = url.hostname;
+  return host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && host !== "[::1]";
+}
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — stripping control chars from untrusted MCP descriptions
+const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+
+export function sanitizeDescription(raw: string | undefined, fallback: string): string {
+  const text = (raw ?? fallback).replace(CONTROL_CHAR_RE, "");
+  return text.length > MCP_DESCRIPTION_MAX_CHARS ? `${text.slice(0, MCP_DESCRIPTION_MAX_CHARS)}...` : text;
 }
 
 function createHttpTransport(config: McpHttpServerConfig) {
@@ -88,12 +126,13 @@ function bindMcpToolDefinition(
 ): AnyToolDefinition {
   const toolId = buildToolId(serverName, mcpTool.name);
   const rawInputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
+  const description = sanitizeDescription(mcpTool.description, `Call ${mcpTool.name} on MCP server "${serverName}"`);
 
   return createTool({
     id: toolId,
     toolkit: "mcp",
     category: "network",
-    description: mcpTool.description ?? `Call ${mcpTool.name} on MCP server "${serverName}"`,
+    description,
     instruction: `Use ${toolId} to call the "${mcpTool.name}" tool on the "${serverName}" MCP server.`,
     inputSchema: z.object({}).passthrough(),
     rawInputSchema,
@@ -105,7 +144,7 @@ function bindMcpToolDefinition(
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(session, toolId, toolCallId, toolInput as Record<string, unknown>, async () => {
-        const client = new Client({ name: "acolyte", version: "1.0" });
+        const client = new Client(MCP_CLIENT_INFO);
         const transport = createTransport(config);
         try {
           await client.connect(transport);
@@ -133,15 +172,19 @@ export async function listMcpTools(workspace: string): Promise<McpToolListing[]>
   const listings: McpToolListing[] = [];
 
   for (const [serverName, serverConfig] of Object.entries(config.servers)) {
-    const client = new Client({ name: "acolyte", version: "1.0" });
+    if (isInsecureRemoteHttp(serverConfig)) {
+      log.warn("mcp.server.insecure_http", { server: serverName, url: (serverConfig as McpHttpServerConfig).url });
+      continue;
+    }
+    const client = new Client(MCP_CLIENT_INFO);
     const transport = createTransport(serverConfig);
     try {
-      await client.connect(transport);
-      const { tools } = await client.listTools();
-      await client.close();
+      await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
+      const { tools } = await withDeadline(client.listTools(), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/listTools`);
       listings.push({ serverName, config: serverConfig, tools });
     } catch (error) {
       log.warn("mcp.server.unavailable", { server: serverName, error: errorMessage(error) });
+    } finally {
       try {
         await client.close();
       } catch {
@@ -164,7 +207,7 @@ export function bindMcpTools(
   for (const { serverName, config, tools } of listings) {
     for (const mcpTool of tools) {
       const toolId = buildToolId(serverName, mcpTool.name);
-      if (nativeToolIds.has(toolId)) {
+      if (nativeToolIds.has(toolId) || toolId in toolMap) {
         log.warn("mcp.tool.collision", { server: serverName, tool: toolId });
         continue;
       }

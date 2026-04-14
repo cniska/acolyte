@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { formatMcpResult } from "./mcp-client";
+import { formatMcpResult, isInsecureRemoteHttp, sanitizeDescription } from "./mcp-client";
+import type { McpServerConfig } from "./mcp-contract";
 
 describe("formatMcpResult", () => {
   test("concatenates text content blocks", () => {
@@ -54,5 +55,62 @@ describe("formatMcpResult", () => {
   test("returns empty string for empty content", () => {
     const result = formatMcpResult({ content: [] });
     expect(result).toBe("");
+  });
+});
+
+describe("isInsecureRemoteHttp", () => {
+  test("returns true for http:// to remote host", () => {
+    const config: McpServerConfig = { type: "http", url: "http://external.example.com/mcp" };
+    expect(isInsecureRemoteHttp(config)).toBe(true);
+  });
+
+  test("returns false for https://", () => {
+    const config: McpServerConfig = { type: "http", url: "https://external.example.com/mcp" };
+    expect(isInsecureRemoteHttp(config)).toBe(false);
+  });
+
+  test("returns false for http://localhost", () => {
+    const config: McpServerConfig = { type: "http", url: "http://localhost:3000/mcp" };
+    expect(isInsecureRemoteHttp(config)).toBe(false);
+  });
+
+  test("returns false for http://127.0.0.1", () => {
+    const config: McpServerConfig = { type: "http", url: "http://127.0.0.1:3000/mcp" };
+    expect(isInsecureRemoteHttp(config)).toBe(false);
+  });
+
+  test("returns false for http://[::1]", () => {
+    const config: McpServerConfig = { type: "http", url: "http://[::1]:3000/mcp" };
+    expect(isInsecureRemoteHttp(config)).toBe(false);
+  });
+
+  test("returns false for stdio config", () => {
+    const config: McpServerConfig = { type: "stdio", command: "npx" };
+    expect(isInsecureRemoteHttp(config)).toBe(false);
+  });
+});
+
+describe("sanitizeDescription", () => {
+  test("returns raw text when within limit", () => {
+    expect(sanitizeDescription("hello world", "fallback")).toBe("hello world");
+  });
+
+  test("uses fallback when raw is undefined", () => {
+    expect(sanitizeDescription(undefined, "fallback")).toBe("fallback");
+  });
+
+  test("truncates text exceeding 512 chars", () => {
+    const long = "a".repeat(600);
+    const result = sanitizeDescription(long, "");
+    expect(result.length).toBe(515); // 512 + "..."
+    expect(result).toEndWith("...");
+  });
+
+  test("strips control characters", () => {
+    expect(sanitizeDescription("hello\x00\x07\x1Fworld", "")).toBe("helloworld");
+  });
+
+  test("preserves newlines and tabs", () => {
+    expect(sanitizeDescription("line1\nline2\ttab", "")).toBe("line1\nline2\ttab");
   });
 });
