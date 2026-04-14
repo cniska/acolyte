@@ -49,9 +49,7 @@ function setupFakeProvider(handler: (ctx: FakeProviderRequestContext) => Record<
 }
 
 function run(message: string) {
-  return runLifecycle(
-    createLifecycleInput({ request: { model: "gpt-5-mini", message, history: [], useMemory: false }, workspace }),
-  );
+  return runLifecycle(createLifecycleInput({ request: { model: "gpt-5-mini", message, history: [] }, workspace }));
 }
 
 async function writeExecutableScript(name: string, body: string): Promise<string> {
@@ -158,7 +156,7 @@ printf '%s\n' "$@" > "${formatLog}"
 
     await runLifecycle(
       createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "update x to 6", history: [], useMemory: false },
+        request: { model: "gpt-5-mini", message: "update x to 6", history: [] },
         workspace,
         lifecyclePolicy: { formatCommand: { bin: "/bin/sh", args: [formatScript, "$FILES"] } },
       }),
@@ -200,7 +198,7 @@ exit 1
 
     const reply = await runLifecycle(
       createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "update x to 7", history: [], useMemory: false },
+        request: { model: "gpt-5-mini", message: "update x to 7", history: [] },
         workspace,
         lifecyclePolicy: { lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] } },
       }),
@@ -218,7 +216,7 @@ exit 1
     const debugEvents: string[] = [];
     const reply = await runLifecycle(
       createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "hi", history: [], useMemory: false },
+        request: { model: "gpt-5-mini", message: "hi", history: [] },
         workspace,
         runControl: createRunControl({ shouldYield: () => true }),
         onDebug: (entry) => debugEvents.push(entry.event),
@@ -236,7 +234,7 @@ exit 1
 
     const reply = await runLifecycle(
       createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "hi", history: [], useMemory: false },
+        request: { model: "gpt-5-mini", message: "hi", history: [] },
         workspace,
         runControl: createRunControl({ shouldYield: () => true }),
       }),
@@ -263,7 +261,7 @@ exit 1
 
     await runLifecycle(
       createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false, sessionId: "sess_undo" },
+        request: { model: "gpt-5-mini", message: "test", history: [], sessionId: "sess_undo" },
         soulPrompt: "SOUL",
         workspace: undoWorkspace,
         features: { syncAgents: false, undoCheckpoints: true, parallelWorkspaces: false, cloudSync: false, mcp: false },

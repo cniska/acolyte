@@ -30,9 +30,8 @@ Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (d
 
 ## Controls
 
-- Request-level off switch: `useMemory=false`
-  - Skips memory commit for that request
-  - Memory toolkit tools remain available (on-demand access is not gated)
+- Memory behavior is runtime policy-driven, not request-scoped
+- Distill and recall costs are reported under the single `memory` usage metric
 
 ## Inspiration
 

@@ -46,10 +46,6 @@ const defaultLifecycleDeps: LifecycleDeps = {
   phaseFinalize,
 };
 
-export function shouldCommitMemory(input: LifecycleInput): boolean {
-  return input.request.useMemory !== false;
-}
-
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
@@ -125,13 +121,6 @@ function createRunContext(
     modelCallCount: 0,
     inputTokensAccum: 0,
     outputTokensAccum: 0,
-    promptBreakdownTotals: {
-      systemTokens: params.prepared.promptUsage.systemPromptTokens,
-      toolTokens: params.prepared.promptUsage.toolTokens,
-      skillTokens: params.prepared.promptUsage.skillTokens,
-      memoryTokens: params.prepared.promptUsage.memoryTokens,
-      messageTokens: params.prepared.promptUsage.messageTokens,
-    },
     streamingChars: 0,
     lastUsageEmitChars: 0,
     errorStats: createErrorStats(),
@@ -173,9 +162,8 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const memoryTokens = estimateDistillPromptTokens(messages, output);
-  ctx.promptUsage.memoryTokens = memoryTokens;
-  ctx.promptBreakdownTotals.memoryTokens = memoryTokens;
+  const distillTokens = estimateDistillPromptTokens(messages, output);
+  ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
       sessionId: ctx.request.sessionId,
@@ -330,9 +318,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   acceptResult(ctx);
 
-  if (shouldCommitMemory(input)) {
-    commitMemory(ctx, input);
-  }
+  commitMemory(ctx, input);
 
   return deps.phaseFinalize(ctx);
 }

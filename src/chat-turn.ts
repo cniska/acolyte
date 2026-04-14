@@ -105,7 +105,6 @@ type RunAssistantTurnParams = {
   activeSkills?: ActiveSkill[];
   suggestions?: string[];
   workspace?: string;
-  useMemory?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: StreamEvent) => void;
   pendingStartedAt: number;
@@ -125,7 +124,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       sessionId: params.sessionId,
       activeSkills: params.activeSkills,
       suggestions: params.suggestions,
-      useMemory: params.useMemory,
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },
     signal: params.signal,

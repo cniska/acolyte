@@ -16,9 +16,9 @@ import {
 import {
   type GenerateOptions,
   type GenerateResult,
+  promptUsageTotalTokens,
   type RunContext,
   type StreamChunk,
-  totalPromptBreakdownTokens,
 } from "./lifecycle-contract";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
@@ -51,7 +51,7 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 }
 
 function emitInputTokens(ctx: RunContext): number {
-  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
+  return Math.max(ctx.inputTokensAccum, promptUsageTotalTokens(ctx.promptUsage));
 }
 
 function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
@@ -248,6 +248,15 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
+function accountMemoryRecallTokens(ctx: RunContext, toolName: string, result: unknown): void {
+  if (toolName !== "memory-search") return;
+  if (result === undefined) return;
+  const serialized = JSON.stringify(result);
+  if (!serialized) return;
+  const tokens = estimateTokens(serialized);
+  ctx.promptUsage.memoryTokens += tokens;
+}
+
 function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
@@ -322,6 +331,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     } else {
       clearResolvedToolError(ctx, started ?? { toolName });
     }
+    if (!isError) accountMemoryRecallTokens(ctx, toolName, p.result);
     completeToolCall(ctx, p.toolCallId, toolName);
     emitToolResult(ctx, p.toolCallId, toolName, isError);
   },

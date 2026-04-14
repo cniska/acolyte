@@ -116,7 +116,6 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
       persist,
       onSessionChange,
       version: CLI_VERSION,
-      useMemory: isResumed,
     });
     if (output.isTTY) clearScreen();
     const resumeId = state.activeSessionId ?? session.id;
