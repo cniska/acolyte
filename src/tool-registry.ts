@@ -4,6 +4,7 @@ import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
+import { bindMcpTools, type McpToolListing } from "./mcp-client";
 import { createMemoryToolkit } from "./memory-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createSkillToolkit } from "./skill-toolkit";
@@ -144,7 +145,7 @@ export function toolsForAgent(options?: {
   onChecklist?: ChecklistListener;
   taskId?: string;
   sessionId?: string;
-  extraTools?: ToolMap;
+  mcpListings?: McpToolListing[];
 }): {
   tools: Toolset;
   session: SessionContext;
@@ -153,9 +154,12 @@ export function toolsForAgent(options?: {
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   const base = collectTools(workspace, session, options?.onOutput, options?.onChecklist, options?.sessionId);
-  const combined = options?.extraTools ? { ...base, ...options.extraTools } : base;
+  if (options?.mcpListings?.length) {
+    const nativeIds = new Set(Object.keys(base));
+    Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds));
+  }
   return {
-    tools: combined as unknown as Toolset,
+    tools: base as unknown as Toolset,
     session,
   };
 }

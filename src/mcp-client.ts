@@ -8,6 +8,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { errorMessage } from "./error-contract";
+import { log } from "./log";
 import { readMcpConfig } from "./mcp-config";
 import type { McpHttpServerConfig, McpServerConfig, McpStdioServerConfig } from "./mcp-contract";
 import { createTool, type ToolDefinition } from "./tool-contract";
@@ -16,6 +17,12 @@ import type { SessionContext } from "./tool-session";
 
 // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
 type AnyToolDefinition = ToolDefinition<any, any>;
+
+export type McpToolListing = {
+  serverName: string;
+  config: McpServerConfig;
+  tools: McpTool[];
+};
 
 function createTransport(config: McpServerConfig) {
   if (config.type === "stdio") {
@@ -42,15 +49,10 @@ function createHttpTransport(config: McpHttpServerConfig) {
   return new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers } });
 }
 
-function mcpToolId(serverName: string, toolName: string): string {
-  return `mcp-${serverName}-${toolName}`;
-}
-
-function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResultSchema>): string {
-  // Normalize the result to always have a content array
+export function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResultSchema>): string {
   const normalized = CallToolResultSchema.safeParse(result);
   if (!normalized.success) {
-    return `[mcp result] ${JSON.stringify(result)}`;
+    return `[mcp-error] ${JSON.stringify(result)}`;
   }
   const { data } = normalized;
   const parts: string[] = [];
@@ -69,18 +71,22 @@ function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResultSchem
     }
   }
   if (data.isError) {
-    return `[mcp error] ${parts.join("\n")}`;
+    return `[mcp-error] ${parts.join("\n")}`;
   }
   return parts.join("\n");
 }
 
-function createMcpToolDefinition(
+function buildToolId(serverName: string, toolName: string): string {
+  return `mcp-${serverName}-${toolName.replace(/_/g, "-")}`;
+}
+
+function bindMcpToolDefinition(
   serverName: string,
   mcpTool: McpTool,
   config: McpServerConfig,
   session: SessionContext,
 ): AnyToolDefinition {
-  const toolId = mcpToolId(serverName, mcpTool.name);
+  const toolId = buildToolId(serverName, mcpTool.name);
   const rawInputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
 
   return createTool({
@@ -103,7 +109,10 @@ function createMcpToolDefinition(
         const transport = createTransport(config);
         try {
           await client.connect(transport);
-          const result = await client.callTool({ name: mcpTool.name, arguments: toolInput as Record<string, unknown> });
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: toolInput as Record<string, unknown>,
+          });
           return {
             kind: "mcp-call" as const,
             server: serverName,
@@ -118,12 +127,10 @@ function createMcpToolDefinition(
   });
 }
 
-export async function createMcpTools(
-  workspace: string,
-  session: SessionContext,
-): Promise<Record<string, AnyToolDefinition>> {
+/** Async phase: connect to each configured server, list its tools, disconnect. No session needed. */
+export async function listMcpTools(workspace: string): Promise<McpToolListing[]> {
   const config = readMcpConfig(workspace);
-  const toolMap: Record<string, AnyToolDefinition> = {};
+  const listings: McpToolListing[] = [];
 
   for (const [serverName, serverConfig] of Object.entries(config.servers)) {
     const client = new Client({ name: "acolyte", version: "1.0" });
@@ -132,19 +139,36 @@ export async function createMcpTools(
       await client.connect(transport);
       const { tools } = await client.listTools();
       await client.close();
-
-      for (const mcpTool of tools) {
-        const toolDef = createMcpToolDefinition(serverName, mcpTool, serverConfig, session);
-        toolMap[toolDef.id] = toolDef;
-      }
+      listings.push({ serverName, config: serverConfig, tools });
     } catch (error) {
-      // Don't fail the lifecycle if an MCP server is unavailable
-      console.error(`[mcp] failed to connect to server "${serverName}": ${errorMessage(error)}`);
+      log.warn("mcp.server.unavailable", { server: serverName, error: errorMessage(error) });
       try {
         await client.close();
       } catch {
         // ignore close errors
       }
+    }
+  }
+
+  return listings;
+}
+
+/** Sync phase: bind listed tools to the active session, producing tool definitions. */
+export function bindMcpTools(
+  listings: McpToolListing[],
+  session: SessionContext,
+  nativeToolIds: Set<string>,
+): Record<string, AnyToolDefinition> {
+  const toolMap: Record<string, AnyToolDefinition> = {};
+
+  for (const { serverName, config, tools } of listings) {
+    for (const mcpTool of tools) {
+      const toolId = buildToolId(serverName, mcpTool.name);
+      if (nativeToolIds.has(toolId)) {
+        log.warn("mcp.tool.collision", { server: serverName, tool: toolId });
+        continue;
+      }
+      toolMap[toolId] = bindMcpToolDefinition(serverName, mcpTool, config, session);
     }
   }
 
