@@ -8,7 +8,6 @@ const defaultOptions = {
   budget: {
     maxHistoryMessages: defaultLifecyclePolicy.maxHistoryMessages,
     maxMessageTokens: defaultLifecyclePolicy.maxMessageTokens,
-    maxAttachmentMessageTokens: defaultLifecyclePolicy.maxAttachmentMessageTokens,
     maxSkillContextTokens: defaultLifecyclePolicy.maxSkillContextTokens,
   } satisfies InputBudget,
 };
