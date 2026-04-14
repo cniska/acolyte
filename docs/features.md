@@ -12,6 +12,7 @@ Shipped, user-visible capabilities.
 - file and directory attachments via `@path`
 - slash commands and skill invocation
 - engineering skills for structured workflows (plan, build, review, ship)
+- keyword-based skill suggestions from user prompts
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
