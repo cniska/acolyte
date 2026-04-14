@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.19.0 (2026-04-14)
+
+- fix: strip @signal in lifecycle finalize (#182) (#183) (`29704910`)
+- refactor(paths): replace homeDir with env injection (#184) (`eda4189e`)
+- test: move fs-dependent tests into .int.test.ts (#186) (`9fbcafae`)
+- test: split workspace-profile subprocess tests (`c586ba81`)
+- refactor(rpc): adopt object args and zod parsing (#185) (`111d1f12`)
+- test: rewrite int tests with registry dispatch (#190) (`ecd77f77`)
+- docs(readme): use demo gif (`5143b716`)
+- fix(chat): no-op /resume when target is already active session (`ee54279e`)
+- fix(chat): prevent duplicate user message on concurrent submit (`d5c52c99`)
+- refactor(skills): replace magic active skill marker (#197) (`73f7913c`)
+- refactor(agent-input): unify prompt usage accounting (#198) (`2f1890c7`)
+- feat(mcp): add MCP client support (#191) (`c5c8d5a6`)
+- feat(skills): suggest skill activation (#201) (`78f027d6`)
+- refactor(chat): remove auto file and dir attachment (#200) (`39117e33`)
+- fix(chat): preserve response text around misplaced signal line (`f7b73024`)
+- refactor(memory): unify usage accounting (#203) (`65279a59`)
+- docs: update benchmarks and features for v0.19.0 (`cc9348df`)
+
+
 ## 0.18.1 (2026-04-13)
 
 - docs: fix docs review drift (#180) (`eb6b9b47`)
