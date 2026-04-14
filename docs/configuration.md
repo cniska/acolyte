@@ -89,6 +89,8 @@ MCP is disabled by default. Enable it explicitly with:
 mcp = true
 ```
 
+Only enable MCP in trusted repositories. `.mcp.json` is project-controlled and `stdio` servers execute local commands.
+
 Two transports are supported:
 - `stdio` — server runs as a local subprocess (`command`, `args`, optional `env`). Only a minimal set of environment variables is forwarded to the subprocess (`PATH`, `HOME`, `SHELL`, `TERM`, `USER`, `LANG`, `LC_ALL`, `TMPDIR`, `XDG_RUNTIME_DIR`) plus any explicitly configured in `env`.
 - `http` — server is reachable over HTTPS (`url`, optional `headers`). Non-HTTPS URLs are allowed for localhost (`127.0.0.1`, `::1`) but blocked for remote hosts.
@@ -120,6 +122,7 @@ acolyte config set features.syncAgents true
 | `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
 | `parallelWorkspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
 | `cloudSync` | Use the cloud API for memory and session storage. Requires `acolyte login`. |
+| `mcp` | Opt-in: load MCP servers from `.mcp.json` and expose their tools to the agent. |
 
 ## All settable keys
 
@@ -142,3 +145,4 @@ acolyte config set features.syncAgents true
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
 | `features.cloudSync` | opt-in: use cloud API for memory and session storage |
+| `features.mcp` | opt-in: enable MCP servers from `.mcp.json` |
