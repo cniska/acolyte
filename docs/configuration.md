@@ -78,6 +78,20 @@ acolyte config set --project model openai-compatible/<model>
 acolyte config set logFormat json
 ```
 
+## MCP servers
+
+Connect Acolyte to external services (Figma, Jira, Notion, Chrome DevTools, etc.) via MCP servers. Configure servers in `mcp.json` — project-level config takes precedence over user-level by server name.
+
+Paths:
+- User: config dir + `mcp.json`
+- Project: `<cwd>/.acolyte/mcp.json`
+
+Two transports are supported:
+- `stdio` — server runs as a local subprocess (`command`, `args`, optional `env`)
+- `http` — server is reachable over HTTP (`url`, optional `headers`)
+
+Each server's tools appear in the agent alongside native tools. If a server is unreachable at task start it is skipped with a warning and the lifecycle continues.
+
 ## Feature flags
 
 Feature flags are opt-in toggles for experimental behavior, configured under `[features]` in `config.toml`.
