@@ -47,8 +47,7 @@ export function estimateTokens(input: string): number {
 }
 
 type PromptTokenBudget = {
-  reserve: (tokens: number) => void;
-  spend: (tokens: number) => void;
+  consume: (tokens: number) => void;
   remaining: () => number;
 };
 
@@ -64,8 +63,7 @@ function createPromptTokenBudget(total: number): PromptTokenBudget {
   };
 
   return {
-    reserve: allocate,
-    spend: allocate,
+    consume: allocate,
     remaining: () => remaining,
   };
 }
@@ -196,12 +194,12 @@ export function createAgentInput(
   let includedSkillTokens = 0;
   const budget = options.budget;
   const tokenBudget = createPromptTokenBudget(contextMaxTokens);
-  tokenBudget.reserve(requestedSystemTokens);
-  tokenBudget.reserve(requestedToolTokens);
+  tokenBudget.consume(requestedSystemTokens);
+  tokenBudget.consume(requestedToolTokens);
 
   const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
   const userTokens = estimateTokens(userLine);
-  tokenBudget.reserve(userTokens);
+  tokenBudget.consume(userTokens);
 
   for (const skill of req.activeSkills ?? []) {
     const truncated = truncateByTokens(skill.instructions, budget.maxSkillContextTokens);
@@ -212,7 +210,7 @@ export function createAgentInput(
     } else {
       if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
       lines.push(skillLine);
-      tokenBudget.spend(skillTokens);
+      tokenBudget.consume(skillTokens);
       includedSkillTokens += skillTokens;
     }
   }
