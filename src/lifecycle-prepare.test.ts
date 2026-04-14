@@ -18,6 +18,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      mcpListings: [],
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
   });

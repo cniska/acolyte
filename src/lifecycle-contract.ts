@@ -100,7 +100,7 @@ export type PhasePrepareInput = {
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
   onChecklist: ChecklistListener;
-  mcpListings?: McpToolListing[];
+  mcpListings: McpToolListing[];
 };
 export type PhasePrepareResult = {
   session: SessionContext;

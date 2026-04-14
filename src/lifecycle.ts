@@ -295,7 +295,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onChecklist: (event) => {
       emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
     },
-    mcpListings: mcpListings.length > 0 ? mcpListings : undefined,
+    mcpListings,
   });
 
   const ctx = createRunContext(input, {

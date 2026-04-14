@@ -10,7 +10,14 @@ import { z } from "zod";
 import { errorMessage } from "./error-contract";
 import { log } from "./log";
 import { readMcpConfig } from "./mcp-config";
-import type { McpHttpServerConfig, McpServerConfig, McpStdioServerConfig } from "./mcp-contract";
+import {
+  MCP_CLIENT_INFO,
+  MCP_CONNECT_TIMEOUT_MS,
+  type McpHttpServerConfig,
+  type McpServerConfig,
+  type McpStdioServerConfig,
+  STDIO_ENV_ALLOWLIST,
+} from "./mcp-contract";
 import { getOrConnectClient } from "./mcp-session";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -19,10 +26,7 @@ import type { SessionContext } from "./tool-session";
 // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
 type AnyToolDefinition = ToolDefinition<any, any>;
 
-const MCP_CLIENT_INFO = { name: "acolyte", version: "1.0" } as const;
-const MCP_CONNECT_TIMEOUT_MS = 10_000;
 const MCP_DESCRIPTION_MAX_CHARS = 512;
-const STDIO_ENV_ALLOWLIST = ["PATH", "HOME", "SHELL", "TERM", "USER", "LANG", "LC_ALL", "TMPDIR", "XDG_RUNTIME_DIR"];
 
 export type McpToolListing = {
   serverName: string;

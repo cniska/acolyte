@@ -4,7 +4,30 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import { errorMessage } from "./error-contract";
 import { log } from "./log";
-import type { McpHttpServerConfig, McpServerConfig, McpStdioServerConfig } from "./mcp-contract";
+import {
+  MCP_CLIENT_INFO,
+  MCP_CONNECT_TIMEOUT_MS,
+  type McpHttpServerConfig,
+  type McpServerConfig,
+  type McpStdioServerConfig,
+  STDIO_ENV_ALLOWLIST,
+} from "./mcp-contract";
+
+function withDeadline<T>(task: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    task.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
 
 type ServerConnection = {
   client: Client;
@@ -26,8 +49,9 @@ function createTransport(config: McpServerConfig, onClose: () => void) {
 
 function createStdioTransport(config: McpStdioServerConfig, onClose: () => void) {
   const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined) env[k] = v;
+  for (const key of STDIO_ENV_ALLOWLIST) {
+    const val = process.env[key];
+    if (val !== undefined) env[key] = val;
   }
   if (config.env) Object.assign(env, config.env);
   const transport = new StdioClientTransport({ command: config.command, args: config.args ?? [], env });
@@ -65,15 +89,15 @@ export async function getOrConnectClient(
   const existing = state.connections.get(serverName);
   if (existing) return existing;
 
-  const client = new Client({ name: "acolyte", version: "1.0" });
+  const client = new Client(MCP_CLIENT_INFO);
   const transport = createTransport(config, () => {
     // Remove from registry on close so the next call reconnects automatically.
     state.connections.delete(serverName);
     log.debug("mcp.session.disconnected", { session: sessionId, server: serverName });
   });
 
-  await client.connect(transport);
-  const { tools } = await client.listTools();
+  await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
+  const { tools } = await withDeadline(client.listTools(), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/listTools`);
 
   const connection = { client, tools };
   state.connections.set(serverName, connection);
