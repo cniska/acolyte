@@ -134,6 +134,7 @@ export async function startServer(): Promise<void> {
     shutdownServer: () => {
       setTimeout(() => {
         try {
+          void closeAllMcpSessions();
           closeDefaultTraceStore();
           server.stop(true);
         } catch {

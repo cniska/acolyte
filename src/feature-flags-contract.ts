@@ -28,7 +28,7 @@ export const resolvedFeatureFlagsSchema = z.object({
   undoCheckpoints: parseBoolSchema.optional().default(false),
   parallelWorkspaces: parseBoolSchema.optional().default(false),
   cloudSync: parseBoolSchema.optional().default(false),
-  mcp: parseBoolSchema.optional().default(true),
+  mcp: parseBoolSchema.optional().default(false),
 });
 
 export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;

@@ -82,6 +82,13 @@ acolyte config set logFormat json
 
 Connect Acolyte to external services (Figma, Jira, Notion, Chrome DevTools, etc.) via MCP servers. Configure servers under the `mcpServers` key in `.mcp.json` at the project root.
 
+MCP is disabled by default. Enable it explicitly with:
+
+```toml
+[features]
+mcp = true
+```
+
 Two transports are supported:
 - `stdio` — server runs as a local subprocess (`command`, `args`, optional `env`). Only a minimal set of environment variables is forwarded to the subprocess (`PATH`, `HOME`, `SHELL`, `TERM`, `USER`, `LANG`, `LC_ALL`, `TMPDIR`, `XDG_RUNTIME_DIR`) plus any explicitly configured in `env`.
 - `http` — server is reachable over HTTPS (`url`, optional `headers`). Non-HTTPS URLs are allowed for localhost (`127.0.0.1`, `::1`) but blocked for remote hosts.

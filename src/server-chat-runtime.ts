@@ -115,13 +115,23 @@ export function isChatRequest(value: unknown): value is ChatRequest {
   if (!value || typeof value !== "object") return false;
 
   const req = value as Partial<ChatRequest>;
+  const validActiveSkills =
+    req.activeSkills === undefined ||
+    (Array.isArray(req.activeSkills) &&
+      req.activeSkills.every(
+        (skill) =>
+          skill &&
+          typeof skill === "object" &&
+          typeof (skill as { name?: unknown }).name === "string" &&
+          typeof (skill as { instructions?: unknown }).instructions === "string",
+      ));
   return (
     typeof req.message === "string" &&
     typeof req.model === "string" &&
     Array.isArray(req.history) &&
     (req.sessionId === undefined || typeof req.sessionId === "string") &&
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
-    (req.activeSkills === undefined || Array.isArray(req.activeSkills)) &&
+    validActiveSkills &&
     (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );
