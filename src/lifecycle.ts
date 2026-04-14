@@ -16,7 +16,6 @@ import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
-import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
@@ -126,7 +125,13 @@ function createRunContext(
     modelCallCount: 0,
     inputTokensAccum: 0,
     outputTokensAccum: 0,
-    promptBreakdownTotals: createEmptyPromptBreakdownTotals(),
+    promptBreakdownTotals: {
+      systemTokens: params.prepared.promptUsage.systemPromptTokens,
+      toolTokens: params.prepared.promptUsage.toolTokens,
+      skillTokens: params.prepared.promptUsage.skillTokens,
+      memoryTokens: params.prepared.promptUsage.memoryTokens,
+      messageTokens: params.prepared.promptUsage.messageTokens,
+    },
     streamingChars: 0,
     lastUsageEmitChars: 0,
     errorStats: createErrorStats(),
@@ -171,7 +176,9 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   const distillInput = [...messages, { role: "assistant", content: output }]
     .map((m) => `${m.role}: ${m.content}`)
     .join("\n\n");
-  ctx.promptUsage.memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
+  const memoryTokens = estimateTokens(DISTILLER_PROMPT) + estimateTokens(distillInput);
+  ctx.promptUsage.memoryTokens = memoryTokens;
+  ctx.promptBreakdownTotals.memoryTokens = memoryTokens;
   scheduleMemoryCommit(
     {
       sessionId: ctx.request.sessionId,
