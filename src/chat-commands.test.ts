@@ -363,6 +363,26 @@ describe("chat-commands", () => {
     expect(spies.tokenUsageSets).toEqual([target.tokenUsage]);
   });
 
+  test("dispatchSlashCommand /resume is no-op when target is already active", async () => {
+    const active = createSession({
+      id: "sess_already_active",
+      title: "Already Active",
+      messages: [createMessage("assistant", "hi")],
+    });
+    const sessionState = createSessionState({
+      sessions: [active],
+      activeSessionId: active.id,
+    });
+    const text = `/resume ${active.id.slice(0, 12)}`;
+    const { ctx, spies } = createCommandContext(text, { sessionState });
+
+    const result = await dispatchSlashCommand(ctx);
+
+    expect(result.stop).toBe(true);
+    expect(spies.currentSessionIds).toEqual([]);
+    expect(spies.tokenUsageSets).toEqual([]);
+  });
+
   test("dispatchSlashCommand /resume opens picker flow", async () => {
     const { rows, stop } = await runCommand("/resume");
     expect(stop).toBe(true);

@@ -57,6 +57,7 @@ async function handleResume(ctx: CommandContext): Promise<CommandResult> {
     return { stop: true, userText: text };
   }
   const target = resolved.session;
+  if (target.id === ctx.sessionState.activeSessionId) return { stop: true, userText: text };
   ctx.sessionState.activeSessionId = target.id;
   ctx.setCurrentSession(target);
   ctx.setTokenUsage?.(() => target.tokenUsage);
