@@ -7,22 +7,24 @@ import { domainIdSchema } from "./id-contract";
 export const sessionIdSchema = domainIdSchema("sess");
 export type SessionId = z.infer<typeof sessionIdSchema>;
 
+export const tokenCountSchema = z.number().int().nonnegative();
+
 export const tokenUsageSchema = z.object({
-  inputTokens: z.number(),
-  outputTokens: z.number(),
-  totalTokens: z.number(),
-  inputBudgetTokens: z.number().optional(),
+  inputTokens: tokenCountSchema,
+  outputTokens: tokenCountSchema,
+  totalTokens: tokenCountSchema,
+  inputBudgetTokens: tokenCountSchema.optional(),
   inputTruncated: z.boolean().optional(),
 });
 
 export const promptBreakdownSchema = z.object({
-  budgetTokens: z.number().default(0),
-  usedTokens: z.number().default(0),
-  systemTokens: z.number().default(0),
-  toolTokens: z.number().default(0),
-  skillTokens: z.number().default(0),
-  memoryTokens: z.number().default(0),
-  messageTokens: z.number().default(0),
+  budgetTokens: tokenCountSchema.default(0),
+  usedTokens: tokenCountSchema.default(0),
+  systemTokens: tokenCountSchema.default(0),
+  toolTokens: tokenCountSchema.default(0),
+  skillTokens: tokenCountSchema.default(0),
+  memoryTokens: tokenCountSchema.default(0),
+  messageTokens: tokenCountSchema.default(0),
 });
 
 export type PromptBreakdown = z.infer<typeof promptBreakdownSchema>;
