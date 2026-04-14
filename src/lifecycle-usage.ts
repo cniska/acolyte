@@ -28,10 +28,6 @@ export function estimatePromptBreakdown(usage: PromptUsage): PromptBreakdownTota
   };
 }
 
-export function totalPromptBreakdownTokens(totals: PromptBreakdownTotals): number {
-  return totals.systemTokens + totals.toolTokens + totals.skillTokens + totals.memoryTokens + totals.messageTokens;
-}
-
 export function addPromptBreakdownTotals(
   current: PromptBreakdownTotals,
   next: PromptBreakdownTotals,

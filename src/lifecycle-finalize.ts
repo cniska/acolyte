@@ -3,7 +3,6 @@ import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import type { RunContext } from "./lifecycle-contract";
 import { stripSignalLine } from "./lifecycle-signal";
-import { totalPromptBreakdownTokens } from "./lifecycle-usage";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
@@ -16,7 +15,12 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
         ? t("agent.output.no_response_after_tools")
         : t("agent.output.no_output");
 
-  const promptInputTokens = totalPromptBreakdownTokens(ctx.promptBreakdownTotals);
+  const promptInputTokens =
+    ctx.promptBreakdownTotals.systemTokens +
+    ctx.promptBreakdownTotals.toolTokens +
+    ctx.promptBreakdownTotals.skillTokens +
+    ctx.promptBreakdownTotals.memoryTokens +
+    ctx.promptBreakdownTotals.messageTokens;
   const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
 

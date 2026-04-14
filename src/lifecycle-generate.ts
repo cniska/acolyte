@@ -14,7 +14,7 @@ import {
   parseError,
 } from "./error-handling";
 import type { GenerateOptions, GenerateResult, RunContext, StreamChunk } from "./lifecycle-contract";
-import { addPromptBreakdownTotals, estimatePromptBreakdown, totalPromptBreakdownTokens } from "./lifecycle-usage";
+import { addPromptBreakdownTotals, estimatePromptBreakdown } from "./lifecycle-usage";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import { extractToolTargetPaths } from "./tool-arg-paths";
@@ -46,7 +46,13 @@ function formatToolArgs(args: Record<string, unknown>): Record<string, string | 
 }
 
 function emitInputTokens(ctx: RunContext): number {
-  return Math.max(ctx.inputTokensAccum, totalPromptBreakdownTokens(ctx.promptBreakdownTotals));
+  const breakdownTotal =
+    ctx.promptBreakdownTotals.systemTokens +
+    ctx.promptBreakdownTotals.toolTokens +
+    ctx.promptBreakdownTotals.skillTokens +
+    ctx.promptBreakdownTotals.memoryTokens +
+    ctx.promptBreakdownTotals.messageTokens;
+  return Math.max(ctx.inputTokensAccum, breakdownTotal);
 }
 
 function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
