@@ -1,4 +1,4 @@
-import type { ChatRow } from "./chat-contract";
+import { type ChatRow, createRow } from "./chat-contract";
 import { type CompactBudget, compactText } from "./compact-text";
 import type { Session } from "./session-contract";
 import { findSkillByName, readSkillInstructions, SKILL_BUDGET } from "./skills";
@@ -16,13 +16,9 @@ type CreateSkillActivatorInput = {
 };
 
 export function skillActivationRow(skillName: string): ChatRow {
-  return {
-    id: `row_skill_${Date.now()}`,
-    kind: "tool",
-    content: {
-      parts: [{ kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skillName }],
-    },
-  };
+  return createRow("tool", {
+    parts: [{ kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skillName }],
+  });
 }
 
 export function createSkillActivator(

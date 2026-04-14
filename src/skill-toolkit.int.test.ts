@@ -67,10 +67,11 @@ describe("skill-list", () => {
 });
 
 describe("skill-activate", () => {
-  test("returns instructions for bundled skill", async () => {
+  test("returns instructions for bundled skill and sets session activeSkill", async () => {
     const dir = createDir("acolyte-skill-activate-");
     await loadSkills(dir);
-    const toolkit = createSkillToolkit(createToolkitInput(dir));
+    const input = createToolkitInput(dir);
+    const toolkit = createSkillToolkit(input);
     const { result } = (await toolkit.activateSkill.execute({ name: "build" }, "call-4")) as {
       result: SkillActivateResult;
     };
@@ -78,6 +79,7 @@ describe("skill-activate", () => {
     expect(result.name).toBe("build");
     expect(result.source).toBe("bundled");
     expect(result.instructions.length).toBeGreaterThan(0);
+    expect(input.session.activeSkill).toEqual({ name: "build", instructions: result.instructions });
   });
 
   test("returns instructions for project skill", async () => {
