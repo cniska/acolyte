@@ -9,13 +9,13 @@ import {
 import { z } from "zod";
 import { errorMessage } from "./error-contract";
 import { log } from "./log";
-import { readMcpConfig } from "./mcp-config";
 import {
   MCP_CLIENT_INFO,
   MCP_CONNECT_TIMEOUT_MS,
   type McpHttpServerConfig,
   type McpServerConfig,
   type McpStdioServerConfig,
+  readMcpConfig,
   STDIO_ENV_ALLOWLIST,
 } from "./mcp-contract";
 import { getOrConnectClient } from "./mcp-session";

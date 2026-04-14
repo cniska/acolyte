@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readMcpConfig } from "./mcp-config";
+import { readMcpConfig } from "./mcp-contract";
 import { tempDir } from "./test-utils";
 
 const dirs = tempDir();

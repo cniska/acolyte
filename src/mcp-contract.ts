@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { resolveCliVersion } from "./cli-version";
+import { readJson } from "./json";
 
 export const MCP_CLIENT_INFO = { name: "acolyte", version: resolveCliVersion() };
 export const MCP_CONNECT_TIMEOUT_MS = 10_000;
@@ -37,3 +38,10 @@ export const mcpConfigSchema = z.object({
   mcpServers: z.record(z.string(), mcpServerSchema).default({}),
 });
 export type McpConfig = z.infer<typeof mcpConfigSchema>;
+
+export function readMcpConfig(workspace: string): McpConfig {
+  const raw = readJson(workspace, ".mcp.json");
+  if (!raw) return { mcpServers: {} };
+  const result = mcpConfigSchema.safeParse(raw);
+  return result.success ? result.data : { mcpServers: {} };
+}
