@@ -44,7 +44,6 @@ Shipped, user-visible capabilities.
 - shell and test execution
 - web search/fetch
 - MCP client: connect to external services via stdio or HTTP MCP servers
-- MCP tools accept predefined JSON input schemas through unified `inputSchema`
 
 ## Memory
 
