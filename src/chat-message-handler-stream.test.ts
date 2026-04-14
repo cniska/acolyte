@@ -228,4 +228,32 @@ describe("chat-message-handler-stream", () => {
     expect(rows).toHaveLength(0);
     state.dispose();
   });
+
+  test("streamed text persists after finalize when status row is appended", async () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // Simulate: tool calls, then text response, then finalize (blocked signal)
+    state.onToolCall();
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "memory-search",
+      content: { kind: "tool-header", labelKey: "tool.label.memory_search" },
+    });
+    state.onToolResult({ toolCallId: "call_1", toolName: "memory-search" });
+
+    state.onDelta("Tell me what to build.");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(rows.some((r) => r.kind === "assistant" && r.content === "Tell me what to build.")).toBe(true);
+
+    state.finalize();
+
+    // Simulate message handler appending status row (awaiting-input)
+    setRows((current) => [...current, { id: "status_1", kind: "status", content: "Waiting for your reply" }]);
+
+    // The streamed assistant text must still be present
+    const assistantRow = rows.find((r) => r.kind === "assistant");
+    expect(assistantRow).toBeDefined();
+    expect(assistantRow?.content).toBe("Tell me what to build.");
+  });
 });

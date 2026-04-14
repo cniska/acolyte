@@ -29,10 +29,10 @@ describe("extractLifecycleSignal", () => {
     });
   });
 
-  test("strips the signal line and suppresses text after it", () => {
+  test("strips the signal line and preserves text on both sides", () => {
     expect(extractLifecycleSignal("Hello!\n@signal done\nExtra.")).toEqual({
       signal: "done",
-      text: "Hello!",
+      text: "Hello!\nExtra.",
     });
     expect(extractLifecycleSignal("Hello.\n@signal done\n")).toEqual({ signal: "done", text: "Hello." });
   });
@@ -65,11 +65,11 @@ describe("lifecycle text streaming", () => {
     expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
   });
 
-  test("suppresses text after the signal line", () => {
+  test("preserves text after the signal line", () => {
     const state = createLifecycleTextStreamState();
     expect(appendLifecycleTextDelta(state, "Hello!")).toBe("Hello!");
     expect(appendLifecycleTextDelta(state, "\n@sig")).toBe("");
-    expect(appendLifecycleTextDelta(state, "nal done\nExtra.")).toBe("");
+    expect(appendLifecycleTextDelta(state, "nal done\nExtra.")).toBe("Extra.");
     expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
   });
 

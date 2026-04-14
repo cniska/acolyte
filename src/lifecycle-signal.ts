@@ -12,7 +12,8 @@ export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal
   if (!match) return { text };
   const signal = match[1] as LifecycleSignal;
   const before = text.slice(0, match.index ?? 0).trimEnd();
-  return { signal, text: before };
+  const after = text.slice((match.index ?? 0) + match[0].length).trimStart();
+  return { signal, text: [before, after].filter(Boolean).join("\n") };
 }
 
 export type LifecycleTextStreamState = {
@@ -51,9 +52,10 @@ export function appendLifecycleTextDelta(state: LifecycleTextStreamState, delta:
   const match = state.pending.match(SIGNAL_RE);
   if (match) {
     const before = state.pending.slice(0, match.index ?? 0).trimEnd();
+    const after = state.pending.slice((match.index ?? 0) + match[0].length).trimStart();
     state.signal = match[1] as LifecycleSignal;
     state.pending = "";
-    return before;
+    return [before, after].filter(Boolean).join("\n");
   }
 
   // Check whether the end of pending could be the start of an @signal line.
