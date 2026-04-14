@@ -23,6 +23,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     onChecklist: input.onChecklist,
     taskId: input.taskId,
     sessionId: input.request.sessionId,
+    extraTools: input.extraTools,
   });
   const toolTokens = estimateToolTokens(tools);
   const { policy } = input;

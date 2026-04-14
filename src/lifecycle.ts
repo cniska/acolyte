@@ -17,12 +17,13 @@ import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { createEmptyPromptBreakdownTotals } from "./lifecycle-usage";
+import { createMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutputPart } from "./tool-output-content";
 import { WRITE_TOOL_SET } from "./tool-registry";
-import { scopedCallLog } from "./tool-session";
+import { createSessionContext, scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
@@ -277,6 +278,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const { model } = deps.resolveModel(input.request.model);
 
+  const mcpSession = createSessionContext(input.taskId, new Set());
+  const extraTools = await createMcpTools(sandboxWorkspace, mcpSession);
+
   const prepared = deps.phasePrepare({
     request: input.request,
     workspace: input.workspace,
@@ -291,6 +295,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onChecklist: (event) => {
       emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
     },
+    extraTools: Object.keys(extraTools).length > 0 ? extraTools : undefined,
   });
 
   const ctx = createRunContext(input, {

@@ -7,7 +7,7 @@ import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { PromptBreakdownTotals } from "./lifecycle-usage";
 import type { MemoryCommitMetrics } from "./memory-contract";
-import type { ChecklistListener } from "./tool-contract";
+import type { ChecklistListener, ToolDefinition } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-content";
 import type { Toolset } from "./tool-registry";
 import type { SessionContext } from "./tool-session";
@@ -99,6 +99,8 @@ export type PhasePrepareInput = {
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
   onChecklist: ChecklistListener;
+  // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
+  extraTools?: Record<string, ToolDefinition<any, any>>;
 };
 export type PhasePrepareResult = {
   session: SessionContext;

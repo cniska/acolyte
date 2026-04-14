@@ -144,6 +144,7 @@ export function toolsForAgent(options?: {
   onChecklist?: ChecklistListener;
   taskId?: string;
   sessionId?: string;
+  extraTools?: ToolMap;
 }): {
   tools: Toolset;
   session: SessionContext;
@@ -151,14 +152,10 @@ export function toolsForAgent(options?: {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
+  const base = collectTools(workspace, session, options?.onOutput, options?.onChecklist, options?.sessionId);
+  const combined = options?.extraTools ? { ...base, ...options.extraTools } : base;
   return {
-    tools: collectTools(
-      workspace,
-      session,
-      options?.onOutput,
-      options?.onChecklist,
-      options?.sessionId,
-    ) as unknown as Toolset,
+    tools: combined as unknown as Toolset,
     session,
   };
 }
