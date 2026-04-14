@@ -25,10 +25,10 @@ describe("readJson", () => {
     expect(readJson(dir, "bad.json")).toBeNull();
   });
 
-  test("strips line comments for files ending in 'c'", async () => {
+  test("strips line comments for rc files (e.g. .somerc)", async () => {
     const dir = dirs.createDir("json-comments-");
-    await writeFile(join(dir, "settings.jsonc"), '{ "key": "value" // comment\n}', "utf8");
-    expect(readJson(dir, "settings.jsonc")).toEqual({ key: "value" });
+    await writeFile(join(dir, ".somerc"), '{ "key": "value" // comment\n}', "utf8");
+    expect(readJson(dir, ".somerc")).toEqual({ key: "value" });
   });
 
   test("does not strip comments for regular .json files", async () => {
