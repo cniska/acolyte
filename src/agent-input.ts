@@ -1,4 +1,5 @@
 import type { ChatRequest } from "./api";
+import { log } from "./log";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
@@ -174,9 +175,13 @@ export function createAgentInput(
   let remaining = Math.max(0, contextMaxTokens - userTokens - systemPromptTokens - toolTokens);
 
   for (const skill of req.activeSkills ?? []) {
-    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncateByTokens(skill.instructions, budget.maxSkillContextTokens)}`;
+    const truncated = truncateByTokens(skill.instructions, budget.maxSkillContextTokens);
+    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncated}`;
     const skillTokens = estimateTokens(skillLine);
-    if (skillTokens <= remaining) {
+    if (skillTokens > remaining) {
+      log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining });
+    } else {
+      if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
       lines.push(skillLine);
       remaining -= skillTokens;
     }
