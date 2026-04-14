@@ -99,7 +99,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   ctx.currentError = undefined;
   resetCycleStepCount(ctx.session, opts.cycleLimit);
   const prompt = ctx.baseAgentInput;
-  addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(prompt, ctx.promptUsage));
+  addPromptBreakdownTotals(ctx.promptBreakdownTotals, estimatePromptBreakdown(ctx.promptUsage));
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
     type: "usage",

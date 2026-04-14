@@ -1,4 +1,3 @@
-import { estimateTokens } from "./agent-input";
 import type { PromptUsage } from "./lifecycle-contract";
 
 export type PromptBreakdownTotals = {
@@ -17,12 +16,12 @@ export function createEmptyPromptBreakdownTotals(): PromptBreakdownTotals {
   };
 }
 
-export function estimatePromptBreakdown(prompt: string, usage: PromptUsage): PromptBreakdownTotals {
+export function estimatePromptBreakdown(usage: PromptUsage): PromptBreakdownTotals {
   return {
     systemTokens: usage.systemPromptTokens,
     toolTokens: usage.toolTokens,
     memoryTokens: usage.memoryTokens,
-    messageTokens: estimateTokens(prompt),
+    messageTokens: usage.messageTokens,
   };
 }
 
