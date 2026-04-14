@@ -155,7 +155,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     {
       currentSession,
       setRows,
-      createMessage,
       nowIso,
       persist,
     },

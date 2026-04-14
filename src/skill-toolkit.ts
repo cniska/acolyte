@@ -64,6 +64,7 @@ function createActivateSkillTool(input: ToolkitInput) {
         if (!skill) throw new Error(`skill not found: "${toolInput.name}"`);
         const raw = await readSkillInstructions(skill.path, toolInput.args);
         const instructions = compactText(raw, SKILL_BUDGET);
+        input.session.activeSkill = { name: skill.name, instructions };
         return {
           kind: "skill-activate" as const,
           name: skill.name,
