@@ -37,8 +37,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
       maxSkillContextTokens: policy.maxSkillContextTokens,
     },
   });
-  requestInput.usage.toolTokens = toolTokens;
-  requestInput.usage.messageTokens = requestInput.usage.inputTokens;
   const baseAgentInput = requestInput.input;
 
   session.toolTimeoutMs = input.policy.toolTimeoutMs;
