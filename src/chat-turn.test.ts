@@ -52,20 +52,53 @@ describe("chat turn helpers", () => {
   describe("createAtReferenceSuggestion", () => {
     const { createDir, cleanupDirs } = tempDir();
 
-    test("returns suggestion with file-read for files and file-find for directories", async () => {
-      const root = createDir("acolyte-at-ref-");
-      const file = join(root, "demo.ts");
-      writeFileSync(file, "const x = 1;\n", "utf8");
+    test("suggests code-scan for parseable code files", async () => {
+      const root = createDir("acolyte-at-ref-code-");
+      writeFileSync(join(root, "demo.ts"), "const x = 1;\n", "utf8");
+
+      const result = await createAtReferenceSuggestion("review @demo.ts", { workspace: root });
+
+      expect(result.suggestion).toContain("Use `code-scan` on demo.ts");
+      expect(result.unresolvedPaths).toEqual([]);
+      cleanupDirs();
+    });
+
+    test("suggests file-read for non-code files", async () => {
+      const root = createDir("acolyte-at-ref-text-");
+      writeFileSync(join(root, "config.json"), "{}\n", "utf8");
+
+      const result = await createAtReferenceSuggestion("review @config.json", { workspace: root });
+
+      expect(result.suggestion).toContain("Use `file-read` on config.json");
+      expect(result.unresolvedPaths).toEqual([]);
+      cleanupDirs();
+    });
+
+    test("suggests file-find for directories", async () => {
+      const root = createDir("acolyte-at-ref-dir-");
       mkdirSync(join(root, "src"), { recursive: true });
 
-      const result = await createAtReferenceSuggestion(`review @demo.ts and @src/`, {
+      const result = await createAtReferenceSuggestion("review @src/", { workspace: root });
+
+      expect(result.suggestion).toContain("Use `file-find` on src/");
+      expect(result.unresolvedPaths).toEqual([]);
+      cleanupDirs();
+    });
+
+    test("combines code-scan, file-read, and file-find in one suggestion", async () => {
+      const root = createDir("acolyte-at-ref-mixed-");
+      writeFileSync(join(root, "app.ts"), "export {}", "utf8");
+      writeFileSync(join(root, "config.json"), "{}", "utf8");
+      mkdirSync(join(root, "lib"), { recursive: true });
+
+      const result = await createAtReferenceSuggestion("review @app.ts @config.json @lib/", {
         workspace: root,
       });
 
-      expect(result.suggestion).toContain("Use `file-read` on demo.ts");
-      expect(result.suggestion).toContain("Use `file-find` on src/");
+      expect(result.suggestion).toContain("Use `code-scan` on app.ts");
+      expect(result.suggestion).toContain("Use `file-read` on config.json");
+      expect(result.suggestion).toContain("Use `file-find` on lib/");
       expect(result.suggestion).toContain("before responding.");
-      expect(result.unresolvedPaths).toEqual([]);
       cleanupDirs();
     });
 

@@ -65,7 +65,7 @@ function languageFromPath(filePath: string): string | undefined {
   return LANGUAGE_MAP[filePath.slice(dot).toLowerCase()];
 }
 
-function isParseable(filePath: string): boolean {
+export function isParseable(filePath: string): boolean {
   const dot = filePath.lastIndexOf(".");
   return dot >= 0 && filePath.slice(dot).toLowerCase() in LANGUAGE_MAP;
 }

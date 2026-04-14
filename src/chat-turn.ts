@@ -6,6 +6,7 @@ import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatTokenCount } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
+import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
 import { t } from "./i18n";
 import { palette } from "./palette";
@@ -35,6 +36,7 @@ export async function createAtReferenceSuggestion(
 }> {
   const referencedPaths = extractAtReferencePaths(userText);
   if (referencedPaths.length === 0) return { suggestion: null, unresolvedPaths: [] };
+  const codeRefs: string[] = [];
   const fileRefs: string[] = [];
   const dirRefs: string[] = [];
   const unresolvedPaths: string[] = [];
@@ -42,15 +44,19 @@ export async function createAtReferenceSuggestion(
   for (const pathInput of referencedPaths) {
     try {
       ensurePathWithinSandbox(pathInput, workspace);
-      const info = await stat(resolve(workspace, pathInput));
+      const absPath = resolve(workspace, pathInput);
+      const info = await stat(absPath);
       if (info.isDirectory()) dirRefs.push(pathInput);
+      else if (isParseable(absPath)) codeRefs.push(pathInput);
       else fileRefs.push(pathInput);
     } catch {
       unresolvedPaths.push(pathInput);
     }
   }
-  if (fileRefs.length === 0 && dirRefs.length === 0) return { suggestion: null, unresolvedPaths };
+  if (codeRefs.length === 0 && fileRefs.length === 0 && dirRefs.length === 0)
+    return { suggestion: null, unresolvedPaths };
   const parts: string[] = [];
+  if (codeRefs.length > 0) parts.push(`Use \`code-scan\` on ${codeRefs.join(", ")}`);
   if (fileRefs.length > 0) parts.push(`Use \`file-read\` on ${fileRefs.join(", ")}`);
   if (dirRefs.length > 0) parts.push(`Use \`file-find\` on ${dirRefs.join(", ")}`);
   return { suggestion: `${parts.join(". ")} before responding.`, unresolvedPaths };
