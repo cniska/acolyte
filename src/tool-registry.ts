@@ -156,7 +156,7 @@ export function toolsForAgent(options?: {
   const base = collectTools(workspace, session, options?.onOutput, options?.onChecklist, options?.sessionId);
   if (options?.mcpListings?.length) {
     const nativeIds = new Set(Object.keys(base));
-    Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds));
+    Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));
   }
   return {
     tools: base as unknown as Toolset,

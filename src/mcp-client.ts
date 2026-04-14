@@ -11,6 +11,7 @@ import { errorMessage } from "./error-contract";
 import { log } from "./log";
 import { readMcpConfig } from "./mcp-config";
 import type { McpHttpServerConfig, McpServerConfig, McpStdioServerConfig } from "./mcp-contract";
+import { getOrConnectClient } from "./mcp-session";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import type { SessionContext } from "./tool-session";
@@ -29,7 +30,7 @@ export type McpToolListing = {
   tools: McpTool[];
 };
 
-function createTransport(config: McpServerConfig) {
+function createEphemeralTransport(config: McpServerConfig) {
   if (config.type === "stdio") {
     return createStdioTransport(config);
   }
@@ -59,11 +60,7 @@ function createStdioTransport(config: McpStdioServerConfig) {
     if (val !== undefined) env[key] = val;
   }
   if (config.env) Object.assign(env, config.env);
-  return new StdioClientTransport({
-    command: config.command,
-    args: config.args ?? [],
-    env,
-  });
+  return new StdioClientTransport({ command: config.command, args: config.args ?? [], env });
 }
 
 export function isInsecureRemoteHttp(config: McpServerConfig): boolean {
@@ -83,8 +80,9 @@ export function sanitizeDescription(raw: string | undefined, fallback: string): 
 }
 
 function createHttpTransport(config: McpHttpServerConfig) {
-  const headers: Record<string, string> = config.headers ?? {};
-  return new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers } });
+  return new StreamableHTTPClientTransport(new URL(config.url), {
+    requestInit: { headers: config.headers ?? {} },
+  });
 }
 
 export function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResultSchema>): string {
@@ -123,6 +121,7 @@ function bindMcpToolDefinition(
   mcpTool: McpTool,
   config: McpServerConfig,
   session: SessionContext,
+  sessionId?: string,
 ): AnyToolDefinition {
   const toolId = buildToolId(serverName, mcpTool.name);
   const rawInputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
@@ -144,20 +143,22 @@ function bindMcpToolDefinition(
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(session, toolId, toolCallId, toolInput as Record<string, unknown>, async () => {
+        const args = toolInput as Record<string, unknown>;
+
+        if (sessionId) {
+          // Reuse the persistent session connection (self-healing via onclose).
+          const { client } = await getOrConnectClient(sessionId, serverName, config);
+          const result = await client.callTool({ name: mcpTool.name, arguments: args });
+          return { kind: "mcp-call" as const, server: serverName, tool: mcpTool.name, output: formatMcpResult(result) };
+        }
+
+        // No session (e.g. one-shot run): ephemeral connect/call/close.
         const client = new Client(MCP_CLIENT_INFO);
-        const transport = createTransport(config);
+        const transport = createEphemeralTransport(config);
         try {
           await client.connect(transport);
-          const result = await client.callTool({
-            name: mcpTool.name,
-            arguments: toolInput as Record<string, unknown>,
-          });
-          return {
-            kind: "mcp-call" as const,
-            server: serverName,
-            tool: mcpTool.name,
-            output: formatMcpResult(result),
-          };
+          const result = await client.callTool({ name: mcpTool.name, arguments: args });
+          return { kind: "mcp-call" as const, server: serverName, tool: mcpTool.name, output: formatMcpResult(result) };
         } finally {
           await client.close();
         }
@@ -166,8 +167,11 @@ function bindMcpToolDefinition(
   });
 }
 
-/** Async phase: connect to each configured server, list its tools, disconnect. No session needed. */
-export async function listMcpTools(workspace: string): Promise<McpToolListing[]> {
+/**
+ * Async phase: for each configured server, get the tool listing — reusing the
+ * session connection if a sessionId is given, otherwise connecting ephemerally.
+ */
+export async function listMcpTools(workspace: string, sessionId?: string): Promise<McpToolListing[]> {
   const config = readMcpConfig(workspace);
   const listings: McpToolListing[] = [];
 
@@ -176,20 +180,27 @@ export async function listMcpTools(workspace: string): Promise<McpToolListing[]>
       log.warn("mcp.server.insecure_http", { server: serverName, url: (serverConfig as McpHttpServerConfig).url });
       continue;
     }
-    const client = new Client(MCP_CLIENT_INFO);
-    const transport = createTransport(serverConfig);
     try {
-      await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
-      const { tools } = await withDeadline(client.listTools(), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/listTools`);
-      listings.push({ serverName, config: serverConfig, tools });
+      if (sessionId) {
+        const { tools } = await getOrConnectClient(sessionId, serverName, serverConfig);
+        listings.push({ serverName, config: serverConfig, tools });
+      } else {
+        const client = new Client(MCP_CLIENT_INFO);
+        const transport = createEphemeralTransport(serverConfig);
+        try {
+          await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
+          const { tools } = await withDeadline(client.listTools(), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/listTools`);
+          listings.push({ serverName, config: serverConfig, tools });
+        } finally {
+          try {
+            await client.close();
+          } catch {
+            // ignore close errors
+          }
+        }
+      }
     } catch (error) {
       log.warn("mcp.server.unavailable", { server: serverName, error: errorMessage(error) });
-    } finally {
-      try {
-        await client.close();
-      } catch {
-        // ignore close errors
-      }
     }
   }
 
@@ -201,6 +212,7 @@ export function bindMcpTools(
   listings: McpToolListing[],
   session: SessionContext,
   nativeToolIds: Set<string>,
+  sessionId?: string,
 ): Record<string, AnyToolDefinition> {
   const toolMap: Record<string, AnyToolDefinition> = {};
 
@@ -211,7 +223,7 @@ export function bindMcpTools(
         log.warn("mcp.tool.collision", { server: serverName, tool: toolId });
         continue;
       }
-      toolMap[toolId] = bindMcpToolDefinition(serverName, mcpTool, config, session);
+      toolMap[toolId] = bindMcpToolDefinition(serverName, mcpTool, config, session, sessionId);
     }
   }
 
