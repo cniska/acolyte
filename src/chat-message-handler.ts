@@ -49,7 +49,6 @@ type CreateMessageHandlerInput = {
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
-  useMemory?: boolean;
   promote?: () => void;
   clearTranscript: (sessionId?: string) => void;
 };
@@ -120,7 +119,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         activeSkills: input.currentSession.activeSkills,
         suggestions,
         workspace: input.currentSession.workspace,
-        useMemory: input.useMemory,
         signal: controller.signal,
         onEvent: (event) => {
           switch (event.type) {

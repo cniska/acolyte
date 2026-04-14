@@ -1,15 +1,20 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
-import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
+import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
+import { createLifecycleDeps } from "./test-utils";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
     const deps = createLifecycleDeps();
 
     const response = await runLifecycle(
-      createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" }),
+      {
+        request: { model: "gpt-5-mini", message: "test", history: [] },
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        taskId: "task_test",
+      },
       deps,
     );
 
@@ -19,17 +24,62 @@ describe("runLifecycle", () => {
     expect(deps.phaseFinalize).toHaveBeenCalledTimes(1);
     expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
   });
-});
 
-describe("shouldCommitMemory", () => {
-  test("returns false when request disables memory", () => {
-    expect(shouldCommitMemory(createLifecycleInput())).toBe(false);
+  test("accounts memory tokens when distilling", async () => {
+    const deps = createLifecycleDeps({
+      phaseFinalize: mock(
+        (ctx: { promptBreakdownTotals: { memoryTokens: number } }): ChatResponse => ({
+          state: "done",
+          model: "gpt-5-mini",
+          output: String(ctx.promptBreakdownTotals.memoryTokens),
+        }),
+      ),
+    });
+
+    const response = await runLifecycle(
+      {
+        request: { model: "gpt-5-mini", message: "test", history: [] },
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+      },
+      deps,
+    );
+
+    expect(Number(response.output)).toBeGreaterThan(0);
   });
 
-  test("returns true when request does not disable memory", () => {
-    expect(
-      shouldCommitMemory(createLifecycleInput({ request: { model: "gpt-5-mini", message: "test", history: [] } })),
-    ).toBe(true);
+  test("adds distill tokens on top of existing memory tokens", async () => {
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(
+        async (ctx: {
+          promptBreakdownTotals: { memoryTokens: number };
+          promptUsage: { memoryTokens: number };
+          result?: unknown;
+        }) => {
+          ctx.promptBreakdownTotals.memoryTokens = 5;
+          ctx.promptUsage.memoryTokens = 5;
+          ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+        },
+      ),
+      phaseFinalize: mock(
+        (ctx: { promptBreakdownTotals: { memoryTokens: number } }): ChatResponse => ({
+          state: "done",
+          model: "gpt-5-mini",
+          output: String(ctx.promptBreakdownTotals.memoryTokens),
+        }),
+      ),
+    });
+
+    const response = await runLifecycle(
+      {
+        request: { model: "gpt-5-mini", message: "test", history: [] },
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+      },
+      deps,
+    );
+
+    expect(Number(response.output)).toBeGreaterThan(5);
   });
 });
 
@@ -155,7 +205,12 @@ describe("scheduleMemoryCommit", () => {
 });
 
 describe("runLifecycle yield", () => {
-  const baseInput = createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" });
+  const baseInput = {
+    request: { model: "gpt-5-mini" as const, message: "test", history: [] as never[] },
+    soulPrompt: "SOUL",
+    workspace: process.cwd(),
+    taskId: "task_test",
+  };
 
   test("skips acceptResult when runControl yields", async () => {
     const deps = createLifecycleDeps();

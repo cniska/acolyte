@@ -32,7 +32,6 @@ export interface ChatAppProps {
   persist: () => Promise<void>;
   onSessionChange?: (next: Session) => void;
   version: string;
-  useMemory?: boolean;
 }
 
 export interface ChatStateResult {
@@ -63,7 +62,7 @@ export interface ChatStateResult {
 }
 
 export function useChatState(props: ChatAppProps, exit: () => void): ChatStateResult {
-  const { client, session, sessionState, persist, useMemory } = props;
+  const { client, session, sessionState, persist } = props;
 
   const [currentSession, setCurrentSession] = useState<Session>(session);
   const updateSession = useCallback(
@@ -218,7 +217,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setInterrupt: (handler) => {
       interruptRef.current = handler;
     },
-    useMemory,
     promote,
     clearTranscript,
   });

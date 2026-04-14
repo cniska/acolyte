@@ -19,8 +19,6 @@ export interface ChatRequest {
   readonly resourceId?: ResourceId;
   readonly activeSkills?: ActiveSkill[];
   readonly suggestions?: string[];
-  /** When true, stored memories and distill observations are included in context. */
-  readonly useMemory?: boolean;
   /** Client working directory. Falls back to server CWD when omitted. */
   readonly workspace?: string;
 }

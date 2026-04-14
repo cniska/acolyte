@@ -489,7 +489,7 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
 
 export function createLifecycleInput(overrides: Partial<LifecycleInput> = {}): LifecycleInput {
   return {
-    request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
+    request: { model: "gpt-5-mini", message: "test", history: [] },
     soulPrompt: "",
     features: DEFAULT_FEATURE_FLAGS,
     ...overrides,

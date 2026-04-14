@@ -124,7 +124,6 @@ export function isChatRequest(value: unknown): value is ChatRequest {
     (req.resourceId === undefined || typeof req.resourceId === "string") &&
     (req.activeSkills === undefined || isActiveSkillsPayload(req.activeSkills)) &&
     (req.suggestions === undefined || Array.isArray(req.suggestions)) &&
-    (req.useMemory === undefined || typeof req.useMemory === "boolean") &&
     (req.workspace === undefined || typeof req.workspace === "string")
   );
 }

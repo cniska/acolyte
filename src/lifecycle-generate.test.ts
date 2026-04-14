@@ -217,4 +217,52 @@ describe("phaseGenerate", () => {
     expect(ctx.currentError?.message).toBe("invalid_api_key");
     expect(ctx.currentError?.source).toBe("generate");
   });
+
+  test("accounts memory recall tokens from memory-search results", async () => {
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "memory-search", args: { query: "auth" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "memory-search",
+                result: {
+                  kind: "memory-search",
+                  results: [{ id: "mem_1", content: "Use OAuth", scope: "project" }],
+                },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.promptBreakdownTotals.memoryTokens).toBeGreaterThan(0);
+    expect(ctx.promptUsage.memoryTokens).toBeGreaterThan(0);
+  });
 });

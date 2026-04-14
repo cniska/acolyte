@@ -248,6 +248,16 @@ function emitStreamingUsage(ctx: RunContext, chars: number): void {
   }
 }
 
+function accountMemoryRecallTokens(ctx: RunContext, toolName: string, result: unknown): void {
+  if (toolName !== "memory-search") return;
+  if (result === undefined) return;
+  const serialized = JSON.stringify(result);
+  if (!serialized) return;
+  const tokens = estimateTokens(serialized);
+  ctx.promptUsage.memoryTokens += tokens;
+  ctx.promptBreakdownTotals.memoryTokens += tokens;
+}
+
 function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
   if (!ctx.currentError) return;
   if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
@@ -322,6 +332,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     } else {
       clearResolvedToolError(ctx, started ?? { toolName });
     }
+    accountMemoryRecallTokens(ctx, toolName, p.result);
     completeToolCall(ctx, p.toolCallId, toolName);
     emitToolResult(ctx, p.toolCallId, toolName, isError);
   },

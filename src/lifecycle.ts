@@ -46,10 +46,6 @@ const defaultLifecycleDeps: LifecycleDeps = {
   phaseFinalize,
 };
 
-export function shouldCommitMemory(input: LifecycleInput): boolean {
-  return input.request.useMemory !== false;
-}
-
 export function scheduleMemoryCommit(
   commitCtx: MemoryCommitContext,
   debug: RunContext["debug"],
@@ -173,9 +169,9 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const memoryTokens = estimateDistillPromptTokens(messages, output);
-  ctx.promptUsage.memoryTokens = memoryTokens;
-  ctx.promptBreakdownTotals.memoryTokens = memoryTokens;
+  const distillTokens = estimateDistillPromptTokens(messages, output);
+  ctx.promptUsage.memoryTokens += distillTokens;
+  ctx.promptBreakdownTotals.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
       sessionId: ctx.request.sessionId,
@@ -330,9 +326,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   acceptResult(ctx);
 
-  if (shouldCommitMemory(input)) {
-    commitMemory(ctx, input);
-  }
+  commitMemory(ctx, input);
 
   return deps.phaseFinalize(ctx);
 }
