@@ -19,6 +19,7 @@ describe("chat-commands-usage", () => {
         usedTokens: 100,
         systemTokens: 40,
         toolTokens: 30,
+        skillTokens: 20,
         memoryTokens: 0,
         messageTokens: 10,
       },
@@ -31,6 +32,7 @@ describe("chat-commands-usage", () => {
     expect(keys).toContain("Output");
     expect(keys).toContain("System");
     expect(keys).toContain("Tools");
+    expect(keys).toContain("Skills");
     expect(keys).toContain("Messages");
   });
 
@@ -61,6 +63,7 @@ describe("chat-commands-usage", () => {
         usedTokens: 100,
         systemTokens: 20,
         toolTokens: 30,
+        skillTokens: 10,
         memoryTokens: 0,
         messageTokens: 40,
       },
@@ -71,6 +74,7 @@ describe("chat-commands-usage", () => {
     const find = (key: string) => allPairs.find(([k]) => k === key)?.[1] ?? "";
     expect(find("System")).toContain("20%");
     expect(find("Tools")).toContain("30%");
+    expect(find("Skills")).toContain("10%");
     expect(find("Messages")).toContain("40%");
   });
 

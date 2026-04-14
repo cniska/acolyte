@@ -180,6 +180,7 @@ export function createAgentInput(
     inputBudgetTokens: number;
     systemPromptTokens: number;
     toolTokens: number;
+    skillTokens: number;
     memoryTokens: number;
     messageTokens: number;
     inputTruncated: boolean;
@@ -192,6 +193,7 @@ export function createAgentInput(
   const requestedToolTokens = options.toolTokens ?? 0;
   const lines: string[] = [];
   const usedIds = new Set<string>();
+  let includedSkillTokens = 0;
   const budget = options.budget;
   const tokenBudget = createPromptTokenBudget(contextMaxTokens);
   tokenBudget.reserve(requestedSystemTokens);
@@ -211,6 +213,7 @@ export function createAgentInput(
       if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
       lines.push(skillLine);
       tokenBudget.spend(skillTokens);
+      includedSkillTokens += skillTokens;
     }
   }
 
@@ -250,8 +253,9 @@ export function createAgentInput(
       inputBudgetTokens: contextMaxTokens,
       systemPromptTokens: requestedSystemTokens,
       toolTokens: requestedToolTokens,
+      skillTokens: includedSkillTokens,
       memoryTokens: 0,
-      messageTokens: inputTokens,
+      messageTokens: Math.max(0, inputTokens - includedSkillTokens),
       inputTruncated: usedIds.size < req.history.length,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,

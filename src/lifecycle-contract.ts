@@ -59,6 +59,7 @@ export type PromptUsage = {
   inputBudgetTokens: number;
   systemPromptTokens: number;
   toolTokens: number;
+  skillTokens: number;
   memoryTokens: number;
   messageTokens: number;
   inputTruncated: boolean;

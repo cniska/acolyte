@@ -57,9 +57,11 @@ describe("createAgentInput", () => {
       activeSkills: [{ name: "build", instructions: "keep slices small." }],
     };
 
-    const { input } = createAgentInput(req, defaultOptions);
+    const { input, usage } = createAgentInput(req, defaultOptions);
     expect(input).toContain("SYSTEM: Active skill (build)");
     expect(input).toContain("keep slices small.");
+    expect(usage.skillTokens).toBeGreaterThan(0);
+    expect(usage.messageTokens).toBeLessThan(usage.inputTokens);
   });
 
   test("reports provided tool token reservation in usage", () => {

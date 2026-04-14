@@ -20,6 +20,7 @@ export const promptBreakdownSchema = z.object({
   usedTokens: z.number(),
   systemTokens: z.number(),
   toolTokens: z.number(),
+  skillTokens: z.number().default(0),
   memoryTokens: z.number(),
   messageTokens: z.number(),
 });

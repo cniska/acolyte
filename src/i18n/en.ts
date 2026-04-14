@@ -85,6 +85,7 @@ export const EN_MESSAGES = {
   "chat.usage.metric.memory": "Memory",
   "chat.usage.metric.messages": "Messages",
   "chat.usage.metric.output": "Output",
+  "chat.usage.metric.skills": "Skills",
   "chat.usage.metric.system": "System",
   "chat.usage.metric.tools": "Tools",
   "chat.usage.metric.total": "Total",

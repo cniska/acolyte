@@ -75,6 +75,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       usedTokens: inputTokens,
       systemTokens: ctx.promptBreakdownTotals.systemTokens,
       toolTokens: ctx.promptBreakdownTotals.toolTokens,
+      skillTokens: ctx.promptBreakdownTotals.skillTokens,
       memoryTokens: ctx.promptBreakdownTotals.memoryTokens,
       messageTokens: ctx.promptBreakdownTotals.messageTokens,
     },
