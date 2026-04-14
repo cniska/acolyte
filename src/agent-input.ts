@@ -56,14 +56,14 @@ function createPromptTokenBudget(total: number): PromptTokenBudget {
 
   const clampRequest = (tokens: number): number => Math.max(0, Math.floor(tokens));
 
-  const allocate = (tokens: number): void => {
+  const consume = (tokens: number): void => {
     const requested = clampRequest(tokens);
     if (requested === 0 || remaining === 0) return;
     remaining = Math.max(0, remaining - requested);
   };
 
   return {
-    consume: allocate,
+    consume,
     remaining: () => remaining,
   };
 }
