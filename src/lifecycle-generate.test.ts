@@ -265,4 +265,49 @@ describe("phaseGenerate", () => {
     expect(ctx.promptBreakdownTotals.memoryTokens).toBeGreaterThan(0);
     expect(ctx.promptUsage.memoryTokens).toBeGreaterThan(0);
   });
+
+  test("does not account memory recall tokens for failed memory-search", async () => {
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "memory-search", args: { query: "auth" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "memory-search",
+                result: { error: "backend unavailable" },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.promptBreakdownTotals.memoryTokens).toBe(0);
+    expect(ctx.promptUsage.memoryTokens).toBe(0);
+  });
 });

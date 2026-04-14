@@ -332,7 +332,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     } else {
       clearResolvedToolError(ctx, started ?? { toolName });
     }
-    accountMemoryRecallTokens(ctx, toolName, p.result);
+    if (!isError) accountMemoryRecallTokens(ctx, toolName, p.result);
     completeToolCall(ctx, p.toolCallId, toolName);
     emitToolResult(ctx, p.toolCallId, toolName, isError);
   },
