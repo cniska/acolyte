@@ -8,7 +8,6 @@ const defaultOptions = {
   budget: {
     maxHistoryMessages: defaultLifecyclePolicy.maxHistoryMessages,
     maxMessageTokens: defaultLifecyclePolicy.maxMessageTokens,
-    maxAttachmentMessageTokens: defaultLifecyclePolicy.maxAttachmentMessageTokens,
     maxSkillContextTokens: defaultLifecyclePolicy.maxSkillContextTokens,
   } satisfies InputBudget,
 };
@@ -34,15 +33,7 @@ function createRequest(content: string): ChatRequest {
 }
 
 describe("createAgentInput", () => {
-  test("keeps large attached-file system context", () => {
-    const attachment = `Attached file: AGENTS.md\n${"A".repeat(6000)}`;
-    const { input } = createAgentInput(createRequest(attachment), defaultOptions);
-    expect(input).toContain("Attached file: AGENTS.md");
-    expect(input).toContain("A".repeat(5000));
-    expect(input.endsWith("…")).toBe(false);
-  });
-
-  test("still truncates non-attachment long messages", () => {
+  test("truncates long system messages", () => {
     const longSystem = `General note: ${"B".repeat(4000)}`;
     const { input } = createAgentInput(createRequest(longSystem), defaultOptions);
     expect(input).toContain("General note:");

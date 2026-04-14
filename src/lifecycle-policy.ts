@@ -1,7 +1,6 @@
 import {
   CONTEXT_MAX_TOKENS,
   INITIAL_MAX_STEPS,
-  MAX_ATTACHMENT_MESSAGE_TOKENS,
   MAX_HISTORY_MESSAGES,
   MAX_MESSAGE_TOKENS,
   MAX_NUDGES_PER_GENERATION,
@@ -26,7 +25,6 @@ export type LifecyclePolicy = {
   contextMaxTokens: number;
   maxHistoryMessages: number;
   maxMessageTokens: number;
-  maxAttachmentMessageTokens: number;
   maxSkillContextTokens: number;
   // Workspace commands
   installCommand?: WorkspaceCommand;
@@ -44,7 +42,6 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   contextMaxTokens: CONTEXT_MAX_TOKENS,
   maxHistoryMessages: MAX_HISTORY_MESSAGES,
   maxMessageTokens: MAX_MESSAGE_TOKENS,
-  maxAttachmentMessageTokens: MAX_ATTACHMENT_MESSAGE_TOKENS,
   maxSkillContextTokens: MAX_SKILL_CONTEXT_TOKENS,
 };
 

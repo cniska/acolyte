@@ -82,10 +82,6 @@ function truncateByTokens(input: string, maxTokens: number): string {
   return `${input.slice(0, lo)}…`;
 }
 
-function isRelevantFileContext(content: string): boolean {
-  return content.startsWith("Attached file:") || content.startsWith("Attached directory:");
-}
-
 function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
   return message.kind === "tool_payload";
 }
@@ -164,7 +160,6 @@ function resolveMessageTokenCap(
 export type InputBudget = {
   maxHistoryMessages: number;
   maxMessageTokens: number;
-  maxAttachmentMessageTokens: number;
   maxSkillContextTokens: number;
 };
 
@@ -223,18 +218,6 @@ export function createAgentInput(
       tokenBudget.consume(suggestionTokens);
     }
   }
-
-  const relevantFiles = req.history.filter(
-    (message) => message.role === "system" && isRelevantFileContext(message.content),
-  );
-  const filesResult = collectLinesWithinBudget(
-    relevantFiles,
-    usedIds,
-    tokenBudget.remaining(),
-    budget.maxAttachmentMessageTokens,
-    budget.maxHistoryMessages,
-  );
-  lines.push(...filesResult.lines);
 
   const recentResult = collectLinesWithinBudget(
     req.history,
