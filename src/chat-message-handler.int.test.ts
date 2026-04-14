@@ -539,6 +539,29 @@ describe("chat message handler", () => {
     }
   });
 
+  test("concurrent handleSubmit calls only process one turn", async () => {
+    let replyCount = 0;
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          replyCount++;
+          await Bun.sleep(10);
+          input.onEvent({ type: "text-delta", text: "ok" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    const first = handleMessage("hello");
+    const second = handleMessage("hello");
+    await Promise.all([first, second]);
+
+    expect(session.messages.filter((m) => m.role === "user")).toHaveLength(1);
+    expect(rows.filter((r) => r.kind === "user")).toHaveLength(1);
+    expect(replyCount).toBe(1);
+  });
+
   test("interrupt handler stays registered during remote task followup", async () => {
     let interruptHandler: (() => void) | null = null;
     const session = createSession({ id: "sess_test" });

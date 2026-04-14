@@ -71,7 +71,18 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     input.onStopPending?.();
   };
 
+  let turnState: "idle" | "running" = "idle";
+  const acquireTurn = (): boolean => {
+    if (turnState !== "idle") return false;
+    turnState = "running";
+    return true;
+  };
+  const releaseTurn = (): void => {
+    turnState = "idle";
+  };
+
   const startAssistantTurn = async (userText: string): Promise<void> => {
+    acquireTurn();
     log.debug("chat.turn.start", { userText });
     startPending();
     const userMessage = input.createMessage("user", userText);
@@ -220,6 +231,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       }
     } finally {
       if (!keepPendingForRemoteTask) {
+        releaseTurn();
         input.setInterrupt(null);
         stopPending();
         input.setPendingState(null);
@@ -229,8 +241,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
 
   const handler = async (raw: string): Promise<void> => {
     const text = raw.trim();
-    log.debug("chat.handler", { text, isPending: input.isPending });
-    if (!text || (input.isPending && !text.startsWith("/"))) return;
+    const busy = turnState === "running" || input.isPending;
+    log.debug("chat.handler", { text, turnState, isPending: input.isPending });
+    if (!text || (busy && !text.startsWith("/"))) return;
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
       if (corrections.length === 1) return handler(corrections[0]);
@@ -288,6 +301,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     if (text.startsWith("/")) {
       input.setRows((current) => [...current, createRow("user", text)]);
     }
+    if (!acquireTurn()) return;
     let userText = text;
     const commandResult = await dispatchSlashCommand({
       text,
@@ -313,6 +327,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {
+      releaseTurn();
       input.promote?.();
       return;
     }
