@@ -1,7 +1,6 @@
 import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
-import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { t } from "./i18n";
 import type {
   LifecycleEventName,
@@ -111,7 +110,7 @@ function createRunContext(
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
-    features: input.features ?? DEFAULT_FEATURE_FLAGS,
+    features: input.features,
     emit: params.emit,
     debug: params.debug,
     tools: params.prepared.tools,
@@ -278,8 +277,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const { model } = deps.resolveModel(input.request.model);
 
-  const features = input.features ?? DEFAULT_FEATURE_FLAGS;
-  const mcpListings = features.mcp ? await listMcpTools(sandboxWorkspace, input.request.sessionId) : [];
+  const mcpListings = input.features.mcp ? await listMcpTools(sandboxWorkspace, input.request.sessionId) : [];
 
   const prepared = deps.phasePrepare({
     request: input.request,

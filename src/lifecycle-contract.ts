@@ -134,7 +134,7 @@ export type LifecycleInput = {
   soulPrompt: string;
   workspace?: string;
   taskId?: string;
-  features?: ResolvedFeatureFlags;
+  features: ResolvedFeatureFlags;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;

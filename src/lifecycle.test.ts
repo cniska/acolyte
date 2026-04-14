@@ -2,19 +2,14 @@ import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
 import { runLifecycle, scheduleMemoryCommit, shouldCommitMemory } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps } from "./test-utils";
+import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
     const deps = createLifecycleDeps();
 
     const response = await runLifecycle(
-      {
-        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
-        soulPrompt: "SOUL",
-        workspace: process.cwd(),
-        taskId: "task_test",
-      },
+      createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" }),
       deps,
     );
 
@@ -28,20 +23,12 @@ describe("runLifecycle", () => {
 
 describe("shouldCommitMemory", () => {
   test("returns false when request disables memory", () => {
-    expect(
-      shouldCommitMemory({
-        request: { model: "gpt-5-mini", message: "test", history: [], useMemory: false },
-        soulPrompt: "",
-      }),
-    ).toBe(false);
+    expect(shouldCommitMemory(createLifecycleInput())).toBe(false);
   });
 
   test("returns true when request does not disable memory", () => {
     expect(
-      shouldCommitMemory({
-        request: { model: "gpt-5-mini", message: "test", history: [] },
-        soulPrompt: "",
-      }),
+      shouldCommitMemory(createLifecycleInput({ request: { model: "gpt-5-mini", message: "test", history: [] } })),
     ).toBe(true);
   });
 });
@@ -168,12 +155,7 @@ describe("scheduleMemoryCommit", () => {
 });
 
 describe("runLifecycle yield", () => {
-  const baseInput = {
-    request: { model: "gpt-5-mini" as const, message: "test", history: [] as never[], useMemory: false },
-    soulPrompt: "SOUL",
-    workspace: process.cwd(),
-    taskId: "task_test",
-  };
+  const baseInput = createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" });
 
   test("skips acceptResult when runControl yields", async () => {
     const deps = createLifecycleDeps();
