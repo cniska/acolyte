@@ -18,6 +18,7 @@ export const pendingStateSchema = z.discriminatedUnion("kind", [
     kind: z.literal("running"),
     toolCalls: z.number().int().nonnegative().optional(),
   }),
+  z.object({ kind: z.literal("awaiting-input") }),
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;
 

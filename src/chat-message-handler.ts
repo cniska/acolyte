@@ -102,7 +102,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
 
     await input.persist();
-    let keepPendingForRemoteTask = false;
+    let cleanup: "full" | "turn-only" | "none" = "full";
 
     try {
       const suggestions: string[] = [];
@@ -179,7 +179,14 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // Clear the pending indicator in the same synchronous block as
       // adding the worked/status rows so React batches them into one
       // commit — avoids a frame where both "Working" and "Worked" show.
-      input.setPendingState(null);
+      // For awaiting-input, keep the indicator alive and tell the
+      // finally block to skip pending cleanup.
+      if (turn.awaitingInput) {
+        cleanup = "turn-only";
+        input.setPendingState({ kind: "awaiting-input" });
+      } else {
+        input.setPendingState(null);
+      }
       input.setRows((current) => [...current, ...turn.rows]);
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
@@ -200,7 +207,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         });
         if (startedFollowup) {
           input.setInterrupt(() => followupController.abort());
-          keepPendingForRemoteTask = true;
+          cleanup = "none";
           return;
         }
       }
@@ -233,11 +240,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         ]);
       }
     } finally {
-      if (!keepPendingForRemoteTask) {
+      if (cleanup !== "none") {
         releaseTurn();
         input.setInterrupt(null);
-        stopPending();
-        input.setPendingState(null);
+        if (cleanup === "full") {
+          stopPending();
+          input.setPendingState(null);
+        }
       }
     }
   };
