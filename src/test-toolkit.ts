@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { compactDetail } from "./compact-text";
 import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
+import { truncateText } from "./truncate-text";
 import { formatWorkspaceCommand, resolveCommandFiles } from "./workspace-profile";
 
 function createRunTestsTool(input: ToolkitInput) {
@@ -27,7 +27,6 @@ function createRunTestsTool(input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_600, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         const profile = session.workspaceProfile;
@@ -41,7 +40,7 @@ function createRunTestsTool(input: ToolkitInput) {
         const command = formatWorkspaceCommand(resolved);
         onOutput({
           toolName: "test-run",
-          content: { kind: "tool-header", labelKey: "tool.label.test_run", detail: compactDetail(command) },
+          content: { kind: "tool-header", labelKey: "tool.label.test_run", detail: truncateText(command) },
           toolCallId: callId,
         });
         const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];

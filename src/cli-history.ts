@@ -1,9 +1,9 @@
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
-import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { SessionStore } from "./session-contract";
+import { truncateText } from "./truncate-text";
 
 type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;

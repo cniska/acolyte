@@ -1,13 +1,13 @@
 import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
+import { log } from "./log";
 import type { RunToolResult } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
 
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 
-export type ToolOutputBudget = { maxChars: number; maxLines: number };
+const OUTPUT_SAFETY_CAP = 500_000;
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
@@ -17,7 +17,6 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly outputBudget?: ToolOutputBudget;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
 };
 
@@ -69,11 +68,12 @@ export function createTool<TInput, TOutput>(
     execute: async (input, toolCallId) => {
       const parsedInput = inputParser ? (inputParser.parse(input) as TInput) : input;
       const runResult = await config.execute(parsedInput, toolCallId);
-      const parsed = config.outputSchema.parse(runResult.result);
-      if (config.outputBudget && parsed && typeof parsed === "object" && "output" in parsed) {
-        const record = parsed as Record<string, unknown>;
-        if (typeof record.output === "string") {
-          record.output = compactToolOutput(record.output, config.outputBudget);
+      let parsed = config.outputSchema.parse(runResult.result);
+      if (parsed && typeof parsed === "object" && "output" in parsed) {
+        const output = (parsed as Record<string, unknown>).output;
+        if (typeof output === "string" && output.length > OUTPUT_SAFETY_CAP) {
+          log.warn("tool output truncated", { chars: output.length, cap: OUTPUT_SAFETY_CAP });
+          parsed = { ...parsed, output: output.slice(0, OUTPUT_SAFETY_CAP) };
         }
       }
       return { ...runResult, result: parsed };

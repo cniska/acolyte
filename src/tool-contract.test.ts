@@ -62,6 +62,39 @@ describe("createTool", () => {
     expect(seen).toEqual({ q: "hello", extra: true });
   });
 
+  test("truncates output exceeding safety cap", async () => {
+    const tool = createTool({
+      id: "test-safety-cap",
+      toolkit: "test",
+      category: "execute",
+      description: "test",
+      instruction: "test",
+      inputSchema: z.object({}),
+      outputSchema: z.object({ output: z.string() }),
+      execute: async () => ({ result: { output: "x".repeat(600_000) } }),
+    });
+
+    const { result } = await tool.execute({}, "call_cap");
+    expect((result as { output: string }).output.length).toBe(500_000);
+  });
+
+  test("preserves output under safety cap", async () => {
+    const content = "hello world";
+    const tool = createTool({
+      id: "test-no-cap",
+      toolkit: "test",
+      category: "execute",
+      description: "test",
+      instruction: "test",
+      inputSchema: z.object({}),
+      outputSchema: z.object({ output: z.string() }),
+      execute: async () => ({ result: { output: content } }),
+    });
+
+    const { result } = await tool.execute({}, "call_no_cap");
+    expect((result as { output: string }).output).toBe(content);
+  });
+
   test("stores json-schema form on tool definition", () => {
     const tool = createTool({
       id: "test-json-schema-shape",

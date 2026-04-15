@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { compactDetail } from "./compact-text";
 import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { emitParts, resultChunkParts } from "./tool-output-format";
+import { truncateText } from "./truncate-text";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -72,7 +72,6 @@ function createWebSearchTool(input: ToolkitInput) {
       query: z.string().min(1),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_400, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "web-search", toolCallId, toolInput, async (callId) => {
         input.onOutput({
@@ -80,7 +79,7 @@ function createWebSearchTool(input: ToolkitInput) {
           content: {
             kind: "tool-header",
             labelKey: "tool.label.web_search",
-            detail: `"${compactDetail(toolInput.query)}"`,
+            detail: `"${truncateText(toolInput.query)}"`,
           },
           toolCallId: callId,
         });
@@ -111,7 +110,6 @@ function createWebFetchTool(input: ToolkitInput) {
       url: z.string().min(1),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_600, maxLines: 90 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "web-fetch", toolCallId, toolInput, async (callId) => {
         input.onOutput({

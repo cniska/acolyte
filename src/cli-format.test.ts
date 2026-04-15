@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { clampLines, displayPath, formatAgentReplyOutput, formatForTool, formatRunOutput } from "./cli-format";
-import { truncateText } from "./compact-text";
 import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 
@@ -63,11 +62,6 @@ describe("cli-format", () => {
     const raw = ["line1", "line2"].join("\n");
     const out = formatForTool("unknown-tool", raw);
     expect(out).toBe("line1\nline2");
-  });
-
-  test("truncateText stays stable", () => {
-    expect(truncateText("abcdef", 4)).toBe("abc…");
-    expect(truncateText("ab", 4)).toBe("ab");
   });
 
   test("clampLines truncates with overflow message", () => {

@@ -71,7 +71,6 @@ function createScanCodeTool(input: ToolkitInput) {
       patterns: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_400, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "code-scan", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);
@@ -137,7 +136,6 @@ function createEditCodeTool(input: ToolkitInput) {
       edits: z.array(editCodeEditSchema).min(1),
     }),
     outputSchema,
-    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "code-edit", toolCallId, toolInput, async (callId) => {
         const editResult = await editCode({
