@@ -72,7 +72,6 @@ function createWebSearchTool(input: ToolkitInput) {
       query: z.string().min(1),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_400, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "web-search", toolCallId, toolInput, async (callId) => {
         input.onOutput({
@@ -111,7 +110,6 @@ function createWebFetchTool(input: ToolkitInput) {
       url: z.string().min(1),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_600, maxLines: 90 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "web-fetch", toolCallId, toolInput, async (callId) => {
         input.onOutput({

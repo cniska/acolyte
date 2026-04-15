@@ -27,7 +27,6 @@ function createRunTestsTool(input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_600, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(session, "test-run", toolCallId, toolInput, async (callId) => {
         const profile = session.workspaceProfile;

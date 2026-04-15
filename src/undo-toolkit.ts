@@ -29,7 +29,6 @@ function createUndoListTool(input: ToolkitInput) {
       ),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_000, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-list", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";
@@ -76,7 +75,6 @@ function createUndoRestoreTool(input: ToolkitInput) {
       conflicts: z.array(z.object({ path: z.string().min(1), reason: z.string().min(1) })),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_200, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-restore", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";

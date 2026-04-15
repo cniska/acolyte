@@ -100,7 +100,6 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
       output: z.string(),
     }),
     inputSchema: z.object({}).optional(),
-    outputBudget: { maxChars: 1_800, maxLines: 80 },
     execute: async (_toolInput, toolCallId) => {
       return runTool(input.session, "git-status", toolCallId, {}, async (callId) => {
         input.onOutput({
@@ -135,7 +134,6 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
       path: z.string().optional(),
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
-    outputBudget: { maxChars: 3_200, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-diff", toolCallId, toolInput, async (callId) => {
         input.onOutput({
@@ -169,7 +167,6 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
       path: z.string().optional(),
       limit: z.number().int().min(1).max(50).optional(),
     }),
-    outputBudget: { maxChars: 3_200, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-log", toolCallId, toolInput, async (callId) => {
         input.onOutput({
@@ -206,7 +203,6 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
       path: z.string().optional(),
       contextLines: z.number().int().min(0).max(20).optional(),
     }),
-    outputBudget: { maxChars: 3_200, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-show", toolCallId, toolInput, async (callId) => {
         input.onOutput({
@@ -252,7 +248,6 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
       paths: z.array(z.string().min(1)).max(200).optional(),
       all: z.boolean().optional(),
     }),
-    outputBudget: { maxChars: 1_800, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-add", toolCallId, toolInput, async (callId) => {
         const paths = (toolInput.paths ?? []).filter((p) => p.trim().length > 0);
@@ -298,7 +293,6 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
       message: z.string().min(1),
       body: z.array(z.string().min(1)).max(10).optional(),
     }),
-    outputBudget: { maxChars: 3_200, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "git-commit", toolCallId, toolInput, async (callId) => {
         const rawCommit = await git.commit({ message: toolInput.message, body: toolInput.body });

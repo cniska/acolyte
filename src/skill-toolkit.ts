@@ -65,7 +65,6 @@ function createActivateSkillTool(input: ToolkitInput) {
         }),
       ),
     }),
-    outputBudget: { maxChars: 8_000, maxLines: 240 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-activate", toolCallId, toolInput, async (callId) => {
         const activated: { name: string; source: SkillSource; instructions: string }[] = [];

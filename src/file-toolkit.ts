@@ -67,7 +67,6 @@ function createFindFilesTool(input: ToolkitInput) {
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_500, maxLines: 100 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 40;
@@ -124,7 +123,6 @@ function createSearchFilesTool(input: ToolkitInput) {
       entries: z.array(z.object({ path: z.string().min(1), hits: z.array(z.string().min(1)) })),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_200, maxLines: 80 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
         const maxResults = toolInput.maxResults ?? 20;
@@ -176,7 +174,6 @@ function createReadFileTool(input: ToolkitInput) {
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 80_000, maxLines: FILE_READ_MAX_LINES },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
         const paths = deduplicatePaths(toolInput.paths);
@@ -241,7 +238,6 @@ function createEditFileTool(input: ToolkitInput) {
         .min(1),
     }),
     outputSchema,
-    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-edit", toolCallId, toolInput, async (callId) => {
         const rawResult = await editFile({
@@ -287,7 +283,6 @@ function createCreateFileTool(input: ToolkitInput) {
       removed: z.number().int().nonnegative(),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 3_000, maxLines: 100 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-create", toolCallId, toolInput, async (callId) => {
         const rawResult = await writeTextFile({
@@ -330,7 +325,6 @@ function createDeleteFileTool(input: ToolkitInput) {
       deleted: z.number().int().nonnegative(),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 1_400, maxLines: 60 },
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-delete", toolCallId, toolInput, async (callId) => {
         const paths = normalizeUniquePaths(toolInput.paths);

@@ -25,7 +25,6 @@ function createRunCommandTool(input: ToolkitInput) {
       exitCode: z.number().int().optional(),
       output: z.string(),
     }),
-    outputBudget: { maxChars: 2_600, maxLines: 120 },
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,

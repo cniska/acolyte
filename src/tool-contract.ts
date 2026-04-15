@@ -1,13 +1,12 @@
 import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
 import type { RunToolResult } from "./tool-execution";
-import { compactToolOutput } from "./tool-output";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
 
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 
-export type ToolOutputBudget = { maxChars: number; maxLines: number };
+const OUTPUT_SAFETY_CAP = 500_000;
 
 export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly id: string;
@@ -17,7 +16,6 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly instruction: string;
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
-  readonly outputBudget?: ToolOutputBudget;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
 };
 
@@ -70,10 +68,11 @@ export function createTool<TInput, TOutput>(
       const parsedInput = inputParser ? (inputParser.parse(input) as TInput) : input;
       const runResult = await config.execute(parsedInput, toolCallId);
       const parsed = config.outputSchema.parse(runResult.result);
-      if (config.outputBudget && parsed && typeof parsed === "object" && "output" in parsed) {
+      if (parsed && typeof parsed === "object" && "output" in parsed) {
         const record = parsed as Record<string, unknown>;
-        if (typeof record.output === "string") {
-          record.output = compactToolOutput(record.output, config.outputBudget);
+        if (typeof record.output === "string" && record.output.length > OUTPUT_SAFETY_CAP) {
+          const half = Math.floor(OUTPUT_SAFETY_CAP / 2);
+          record.output = `${record.output.slice(0, half)}\n… ${record.output.length - OUTPUT_SAFETY_CAP} chars omitted …\n${record.output.slice(-half)}`;
         }
       }
       return { ...runResult, result: parsed };
