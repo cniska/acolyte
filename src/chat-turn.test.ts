@@ -149,6 +149,35 @@ describe("chat turn helpers", () => {
     expect(turn.assistantMessage.content).toBe("done");
   });
 
+  test("runAssistantTurn propagates activeSkills from response", async () => {
+    const skills = [{ name: "build", instructions: "Build instructions" }];
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "done",
+          activeSkills: skills,
+        }),
+        status: async () => ({}),
+        taskStatus: async () => null,
+      },
+      userText: "load the build skill",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      pendingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.activeSkills).toEqual(skills);
+  });
+
   test("runAssistantTurn marks assistant message as tool_payload when tools were used", async () => {
     const turn = await runAssistantTurn({
       client: {
