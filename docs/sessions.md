@@ -34,7 +34,7 @@ Two backends, selected via the `cloudSync` feature flag (default: file):
 - **File** (default): `sessions.json` in the data directory (see [Paths](paths.md)), entire state read/written as JSON
 - **Cloud** (feature-flagged): configured via `acolyte login`, backed by Postgres with JSONB messages. See [Cloud](cloud.md).
 
-The `SessionStore` interface provides granular operations (`listSessions`, `getSession`, `saveSession`, `removeSession`, `searchSession`, active session tracking).
+The `SessionStore` interface provides CRUD, search, and active session tracking.
 
 ## Session vs task
 
