@@ -86,7 +86,7 @@ export class CloudClient {
       removeSession: (id) => this.removeSession(id),
       getActiveSessionId: () => this.getActiveSessionId(),
       setActiveSessionId: (id) => this.setActiveSessionId(id),
-      searchSession: (id, query, options) => this.searchSessionMessages(id, query, options),
+      searchSession: (id, query, options) => this.searchSession(id, query, options),
       close: () => {},
     };
   }
@@ -223,7 +223,7 @@ export class CloudClient {
     await this.put(ROUTES.sessions.setActive, { body: { id: id ?? null } });
   }
 
-  private async searchSessionMessages(
+  private async searchSession(
     id: SessionId,
     query: string,
     options?: { limit?: number },

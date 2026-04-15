@@ -89,7 +89,7 @@ function isConversationalMessage(message: ChatRequest["history"][number]): boole
   return true;
 }
 
-function windowHistory(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
+function recentTurns(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
   const conversational = messages.filter(isConversationalMessage);
   let turns = 0;
   let cutIndex = 0;
@@ -209,8 +209,8 @@ export function createAgentInput(
     }
   }
 
-  const recentHistory = windowHistory(req.history, MAX_RECENT_TURNS);
-  const recentResult = collectLinesWithinBudget(recentHistory, usedIds, tokenBudget.remaining());
+  const turns = recentTurns(req.history, MAX_RECENT_TURNS);
+  const recentResult = collectLinesWithinBudget(turns, usedIds, tokenBudget.remaining());
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) lines.push("");
