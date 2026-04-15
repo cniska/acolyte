@@ -431,4 +431,72 @@ describe("render", () => {
       else process.env.TMUX = savedTmux;
     }
   });
+
+  test.todo("incremental dynamic updates promoted to static do not duplicate scrollback", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        // Simulates tool output streaming: a dynamic row is updated
+        // many times (growing content), overflowing the viewport each
+        // time.  The frozen overflow accumulates intermediate states.
+        // When the final content is promoted to Static, the frozen text
+        // no longer matches and the dedup must still prevent duplication.
+        type Ref<T> = { current: T };
+        const setContent: Ref<(fn: (prev: string[]) => string[]) => void> = { current: () => {} };
+        const doPromote: Ref<() => void> = { current: () => {} };
+
+        function App(): React.JSX.Element {
+          const [staticLines, setStaticLines] = useState<string[]>([]);
+          const [lines, setLines] = useState<string[]>([]);
+          setContent.current = setLines;
+          doPromote.current = () => {
+            setStaticLines([...lines]);
+            setLines([]);
+          };
+
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>
+                {staticLines.map((line) => (
+                  <tui-text key={line}>{line}</tui-text>
+                ))}
+              </tui-static>
+              {lines.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+              <tui-text>footer</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await new Promise((r) => setTimeout(r, 20));
+
+        // Simulate incremental tool output: add lines one at a time
+        for (let i = 1; i <= 8; i++) {
+          setContent.current((prev) => [...prev, `LINE_${i}`]);
+          await new Promise((r) => setTimeout(r, 10));
+        }
+
+        // Promote all lines to static (like chat promotion after turn)
+        doPromote.current();
+        await new Promise((r) => setTimeout(r, 30));
+
+        app.unmount();
+      },
+      { columns: 40, rows: 6 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    const allOutput = frameWrites.join("");
+
+    // Debug removed
+    // Each line must appear exactly once in terminal output.
+    for (let i = 1; i <= 8; i++) {
+      const marker = `LINE_${i}`;
+      const count = allOutput.split(marker).length - 1;
+      expect(count).toBe(1);
+    }
+  });
 });

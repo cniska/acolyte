@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
-import { setLogSink } from "../log";
+import { log, setLogSink } from "../log";
 import { stateDir } from "../paths";
 import { DEFAULT_COLUMNS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
@@ -182,8 +182,17 @@ export function render(node: ReactNode): RenderInstance {
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      if (frozenOverflowText.length > 0 && appendedStatic.startsWith(frozenOverflowText)) {
-        appendedStatic = appendedStatic.slice(frozenOverflowText.length);
+      if (frozenOverflowText.length > 0) {
+        const dedup = appendedStatic.startsWith(frozenOverflowText);
+        log.debug("render.static.flush", {
+          new_items: staticItems.length - flushedStaticCount,
+          frozen_text_len: frozenOverflowText.length,
+          appended_len: appendedStatic.length,
+          dedup_match: dedup,
+        });
+        if (dedup) {
+          appendedStatic = appendedStatic.slice(frozenOverflowText.length);
+        }
       }
       buf += appendedStatic;
       flushedStaticCount = staticItems.length;
@@ -209,6 +218,13 @@ export function render(node: ReactNode): RenderInstance {
       frozenLineCount > 0 &&
       (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
     ) {
+      const reason = allLines.length < frozenLineCount ? "shrunk" : "prefix-mismatch";
+      log.debug("render.frozen.reset", {
+        reason,
+        frozen_lines: frozenLineCount,
+        active_lines: allLines.length,
+        frozen_text_len: frozenOverflowText.length,
+      });
       frozenResetErase = `${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`;
       lastActiveLineCount = 0;
       frozenLineCount = 0;
@@ -239,6 +255,12 @@ export function render(node: ReactNode): RenderInstance {
       frozenLineCount += splitIdx;
       const overflowText = overflow.join("\n");
       frozenOverflowText += `${overflowText}\n`;
+      log.debug("render.overflow.freeze", {
+        new_frozen: splitIdx,
+        total_frozen: frozenLineCount,
+        overflow_phys_rows: countRows(overflowText),
+        on_screen_lines: onScreen.length,
+      });
       syncWrite(`${erase}${overflowText}\n${onScreen.join("\n")}`);
       lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     }
