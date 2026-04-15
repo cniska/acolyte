@@ -3,6 +3,7 @@ import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-a
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
+import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import type { LogLine } from "./log-parser";
 import type { TraceStore } from "./trace-store";
 
@@ -108,8 +109,6 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
 };
 
 const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
-
-const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
 
 function verboseRowData(line: LogLine): Record<string, string | undefined> {
   const event = line.fields.event;

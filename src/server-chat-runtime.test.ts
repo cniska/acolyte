@@ -48,6 +48,29 @@ describe("server chat runtime", () => {
     }
   });
 
+  test("verbose-only events use debug log level", () => {
+    const infoLogs: string[] = [];
+    const debugLogs: string[] = [];
+    const base = {
+      requestId: "err_abc123",
+      taskId: "task_1",
+      sessionId: "sess_1",
+      sequence: 1,
+      eventTs: "2026-03-06T10:00:00.000Z",
+      traceStore: null,
+      logInfo: (msg: string) => infoLogs.push(msg),
+      logDebug: (msg: string) => debugLogs.push(msg),
+    };
+
+    logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.output" });
+    logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.cache" });
+    logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.call" });
+
+    expect(debugLogs).toHaveLength(2);
+    expect(infoLogs).toHaveLength(1);
+    expect(infoLogs[0]).toBe("agent debug");
+  });
+
   test("isChatRequest rejects malformed activeSkills entries", () => {
     expect(
       isChatRequest({

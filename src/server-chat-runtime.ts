@@ -8,6 +8,7 @@ import { createDebugLogger } from "./debug-flags";
 import { createStreamError, errorIdSchema, parseError } from "./error-handling";
 import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
+import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
@@ -58,11 +59,12 @@ export function logLifecycleDebugEntry(params: {
   eventTs: string;
   fields?: Record<string, unknown>;
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
+  logDebug?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
   traceStore?: TraceStore | null;
 }): void {
-  const logInfo = params.logInfo ?? log.info;
+  const logFn = VERBOSE_ONLY_EVENTS.has(params.event) ? (params.logDebug ?? log.debug) : (params.logInfo ?? log.info);
   const logFields = toLogFieldMap(params.fields);
-  logInfo("agent debug", {
+  logFn("agent debug", {
     request_id: params.requestId,
     task_id: params.taskId ?? null,
     session_id: params.sessionId ?? null,
