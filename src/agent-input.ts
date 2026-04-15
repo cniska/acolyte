@@ -84,6 +84,26 @@ function truncateByTokens(input: string, maxTokens: number): string {
   return `${input.slice(0, lo)}…`;
 }
 
+function isConversationalMessage(message: ChatRequest["history"][number]): boolean {
+  if (message.role === "system") return false;
+  if (message.kind === "status") return false;
+  return true;
+}
+
+function lastNTurns(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
+  const conversational = messages.filter(isConversationalMessage);
+  let turns = 0;
+  let cutIndex = 0;
+  for (let i = conversational.length - 1; i >= 0; i--) {
+    if (conversational[i].role === "user") {
+      turns++;
+      if (turns > n) return conversational.slice(cutIndex);
+      cutIndex = i;
+    }
+  }
+  return conversational;
+}
+
 function isAssistantToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
   return message.role === "assistant" && message.kind === "tool_payload";
 }
@@ -190,7 +210,7 @@ export function createAgentInput(
     }
   }
 
-  const recentHistory = req.history.slice(-HISTORY_WINDOW);
+  const recentHistory = lastNTurns(req.history, HISTORY_WINDOW);
   const recentResult = collectLinesWithinBudget(recentHistory, usedIds, tokenBudget.remaining());
   lines.push(...recentResult.lines);
 

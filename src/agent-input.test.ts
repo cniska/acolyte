@@ -18,8 +18,8 @@ function createRequest(content: string): ChatRequest {
     message: "review this",
     history: [
       {
-        id: "msg_system",
-        role: "system",
+        id: "msg_context",
+        role: "user",
         content,
         timestamp: "2026-02-20T10:00:00.000Z",
       },
@@ -221,46 +221,115 @@ describe("createAgentInput", () => {
     expect(input).not.toContain("TOOL_SENTINEL");
   });
 
-  test("excludes history beyond the window even when budget allows", () => {
-    const history = Array.from({ length: HISTORY_WINDOW + 5 }).map((_, i) => ({
-      id: `msg_${i}`,
-      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
-      content: `TURN_${i}`,
-      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
-    }));
+  test("excludes exchanges beyond the window even when budget allows", () => {
+    // Build HISTORY_WINDOW + 3 exchanges (user + assistant pairs)
+    const exchanges = HISTORY_WINDOW + 3;
+    const history: ChatRequest["history"] = [];
+    for (let i = 0; i < exchanges; i++) {
+      history.push({
+        id: `msg_u${i}`,
+        role: "user",
+        content: `USER_EXCHANGE_${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:00.000Z`,
+      });
+      history.push({
+        id: `msg_a${i}`,
+        role: "assistant",
+        content: `ASSISTANT_EXCHANGE_${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:01.000Z`,
+      });
+    }
     const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
 
     const { input, usage } = createAgentInput(req, defaultOptions);
-    expect(input).toContain(`TURN_${history.length - 1}`);
-    expect(input).toContain(`TURN_${history.length - HISTORY_WINDOW}`);
-    expect(input).not.toContain("TURN_0");
-    expect(usage.includedHistoryMessages).toBeLessThanOrEqual(HISTORY_WINDOW);
+    // Last HISTORY_WINDOW turns should be included
+    expect(input).toContain(`USER_EXCHANGE_${exchanges - 1}`);
+    expect(input).toContain(`ASSISTANT_EXCHANGE_${exchanges - 1}`);
+    expect(input).toContain(`USER_EXCHANGE_${exchanges - HISTORY_WINDOW}`);
+    // Older turns should be excluded
+    expect(input).not.toContain("USER_EXCHANGE_0");
+    expect(input).not.toContain("ASSISTANT_EXCHANGE_0");
     expect(usage.totalHistoryMessages).toBe(history.length);
   });
 
-  test("includes all messages when history is within the window", () => {
-    const count = HISTORY_WINDOW - 1;
-    const history = Array.from({ length: count }).map((_, i) => ({
-      id: `msg_${i}`,
-      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
-      content: `TURN_${i}`,
-      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
-    }));
+  test("includes tool payloads that belong to a windowed exchange", () => {
+    // One old exchange, then one recent exchange with tool payloads
+    const history: ChatRequest["history"] = [
+      { id: "msg_old_u", role: "user", content: "OLD_USER", timestamp: "2026-02-20T10:00:00.000Z" },
+      { id: "msg_old_a", role: "assistant", content: "OLD_ASSISTANT", timestamp: "2026-02-20T10:00:01.000Z" },
+    ];
+    // Add HISTORY_WINDOW exchanges, last one has tool payloads
+    for (let i = 0; i < HISTORY_WINDOW; i++) {
+      history.push({
+        id: `msg_u${i}`,
+        role: "user",
+        content: `RECENT_USER_${i}`,
+        timestamp: `2026-02-20T10:${String(i + 1).padStart(2, "0")}:00.000Z`,
+      });
+      if (i === HISTORY_WINDOW - 1) {
+        history.push({
+          id: `msg_tool${i}`,
+          role: "assistant",
+          kind: "tool_payload",
+          content: "TOOL_OUTPUT_IN_WINDOW",
+          timestamp: `2026-02-20T10:${String(i + 1).padStart(2, "0")}:01.000Z`,
+        });
+      }
+      history.push({
+        id: `msg_a${i}`,
+        role: "assistant",
+        content: `RECENT_ASSISTANT_${i}`,
+        timestamp: `2026-02-20T10:${String(i + 1).padStart(2, "0")}:02.000Z`,
+      });
+    }
     const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
 
-    const { input, usage } = createAgentInput(req, defaultOptions);
-    expect(input).toContain("TURN_0");
-    expect(input).toContain(`TURN_${count - 1}`);
-    expect(usage.includedHistoryMessages).toBe(count);
+    const { input } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("TOOL_OUTPUT_IN_WINDOW");
+    expect(input).not.toContain("OLD_USER");
+    expect(input).not.toContain("OLD_ASSISTANT");
   });
 
-  test("last N turns are still truncated normally when individually large", () => {
-    const history = Array.from({ length: HISTORY_WINDOW }).map((_, i) => ({
-      id: `msg_${i}`,
-      role: "user" as const,
-      content: `BIG_${i} ${"x".repeat(50_000)}`,
-      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
-    }));
+  test("includes all messages when exchanges are within the window", () => {
+    const exchanges = HISTORY_WINDOW - 1;
+    const history: ChatRequest["history"] = [];
+    for (let i = 0; i < exchanges; i++) {
+      history.push({
+        id: `msg_u${i}`,
+        role: "user",
+        content: `TURN_U${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:00.000Z`,
+      });
+      history.push({
+        id: `msg_a${i}`,
+        role: "assistant",
+        content: `TURN_A${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:01.000Z`,
+      });
+    }
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("TURN_U0");
+    expect(input).toContain(`TURN_A${exchanges - 1}`);
+  });
+
+  test("windowed messages are still truncated normally when individually large", () => {
+    const history: ChatRequest["history"] = [];
+    for (let i = 0; i < HISTORY_WINDOW; i++) {
+      history.push({
+        id: `msg_u${i}`,
+        role: "user",
+        content: `BIG_${i} ${"x".repeat(50_000)}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:00.000Z`,
+      });
+      history.push({
+        id: `msg_a${i}`,
+        role: "assistant",
+        content: `RESP_${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:01.000Z`,
+      });
+    }
     const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
 
     const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 500 });
@@ -268,17 +337,47 @@ describe("createAgentInput", () => {
     expect(input).toContain("USER: go");
   });
 
+  test("excludes system and status messages from the window", () => {
+    const history: ChatRequest["history"] = [
+      { id: "msg_sys", role: "system", content: "SYSTEM_NOISE", timestamp: "2026-02-20T10:00:00.000Z" },
+      { id: "msg_u0", role: "user", content: "ONLY_USER", timestamp: "2026-02-20T10:00:01.000Z" },
+      {
+        id: "msg_status",
+        role: "assistant",
+        kind: "status",
+        content: "STATUS_NOISE",
+        timestamp: "2026-02-20T10:00:02.000Z",
+      },
+      { id: "msg_a0", role: "assistant", content: "ONLY_REPLY", timestamp: "2026-02-20T10:00:03.000Z" },
+    ];
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("ONLY_USER");
+    expect(input).toContain("ONLY_REPLY");
+    expect(input).not.toContain("SYSTEM_NOISE");
+    expect(input).not.toContain("STATUS_NOISE");
+  });
+
   test("totalHistoryMessages reflects full history, not windowed subset", () => {
-    const history = Array.from({ length: 50 }).map((_, i) => ({
-      id: `msg_${i}`,
-      role: "user" as const,
-      content: `msg ${i}`,
-      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
-    }));
+    const history: ChatRequest["history"] = [];
+    for (let i = 0; i < 25; i++) {
+      history.push({
+        id: `msg_u${i}`,
+        role: "user",
+        content: `msg ${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:00.000Z`,
+      });
+      history.push({
+        id: `msg_a${i}`,
+        role: "assistant",
+        content: `reply ${i}`,
+        timestamp: `2026-02-20T10:${String(i).padStart(2, "0")}:01.000Z`,
+      });
+    }
     const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
 
     const { usage } = createAgentInput(req, defaultOptions);
     expect(usage.totalHistoryMessages).toBe(50);
-    expect(usage.includedHistoryMessages).toBeLessThanOrEqual(HISTORY_WINDOW);
   });
 });
