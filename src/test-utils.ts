@@ -445,7 +445,6 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
       initialMaxSteps: 3,
       stepTimeoutMs: 1000,
       totalMaxSteps: 12,
-      maxNudgesPerGeneration: 1,
     }),
     phasePrepare: mock(() => ({
       session: createSessionContext(),
