@@ -58,7 +58,8 @@ async function runGitOp(operation: GitOp, execute: () => Promise<string>): Promi
 export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps): GitOps {
   return {
     statusShort: () => runGitOp("statusShort", () => deps.gitStatusShort(workspace)),
-    diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? DEFAULT_CONTEXT_LINES)),
+    diff: (input) =>
+      runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? DEFAULT_CONTEXT_LINES)),
     log: (input) => runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
     show: (input) =>
       runGitOp("show", () =>
@@ -145,7 +146,10 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
           content: { kind: "tool-header", labelKey: "tool.label.git_diff", detail: toolInput.path },
           toolCallId: callId,
         });
-        const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES });
+        const rawDiff = await git.diff({
+          path: toolInput.path,
+          contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
+        });
         const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
         emitParts(previewParts, "git-diff", input.onOutput, callId);
         return {
