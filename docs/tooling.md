@@ -16,17 +16,17 @@ lifecycle → budget → cache → toolkit → registry
 
 | Toolkit | Purpose |
 |---------|---------|
-| `file` | file operations |
+| `file` | File operations |
 | `code` | AST-aware code scanning and editing |
-| `undo` | revert file edits |
-| `session` | search current session history |
-| `memory` | persistent cross-session knowledge |
-| `skill` | engineering skill discovery and activation |
-| `test` | run workspace tests |
-| `checklist` | multi-step task tracking |
-| `git` | version control |
-| `web` | external information retrieval |
-| `shell` | shell command execution |
+| `undo` | Revert file edits |
+| `session` | Search current session history |
+| `memory` | Persistent cross-session knowledge |
+| `skill` | Skill discovery and activation |
+| `test` | Run workspace tests |
+| `checklist` | Multi-step task tracking |
+| `git` | Version control |
+| `web` | External information retrieval |
+| `shell` | Shell command execution |
 
 ## Tool execution
 
