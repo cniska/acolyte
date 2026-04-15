@@ -98,7 +98,12 @@ function createScanCodeTool(input: ToolkitInput) {
           language: toolInput.language,
           maxResults: toolInput.maxResults ?? 50,
         });
-        return { kind: "code-scan", paths, patterns: toolInput.patterns, output: formatScanCodeResult(rawScan) };
+        return {
+          kind: "code-scan" as const,
+          paths,
+          patterns: toolInput.patterns,
+          output: formatScanCodeResult(rawScan),
+        };
       });
     },
   });
@@ -151,7 +156,7 @@ function createEditCodeTool(input: ToolkitInput) {
         emitParts(diffParts, "code-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(editResult.output);
         return {
-          kind: "code-edit",
+          kind: "code-edit" as const,
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,

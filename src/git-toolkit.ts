@@ -114,7 +114,7 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
         const rawStatus = await git.statusShort();
         const previewParts = textHeadTailParts(rawStatus);
         emitParts(previewParts, "git-status", input.onOutput, callId);
-        return { kind: "git-status", output: rawStatus };
+        return { kind: "git-status" as const, output: rawStatus };
       });
     },
   });

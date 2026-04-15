@@ -35,7 +35,7 @@ function createUndoListTool(input: ToolkitInput) {
         const sessionId = input.sessionId ?? "";
         if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
           return {
-            kind: "undo-list",
+            kind: "undo-list" as const,
             sessionId: sessionId || "unknown",
             entries: [],
             output: "Undo checkpoints disabled.",
@@ -48,7 +48,7 @@ function createUndoListTool(input: ToolkitInput) {
         });
         const lines = entries.map((e) => `${e.id} ${e.toolId} ${e.paths.join(", ")}`);
         const output = lines.length > 0 ? lines.join("\n") : "No undo checkpoints.";
-        return { kind: "undo-list", sessionId, entries, output };
+        return { kind: "undo-list" as const, sessionId, entries, output };
       });
     },
   });
