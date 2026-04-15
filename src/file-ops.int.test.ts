@@ -16,7 +16,7 @@ describe("path validation — fs", () => {
     await writeFile(filePath, "hello from workspace", "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.readFile.execute({ paths: [{ path: filePath }] }, "call_read_ws");
-    expect((result.result as Record<string, unknown>).output).toContain("hello from workspace");
+    expect(result.result.output).toContain("hello from workspace");
   });
 
   test("readFileContent rejects files exceeding maxLines", async () => {
@@ -54,7 +54,7 @@ describe("path validation — fs", () => {
       { path: filePath, edits: [{ find: "beta", replace: "gamma" }] },
       "call_edit_ws",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=1");
+    expect(result.result.output).toContain("edits=1");
     expect(session.callLog[0]?.toolName).toBe("file-edit");
   });
 });
@@ -69,7 +69,7 @@ describe("editFile", () => {
       { path: filePath, edits: [{ find: "beta", replace: "gamma" }] },
       "call_edit_fr",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=1");
+    expect(result.result.output).toContain("edits=1");
     expect(session.callLog).toHaveLength(1);
   });
 
@@ -122,7 +122,7 @@ describe("editFile", () => {
       },
       "call_edit_snippet",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=1");
+    expect(result.result.output).toContain("edits=1");
     await expect(readFile(filePath, "utf8")).resolves.toContain("docs/contributing.md");
   });
 
@@ -206,7 +206,7 @@ describe("editFile", () => {
       { path: filePath, edits: [{ startLine: 2, endLine: 3, replace: "replaced2\nreplaced3\n" }] },
       "call_edit_lr",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=1");
+    expect(result.result.output).toContain("edits=1");
     const content = await readFile(filePath, "utf8");
     expect(content).toBe("line1\nreplaced2\nreplaced3\nline4\nline5\n");
   });
@@ -259,7 +259,7 @@ describe("editFile", () => {
       },
       "call_edit_lr5",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=2");
+    expect(result.result.output).toContain("edits=2");
     const content = await readFile(filePath, "utf8");
     expect(content).toBe("AAA\nbbb\nccc\nDDD\nEEE\n");
   });
@@ -292,7 +292,7 @@ describe("editFile", () => {
       { path: filePath, edits: [{ startLine: 1, endLine: 5, replace: "entirely\nnew\ncontent\n" }] },
       "call_edit_lr7",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("edits=1");
+    expect(result.result.output).toContain("edits=1");
     const content = await readFile(filePath, "utf8");
     expect(content).toBe("entirely\nnew\ncontent\n");
   });
@@ -334,8 +334,8 @@ describe("searchFiles", () => {
       { patterns: ["needle"], maxResults: 20, paths: [first] },
       "call_search_scope",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("first.ts:1:");
-    expect((result.result as Record<string, unknown>).output).not.toContain("second.ts");
+    expect(result.result.output).toContain("first.ts:1:");
+    expect(result.result.output).not.toContain("second.ts");
     expect(session.callLog[0]?.toolName).toBe("file-search");
   });
 
@@ -350,8 +350,8 @@ describe("searchFiles", () => {
       { patterns: ["needle"], maxResults: 20, paths: [join(workspace, "sub")] },
       "call_search_dir",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("inside.ts:1:");
-    expect((result.result as Record<string, unknown>).output).not.toContain("outside");
+    expect(result.result.output).toContain("inside.ts:1:");
+    expect(result.result.output).not.toContain("outside");
   });
 
   test("accepts canonical absolute paths inside a symlinked workspace root", async () => {
@@ -367,7 +367,7 @@ describe("searchFiles", () => {
       { patterns: ["needle"], maxResults: 20, paths: [filePath] },
       "call_search_symlink",
     );
-    expect((result.result as Record<string, unknown>).output).toContain("inside.ts:1:");
+    expect(result.result.output).toContain("inside.ts:1:");
   });
 });
 
@@ -377,7 +377,7 @@ describe("createFile", () => {
     const filePath = join(workspace, `test-write-${testUuid()}.txt`);
     const { tools, session } = toolsForAgent({ workspace });
     const result = await tools.createFile.execute({ path: filePath, content: "hello" }, "call_create_ws");
-    expect((result.result as Record<string, unknown>).output).toContain("bytes=5");
+    expect(result.result.output).toContain("bytes=5");
     expect(session.callLog[0]?.toolName).toBe("file-create");
   });
 });
@@ -389,7 +389,7 @@ describe("deleteFile", () => {
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
     const { tools, session } = toolsForAgent({ workspace });
     const result = await tools.deleteFile.execute({ paths: [filePath] }, "call_delete_ws");
-    expect((result.result as Record<string, unknown>).output).toContain("bytes=");
+    expect(result.result.output).toContain("bytes=");
     expect(session.callLog[0]?.toolName).toBe("file-delete");
     const { tools: tools2 } = toolsForAgent({ workspace });
     await expect(tools2.readFile.execute({ paths: [{ path: filePath }] }, "call_delete_verify")).rejects.toThrow();
