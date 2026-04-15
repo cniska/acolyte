@@ -4,6 +4,7 @@ import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { promptBreakdownSchema, tokenUsageSchema } from "./session-contract";
+import { activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
@@ -157,6 +158,7 @@ const chatResponseSchema = z.object({
   toolCalls: z.array(z.string()).optional(),
   modelCalls: z.number().optional(),
   error: z.string().optional(),
+  activeSkills: activeSkillsSchema.optional(),
 });
 
 export function parseChatResponse(payload: unknown): ChatResponse | null {

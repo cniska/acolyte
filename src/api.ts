@@ -36,6 +36,7 @@ export interface ChatResponse {
   toolCalls?: string[];
   modelCalls?: number;
   error?: string;
+  activeSkills?: ActiveSkill[];
 }
 
 export type WorkspaceSpecifier = Pick<ChatRequest, "workspace">;
