@@ -155,7 +155,7 @@ function createSearchFilesTool(input: ToolkitInput) {
   });
 }
 
-const FILE_READ_MAX_LINES = 2_000;
+const FILE_READ_MAX_LINES = 10_000;
 
 function createReadFileTool(input: ToolkitInput) {
   return createTool({
