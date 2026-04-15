@@ -82,12 +82,8 @@ function truncateByTokens(input: string, maxTokens: number): string {
   return `${input.slice(0, lo)}…`;
 }
 
-function isToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
-  return message.kind === "tool_payload";
-}
-
 function isAssistantToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
-  return message.role === "assistant" && isToolPayloadMessage(message);
+  return message.role === "assistant" && message.kind === "tool_payload";
 }
 
 function lineForMessage(message: ChatRequest["history"][number], maxTokens: number): { line: string; tokens: number } {
@@ -98,11 +94,10 @@ function lineForMessage(message: ChatRequest["history"][number], maxTokens: numb
 
 function lineForMessageWithinBudget(
   message: ChatRequest["history"][number],
-  maxTokens: number,
   remainingTokens: number,
 ): { line: string; tokens: number } | null {
   if (remainingTokens <= 0) return null;
-  let tokenLimit = Math.min(maxTokens, remainingTokens);
+  let tokenLimit = remainingTokens;
   while (tokenLimit > 0) {
     const candidate = lineForMessage(message, tokenLimit);
     if (candidate.tokens <= remainingTokens) return candidate;
@@ -115,18 +110,13 @@ function collectLinesWithinBudget(
   messages: ChatRequest["history"],
   usedIds: Set<string>,
   remainingTokens: number,
-  maxPerMessageTokens: number,
-  maxHistoryMessages: number,
 ): { lines: string[]; consumedTokens: number } {
   const lines: string[] = [];
   let consumed = 0;
-  const recent = messages.slice(-maxHistoryMessages);
   const includeMessage = (i: number): void => {
-    const message = recent[i];
+    const message = messages[i];
     if (usedIds.has(message.id)) return;
-    const ageFromLatest = recent.length - 1 - i;
-    const maxTokens = resolveMessageTokenCap(message, ageFromLatest, maxPerMessageTokens);
-    const candidate = lineForMessageWithinBudget(message, maxTokens, remainingTokens - consumed);
+    const candidate = lineForMessageWithinBudget(message, remainingTokens - consumed);
     if (!candidate || candidate.tokens === 0) return;
     usedIds.add(message.id);
     lines.unshift(candidate.line);
@@ -134,37 +124,20 @@ function collectLinesWithinBudget(
   };
 
   // Prefer conversational turns first and only then spend remaining budget on tool payloads.
-  for (let i = recent.length - 1; i >= 0; i -= 1) {
-    if (isAssistantToolPayloadMessage(recent[i])) continue;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (isAssistantToolPayloadMessage(messages[i])) continue;
     includeMessage(i);
   }
-  for (let i = recent.length - 1; i >= 0; i -= 1) {
-    if (!isAssistantToolPayloadMessage(recent[i])) continue;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (!isAssistantToolPayloadMessage(messages[i])) continue;
     includeMessage(i);
   }
   return { lines, consumedTokens: consumed };
 }
 
-function resolveMessageTokenCap(
-  message: ChatRequest["history"][number],
-  ageFromLatest: number,
-  maxPerMessageTokens: number,
-): number {
-  if (!isAssistantToolPayloadMessage(message)) return maxPerMessageTokens;
-  if (ageFromLatest <= 1) return maxPerMessageTokens;
-  if (ageFromLatest <= 4) return Math.min(maxPerMessageTokens, 500);
-  if (ageFromLatest <= 10) return Math.min(maxPerMessageTokens, 300);
-  return Math.min(maxPerMessageTokens, 200);
-}
-
-export type InputBudget = {
-  maxHistoryMessages: number;
-  maxMessageTokens: number;
-};
-
 export function createAgentInput(
   req: ChatRequest,
-  options: { systemPromptTokens?: number; toolTokens?: number; contextMaxTokens: number; budget: InputBudget },
+  options: { systemPromptTokens?: number; toolTokens?: number; contextMaxTokens: number },
 ): {
   input: string;
   usage: {
@@ -185,12 +158,11 @@ export function createAgentInput(
   const lines: string[] = [];
   const usedIds = new Set<string>();
   let includedSkillTokens = 0;
-  const budget = options.budget;
   const tokenBudget = createPromptTokenBudget(contextMaxTokens);
   tokenBudget.consume(requestedSystemTokens);
   tokenBudget.consume(requestedToolTokens);
 
-  const userLine = `USER: ${truncateByTokens(req.message.trim(), budget.maxMessageTokens)}`;
+  const userLine = `USER: ${req.message.trim()}`;
   const userTokens = estimateTokens(userLine);
   tokenBudget.consume(userTokens);
 
@@ -216,13 +188,7 @@ export function createAgentInput(
     }
   }
 
-  const recentResult = collectLinesWithinBudget(
-    req.history,
-    usedIds,
-    tokenBudget.remaining(),
-    budget.maxMessageTokens,
-    budget.maxHistoryMessages,
-  );
+  const recentResult = collectLinesWithinBudget(req.history, usedIds, tokenBudget.remaining());
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) lines.push("");
