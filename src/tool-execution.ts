@@ -122,7 +122,7 @@ export async function runTool<T = unknown>(
     }
 
     let taskFailed = false;
-    let taskResult: T = undefined!;
+    let taskResult = undefined as T;
     let taskError: unknown;
     try {
       taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
