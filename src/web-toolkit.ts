@@ -87,7 +87,7 @@ function createWebSearchTool(input: ToolkitInput) {
         const previewRows = webSearchStreamRows(result, toolInput.query);
         const previewParts = resultChunkParts(previewRows, 80);
         emitParts(previewParts, "web-search", input.onOutput, callId);
-        return { kind: "web-search", query: toolInput.query, output: result };
+        return { kind: "web-search" as const, query: toolInput.query, output: result };
       });
     },
   });
@@ -118,7 +118,7 @@ function createWebFetchTool(input: ToolkitInput) {
           toolCallId: callId,
         });
         const result = await fetchWeb(toolInput.url, toolInput.maxChars ?? 5000);
-        return { kind: "web-fetch", url: toolInput.url, output: result };
+        return { kind: "web-fetch" as const, url: toolInput.url, output: result };
       });
     },
   });

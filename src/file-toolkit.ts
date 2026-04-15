@@ -79,7 +79,7 @@ function createFindFilesTool(input: ToolkitInput) {
           callId,
         );
         return {
-          kind: "file-find",
+          kind: "file-find" as const,
           scope: "workspace",
           patterns: toolInput.patterns,
           matches: paths.length,
@@ -143,11 +143,11 @@ function createSearchFilesTool(input: ToolkitInput) {
         );
         emitParts(summaryParts, "file-search", input.onOutput, callId);
         return {
-          kind: "file-search",
+          kind: "file-search" as const,
           scope: toolInput.paths && toolInput.paths.length > 0 ? "paths" : "workspace",
           patterns,
           matches: summaryStats.files,
-          entries: [],
+          entries: [] as { path: string; hits: string[] }[],
           output: result,
         };
       });
@@ -193,7 +193,7 @@ function createReadFileTool(input: ToolkitInput) {
           toolCallId: callId,
         });
         const output = await readFileContents(input.workspace, paths, FILE_READ_MAX_LINES);
-        return { kind: "file-read", paths, output };
+        return { kind: "file-read" as const, paths, output };
       });
     },
   });
@@ -251,7 +251,7 @@ function createEditFileTool(input: ToolkitInput) {
         emitParts(diffParts, "file-edit", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
         return {
-          kind: "file-edit",
+          kind: "file-edit" as const,
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
@@ -297,7 +297,7 @@ function createCreateFileTool(input: ToolkitInput) {
         emitParts(diffParts, "file-create", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
         return {
-          kind: "file-create",
+          kind: "file-create" as const,
           path: toolInput.path,
           files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
@@ -340,7 +340,7 @@ function createDeleteFileTool(input: ToolkitInput) {
           resultParts.push(rawResult);
         }
         const rawResult = resultParts.join("\n\n");
-        return { kind: "file-delete", paths, deleted: paths.length, output: rawResult };
+        return { kind: "file-delete" as const, paths, deleted: paths.length, output: rawResult };
       });
     },
   });

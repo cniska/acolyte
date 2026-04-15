@@ -34,7 +34,7 @@ function createUndoListTool(input: ToolkitInput) {
         const sessionId = input.sessionId ?? "";
         if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
           return {
-            kind: "undo-list",
+            kind: "undo-list" as const,
             sessionId: sessionId || "unknown",
             entries: [],
             output: "Undo checkpoints disabled.",
@@ -47,7 +47,7 @@ function createUndoListTool(input: ToolkitInput) {
         });
         const lines = entries.map((e) => `${e.id} ${e.toolId} ${e.paths.join(", ")}`);
         const output = lines.length > 0 ? lines.join("\n") : "No undo checkpoints.";
-        return { kind: "undo-list", sessionId, entries, output };
+        return { kind: "undo-list" as const, sessionId, entries, output };
       });
     },
   });
@@ -80,7 +80,7 @@ function createUndoRestoreTool(input: ToolkitInput) {
         const sessionId = input.sessionId ?? "";
         if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
           return {
-            kind: "undo-restore",
+            kind: "undo-restore" as const,
             checkpointId: toolInput.checkpointId,
             restored: [],
             conflicts: [],
@@ -98,7 +98,7 @@ function createUndoRestoreTool(input: ToolkitInput) {
             ? `Conflicts:\n${result.conflicts.map((c) => `- ${c.path}: ${c.reason}`).join("\n")}`
             : `Restored ${result.restored.length} file(s).`;
         return {
-          kind: "undo-restore",
+          kind: "undo-restore" as const,
           checkpointId: toolInput.checkpointId,
           restored: result.restored,
           conflicts: result.conflicts.map((c) => ({ path: c.path, reason: c.reason })),
