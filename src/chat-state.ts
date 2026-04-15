@@ -149,15 +149,12 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     }
   }, []);
 
-  const activateSkill = createSkillActivator(
-    {},
-    {
-      currentSession,
-      setRows,
-      nowIso,
-      persist,
-    },
-  );
+  const activateSkill = createSkillActivator({
+    currentSession,
+    setRows,
+    nowIso,
+    persist,
+  });
 
   const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     sessionState,
