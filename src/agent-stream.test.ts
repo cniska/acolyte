@@ -16,6 +16,10 @@ describe("stripSignalLine", () => {
     expect(stripSignalLine("@signal no_op")).toBe("");
   });
 
+  test("returns text before an inline signal", () => {
+    expect(stripSignalLine("Build skill activated. @signal done")).toBe("Build skill activated.");
+  });
+
   test("returns full text when no signal is present", () => {
     expect(stripSignalLine("No signal here.")).toBe("No signal here.");
   });
@@ -40,6 +44,17 @@ describe("extractLifecycleSignal", () => {
   test("strips a leading signal and returns empty string", () => {
     expect(extractLifecycleSignal("@signal no_op")).toEqual({ signal: "no_op", text: "" });
     expect(extractLifecycleSignal("@signal done\n")).toEqual({ signal: "done", text: "" });
+  });
+
+  test("detects an inline signal preceded by a space", () => {
+    expect(extractLifecycleSignal("Build skill activated. @signal done")).toEqual({
+      signal: "done",
+      text: "Build skill activated.",
+    });
+    expect(extractLifecycleSignal("All good. @signal no_op\n")).toEqual({
+      signal: "no_op",
+      text: "All good.",
+    });
   });
 
   test("leaves plain text unchanged when no signal is present", () => {
@@ -89,6 +104,33 @@ describe("lifecycle text streaming", () => {
     expect(appendLifecycleTextDelta(state, "\n")).toBe("");
     expect(appendLifecycleTextDelta(state, "After.")).toBe("");
     expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
+  });
+
+  test("detects and strips an inline signal during streaming", () => {
+    const state = createLifecycleTextStreamState();
+    expect(appendLifecycleTextDelta(state, "Build skill activated. @signal done")).toBe("Build skill activated.");
+    expect(finalizeLifecycleText(state)).toEqual({ signal: "done", text: "" });
+  });
+
+  test("strips inline signal regardless of delta boundary", () => {
+    const signal = " @signal done";
+    for (let split = 1; split < signal.length; split++) {
+      const state = createLifecycleTextStreamState();
+      const left = `Text.${signal.slice(0, split)}`;
+      const right = signal.slice(split);
+      let visible = appendLifecycleTextDelta(state, left);
+      visible += appendLifecycleTextDelta(state, right);
+      const fin = finalizeLifecycleText(state);
+      expect(fin.signal).toBe("done");
+      expect((visible + fin.text).trim()).toBe("Text.");
+    }
+  });
+
+  test("last well-formed signal wins when multiple appear inline", () => {
+    const state = createLifecycleTextStreamState();
+    // Only the final signal satisfies the end-of-line/string anchor
+    expect(appendLifecycleTextDelta(state, "Done. @signal done Also. @signal blocked")).toBe("Done. Also.");
+    expect(finalizeLifecycleText(state)).toEqual({ signal: "blocked", text: "" });
   });
 
   test("treats invalid signal-looking text as normal output", () => {

@@ -58,8 +58,6 @@ export function createAgentStream(
     let fullText = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
-    let nudgeCount = 0;
-    const maxNudges = options.maxNudges ?? 0;
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
       start(controller) {
@@ -69,6 +67,7 @@ export function createAgentStream(
 
     const resultPromise = (async (): Promise<GenerateResult> => {
       let lifecycleSignal: LifecycleSignal | undefined;
+      let finishReason: LanguageModelV3FinishReason | undefined;
       while (true) {
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
@@ -103,7 +102,7 @@ export function createAgentStream(
           toolName: string;
           input: string;
         }> = [];
-        let finishReason: LanguageModelV3FinishReason | undefined;
+        finishReason = undefined;
         const stepTextParts: string[] = [];
         const lifecycleTextState = createLifecycleTextStreamState();
 
@@ -134,41 +133,7 @@ export function createAgentStream(
         const stepText = stepTextParts.join("");
         if (stepText.length > 0) fullText += stepText;
 
-        if (pendingToolCalls.length === 0) {
-          if (nudgeCount < maxNudges && allToolCalls.length > 0 && !lifecycleSignal && stepText.trim().length > 0) {
-            nudgeCount++;
-            log.debug("agent-stream.nudge", {
-              reason: "no_tool_calls",
-              nudge_count: nudgeCount,
-              max_nudges: maxNudges,
-              iteration: loopIteration,
-              finish_reason: finishReason?.unified ?? "undefined",
-              text_length: stepText.length,
-              total_tool_calls: allToolCalls.length,
-            });
-            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
-            messages.push({
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "[system] You stopped before completing the task. If you are done, use @signal done or @signal no_op. If blocked, use @signal blocked. Otherwise, continue working with the available tools.",
-                },
-              ],
-            });
-            continue;
-          }
-          log.debug("agent-stream.loop.exit", {
-            reason: "no_tool_calls",
-            iteration: loopIteration,
-            finish_reason: finishReason?.unified ?? "undefined",
-            finish_reason_raw: JSON.stringify(finishReason ?? null),
-            text_length: stepText.length,
-            total_tool_calls: allToolCalls.length,
-            signal: lifecycleSignal ?? null,
-          });
-          break;
-        }
+        if (pendingToolCalls.length === 0) break;
 
         const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
           type: "tool-call" as const,
@@ -178,12 +143,10 @@ export function createAgentStream(
         }));
 
         const toolResultParts: LanguageModelV3ToolResultPart[] = [];
-        let batchHadError = false;
         for (const tc of pendingToolCalls) {
           allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
           const tool = toolsByName.get(tc.toolName);
           if (!tool) {
-            batchHadError = true;
             const error = `Unknown tool: ${tc.toolName}`;
             streamController.enqueue({
               type: "tool-error",
@@ -213,7 +176,6 @@ export function createAgentStream(
               output: { type: "text", value: outputValue },
             });
           } catch (error) {
-            batchHadError = true;
             const serializedError = serializeToolError(error);
             const message = serializedError.error.message;
             const code = serializedError.error.code;
@@ -241,44 +203,15 @@ export function createAgentStream(
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
-        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) {
-          if (nudgeCount < maxNudges && batchHadError) {
-            nudgeCount++;
-            log.debug("agent-stream.nudge", {
-              reason: "tool_error_early_stop",
-              nudge_count: nudgeCount,
-              max_nudges: maxNudges,
-              iteration: loopIteration,
-              finish_reason: finishReason.unified,
-              total_tool_calls: allToolCalls.length,
-            });
-            messages.push({
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "[system] One or more tool calls failed. Review the errors above and retry or take a different approach. Do not give up.",
-                },
-              ],
-            });
-            continue;
-          }
-          log.debug("agent-stream.loop.exit", {
-            reason: "finish_reason_not_tool_calls",
-            iteration: loopIteration,
-            finish_reason: finishReason.unified,
-            finish_reason_raw: JSON.stringify(finishReason),
-            pending_tool_calls: pendingToolCalls.length,
-            total_tool_calls: allToolCalls.length,
-          });
-          break;
-        }
+        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
       }
 
       log.debug("agent-stream.complete", {
         iterations: loopIteration,
         total_tool_calls: allToolCalls.length,
         text_length: fullText.length,
+        finish_reason: finishReason?.unified ?? "unknown",
+        signal: lifecycleSignal ?? null,
       });
       streamController.close();
       return { text: fullText, toolCalls: allToolCalls, ...(lifecycleSignal ? { signal: lifecycleSignal } : {}) };

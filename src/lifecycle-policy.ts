@@ -3,7 +3,6 @@ import {
   INITIAL_MAX_STEPS,
   MAX_HISTORY_MESSAGES,
   MAX_MESSAGE_TOKENS,
-  MAX_NUDGES_PER_GENERATION,
   MAX_SKILL_CONTEXT_TOKENS,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
@@ -16,7 +15,6 @@ export type LifecyclePolicy = {
   // Step limits
   totalMaxSteps: number;
   initialMaxSteps: number;
-  maxNudgesPerGeneration: number;
   maxUnknownErrorsPerRequest: number;
   // Timeouts
   stepTimeoutMs: number;
@@ -37,7 +35,6 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   initialMaxSteps: INITIAL_MAX_STEPS,
   stepTimeoutMs: STEP_TIMEOUT_MS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
-  maxNudgesPerGeneration: MAX_NUDGES_PER_GENERATION,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
   contextMaxTokens: CONTEXT_MAX_TOKENS,
   maxHistoryMessages: MAX_HISTORY_MESSAGES,

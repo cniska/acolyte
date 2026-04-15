@@ -15,8 +15,6 @@ export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
   providerOptions?: SharedV3ProviderOptions;
-  /** Max nudge re-prompts when the model stops prematurely. 0 disables. */
-  maxNudges?: number;
 };
 
 export type StreamOutput = {
