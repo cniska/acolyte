@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { addActiveSkill } from "./chat-skill-activator";
-import { compactText } from "./compact-text";
 import { type SkillSource, skillSourceSchema } from "./skill-contract";
-import { findSkillByName, getLoadedSkills, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
+import { findSkillByName, getLoadedSkills, readSkillInstructions } from "./skill-ops";
 import { getSkillUseWhen } from "./skill-triggers";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -78,8 +77,7 @@ function createActivateSkillTool(input: ToolkitInput) {
             content: { kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skill.name },
             toolCallId: callId,
           });
-          const raw = await readSkillInstructions(skill.path, toolInput.args);
-          const instructions = compactText(raw, SKILL_BUDGET);
+          const instructions = await readSkillInstructions(skill.path, toolInput.args);
           addActiveSkill(input.session, { name: skill.name, instructions });
           activated.push({ name: skill.name, source: skill.source, instructions });
         }

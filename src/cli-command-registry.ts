@@ -22,7 +22,6 @@ import { toolMode } from "./cli-tool";
 import { traceMode } from "./cli-trace";
 import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
-import { compactText } from "./compact-text";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import { removeCredential, writeCredential } from "./credentials";
 import { serverLogPath } from "./daemon-ops";
@@ -39,7 +38,7 @@ import {
 } from "./server-daemon";
 import { createSession, getSessionStore } from "./session-store";
 import { createId } from "./short-id";
-import { findSkillByName, loadSkills, readSkillInstructions, SKILL_BUDGET } from "./skill-ops";
+import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
@@ -315,7 +314,6 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         apiUrlForPort,
         appModel: appConfig.model,
         attachFileToSession,
-        compactText,
         createClient,
         createSession,
         ensureLocalServer,
@@ -330,7 +328,6 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         serverApiKey: appConfig.server.apiKey,
         serverEntry: `${import.meta.dir}/server.ts`,
         serverPort: appConfig.server.port,
-        skillBudget: SKILL_BUDGET,
         commandError,
         commandHelp,
       }),

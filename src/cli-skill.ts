@@ -4,7 +4,6 @@ import type { attachFileToSession as attachFileToSessionType } from "./cli-chat"
 import { formatRunSummary } from "./cli-format";
 import type { handlePrompt as handlePromptType } from "./cli-prompt";
 import type { createClient as createClientType } from "./client-factory";
-import type { CompactBudget } from "./compact-text";
 import type { readResolvedConfigSync as readResolvedConfigSyncType } from "./config";
 import { t } from "./i18n";
 import { userResourceIdFor } from "./resource-id";
@@ -18,7 +17,6 @@ type SkillModeDeps = {
   apiUrlForPort: typeof apiUrlForPortType;
   appModel: typeof appConfigType.model;
   attachFileToSession: typeof attachFileToSessionType;
-  compactText: (text: string, budget: CompactBudget) => string;
   createClient: typeof createClientType;
   createSession: typeof createSessionType;
   ensureLocalServer: typeof ensureLocalServerType;
@@ -33,7 +31,6 @@ type SkillModeDeps = {
   serverApiKey: typeof appConfigType.server.apiKey;
   serverEntry: string;
   serverPort: typeof appConfigType.server.port;
-  skillBudget: CompactBudget;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
@@ -71,7 +68,6 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
     apiUrlForPort,
     appModel,
     attachFileToSession,
-    compactText,
     createClient,
     createSession,
     ensureLocalServer,
@@ -86,7 +82,6 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
     serverApiKey,
     serverEntry,
     serverPort,
-    skillBudget,
     commandError,
     commandHelp,
   } = deps;
@@ -120,11 +115,10 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
   }
 
   const instructions = await readSkillInstructions(skill.path, parsed.prompt);
-  const compacted = compactText(instructions, skillBudget);
 
   const resolvedConfig = readResolvedConfigSync();
   const session = createSession(parsed.model ?? appModel);
-  session.activeSkills = [{ name: skill.name, instructions: compacted }];
+  session.activeSkills = [{ name: skill.name, instructions }];
 
   const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, serverEntry });
   const apiUrl = apiUrlForPort(serverPort);

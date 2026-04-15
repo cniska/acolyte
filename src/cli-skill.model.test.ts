@@ -9,7 +9,6 @@ function createSkillDeps(): { deps: SkillDeps; calls: { errors: string[]; dims: 
     apiUrlForPort: (port) => `http://127.0.0.1:${port}`,
     appModel: "openai/gpt-5-mini",
     attachFileToSession: async () => undefined as never,
-    compactText: (t) => t,
     createClient: () => ({}) as never,
     createSession: (model?: string) =>
       ({ id: "sess_123", title: "skill", createdAt: "", updatedAt: "", messages: [], tokenUsage: [], model }) as never,
@@ -25,7 +24,6 @@ function createSkillDeps(): { deps: SkillDeps; calls: { errors: string[]; dims: 
     serverApiKey: "",
     serverEntry: "",
     serverPort: 6767,
-    skillBudget: {},
     commandError: () => undefined,
     commandHelp: () => undefined,
   };
