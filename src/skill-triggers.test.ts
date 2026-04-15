@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createSkillSuggestion, matchSkillTriggers } from "./skill-triggers";
+import { createSkillSuggestion, getSkillUseWhen, matchSkillTriggers } from "./skill-triggers";
 
 describe("matchSkillTriggers", () => {
   test("matches build skill from keyword", () => {
@@ -42,6 +42,16 @@ describe("matchSkillTriggers", () => {
   test("does not match common words used in non-skill context", () => {
     expect(matchSkillTriggers("add error handling to the endpoint")).not.toContain("debug");
     expect(matchSkillTriggers("remove this line from the file")).not.toContain("deprecation");
+  });
+});
+
+describe("getSkillUseWhen", () => {
+  test("returns use-when text for bundled skill", () => {
+    expect(getSkillUseWhen("build")).toMatch(/^Use when /);
+  });
+
+  test("returns undefined for unknown skill", () => {
+    expect(getSkillUseWhen("nonexistent")).toBeUndefined();
   });
 });
 

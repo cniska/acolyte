@@ -110,4 +110,42 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
     expect(response.state).toBe("done");
   });
+
+  test("includes activeSkills when session has them", () => {
+    const skills = [{ name: "build", instructions: "Build instructions" }];
+    const ctx = createRunContext({
+      result: { text: "Done.", toolCalls: [] },
+    });
+    ctx.session.activeSkills = skills;
+    const response = phaseFinalize(ctx);
+    expect(response.activeSkills).toEqual(skills);
+  });
+
+  test("omits activeSkills when session has none", () => {
+    const ctx = createRunContext({
+      result: { text: "Done.", toolCalls: [] },
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.activeSkills).toBeUndefined();
+  });
+});
+
+describe("parseChatResponse activeSkills", () => {
+  test("preserves activeSkills from response", () => {
+    const skills = [{ name: "build", instructions: "Build instructions" }];
+    const response = parseChatResponse({
+      output: "Hello",
+      model: "gpt-5-mini",
+      activeSkills: skills,
+    });
+    expect(response?.activeSkills).toEqual(skills);
+  });
+
+  test("omits activeSkills when not present", () => {
+    const response = parseChatResponse({
+      output: "Hello",
+      model: "gpt-5-mini",
+    });
+    expect(response?.activeSkills).toBeUndefined();
+  });
 });

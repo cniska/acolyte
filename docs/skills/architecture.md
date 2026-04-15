@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
+description: Review architecture, boundaries, and design consistency.
 ---
 
 # Architecture

@@ -1,6 +1,6 @@
 ---
 name: build
-description: Implement features incrementally through vertical slices. Use when building features, adding functionality, or implementing tasks that touch multiple files.
+description: Implement features incrementally through vertical slices.
 ---
 
 # Build

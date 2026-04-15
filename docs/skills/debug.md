@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Debug systematically with structured triage. Use when tests fail, builds break, or runtime behavior doesn't match expectations.
+description: Debug systematically with structured triage.
 ---
 
 # Debug

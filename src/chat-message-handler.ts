@@ -164,6 +164,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       const assistantMessage = turn.assistantMessage;
       streamState.finalize();
 
+      if (turn.activeSkills?.length) {
+        input.currentSession.activeSkills = turn.activeSkills;
+      }
       input.currentSession.messages.push(assistantMessage);
       for (const row of turn.rows) {
         if (row.kind === "status" && typeof row.content === "string") {
