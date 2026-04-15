@@ -5,6 +5,7 @@ import { t } from "./i18n";
 import { dataDir } from "./paths";
 import type { SessionStore } from "./session-contract";
 import { type Session, type SessionId, type SessionState, sessionStateSchema } from "./session-contract";
+import { searchMessages } from "./session-ops";
 import { createId } from "./short-id";
 
 const DEFAULT_SESSION_STATE: SessionState = { sessions: [] };
@@ -89,6 +90,13 @@ export function createFileSessionStore(storePath?: string): SessionStore {
       const state = await readState();
       state.activeSessionId = id;
       await writeState(state);
+    },
+
+    async searchSession(id, query, options) {
+      const state = await readState();
+      const session = state.sessions.find((s) => s.id === id);
+      if (!session) return [];
+      return searchMessages(session.messages, query, options);
     },
 
     close() {},

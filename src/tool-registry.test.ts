@@ -31,6 +31,7 @@ describe("toolsets", () => {
       "runTests",
       "scanCode",
       "searchFiles",
+      "sessionSearch",
       "updateChecklist",
       "webFetch",
       "webSearch",
@@ -106,6 +107,7 @@ describe("localization baseline", () => {
     const webFetchInstruction = toolDefinitionsById["web-fetch"]?.instruction ?? "";
     const checklistCreateInstruction = toolDefinitionsById["checklist-create"]?.instruction ?? "";
     const checklistUpdateInstruction = toolDefinitionsById["checklist-update"]?.instruction ?? "";
+    const sessionSearchInstruction = toolDefinitionsById["session-search"]?.instruction ?? "";
     const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
     const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
@@ -145,6 +147,7 @@ describe("localization baseline", () => {
     expectIntent(webFetchInstruction, [["read specific urls"]]);
     expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);
     expectIntent(checklistUpdateInstruction, [["checklist-update"], ["status"], ["checklist-create"]]);
+    expectIntent(sessionSearchInstruction, [["session-search"], ["keyword"], ["older history"]]);
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
     expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);

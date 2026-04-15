@@ -144,6 +144,22 @@ describe("cloud sync client", () => {
     expect(body.messages[0].id).toBe("msg_2");
   });
 
+  test("session.searchSession sends POST with query", async () => {
+    const fn = jsonFetch(200, [
+      { id: "msg_1", role: "user", content: "fix auth", kind: "text", timestamp: "2026-01-01T00:00:00.000Z" },
+    ]);
+    const client = new CloudClient("https://api.example.com", "t");
+    const results = await client.session.searchSession("sess_1", "auth", { limit: 5 });
+    const [url, init] = callArgs(fn);
+    expect(url).toContain("/sessions/sess_1/search");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body as string);
+    expect(body.query).toBe("auth");
+    expect(body.limit).toBe(5);
+    expect(results).toHaveLength(1);
+    expect(results[0].content).toBe("fix auth");
+  });
+
   test("gzips large request bodies", async () => {
     const fn = jsonFetch(200, { ok: true });
     const client = new CloudClient("https://api.example.com", "t");

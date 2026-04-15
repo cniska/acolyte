@@ -9,8 +9,24 @@ lifecycle → budget → cache → toolkit → registry
 ## Layers
 
 - **budget**: step-budget check (`checkStepBudget()`) inlined into tool execution
-- **toolkit**: domain tool definitions (`file-toolkit`, `code-toolkit`, `git-toolkit`, `shell-toolkit`, `web-toolkit`, `checklist-toolkit`, `memory-toolkit`, `skill-toolkit`)
+- **toolkit**: domain tool definitions (see table below)
 - **registry**: tool registration and agent-facing tool surface
+
+## Toolkits
+
+| Toolkit | Purpose |
+|---------|---------|
+| `file` | File operations |
+| `code` | AST-aware code scanning and editing |
+| `undo` | Revert file edits |
+| `session` | Search current session history |
+| `memory` | Persistent cross-session knowledge |
+| `skill` | Skill discovery and activation |
+| `test` | Run workspace tests |
+| `checklist` | Multi-step task tracking |
+| `git` | Version control |
+| `web` | External information retrieval |
+| `shell` | Shell command execution |
 
 ## Tool execution
 

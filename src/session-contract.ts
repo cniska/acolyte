@@ -90,5 +90,6 @@ export interface SessionStore {
   removeSession(id: SessionId): Promise<void>;
   getActiveSessionId(): Promise<SessionId | undefined>;
   setActiveSessionId(id: SessionId | undefined): Promise<void>;
+  searchSession(id: SessionId, query: string, options?: { limit?: number }): Promise<readonly ChatMessage[]>;
   close(): void;
 }

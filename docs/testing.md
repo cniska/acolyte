@@ -21,6 +21,10 @@ Use the smallest test type that gives strong confidence.
 - Effect integration tests must wire handlers via `attachLifecycleEffectHandlers(ctx, session)` and verify behavior through debug events, not call `effect.run()` directly.
 - Direct function calls (e.g., `editFile()`, `runShellCommand()`) belong in unit tests when testing the function contract itself. Integration tests test wiring.
 
+## Test suites
+
+`*.test-suite.ts` files define reusable assertions for store interfaces. They export a function that an `*.int.test.ts` file calls with a specific backend, so the same contract runs against every implementation.
+
 ## Commands
 
 - Full baseline: `bun run verify`

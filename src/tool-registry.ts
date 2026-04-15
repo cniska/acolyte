@@ -6,6 +6,7 @@ import { createFileToolkit } from "./file-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { bindMcpTools, type McpToolListing } from "./mcp-client";
 import { createMemoryToolkit } from "./memory-toolkit";
+import { createSessionToolkit } from "./session-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createSkillToolkit } from "./skill-toolkit";
 import { createTestToolkit } from "./test-toolkit";
@@ -27,6 +28,7 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createTestToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit> &
+  ReturnType<typeof createSessionToolkit> &
   ReturnType<typeof createMemoryToolkit> &
   ReturnType<typeof createSkillToolkit> &
   ReturnType<typeof createUndoToolkit>;
@@ -52,6 +54,10 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "undo",
     createToolkit: (input) => createUndoToolkit(input),
+  },
+  {
+    id: "session",
+    createToolkit: (input) => createSessionToolkit(input),
   },
   {
     id: "memory",

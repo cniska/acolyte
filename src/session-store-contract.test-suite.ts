@@ -119,6 +119,66 @@ export function sessionStoreContractTests(
     });
   });
 
+  describe(`${name} searchSession`, () => {
+    test("finds matching messages by keyword", async () => {
+      const s = await getStore();
+      const msg = (id: string, role: string, content: string, ts: string) =>
+        ({ id, role, content, kind: "text", timestamp: ts }) as Session["messages"][number];
+      await s.saveSession(
+        makeSession({
+          id: "sess_search01",
+          messages: [
+            msg("msg_1", "user", "fix the auth bug", "2026-03-04T12:00:00.000Z"),
+            msg("msg_2", "assistant", "done", "2026-03-04T12:00:01.000Z"),
+            msg("msg_3", "user", "auth still broken", "2026-03-04T12:00:02.000Z"),
+          ],
+        }),
+      );
+      const results = await s.searchSession("sess_search01", "auth");
+      expect(results).toHaveLength(2);
+      expect(results[0]?.content).toBe("fix the auth bug");
+      expect(results[1]?.content).toBe("auth still broken");
+    });
+
+    test("returns empty array for no match", async () => {
+      const s = await getStore();
+      await s.saveSession(
+        makeSession({
+          id: "sess_search02",
+          messages: [
+            { id: "msg_1", role: "user", content: "hello", kind: "text", timestamp: "2026-03-04T12:00:00.000Z" },
+          ] as Session["messages"],
+        }),
+      );
+      const results = await s.searchSession("sess_search02", "database");
+      expect(results).toHaveLength(0);
+    });
+
+    test("returns empty array for nonexistent session", async () => {
+      const s = await getStore();
+      const results = await s.searchSession("sess_missing1", "anything");
+      expect(results).toHaveLength(0);
+    });
+
+    test("respects limit", async () => {
+      const s = await getStore();
+      const msg = (id: string, content: string, ts: string) =>
+        ({ id, role: "user", content, kind: "text", timestamp: ts }) as Session["messages"][number];
+      await s.saveSession(
+        makeSession({
+          id: "sess_search03",
+          messages: [
+            msg("msg_1", "error one", "2026-03-04T12:00:00.000Z"),
+            msg("msg_2", "error two", "2026-03-04T12:00:01.000Z"),
+            msg("msg_3", "error three", "2026-03-04T12:00:02.000Z"),
+          ],
+        }),
+      );
+      const results = await s.searchSession("sess_search03", "error", { limit: 2 });
+      expect(results).toHaveLength(2);
+    });
+  });
+
   describe(`${name} active session`, () => {
     test("getActiveSessionId returns undefined initially", async () => {
       const s = await getStore();
