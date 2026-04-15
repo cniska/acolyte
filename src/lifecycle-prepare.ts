@@ -34,7 +34,6 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     budget: {
       maxHistoryMessages: policy.maxHistoryMessages,
       maxMessageTokens: policy.maxMessageTokens,
-      maxSkillContextTokens: policy.maxSkillContextTokens,
     },
   });
   const baseAgentInput = requestInput.input;

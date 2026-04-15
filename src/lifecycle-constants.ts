@@ -6,4 +6,3 @@ export const TOOL_TIMEOUT_MS = 10_000;
 export const CONTEXT_MAX_TOKENS = 100_000;
 export const MAX_HISTORY_MESSAGES = 40;
 export const MAX_MESSAGE_TOKENS = 600;
-export const MAX_SKILL_CONTEXT_TOKENS = 2_400;

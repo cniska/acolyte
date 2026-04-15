@@ -3,7 +3,6 @@ import {
   INITIAL_MAX_STEPS,
   MAX_HISTORY_MESSAGES,
   MAX_MESSAGE_TOKENS,
-  MAX_SKILL_CONTEXT_TOKENS,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
@@ -23,7 +22,6 @@ export type LifecyclePolicy = {
   contextMaxTokens: number;
   maxHistoryMessages: number;
   maxMessageTokens: number;
-  maxSkillContextTokens: number;
   // Workspace commands
   installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
@@ -39,7 +37,6 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   contextMaxTokens: CONTEXT_MAX_TOKENS,
   maxHistoryMessages: MAX_HISTORY_MESSAGES,
   maxMessageTokens: MAX_MESSAGE_TOKENS,
-  maxSkillContextTokens: MAX_SKILL_CONTEXT_TOKENS,
 };
 
 export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

@@ -160,7 +160,6 @@ function resolveMessageTokenCap(
 export type InputBudget = {
   maxHistoryMessages: number;
   maxMessageTokens: number;
-  maxSkillContextTokens: number;
 };
 
 export function createAgentInput(
@@ -196,13 +195,11 @@ export function createAgentInput(
   tokenBudget.consume(userTokens);
 
   for (const skill of req.activeSkills ?? []) {
-    const truncated = truncateByTokens(skill.instructions, budget.maxSkillContextTokens);
-    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${truncated}`;
+    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${skill.instructions}`;
     const skillTokens = estimateTokens(skillLine);
     if (skillTokens > tokenBudget.remaining()) {
       log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining: tokenBudget.remaining() });
     } else {
-      if (truncated.length < skill.instructions.length) log.warn("skill context truncated", { skill: skill.name });
       lines.push(skillLine);
       tokenBudget.consume(skillTokens);
       includedSkillTokens += skillTokens;
