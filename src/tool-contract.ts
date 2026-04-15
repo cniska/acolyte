@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
+import { log } from "./log";
 import type { RunToolResult } from "./tool-execution";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { SessionContext } from "./tool-session";
@@ -67,12 +68,12 @@ export function createTool<TInput, TOutput>(
     execute: async (input, toolCallId) => {
       const parsedInput = inputParser ? (inputParser.parse(input) as TInput) : input;
       const runResult = await config.execute(parsedInput, toolCallId);
-      const parsed = config.outputSchema.parse(runResult.result);
+      let parsed = config.outputSchema.parse(runResult.result);
       if (parsed && typeof parsed === "object" && "output" in parsed) {
-        const record = parsed as Record<string, unknown>;
-        if (typeof record.output === "string" && record.output.length > OUTPUT_SAFETY_CAP) {
-          const half = Math.floor(OUTPUT_SAFETY_CAP / 2);
-          record.output = `${record.output.slice(0, half)}\n… ${record.output.length - OUTPUT_SAFETY_CAP} chars omitted …\n${record.output.slice(-half)}`;
+        const output = (parsed as Record<string, unknown>).output;
+        if (typeof output === "string" && output.length > OUTPUT_SAFETY_CAP) {
+          log.warn("tool output truncated", { chars: output.length, cap: OUTPUT_SAFETY_CAP });
+          parsed = { ...parsed, output: output.slice(0, OUTPUT_SAFETY_CAP) };
         }
       }
       return { ...runResult, result: parsed };

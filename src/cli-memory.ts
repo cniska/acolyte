@@ -1,10 +1,10 @@
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
-import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { MemoryEntry, MemoryScope } from "./memory-contract";
+import { truncateText } from "./truncate-text";
 
 type MemoryOps = {
   list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;

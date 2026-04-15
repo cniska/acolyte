@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { compactDetail } from "./compact-text";
 import { formatShellCommand, parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
+import { truncateText } from "./truncate-text";
 
 function createRunCommandTool(input: ToolkitInput) {
   return createTool({
@@ -38,7 +38,7 @@ function createRunCommandTool(input: ToolkitInput) {
             content: {
               kind: "tool-header",
               labelKey: "tool.label.shell_run",
-              detail: compactDetail(displayCommand),
+              detail: truncateText(displayCommand),
             },
             toolCallId: callId,
           });

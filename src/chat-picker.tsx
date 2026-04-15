@@ -1,11 +1,11 @@
 import type React from "react";
 import { unreachable } from "./assert";
 import { alignCols } from "./chat-format";
-import { truncateText } from "./compact-text";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skill-contract";
+import { truncateText } from "./truncate-text";
 import { Box, Text } from "./tui";
 
 export type ModelPickerItem = {
