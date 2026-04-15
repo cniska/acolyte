@@ -19,6 +19,9 @@ function createMockStore(sessions: Session[] = []): SessionStore {
       return undefined;
     },
     async setActiveSessionId() {},
+    async searchSession() {
+      return [];
+    },
     close() {},
   };
 }

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { messageKindSchema, roleSchema } from "./chat-contract";
 import { isoDateTimeSchema } from "./datetime";
-import { searchMessages } from "./session-ops";
 import { getSessionStore } from "./session-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -36,9 +35,7 @@ function createSessionSearchTool(input: ToolkitInput) {
       return runTool(input.session, "session-search", toolCallId, toolInput, async () => {
         if (!input.sessionId) return { kind: "session-search" as const, results: [] };
         const store = await getSessionStore();
-        const session = await store.getSession(input.sessionId);
-        if (!session) return { kind: "session-search" as const, results: [] };
-        const results = searchMessages(session.messages, toolInput.query, { limit: toolInput.limit });
+        const results = await store.searchSession(input.sessionId, toolInput.query, { limit: toolInput.limit });
         return {
           kind: "session-search" as const,
           results: results.map((m) => ({

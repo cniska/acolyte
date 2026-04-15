@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type ChatMessage, messageSchema } from "./chat-contract";
 import { CodedError } from "./coded-error";
 import { CLOUD_ERROR_CODES, type CloudErrorCode } from "./error-contract";
 import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
@@ -26,6 +27,7 @@ const ROUTES = {
     get: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}`,
     remove: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}`,
     append: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}/append`,
+    search: (id: string) => `/api/v1/sessions/${encodeURIComponent(id)}/search`,
     getActive: "/api/v1/sessions/active",
     setActive: "/api/v1/sessions/active",
   },
@@ -84,6 +86,7 @@ export class CloudClient {
       removeSession: (id) => this.removeSession(id),
       getActiveSessionId: () => this.getActiveSessionId(),
       setActiveSessionId: (id) => this.setActiveSessionId(id),
+      searchSession: (id, query, options) => this.searchSessionMessages(id, query, options),
       close: () => {},
     };
   }
@@ -218,6 +221,17 @@ export class CloudClient {
 
   private async setActiveSessionId(id: SessionId | undefined): Promise<void> {
     await this.put(ROUTES.sessions.setActive, { body: { id: id ?? null } });
+  }
+
+  private async searchSessionMessages(
+    id: SessionId,
+    query: string,
+    options?: { limit?: number },
+  ): Promise<readonly ChatMessage[]> {
+    return this.post(ROUTES.sessions.search(id), {
+      schema: z.array(messageSchema),
+      body: { query, limit: options?.limit },
+    });
   }
 
   private async request<T = void>(
