@@ -25,7 +25,8 @@ export type PendingStateResult = {
 
 export function usePendingState(): PendingStateResult {
   const [pendingState, setPendingState] = useState<PendingState | null>(null);
-  const isPending = pendingState !== null;
+  const hasIndicator = pendingState !== null;
+  const isPending = hasIndicator && pendingState.kind !== "awaiting-input";
   const [pendingFrame, setPendingFrame] = useState(0);
   const [pendingStartedAt, setPendingStartedAt] = useState<number | null>(null);
   const [ctrlCPending, setCtrlCPending] = useState(false);
@@ -37,13 +38,13 @@ export function usePendingState(): PendingStateResult {
       setPendingStartedAt((current) => current ?? Date.now());
     } else {
       setPendingStartedAt(null);
-      setPendingFrame(0);
+      if (!hasIndicator) setPendingFrame(0);
     }
-  }, [isPending]);
+  }, [isPending, hasIndicator]);
 
   useInterval(
     () => setPendingFrame((current) => nextPendingFrame(current, PENDING_PULSE_FRAMES)),
-    isPending ? PENDING_ANIMATION_INTERVAL_MS : null,
+    hasIndicator ? PENDING_ANIMATION_INTERVAL_MS : null,
   );
 
   return {

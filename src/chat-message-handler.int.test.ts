@@ -554,4 +554,22 @@ describe("chat message handler", () => {
     // to cancel the remote task polling.
     expect(interruptHandler).not.toBeNull();
   });
+
+  test("awaiting-input preserves pending state after turn completes", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "What input?" });
+          return { state: "awaiting-input" as const, model: "gpt-5-mini", output: "What input?" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("ask me for some input");
+
+    const last = calls.pendingStates[calls.pendingStates.length - 1];
+    expect(last).toEqual({ kind: "awaiting-input" });
+    expect(calls.pendingTransitions.at(-1)).toBe(true);
+  });
 });
