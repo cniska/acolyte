@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createAgentInput, setTokenEncoder } from "./agent-input";
+import { createAgentInput, HISTORY_WINDOW, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 
@@ -219,5 +219,66 @@ describe("createAgentInput", () => {
     const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 120 });
     expect(input).toContain("KEEP_TWO");
     expect(input).not.toContain("TOOL_SENTINEL");
+  });
+
+  test("excludes history beyond the window even when budget allows", () => {
+    const history = Array.from({ length: HISTORY_WINDOW + 5 }).map((_, i) => ({
+      id: `msg_${i}`,
+      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+      content: `TURN_${i}`,
+      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
+    }));
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input, usage } = createAgentInput(req, defaultOptions);
+    expect(input).toContain(`TURN_${history.length - 1}`);
+    expect(input).toContain(`TURN_${history.length - HISTORY_WINDOW}`);
+    expect(input).not.toContain("TURN_0");
+    expect(usage.includedHistoryMessages).toBeLessThanOrEqual(HISTORY_WINDOW);
+    expect(usage.totalHistoryMessages).toBe(history.length);
+  });
+
+  test("includes all messages when history is within the window", () => {
+    const count = HISTORY_WINDOW - 1;
+    const history = Array.from({ length: count }).map((_, i) => ({
+      id: `msg_${i}`,
+      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+      content: `TURN_${i}`,
+      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
+    }));
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input, usage } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("TURN_0");
+    expect(input).toContain(`TURN_${count - 1}`);
+    expect(usage.includedHistoryMessages).toBe(count);
+  });
+
+  test("last N turns are still truncated normally when individually large", () => {
+    const history = Array.from({ length: HISTORY_WINDOW }).map((_, i) => ({
+      id: `msg_${i}`,
+      role: "user" as const,
+      content: `BIG_${i} ${"x".repeat(50_000)}`,
+      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
+    }));
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 500 });
+    expect(input).toContain("…");
+    expect(input).toContain("USER: go");
+  });
+
+  test("totalHistoryMessages reflects full history, not windowed subset", () => {
+    const history = Array.from({ length: 50 }).map((_, i) => ({
+      id: `msg_${i}`,
+      role: "user" as const,
+      content: `msg ${i}`,
+      timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
+    }));
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { usage } = createAgentInput(req, defaultOptions);
+    expect(usage.totalHistoryMessages).toBe(50);
+    expect(usage.includedHistoryMessages).toBeLessThanOrEqual(HISTORY_WINDOW);
   });
 });

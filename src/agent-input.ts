@@ -1,6 +1,8 @@
 import type { ChatRequest } from "./api";
 import { log } from "./log";
 
+export const HISTORY_WINDOW = 5;
+
 type TokenEncoder = { encode(input: string): { length: number } };
 
 function createApproxEncoder(): TokenEncoder {
@@ -188,7 +190,8 @@ export function createAgentInput(
     }
   }
 
-  const recentResult = collectLinesWithinBudget(req.history, usedIds, tokenBudget.remaining());
+  const recentHistory = req.history.slice(-HISTORY_WINDOW);
+  const recentResult = collectLinesWithinBudget(recentHistory, usedIds, tokenBudget.remaining());
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) lines.push("");
