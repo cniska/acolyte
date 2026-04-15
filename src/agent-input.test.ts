@@ -1,14 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createAgentInput, type InputBudget, setTokenEncoder } from "./agent-input";
+import { createAgentInput, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 
 const defaultOptions = {
   contextMaxTokens: defaultLifecyclePolicy.contextMaxTokens,
-  budget: {
-    maxHistoryMessages: defaultLifecyclePolicy.maxHistoryMessages,
-    maxMessageTokens: defaultLifecyclePolicy.maxMessageTokens,
-  } satisfies InputBudget,
 };
 
 // Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
@@ -32,11 +28,12 @@ function createRequest(content: string): ChatRequest {
 }
 
 describe("createAgentInput", () => {
-  test("truncates long system messages", () => {
+  test("includes full message content when budget allows", () => {
     const longSystem = `General note: ${"B".repeat(4000)}`;
     const { input } = createAgentInput(createRequest(longSystem), defaultOptions);
     expect(input).toContain("General note:");
-    expect(input).toContain("…");
+    expect(input).toContain("B".repeat(4000));
+    expect(input).not.toContain("…");
   });
 
   test("includes skill context in input when activeSkills present", () => {
@@ -128,12 +125,11 @@ describe("createAgentInput", () => {
     };
 
     const { input } = createAgentInput(req, defaultOptions);
-    // 100 messages × ~1000 chars each = ~100k chars; budget allows ~100k tokens so all fit
     expect(input.length).toBeLessThanOrEqual(120_000);
     expect(input).toContain("USER: review");
   });
 
-  test("aggressively compacts older tool-heavy assistant turns", () => {
+  test("includes full tool payload content when budget allows", () => {
     const toolHeavy = `stdout:\n${"A".repeat(5000)}\nstderr:\n${"B".repeat(2000)}`;
     const req: ChatRequest = {
       model: "gpt-5-mini",
@@ -162,111 +158,9 @@ describe("createAgentInput", () => {
     };
 
     const { input } = createAgentInput(req, defaultOptions);
-    const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
-    expect(oldToolLine).toBeDefined();
-    expect(oldToolLine?.length).toBeLessThanOrEqual(900);
+    expect(input).toContain("A".repeat(5000));
+    expect(input).toContain("B".repeat(2000));
     expect(input).toContain("ASSISTANT: Ready for the next step.");
-  });
-
-  test("does not compact prose that casually mentions stdout", () => {
-    const prose = `Summary: We discussed stdout: formatting for status rows.\n${"N".repeat(1100)}TAIL_SENTINEL`;
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "continue",
-      history: [
-        {
-          id: "msg_old_prose",
-          role: "assistant",
-          content: prose,
-          timestamp: "2026-02-20T10:00:00.000Z",
-        },
-        {
-          id: "msg_old_user",
-          role: "user",
-          content: "thanks",
-          timestamp: "2026-02-20T10:00:01.000Z",
-        },
-        {
-          id: "msg_recent_assistant",
-          role: "assistant",
-          content: "Ready for the next step.",
-          timestamp: "2026-02-20T10:00:02.000Z",
-        },
-      ],
-    };
-
-    const { input } = createAgentInput(req, defaultOptions);
-    expect(input).toContain("TAIL_SENTINEL");
-  });
-
-  test("compacts structured search/find tool payload turns", () => {
-    const structuredPayload = [
-      "scope=workspace patterns=[*.ts] matches=42",
-      ...Array.from({ length: 400 }, (_, i) => `src/components/feature-${i}/index.ts`),
-      "TAIL_STRUCTURED",
-    ].join("\n");
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "continue",
-      history: [
-        {
-          id: "msg_old_structured",
-          role: "assistant",
-          content: structuredPayload,
-          kind: "tool_payload",
-          timestamp: "2026-02-20T10:00:00.000Z",
-        },
-        {
-          id: "msg_old_user",
-          role: "user",
-          content: "thanks",
-          timestamp: "2026-02-20T10:00:01.000Z",
-        },
-        {
-          id: "msg_recent_assistant",
-          role: "assistant",
-          content: "Ready for the next step.",
-          timestamp: "2026-02-20T10:00:02.000Z",
-        },
-      ],
-    };
-
-    const { input } = createAgentInput(req, defaultOptions);
-    const oldStructuredLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: scope=workspace"));
-    expect(oldStructuredLine).toBeDefined();
-    expect(oldStructuredLine?.length).toBeLessThanOrEqual(900);
-    expect(input).not.toContain("TAIL_STRUCTURED");
-  });
-
-  test("does not aggressively compact unflagged tool-like assistant content", () => {
-    const toolHeavy = `stdout:\n${"A".repeat(5000)}\nstderr:\n${"B".repeat(2000)}\nTAIL_UNFLAGGED`;
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "continue",
-      history: [
-        {
-          id: "msg_old_unflagged",
-          role: "assistant",
-          content: toolHeavy,
-          timestamp: "2026-02-20T10:00:00.000Z",
-        },
-        {
-          id: "msg_old_user",
-          role: "user",
-          content: "thanks",
-          timestamp: "2026-02-20T10:00:01.000Z",
-        },
-        {
-          id: "msg_recent_assistant",
-          role: "assistant",
-          content: "Ready for the next step.",
-          timestamp: "2026-02-20T10:00:02.000Z",
-        },
-      ],
-    };
-
-    const { input } = createAgentInput(req, defaultOptions);
-    expect(input).toContain("A".repeat(1500));
   });
 
   test("keeps newest oversized history turn by truncating to remaining budget", () => {
@@ -325,37 +219,5 @@ describe("createAgentInput", () => {
     const { input } = createAgentInput(req, { ...defaultOptions, contextMaxTokens: 120 });
     expect(input).toContain("KEEP_TWO");
     expect(input).not.toContain("TOOL_SENTINEL");
-  });
-
-  test("applies stronger caps for very old tool payload turns", () => {
-    const history: ChatRequest["history"] = [
-      {
-        id: "msg_old_tool",
-        role: "assistant",
-        kind: "tool_payload",
-        content: `stdout:\n${"A".repeat(6000)}\nTAIL_OLD_TOOL`,
-        timestamp: "2026-02-20T10:00:00.000Z",
-      },
-    ];
-    for (let i = 1; i <= 12; i++) {
-      history.push({
-        id: `msg_${i}`,
-        role: i % 2 === 0 ? "assistant" : "user",
-        content: `recent-${i}`,
-        timestamp: `2026-02-20T10:00:${String(i).padStart(2, "0")}.000Z`,
-      });
-    }
-
-    const req: ChatRequest = {
-      model: "gpt-5-mini",
-      message: "continue",
-      history,
-    };
-
-    const { input } = createAgentInput(req, defaultOptions);
-    const oldToolLine = input.split("\n").find((line) => line.startsWith("ASSISTANT: stdout:"));
-    expect(oldToolLine).toBeDefined();
-    expect(oldToolLine?.length).toBeLessThanOrEqual(300);
-    expect(input).not.toContain("TAIL_OLD_TOOL");
   });
 });

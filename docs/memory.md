@@ -54,8 +54,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 - commit scheduling is best-effort background work at lifecycle finalize
 - commits are serialized per session per process through a keyed task queue seam
-- agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget)
-- aggressive old-turn compaction is driven by typed message metadata (`kind: tool_payload`), not regex heuristics
+- agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget, conversational turns prioritized over tool payloads)
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
 - repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
