@@ -21,6 +21,13 @@ const MARKERS: Record<ChatRow["kind"], string> = {
   system: "  ",
 };
 
+const PENDING_MARKER_COLORS: Record<PendingState["kind"], string> = {
+  "awaiting-input": palette.brand,
+  queued: palette.queued,
+  accepted: palette.accepted,
+  running: palette.running,
+};
+
 function renderCommandOutput(output: CommandOutput): React.ReactNode {
   const colWidth = commandOutputColWidth(output.sections);
   return (
@@ -240,26 +247,17 @@ type ChatTranscriptProps = {
 export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const { rows, pendingState, pendingFrame, pendingStartedAt, runningUsage } = props;
   const pulsePeriod = 16;
-  const hasContent = rows.length > 0 || (pendingState !== null && pendingState !== undefined);
-  const isQueued = pendingState?.kind === "queued";
-  const isAccepted = pendingState?.kind === "accepted";
-  const isRunning = pendingState?.kind === "running";
-  const isAwaitingInput = pendingState?.kind === "awaiting-input";
-  const isPending = pendingState !== null && pendingState !== undefined;
+  const kind = pendingState?.kind;
+  const isPending = kind !== undefined;
+  const hasContent = rows.length > 0 || isPending;
   const elapsedSec =
-    isRunning && typeof pendingStartedAt === "number"
+    kind === "running" && typeof pendingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - pendingStartedAt) / 1000))
       : 0;
-  const isAnimated = isRunning || isAwaitingInput;
+  const isAnimated = kind === "running" || kind === "awaiting-input";
   const blinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
-  const marker = isAnimated ? (blinkOn ? "•" : " ") : "•";
-  const indicatorColor: string = isAwaitingInput
-    ? palette.brand
-    : isQueued
-      ? palette.queued
-      : isAccepted
-        ? palette.accepted
-        : palette.running;
+  const marker = isAnimated && !blinkOn ? " " : "•";
+  const markerColor = kind ? PENDING_MARKER_COLORS[kind] : "";
   const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
   const pendingText = (() => {
     if (!pendingState) return "";
@@ -300,7 +298,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           {rows.length > 0 ? <Text> </Text> : null}
           <Box>
             <Box width={2}>
-              <Text color={indicatorColor}>{`${marker} `}</Text>
+              <Text color={markerColor}>{`${marker} `}</Text>
             </Box>
             <Box width={contentWidth}>
               {isAnimated ? (
