@@ -2,15 +2,12 @@ import { type Dirent, existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
-import type { CompactBudget } from "./compact-text";
 import {
   createEmptySkillLoadDiagnostics,
   type SkillLoadDiagnostics,
   type SkillMeta,
   validateSkillName,
 } from "./skill-contract";
-
-export const SKILL_BUDGET: CompactBudget = { maxChars: 4_000, maxLines: 120 };
 
 type ParsedFrontmatter = {
   name?: string;
