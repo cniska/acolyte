@@ -1,6 +1,6 @@
 ---
 name: security
-description: Review security risks, trust boundaries, and unsafe defaults. Use when reviewing security posture or assessing risk before release.
+description: Review security risks, trust boundaries, and unsafe defaults.
 ---
 
 # Security

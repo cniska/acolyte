@@ -1,6 +1,6 @@
 ---
 name: style
-description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
+description: Review code style, naming, patterns, and consistency.
 ---
 
 # Style

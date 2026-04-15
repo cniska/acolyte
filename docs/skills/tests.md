@@ -1,6 +1,6 @@
 ---
 name: tests
-description: Review test coverage, quality, and missing edge cases. Use when reviewing whether changed code has adequate tests.
+description: Review test coverage, quality, and missing edge cases.
 ---
 
 # Tests

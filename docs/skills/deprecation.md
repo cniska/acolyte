@@ -1,6 +1,6 @@
 ---
 name: deprecation
-description: Deprecate and remove code safely. Use when replacing systems, removing unused features, or consolidating duplicate implementations.
+description: Deprecate and remove code safely.
 ---
 
 # Deprecation

@@ -1,6 +1,6 @@
 ---
 name: explore
-description: Explore a task or design through systematic questions until reaching shared understanding. Use before implementing complex or ambiguous work.
+description: Explore a task or design through systematic questions until reaching shared understanding.
 ---
 
 # Explore
