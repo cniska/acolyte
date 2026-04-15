@@ -179,7 +179,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // Clear the pending indicator in the same synchronous block as
       // adding the worked/status rows so React batches them into one
       // commit — avoids a frame where both "Working" and "Worked" show.
-      input.setPendingState(null);
+      // When awaiting input, transition to the awaiting-input pending
+      // state instead of clearing — keeps the pulsing indicator alive.
+      input.setPendingState(turn.awaitingInput ? { kind: "awaiting-input" } : null);
       input.setRows((current) => [...current, ...turn.rows]);
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

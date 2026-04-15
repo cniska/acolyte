@@ -244,14 +244,22 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const isQueued = pendingState?.kind === "queued";
   const isAccepted = pendingState?.kind === "accepted";
   const isRunning = pendingState?.kind === "running";
+  const isAwaitingInput = pendingState?.kind === "awaiting-input";
   const isPending = pendingState !== null && pendingState !== undefined;
   const elapsedSec =
     isRunning && typeof pendingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - pendingStartedAt) / 1000))
       : 0;
-  const runningBlinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
-  const pulseGlyph = isRunning ? (runningBlinkOn ? "•" : " ") : "•";
-  const indicatorColor: string = isQueued ? palette.queued : isAccepted ? palette.accepted : palette.running;
+  const isAnimated = isRunning || isAwaitingInput;
+  const blinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
+  const marker = isAnimated ? (blinkOn ? "•" : " ") : "•";
+  const indicatorColor: string = isAwaitingInput
+    ? palette.brand
+    : isQueued
+      ? palette.queued
+      : isAccepted
+        ? palette.accepted
+        : palette.running;
   const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
   const pendingText = (() => {
     if (!pendingState) return "";
@@ -269,6 +277,9 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     }
     if (pendingState.kind === "accepted") {
       return t("rpc.status.accepted");
+    }
+    if (pendingState.kind === "awaiting-input") {
+      return t("chat.awaiting_input");
     }
     return "";
   })();
@@ -289,10 +300,10 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
           {rows.length > 0 ? <Text> </Text> : null}
           <Box>
             <Box width={2}>
-              <Text color={indicatorColor}>{`${pulseGlyph} `}</Text>
+              <Text color={indicatorColor}>{`${marker} `}</Text>
             </Box>
             <Box width={contentWidth}>
-              {isRunning ? (
+              {isAnimated ? (
                 <ShimmerText text={pendingText} frame={pendingFrame} totalFrames={16} />
               ) : (
                 <Text dimColor>{pendingText}</Text>

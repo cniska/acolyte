@@ -116,6 +116,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
   activeSkills?: ActiveSkill[];
+  awaitingInput: boolean;
 }> {
   const reply = await params.client.replyStream({
     request: {
@@ -145,9 +146,8 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
     modelCalls: reply.modelCalls,
   };
-  if (reply.state === "awaiting-input") {
-    rows.push(createRow("status", t("chat.awaiting_input"), { marker: palette.brand, dim: true }));
-  } else {
+  const awaitingInput = reply.state === "awaiting-input";
+  if (!awaitingInput) {
     const durationMs = Date.now() - params.pendingStartedAt;
     if (durationMs >= 300) {
       const duration = formatDuration(durationMs);
@@ -166,5 +166,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     tokenEntry,
     rows,
     activeSkills: reply.activeSkills,
+    awaitingInput,
   };
 }
