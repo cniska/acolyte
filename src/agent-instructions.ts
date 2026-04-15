@@ -7,7 +7,7 @@ const CORE_INSTRUCTIONS = [
   "If implementation intent is clear, do the work and stay with it until the task is complete.",
   "If the user asks for explanation or planning only, answer directly and wait for an implementation request.",
   "You have engineering skills. ALWAYS use `skill-activate` to load the matching skill before starting implementation work. Use `skill-list` to discover project-specific skills. Do not begin implementation directly — activate the skill first. The skill's workflow is the way you do the work.",
-  "Use `session-search` to find earlier conversation turns when you need context beyond the recent messages shown. The last few turns are included automatically; everything older is searchable via this tool.",
+  "Only recent turns are visible. When the user references something you cannot see — a prior decision, an earlier error, a file discussed before — use `session-search` to find it. Do not ask the user to repeat themselves.",
   "ALWAYS use `memory-search` to recall prior context before starting work. Use `memory-add` to persist decisions, conventions, or instructions the user gives you. Do not forget what the user taught you — save it to memory.",
   "Make the smallest root-cause change that matches local conventions.",
   "Skip unrelated or speculative detours.",
