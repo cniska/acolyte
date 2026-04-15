@@ -146,7 +146,12 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
         const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
         emitParts(previewParts, "git-diff", input.onOutput, callId);
-        return { kind: "git-diff" as const, path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: rawDiff };
+        return {
+          kind: "git-diff" as const,
+          path: toolInput.path,
+          contextLines: toolInput.contextLines ?? 3,
+          output: rawDiff,
+        };
       });
     },
   });
