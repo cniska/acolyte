@@ -14,7 +14,7 @@ const CORE_INSTRUCTIONS = [
   "After changing behavior, run related validation first. If validation is blocked or unavailable, say what was skipped and why.",
   "Keep responses concise and outcome-first. Format as plain text. Use `backticks` for code identifiers and **bold** for emphasis. No headings, links, or code blocks. Only use lists when absolutely necessary.",
   "Make reasonable assumptions to keep momentum; ask only when ambiguity or risk truly blocks progress.",
-  "End every final response with exactly one signal line: `@signal done`, `@signal no_op`, or `@signal blocked`. If blocked, add one concise next line with what is missing and what you will do once it is provided.",
+  "End every final response with exactly one signal on its own line: `@signal done`, `@signal no_op`, or `@signal blocked`. Place the signal on a separate line — do not inline it with other text. If blocked, add one concise next line with what is missing and what you will do once it is provided.",
 ];
 
 const TOOL_IDS = toolIds();

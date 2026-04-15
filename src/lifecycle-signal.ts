@@ -1,19 +1,25 @@
 import type { LifecycleSignal } from "./lifecycle-contract";
 
-const SIGNAL_RE = /(?:^|\n)@signal\s+(done|no_op|blocked)\s*(?:\n|$)/;
+const SIGNAL_RE = /(?:^|\n| )@signal\s+(done|no_op|blocked)\s*(?:\n|$)/;
+const SIGNAL_SANITIZE_RE = /\s*@signal\s+(?:done|no_op|blocked)\b/g;
 const SIGNAL_PREFIXES = ["@signal done", "@signal no_op", "@signal blocked"] as const;
 
 export function stripSignalLine(text: string): string {
   return extractLifecycleSignal(text).text;
 }
 
+function sanitizeSignalTokens(text: string): string {
+  return text.replace(SIGNAL_SANITIZE_RE, "");
+}
+
 export function extractLifecycleSignal(text: string): { signal?: LifecycleSignal; text: string } {
   const match = text.match(SIGNAL_RE);
-  if (!match) return { text };
+  if (!match) return { text: sanitizeSignalTokens(text) };
   const signal = match[1] as LifecycleSignal;
   const before = text.slice(0, match.index ?? 0).trimEnd();
   const after = text.slice((match.index ?? 0) + match[0].length).trimStart();
-  return { signal, text: [before, after].filter(Boolean).join("\n") };
+  const joined = [before, after].filter(Boolean).join("\n");
+  return { signal, text: sanitizeSignalTokens(joined) };
 }
 
 export type LifecycleTextStreamState = {
@@ -27,11 +33,11 @@ export function createLifecycleTextStreamState(): LifecycleTextStreamState {
 
 // Returns the index within `text` from which to start buffering a potential @signal,
 // or -1 if no buffering is needed.
-// Includes the preceding newline so it is not emitted prematurely.
+// Includes the preceding delimiter (newline or space) so it is not emitted prematurely.
 function findSignalBufferPoint(text: string): number {
   for (let i = text.length - 1; i >= 0; i--) {
     if (text[i] !== "@") continue;
-    if (i !== 0 && text[i - 1] !== "\n") continue;
+    if (i !== 0 && text[i - 1] !== "\n" && text[i - 1] !== " ") continue;
     const partial = text.slice(i);
     if (partial.includes("\n")) break; // newline already confirms or denies the signal
     if (SIGNAL_PREFIXES.some((p) => p.startsWith(partial))) {
@@ -55,7 +61,7 @@ export function appendLifecycleTextDelta(state: LifecycleTextStreamState, delta:
     const after = state.pending.slice((match.index ?? 0) + match[0].length).trimStart();
     state.signal = match[1] as LifecycleSignal;
     state.pending = "";
-    return [before, after].filter(Boolean).join("\n");
+    return sanitizeSignalTokens([before, after].filter(Boolean).join("\n"));
   }
 
   // Check whether the end of pending could be the start of an @signal line.
@@ -63,13 +69,13 @@ export function appendLifecycleTextDelta(state: LifecycleTextStreamState, delta:
   if (bufferPoint !== -1) {
     const visible = state.pending.slice(0, bufferPoint);
     state.pending = state.pending.slice(bufferPoint);
-    return visible;
+    return sanitizeSignalTokens(visible);
   }
 
   // No signal or partial signal — emit everything.
   const visible = state.pending;
   state.pending = "";
-  return visible;
+  return sanitizeSignalTokens(visible);
 }
 
 export function finalizeLifecycleText(state: LifecycleTextStreamState): { signal?: LifecycleSignal; text: string } {
