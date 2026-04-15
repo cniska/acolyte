@@ -28,8 +28,8 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createTestToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit> &
-  ReturnType<typeof createMemoryToolkit> &
   ReturnType<typeof createSessionToolkit> &
+  ReturnType<typeof createMemoryToolkit> &
   ReturnType<typeof createSkillToolkit> &
   ReturnType<typeof createUndoToolkit>;
 
@@ -56,12 +56,12 @@ export const TOOLKIT_REGISTRY: {
     createToolkit: (input) => createUndoToolkit(input),
   },
   {
-    id: "memory",
-    createToolkit: (input) => createMemoryToolkit(input),
-  },
-  {
     id: "session",
     createToolkit: (input) => createSessionToolkit(input),
+  },
+  {
+    id: "memory",
+    createToolkit: (input) => createMemoryToolkit(input),
   },
   {
     id: "skill",
