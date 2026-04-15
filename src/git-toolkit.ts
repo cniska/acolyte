@@ -8,6 +8,8 @@ import { runTool } from "./tool-execution";
 import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
 import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
+const DEFAULT_CONTEXT_LINES = 3;
+
 const GIT_OPS = ["statusShort", "diff", "log", "show", "add", "commit"] as const;
 type GitOp = (typeof GIT_OPS)[number];
 
@@ -56,14 +58,14 @@ async function runGitOp(operation: GitOp, execute: () => Promise<string>): Promi
 export function createGitOps(workspace: string, deps: GitOpsDeps = defaultDeps): GitOps {
   return {
     statusShort: () => runGitOp("statusShort", () => deps.gitStatusShort(workspace)),
-    diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? 3)),
+    diff: (input) => runGitOp("diff", () => deps.gitDiff(workspace, input?.path, input?.contextLines ?? DEFAULT_CONTEXT_LINES)),
     log: (input) => runGitOp("log", () => deps.gitLog(workspace, { path: input?.path, limit: input?.limit })),
     show: (input) =>
       runGitOp("show", () =>
         deps.gitShow(workspace, {
           ref: input?.ref,
           path: input?.path,
-          contextLines: input?.contextLines ?? 3,
+          contextLines: input?.contextLines ?? DEFAULT_CONTEXT_LINES,
         }),
       ),
     add: (input) => runGitOp("add", () => deps.gitAdd(workspace, { paths: input?.paths, all: input?.all })),
@@ -143,13 +145,13 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
           content: { kind: "tool-header", labelKey: "tool.label.git_diff", detail: toolInput.path },
           toolCallId: callId,
         });
-        const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
+        const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES });
         const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
         emitParts(previewParts, "git-diff", input.onOutput, callId);
         return {
           kind: "git-diff" as const,
           path: toolInput.path,
-          contextLines: toolInput.contextLines ?? 3,
+          contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
           output: rawDiff,
         };
       });
@@ -222,7 +224,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
         const rawShow = await git.show({
           ref: toolInput.ref,
           path: toolInput.path,
-          contextLines: toolInput.contextLines ?? 3,
+          contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
         });
         const previewText = stripGitShowMetadataForPreview(rawShow);
         const previewParts = textHeadTailParts(previewText);
@@ -231,7 +233,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
           kind: "git-show" as const,
           ref: toolInput.ref,
           path: toolInput.path,
-          contextLines: toolInput.contextLines ?? 3,
+          contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
           output: rawShow,
         };
       });
