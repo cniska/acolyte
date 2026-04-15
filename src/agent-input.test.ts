@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createAgentInput, HISTORY_WINDOW, setTokenEncoder } from "./agent-input";
+import { createAgentInput, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
+import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 
 const defaultOptions = {
@@ -222,8 +223,8 @@ describe("createAgentInput", () => {
   });
 
   test("excludes exchanges beyond the window even when budget allows", () => {
-    // Build HISTORY_WINDOW + 3 exchanges (user + assistant pairs)
-    const exchanges = HISTORY_WINDOW + 3;
+    // Build MAX_RECENT_TURNS + 3 exchanges (user + assistant pairs)
+    const exchanges = MAX_RECENT_TURNS + 3;
     const history: ChatRequest["history"] = [];
     for (let i = 0; i < exchanges; i++) {
       history.push({
@@ -242,10 +243,10 @@ describe("createAgentInput", () => {
     const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
 
     const { input, usage } = createAgentInput(req, defaultOptions);
-    // Last HISTORY_WINDOW turns should be included
+    // Last MAX_RECENT_TURNS turns should be included
     expect(input).toContain(`USER_EXCHANGE_${exchanges - 1}`);
     expect(input).toContain(`ASSISTANT_EXCHANGE_${exchanges - 1}`);
-    expect(input).toContain(`USER_EXCHANGE_${exchanges - HISTORY_WINDOW}`);
+    expect(input).toContain(`USER_EXCHANGE_${exchanges - MAX_RECENT_TURNS}`);
     // Older turns should be excluded
     expect(input).not.toContain("USER_EXCHANGE_0");
     expect(input).not.toContain("ASSISTANT_EXCHANGE_0");
@@ -258,15 +259,15 @@ describe("createAgentInput", () => {
       { id: "msg_old_u", role: "user", content: "OLD_USER", timestamp: "2026-02-20T10:00:00.000Z" },
       { id: "msg_old_a", role: "assistant", content: "OLD_ASSISTANT", timestamp: "2026-02-20T10:00:01.000Z" },
     ];
-    // Add HISTORY_WINDOW exchanges, last one has tool payloads
-    for (let i = 0; i < HISTORY_WINDOW; i++) {
+    // Add MAX_RECENT_TURNS exchanges, last one has tool payloads
+    for (let i = 0; i < MAX_RECENT_TURNS; i++) {
       history.push({
         id: `msg_u${i}`,
         role: "user",
         content: `RECENT_USER_${i}`,
         timestamp: `2026-02-20T10:${String(i + 1).padStart(2, "0")}:00.000Z`,
       });
-      if (i === HISTORY_WINDOW - 1) {
+      if (i === MAX_RECENT_TURNS - 1) {
         history.push({
           id: `msg_tool${i}`,
           role: "assistant",
@@ -291,7 +292,7 @@ describe("createAgentInput", () => {
   });
 
   test("includes all messages when exchanges are within the window", () => {
-    const exchanges = HISTORY_WINDOW - 1;
+    const exchanges = MAX_RECENT_TURNS - 1;
     const history: ChatRequest["history"] = [];
     for (let i = 0; i < exchanges; i++) {
       history.push({
@@ -316,7 +317,7 @@ describe("createAgentInput", () => {
 
   test("windowed messages are still truncated normally when individually large", () => {
     const history: ChatRequest["history"] = [];
-    for (let i = 0; i < HISTORY_WINDOW; i++) {
+    for (let i = 0; i < MAX_RECENT_TURNS; i++) {
       history.push({
         id: `msg_u${i}`,
         role: "user",
@@ -357,6 +358,20 @@ describe("createAgentInput", () => {
     expect(input).toContain("ONLY_REPLY");
     expect(input).not.toContain("SYSTEM_NOISE");
     expect(input).not.toContain("STATUS_NOISE");
+  });
+
+  test("includes all assistant messages when history has no user messages", () => {
+    const history: ChatRequest["history"] = [
+      { id: "msg_a0", role: "assistant", content: "REPLY_0", timestamp: "2026-02-20T10:00:00.000Z" },
+      { id: "msg_a1", role: "assistant", content: "REPLY_1", timestamp: "2026-02-20T10:00:01.000Z" },
+      { id: "msg_a2", role: "assistant", content: "REPLY_2", timestamp: "2026-02-20T10:00:02.000Z" },
+    ];
+    const req: ChatRequest = { model: "gpt-5-mini", message: "go", history };
+
+    const { input } = createAgentInput(req, defaultOptions);
+    expect(input).toContain("REPLY_0");
+    expect(input).toContain("REPLY_1");
+    expect(input).toContain("REPLY_2");
   });
 
   test("totalHistoryMessages reflects full history, not windowed subset", () => {

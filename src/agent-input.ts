@@ -1,7 +1,6 @@
 import type { ChatRequest } from "./api";
+import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { log } from "./log";
-
-export const HISTORY_WINDOW = 5;
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
@@ -90,7 +89,7 @@ function isConversationalMessage(message: ChatRequest["history"][number]): boole
   return true;
 }
 
-function lastNTurns(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
+function windowHistory(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
   const conversational = messages.filter(isConversationalMessage);
   let turns = 0;
   let cutIndex = 0;
@@ -210,7 +209,7 @@ export function createAgentInput(
     }
   }
 
-  const recentHistory = lastNTurns(req.history, HISTORY_WINDOW);
+  const recentHistory = windowHistory(req.history, MAX_RECENT_TURNS);
   const recentResult = collectLinesWithinBudget(recentHistory, usedIds, tokenBudget.remaining());
   lines.push(...recentResult.lines);
 
