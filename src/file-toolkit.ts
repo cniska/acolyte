@@ -145,11 +145,11 @@ function createSearchFilesTool(input: ToolkitInput) {
         );
         emitParts(summaryParts, "file-search", input.onOutput, callId);
         return {
-          kind: "file-search",
+          kind: "file-search" as const,
           scope: toolInput.paths && toolInput.paths.length > 0 ? "paths" : "workspace",
           patterns,
           matches: summaryStats.files,
-          entries: [],
+          entries: [] as { path: string; hits: string[] }[],
           output: result,
         };
       });

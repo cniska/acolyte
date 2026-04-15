@@ -146,7 +146,7 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
         const rawDiff = await git.diff({ path: toolInput.path, contextLines: toolInput.contextLines ?? 3 });
         const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
         emitParts(previewParts, "git-diff", input.onOutput, callId);
-        return { kind: "git-diff", path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: rawDiff };
+        return { kind: "git-diff" as const, path: toolInput.path, contextLines: toolInput.contextLines ?? 3, output: rawDiff };
       });
     },
   });
@@ -180,7 +180,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
         const previewParts = resultChunkParts(rawLog, 4);
         emitParts(previewParts, "git-log", input.onOutput, callId);
-        return { kind: "git-log", path: toolInput.path, limit: toolInput.limit, output: rawLog };
+        return { kind: "git-log" as const, path: toolInput.path, limit: toolInput.limit, output: rawLog };
       });
     },
   });
@@ -223,7 +223,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
         const previewParts = textHeadTailParts(previewText);
         emitParts(previewParts, "git-show", input.onOutput, callId);
         return {
-          kind: "git-show",
+          kind: "git-show" as const,
           ref: toolInput.ref,
           path: toolInput.path,
           contextLines: toolInput.contextLines ?? 3,
@@ -275,7 +275,7 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
             });
           }
         }
-        return { kind: "git-add", all: toolInput.all, paths: toolInput.paths, output: rawAdd };
+        return { kind: "git-add" as const, all: toolInput.all, paths: toolInput.paths, output: rawAdd };
       });
     },
   });
@@ -323,7 +323,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
             });
           }
         }
-        return { kind: "git-commit", message: toolInput.message, body: toolInput.body, output: rawCommit };
+        return { kind: "git-commit" as const, message: toolInput.message, body: toolInput.body, output: rawCommit };
       });
     },
   });

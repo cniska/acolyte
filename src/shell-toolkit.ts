@@ -92,7 +92,7 @@ function createRunCommandTool(input: ToolkitInput) {
           const previewParts = shellHeadTailParts(streamed);
           emitParts(previewParts, "shell-run", input.onOutput, callId);
           return {
-            kind: "shell-run",
+            kind: "shell-run" as const,
             command: displayCommand,
             exitCode: parseExitCode(rawResult),
             output: rawResult,
