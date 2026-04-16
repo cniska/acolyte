@@ -3,7 +3,6 @@ import type { TranslationKey } from "./i18n";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-content";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
-import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
 
@@ -116,23 +115,6 @@ export function resultChunkParts(result: string, maxLines = 80): ToolOutputPart[
   const parts: ToolOutputPart[] = allLines.slice(0, maxLines).map((text) => ({ kind: "text", text }));
   if (allLines.length > maxLines) {
     parts.push({ kind: "truncated", count: allLines.length - maxLines, unit: "lines" });
-  }
-  return parts;
-}
-
-export function fileListSummaryParts(
-  filePaths: string[],
-  maxFiles = TOOL_PROGRESS_LIMITS.files,
-  workspace?: string,
-): ToolOutputPart[] {
-  const unique = uniquePaths(filePaths);
-  if (unique.length === 0) return [];
-  const parts: ToolOutputPart[] = [{ kind: "text", text: `files=${unique.length}` }];
-  for (const path of unique.slice(0, maxFiles)) {
-    parts.push({ kind: "text", text: toDisplayPath(path, workspace) });
-  }
-  if (unique.length > maxFiles) {
-    parts.push({ kind: "truncated", count: unique.length - maxFiles, unit: "matches" });
   }
   return parts;
 }

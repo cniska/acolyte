@@ -6,7 +6,6 @@ import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
-import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
 
 const DEFAULT_CONTEXT_LINES = 3;
 
@@ -270,16 +269,7 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
         if (paths.length > 0) {
-          for (const p of paths.slice(0, TOOL_PROGRESS_LIMITS.files)) {
-            input.onOutput({ toolName: "git-add", content: { kind: "text", text: p }, toolCallId: callId });
-          }
-          if (paths.length > TOOL_PROGRESS_LIMITS.files) {
-            input.onOutput({
-              toolName: "git-add",
-              content: { kind: "truncated", count: paths.length - TOOL_PROGRESS_LIMITS.files, unit: "files" },
-              toolCallId: callId,
-            });
-          }
+          emitParts(textHeadTailParts(paths.join("\n")), "git-add", input.onOutput, callId);
         }
         return { kind: "git-add" as const, all: toolInput.all, paths: toolInput.paths, output: rawAdd };
       });
@@ -315,18 +305,8 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
           content: { kind: "tool-header", labelKey: "tool.label.git_commit", detail },
           toolCallId: callId,
         });
-        if (toolInput.body && toolInput.body.length > 0) {
-          const maxBodyLines = TOOL_PROGRESS_LIMITS.files;
-          for (const line of toolInput.body.slice(0, maxBodyLines)) {
-            input.onOutput({ toolName: "git-commit", content: { kind: "text", text: line }, toolCallId: callId });
-          }
-          if (toolInput.body.length > maxBodyLines) {
-            input.onOutput({
-              toolName: "git-commit",
-              content: { kind: "truncated", count: toolInput.body.length - maxBodyLines, unit: "lines" },
-              toolCallId: callId,
-            });
-          }
+        for (const line of toolInput.body ?? []) {
+          input.onOutput({ toolName: "git-commit", content: { kind: "text", text: line }, toolCallId: callId });
         }
         return { kind: "git-commit" as const, message: toolInput.message, body: toolInput.body, output: rawCommit };
       });

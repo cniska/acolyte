@@ -10,7 +10,7 @@ import {
   searchResultSummaryStats,
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
-import { MAX_READ_PATHS, TOOL_PROGRESS_LIMITS } from "./tool-policy";
+import { MAX_READ_PATHS } from "./tool-policy";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -180,16 +180,13 @@ function createReadFileTool(input: ToolkitInput) {
           throw new Error(`Too many files (${paths.length}). Split into batches of ${MAX_READ_PATHS} or fewer.`);
         }
         const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
-        const shown = displayPaths.slice(0, TOOL_PROGRESS_LIMITS.inlineFiles);
-        const remaining = displayPaths.length - shown.length;
         input.onOutput({
           toolName: "file-read",
           content: {
             kind: "file-header",
             labelKey: "tool.label.file_read",
             count: displayPaths.length,
-            targets: shown,
-            omitted: remaining > 0 ? remaining : undefined,
+            targets: displayPaths.slice(0, 1),
           },
           toolCallId: callId,
         });
