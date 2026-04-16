@@ -57,12 +57,12 @@ Naming conventions and core terms used across Acolyte code and docs.
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
 | Step Budget | Per-turn and total tool-call limit inlined into tool execution to prevent runaway loops |
-| Turn | One model response to a user message, including all tool calls within that response |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
 | TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |
 | Token Overlap | Keyword matching component of hybrid recall that catches exact term matches embeddings miss |
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Toolkit | Group of domain tools exposed through adapters and composition |
+| Turn | One model response to a user message, including all tool calls within that response |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

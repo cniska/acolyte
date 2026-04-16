@@ -3,7 +3,7 @@ import { hashResultValue } from "./tool-execution";
 import { checkStepBudget, createSessionContext, recordCall, resetTurnStepCount } from "./tool-session";
 
 describe("step budget", () => {
-  test("blocks when cycle step count reaches cycle limit", () => {
+  test("blocks when turn step count reaches turn limit", () => {
     const session = createSessionContext();
     session.flags.turnStepLimit = 2;
     session.flags.turnStepCount = 2;
@@ -19,7 +19,7 @@ describe("step budget", () => {
     expect(checkStepBudget(session)).toContain("Total step budget exhausted");
   });
 
-  test("increments cycle step count on each allowed call", () => {
+  test("increments turn step count on each allowed call", () => {
     const session = createSessionContext();
     session.flags.turnStepLimit = 10;
     session.flags.turnStepCount = 0;
@@ -51,6 +51,13 @@ describe("token ceiling", () => {
     const session = createSessionContext();
     session.flags.totalTokenLimit = 1000;
     session.flags.totalTokens = () => 1500;
+    expect(checkStepBudget(session)).toContain("Token budget exhausted");
+  });
+
+  test("blocks when total tokens equal limit", () => {
+    const session = createSessionContext();
+    session.flags.totalTokenLimit = 1000;
+    session.flags.totalTokens = () => 1000;
     expect(checkStepBudget(session)).toContain("Token budget exhausted");
   });
 

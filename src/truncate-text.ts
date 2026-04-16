@@ -7,8 +7,8 @@ export function truncateText(input: string, maxChars = DEFAULT_MAX_DISPLAY_CHARS
 
 export function truncateMiddle(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
-  const truncated = text.length - maxChars;
-  const marker = `\n… ${truncated} chars truncated …\n`;
+  const dropped = text.length - maxChars;
+  const marker = `\n… ${dropped} chars truncated …\n`;
   const budget = maxChars - marker.length;
   if (budget <= 0) return marker;
   const head = Math.ceil(budget * 0.6);

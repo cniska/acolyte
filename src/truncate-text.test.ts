@@ -63,6 +63,11 @@ describe("truncateMiddle", () => {
     expect(headSize).toBeGreaterThan(tailSize);
   });
 
+  test("returns marker when maxChars is smaller than marker", () => {
+    const result = truncateMiddle("x".repeat(100), 5);
+    expect(result).toContain("chars truncated");
+  });
+
   test("handles empty string", () => {
     expect(truncateMiddle("", 100)).toBe("");
   });
