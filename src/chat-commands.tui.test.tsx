@@ -13,7 +13,7 @@ function renderTranscript(
 
 describe("chat slash command visual regression", () => {
   test("renders /status transcript output", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -69,7 +69,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
       session,
       sessionState,
       tokenUsage: session.tokenUsage,
@@ -107,7 +107,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     try {
-      const { handleMessage, rows } = createMessageHandlerHarness({ sessionState });
+      const { handleMessage, allRows: rows } = createMessageHandlerHarness({ sessionState });
 
       await handleMessage("/sessions");
 

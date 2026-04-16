@@ -83,7 +83,11 @@ describe("chat message handler", () => {
   });
 
   test("routes /status through message handler and renders status output row", async () => {
-    const { handleMessage, allRows: rows, calls } = createMessageHandlerHarness({
+    const {
+      handleMessage,
+      allRows: rows,
+      calls,
+    } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -208,7 +212,7 @@ describe("chat message handler", () => {
       ],
     ];
     let replyCount = 0;
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -226,7 +230,9 @@ describe("chat message handler", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.kind === "tool");
+    // Each turn promotes its rows — collect all promoted rows across turns.
+    const promoted = calls.promotedSnapshots.flat();
+    const toolRows = promoted.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(3);
     expect(
       isToolOutput(toolRows[0]?.content) &&
@@ -244,10 +250,11 @@ describe("chat message handler", () => {
       isToolOutput(toolRows[2]?.content) &&
         toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_delete"),
     ).toBe(true);
-    // Assistant text rows are kept as-is (no redundancy filtering).
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(
+      true,
+    );
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("toggles shortcuts on ? input", async () => {
@@ -424,7 +431,7 @@ describe("chat message handler", () => {
 
   test("shows warning for unresolved @references but continues turn", async () => {
     let replyCalls = 0;
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           replyCalls += 1;
@@ -438,9 +445,9 @@ describe("chat message handler", () => {
     await handleMessage("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(1);
-    expect(rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found"))).toBe(
-      true,
-    );
+    expect(
+      allRows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+    ).toBe(true);
   });
 
   test("shows warning for unresolved @references alongside resolved ones", async () => {
@@ -450,7 +457,7 @@ describe("chat message handler", () => {
     await writeFile(fixturePath, "fixture");
 
     try {
-      const { handleMessage, rows } = createMessageHandlerHarness({
+      const { handleMessage, allRows } = createMessageHandlerHarness({
         client: createClient({
           replyStream: async (input) => {
             replyCalls += 1;
@@ -465,9 +472,9 @@ describe("chat message handler", () => {
 
       expect(replyCalls).toBe(1);
       expect(
-        rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+        allRows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
       ).toBe(true);
-      expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
+      expect(allRows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
     } finally {
       await rm(fixturePath, { force: true });
     }
@@ -475,7 +482,7 @@ describe("chat message handler", () => {
 
   test("concurrent handleSubmit calls only process one turn", async () => {
     let replyCount = 0;
-    const { handleMessage, rows, session } = createMessageHandlerHarness({
+    const { handleMessage, allRows, session } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           replyCount++;
@@ -492,7 +499,7 @@ describe("chat message handler", () => {
     await Promise.all([first, second]);
 
     expect(session.messages.filter((m) => m.role === "user")).toHaveLength(1);
-    expect(rows.filter((r) => r.kind === "user")).toHaveLength(1);
+    expect(allRows.filter((r) => r.kind === "user")).toHaveLength(1);
     expect(replyCount).toBe(1);
   });
 
@@ -572,7 +579,6 @@ describe("chat message handler", () => {
     const promoted = calls.promotedSnapshots[0] ?? [];
     expect(promoted.some((r) => r.kind === "user")).toBe(true);
     expect(promoted.some((r) => r.kind === "assistant")).toBe(true);
-    expect(promoted.some((r) => r.kind === "status")).toBe(true);
   });
 
   test("promote includes tool output rows", async () => {

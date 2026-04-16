@@ -13,7 +13,11 @@ import {
 
 describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness({
+    const {
+      handleMessage,
+      allRows: rows,
+      calls,
+    } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -95,7 +99,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps quota errors to user-facing message handler error", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => {
@@ -115,7 +119,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps timeout errors to user-facing message handler error", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => {
@@ -138,7 +142,7 @@ describe("chat message handler stream behavior", () => {
     let callCount = 0;
     const {
       handleMessage,
-      rows,
+      allRows,
       session,
       calls: spies,
     } = createMessageHandlerHarness({
@@ -159,7 +163,7 @@ describe("chat message handler stream behavior", () => {
     expect(callCount).toBe(2);
     expect(spies.pendingTransitions).toEqual([true, false, true, false]);
     expect(
-      rows.some(
+      allRows.some(
         (row) =>
           row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
       ),
@@ -237,7 +241,7 @@ describe("chat message handler stream behavior", () => {
     const session = createSession({ id: "sess_current" });
     const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session, target] });
     let replyCalls = 0;
-    const { handleMessage, rows, allRows, calls } = createMessageHandlerHarness({
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => {
@@ -262,7 +266,7 @@ describe("chat message handler stream behavior", () => {
     ).toBe(true);
     expect(calls.setCurrentSessionIds).toEqual([target.id]);
     expect(sessionState.activeSessionId).toBe(target.id);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "resumed")).toBe(true);
+    expect(allRows.some((row) => row.kind === "assistant" && row.content === "resumed")).toBe(true);
   });
 
   test("uses final reply output as authoritative content", async () => {
@@ -318,7 +322,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("never surfaces blocked tool rows when mixed with allowed tool work", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -356,7 +360,8 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const toolRows = rows.filter((row) => row.kind === "tool");
+    const promoted = calls.promotedSnapshots.flat();
+    const toolRows = promoted.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(1);
     expect(
       isToolOutput(toolRows[0]?.content) &&
@@ -365,7 +370,9 @@ describe("chat message handler stream behavior", () => {
         ),
     ).toBe(true);
     expect(
-      rows.some((row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header")),
+      promoted.some(
+        (row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header"),
+      ),
     ).toBe(false);
   });
 
@@ -407,7 +414,7 @@ describe("chat message handler stream behavior", () => {
       ],
     ];
     let replyCount = 0;
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -424,7 +431,8 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("create file");
     await handleMessage("edit file");
 
-    const editedRows = rows.filter(
+    const promoted = calls.promotedSnapshots.flat();
+    const editedRows = promoted.filter(
       (row) =>
         row.kind === "tool" &&
         isToolOutput(row.content) &&
@@ -551,7 +559,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("assistant text row stays before tool rows after finalization", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -589,7 +597,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("batched tool calls each get their own tool row", async () => {
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -650,7 +658,8 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("rename across files");
 
-    const toolRows = rows.filter((row) => row.kind === "tool");
+    const promoted = calls.promotedSnapshots.flat();
+    const toolRows = promoted.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(2);
   });
 });

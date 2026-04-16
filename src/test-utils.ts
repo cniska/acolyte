@@ -283,6 +283,7 @@ export type MessageHandlerHarness = {
     pendingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
+    promotedSnapshots: ChatRow[][];
   };
   interrupt: {
     registered: boolean;

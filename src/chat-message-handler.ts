@@ -188,6 +188,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         input.setPendingState(null);
       }
       input.setRows((current) => [...current, ...turn.rows]);
+      if (!turn.awaitingInput) input.promote?.();
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
@@ -239,6 +240,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
       }
+      input.promote?.();
     } finally {
       if (cleanup !== "none") {
         releaseTurn();
