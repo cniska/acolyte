@@ -246,7 +246,26 @@ export function render(node: ReactNode): RenderInstance {
     lastActive = active;
   }
 
-  setOnCommit(commitRender);
+  const RENDER_THROTTLE_MS = 32;
+  let renderTimer: ReturnType<typeof setTimeout> | null = null;
+  let renderPending = false;
+
+  function throttledCommitRender() {
+    if (renderTimer) {
+      renderPending = true;
+      return;
+    }
+    commitRender();
+    renderTimer = setTimeout(() => {
+      renderTimer = null;
+      if (renderPending) {
+        renderPending = false;
+        commitRender();
+      }
+    }, RENDER_THROTTLE_MS);
+  }
+
+  setOnCommit(throttledCommitRender);
 
   const container = reconciler.createContainer(
     root,

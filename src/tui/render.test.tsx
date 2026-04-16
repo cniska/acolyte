@@ -3,6 +3,7 @@ import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
 import { ChatInputPanel } from "../chat-input-panel";
 import { ansi } from "./styles";
+import { renderCapture } from "./test-utils";
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
@@ -359,8 +360,8 @@ describe("render", () => {
           const [lines, setLines] = useState(["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]);
 
           useEffect(() => {
-            const t1 = setTimeout(() => setLines(["B1", "B2", "B3", "B4"]), 20);
-            const t2 = setTimeout(() => app.unmount(), 60);
+            const t1 = setTimeout(() => setLines(["B1", "B2", "B3", "B4"]), 50);
+            const t2 = setTimeout(() => app.unmount(), 150);
             return () => {
               clearTimeout(t1);
               clearTimeout(t2);
@@ -430,5 +431,130 @@ describe("render", () => {
       if (savedTmux === undefined) delete process.env.TMUX;
       else process.env.TMUX = savedTmux;
     }
+  });
+
+  test("streaming state updates render incrementally, not batched into one commit", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        type Ref<T> = { current: T };
+        const setText: Ref<(fn: (prev: string) => string) => void> = { current: () => {} };
+
+        function App(): React.JSX.Element {
+          const [text, setTextState] = useState("");
+          setText.current = setTextState;
+          return <tui-text>{text || "empty"}</tui-text>;
+        }
+
+        const app = render(<App />);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Simulate streaming: update state with delays between updates
+        for (const word of ["Hello", "Hello world", "Hello world!"]) {
+          setText.current(() => word);
+          await new Promise((r) => setTimeout(r, 50));
+        }
+
+        await new Promise((r) => setTimeout(r, 50));
+        app.unmount();
+      },
+      { columns: 40, rows: 6 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    const hasHello = frameWrites.some((w) => w.includes("Hello") && !w.includes("world"));
+    const hasHelloWorld = frameWrites.some((w) => w.includes("Hello world") && !w.includes("!"));
+    const hasHelloWorldBang = frameWrites.some((w) => w.includes("Hello world!"));
+
+    // Each intermediate state must appear in a separate write — not batched.
+    expect(hasHello).toBe(true);
+    expect(hasHelloWorld).toBe(true);
+    expect(hasHelloWorldBang).toBe(true);
+  });
+
+  test("rapid state updates within throttle window still render final state", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        type Ref<T> = { current: T };
+        const setText: Ref<(fn: (prev: string) => string) => void> = { current: () => {} };
+
+        function App(): React.JSX.Element {
+          const [text, setTextState] = useState("init");
+          setText.current = setTextState;
+          return <tui-text>{text}</tui-text>;
+        }
+
+        const app = render(<App />);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Fire 10 updates with no delay — all within one throttle window
+        for (let i = 1; i <= 10; i++) {
+          setText.current(() => `update_${i}`);
+        }
+
+        await new Promise((r) => setTimeout(r, 100));
+        app.unmount();
+      },
+      { columns: 40, rows: 6 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    // The final state must be rendered even if intermediate states were skipped.
+    expect(frameWrites.some((w) => w.includes("update_10"))).toBe(true);
+  });
+
+  test("static items render immediately without waiting for throttle", async () => {
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [items, setItems] = useState<string[]>([]);
+      const [dynamic, setDynamic] = useState("active");
+      useEffect(() => {
+        const t1 = setTimeout(() => {
+          setItems(["STATIC_1"]);
+          setDynamic("after");
+        }, 50);
+        const t2 = setTimeout(unmount, 150);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return (
+        <tui-box flexDirection="column">
+          <tui-static>
+            {items.map((item) => (
+              <tui-text key={item}>{item}</tui-text>
+            ))}
+          </tui-static>
+          <tui-text>{dynamic}</tui-text>
+        </tui-box>
+      );
+    }
+
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
+    const frameWrites = extractFrameWrites(writes);
+    expect(frameWrites.some((w) => w.includes("STATIC_1"))).toBe(true);
+    expect(frameWrites.some((w) => w.includes("after"))).toBe(true);
+  });
+
+  test("unmount during throttle window does not lose final render", async () => {
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [text, setText] = useState("before");
+      useEffect(() => {
+        const t1 = setTimeout(() => setText("final"), 50);
+        const t2 = setTimeout(unmount, 100);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return <tui-text>{text}</tui-text>;
+    }
+
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
+    const frameWrites = extractFrameWrites(writes);
+    expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
   });
 });

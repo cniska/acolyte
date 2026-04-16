@@ -1,5 +1,7 @@
-export const MAX_TOTAL_STEPS = 200;
-export const MAX_TURN_STEPS = 80;
+export const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
+
+export const MAX_TOTAL_STEPS = 60;
+export const MAX_TURN_STEPS = 30;
 export const STEP_TIMEOUT_MS = 120_000;
 export const MAX_UNKNOWN_ERRORS_PER_REQUEST = 2;
 export const TOOL_TIMEOUT_MS = 10_000;

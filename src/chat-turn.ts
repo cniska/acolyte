@@ -4,7 +4,7 @@ import { createWorkspaceSpecifier, type TokenUsage } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
-import { formatTokenCount } from "./chat-format";
+import { formatCompactNumber } from "./chat-format";
 import type { Client, StreamEvent } from "./client-contract";
 import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
@@ -152,10 +152,13 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     if (durationMs >= 300) {
       const duration = formatDuration(durationMs);
       const toolCount = reply.toolCalls?.length ?? 0;
-      const totalTokens = tokenEntry.usage.totalTokens;
+      const { inputTokens, outputTokens } = tokenEntry.usage;
       const details: string[] = [];
       if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
-      if (totalTokens > 0) details.push(formatTokenCount(totalTokens));
+      if (inputTokens + outputTokens > 0)
+        details.push(
+          t("unit.token.split", { input: formatCompactNumber(inputTokens), output: formatCompactNumber(outputTokens) }),
+        );
       const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
       rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
     }

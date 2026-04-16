@@ -198,7 +198,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     onStopPending: () => {
       setPendingState(null);
       setRunningUsage(null);
-      promote();
       setQueuedMessages((current) => {
         if (current.length === 0) return current;
         const [next, ...rest] = current;

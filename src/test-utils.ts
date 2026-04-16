@@ -283,6 +283,7 @@ export type MessageHandlerHarness = {
     pendingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
+    promotedSnapshots: ChatRow[][];
   };
   interrupt: {
     registered: boolean;
@@ -309,6 +310,7 @@ export function createMessageHandlerHarness(overrides?: {
     pendingTransitions: [] as boolean[],
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
+    promotedSnapshots: [] as ChatRow[][],
   };
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const sessionState =
@@ -366,6 +368,11 @@ export function createMessageHandlerHarness(overrides?: {
     setInterrupt: (handler) => {
       interrupt.registered = handler !== null;
       if (handler) interrupt.fire = handler;
+    },
+    promote: () => {
+      const snapshot = [...rows];
+      calls.promotedSnapshots.push(snapshot);
+      rows.splice(0, rows.length);
     },
     clearTranscript: () => {
       rows.splice(0, rows.length);

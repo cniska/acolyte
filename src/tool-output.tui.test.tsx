@@ -4,7 +4,7 @@ import { ChatTranscript } from "./chat-transcript";
 import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { formatToolOutput } from "./tool-output-render";
-import { renderPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[]): string {
   const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };

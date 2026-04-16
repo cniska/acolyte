@@ -83,7 +83,7 @@ describe("chat message handler", () => {
   });
 
   test("routes /status through message handler and renders status output row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness({
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -96,7 +96,7 @@ describe("chat message handler", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/status");
     expect(systemRow?.kind).toBe("system");
@@ -108,13 +108,13 @@ describe("chat message handler", () => {
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness();
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness();
 
     await handleMessage("/sessions");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/sessions");
     expect(systemRow?.kind).toBe("system");
@@ -122,13 +122,13 @@ describe("chat message handler", () => {
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness();
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness();
 
     await handleMessage("/usage");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/usage");
     expect(systemRow?.kind).toBe("system");
@@ -208,7 +208,7 @@ describe("chat message handler", () => {
       ],
     ];
     let replyCount = 0;
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -226,7 +226,9 @@ describe("chat message handler", () => {
     await handleMessage("update sum.rs to take three instead of two");
     await handleMessage("delete sum.rs");
 
-    const toolRows = rows.filter((row) => row.kind === "tool");
+    // Each turn promotes its rows — collect all promoted rows across turns.
+    const promoted = calls.promotedSnapshots.flat();
+    const toolRows = promoted.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(3);
     expect(
       isToolOutput(toolRows[0]?.content) &&
@@ -244,10 +246,11 @@ describe("chat message handler", () => {
       isToolOutput(toolRows[2]?.content) &&
         toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_delete"),
     ).toBe(true);
-    // Assistant text rows are kept as-is (no redundancy filtering).
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
-    expect(rows.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(
+      true,
+    );
+    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("toggles shortcuts on ? input", async () => {
@@ -424,7 +427,7 @@ describe("chat message handler", () => {
 
   test("shows warning for unresolved @references but continues turn", async () => {
     let replyCalls = 0;
-    const { handleMessage, rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           replyCalls += 1;
@@ -438,9 +441,9 @@ describe("chat message handler", () => {
     await handleMessage("review @definitely-not-a-real-file-xyz");
 
     expect(replyCalls).toBe(1);
-    expect(rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found"))).toBe(
-      true,
-    );
+    expect(
+      allRows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+    ).toBe(true);
   });
 
   test("shows warning for unresolved @references alongside resolved ones", async () => {
@@ -450,7 +453,7 @@ describe("chat message handler", () => {
     await writeFile(fixturePath, "fixture");
 
     try {
-      const { handleMessage, rows } = createMessageHandlerHarness({
+      const { handleMessage, allRows } = createMessageHandlerHarness({
         client: createClient({
           replyStream: async (input) => {
             replyCalls += 1;
@@ -465,9 +468,9 @@ describe("chat message handler", () => {
 
       expect(replyCalls).toBe(1);
       expect(
-        rows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
+        allRows.some((row) => typeof row.content === "string" && row.content.includes("No file or folder found")),
       ).toBe(true);
-      expect(rows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
+      expect(allRows.some((row) => row.kind === "assistant" && row.content === "ok")).toBe(true);
     } finally {
       await rm(fixturePath, { force: true });
     }
@@ -475,7 +478,7 @@ describe("chat message handler", () => {
 
   test("concurrent handleSubmit calls only process one turn", async () => {
     let replyCount = 0;
-    const { handleMessage, rows, session } = createMessageHandlerHarness({
+    const { handleMessage, allRows, session } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           replyCount++;
@@ -492,7 +495,7 @@ describe("chat message handler", () => {
     await Promise.all([first, second]);
 
     expect(session.messages.filter((m) => m.role === "user")).toHaveLength(1);
-    expect(rows.filter((r) => r.kind === "user")).toHaveLength(1);
+    expect(allRows.filter((r) => r.kind === "user")).toHaveLength(1);
     expect(replyCount).toBe(1);
   });
 
@@ -553,6 +556,159 @@ describe("chat message handler", () => {
     // Interrupt handler must still be registered so the user can Ctrl+C
     // to cancel the remote task polling.
     expect(interruptHandler).not.toBeNull();
+  });
+
+  test("promote is called after turn completion with all rows", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "done" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("hello");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "user")).toBe(true);
+    expect(promoted.some((r) => r.kind === "assistant")).toBe(true);
+  });
+
+  test("promote includes tool output rows", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "tool-call", toolCallId: "tc_1", toolName: "file-edit", args: {} });
+          input.onEvent({
+            type: "tool-output",
+            toolCallId: "tc_1",
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "test.ts" },
+          });
+          input.onEvent({ type: "text-delta", text: "edited" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "edited" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("edit a file");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "tool")).toBe(true);
+  });
+
+  test("promote clears dynamic rows", async () => {
+    const { handleMessage, rows, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "done" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("hello");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    expect(rows).toHaveLength(0);
+  });
+
+  test("promote is not called for awaiting-input turns", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "What input?" });
+          return { state: "awaiting-input" as const, model: "gpt-5-mini", output: "What input?" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("ask me for some input");
+
+    expect(calls.promotedSnapshots).toHaveLength(0);
+  });
+
+  test("promote is called after abort with interrupted row", async () => {
+    const rows: ChatRow[] = [];
+    let interruptHandler: () => void = () => {};
+    let interruptRegistered = false;
+    const promotedSnapshots: ChatRow[][] = [];
+
+    const session = createSession({ id: "sess_test" });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
+
+    const { handleSubmit } = createMessageHandler({
+      client: createClient({
+        replyStream: async (input) =>
+          new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          }),
+        status: async () => ({}),
+      }),
+      sessionState,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openModelPanel: () => {},
+      tokenUsage: [],
+      isPending: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
+      setRunningUsage: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: (handler) => {
+        interruptRegistered = handler !== null;
+        if (handler) interruptHandler = handler;
+      },
+      promote: () => {
+        promotedSnapshots.push([...rows]);
+        rows.splice(0, rows.length);
+      },
+      clearTranscript: () => {},
+    });
+
+    const pending = handleSubmit("hello");
+    for (let i = 0; i < 20 && !interruptRegistered; i++) {
+      await Bun.sleep(1);
+    }
+    interruptHandler();
+    await pending;
+
+    expect(promotedSnapshots).toHaveLength(1);
+    const promoted = promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
   });
 
   test("awaiting-input preserves pending state after turn completes", async () => {

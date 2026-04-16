@@ -4,7 +4,7 @@ import { createElement } from "./tui/dom";
 import { setOnCommit } from "./tui/host-config";
 import { reconciler } from "./tui/reconciler";
 import { serialize } from "./tui/serialize";
-import { wait } from "./tui-test-utils";
+import { wait } from "./tui/test-utils";
 
 describe("streaming renders", () => {
   test("unconditional setState during render causes render loop", () => {

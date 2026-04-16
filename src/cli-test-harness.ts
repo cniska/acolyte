@@ -1,5 +1,5 @@
 import { stripAnsi } from "./tui/serialize";
-import { trimRightLines } from "./tui-test-utils";
+import { trimRightLines } from "./tui/test-utils";
 import { setUiSink } from "./ui";
 
 let isCapturingCliOutput = false;

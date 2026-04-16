@@ -188,6 +188,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         input.setPendingState(null);
       }
       input.setRows((current) => [...current, ...turn.rows]);
+      if (!turn.awaitingInput) input.promote?.();
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
@@ -232,12 +233,14 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             marker: palette.cancelled,
           }),
         ]);
+        input.promote?.();
       } else {
         streamState.dispose();
         input.setRows((current) => [
           ...current,
           createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
+        input.promote?.();
       }
     } finally {
       if (cleanup !== "none") {

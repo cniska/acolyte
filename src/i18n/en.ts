@@ -272,6 +272,7 @@ export const EN_MESSAGES = {
   "unit.result.one": "{count} result",
   "unit.token": "{count} tokens",
   "unit.token.one": "{count} token",
+  "unit.token.split": "{input}/{output} tokens",
   "unit.tool": "{count} tools",
   "unit.tool.one": "{count} tool",
   unknown_error: "Unknown error",

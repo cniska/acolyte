@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { configDir, dataDir, stateDir } from "./paths";
 import type { SessionState } from "./session-contract";
 import { stripAnsi } from "./tui/serialize";
-import { trimRightLines } from "./tui-test-utils";
+import { trimRightLines } from "./tui/test-utils";
 
 type RunCliPlainOptions = {
   cwd?: string;
