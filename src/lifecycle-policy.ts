@@ -1,12 +1,12 @@
 import {
-  CONTEXT_MAX_TOKENS,
   MAX_CONSECUTIVE_TOOL_FAILURES,
+  MAX_CONTEXT_TOKENS,
+  MAX_TOTAL_STEPS,
   MAX_TOTAL_TOKENS,
+  MAX_TURN_STEPS,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
-  TOTAL_MAX_STEPS,
-  TURN_MAX_STEPS,
 } from "./lifecycle-constants";
 import type { WorkspaceCommand } from "./workspace-profile";
 
@@ -29,12 +29,12 @@ export type LifecyclePolicy = {
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
-  totalMaxSteps: TOTAL_MAX_STEPS,
-  turnMaxSteps: TURN_MAX_STEPS,
+  totalMaxSteps: MAX_TOTAL_STEPS,
+  turnMaxSteps: MAX_TURN_STEPS,
   stepTimeoutMs: STEP_TIMEOUT_MS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
-  contextMaxTokens: CONTEXT_MAX_TOKENS,
+  contextMaxTokens: MAX_CONTEXT_TOKENS,
   maxTotalTokens: MAX_TOTAL_TOKENS,
   maxConsecutiveToolFailures: MAX_CONSECUTIVE_TOOL_FAILURES,
 };

@@ -1,5 +1,5 @@
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
-import { MAX_CONSECUTIVE_TOOL_FAILURES, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS, TURN_MAX_STEPS } from "./lifecycle-constants";
+import { MAX_CONSECUTIVE_TOOL_FAILURES, MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { ActiveSkill } from "./skill-contract";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
@@ -101,9 +101,9 @@ export function checkStepBudget(session: SessionContext, toolId?: string): strin
     }
   }
 
-  const turnLimit = session.flags.turnStepLimit ?? TURN_MAX_STEPS;
+  const turnLimit = session.flags.turnStepLimit ?? MAX_TURN_STEPS;
   const turnCount = session.flags.turnStepCount ?? 0;
-  const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
+  const totalLimit = session.flags.totalStepLimit ?? MAX_TOTAL_STEPS;
   const totalCount = session.callLog.length;
 
   if (totalCount >= totalLimit) {
