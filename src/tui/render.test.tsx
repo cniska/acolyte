@@ -3,6 +3,7 @@ import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
 import { ChatInputPanel } from "../chat-input-panel";
 import { ansi } from "./styles";
+import { renderCapture } from "./test-utils";
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
@@ -506,71 +507,53 @@ describe("render", () => {
   });
 
   test("static items render immediately without waiting for throttle", async () => {
-    const writes = await withMockedStdout(
-      async () => {
-        const { render } = await import("./render");
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [items, setItems] = useState<string[]>([]);
+      const [dynamic, setDynamic] = useState("active");
+      useEffect(() => {
+        const t1 = setTimeout(() => {
+          setItems(["STATIC_1"]);
+          setDynamic("after");
+        }, 50);
+        const t2 = setTimeout(unmount, 150);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return (
+        <tui-box flexDirection="column">
+          <tui-static>
+            {items.map((item) => (
+              <tui-text key={item}>{item}</tui-text>
+            ))}
+          </tui-static>
+          <tui-text>{dynamic}</tui-text>
+        </tui-box>
+      );
+    }
 
-        function App(): React.JSX.Element {
-          const [items, setItems] = useState<string[]>([]);
-          const [dynamic, setDynamic] = useState("active");
-          useEffect(() => {
-            const t1 = setTimeout(() => {
-              setItems(["STATIC_1"]);
-              setDynamic("after");
-            }, 50);
-            const t2 = setTimeout(() => app.unmount(), 150);
-            return () => {
-              clearTimeout(t1);
-              clearTimeout(t2);
-            };
-          }, []);
-          return (
-            <tui-box flexDirection="column">
-              <tui-static>
-                {items.map((item) => (
-                  <tui-text key={item}>{item}</tui-text>
-                ))}
-              </tui-static>
-              <tui-text>{dynamic}</tui-text>
-            </tui-box>
-          );
-        }
-
-        const app = render(<App />);
-        await app.waitUntilExit();
-      },
-      { columns: 40, rows: 6 },
-    );
-
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
     const frameWrites = extractFrameWrites(writes);
     expect(frameWrites.some((w) => w.includes("STATIC_1"))).toBe(true);
     expect(frameWrites.some((w) => w.includes("after"))).toBe(true);
   });
 
   test("unmount during throttle window does not lose final render", async () => {
-    const writes = await withMockedStdout(
-      async () => {
-        const { render } = await import("./render");
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [text, setText] = useState("before");
+      useEffect(() => {
+        const t1 = setTimeout(() => setText("final"), 50);
+        const t2 = setTimeout(unmount, 100);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return <tui-text>{text}</tui-text>;
+    }
 
-        function App(): React.JSX.Element {
-          const [text, setText] = useState("before");
-          useEffect(() => {
-            const t1 = setTimeout(() => setText("final"), 50);
-            const t2 = setTimeout(() => app.unmount(), 100);
-            return () => {
-              clearTimeout(t1);
-              clearTimeout(t2);
-            };
-          }, []);
-          return <tui-text>{text}</tui-text>;
-        }
-
-        const app = render(<App />);
-        await app.waitUntilExit();
-      },
-      { columns: 40, rows: 6 },
-    );
-
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
     const frameWrites = extractFrameWrites(writes);
     expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
   });

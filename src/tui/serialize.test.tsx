@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { renderPlain } from "../tui-test-utils";
 import { Box, Text } from "./components";
 import { renderToString } from "./render-to-string";
 import { stripAnsiLength } from "./serialize";
+import { renderPlain } from "./test-utils";
 
 describe("serialize", () => {
   describe("text", () => {

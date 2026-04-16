@@ -233,14 +233,15 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             marker: palette.cancelled,
           }),
         ]);
+        input.promote?.();
       } else {
         streamState.dispose();
         input.setRows((current) => [
           ...current,
           createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
+        input.promote?.();
       }
-      input.promote?.();
     } finally {
       if (cleanup !== "none") {
         releaseTurn();
