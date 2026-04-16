@@ -11,7 +11,7 @@ import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { createSkillSuggestion } from "./skill-triggers";
-import { createToolOutputState, formatToolOutput } from "./tool-output-render";
+import { createToolOutputState, renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
@@ -121,7 +121,7 @@ export async function handlePrompt(
             const update = toolOutput.push(event);
             if (!update) break;
             if (update.items.length === 1 && update.items[0]?.kind === "tool-header" && !update.items[0].detail) break;
-            const rendered = formatToolOutput(update.items);
+            const rendered = renderToolOutput(update.items);
             if (!rendered) break;
             const previous = snapshotByCallId.get(event.toolCallId);
             snapshotByCallId.set(event.toolCallId, rendered);

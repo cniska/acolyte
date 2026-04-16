@@ -19,7 +19,7 @@ import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
-import { renderToolOutputPart } from "./tool-output-render";
+import { renderToolOutput } from "./tool-output-render";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
@@ -205,7 +205,7 @@ function acceptResult(ctx: RunContext): void {
 
 function attachToolOutputHandler(ctx: RunContext) {
   ctx.toolOutputHandler = (event) => {
-    const rendered = renderToolOutputPart(event.content);
+    const rendered = renderToolOutput(event.content);
     if (!rendered.trim()) return;
     const toolName = event.toolName;
     const resolvedToolCallId = event.toolCallId ?? toolName;
