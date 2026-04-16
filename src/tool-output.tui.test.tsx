@@ -84,6 +84,25 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     );
   });
 
+  test("scope-header with multiple patterns shows count", () => {
+    const items: ToolOutputPart[] = [
+      {
+        kind: "scope-header",
+        labelKey: "tool.label.file_search",
+        scope: "workspace",
+        patterns: ["foo", "bar", "baz"],
+        matches: 5,
+      },
+      { kind: "text", text: "5 matches in 3 files" },
+    ];
+    expect(formatToolOutput(items)).toBe(
+      dedent(`
+        Search 3 patterns
+          5 matches in 3 files
+      `),
+    );
+  });
+
   test("edit-header with diff lines", () => {
     const items: ToolOutputPart[] = [
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
