@@ -13,7 +13,7 @@ function renderTranscript(
 
 describe("chat slash command visual regression", () => {
   test("renders /status transcript output", async () => {
-    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -24,7 +24,7 @@ describe("chat slash command visual regression", () => {
 
     await handleMessage("/status");
 
-    expect(renderTranscript(rows)).toBe(
+    expect(renderTranscript(allRows)).toBe(
       dedent(`
         ❯ /status
 
@@ -69,7 +69,7 @@ describe("chat slash command visual regression", () => {
       ],
     });
     const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
-    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       session,
       sessionState,
       tokenUsage: session.tokenUsage,
@@ -77,7 +77,7 @@ describe("chat slash command visual regression", () => {
 
     await handleMessage("/usage");
 
-    expect(renderTranscript(rows)).toBe(
+    expect(renderTranscript(allRows)).toBe(
       dedent(`
         ❯ /usage
 
@@ -107,11 +107,11 @@ describe("chat slash command visual regression", () => {
       ],
     });
     try {
-      const { handleMessage, allRows: rows } = createMessageHandlerHarness({ sessionState });
+      const { handleMessage, allRows } = createMessageHandlerHarness({ sessionState });
 
       await handleMessage("/sessions");
 
-      expect(renderTranscript(rows)).toBe(
+      expect(renderTranscript(allRows)).toBe(
         dedent(`
           ❯ /sessions
 

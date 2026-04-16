@@ -13,11 +13,7 @@ import {
 
 describe("chat message handler stream behavior", () => {
   test("streams tool-call events into tool progress rows", async () => {
-    const {
-      handleMessage,
-      allRows: rows,
-      calls,
-    } = createMessageHandlerHarness({
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -44,9 +40,11 @@ describe("chat message handler stream behavior", () => {
 
     expect(calls.pendingStates[0]).toEqual({ kind: "running" });
     expect(calls.pendingStates.at(-1)).toBeNull();
-    expect(rows.some((row) => row.kind === "tool")).toBe(true);
+    expect(allRows.some((row) => row.kind === "tool")).toBe(true);
     expect(
-      rows.some((row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Working")),
+      allRows.some(
+        (row) => row.kind === "system" && typeof row.content === "string" && row.content.includes("Working"),
+      ),
     ).toBe(false);
   });
 
@@ -99,7 +97,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps quota errors to user-facing message handler error", async () => {
-    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => {
@@ -111,7 +109,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("hello");
 
     expect(
-      rows.some(
+      allRows.some(
         (row) =>
           row.kind === "system" && typeof row.content === "string" && row.content.includes("Provider quota exceeded"),
       ),
@@ -119,7 +117,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("maps timeout errors to user-facing message handler error", async () => {
-    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => {
@@ -131,7 +129,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("hello");
 
     expect(
-      rows.some(
+      allRows.some(
         (row) =>
           row.kind === "system" && typeof row.content === "string" && row.content.includes("Server request timed out"),
       ),
@@ -559,7 +557,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("assistant text row stays before tool rows after finalization", async () => {
-    const { handleMessage, allRows: rows } = createMessageHandlerHarness({
+    const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -589,8 +587,8 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("do something");
 
-    const assistantIndex = rows.findIndex((row) => row.kind === "assistant");
-    const toolIndex = rows.findIndex((row) => row.kind === "tool");
+    const assistantIndex = allRows.findIndex((row) => row.kind === "assistant");
+    const toolIndex = allRows.findIndex((row) => row.kind === "tool");
     expect(assistantIndex).toBeGreaterThanOrEqual(0);
     expect(toolIndex).toBeGreaterThanOrEqual(0);
     expect(assistantIndex).toBeLessThan(toolIndex);

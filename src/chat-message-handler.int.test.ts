@@ -83,11 +83,7 @@ describe("chat message handler", () => {
   });
 
   test("routes /status through message handler and renders status output row", async () => {
-    const {
-      handleMessage,
-      allRows: rows,
-      calls,
-    } = createMessageHandlerHarness({
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -100,7 +96,7 @@ describe("chat message handler", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/status");
     expect(systemRow?.kind).toBe("system");
