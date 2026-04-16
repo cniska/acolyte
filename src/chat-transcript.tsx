@@ -3,7 +3,7 @@ import { wrapText } from "./chat-content";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
-import { commandOutputColWidth, formatTokenCount } from "./chat-format";
+import { commandOutputColWidth, formatCompactNumber } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
 import { t, tDynamic } from "./i18n";
@@ -262,7 +262,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const blinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
   const marker = isAnimated && !blinkOn ? " " : "•";
   const markerColor = kind ? PENDING_MARKER_COLORS[kind] : "";
-  const tokenText = runningUsage ? formatTokenCount(runningUsage.inputTokens + runningUsage.outputTokens) : "";
+  const tokenText = runningUsage
+    ? t("unit.token.split", {
+        input: formatCompactNumber(runningUsage.inputTokens),
+        output: formatCompactNumber(runningUsage.outputTokens),
+      })
+    : "";
   const pendingText = (() => {
     if (!pendingState) return "";
     const timeText = elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
