@@ -29,20 +29,14 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
     const items: ToolOutputPart[] = [
       { kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] },
     ];
-    expect(formatToolOutput(items)).toBe("Read a.ts, b.ts");
+    expect(formatToolOutput(items)).toBe("Read 2 files");
   });
 
-  test("file-header with omitted targets", () => {
+  test("file-header with single file shows path", () => {
     const items: ToolOutputPart[] = [
-      {
-        kind: "file-header",
-        labelKey: "tool.label.file_read",
-        count: 4,
-        targets: ["a.ts", "b.ts", "c.ts"],
-        omitted: 1,
-      },
+      { kind: "file-header", labelKey: "tool.label.file_read", count: 1, targets: ["a.ts"] },
     ];
-    expect(formatToolOutput(items)).toBe("Read a.ts, b.ts, c.ts, +1");
+    expect(formatToolOutput(items)).toBe("Read a.ts");
   });
 
   test("scope-header for search with summary", () => {
@@ -423,7 +417,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
   test("file-header renders label and targets", () => {
     expect(
       renderChat([{ kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] }]),
-    ).toBe("• Read a.ts, b.ts");
+    ).toBe("• Read 2 files");
   });
 
   test("scope-header with summary", () => {

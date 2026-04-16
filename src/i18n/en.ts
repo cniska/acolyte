@@ -264,6 +264,8 @@ export const EN_MESSAGES = {
   "unit.match.one": "{count} match",
   "unit.more": "{count} more",
   "unit.more.one": "{count} more",
+  "unit.pattern": "{count} patterns",
+  "unit.pattern.one": "{count} pattern",
   "unit.replacement": "{count} replacements",
   "unit.replacement.one": "{count} replacement",
   "unit.result": "{count} results",

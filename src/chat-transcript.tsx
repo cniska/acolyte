@@ -160,24 +160,27 @@ function renderHeader(part: ToolOutputPart): React.ReactNode {
     );
   }
   if (part.kind === "file-header") {
-    const targets = part.targets.filter((t) => t !== ".");
-    const shown = targets.join(", ");
-    const omitted = part.omitted && part.omitted > 0 ? `, +${part.omitted}` : "";
-    const detail = shown ? ` ${shown}${omitted}` : omitted ? ` ${omitted.slice(2)}` : "";
+    const detail =
+      part.count === 1 && part.targets.length === 1
+        ? ` ${part.targets[0]}`
+        : ` ${t("unit.file", { count: part.count })}`;
     return (
       <>
         <Text bold>{tDynamic(part.labelKey)}</Text>
-        {detail ? <Text dimColor>{detail}</Text> : null}
+        <Text dimColor>{detail}</Text>
       </>
     );
   }
   if (part.kind === "scope-header") {
-    const patternsDisplay = part.patterns.join(", ");
     const scopeSuffix = part.scope !== "workspace" ? ` in ${part.scope}` : "";
+    const detail =
+      part.patterns.length === 1
+        ? ` ${part.patterns[0]}${scopeSuffix}`
+        : ` ${t("unit.pattern", { count: part.patterns.length })}${scopeSuffix}`;
     return (
       <>
         <Text bold>{tDynamic(part.labelKey)}</Text>
-        <Text dimColor>{` ${patternsDisplay}${scopeSuffix}`}</Text>
+        <Text dimColor>{detail}</Text>
       </>
     );
   }

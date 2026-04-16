@@ -64,15 +64,14 @@ export function renderToolOutputPart(content: ToolOutputPart): string {
       return content.text;
     case "file-header": {
       const label = tDynamic(content.labelKey);
-      const shown = content.targets.join(", ");
-      const omitted = content.omitted && content.omitted > 0 ? `, +${content.omitted}` : "";
-      return `${label} ${shown}${omitted}`;
+      if (content.count === 1 && content.targets.length === 1) return `${label} ${content.targets[0]}`;
+      return `${label} ${t("unit.file", { count: content.count })}`;
     }
     case "scope-header": {
       const label = tDynamic(content.labelKey);
-      const patternsDisplay = content.patterns.join(", ");
       const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
-      return `${label} ${patternsDisplay}${scopeSuffix}`;
+      if (content.patterns.length === 1) return `${label} ${content.patterns[0]}${scopeSuffix}`;
+      return `${label} ${t("unit.pattern", { count: content.patterns.length })}${scopeSuffix}`;
     }
     case "edit-header":
       return `${tDynamic(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
