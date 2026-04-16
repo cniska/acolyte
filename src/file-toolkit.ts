@@ -10,7 +10,7 @@ import {
   searchResultSummaryStats,
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
-import { TOOL_PROGRESS_LIMITS } from "./tool-policy";
+import { MAX_READ_PATHS } from "./tool-policy";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -162,10 +162,8 @@ function createReadFileTool(input: ToolkitInput) {
     id: "file-read",
     toolkit: "file",
     category: "read",
-    description:
-      "Read one or more text files. Pass `paths` as an array of {path} objects. Never re-read a file you already have.",
-    instruction:
-      "Use `file-read` before `file-edit` or `code-edit`. Batch discovery reads; for named edits, re-read the target file immediately before editing.",
+    description: `Read one or more text files (max ${MAX_READ_PATHS} per call). Pass \`paths\` as an array of {path} objects. Never re-read a file you already have.`,
+    instruction: `Use \`file-read\` before \`file-edit\` or \`code-edit\`. Batch up to ${MAX_READ_PATHS} files per call; for named edits, re-read the target file immediately before editing.`,
     inputSchema: z.object({
       paths: z.array(z.object({ path: z.string().min(1) })).min(1),
     }),
@@ -178,17 +176,17 @@ function createReadFileTool(input: ToolkitInput) {
       return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
         const paths = deduplicatePaths(toolInput.paths);
         if (paths.length === 0) throw new Error("Read requires at least one non-empty path");
+        if (paths.length > MAX_READ_PATHS) {
+          throw new Error(`Too many files (${paths.length}). Split into batches of ${MAX_READ_PATHS} or fewer.`);
+        }
         const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
-        const shown = displayPaths.slice(0, TOOL_PROGRESS_LIMITS.inlineFiles);
-        const remaining = displayPaths.length - shown.length;
         input.onOutput({
           toolName: "file-read",
           content: {
             kind: "file-header",
             labelKey: "tool.label.file_read",
             count: displayPaths.length,
-            targets: shown,
-            omitted: remaining > 0 ? remaining : undefined,
+            targets: displayPaths.slice(0, 1),
           },
           toolCallId: callId,
         });

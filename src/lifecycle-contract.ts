@@ -8,7 +8,7 @@ import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
-import type { ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
 import type { SessionContext } from "./tool-session";
 

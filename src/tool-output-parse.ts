@@ -1,4 +1,4 @@
-import type { ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
 
 export type UnifiedDiffSummary = {
   files: number;

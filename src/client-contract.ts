@@ -8,8 +8,7 @@ import { activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
-import type { ToolOutputPart } from "./tool-output-content";
-import { toolOutputPartSchema } from "./tool-output-content";
+import { type ToolOutputPart, toolOutputPartSchema } from "./tool-output-contract";
 
 export const pendingStateSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("queued"), position: z.number().int().nonnegative().optional() }),

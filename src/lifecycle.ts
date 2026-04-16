@@ -19,7 +19,7 @@ import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
-import { renderToolOutputPart } from "./tool-output-content";
+import { renderToolOutputPart } from "./tool-output-render";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
