@@ -3,6 +3,8 @@ export const TOOL_PROGRESS_LIMITS = {
   inlineFiles: 3,
 } as const;
 
+export const MAX_READ_PATHS = 5;
+
 export const CLI_TOOL_OUTPUT_LIMITS = {
   files: 5,
   run: 5,
