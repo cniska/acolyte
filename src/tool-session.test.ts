@@ -46,6 +46,70 @@ describe("step budget", () => {
   });
 });
 
+describe("token ceiling", () => {
+  test("blocks when total tokens exceed limit", () => {
+    const session = createSessionContext();
+    session.flags.totalTokenLimit = 1000;
+    session.flags.totalTokens = () => 1500;
+    expect(checkStepBudget(session)).toContain("Token budget exhausted");
+  });
+
+  test("allows when under limit", () => {
+    const session = createSessionContext();
+    session.flags.totalTokenLimit = 1000;
+    session.flags.totalTokens = () => 500;
+    expect(checkStepBudget(session)).toBeUndefined();
+  });
+
+  test("skips when not configured", () => {
+    const session = createSessionContext();
+    expect(checkStepBudget(session)).toBeUndefined();
+  });
+});
+
+describe("consecutive failures", () => {
+  test("blocks tool after 3 consecutive failures", () => {
+    const session = createSessionContext();
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    expect(checkStepBudget(session, "file-edit")).toContain('Tool "file-edit" failed 3 times consecutively');
+  });
+
+  test("allows with fewer failures", () => {
+    const session = createSessionContext();
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    expect(checkStepBudget(session, "file-edit")).toBeUndefined();
+  });
+
+  test("resets on success", () => {
+    const session = createSessionContext();
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "succeeded");
+    expect(checkStepBudget(session, "file-edit")).toBeUndefined();
+  });
+
+  test("tracks independently per tool", () => {
+    const session = createSessionContext();
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "shell-exec", {}, undefined, "failed");
+    expect(checkStepBudget(session, "file-edit")).toContain("failed 3 times");
+    expect(checkStepBudget(session, "shell-exec")).toBeUndefined();
+  });
+
+  test("skips when no toolId provided", () => {
+    const session = createSessionContext();
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    recordCall(session, "file-edit", {}, undefined, "failed");
+    expect(checkStepBudget(session)).toBeUndefined();
+  });
+});
+
 describe("recordCall", () => {
   test("appends to callLog with active task id", () => {
     const session = createSessionContext("task_1");

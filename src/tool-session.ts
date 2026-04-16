@@ -1,5 +1,10 @@
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
-import { INITIAL_MAX_STEPS, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
+import {
+  INITIAL_MAX_STEPS,
+  MAX_CONSECUTIVE_TOOL_FAILURES,
+  TOOL_TIMEOUT_MS,
+  TOTAL_MAX_STEPS,
+} from "./lifecycle-constants";
 import type { ActiveSkill } from "./skill-contract";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
@@ -18,6 +23,8 @@ export type SessionFlags = {
   cycleStepCount?: number;
   cycleStepLimit?: number;
   totalStepLimit?: number;
+  totalTokenLimit?: number;
+  totalTokens?: () => number;
 };
 
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
@@ -48,6 +55,8 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   cache?: ToolCache;
   featureFlags?: ResolvedFeatureFlags;
+  consecutiveFailures: Map<string, number>;
+  maxConsecutiveToolFailures?: number;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
   onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
   onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
@@ -64,6 +73,7 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
     flags: {},
     writeTools,
     toolTimeoutMs: TOOL_TIMEOUT_MS,
+    consecutiveFailures: new Map(),
   };
 }
 
@@ -78,7 +88,24 @@ export function resetCycleStepCount(session: SessionContext, limit?: number): vo
   if (limit !== undefined) session.flags.cycleStepLimit = limit;
 }
 
-export function checkStepBudget(session: SessionContext): string | undefined {
+export function checkStepBudget(session: SessionContext, toolId?: string): string | undefined {
+  const tokenLimit = session.flags.totalTokenLimit;
+  const getTokens = session.flags.totalTokens;
+  if (tokenLimit && getTokens) {
+    const tokens = getTokens();
+    if (tokens >= tokenLimit) {
+      return `Token budget exhausted (${tokens} tokens, limit ${tokenLimit}). Commit what you have.`;
+    }
+  }
+
+  if (toolId) {
+    const limit = session.maxConsecutiveToolFailures ?? MAX_CONSECUTIVE_TOOL_FAILURES;
+    const failures = session.consecutiveFailures.get(toolId) ?? 0;
+    if (failures >= limit) {
+      return `Tool "${toolId}" failed ${failures} times consecutively. Skipping further attempts.`;
+    }
+  }
+
   const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
   const cycleCount = session.flags.cycleStepCount ?? 0;
   const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
@@ -102,4 +129,9 @@ export function recordCall(
   status: ToolCallStatus = "succeeded",
 ): void {
   session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status });
+  if (status === "failed") {
+    session.consecutiveFailures.set(toolName, (session.consecutiveFailures.get(toolName) ?? 0) + 1);
+  } else {
+    session.consecutiveFailures.delete(toolName);
+  }
 }

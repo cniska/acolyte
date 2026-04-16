@@ -1,6 +1,8 @@
 import {
   CONTEXT_MAX_TOKENS,
   INITIAL_MAX_STEPS,
+  MAX_CONSECUTIVE_TOOL_FAILURES,
+  MAX_TOTAL_TOKENS,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
@@ -18,6 +20,8 @@ export type LifecyclePolicy = {
   toolTimeoutMs: number;
   // Input budgets
   contextMaxTokens: number;
+  maxTotalTokens: number;
+  maxConsecutiveToolFailures: number;
   // Workspace commands
   installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
@@ -31,6 +35,8 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
   contextMaxTokens: CONTEXT_MAX_TOKENS,
+  maxTotalTokens: MAX_TOTAL_TOKENS,
+  maxConsecutiveToolFailures: MAX_CONSECUTIVE_TOOL_FAILURES,
 };
 
 export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {
