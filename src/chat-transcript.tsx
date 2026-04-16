@@ -154,17 +154,14 @@ function renderHeaderMeta(meta: Record<string, unknown>): React.ReactNode {
 
 function renderHeader(part: ToolOutputPart): React.ReactNode {
   const header = resolveHeader(part);
-  if (header) {
-    return (
-      <>
-        <Text bold>{header.label}</Text>
-        {header.detail ? <Text dimColor>{` ${header.detail}`}</Text> : null}
-        {header.meta ? renderHeaderMeta(header.meta) : null}
-      </>
-    );
-  }
-  const text = renderToolOutputText(part);
-  return <Text dimColor>{text}</Text>;
+  if (!header) return null;
+  return (
+    <>
+      <Text bold>{header.label}</Text>
+      {header.detail ? <Text dimColor>{` ${header.detail}`}</Text> : null}
+      {header.meta ? renderHeaderMeta(header.meta) : null}
+    </>
+  );
 }
 
 function renderToolOutput(parts: ToolOutputPart[], toolContentWidth: number): React.ReactNode {
