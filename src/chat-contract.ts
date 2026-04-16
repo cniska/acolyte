@@ -3,7 +3,7 @@ import { checklistOutputSchema } from "./checklist-contract";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
-import { toolOutputPartSchema } from "./tool-output-content";
+import { toolOutputPartSchema } from "./tool-output-contract";
 
 export const roleSchema = z.enum(["system", "user", "assistant"]);
 export type Role = z.infer<typeof roleSchema>;

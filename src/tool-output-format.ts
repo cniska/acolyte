@@ -1,7 +1,7 @@
 import { isAbsolute, relative } from "node:path";
 import type { TranslationKey } from "./i18n";
 import { t } from "./i18n";
-import type { ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
 
 export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;

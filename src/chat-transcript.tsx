@@ -8,7 +8,8 @@ import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
 import { t, tDynamic } from "./i18n";
 import { palette } from "./palette";
-import { renderToolOutputPart as renderToolOutputText, type ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
+import { renderToolOutputPart as renderToolOutputText } from "./tool-output-render";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
 

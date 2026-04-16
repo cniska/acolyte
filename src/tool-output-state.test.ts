@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createToolOutputState, formatToolOutput, type ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
+import { createToolOutputState, formatToolOutput } from "./tool-output-render";
 
 function setup() {
   const state = createToolOutputState();

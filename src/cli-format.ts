@@ -2,8 +2,9 @@ import { relative } from "node:path";
 import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { t, tDynamic } from "./i18n";
-import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
 import { toolLabelKey } from "./tool-output-format";
+import { formatToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
 import { printDim, printToolHeader } from "./ui";
 

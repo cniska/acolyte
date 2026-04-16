@@ -11,7 +11,7 @@ import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
 import { createSkillSuggestion } from "./skill-triggers";
-import { createToolOutputState, formatToolOutput } from "./tool-output-content";
+import { createToolOutputState, formatToolOutput } from "./tool-output-render";
 import { printDim, printError, printOutput, streamText } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {

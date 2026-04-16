@@ -76,16 +76,13 @@ function createScanCodeTool(input: ToolkitInput) {
         const paths = normalizeUniquePaths(toolInput.paths);
         const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
         if (unique.length > 0) {
-          const shown = unique.slice(0, 4);
-          const remaining = unique.length - shown.length;
           input.onOutput({
             toolName: "code-scan",
             content: {
               kind: "file-header",
               labelKey: "tool.label.code_scan",
               count: unique.length,
-              targets: shown,
-              omitted: remaining > 0 ? remaining : undefined,
+              targets: unique.slice(0, 1),
             },
             toolCallId: callId,
           });

@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
 import { dedent } from "./test-utils";
-import { formatToolOutput, type ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
+import { formatToolOutput } from "./tool-output-render";
 import { renderPlain } from "./tui-test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[]): string {

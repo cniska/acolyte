@@ -3,7 +3,8 @@ import type { ChecklistItem } from "./checklist-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
-import { createToolOutputState, type ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
+import { createToolOutputState } from "./tool-output-render";
 
 export type MessageStreamState = {
   onDelta: (delta: string) => void;

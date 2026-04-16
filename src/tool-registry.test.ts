@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { expectIntent } from "./test-utils";
-import { renderToolOutputPart } from "./tool-output-content";
+import { renderToolOutputPart } from "./tool-output-render";
 import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
 
 describe("toolsets", () => {

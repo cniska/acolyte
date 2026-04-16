@@ -5,7 +5,7 @@ import { captureCliOutput } from "./cli-test-harness";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
 import { expectIntent } from "./test-utils";
-import type { ToolOutputPart } from "./tool-output-content";
+import type { ToolOutputPart } from "./tool-output-contract";
 
 function createTestSession(): Session {
   return {
