@@ -4,3 +4,14 @@ export function truncateText(input: string, maxChars = DEFAULT_MAX_DISPLAY_CHARS
   if (input.length <= maxChars) return input;
   return `${input.slice(0, Math.max(0, maxChars - 1))}…`;
 }
+
+export function truncateMiddle(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const dropped = text.length - maxChars;
+  const marker = `\n… ${dropped} chars truncated …\n`;
+  const budget = maxChars - marker.length;
+  if (budget <= 0) return marker;
+  const head = Math.ceil(budget * 0.6);
+  const tail = budget - head;
+  return text.slice(0, head) + marker + text.slice(-tail);
+}

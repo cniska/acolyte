@@ -64,7 +64,7 @@ export async function runTool<T = unknown>(
   options?: { timeoutMs?: number },
 ): Promise<RunToolResult<T>> {
   return withToolError(toolId, async () => {
-    const budgetError = checkStepBudget(session);
+    const budgetError = checkStepBudget(session, toolId);
     if (budgetError) {
       const error = new Error(budgetError) as Error & { code: string; kind: string };
       error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;

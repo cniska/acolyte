@@ -52,7 +52,7 @@ resolve → prepare → generate → finalize
 - **generate**: run the model with tool calls, effects apply per-tool-result
 - **finalize**: accept lifecycle signal, persist results, emit the response
 
-The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces per-cycle and total tool-call limits to prevent runaway loops.
+The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces per-turn and total tool-call limits to prevent runaway loops.
 
 Most other agents use flat tool loops or implicit state machines. Goose comes closest with `prepare → generate → categorize → execute`, but the phases are orchestrated inside a single streaming loop.
 

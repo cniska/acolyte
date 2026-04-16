@@ -26,7 +26,7 @@ import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
 import type { Toolset } from "./tool-registry";
-import { resetCycleStepCount } from "./tool-session";
+import { resetTurnStepCount } from "./tool-session";
 
 type CaptureErrorMeta = {
   source?: ErrorSource;
@@ -102,7 +102,7 @@ export function createRunAgent(input: {
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
-  resetCycleStepCount(ctx.session, opts.cycleLimit);
+  resetTurnStepCount(ctx.session, opts.turnLimit);
   const prompt = ctx.baseAgentInput;
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
@@ -112,7 +112,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
-    cycle_limit: opts.cycleLimit ?? null,
+    turn_limit: opts.turnLimit ?? null,
   });
 
   try {

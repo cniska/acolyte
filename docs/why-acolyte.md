@@ -33,7 +33,7 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget inlined into tool execution prevents runaway loops.
+Every request flows through five explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget and token ceiling inlined into tool execution prevent runaway loops, and tool results are truncated at the serialization boundary to bound context growth.
 
 ### Memory
 

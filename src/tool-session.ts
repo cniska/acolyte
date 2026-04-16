@@ -1,5 +1,5 @@
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
-import { INITIAL_MAX_STEPS, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS } from "./lifecycle-constants";
+import { MAX_CONSECUTIVE_TOOL_FAILURES, MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { ActiveSkill } from "./skill-contract";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
@@ -15,9 +15,11 @@ export type ToolCallRecord = {
 };
 
 export type SessionFlags = {
-  cycleStepCount?: number;
-  cycleStepLimit?: number;
+  turnStepCount?: number;
+  turnStepLimit?: number;
   totalStepLimit?: number;
+  totalTokenLimit?: number;
+  totalTokens?: () => number;
 };
 
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
@@ -48,6 +50,8 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   cache?: ToolCache;
   featureFlags?: ResolvedFeatureFlags;
+  consecutiveFailures: Map<string, number>;
+  maxConsecutiveToolFailures?: number;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
   onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
   onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
@@ -64,6 +68,7 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
     flags: {},
     writeTools,
     toolTimeoutMs: TOOL_TIMEOUT_MS,
+    consecutiveFailures: new Map(),
   };
 }
 
@@ -73,24 +78,41 @@ export function scopedCallLog(session: Pick<SessionContext, "callLog" | "taskId"
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function resetCycleStepCount(session: SessionContext, limit?: number): void {
-  session.flags.cycleStepCount = 0;
-  if (limit !== undefined) session.flags.cycleStepLimit = limit;
+export function resetTurnStepCount(session: SessionContext, limit?: number): void {
+  session.flags.turnStepCount = 0;
+  if (limit !== undefined) session.flags.turnStepLimit = limit;
 }
 
-export function checkStepBudget(session: SessionContext): string | undefined {
-  const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
-  const cycleCount = session.flags.cycleStepCount ?? 0;
-  const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
+export function checkStepBudget(session: SessionContext, toolId?: string): string | undefined {
+  const tokenLimit = session.flags.totalTokenLimit;
+  const getTokens = session.flags.totalTokens;
+  if (tokenLimit && getTokens) {
+    const tokens = getTokens();
+    if (tokens >= tokenLimit) {
+      return `Token budget exhausted (${tokens} tokens, limit ${tokenLimit}). Commit what you have.`;
+    }
+  }
+
+  if (toolId) {
+    const limit = session.maxConsecutiveToolFailures ?? MAX_CONSECUTIVE_TOOL_FAILURES;
+    const failures = session.consecutiveFailures.get(toolId) ?? 0;
+    if (failures >= limit) {
+      return `Tool "${toolId}" failed ${failures} times consecutively. Skipping further attempts.`;
+    }
+  }
+
+  const turnLimit = session.flags.turnStepLimit ?? MAX_TURN_STEPS;
+  const turnCount = session.flags.turnStepCount ?? 0;
+  const totalLimit = session.flags.totalStepLimit ?? MAX_TOTAL_STEPS;
   const totalCount = session.callLog.length;
 
   if (totalCount >= totalLimit) {
     return `Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`;
   }
-  if (cycleCount >= cycleLimit) {
-    return `Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`;
+  if (turnCount >= turnLimit) {
+    return `Turn step budget exhausted (${turnLimit} tool calls). Wrap up current phase.`;
   }
-  session.flags.cycleStepCount = cycleCount + 1;
+  session.flags.turnStepCount = turnCount + 1;
   return undefined;
 }
 
@@ -102,4 +124,9 @@ export function recordCall(
   status: ToolCallStatus = "succeeded",
 ): void {
   session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status });
+  if (status === "failed") {
+    session.consecutiveFailures.set(toolName, (session.consecutiveFailures.get(toolName) ?? 0) + 1);
+  } else {
+    session.consecutiveFailures.delete(toolName);
+  }
 }
