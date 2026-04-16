@@ -3,7 +3,7 @@ import { ChatChecklist } from "./chat-checklist";
 import type { ChatRow } from "./chat-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { dedent } from "./test-utils";
-import { renderPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui/test-utils";
 
 function renderChecklist(checklists: ChecklistOutput[]): string {
   const rows: ChatRow[] = checklists.map((content, i) => ({

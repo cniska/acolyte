@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { appendPromotedItems, applyPromotion, usePromotion } from "./chat-promotion";
 import { createSession } from "./test-utils";
-import { renderHook, wait } from "./tui-test-utils";
+import { renderHook, wait } from "./tui/test-utils";
 
 describe("promotion pure helpers", () => {
   test("appendPromotedItems deduplicates by id", () => {

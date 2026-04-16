@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ChatTranscript } from "./chat-transcript";
 import { createClient, createMessageHandlerHarness, createSession, createSessionState, dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
-import { renderPlain } from "./tui-test-utils";
+import { renderPlain } from "./tui/test-utils";
 
 function renderTranscript(
   rows: Parameters<typeof ChatTranscript>[0]["rows"],
