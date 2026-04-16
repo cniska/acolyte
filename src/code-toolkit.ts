@@ -51,19 +51,17 @@ function createScanCodeTool(input: ToolkitInput) {
     toolkit: "code",
     category: "search",
     description:
-      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries.",
+      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries (max 3).",
     instruction: [
-      "Use `code-scan` for AST pattern search.",
-      "Pass `paths` and `patterns` as arrays; batch related scans.",
+      "Use `code-scan` for AST pattern search. Max 3 patterns per call.",
       "Use it to map structural targets before `code-edit`.",
       "For plain text/regex searches, use `file-search`.",
       "Matches include `enclosingSymbol`; reuse it as `withinSymbol` in follow-up `code-edit`.",
     ].join(" "),
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
-      patterns: z.array(z.string().min(1)).min(1),
+      patterns: z.array(z.string().min(1)).min(1).max(3),
       language: z.string().optional(),
-      maxResults: z.number().int().min(1).max(200).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("code-scan"),
@@ -92,7 +90,7 @@ function createScanCodeTool(input: ToolkitInput) {
           paths,
           pattern: toolInput.patterns,
           language: toolInput.language,
-          maxResults: toolInput.maxResults ?? 50,
+          maxResults: 20,
         });
         return {
           kind: "code-scan" as const,

@@ -52,12 +52,10 @@ function createFindFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `file-search` instead.",
-    instruction:
-      "Use `file-find` to locate files by name/path pattern. Pass `patterns` as an array and batch related lookups.",
+      "Find files in the repository by name or path pattern. Pass `patterns` as an array (max 3). To search file contents use `file-search` instead.",
+    instruction: "Use `file-find` to locate files by name/path pattern. Max 3 patterns per call.",
     inputSchema: z.object({
-      patterns: z.array(z.string().min(1)).min(1),
-      maxResults: z.number().int().min(1).max(200).optional(),
+      patterns: z.array(z.string().min(1)).min(1).max(3),
     }),
     outputSchema: z.object({
       kind: z.literal("file-find"),
@@ -69,8 +67,7 @@ function createFindFilesTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 40;
-        const raw = await findFiles(input.workspace, toolInput.patterns, maxResults);
+        const raw = await findFiles(input.workspace, toolInput.patterns, 20);
         const paths = findResultPaths(raw);
         emitParts(
           findSummaryParts(paths, toolInput.patterns, "tool.label.file_find"),
@@ -97,19 +94,18 @@ function createSearchFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `file-find` instead.",
+      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). Max 3 patterns per call. To locate files by name use `file-find` instead.",
     instruction: [
-      "Use `file-search` for text/regex content search.",
-      "Narrow scope with `paths` and batch related queries in `patterns`.",
+      "Use `file-search` for text/regex content search. Max 3 patterns per call.",
+      "Narrow scope with `paths`.",
       "If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
       "Build `file-edit` calls from current `file-read` text or scoped `file-search` hits.",
     ].join(" "),
     inputSchema: z
       .object({
         pattern: z.string().min(1).optional(),
-        patterns: z.array(z.string().min(1)).min(1).optional(),
+        patterns: z.array(z.string().min(1)).min(1).max(3).optional(),
         paths: z.array(z.string().min(1)).min(1).optional(),
-        maxResults: z.number().int().min(1).max(200).optional(),
       })
       .refine((input) => Boolean(input.pattern) || Boolean(input.patterns && input.patterns.length > 0), {
         message: "Provide pattern or patterns",
@@ -125,14 +121,13 @@ function createSearchFilesTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 20;
         const patterns =
           toolInput.patterns && toolInput.patterns.length > 0
             ? toolInput.patterns
             : toolInput.pattern
               ? [toolInput.pattern]
               : [];
-        const result = await searchFiles(input.workspace, patterns, maxResults, toolInput.paths);
+        const result = await searchFiles(input.workspace, patterns, 10, toolInput.paths);
         const summaryStats = searchResultSummaryStats(result, patterns);
         const summaryParts = searchSummaryParts(
           summaryStats,
