@@ -83,7 +83,7 @@ describe("chat message handler", () => {
   });
 
   test("routes /status through message handler and renders status output row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness({
+    const { handleMessage, allRows: rows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
           providers: ["openai"],
@@ -108,13 +108,13 @@ describe("chat message handler", () => {
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness();
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness();
 
     await handleMessage("/sessions");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/sessions");
     expect(systemRow?.kind).toBe("system");
@@ -122,13 +122,13 @@ describe("chat message handler", () => {
   });
 
   test("routes /usage through message handler and renders usage output row", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness();
+    const { handleMessage, allRows, calls } = createMessageHandlerHarness();
 
     await handleMessage("/usage");
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = rows;
+    const [userRow, systemRow] = allRows;
     expect(userRow?.kind).toBe("user");
     expect(userRow?.content).toBe("/usage");
     expect(systemRow?.kind).toBe("system");
@@ -553,6 +553,160 @@ describe("chat message handler", () => {
     // Interrupt handler must still be registered so the user can Ctrl+C
     // to cancel the remote task polling.
     expect(interruptHandler).not.toBeNull();
+  });
+
+  test("promote is called after turn completion with all rows", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "done" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("hello");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "user")).toBe(true);
+    expect(promoted.some((r) => r.kind === "assistant")).toBe(true);
+    expect(promoted.some((r) => r.kind === "status")).toBe(true);
+  });
+
+  test("promote includes tool output rows", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "tool-call", toolCallId: "tc_1", toolName: "file-edit", args: {} });
+          input.onEvent({
+            type: "tool-output",
+            toolCallId: "tc_1",
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "test.ts" },
+          });
+          input.onEvent({ type: "text-delta", text: "edited" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "edited" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("edit a file");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "tool")).toBe(true);
+  });
+
+  test("promote clears dynamic rows", async () => {
+    const { handleMessage, rows, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "done" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("hello");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    expect(rows).toHaveLength(0);
+  });
+
+  test("promote is not called for awaiting-input turns", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "What input?" });
+          return { state: "awaiting-input" as const, model: "gpt-5-mini", output: "What input?" };
+        },
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("ask me for some input");
+
+    expect(calls.promotedSnapshots).toHaveLength(0);
+  });
+
+  test("promote is called after abort with interrupted row", async () => {
+    const rows: ChatRow[] = [];
+    let interruptHandler: () => void = () => {};
+    let interruptRegistered = false;
+    const promotedSnapshots: ChatRow[][] = [];
+
+    const session = createSession({ id: "sess_test" });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
+
+    const { handleSubmit } = createMessageHandler({
+      client: createClient({
+        replyStream: async (input) =>
+          new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          }),
+        status: async () => ({}),
+      }),
+      sessionState,
+      currentSession: session,
+      setCurrentSession: () => {},
+      toRows: () => [],
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openModelPanel: () => {},
+      tokenUsage: [],
+      isPending: false,
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
+      setRunningUsage: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: (handler) => {
+        interruptRegistered = handler !== null;
+        if (handler) interruptHandler = handler;
+      },
+      promote: () => {
+        promotedSnapshots.push([...rows]);
+        rows.splice(0, rows.length);
+      },
+      clearTranscript: () => {},
+    });
+
+    const pending = handleSubmit("hello");
+    for (let i = 0; i < 20 && !interruptRegistered; i++) {
+      await Bun.sleep(1);
+    }
+    interruptHandler();
+    await pending;
+
+    expect(promotedSnapshots).toHaveLength(1);
+    const promoted = promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
   });
 
   test("awaiting-input preserves pending state after turn completes", async () => {
