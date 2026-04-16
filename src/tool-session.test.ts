@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { checkStepBudget, createSessionContext, recordCall, resetCycleStepCount } from "./tool-session";
+import { checkStepBudget, createSessionContext, recordCall, resetTurnStepCount } from "./tool-session";
 
 describe("step budget", () => {
   test("blocks when cycle step count reaches cycle limit", () => {
     const session = createSessionContext();
-    session.flags.cycleStepLimit = 2;
-    session.flags.cycleStepCount = 2;
-    expect(checkStepBudget(session)).toContain("Cycle step budget exhausted");
+    session.flags.turnStepLimit = 2;
+    session.flags.turnStepCount = 2;
+    expect(checkStepBudget(session)).toContain("Turn step budget exhausted");
   });
 
   test("blocks when total call log reaches total limit", () => {
@@ -21,28 +21,28 @@ describe("step budget", () => {
 
   test("increments cycle step count on each allowed call", () => {
     const session = createSessionContext();
-    session.flags.cycleStepLimit = 10;
-    session.flags.cycleStepCount = 0;
+    session.flags.turnStepLimit = 10;
+    session.flags.turnStepCount = 0;
     expect(checkStepBudget(session)).toBeUndefined();
-    expect(session.flags.cycleStepCount).toBe(1);
+    expect(session.flags.turnStepCount).toBe(1);
   });
 
-  test("resetCycleStepCount resets counter and optionally sets limit", () => {
+  test("resetTurnStepCount resets counter and optionally sets limit", () => {
     const session = createSessionContext();
-    session.flags.cycleStepCount = 42;
-    session.flags.cycleStepLimit = 80;
-    resetCycleStepCount(session, 30);
-    expect(session.flags.cycleStepCount).toBe(0);
-    expect(session.flags.cycleStepLimit).toBe(30);
+    session.flags.turnStepCount = 42;
+    session.flags.turnStepLimit = 80;
+    resetTurnStepCount(session, 30);
+    expect(session.flags.turnStepCount).toBe(0);
+    expect(session.flags.turnStepLimit).toBe(30);
   });
 
-  test("resetCycleStepCount without limit only resets counter", () => {
+  test("resetTurnStepCount without limit only resets counter", () => {
     const session = createSessionContext();
-    session.flags.cycleStepCount = 10;
-    session.flags.cycleStepLimit = 80;
-    resetCycleStepCount(session);
-    expect(session.flags.cycleStepCount).toBe(0);
-    expect(session.flags.cycleStepLimit).toBe(80);
+    session.flags.turnStepCount = 10;
+    session.flags.turnStepLimit = 80;
+    resetTurnStepCount(session);
+    expect(session.flags.turnStepCount).toBe(0);
+    expect(session.flags.turnStepLimit).toBe(80);
   });
 });
 

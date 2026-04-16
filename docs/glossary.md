@@ -56,7 +56,8 @@ Naming conventions and core terms used across Acolyte code and docs.
 | SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
-| Step Budget | Per-cycle and total tool-call limit inlined into tool execution to prevent runaway loops |
+| Step Budget | Per-turn and total tool-call limit inlined into tool execution to prevent runaway loops |
+| Turn | One model response to a user message, including all tool calls within that response |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
 | TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |

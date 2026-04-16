@@ -1,10 +1,5 @@
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
-import {
-  INITIAL_MAX_STEPS,
-  MAX_CONSECUTIVE_TOOL_FAILURES,
-  TOOL_TIMEOUT_MS,
-  TOTAL_MAX_STEPS,
-} from "./lifecycle-constants";
+import { MAX_CONSECUTIVE_TOOL_FAILURES, TOOL_TIMEOUT_MS, TOTAL_MAX_STEPS, TURN_MAX_STEPS } from "./lifecycle-constants";
 import type { ActiveSkill } from "./skill-contract";
 import type { ToolCache } from "./tool-contract";
 import type { WorkspaceProfile } from "./workspace-profile";
@@ -20,8 +15,8 @@ export type ToolCallRecord = {
 };
 
 export type SessionFlags = {
-  cycleStepCount?: number;
-  cycleStepLimit?: number;
+  turnStepCount?: number;
+  turnStepLimit?: number;
   totalStepLimit?: number;
   totalTokenLimit?: number;
   totalTokens?: () => number;
@@ -83,9 +78,9 @@ export function scopedCallLog(session: Pick<SessionContext, "callLog" | "taskId"
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function resetCycleStepCount(session: SessionContext, limit?: number): void {
-  session.flags.cycleStepCount = 0;
-  if (limit !== undefined) session.flags.cycleStepLimit = limit;
+export function resetTurnStepCount(session: SessionContext, limit?: number): void {
+  session.flags.turnStepCount = 0;
+  if (limit !== undefined) session.flags.turnStepLimit = limit;
 }
 
 export function checkStepBudget(session: SessionContext, toolId?: string): string | undefined {
@@ -106,18 +101,18 @@ export function checkStepBudget(session: SessionContext, toolId?: string): strin
     }
   }
 
-  const cycleLimit = session.flags.cycleStepLimit ?? INITIAL_MAX_STEPS;
-  const cycleCount = session.flags.cycleStepCount ?? 0;
+  const turnLimit = session.flags.turnStepLimit ?? TURN_MAX_STEPS;
+  const turnCount = session.flags.turnStepCount ?? 0;
   const totalLimit = session.flags.totalStepLimit ?? TOTAL_MAX_STEPS;
   const totalCount = session.callLog.length;
 
   if (totalCount >= totalLimit) {
     return `Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`;
   }
-  if (cycleCount >= cycleLimit) {
-    return `Cycle step budget exhausted (${cycleLimit} tool calls). Wrap up current phase.`;
+  if (turnCount >= turnLimit) {
+    return `Turn step budget exhausted (${turnLimit} tool calls). Wrap up current phase.`;
   }
-  session.flags.cycleStepCount = cycleCount + 1;
+  session.flags.turnStepCount = turnCount + 1;
   return undefined;
 }
 

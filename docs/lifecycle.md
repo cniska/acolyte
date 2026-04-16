@@ -26,7 +26,7 @@ One generation pass runs, effects apply inline during tool execution, and the li
 
 ## Step budget
 
-- `checkStepBudget()` is inlined into tool execution and enforces per-cycle and total tool-call limits
+- `checkStepBudget()` is inlined into tool execution and enforces per-turn and total tool-call limits
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
 - this is the only pre-tool policy check; there is no guard abstraction
 

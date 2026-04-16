@@ -112,7 +112,7 @@ export type PhasePrepareResult = {
   baseAgentInput: string;
   promptUsage: PromptUsage;
 };
-export type GenerateOptions = { cycleLimit?: number; timeoutMs: number };
+export type GenerateOptions = { turnLimit?: number; timeoutMs: number };
 
 export type EffectResult = { type: "done"; output?: string };
 

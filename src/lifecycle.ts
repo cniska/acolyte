@@ -306,7 +306,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, model });
   await deps.phaseGenerate(ctx, {
-    cycleLimit: policy.initialMaxSteps,
+    turnLimit: policy.turnMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });
 
