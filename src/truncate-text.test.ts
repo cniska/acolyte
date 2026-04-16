@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { truncateText } from "./truncate-text";
+import { truncateMiddle, truncateText } from "./truncate-text";
 
 describe("truncateText", () => {
   test("returns input unchanged when within limit", () => {
@@ -24,5 +24,46 @@ describe("truncateText", () => {
 
   test("handles empty string", () => {
     expect(truncateText("")).toBe("");
+  });
+});
+
+describe("truncateMiddle", () => {
+  test("returns input unchanged when under limit", () => {
+    expect(truncateMiddle("short", 100)).toBe("short");
+  });
+
+  test("returns input unchanged when exactly at limit", () => {
+    const input = "a".repeat(50);
+    expect(truncateMiddle(input, 50)).toBe(input);
+  });
+
+  test("truncates with head/tail split when over limit", () => {
+    const input = "H".repeat(500) + "M".repeat(500) + "T".repeat(500);
+    const result = truncateMiddle(input, 200);
+    expect(result.length).toBeLessThanOrEqual(200);
+    expect(result).toContain("… ");
+    expect(result).toContain("chars truncated …");
+    expect(result.startsWith("H")).toBe(true);
+    expect(result.endsWith("T")).toBe(true);
+  });
+
+  test("marker includes truncated character count", () => {
+    const input = "x".repeat(1000);
+    const result = truncateMiddle(input, 200);
+    expect(result).toContain("800 chars truncated");
+  });
+
+  test("head portion is larger than tail (60/40 split)", () => {
+    const input = "H".repeat(5000) + "T".repeat(5000);
+    const result = truncateMiddle(input, 200);
+    const markerStart = result.indexOf("\n… ");
+    const markerEnd = result.indexOf("truncated …\n") + "truncated …\n".length;
+    const headSize = markerStart;
+    const tailSize = result.length - markerEnd;
+    expect(headSize).toBeGreaterThan(tailSize);
+  });
+
+  test("handles empty string", () => {
+    expect(truncateMiddle("", 100)).toBe("");
   });
 });

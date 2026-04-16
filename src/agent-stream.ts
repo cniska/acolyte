@@ -9,6 +9,7 @@ import type {
 } from "@ai-sdk/provider";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import { serializeToolError } from "./error-handling";
+import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import {
   appendLifecycleTextDelta,
@@ -21,6 +22,7 @@ import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
+import { truncateMiddle } from "./truncate-text";
 
 function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageModelV3FunctionTool[] {
   return Object.values(tools).map((tool) => ({
@@ -168,7 +170,8 @@ export function createAgentStream(
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
             });
-            const outputValue = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
+            const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
+            const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
             toolResultParts.push({
               type: "tool-result",
               toolCallId: tc.toolCallId,
