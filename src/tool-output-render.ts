@@ -49,18 +49,16 @@ function formatHeader(header: ResolvedHeader): string {
   return parts.join(" ");
 }
 
+const TRUNCATED_UNIT_KEYS: Record<string, string> = {
+  lines: "unit.line",
+  matches: "unit.match",
+  files: "unit.file",
+};
+
 function formatTruncated(count: number | undefined, unit: string | undefined): string {
   if (!count) return "…";
-  switch (unit) {
-    case "lines":
-      return `… +${t("unit.line", { count })}`;
-    case "matches":
-      return `… +${t("unit.match", { count })}`;
-    case "files":
-      return `… +${t("unit.file", { count })}`;
-    default:
-      return `… +${t("unit.more", { count })}`;
-  }
+  const text = tDynamic(TRUNCATED_UNIT_KEYS[unit ?? ""] ?? "unit.more", { count });
+  return `… +${text}`;
 }
 
 function renderPart(content: ToolOutputPart): string {
