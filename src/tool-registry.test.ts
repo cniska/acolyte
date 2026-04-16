@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { expectIntent } from "./test-utils";
-import { renderToolOutputPart } from "./tool-output-render";
+import { renderToolOutput } from "./tool-output-render";
 import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
 
 describe("toolsets", () => {
@@ -82,11 +82,11 @@ describe("localization baseline", () => {
   });
 
   test("tool output content renders marker tokens", () => {
-    expect(renderToolOutputPart({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
-    expect(renderToolOutputPart({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
-    expect(renderToolOutputPart({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
-    expect(renderToolOutputPart({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
-    expect(renderToolOutputPart({ kind: "no-output" })).toBe("(No output)");
+    expect(renderToolOutput({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
+    expect(renderToolOutput({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
+    expect(renderToolOutput({ kind: "no-output" })).toBe("(No output)");
   });
 
   test("tool instructions encode behavioral intent by tool type", () => {

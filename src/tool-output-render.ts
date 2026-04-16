@@ -1,52 +1,83 @@
-import { unreachable } from "./assert";
 import { t, tDynamic } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 
-export function renderToolOutputPart(content: ToolOutputPart): string {
+export type ResolvedHeader = { label: string; detail?: string; meta?: Record<string, unknown> };
+
+export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
   switch (content.kind) {
     case "tool-header": {
       const label = tDynamic(content.labelKey);
-      return content.detail ? `${label} ${content.detail}` : label;
+      const detail = content.detail && content.detail !== "." ? content.detail : undefined;
+      return { label, detail };
     }
-    case "text":
-      return content.text;
     case "file-header": {
       const label = tDynamic(content.labelKey);
-      if (content.count === 1 && content.targets.length === 1) return `${label} ${content.targets[0]}`;
-      return `${label} ${t("unit.file", { count: content.count })}`;
+      const detail =
+        content.count === 1 && content.targets.length === 1
+          ? content.targets[0]
+          : t("unit.file", { count: content.count });
+      return { label, detail };
     }
     case "scope-header": {
       const label = tDynamic(content.labelKey);
       const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
-      if (content.patterns.length === 1) return `${label} ${content.patterns[0]}${scopeSuffix}`;
-      return `${label} ${t("unit.pattern", { count: content.patterns.length })}${scopeSuffix}`;
+      const detail =
+        content.patterns.length === 1
+          ? `${content.patterns[0]}${scopeSuffix}`
+          : `${t("unit.pattern", { count: content.patterns.length })}${scopeSuffix}`;
+      return { label, detail };
     }
-    case "edit-header":
-      return `${tDynamic(content.labelKey)} ${content.path} (+${content.added} -${content.removed})`;
-    case "diff": {
-      const prefix = content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " ";
-      return `${content.lineNumber} ${prefix}${content.text}`;
-    }
-    case "shell-output": {
-      const label = content.stream === "stdout" ? "out" : "err";
-      return `${label} | ${content.text}`;
-    }
-    case "no-output":
-      return t("tool.content.no_output");
-    case "truncated": {
-      if (!content.count) return "…";
-      const unitKey =
-        content.unit === "lines"
-          ? "unit.line"
-          : content.unit === "matches"
-            ? "unit.match"
-            : content.unit === "files"
-              ? "unit.file"
-              : "unit.more";
-      return `… +${t(unitKey, { count: content.count })}`;
+    case "edit-header": {
+      const label = tDynamic(content.labelKey);
+      const path = content.path === "." ? undefined : content.path;
+      return { label, detail: path, meta: { added: content.added, removed: content.removed } };
     }
     default:
-      return unreachable(content);
+      return null;
+  }
+}
+
+function formatMeta(meta: Record<string, unknown>): string {
+  if ("added" in meta && "removed" in meta) return `(+${meta.added} -${meta.removed})`;
+  return "";
+}
+
+function formatHeader(header: ResolvedHeader): string {
+  const parts = [header.label];
+  if (header.detail) parts.push(header.detail);
+  if (header.meta) parts.push(formatMeta(header.meta));
+  return parts.join(" ");
+}
+
+const TRUNCATED_UNIT_KEYS: Record<string, string> = {
+  lines: "unit.line",
+  matches: "unit.match",
+  files: "unit.file",
+};
+
+function formatTruncated(count: number | undefined, unit: string | undefined): string {
+  if (!count) return "…";
+  const text = tDynamic(TRUNCATED_UNIT_KEYS[unit ?? ""] ?? "unit.more", { count });
+  return `… +${text}`;
+}
+
+function renderPart(content: ToolOutputPart): string {
+  const header = resolveHeader(content);
+  if (header) return formatHeader(header);
+
+  switch (content.kind) {
+    case "text":
+      return content.text;
+    case "diff":
+      return `${content.lineNumber} ${content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " "}${content.text}`;
+    case "shell-output":
+      return `${content.stream === "stdout" ? "out" : "err"} | ${content.text}`;
+    case "no-output":
+      return t("tool.content.no_output");
+    case "truncated":
+      return formatTruncated(content.count, content.unit);
+    default:
+      return "";
   }
 }
 
@@ -56,11 +87,10 @@ function renderDiffLine(item: Extract<ToolOutputPart, { kind: "diff" }>, numWidt
   return `${num} ${prefix}${item.text}`;
 }
 
-export function formatToolOutput(items: ToolOutputPart[]): string {
-  if (items.length === 0) return "";
+function renderList(items: ToolOutputPart[]): string {
   const first = items[0];
   if (!first) return "";
-  const header = renderToolOutputPart(first);
+  const header = renderPart(first);
   const body = items.slice(1);
   if (body.length === 0) return header;
   const numWidth = body.reduce(
@@ -72,12 +102,16 @@ export function formatToolOutput(items: ToolOutputPart[]): string {
   const lines = body.map((item) => {
     if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
     if (item.kind === "truncated" && numWidth > 0) {
-      const suffix = renderToolOutputPart(item).slice(2);
+      const suffix = renderPart(item).slice(2);
       return suffix ? `${diffIndent}${"⋮".padStart(numWidth)} ${suffix}` : `${diffIndent}${"⋮".padStart(numWidth)}`;
     }
-    return renderToolOutputPart(item);
+    return renderPart(item);
   });
   return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;
+}
+
+export function renderToolOutput(content: ToolOutputPart | ToolOutputPart[]): string {
+  return Array.isArray(content) ? renderList(content) : renderPart(content);
 }
 
 export type ToolOutputUpdate = {
@@ -95,16 +129,12 @@ export function createToolOutputState(): {
   return {
     push(entry) {
       const items = contentByCallId.get(entry.toolCallId) ?? [];
-      const incoming = renderToolOutputPart(entry.content);
+      const incoming = renderPart(entry.content);
       if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
       lastRenderedByCallId.set(entry.toolCallId, incoming);
       items.push(entry.content);
       contentByCallId.set(entry.toolCallId, items);
-      const firstItem = items[0];
-      const label =
-        firstItem && "labelKey" in firstItem && typeof firstItem.labelKey === "string"
-          ? tDynamic(firstItem.labelKey)
-          : undefined;
+      const label = items[0] ? resolveHeader(items[0])?.label : undefined;
       return { label, items };
     },
     delete(toolCallId) {

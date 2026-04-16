@@ -3,7 +3,7 @@ import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
 import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { formatToolOutput } from "./tool-output-render";
+import { renderToolOutput } from "./tool-output-render";
 import { renderPlain } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[]): string {
@@ -11,33 +11,33 @@ function renderChat(toolOutput: ToolOutputPart[]): string {
   return renderPlain(<ChatTranscript rows={[row]} pendingFrame={0} />, 96);
 }
 
-describe("tool output TUI — CLI (formatToolOutput)", () => {
+describe("tool output TUI — CLI (renderToolOutput)", () => {
   test("empty content returns empty string", () => {
-    expect(formatToolOutput([])).toBe("");
+    expect(renderToolOutput([])).toBe("");
   });
 
   test("tool-header only", () => {
-    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }])).toBe(
+    expect(renderToolOutput([{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }])).toBe(
       "Read a.ts",
     );
   });
 
   test("tool-header without detail", () => {
-    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.git_status" }])).toBe("Git Status");
+    expect(renderToolOutput([{ kind: "tool-header", labelKey: "tool.label.git_status" }])).toBe("Git Status");
   });
 
   test("file-header renders label and targets", () => {
     const items: ToolOutputPart[] = [
       { kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] },
     ];
-    expect(formatToolOutput(items)).toBe("Read 2 files");
+    expect(renderToolOutput(items)).toBe("Read 2 files");
   });
 
   test("file-header with single file shows path", () => {
     const items: ToolOutputPart[] = [
       { kind: "file-header", labelKey: "tool.label.file_read", count: 1, targets: ["a.ts"] },
     ];
-    expect(formatToolOutput(items)).toBe("Read a.ts");
+    expect(renderToolOutput(items)).toBe("Read a.ts");
   });
 
   test("scope-header for search with summary", () => {
@@ -51,7 +51,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       },
       { kind: "text", text: "3 matches in 2 files" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Search needle
           3 matches in 2 files
@@ -64,7 +64,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "scope-header", labelKey: "tool.label.file_search", scope: "src/", patterns: ["needle"], matches: 1 },
       { kind: "text", text: "1 match in 1 file" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Search needle in src/
           1 match in 1 file
@@ -77,7 +77,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "scope-header", labelKey: "tool.label.file_find", scope: "workspace", patterns: ["*.ts"], matches: 2 },
       { kind: "text", text: "2 files" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Find *.ts
           2 files
@@ -96,7 +96,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       },
       { kind: "text", text: "5 matches in 3 files" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Search 3 patterns
           5 matches in 3 files
@@ -111,7 +111,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Edit notes.ts (+1 -1)
            9  const x = 1;
@@ -127,7 +127,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "shell-output", stream: "stdout", text: "hello" },
       { kind: "shell-output", stream: "stdout", text: "world" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Run echo hello
           out | hello
@@ -144,7 +144,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "⋮ +3 lines" },
       { kind: "shell-output", stream: "stdout", text: "line6" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Run cmd
           out | line1
@@ -160,7 +160,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd" },
       { kind: "no-output" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Run cmd
           (No output)
@@ -174,7 +174,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "M src/cli.ts" },
       { kind: "text", text: "?? src/new.ts" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Status
           M src/cli.ts
@@ -189,7 +189,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "diff --git a/src/agent.ts b/src/agent.ts" },
       { kind: "text", text: "+const x = 1;" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Diff src/agent.ts
           diff --git a/src/agent.ts b/src/agent.ts
@@ -206,7 +206,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "⋮ +10 lines" },
       { kind: "text", text: "+line13" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Diff
           +line1
@@ -223,7 +223,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "abc1234 feat: add feature" },
       { kind: "text", text: "def5678 fix: resolve bug" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Log src/cli.ts
           abc1234 feat: add feature
@@ -240,7 +240,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "truncated", count: 8, unit: "lines" },
       { kind: "text", text: "ghi9012 last" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Log
           abc1234 first
@@ -257,7 +257,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "feat: add feature" },
       { kind: "text", text: "+const x = 1;" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Show abc1234
           feat: add feature
@@ -273,7 +273,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "src/b.ts" },
       { kind: "text", text: "src/c.ts" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Add 3 files
           src/a.ts
@@ -290,7 +290,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "src/b.ts" },
       { kind: "truncated", count: 6, unit: "files" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Add 8 files
           src/a.ts
@@ -302,14 +302,14 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
 
   test("git-add all", () => {
     const items: ToolOutputPart[] = [{ kind: "tool-header", labelKey: "tool.label.git_add", detail: "all" }];
-    expect(formatToolOutput(items)).toBe("Git Add all");
+    expect(renderToolOutput(items)).toBe("Git Add all");
   });
 
   test("git-commit with hash", () => {
     const items: ToolOutputPart[] = [
       { kind: "tool-header", labelKey: "tool.label.git_commit", detail: "feat: add feature (abc1234)" },
     ];
-    expect(formatToolOutput(items)).toBe("Git Commit feat: add feature (abc1234)");
+    expect(renderToolOutput(items)).toBe("Git Commit feat: add feature (abc1234)");
   });
 
   test("git-commit with body lines", () => {
@@ -318,7 +318,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "Added new auth module" },
       { kind: "text", text: "Updated config schema" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Commit feat: add feature (abc1234)
           Added new auth module
@@ -334,7 +334,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "Line 2" },
       { kind: "truncated", count: 5, unit: "lines" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Git Commit refactor: cleanup (def5678)
           Line 1
@@ -353,7 +353,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
       { kind: "diff", lineNumber: 11, marker: "context", text: "const b = 4;" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Edit notes.ts (+1 -1)
            1  const a = 1;
@@ -375,7 +375,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "diff", lineNumber: 4, marker: "remove", text: 'import { generateId } from "./short-id";' },
       { kind: "diff", lineNumber: 4, marker: "add", text: 'import { generateId } from "./short-id";' },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Edit 14 files (+28 -28)
           src/short-id.ts (+1 -1)
@@ -394,7 +394,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "diff", lineNumber: 2, marker: "remove", text: "old" },
       { kind: "diff", lineNumber: 2, marker: "add", text: "new" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Edit notes.ts (+1 -1)
           2 -old
@@ -404,7 +404,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
   });
 
   test("skill-activate with name", () => {
-    expect(formatToolOutput([{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }])).toBe(
+    expect(renderToolOutput([{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }])).toBe(
       "Skill build",
     );
   });
@@ -415,7 +415,7 @@ describe("tool output TUI — CLI (formatToolOutput)", () => {
       { kind: "text", text: "a.ts" },
       { kind: "truncated", count: 5, unit: "matches" },
     ];
-    expect(formatToolOutput(items)).toBe(
+    expect(renderToolOutput(items)).toBe(
       dedent(`
         Find *.ts
           a.ts

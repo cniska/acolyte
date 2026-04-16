@@ -6,10 +6,10 @@ import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { commandOutputColWidth, formatCompactNumber } from "./chat-format";
 import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
-import { t, tDynamic } from "./i18n";
+import { t } from "./i18n";
 import { palette } from "./palette";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { renderToolOutputPart as renderToolOutputText } from "./tool-output-render";
+import { renderToolOutput as renderToolOutputText, resolveHeader } from "./tool-output-render";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
 
@@ -71,7 +71,7 @@ function renderToolPart(
     const num = String(part.lineNumber).padStart(lineNumWidth);
     const prefix = ` ${num} `;
     const marker = part.marker === "add" ? "+" : part.marker === "remove" ? "-" : " ";
-    const content = `${part.text}`;
+    const content = part.text;
     const padWidth = Math.max(0, toolContentWidth - 2 - prefix.length - 1 - content.length);
     const padded = content + " ".repeat(padWidth);
     if (part.marker === "add" || part.marker === "remove") {
@@ -137,56 +137,31 @@ function renderToolPart(
   );
 }
 
-function renderHeader(part: ToolOutputPart): React.ReactNode {
-  if (part.kind === "edit-header") {
-    const path = part.path === "." ? "" : part.path;
+function renderHeaderMeta(meta: Record<string, unknown>): React.ReactNode {
+  if ("added" in meta && "removed" in meta) {
     return (
       <>
-        <Text bold>{tDynamic(part.labelKey)}</Text>
-        <Text dimColor>{path ? ` ${path}` : ""} (</Text>
-        <Text color={palette.diffAddText}>{`+${part.added}`}</Text>
+        <Text dimColor> (</Text>
+        <Text color={palette.diffAddText}>{`+${meta.added}`}</Text>
         <Text dimColor> </Text>
-        <Text color={palette.diffRemoveText}>{`-${part.removed}`}</Text>
+        <Text color={palette.diffRemoveText}>{`-${meta.removed}`}</Text>
         <Text dimColor>)</Text>
       </>
     );
   }
-  if (part.kind === "tool-header") {
-    const detail = part.detail === "." ? undefined : part.detail;
-    return (
-      <>
-        <Text bold>{tDynamic(part.labelKey)}</Text>
-        {detail ? <Text dimColor>{` ${detail}`}</Text> : null}
-      </>
-    );
-  }
-  if (part.kind === "file-header") {
-    const detail =
-      part.count === 1 && part.targets.length === 1
-        ? ` ${part.targets[0]}`
-        : ` ${t("unit.file", { count: part.count })}`;
-    return (
-      <>
-        <Text bold>{tDynamic(part.labelKey)}</Text>
-        <Text dimColor>{detail}</Text>
-      </>
-    );
-  }
-  if (part.kind === "scope-header") {
-    const scopeSuffix = part.scope !== "workspace" ? ` in ${part.scope}` : "";
-    const detail =
-      part.patterns.length === 1
-        ? ` ${part.patterns[0]}${scopeSuffix}`
-        : ` ${t("unit.pattern", { count: part.patterns.length })}${scopeSuffix}`;
-    return (
-      <>
-        <Text bold>{tDynamic(part.labelKey)}</Text>
-        <Text dimColor>{detail}</Text>
-      </>
-    );
-  }
-  const text = renderToolOutputText(part);
-  return <Text dimColor>{text}</Text>;
+  return null;
+}
+
+function renderHeader(part: ToolOutputPart): React.ReactNode {
+  const header = resolveHeader(part);
+  if (!header) return null;
+  return (
+    <>
+      <Text bold>{header.label}</Text>
+      {header.detail ? <Text dimColor>{` ${header.detail}`}</Text> : null}
+      {header.meta ? renderHeaderMeta(header.meta) : null}
+    </>
+  );
 }
 
 function renderToolOutput(parts: ToolOutputPart[], toolContentWidth: number): React.ReactNode {

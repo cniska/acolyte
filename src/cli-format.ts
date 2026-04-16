@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./chat-format";
 import { t, tDynamic } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { toolLabelKey } from "./tool-output-format";
-import { formatToolOutput } from "./tool-output-render";
+import { renderToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
 import { printDim, printToolHeader } from "./ui";
 
@@ -32,7 +32,7 @@ export function printToolResult(toolId: string, raw: string, detail?: string): v
       if (trimmed.length > 0) items.push({ kind: "text", text: trimmed });
     }
   }
-  const rendered = formatToolOutput(items);
+  const rendered = renderToolOutput(items);
   const lines = rendered.split("\n");
   if (lines[0]) printToolHeader(tDynamic(labelKey), detail);
   for (const line of lines.slice(1)) {

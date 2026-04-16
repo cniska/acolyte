@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { createToolOutputState, formatToolOutput } from "./tool-output-render";
+import { createToolOutputState, renderToolOutput } from "./tool-output-render";
 
 function setup() {
   const state = createToolOutputState();
@@ -83,8 +83,8 @@ describe("createToolOutputState", () => {
     const u2 = state.push({ toolCallId: "tc_2", content: { kind: "text", text: "b" } });
     expect(u1?.items).toHaveLength(2);
     expect(u2?.items).toHaveLength(2);
-    expect(formatToolOutput(u1?.items ?? [])).toBe("Run cmd1\n  a");
-    expect(formatToolOutput(u2?.items ?? [])).toBe("Run cmd2\n  b");
+    expect(renderToolOutput(u1?.items ?? [])).toBe("Run cmd1\n  a");
+    expect(renderToolOutput(u2?.items ?? [])).toBe("Run cmd2\n  b");
   });
 
   test("delete removes state for a tool call", () => {
