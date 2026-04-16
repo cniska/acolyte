@@ -49,9 +49,13 @@
     "@ast-grep/lang-rust": "^0.0.7",
     "@ast-grep/napi": "^0.42.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.12.14",
     "react": "^19.2.4",
     "react-reconciler": "^0.33.0",
     "tiktoken": "^1.0.22",
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "hono": "^4.12.14"
   }
 }
