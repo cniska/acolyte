@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import { COMPACTED_OUTPUT, compactPriorToolResults } from "./agent-stream";
 import {
   appendLifecycleTextDelta,
   createLifecycleTextStreamState,
@@ -167,5 +169,90 @@ describe("lifecycle text streaming", () => {
     const fin = finalizeLifecycleText(state);
     expect(fin.signal).toBe("done");
     expect(fin.text).toBe("");
+  });
+});
+
+describe("compactPriorToolResults", () => {
+  function toolMsg(results: Array<{ id: string; name: string; value: string }>): LanguageModelV3Message {
+    return {
+      role: "tool",
+      content: results.map((r) => ({
+        type: "tool-result" as const,
+        toolCallId: r.id,
+        toolName: r.name,
+        output: { type: "text" as const, value: r.value },
+      })),
+    };
+  }
+
+  test("replaces tool result output with compact marker", () => {
+    const messages: LanguageModelV3Message[] = [
+      { role: "system", content: "you are helpful" },
+      { role: "user", content: [{ type: "text", text: "read foo.ts" }] },
+      toolMsg([{ id: "tc_1", name: "file-read", value: "const x = 1;\n".repeat(500) }]),
+    ];
+    compactPriorToolResults(messages);
+    const tool = messages[2];
+    expect(tool.role).toBe("tool");
+    if (tool.role !== "tool") throw new Error("unexpected");
+    const part = tool.content[0];
+    expect(part.type).toBe("tool-result");
+    if (part.type !== "tool-result") throw new Error("unexpected");
+    expect(part.output).toEqual(COMPACTED_OUTPUT);
+    expect(part.toolCallId).toBe("tc_1");
+    expect(part.toolName).toBe("file-read");
+  });
+
+  test("skips non-tool messages", () => {
+    const systemContent = "you are helpful";
+    const messages: LanguageModelV3Message[] = [
+      { role: "system", content: systemContent },
+      { role: "user", content: [{ type: "text", text: "hello" }] },
+    ];
+    compactPriorToolResults(messages);
+    expect(messages[0]).toEqual({ role: "system", content: systemContent });
+    expect(messages[1]).toEqual({ role: "user", content: [{ type: "text", text: "hello" }] });
+  });
+
+  test("compacts multiple tool messages", () => {
+    const messages: LanguageModelV3Message[] = [
+      { role: "system", content: "sys" },
+      toolMsg([{ id: "tc_1", name: "file-read", value: "file1 content" }]),
+      toolMsg([{ id: "tc_2", name: "file-read", value: "file2 content" }]),
+    ];
+    compactPriorToolResults(messages);
+    for (const msg of messages.filter((m) => m.role === "tool")) {
+      if (msg.role !== "tool") continue;
+      for (const part of msg.content) {
+        if (part.type !== "tool-result") continue;
+        expect(part.output).toEqual(COMPACTED_OUTPUT);
+      }
+    }
+  });
+
+  test("compacts multiple results within a single tool message", () => {
+    const messages: LanguageModelV3Message[] = [
+      toolMsg([
+        { id: "tc_1", name: "file-read", value: "content1" },
+        { id: "tc_2", name: "shell-exec", value: "output2" },
+      ]),
+    ];
+    compactPriorToolResults(messages);
+    if (messages[0].role !== "tool") throw new Error("unexpected");
+    expect(messages[0].content).toHaveLength(2);
+    for (const part of messages[0].content) {
+      if (part.type !== "tool-result") continue;
+      expect(part.output).toEqual(COMPACTED_OUTPUT);
+    }
+  });
+
+  test("is idempotent", () => {
+    const messages: LanguageModelV3Message[] = [toolMsg([{ id: "tc_1", name: "file-read", value: "content" }])];
+    compactPriorToolResults(messages);
+    compactPriorToolResults(messages);
+    if (messages[0].role !== "tool") throw new Error("unexpected");
+    const part = messages[0].content[0];
+    if (part.type !== "tool-result") throw new Error("unexpected");
+    expect(part.output).toEqual(COMPACTED_OUTPUT);
   });
 });
