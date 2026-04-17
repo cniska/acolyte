@@ -118,7 +118,7 @@ describe("localization baseline", () => {
     ]);
     expectIntent(findInstruction, [["file-find", "locate files"], ["patterns", "array"], ["batch"]]);
     expectIntent(createInstruction, [["file-create", "full content"]]);
-    expectIntent(deleteInstruction, [["file-delete"], ["paths", "array"], ["batch"]]);
+    expectIntent(deleteInstruction, [["file-delete"], ["paths", "array"], ["explicitly", "user"], ["failed edit"]]);
     expectIntent(editInstruction, [
       ["latest direct", "file-read"],
       ["batch same-file edits"],

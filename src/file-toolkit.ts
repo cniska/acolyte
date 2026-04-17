@@ -308,8 +308,10 @@ function createDeleteFileTool(input: ToolkitInput) {
     id: "file-delete",
     toolkit: "file",
     category: "write",
-    description: "Delete a file from the repository.",
-    instruction: "Use `file-delete` to remove files. Pass `paths` as an array and batch related deletes.",
+    description:
+      "Delete a file from the repository. Destructive and not undoable from within the agent. Do NOT use this to recover from a failed edit — re-read the target file and retry the edit instead. Only use when the user has explicitly asked for a deletion.",
+    instruction:
+      "Use `file-delete` only when the user explicitly asks to remove a file. Never delete a file to recover from a failed edit or to replace it — re-read and retry instead. Pass `paths` as an array.",
     inputSchema: z.object({
       paths: z.array(z.string().min(1)).min(1),
     }),
