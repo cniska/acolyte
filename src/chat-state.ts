@@ -17,6 +17,7 @@ import { createSkillActivator } from "./chat-skill-activator";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
+import { ghPrView } from "./gh-ops";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -122,6 +123,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const cursorLineRef = useRef(0);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
+  const [pr, setPr] = useState<{ number: number; state: string } | null>(null);
 
   const { promotedRows, promote, clearTranscript } = usePromotion({
     version: props.version,
@@ -134,7 +136,14 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
-  const footerContext = `${workspace} · ${branch ?? "—"} · ${formatModel(currentSession.model, appConfig.reasoning)}`;
+  const prBadge = pr ? `PR #${pr.number}` : null;
+  const footerParts = [
+    workspace,
+    branch ?? "—",
+    prBadge,
+    formatModel(currentSession.model, appConfig.reasoning),
+  ].filter(Boolean);
+  const footerContext = footerParts.join(" · ");
 
   useMountEffect(() => {
     loadSkills().catch(() => {});
@@ -142,10 +151,16 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   useAsyncEffect(async (cancelled) => {
     try {
-      const result = await shownBranch();
-      if (!cancelled()) setBranch(result);
+      const [branchResult, prResult] = await Promise.all([shownBranch(), ghPrView(process.cwd())]);
+      if (!cancelled()) {
+        setBranch(branchResult);
+        setPr(prResult);
+      }
     } catch {
-      if (!cancelled()) setBranch(null);
+      if (!cancelled()) {
+        setBranch(null);
+        setPr(null);
+      }
     }
   }, []);
 
