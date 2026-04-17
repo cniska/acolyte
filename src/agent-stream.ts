@@ -9,7 +9,7 @@ import type {
 } from "@ai-sdk/provider";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
 import { serializeToolError } from "./error-handling";
-import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
+import { MAX_TOOL_RESULT_CHARS, TOOL_RESULT_MAX_CHARS } from "./lifecycle-constants";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import {
   appendLifecycleTextDelta,
@@ -21,7 +21,7 @@ import { log } from "./log";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
-import type { ToolDefinition } from "./tool-contract";
+import type { ToolCategory, ToolDefinition } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
 
 function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageModelV3FunctionTool[] {
@@ -171,7 +171,7 @@ export function createAgentStream(
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
             });
             const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
-            const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
+            const outputValue = truncateToolResult(tool.category, raw);
             toolResultParts.push({
               type: "tool-result",
               toolCallId: tc.toolCallId,
@@ -275,6 +275,11 @@ function emitStreamPart(
       break;
     }
   }
+}
+
+export function truncateToolResult(category: ToolCategory | undefined, raw: string): string {
+  const cap = category ? TOOL_RESULT_MAX_CHARS[category] : MAX_TOOL_RESULT_CHARS;
+  return truncateMiddle(raw, cap);
 }
 
 export const COMPACTED_OUTPUT = { type: "text" as const, value: "[previous tool result]" };

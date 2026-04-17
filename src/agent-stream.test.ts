@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import { COMPACTED_OUTPUT, compactPriorToolResults } from "./agent-stream";
+import { COMPACTED_OUTPUT, compactPriorToolResults, truncateToolResult } from "./agent-stream";
+import { MAX_TOOL_RESULT_CHARS, TOOL_RESULT_MAX_CHARS } from "./lifecycle-constants";
 import {
   appendLifecycleTextDelta,
   createLifecycleTextStreamState,
@@ -254,5 +255,50 @@ describe("compactPriorToolResults", () => {
     const part = messages[0].content[0];
     if (part.type !== "tool-result") throw new Error("unexpected");
     expect(part.output).toEqual(COMPACTED_OUTPUT);
+  });
+});
+
+describe("truncateToolResult", () => {
+  test("returns raw unchanged when under the category cap", () => {
+    const raw = "small result";
+    expect(truncateToolResult("read", raw)).toBe(raw);
+  });
+
+  test("truncates large search results to the search cap", () => {
+    const raw = "x".repeat(TOOL_RESULT_MAX_CHARS.search * 3);
+    const out = truncateToolResult("search", raw);
+    expect(out.length).toBeLessThanOrEqual(TOOL_RESULT_MAX_CHARS.search);
+    expect(out).toContain("chars truncated");
+  });
+
+  test("gives read results a larger budget than search", () => {
+    const raw = "x".repeat(TOOL_RESULT_MAX_CHARS.read * 2);
+    const readOut = truncateToolResult("read", raw);
+    const searchOut = truncateToolResult("search", raw);
+    expect(readOut.length).toBeGreaterThan(searchOut.length);
+    expect(readOut.length).toBeLessThanOrEqual(TOOL_RESULT_MAX_CHARS.read);
+  });
+
+  test("uses every defined category cap", () => {
+    const categories: Array<keyof typeof TOOL_RESULT_MAX_CHARS> = [
+      "search",
+      "read",
+      "write",
+      "execute",
+      "network",
+      "meta",
+    ];
+    for (const category of categories) {
+      const cap = TOOL_RESULT_MAX_CHARS[category];
+      const raw = "x".repeat(cap * 2);
+      const out = truncateToolResult(category, raw);
+      expect(out.length).toBeLessThanOrEqual(cap);
+    }
+  });
+
+  test("falls back to the default cap when category is undefined", () => {
+    const raw = "x".repeat(MAX_TOOL_RESULT_CHARS * 2);
+    const out = truncateToolResult(undefined, raw);
+    expect(out.length).toBeLessThanOrEqual(MAX_TOOL_RESULT_CHARS);
   });
 });

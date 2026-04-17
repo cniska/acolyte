@@ -920,20 +920,6 @@ describe("scanCode", () => {
     expect(output).toContain("scanned=2 matches=2");
   });
 
-  test("respects maxResults limit", async () => {
-    const workspace = dirs.createDir("acolyte-test-scan-limit-");
-    const filePath = join(workspace, "file.ts");
-    const lines = `${Array.from({ length: 10 }, (_, i) => `console.log("line${i}");`).join("\n")}\n`;
-    await writeFile(filePath, lines, "utf8");
-    const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute(
-      { paths: [filePath], patterns: ["console.log($ARG)"], maxResults: 3 },
-      "call_38",
-    );
-    const output = result.result.output;
-    expect(output).toContain("matches=3");
-  });
-
   test("batches multiple patterns", async () => {
     const workspace = dirs.createDir("acolyte-test-scan-batch-");
     const filePath = join(workspace, "file.ts");

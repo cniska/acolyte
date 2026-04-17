@@ -315,7 +315,7 @@ describe("searchFiles", () => {
     await writeFile(filePath, "alpha beta\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
     await expect(
-      tools.searchFiles.execute({ patterns: ["gamma"], maxResults: 20, paths: [filePath] }, "call_search_nomatch"),
+      tools.searchFiles.execute({ patterns: ["gamma"], paths: [filePath] }, "call_search_nomatch"),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesNoMatch,
     });
@@ -331,7 +331,7 @@ describe("searchFiles", () => {
     await writeFile(second, 'export const second = "needle";\n', "utf8");
     const { tools, session } = toolsForAgent({ workspace });
     const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [first] },
+      { patterns: ["needle"], paths: [first] },
       "call_search_scope",
     );
     expect(result.result.output).toContain("first.ts:1:");
@@ -347,7 +347,7 @@ describe("searchFiles", () => {
     await writeFile(outsideFile, 'export const outside = "needle";\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [join(workspace, "sub")] },
+      { patterns: ["needle"], paths: [join(workspace, "sub")] },
       "call_search_dir",
     );
     expect(result.result.output).toContain("inside.ts:1:");
@@ -364,7 +364,7 @@ describe("searchFiles", () => {
     await symlink(realWorkspace, linkWorkspace);
     const { tools } = toolsForAgent({ workspace: linkWorkspace });
     const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [filePath] },
+      { patterns: ["needle"], paths: [filePath] },
       "call_search_symlink",
     );
     expect(result.result.output).toContain("inside.ts:1:");
