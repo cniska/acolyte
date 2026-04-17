@@ -53,7 +53,8 @@ function createFindFilesTool(input: ToolkitInput) {
     category: "search",
     description:
       "Find files in the repository by name or path pattern. Pass `patterns` as an array (max 3). To search file contents use `file-search` instead.",
-    instruction: "Use `file-find` to locate files by name/path pattern. Max 3 patterns per call.",
+    instruction:
+      "Use `file-find` to locate files by name/path pattern. Pass `patterns` as an array, max 3 per call. Batch only tightly related lookups.",
     inputSchema: z.object({
       patterns: z.array(z.string().min(1)).min(1).max(3),
     }),
