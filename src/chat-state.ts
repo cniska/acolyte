@@ -136,14 +136,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
-  const prBadge = pr ? `PR #${pr.number}` : null;
-  const footerParts = [
-    workspace,
-    branch ?? "—",
-    prBadge,
-    formatModel(currentSession.model, appConfig.reasoning),
-  ].filter(Boolean);
-  const footerContext = footerParts.join(" · ");
+  const footerContext = branch
+    ? [workspace, branch, pr ? `PR #${pr.number}` : null, formatModel(currentSession.model, appConfig.reasoning)]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
 
   useMountEffect(() => {
     loadSkills().catch(() => {});

@@ -13,6 +13,7 @@ import {
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
+import { emitParts, textHeadTailParts } from "./tool-output-format";
 
 function createGhPrViewTool(input: ToolkitInput) {
   return createTool({
@@ -35,13 +36,14 @@ function createGhPrViewTool(input: ToolkitInput) {
     }),
     execute: async (_toolInput, toolCallId) => {
       return runTool(input.session, "gh-pr-view", toolCallId, {}, async (callId) => {
-        const pr = await ghPrView(input.workspace);
-        const detail = pr ? `#${pr.number} (${pr.state})` : "no PR";
         input.onOutput({
           toolName: "gh-pr-view",
-          content: { kind: "tool-header", labelKey: "tool.label.gh_pr_view", detail },
+          content: { kind: "tool-header", labelKey: "tool.label.gh_pr_view" },
           toolCallId: callId,
         });
+        const pr = await ghPrView(input.workspace);
+        const body = pr ? `#${pr.number} ${pr.state} — ${pr.title}` : "no PR for current branch";
+        input.onOutput({ toolName: "gh-pr-view", content: { kind: "text", text: body }, toolCallId: callId });
         return { kind: "gh-pr-view" as const, pr };
       });
     },
@@ -68,10 +70,15 @@ function createGhPrCreateTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       const createInput: PrCreateInput = { title: toolInput.title, body: toolInput.body, base: toolInput.base };
       return runTool(input.session, "gh-pr-create", toolCallId, toolInput, async (callId) => {
+        input.onOutput({
+          toolName: "gh-pr-create",
+          content: { kind: "tool-header", labelKey: "tool.label.gh_pr_create" },
+          toolCallId: callId,
+        });
         const result = await ghPrCreate(input.workspace, createInput);
         input.onOutput({
           toolName: "gh-pr-create",
-          content: { kind: "tool-header", labelKey: "tool.label.gh_pr_create", detail: `#${result.number}` },
+          content: { kind: "text", text: `#${result.number} ${result.url}` },
           toolCallId: callId,
         });
         return { kind: "gh-pr-create" as const, ...result };
@@ -99,12 +106,13 @@ function createGhPrEditTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       const editInput: PrEditInput = { number: toolInput.number, title: toolInput.title, body: toolInput.body };
       return runTool(input.session, "gh-pr-edit", toolCallId, toolInput, async (callId) => {
-        const output = await ghPrEdit(input.workspace, editInput);
         input.onOutput({
           toolName: "gh-pr-edit",
           content: { kind: "tool-header", labelKey: "tool.label.gh_pr_edit", detail: `#${toolInput.number}` },
           toolCallId: callId,
         });
+        const output = await ghPrEdit(input.workspace, editInput);
+        input.onOutput({ toolName: "gh-pr-edit", content: { kind: "text", text: output }, toolCallId: callId });
         return { kind: "gh-pr-edit" as const, output };
       });
     },
@@ -135,10 +143,15 @@ function createGhIssueCreateTool(input: ToolkitInput) {
         labels: toolInput.labels,
       };
       return runTool(input.session, "gh-issue-create", toolCallId, toolInput, async (callId) => {
+        input.onOutput({
+          toolName: "gh-issue-create",
+          content: { kind: "tool-header", labelKey: "tool.label.gh_issue_create" },
+          toolCallId: callId,
+        });
         const result = await ghIssueCreate(input.workspace, createInput);
         input.onOutput({
           toolName: "gh-issue-create",
-          content: { kind: "tool-header", labelKey: "tool.label.gh_issue_create", detail: `#${result.number}` },
+          content: { kind: "text", text: `#${result.number} ${result.url}` },
           toolCallId: callId,
         });
         return { kind: "gh-issue-create" as const, ...result };
@@ -170,15 +183,17 @@ function createGhIssueListTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "gh-issue-list", toolCallId, toolInput, async (callId) => {
+        input.onOutput({
+          toolName: "gh-issue-list",
+          content: { kind: "tool-header", labelKey: "tool.label.gh_issue_list" },
+          toolCallId: callId,
+        });
         const issues = await ghIssueList(input.workspace, {
           state: toolInput.state,
           limit: toolInput.limit,
         });
-        input.onOutput({
-          toolName: "gh-issue-list",
-          content: { kind: "tool-header", labelKey: "tool.label.gh_issue_list", detail: `${issues.length} issues` },
-          toolCallId: callId,
-        });
+        const lines = issues.map((i) => `#${i.number} ${i.state} ${i.title}`).join("\n");
+        emitParts(textHeadTailParts(lines || "no issues"), "gh-issue-list", input.onOutput, callId);
         return { kind: "gh-issue-list" as const, issues };
       });
     },
