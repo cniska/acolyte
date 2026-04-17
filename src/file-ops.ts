@@ -133,10 +133,19 @@ export async function readFileContent(workspace: string, path: string, maxLines?
 
 export async function readFileContents(workspace: string, paths: string[], maxLines?: number): Promise<string> {
   const results: string[] = [];
+  const errors: string[] = [];
   for (const path of paths) {
-    results.push(await readFileContent(workspace, path, maxLines));
+    try {
+      results.push(await readFileContent(workspace, path, maxLines));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`File: ${path}\nError: ${message}`);
+    }
   }
-  return results.join("\n\n");
+  if (results.length === 0 && errors.length > 0) {
+    throw new Error(errors.join("\n\n"));
+  }
+  return [...results, ...errors].join("\n\n");
 }
 
 export async function editFile(input: {

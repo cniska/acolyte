@@ -36,13 +36,34 @@ describe("path validation — fs", () => {
     expect(output).toContain("line 1");
   });
 
-  test("readFileContents rejects batch when any file exceeds maxLines", async () => {
+  test("readFileContents returns partial results when one file exceeds maxLines", async () => {
     const workspace = dirs.createDir("acolyte-read-batch-");
     const small = join(workspace, `test-small-${testUuid()}.txt`);
     const large = join(workspace, `test-large-${testUuid()}.txt`);
     await writeFile(small, "ok", "utf8");
     await writeFile(large, Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n"), "utf8");
-    await expect(readFileContents(workspace, [small, large], 10)).rejects.toThrow(/too large/);
+    const output = await readFileContents(workspace, [small, large], 10);
+    expect(output).toContain("ok");
+    expect(output).toContain("too large");
+    expect(output).toContain(large);
+  });
+
+  test("readFileContents returns partial results when a file is missing", async () => {
+    const workspace = dirs.createDir("acolyte-read-missing-");
+    const real = join(workspace, `test-real-${testUuid()}.txt`);
+    const missing = join(workspace, `test-missing-${testUuid()}.txt`);
+    await writeFile(real, "hello", "utf8");
+    const output = await readFileContents(workspace, [real, missing]);
+    expect(output).toContain("hello");
+    expect(output).toContain(missing);
+    expect(output).toContain("Error:");
+  });
+
+  test("readFileContents throws when all files fail", async () => {
+    const workspace = dirs.createDir("acolyte-read-allfail-");
+    const missing1 = join(workspace, `missing-1-${testUuid()}.txt`);
+    const missing2 = join(workspace, `missing-2-${testUuid()}.txt`);
+    await expect(readFileContents(workspace, [missing1, missing2])).rejects.toThrow();
   });
 
   test("editFile allows workspace files", async () => {
