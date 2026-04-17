@@ -189,8 +189,8 @@ describe("compactPriorToolResults", () => {
   test("replaces tool result output with compact marker", () => {
     const messages: LanguageModelV3Message[] = [
       { role: "system", content: "you are helpful" },
-      { role: "user", content: [{ type: "text", text: "read foo.ts" }] },
-      toolMsg([{ id: "tc_1", name: "file-read", value: "const x = 1;\n".repeat(500) }]),
+      { role: "user", content: [{ type: "text", text: "search for foo" }] },
+      toolMsg([{ id: "tc_1", name: "file-search", value: "hit:\n".repeat(500) }]),
     ];
     compactPriorToolResults(messages);
     const tool = messages[2];
@@ -201,7 +201,7 @@ describe("compactPriorToolResults", () => {
     if (part.type !== "tool-result") throw new Error("unexpected");
     expect(part.output).toEqual(COMPACTED_OUTPUT);
     expect(part.toolCallId).toBe("tc_1");
-    expect(part.toolName).toBe("file-read");
+    expect(part.toolName).toBe("file-search");
   });
 
   test("skips non-tool messages", () => {
@@ -218,8 +218,8 @@ describe("compactPriorToolResults", () => {
   test("compacts multiple tool messages", () => {
     const messages: LanguageModelV3Message[] = [
       { role: "system", content: "sys" },
-      toolMsg([{ id: "tc_1", name: "file-read", value: "file1 content" }]),
-      toolMsg([{ id: "tc_2", name: "file-read", value: "file2 content" }]),
+      toolMsg([{ id: "tc_1", name: "file-search", value: "hit1" }]),
+      toolMsg([{ id: "tc_2", name: "file-search", value: "hit2" }]),
     ];
     compactPriorToolResults(messages);
     for (const msg of messages.filter((m) => m.role === "tool")) {
@@ -231,10 +231,27 @@ describe("compactPriorToolResults", () => {
     }
   });
 
+  test("preserves file-read results across compaction", () => {
+    const fileContent = "File: src/foo.ts\n1: const x = 1;\n2: const y = 2;\n";
+    const messages: LanguageModelV3Message[] = [
+      toolMsg([{ id: "tc_1", name: "file-read", value: fileContent }]),
+      toolMsg([{ id: "tc_2", name: "file-search", value: "hits" }]),
+    ];
+    compactPriorToolResults(messages);
+    if (messages[0].role !== "tool") throw new Error("unexpected");
+    const readPart = messages[0].content[0];
+    if (readPart.type !== "tool-result") throw new Error("unexpected");
+    expect(readPart.output).toEqual({ type: "text", value: fileContent });
+    if (messages[1].role !== "tool") throw new Error("unexpected");
+    const searchPart = messages[1].content[0];
+    if (searchPart.type !== "tool-result") throw new Error("unexpected");
+    expect(searchPart.output).toEqual(COMPACTED_OUTPUT);
+  });
+
   test("compacts multiple results within a single tool message", () => {
     const messages: LanguageModelV3Message[] = [
       toolMsg([
-        { id: "tc_1", name: "file-read", value: "content1" },
+        { id: "tc_1", name: "file-search", value: "content1" },
         { id: "tc_2", name: "shell-exec", value: "output2" },
       ]),
     ];
@@ -248,7 +265,7 @@ describe("compactPriorToolResults", () => {
   });
 
   test("is idempotent", () => {
-    const messages: LanguageModelV3Message[] = [toolMsg([{ id: "tc_1", name: "file-read", value: "content" }])];
+    const messages: LanguageModelV3Message[] = [toolMsg([{ id: "tc_1", name: "file-search", value: "content" }])];
     compactPriorToolResults(messages);
     compactPriorToolResults(messages);
     if (messages[0].role !== "tool") throw new Error("unexpected");

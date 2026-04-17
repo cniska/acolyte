@@ -285,18 +285,27 @@ export function truncateToolResult(category: ToolCategory | undefined, raw: stri
 export const COMPACTED_OUTPUT = { type: "text" as const, value: "[previous tool result]" };
 
 /**
+ * Tool results whose content the model typically needs to reference across
+ * iterations (e.g. file contents for later edits). Their payloads are left
+ * intact during microcompaction.
+ */
+const PRESERVE_TOOL_RESULTS = new Set<string>(["file-read"]);
+
+/**
  * Replace tool result payloads in all existing tool messages with a compact
  * marker. Called before appending the current step's results so only prior
- * (already-processed) results are compacted.
+ * (already-processed) results are compacted. Tool results listed in
+ * `PRESERVE_TOOL_RESULTS` are kept intact — the model needs their content to
+ * produce correct edits.
  */
 export function compactPriorToolResults(messages: LanguageModelV3Message[]): void {
   for (const message of messages) {
     if (message.role !== "tool") continue;
     for (let i = 0; i < message.content.length; i++) {
       const part = message.content[i];
-      if (part.type === "tool-result") {
-        message.content[i] = { ...part, output: COMPACTED_OUTPUT };
-      }
+      if (part.type !== "tool-result") continue;
+      if (PRESERVE_TOOL_RESULTS.has(part.toolName)) continue;
+      message.content[i] = { ...part, output: COMPACTED_OUTPUT };
     }
   }
 }
