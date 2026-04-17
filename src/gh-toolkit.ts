@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ghInstalled,
   ghIssueCreate,
   ghIssueList,
   ghPrCreate,
@@ -184,7 +185,16 @@ function createGhIssueListTool(input: ToolkitInput) {
   });
 }
 
-export function createGhToolkit(input: ToolkitInput) {
+export function createGhToolkit(input: ToolkitInput):
+  | Record<string, never>
+  | {
+      ghPrView: ReturnType<typeof createGhPrViewTool>;
+      ghPrCreate: ReturnType<typeof createGhPrCreateTool>;
+      ghPrEdit: ReturnType<typeof createGhPrEditTool>;
+      ghIssueCreate: ReturnType<typeof createGhIssueCreateTool>;
+      ghIssueList: ReturnType<typeof createGhIssueListTool>;
+    } {
+  if (!ghInstalled()) return {};
   return {
     ghPrView: createGhPrViewTool(input),
     ghPrCreate: createGhPrCreateTool(input),

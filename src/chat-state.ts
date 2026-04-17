@@ -5,7 +5,7 @@ import { useSuggestions } from "./chat-effects";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { shownBranch, shownCwd, shownPr } from "./chat-layout";
+import { shownBranch, shownCwd } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
@@ -17,6 +17,7 @@ import { createSkillActivator } from "./chat-skill-activator";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
+import { ghPrView } from "./gh-ops";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -150,7 +151,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   useAsyncEffect(async (cancelled) => {
     try {
-      const [branchResult, prResult] = await Promise.all([shownBranch(), shownPr()]);
+      const [branchResult, prResult] = await Promise.all([shownBranch(), ghPrView(process.cwd())]);
       if (!cancelled()) {
         setBranch(branchResult);
         setPr(prResult);

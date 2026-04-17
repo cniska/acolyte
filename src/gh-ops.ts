@@ -3,6 +3,19 @@ import { runCommand } from "./tool-utils";
 const DEFAULT_ISSUE_LIMIT = 30;
 const MAX_ISSUE_LIMIT = 100;
 
+let ghInstalledCache: boolean | undefined;
+
+export function ghInstalled(): boolean {
+  if (ghInstalledCache !== undefined) return ghInstalledCache;
+  try {
+    const result = Bun.spawnSync({ cmd: ["gh", "--version"], stdout: "pipe", stderr: "pipe" });
+    ghInstalledCache = result.exitCode === 0;
+  } catch {
+    ghInstalledCache = false;
+  }
+  return ghInstalledCache;
+}
+
 export type PrInfo = {
   number: number;
   state: string;

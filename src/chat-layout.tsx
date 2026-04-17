@@ -29,25 +29,6 @@ export function shownCwd(): string {
   return cwd;
 }
 
-export async function shownPr(cwd = process.cwd()): Promise<{ number: number; state: string } | null> {
-  try {
-    const proc = Bun.spawn({
-      cmd: ["gh", "pr", "view", "--json", "number,state"],
-      cwd,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const [stdoutText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-    const exitCode = await proc.exited;
-    if (exitCode !== 0) return null;
-    const data = JSON.parse(stdoutText.trim());
-    if (typeof data.number !== "number" || typeof data.state !== "string") return null;
-    return { number: data.number, state: data.state };
-  } catch {
-    return null;
-  }
-}
-
 export async function shownBranch(cwd = process.cwd()): Promise<string | null> {
   const proc = Bun.spawn({
     cmd: ["git", "branch", "--show-current"],
