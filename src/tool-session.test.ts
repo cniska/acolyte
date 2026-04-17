@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { checkStepBudget, createSessionContext, recordCall, resetTurnStepCount } from "./tool-session";
+import {
+  checkStepBudget,
+  createSessionContext,
+  preWriteDiscoveryCount,
+  recordCall,
+  resetTurnStepCount,
+} from "./tool-session";
 
 describe("step budget", () => {
   test("blocks when turn step count reaches turn limit", () => {
@@ -114,6 +120,65 @@ describe("consecutive failures", () => {
     recordCall(session, "file-edit", {}, undefined, "failed");
     recordCall(session, "file-edit", {}, undefined, "failed");
     expect(checkStepBudget(session)).toBeUndefined();
+  });
+});
+
+describe("pre-write discovery budget", () => {
+  const writeTools = new Set(["file-edit", "file-create"]);
+  const discoveryTools = new Set(["file-read", "file-search", "file-find"]);
+
+  test("counts consecutive discovery calls since last write", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    recordCall(session, "file-search", {});
+    recordCall(session, "file-read", {});
+    recordCall(session, "file-edit", {});
+    recordCall(session, "file-search", {});
+    recordCall(session, "file-find", {});
+    expect(preWriteDiscoveryCount(session)).toBe(2);
+  });
+
+  test("returns total discovery count when no writes have happened", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    recordCall(session, "file-search", {});
+    recordCall(session, "file-read", {});
+    recordCall(session, "file-find", {});
+    expect(preWriteDiscoveryCount(session)).toBe(3);
+  });
+
+  test("ignores non-discovery, non-write calls when counting", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    recordCall(session, "file-read", {});
+    recordCall(session, "web-fetch", {});
+    recordCall(session, "file-search", {});
+    expect(preWriteDiscoveryCount(session)).toBe(2);
+  });
+
+  test("blocks discovery tool when limit reached", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    session.flags.preWriteDiscoveryLimit = 3;
+    for (let i = 0; i < 3; i++) recordCall(session, "file-search", {});
+    expect(checkStepBudget(session, "file-read")).toContain("discovery");
+  });
+
+  test("does not block write tool when discovery limit reached", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    session.flags.preWriteDiscoveryLimit = 3;
+    for (let i = 0; i < 3; i++) recordCall(session, "file-search", {});
+    expect(checkStepBudget(session, "file-edit")).toBeUndefined();
+  });
+
+  test("allows discovery after a write resets the count", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    session.flags.preWriteDiscoveryLimit = 3;
+    for (let i = 0; i < 3; i++) recordCall(session, "file-search", {});
+    recordCall(session, "file-edit", {});
+    expect(checkStepBudget(session, "file-read")).toBeUndefined();
+  });
+
+  test("is inactive when no limit is set", () => {
+    const session = createSessionContext(undefined, writeTools, discoveryTools);
+    for (let i = 0; i < 20; i++) recordCall(session, "file-search", {});
+    expect(checkStepBudget(session, "file-read")).toBeUndefined();
   });
 });
 

@@ -1,6 +1,7 @@
 import {
   MAX_CONSECUTIVE_TOOL_FAILURES,
   MAX_CONTEXT_TOKENS,
+  MAX_PRE_WRITE_DISCOVERY,
   MAX_TOTAL_STEPS,
   MAX_TOTAL_TOKENS,
   MAX_TURN_STEPS,
@@ -22,6 +23,7 @@ export type LifecyclePolicy = {
   contextMaxTokens: number;
   maxTotalTokens: number;
   maxConsecutiveToolFailures: number;
+  maxPreWriteDiscovery: number;
   // Workspace commands
   installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
@@ -37,6 +39,7 @@ export const defaultLifecyclePolicy: LifecyclePolicy = {
   contextMaxTokens: MAX_CONTEXT_TOKENS,
   maxTotalTokens: MAX_TOTAL_TOKENS,
   maxConsecutiveToolFailures: MAX_CONSECUTIVE_TOOL_FAILURES,
+  maxPreWriteDiscovery: MAX_PRE_WRITE_DISCOVERY,
 };
 
 export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

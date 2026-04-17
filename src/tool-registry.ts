@@ -157,7 +157,7 @@ export function toolsForAgent(options?: {
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
-  const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
+  const session = createSessionContext(options?.taskId, WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   const base = collectTools(workspace, session, options?.onOutput, options?.onChecklist, options?.sessionId);
   if (options?.mcpListings?.length) {

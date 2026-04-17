@@ -20,6 +20,7 @@ export type SessionFlags = {
   totalStepLimit?: number;
   totalTokenLimit?: number;
   totalTokens?: () => number;
+  preWriteDiscoveryLimit?: number;
 };
 
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
@@ -47,6 +48,7 @@ export type SessionContext = {
   taskId?: string;
   flags: SessionFlags;
   writeTools: ReadonlySet<string>;
+  discoveryTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
   cache?: ToolCache;
   featureFlags?: ResolvedFeatureFlags;
@@ -61,15 +63,30 @@ export type SessionContext = {
   activeSkills?: ActiveSkill[];
 };
 
-export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
+export function createSessionContext(
+  taskId?: string,
+  writeTools: ReadonlySet<string> = new Set(),
+  discoveryTools: ReadonlySet<string> = new Set(),
+): SessionContext {
   return {
     callLog: [],
     taskId,
     flags: {},
     writeTools,
+    discoveryTools,
     toolTimeoutMs: TOOL_TIMEOUT_MS,
     consecutiveFailures: new Map(),
   };
+}
+
+export function preWriteDiscoveryCount(session: SessionContext): number {
+  let count = 0;
+  for (let i = session.callLog.length - 1; i >= 0; i--) {
+    const entry = session.callLog[i];
+    if (session.writeTools.has(entry.toolName)) return count;
+    if (session.discoveryTools.has(entry.toolName)) count++;
+  }
+  return count;
 }
 
 export function scopedCallLog(session: Pick<SessionContext, "callLog" | "taskId">, taskId?: string): ToolCallRecord[] {
@@ -98,6 +115,16 @@ export function checkStepBudget(session: SessionContext, toolId?: string): strin
     const failures = session.consecutiveFailures.get(toolId) ?? 0;
     if (failures >= limit) {
       return `Tool "${toolId}" failed ${failures} times consecutively. Skipping further attempts.`;
+    }
+  }
+
+  if (toolId && session.discoveryTools.has(toolId)) {
+    const preWriteLimit = session.flags.preWriteDiscoveryLimit;
+    if (preWriteLimit !== undefined) {
+      const count = preWriteDiscoveryCount(session);
+      if (count >= preWriteLimit) {
+        return `You have made ${count} discovery (read/search) calls without writing anything. Start implementing with file-edit, file-create, or code-edit. If you cannot start, respond with @signal blocked and explain what is missing.`;
+      }
     }
   }
 

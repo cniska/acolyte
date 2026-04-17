@@ -12,6 +12,7 @@ export const MAX_TOTAL_TOKENS = 150_000;
 export const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
 export const MAX_TOOL_RESULT_CHARS = 30_000;
 export const MAX_RECENT_TURNS = 5;
+export const MAX_PRE_WRITE_DISCOVERY = 8;
 
 export const TOOL_RESULT_MAX_CHARS: Record<ToolCategory, number> = {
   search: 2_000,

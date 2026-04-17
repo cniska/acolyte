@@ -302,6 +302,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   ctx.session.flags.totalTokenLimit = policy.maxTotalTokens;
   ctx.session.flags.totalTokens = () => ctx.inputTokensAccum + ctx.outputTokensAccum;
   ctx.session.maxConsecutiveToolFailures = policy.maxConsecutiveToolFailures;
+  ctx.session.flags.preWriteDiscoveryLimit = policy.maxPreWriteDiscovery;
   if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, model });
