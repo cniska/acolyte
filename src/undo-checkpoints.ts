@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
-import { normalizePath } from "./tool-arg-paths";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 export type UndoCheckpointEntry = {
@@ -39,7 +38,8 @@ const UNDO_CHECKPOINT_MAX_HASH_BYTES = 5_000_000;
 function ensureSafeRelPath(workspace: string, pathInput: string): string {
   const abs = ensurePathWithinSandbox(pathInput, workspace);
   const rel = relative(workspace, abs).replace(/\\/g, "/");
-  const normalized = normalizePath(rel);
+  const stripped = rel.endsWith("/") ? rel.replace(/\/+$/, "") : rel;
+  const normalized = stripped.startsWith("./") ? stripped.slice(2) : stripped;
   if (!normalized || normalized.startsWith("..")) throw new Error(`Invalid path outside workspace: ${pathInput}`);
   return normalized;
 }

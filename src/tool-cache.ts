@@ -1,4 +1,3 @@
-import { extractReadPaths, normalizePath } from "./tool-arg-paths";
 import type { ToolCacheStore } from "./tool-cache-store";
 import type { ToolCache, ToolCacheEntry } from "./tool-contract";
 
@@ -16,31 +15,34 @@ function stableJSON(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function normalizePath(p: string): string {
+  const trimmed = p.endsWith("/") ? p.replace(/\/+$/, "") : p;
+  return trimmed.startsWith("./") ? trimmed.slice(2) : trimmed;
+}
+
+function extractNormalizedPath(args: Record<string, unknown>): string[] {
+  const path = args.path;
+  if (typeof path === "string" && path.trim().length > 0) return [normalizePath(path.trim())];
+  return [];
+}
+
+function extractNormalizedPaths(args: Record<string, unknown>): string[] {
+  const paths = args.paths;
+  if (!Array.isArray(paths)) return [];
+  return paths
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+    .map((p) => normalizePath(p.trim()));
+}
+
 function extractWrittenPaths(toolName: string, args: Record<string, unknown>): string[] {
-  if (toolName === "file-edit" || toolName === "file-create" || toolName === "file-delete") {
-    const path = args.path;
-    if (typeof path === "string" && path.trim().length > 0) return [normalizePath(path.trim())];
-    const paths = args.paths;
-    if (Array.isArray(paths)) {
-      return paths
-        .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
-        .map((p) => normalizePath(p.trim()));
-    }
-  }
-  if (toolName === "undo-restore") {
-    const paths = args.paths;
-    if (Array.isArray(paths)) {
-      return paths
-        .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
-        .map((p) => normalizePath(p.trim()));
-    }
-  }
+  if (toolName === "file-edit" || toolName === "file-create" || toolName === "file-delete")
+    return extractNormalizedPath(args);
+  if (toolName === "undo-restore") return extractNormalizedPaths(args);
   return [];
 }
 
 function extractCachedPaths(toolName: string, args: Record<string, unknown>): string[] {
-  if (toolName === "file-read") return extractReadPaths(args, { normalize: true });
-  if (toolName === "code-scan") return extractReadPaths(args, { normalize: true });
+  if (toolName === "file-read" || toolName === "code-scan") return extractNormalizedPath(args);
   return [];
 }
 
