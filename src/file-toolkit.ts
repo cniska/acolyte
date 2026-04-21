@@ -11,11 +11,6 @@ import {
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
 
-function normalizeUniquePaths(paths: string[]): string[] {
-  const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
-  return Array.from(new Set(normalized));
-}
-
 function toDisplayPath(path: string, workspace?: string): string {
   const trimmed = path.trim().replace(/\\/g, "/");
   if (trimmed.startsWith("./")) return trimmed.slice(2);
@@ -23,14 +18,6 @@ function toDisplayPath(path: string, workspace?: string): string {
   const rel = relative(workspace, trimmed).replace(/\\/g, "/");
   if (!rel || rel.startsWith("..")) return trimmed;
   return rel || trimmed;
-}
-
-function formatDeletePaths(paths: string[]): string {
-  if (paths.length === 0) return "";
-  if (paths.length === 1) return paths[0] ?? "";
-  const shown = paths.slice(0, 3).join(", ");
-  const remaining = paths.length - Math.min(paths.length, 3);
-  return remaining > 0 ? `${shown} (+${remaining})` : shown;
 }
 
 function createFindFilesTool(input: ToolkitInput) {
@@ -286,33 +273,29 @@ function createDeleteFileTool(input: ToolkitInput) {
     id: "file-delete",
     toolkit: "file",
     category: "write",
-    description: "Delete a file from the repository.",
-    instruction: "Use `file-delete` to remove files. Pass `paths` as an array and batch related deletes.",
+    description: "Delete a single file from the repository. Use parallel tool calls to delete multiple files.",
+    instruction: "Use `file-delete` to remove a file.",
     inputSchema: z.object({
-      paths: z.array(z.string().min(1)).min(1),
+      path: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-delete"),
-      paths: z.array(z.string().min(1)),
-      deleted: z.number().int().nonnegative(),
+      path: z.string().min(1),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-delete", toolCallId, toolInput, async (callId) => {
-        const paths = normalizeUniquePaths(toolInput.paths);
-        const deleteDetail = paths.length > 0 ? formatDeletePaths(paths) : undefined;
         input.onOutput({
           toolName: "file-delete",
-          content: { kind: "tool-header", labelKey: "tool.label.file_delete", detail: deleteDetail },
+          content: {
+            kind: "tool-header",
+            labelKey: "tool.label.file_delete",
+            detail: toDisplayPath(toolInput.path, input.workspace),
+          },
           toolCallId: callId,
         });
-        const resultParts: string[] = [];
-        for (const path of paths) {
-          const rawResult = await deleteTextFile({ workspace: input.workspace, path });
-          resultParts.push(rawResult);
-        }
-        const rawResult = resultParts.join("\n\n");
-        return { kind: "file-delete" as const, paths, deleted: paths.length, output: rawResult };
+        const output = await deleteTextFile({ workspace: input.workspace, path: toolInput.path });
+        return { kind: "file-delete" as const, path: toolInput.path, output };
       });
     },
   });

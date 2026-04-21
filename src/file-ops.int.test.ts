@@ -379,7 +379,7 @@ describe("deleteFile", () => {
     const filePath = join(workspace, `test-delete-${testUuid()}.txt`);
     await writeFile(filePath, "alpha\nbeta\n", "utf8");
     const { tools, session } = toolsForAgent({ workspace });
-    const result = await tools.deleteFile.execute({ paths: [filePath] }, "call_delete_ws");
+    const result = await tools.deleteFile.execute({ path: filePath }, "call_delete_ws");
     expect(result.result.output).toContain("bytes=");
     expect(session.callLog[0]?.toolName).toBe("file-delete");
     const { tools: tools2 } = toolsForAgent({ workspace });
