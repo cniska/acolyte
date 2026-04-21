@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
+import type { FooterState } from "./chat-footer";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
@@ -17,6 +18,7 @@ import { createSkillActivator } from "./chat-skill-activator";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
+import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
@@ -54,7 +56,7 @@ export interface ChatStateResult {
   showHelp: boolean;
   ctrlCPending: boolean;
   activeSessionId: string | undefined;
-  footerContext: string;
+  footer: FooterState | undefined;
   handleInputChange: (next: string) => void;
   handleInputSubmit: (next: string) => void;
   handlePickerQueryChange: (query: string) => void;
@@ -123,7 +125,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const cursorLineRef = useRef(0);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
-  const [pr, setPr] = useState<{ number: number; state: string } | null>(null);
+  const [pr, setPr] = useState<PrInfo | null>(null);
 
   const { promotedRows, promote, clearTranscript } = usePromotion({
     version: props.version,
@@ -136,11 +138,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const workspace = shownCwd();
-  const footerContext = branch
-    ? [workspace, branch, pr ? `PR #${pr.number}` : null, formatModel(currentSession.model, appConfig.reasoning)]
-        .filter(Boolean)
-        .join(" · ")
-    : "";
+  const footerModel = formatModel(currentSession.model, appConfig.reasoning);
+  const footer = branch ? { workspace, branch, pr, model: footerModel } : undefined;
 
   useMountEffect(() => {
     loadSkills().catch(() => {});
@@ -353,7 +352,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     showHelp,
     ctrlCPending,
     activeSessionId: sessionState.activeSessionId,
-    footerContext,
+    footer,
     handleInputChange,
     handleInputSubmit,
     handlePickerQueryChange,

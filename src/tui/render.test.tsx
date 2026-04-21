@@ -268,7 +268,7 @@ describe("render", () => {
                 onCursorLine={() => {}}
                 brandColor="white"
                 value=""
-                footerContext="~/code/acolyte · main · qwen3-235b-a22b-thinking"
+                footer={{ workspace: "~/code/acolyte", branch: "main", pr: null, model: "qwen3-235b-a22b-thinking" }}
               />
             </tui-box>
           );

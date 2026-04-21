@@ -1,5 +1,6 @@
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
+import { FooterContext, type FooterState } from "./chat-footer";
 import { BREAKPOINT_TWO_COLUMN, borderLine, SHORTCUT_ITEMS } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
@@ -14,7 +15,7 @@ type ChatInputPanelProps = {
   onPickerSubmit?: () => void;
   activeSessionId?: string | undefined;
   brandColor?: string;
-  footerContext?: string;
+  footer?: FooterState;
   value?: string;
   inputRevision?: number;
   onChange?: (next: string) => void;
@@ -122,7 +123,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     onPickerSubmit = noop,
     activeSessionId,
     brandColor = "white",
-    footerContext = "",
+    footer,
     value = "",
     inputRevision = 0,
     onChange = noop,
@@ -201,10 +202,10 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           slashSuggestionIndex,
         })
       )}
-      {showFooter && !showHelp && value.length === 0 ? (
+      {showFooter && !showHelp && value.length === 0 && footer ? (
         <Box justifyContent="space-between" width={termWidth}>
           <Text dimColor>{`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : `? ${t("chat.input.help_hint")}`}`}</Text>
-          <Text dimColor>{`${footerContext}  `}</Text>
+          <FooterContext {...footer} />
         </Box>
       ) : null}
     </>

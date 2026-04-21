@@ -1,3 +1,12 @@
+import {
+  type CreateResult,
+  createResultSchema,
+  type IssueInfo,
+  issueInfoSchema,
+  issueListSchema,
+  type PrInfo,
+  prInfoSchema,
+} from "./gh-contract";
 import { runCommand } from "./tool-utils";
 
 const DEFAULT_ISSUE_LIMIT = 30;
@@ -16,13 +25,6 @@ export function ghInstalled(): boolean {
   return ghInstalledCache;
 }
 
-export type PrInfo = {
-  number: number;
-  state: string;
-  title: string;
-  url: string;
-};
-
 export async function ghAvailable(workspace: string): Promise<boolean> {
   try {
     const { code } = await runCommand(["gh", "auth", "status"], workspace);
@@ -36,18 +38,15 @@ export async function ghPrView(workspace: string): Promise<PrInfo | null> {
   try {
     const { code, stdout } = await runCommand(["gh", "pr", "view", "--json", "number,state,title,url"], workspace);
     if (code !== 0) return null;
-    const data = JSON.parse(stdout.trim());
-    if (typeof data.number !== "number" || typeof data.state !== "string") return null;
-    return { number: data.number, state: data.state, title: data.title ?? "", url: data.url ?? "" };
+    return prInfoSchema.parse(JSON.parse(stdout.trim()));
   } catch {
     return null;
   }
 }
 
 export type PrCreateInput = { title: string; body: string; base?: string };
-export type PrCreateResult = { number: number; url: string };
 
-export async function ghPrCreate(workspace: string, input: PrCreateInput): Promise<PrCreateResult> {
+export async function ghPrCreate(workspace: string, input: PrCreateInput): Promise<CreateResult> {
   const args = ["gh", "pr", "create", "--title", input.title, "--body", input.body];
   if (input.base) args.push("--base", input.base);
   const { code, stdout, stderr } = await runCommand(args, workspace);
@@ -55,7 +54,7 @@ export async function ghPrCreate(workspace: string, input: PrCreateInput): Promi
   const url = stdout.trim();
   const match = url.match(/\/pull\/(\d+)$/);
   const number = match ? Number.parseInt(match[1], 10) : 0;
-  return { number, url };
+  return createResultSchema.parse({ number, url });
 }
 
 export type PrEditInput = { number: number; title?: string; body?: string };
@@ -69,12 +68,9 @@ export async function ghPrEdit(workspace: string, input: PrEditInput): Promise<s
   return stdout.trim() || "updated";
 }
 
-export type IssueInfo = { number: number; state: string; title: string };
-
 export type IssueCreateInput = { title: string; body: string; labels?: string[] };
-export type IssueCreateResult = { number: number; url: string };
 
-export async function ghIssueCreate(workspace: string, input: IssueCreateInput): Promise<IssueCreateResult> {
+export async function ghIssueCreate(workspace: string, input: IssueCreateInput): Promise<CreateResult> {
   const args = ["gh", "issue", "create", "--title", input.title, "--body", input.body];
   for (const label of input.labels ?? []) args.push("--label", label);
   const { code, stdout, stderr } = await runCommand(args, workspace);
@@ -82,7 +78,7 @@ export async function ghIssueCreate(workspace: string, input: IssueCreateInput):
   const url = stdout.trim();
   const match = url.match(/\/issues\/(\d+)$/);
   const number = match ? Number.parseInt(match[1], 10) : 0;
-  return { number, url };
+  return createResultSchema.parse({ number, url });
 }
 
 export async function ghIssueView(workspace: string, number: number): Promise<IssueInfo | null> {
@@ -92,9 +88,7 @@ export async function ghIssueView(workspace: string, number: number): Promise<Is
       workspace,
     );
     if (code !== 0) return null;
-    const data = JSON.parse(stdout.trim());
-    if (typeof data.number !== "number") return null;
-    return { number: data.number, state: data.state ?? "", title: data.title ?? "" };
+    return issueInfoSchema.parse(JSON.parse(stdout.trim()));
   } catch {
     return null;
   }
@@ -110,15 +104,7 @@ export async function ghIssueList(
   try {
     const { code, stdout } = await runCommand(args, workspace);
     if (code !== 0) return [];
-    const data = JSON.parse(stdout.trim());
-    if (!Array.isArray(data)) return [];
-    return data
-      .filter((item: unknown) => typeof item === "object" && item !== null && "number" in item)
-      .map((item: Record<string, unknown>) => ({
-        number: item.number as number,
-        state: (item.state as string) ?? "",
-        title: (item.title as string) ?? "",
-      }));
+    return issueListSchema.parse(JSON.parse(stdout.trim()));
   } catch {
     return [];
   }

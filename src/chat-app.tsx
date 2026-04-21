@@ -64,7 +64,7 @@ function ChatApp(props: ChatAppProps) {
         onPickerSubmit={state.handlePickerSubmit}
         activeSessionId={state.activeSessionId}
         brandColor={palette.brand}
-        footerContext={state.footerContext}
+        footer={state.footer}
         value={state.value}
         inputRevision={state.inputRevision}
         onChange={state.handleInputChange}
