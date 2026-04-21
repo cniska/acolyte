@@ -141,46 +141,6 @@ describe("tool-cache", () => {
     expect(cache.get("file-read", { paths: [{ path: "c.ts" }] })).toBeDefined();
   });
 
-  test("populateSubEntries splits multi-file read into per-file cache entries", () => {
-    const cache = createToolCache(CACHEABLE);
-    const multiArgs = { paths: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
-    const output = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
-    const result = { kind: "file-read", paths: ["src/a.ts", "src/b.ts"], output };
-    cache.set("file-read", multiArgs, { result });
-    cache.populateSubEntries("file-read", multiArgs, result);
-    const hitA = cache.get("file-read", { paths: [{ path: "src/a.ts" }] });
-    expect(hitA).toBeDefined();
-    expect((hitA?.result as { output: string }).output).toBe("File: /workspace/src/a.ts\n1: const a = 1;");
-    const hitB = cache.get("file-read", { paths: [{ path: "src/b.ts" }] });
-    expect(hitB).toBeDefined();
-    expect((hitB?.result as { output: string }).output).toBe("File: /workspace/src/b.ts\n1: const b = 2;");
-  });
-
-  test("populateSubEntries does nothing for single-file reads", () => {
-    const cache = createToolCache(CACHEABLE);
-    const args = { paths: [{ path: "src/a.ts" }] };
-    const result = { kind: "file-read", paths: ["src/a.ts"], output: "File: /workspace/src/a.ts\n1: const a = 1;" };
-    cache.set("file-read", args, { result });
-    cache.populateSubEntries("file-read", args, result);
-    // Only the original entry exists, no extra sub-entries
-    expect(cache.stats().size).toBe(1);
-  });
-
-  test("write invalidation evicts sub-entry for written file", () => {
-    const cache = createToolCache(CACHEABLE);
-    const multiArgs = { paths: [{ path: "src/a.ts" }, { path: "src/b.ts" }] };
-    const output = "File: /workspace/src/a.ts\n1: const a = 1;\n\nFile: /workspace/src/b.ts\n1: const b = 2;";
-    const result = { kind: "file-read", paths: ["src/a.ts", "src/b.ts"], output };
-    cache.set("file-read", multiArgs, { result });
-    cache.populateSubEntries("file-read", multiArgs, result);
-    cache.invalidateForWrite("file-edit", { path: "src/a.ts" });
-    // a.ts sub-entry and multi-read entry both evicted
-    expect(cache.get("file-read", { paths: [{ path: "src/a.ts" }] })).toBeUndefined();
-    expect(cache.get("file-read", multiArgs)).toBeUndefined();
-    // b.ts sub-entry survives
-    expect(cache.get("file-read", { paths: [{ path: "src/b.ts" }] })).toBeDefined();
-  });
-
   test("stats track hits, misses, and invalidations", () => {
     const cache = createToolCache(CACHEABLE);
     const args = { paths: [{ path: "a.ts" }] };

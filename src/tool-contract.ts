@@ -38,7 +38,6 @@ export type ToolCache = {
   isCacheable(toolName: string): boolean;
   get(toolName: string, args: Record<string, unknown>): ToolCacheEntry | undefined;
   set(toolName: string, args: Record<string, unknown>, entry: ToolCacheEntry): void;
-  populateSubEntries(toolName: string, args: Record<string, unknown>, result: unknown): void;
   invalidateForWrite(toolName: string, args: Record<string, unknown>): void;
   clear(): void;
   stats(): { hits: number; misses: number; invalidations: number; evictions: number; size: number };

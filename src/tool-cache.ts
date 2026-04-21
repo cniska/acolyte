@@ -44,16 +44,6 @@ function extractCachedPaths(toolName: string, args: Record<string, unknown>): st
   return [];
 }
 
-type ReadFileResult = { kind: "file-read"; paths: string[]; output: string };
-
-function asReadFileResult(result: unknown): ReadFileResult | null {
-  if (typeof result !== "object" || result === null) return null;
-  if (!("kind" in result) || result.kind !== "file-read") return null;
-  if (!("output" in result) || typeof result.output !== "string") return null;
-  if (!("paths" in result) || !Array.isArray(result.paths)) return null;
-  return { kind: "file-read", paths: result.paths, output: result.output };
-}
-
 const DEFAULT_MAX_ENTRIES = 256;
 
 export function createToolCache(
@@ -141,25 +131,6 @@ export function createToolCache(
         } catch {
           // Non-fatal — L1 cache still works.
         }
-      }
-    },
-
-    populateSubEntries(toolName, args, result) {
-      if (toolName !== "file-read") return;
-      const paths = args.paths;
-      if (!Array.isArray(paths) || paths.length < 2) return;
-      const parsed = asReadFileResult(result);
-      if (!parsed) return;
-      const sections = parsed.output.split("\n\nFile: ");
-      if (sections.length < 2) return;
-      const normalized = [sections[0], ...sections.slice(1).map((s) => `File: ${s}`)];
-      for (let i = 0; i < normalized.length && i < paths.length; i++) {
-        const entry = paths[i];
-        if (!entry || typeof entry !== "object") continue;
-        const p = "path" in entry ? entry.path : undefined;
-        if (typeof p !== "string") continue;
-        const subResult: ReadFileResult = { kind: "file-read", paths: [p], output: normalized[i] ?? "" };
-        this.set(toolName, { paths: [{ path: p }] }, { result: subResult });
       }
     },
 

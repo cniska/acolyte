@@ -131,14 +131,6 @@ export async function readFileContent(workspace: string, path: string, maxLines?
   return [`File: ${absPath}`, ...numbered].join("\n");
 }
 
-export async function readFileContents(workspace: string, paths: string[], maxLines?: number): Promise<string> {
-  const results: string[] = [];
-  for (const path of paths) {
-    results.push(await readFileContent(workspace, path, maxLines));
-  }
-  return results.join("\n\n");
-}
-
 export async function editFile(input: {
   workspace: string;
   path: string;
