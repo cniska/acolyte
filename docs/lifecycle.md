@@ -30,6 +30,12 @@ One generation pass runs, effects apply inline during tool execution, and the li
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
 - this is the only pre-tool policy check; there is no guard abstraction
 
+## Microcompaction
+
+- between model calls, prior tool results in the message history are replaced with a short marker so they stop consuming input tokens on re-send
+- `file-read` results are preserved intact so the model can still reference file contents when producing later edits
+- implemented in `compactPriorToolResults()` in `agent-stream.ts`
+
 ## Run control
 
 - `RunControl` is a first-class abstraction that owns yield and cancellation behavior for a lifecycle run
