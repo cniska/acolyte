@@ -3,6 +3,7 @@ import { invariant } from "./assert";
 import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
+import { createGhToolkit } from "./gh-toolkit";
 import { createGitToolkit } from "./git-toolkit";
 import { bindMcpTools, type McpToolListing } from "./mcp-client";
 import { createMemoryToolkit } from "./memory-toolkit";
@@ -26,6 +27,7 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createWebToolkit> &
   ReturnType<typeof createShellToolkit> &
   ReturnType<typeof createTestToolkit> &
+  ReturnType<typeof createGhToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit> &
   ReturnType<typeof createSessionToolkit> &
@@ -74,6 +76,10 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "checklist",
     createToolkit: (input) => createChecklistToolkit(input),
+  },
+  {
+    id: "gh",
+    createToolkit: (input) => createGhToolkit(input),
   },
   {
     id: "git",

@@ -12,7 +12,7 @@ function renderInputPanelWithPicker(picker: PickerState, columns = DEFAULT_TERMI
       picker={picker}
       activeSessionId="sess_active"
       brandColor={palette.brand}
-      footerContext="~/code/acolyte · main · gpt-5-mini"
+      footer={{ workspace: "~/code/acolyte", branch: "main", pr: null, model: "gpt-5-mini" }}
       onCursorLine={() => {}}
     />,
     columns,

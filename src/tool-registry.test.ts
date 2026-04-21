@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { ghInstalled } from "./gh-ops";
 import { expectIntent } from "./test-utils";
 import { renderToolOutput } from "./tool-output-render";
 import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
@@ -6,7 +7,7 @@ import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "
 describe("toolsets", () => {
   test("returns all tools", () => {
     const { tools, session } = toolsForAgent();
-    expect(Object.keys(tools).sort()).toEqual([
+    const coreTools = [
       "activateSkill",
       "createChecklist",
       "createFile",
@@ -35,7 +36,10 @@ describe("toolsets", () => {
       "updateChecklist",
       "webFetch",
       "webSearch",
-    ]);
+    ];
+    const ghTools = ["ghIssueCreate", "ghIssueList", "ghPrCreate", "ghPrEdit", "ghPrView"];
+    const expected = ghInstalled() ? [...coreTools, ...ghTools].sort() : coreTools;
+    expect(Object.keys(tools).sort()).toEqual(expected);
     expect(session).toBeDefined();
     expect(session.callLog).toEqual([]);
   });
