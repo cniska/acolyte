@@ -22,13 +22,13 @@ describe("tool-cache", () => {
 
   test("cache miss returns undefined", () => {
     const cache = createToolCache(CACHEABLE);
-    expect(cache.get("file-read", { paths: [{ path: "src/foo.ts" }] })).toBeUndefined();
+    expect(cache.get("file-read", { path: "src/foo.ts" })).toBeUndefined();
     expect(cache.stats().misses).toBe(1);
   });
 
   test("cache hit returns stored entry", () => {
     const cache = createToolCache(CACHEABLE);
-    const args = { paths: [{ path: "src/foo.ts" }] };
+    const args = { path: "src/foo.ts" };
     const entry = { result: { kind: "file-read", output: "file content" } };
     cache.set("file-read", args, entry);
     const hit = cache.get("file-read", args);
@@ -38,15 +38,15 @@ describe("tool-cache", () => {
 
   test("different args produce cache miss", () => {
     const cache = createToolCache(CACHEABLE);
-    cache.set("file-read", { paths: [{ path: "src/foo.ts" }] }, { result: "a" });
-    expect(cache.get("file-read", { paths: [{ path: "src/bar.ts" }] })).toBeUndefined();
+    cache.set("file-read", { path: "src/foo.ts" }, { result: "a" });
+    expect(cache.get("file-read", { path: "src/bar.ts" })).toBeUndefined();
     expect(cache.stats().misses).toBe(1);
   });
 
   test("stable key ignores object key order", () => {
     const cache = createToolCache(CACHEABLE);
-    cache.set("file-read", { paths: [{ path: "a.ts" }], extra: 1 }, { result: "ok" });
-    const hit = cache.get("file-read", { extra: 1, paths: [{ path: "a.ts" }] });
+    cache.set("file-read", { path: "a.ts", extra: 1 }, { result: "ok" });
+    const hit = cache.get("file-read", { extra: 1, path: "a.ts" });
     expect(hit).toBeDefined();
     expect(hit?.result).toBe("ok");
   });
@@ -60,11 +60,11 @@ describe("tool-cache", () => {
 
   test("invalidateForWrite evicts entries with overlapping paths", () => {
     const cache = createToolCache(CACHEABLE);
-    cache.set("file-read", { paths: [{ path: "src/foo.ts" }] }, { result: "a" });
-    cache.set("file-read", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
+    cache.set("file-read", { path: "src/foo.ts" }, { result: "a" });
+    cache.set("file-read", { path: "src/bar.ts" }, { result: "b" });
     cache.invalidateForWrite("file-edit", { path: "src/foo.ts" });
-    expect(cache.get("file-read", { paths: [{ path: "src/foo.ts" }] })).toBeUndefined();
-    expect(cache.get("file-read", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
+    expect(cache.get("file-read", { path: "src/foo.ts" })).toBeUndefined();
+    expect(cache.get("file-read", { path: "src/bar.ts" })).toBeDefined();
     expect(cache.stats().invalidations).toBeGreaterThan(0);
   });
 
@@ -72,28 +72,28 @@ describe("tool-cache", () => {
     const cache = createToolCache(CACHEABLE);
     cache.set("file-search", { pattern: "foo" }, { result: "results" });
     cache.set("file-find", { pattern: "*.ts" }, { result: "files" });
-    cache.set("file-read", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
+    cache.set("file-read", { path: "src/bar.ts" }, { result: "b" });
     cache.invalidateForWrite("file-edit", { path: "src/other.ts" });
     // search/find evicted
     expect(cache.get("file-search", { pattern: "foo" })).toBeUndefined();
     expect(cache.get("file-find", { pattern: "*.ts" })).toBeUndefined();
     // unrelated file-read kept
-    expect(cache.get("file-read", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
+    expect(cache.get("file-read", { path: "src/bar.ts" })).toBeDefined();
   });
 
   test("invalidateForWrite evicts pathless entries even with unextractable write args", () => {
     const cache = createToolCache(CACHEABLE);
     cache.set("file-search", { pattern: "foo" }, { result: "results" });
-    cache.set("file-read", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
+    cache.set("file-read", { path: "src/bar.ts" }, { result: "b" });
     // Unknown write tool with no extractable paths — pathless entries should still be evicted
     cache.invalidateForWrite("file-edit", {});
     expect(cache.get("file-search", { pattern: "foo" })).toBeUndefined();
-    expect(cache.get("file-read", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
+    expect(cache.get("file-read", { path: "src/bar.ts" })).toBeDefined();
   });
 
   test("shell-run clears entire cache", () => {
     const cache = createToolCache(CACHEABLE);
-    cache.set("file-read", { paths: [{ path: "a.ts" }] }, { result: "a" });
+    cache.set("file-read", { path: "a.ts" }, { result: "a" });
     cache.set("file-search", { pattern: "x" }, { result: "b" });
     cache.invalidateForWrite("shell-run", { cmd: "rm", args: ["-rf", "node_modules"] });
     expect(cache.stats().size).toBe(0);
@@ -101,49 +101,41 @@ describe("tool-cache", () => {
 
   test("clear resets all entries without counting as invalidations", () => {
     const cache = createToolCache(CACHEABLE);
-    cache.set("file-read", { paths: [{ path: "a.ts" }] }, { result: "a" });
+    cache.set("file-read", { path: "a.ts" }, { result: "a" });
     cache.clear();
     expect(cache.stats().size).toBe(0);
     expect(cache.stats().invalidations).toBe(0);
   });
 
-  test("write to path in multi-path read invalidates whole entry", () => {
-    const cache = createToolCache(CACHEABLE);
-    const args = { paths: [{ path: "a.ts" }, { path: "b.ts" }] };
-    cache.set("file-read", args, { result: "combined" });
-    cache.invalidateForWrite("file-edit", { path: "b.ts" });
-    expect(cache.get("file-read", args)).toBeUndefined();
-  });
-
   test("evicts oldest entry when max entries exceeded", () => {
     const cache = createToolCache(new Set(["file-read"]), 2);
-    cache.set("file-read", { paths: [{ path: "a.ts" }] }, { result: "a" });
-    cache.set("file-read", { paths: [{ path: "b.ts" }] }, { result: "b" });
-    cache.set("file-read", { paths: [{ path: "c.ts" }] }, { result: "c" });
+    cache.set("file-read", { path: "a.ts" }, { result: "a" });
+    cache.set("file-read", { path: "b.ts" }, { result: "b" });
+    cache.set("file-read", { path: "c.ts" }, { result: "c" });
     expect(cache.stats().size).toBe(2);
     expect(cache.stats().evictions).toBe(1);
     // oldest (a.ts) evicted
-    expect(cache.get("file-read", { paths: [{ path: "a.ts" }] })).toBeUndefined();
-    expect(cache.get("file-read", { paths: [{ path: "b.ts" }] })).toBeDefined();
-    expect(cache.get("file-read", { paths: [{ path: "c.ts" }] })).toBeDefined();
+    expect(cache.get("file-read", { path: "a.ts" })).toBeUndefined();
+    expect(cache.get("file-read", { path: "b.ts" })).toBeDefined();
+    expect(cache.get("file-read", { path: "c.ts" })).toBeDefined();
   });
 
   test("LRU access promotes entry and evicts least recently used", () => {
     const cache = createToolCache(new Set(["file-read"]), 2);
-    cache.set("file-read", { paths: [{ path: "a.ts" }] }, { result: "a" });
-    cache.set("file-read", { paths: [{ path: "b.ts" }] }, { result: "b" });
+    cache.set("file-read", { path: "a.ts" }, { result: "a" });
+    cache.set("file-read", { path: "b.ts" }, { result: "b" });
     // access a.ts to promote it
-    cache.get("file-read", { paths: [{ path: "a.ts" }] });
+    cache.get("file-read", { path: "a.ts" });
     // insert c.ts — should evict b.ts (now oldest)
-    cache.set("file-read", { paths: [{ path: "c.ts" }] }, { result: "c" });
-    expect(cache.get("file-read", { paths: [{ path: "a.ts" }] })).toBeDefined();
-    expect(cache.get("file-read", { paths: [{ path: "b.ts" }] })).toBeUndefined();
-    expect(cache.get("file-read", { paths: [{ path: "c.ts" }] })).toBeDefined();
+    cache.set("file-read", { path: "c.ts" }, { result: "c" });
+    expect(cache.get("file-read", { path: "a.ts" })).toBeDefined();
+    expect(cache.get("file-read", { path: "b.ts" })).toBeUndefined();
+    expect(cache.get("file-read", { path: "c.ts" })).toBeDefined();
   });
 
   test("stats track hits, misses, and invalidations", () => {
     const cache = createToolCache(CACHEABLE);
-    const args = { paths: [{ path: "a.ts" }] };
+    const args = { path: "a.ts" };
     cache.get("file-read", args); // miss
     cache.set("file-read", args, { result: "ok" });
     cache.get("file-read", args); // hit

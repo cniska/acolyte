@@ -68,6 +68,7 @@ function createSearchFilesTool(input: ToolkitInput) {
     inputSchema: z.object({
       pattern: z.string().min(1),
       path: z.string().min(1).optional(),
+      maxResults: z.number().int().min(1).max(200).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("file-search"),
@@ -79,7 +80,7 @@ function createSearchFilesTool(input: ToolkitInput) {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
         const patterns = [toolInput.pattern];
         const paths = toolInput.path ? [toolInput.path] : undefined;
-        const result = await searchFiles(input.workspace, patterns, 20, paths);
+        const result = await searchFiles(input.workspace, patterns, toolInput.maxResults ?? 20, paths);
         const summaryStats = searchResultSummaryStats(result, patterns);
         emitParts(
           searchSummaryParts(summaryStats, patterns, paths, "tool.label.file_search", input.workspace),

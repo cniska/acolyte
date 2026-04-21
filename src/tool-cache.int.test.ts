@@ -11,11 +11,11 @@ describe("L2 SQLite integration", () => {
   test("L1 miss falls back to L2 hit", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);
-    cache1.set("file-read", { paths: [{ path: "/a.ts" }] }, { result: "content-a" });
+    cache1.set("file-read", { path: "/a.ts" }, { result: "content-a" });
 
     // New L1 cache, same L2 store — simulates a new task
     const cache2 = createToolCache(CACHEABLE, 256, store);
-    const entry = cache2.get("file-read", { paths: [{ path: "/a.ts" }] });
+    const entry = cache2.get("file-read", { path: "/a.ts" });
     expect(entry).toBeDefined();
     expect(entry?.result).toBe("content-a");
   });
@@ -32,33 +32,33 @@ describe("L2 SQLite integration", () => {
   test("write invalidation propagates to L2", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);
-    cache1.set("file-read", { paths: [{ path: "/a.ts" }] }, { result: "old" });
+    cache1.set("file-read", { path: "/a.ts" }, { result: "old" });
 
     cache1.invalidateForWrite("file-edit", { path: "/a.ts" });
 
     const cache2 = createToolCache(CACHEABLE, 256, store);
-    expect(cache2.get("file-read", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
+    expect(cache2.get("file-read", { path: "/a.ts" })).toBeUndefined();
   });
 
   test("shell-run clears L2", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);
-    cache1.set("file-read", { paths: [{ path: "/a.ts" }] }, { result: "content" });
+    cache1.set("file-read", { path: "/a.ts" }, { result: "content" });
 
     cache1.invalidateForWrite("shell-run", {});
 
     const cache2 = createToolCache(CACHEABLE, 256, store);
-    expect(cache2.get("file-read", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
+    expect(cache2.get("file-read", { path: "/a.ts" })).toBeUndefined();
   });
 
   test("clear propagates to L2", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);
-    cache1.set("file-read", { paths: [{ path: "/a.ts" }] }, { result: "content" });
+    cache1.set("file-read", { path: "/a.ts" }, { result: "content" });
 
     cache1.clear();
 
     const cache2 = createToolCache(CACHEABLE, 256, store);
-    expect(cache2.get("file-read", { paths: [{ path: "/a.ts" }] })).toBeUndefined();
+    expect(cache2.get("file-read", { path: "/a.ts" })).toBeUndefined();
   });
 });

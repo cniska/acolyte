@@ -8,9 +8,13 @@ export function normalizePath(p: string): string {
 }
 
 export function extractReadPaths(args: Record<string, unknown>, opts?: { normalize?: boolean }): string[] {
+  const shouldNormalize = opts?.normalize ?? false;
+  const singlePath = args.path;
+  if (typeof singlePath === "string" && singlePath.trim().length > 0) {
+    return [shouldNormalize ? normalizePath(singlePath.trim()) : singlePath.trim()];
+  }
   const paths = args.paths;
   if (!Array.isArray(paths)) return [];
-  const shouldNormalize = opts?.normalize ?? false;
   const out: string[] = [];
   for (const entry of paths) {
     if (!entry || typeof entry !== "object") continue;
