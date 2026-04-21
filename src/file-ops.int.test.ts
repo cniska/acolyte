@@ -306,7 +306,7 @@ describe("searchFiles", () => {
     await writeFile(filePath, "alpha beta\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
     await expect(
-      tools.searchFiles.execute({ patterns: ["gamma"], maxResults: 20, paths: [filePath] }, "call_search_nomatch"),
+      tools.searchFiles.execute({ pattern: "gamma", path: filePath }, "call_search_nomatch"),
     ).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.searchFilesNoMatch,
     });
@@ -321,10 +321,7 @@ describe("searchFiles", () => {
     await writeFile(first, 'export const first = "needle";\n', "utf8");
     await writeFile(second, 'export const second = "needle";\n', "utf8");
     const { tools, session } = toolsForAgent({ workspace });
-    const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [first] },
-      "call_search_scope",
-    );
+    const result = await tools.searchFiles.execute({ pattern: "needle", path: first }, "call_search_scope");
     expect(result.result.output).toContain("first.ts:1:");
     expect(result.result.output).not.toContain("second.ts");
     expect(session.callLog[0]?.toolName).toBe("file-search");
@@ -338,7 +335,7 @@ describe("searchFiles", () => {
     await writeFile(outsideFile, 'export const outside = "needle";\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [join(workspace, "sub")] },
+      { pattern: "needle", path: join(workspace, "sub") },
       "call_search_dir",
     );
     expect(result.result.output).toContain("inside.ts:1:");
@@ -354,10 +351,7 @@ describe("searchFiles", () => {
     await writeFile(filePath, 'export const inside = "needle";\n', "utf8");
     await symlink(realWorkspace, linkWorkspace);
     const { tools } = toolsForAgent({ workspace: linkWorkspace });
-    const result = await tools.searchFiles.execute(
-      { patterns: ["needle"], maxResults: 20, paths: [filePath] },
-      "call_search_symlink",
-    );
+    const result = await tools.searchFiles.execute({ pattern: "needle", path: filePath }, "call_search_symlink");
     expect(result.result.output).toContain("inside.ts:1:");
   });
 });

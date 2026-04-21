@@ -62,57 +62,35 @@ function createSearchFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `file-find` instead.",
-    instruction: [
-      "Use `file-search` for text/regex content search.",
-      "Narrow scope with `paths` and batch related queries in `patterns`.",
-      "If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
-      "Build `file-edit` calls from current `file-read` text or scoped `file-search` hits.",
-    ].join(" "),
-    inputSchema: z
-      .object({
-        pattern: z.string().min(1).optional(),
-        patterns: z.array(z.string().min(1)).min(1).optional(),
-        paths: z.array(z.string().min(1)).min(1).optional(),
-        maxResults: z.number().int().min(1).max(200).optional(),
-      })
-      .refine((input) => Boolean(input.pattern) || Boolean(input.patterns && input.patterns.length > 0), {
-        message: "Provide pattern or patterns",
-        path: ["patterns"],
-      }),
+      "Search file contents for a text or regex pattern. Optionally scope with `path` (file or directory). Use parallel tool calls for multiple patterns. To locate files by name use `file-find` instead.",
+    instruction:
+      "Use `file-search` for text/regex content search. Narrow scope with `path`. If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
+    inputSchema: z.object({
+      pattern: z.string().min(1),
+      path: z.string().min(1).optional(),
+    }),
     outputSchema: z.object({
       kind: z.literal("file-search"),
-      scope: z.string().min(1),
-      patterns: z.array(z.string().min(1)),
+      pattern: z.string().min(1),
       matches: z.number().int().nonnegative(),
-      entries: z.array(z.object({ path: z.string().min(1), hits: z.array(z.string().min(1)) })),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 20;
-        const patterns =
-          toolInput.patterns && toolInput.patterns.length > 0
-            ? toolInput.patterns
-            : toolInput.pattern
-              ? [toolInput.pattern]
-              : [];
-        const result = await searchFiles(input.workspace, patterns, maxResults, toolInput.paths);
+        const patterns = [toolInput.pattern];
+        const paths = toolInput.path ? [toolInput.path] : undefined;
+        const result = await searchFiles(input.workspace, patterns, 20, paths);
         const summaryStats = searchResultSummaryStats(result, patterns);
-        const summaryParts = searchSummaryParts(
-          summaryStats,
-          patterns,
-          toolInput.paths,
-          "tool.label.file_search",
-          input.workspace,
+        emitParts(
+          searchSummaryParts(summaryStats, patterns, paths, "tool.label.file_search", input.workspace),
+          "file-search",
+          input.onOutput,
+          callId,
         );
-        emitParts(summaryParts, "file-search", input.onOutput, callId);
         return {
           kind: "file-search" as const,
-          scope: toolInput.paths && toolInput.paths.length > 0 ? "paths" : "workspace",
-          patterns,
+          pattern: toolInput.pattern,
           matches: summaryStats.files,
-          entries: [] as { path: string; hits: string[] }[],
           output: result,
         };
       });

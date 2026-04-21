@@ -23,10 +23,10 @@ describe("L2 SQLite integration", () => {
   test("pathless entries are not persisted to L2", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);
-    cache1.set("file-search", { patterns: ["foo"] }, { result: "found" });
+    cache1.set("file-search", { pattern: "foo" }, { result: "found" });
 
     const cache2 = createToolCache(CACHEABLE, 256, store);
-    expect(cache2.get("file-search", { patterns: ["foo"] })).toBeUndefined();
+    expect(cache2.get("file-search", { pattern: "foo" })).toBeUndefined();
   });
 
   test("write invalidation propagates to L2", () => {

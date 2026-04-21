@@ -130,7 +130,7 @@ describe("localization baseline", () => {
       ["code-edit", "structural", "refactors"],
     ]);
     expectIntent(editCodeInstruction, [["ast-aware refactors"], ["target", "local", "member"], ["withinsymbol"]]);
-    expectIntent(searchInstruction, [["text/regex"], ["narrow scope", "paths"], ["edit from that evidence"]]);
+    expectIntent(searchInstruction, [["text/regex"], ["scope", "path"], ["edit from that evidence"]]);
     expectIntent(gitStatusInstruction, [["repo-wide state"], ["file-scoped edits"]]);
     expectIntent(gitDiffInstruction, [["git-level diff context"], ["write-tool previews"]]);
     expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);
