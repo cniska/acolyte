@@ -39,36 +39,27 @@ function createFindFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `file-search` instead.",
-    instruction:
-      "Use `file-find` to locate files by name/path pattern. Pass `patterns` as an array and batch related lookups.",
+      "Find files by name or path pattern. Use parallel tool calls for multiple patterns. To search file contents use `file-search` instead.",
+    instruction: "Use `file-find` to locate files by name/path pattern.",
     inputSchema: z.object({
-      patterns: z.array(z.string().min(1)).min(1),
-      maxResults: z.number().int().min(1).max(200).optional(),
+      pattern: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-find"),
-      scope: z.string().min(1),
-      patterns: z.array(z.string().min(1)),
+      pattern: z.string().min(1),
       matches: z.number().int().nonnegative(),
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 40;
-        const raw = await findFiles(input.workspace, toolInput.patterns, maxResults);
+        const patterns = [toolInput.pattern];
+        const raw = await findFiles(input.workspace, patterns);
         const paths = findResultPaths(raw);
-        emitParts(
-          findSummaryParts(paths, toolInput.patterns, "tool.label.file_find"),
-          "file-find",
-          input.onOutput,
-          callId,
-        );
+        emitParts(findSummaryParts(paths, patterns, "tool.label.file_find"), "file-find", input.onOutput, callId);
         return {
           kind: "file-find" as const,
-          scope: "workspace",
-          patterns: toolInput.patterns,
+          pattern: toolInput.pattern,
           matches: paths.length,
           paths,
           output: raw,

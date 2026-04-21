@@ -71,12 +71,12 @@ describe("tool-cache", () => {
   test("invalidateForWrite clears search/find entries on any write", () => {
     const cache = createToolCache(CACHEABLE);
     cache.set("file-search", { pattern: "foo" }, { result: "results" });
-    cache.set("file-find", { patterns: ["*.ts"] }, { result: "files" });
+    cache.set("file-find", { pattern: "*.ts" }, { result: "files" });
     cache.set("file-read", { paths: [{ path: "src/bar.ts" }] }, { result: "b" });
     cache.invalidateForWrite("file-edit", { path: "src/other.ts" });
     // search/find evicted
     expect(cache.get("file-search", { pattern: "foo" })).toBeUndefined();
-    expect(cache.get("file-find", { patterns: ["*.ts"] })).toBeUndefined();
+    expect(cache.get("file-find", { pattern: "*.ts" })).toBeUndefined();
     // unrelated file-read kept
     expect(cache.get("file-read", { paths: [{ path: "src/bar.ts" }] })).toBeDefined();
   });

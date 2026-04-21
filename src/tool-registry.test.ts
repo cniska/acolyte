@@ -120,7 +120,7 @@ describe("localization baseline", () => {
       ["file-read", "before", "file-edit", "code-edit"],
       ["re-read", "target file", "before editing"],
     ]);
-    expectIntent(findInstruction, [["file-find", "locate files"], ["patterns", "array"], ["batch"]]);
+    expectIntent(findInstruction, [["file-find", "locate files"]]);
     expectIntent(createInstruction, [["file-create", "full content"]]);
     expectIntent(deleteInstruction, [["file-delete"], ["paths", "array"], ["batch"]]);
     expectIntent(editInstruction, [
