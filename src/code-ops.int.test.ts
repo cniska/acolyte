@@ -868,9 +868,7 @@ describe("scanCode", () => {
   test("rejects paths outside sandbox via dispatch", async () => {
     const workspace = dirs.createDir("acolyte-test-sandbox-scan-");
     const { tools } = toolsForAgent({ workspace });
-    await expect(
-      tools.scanCode.execute({ paths: ["/etc/hosts"], patterns: ["const $X"] }, "call_33"),
-    ).rejects.toMatchObject({
+    await expect(tools.scanCode.execute({ path: "/etc/hosts", pattern: "const $X" }, "call_33")).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.sandboxViolation,
     });
   });
@@ -880,9 +878,7 @@ describe("scanCode", () => {
     const filePath = join(workspace, "file.yaml");
     await writeFile(filePath, "foo: bar\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
-    await expect(
-      tools.scanCode.execute({ paths: [filePath], patterns: ["const $X"] }, "call_34"),
-    ).rejects.toMatchObject({
+    await expect(tools.scanCode.execute({ path: filePath, pattern: "const $X" }, "call_34")).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.scanCodeUnsupportedFile,
     });
   });
@@ -892,7 +888,7 @@ describe("scanCode", () => {
     const filePath = join(workspace, "file.ts");
     await writeFile(filePath, 'console.log("hello");\nconsole.log("world");\nconst x = 1;\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_35");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "console.log($ARG)" }, "call_35");
     const output = result.result.output;
     expect(output).toContain("scanned=1 matches=2");
     expect(output).toContain('{$ARG="hello"}');
@@ -903,7 +899,7 @@ describe("scanCode", () => {
     const filePath = join(workspace, "file.ts");
     await writeFile(filePath, "const x = 1;\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_36");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "console.log($ARG)" }, "call_36");
     const output = result.result.output;
     expect(output).toContain("scanned=1 matches=0");
     expect(output).toContain("No matches.");
@@ -915,7 +911,7 @@ describe("scanCode", () => {
     await writeFile(join(workspace, "a.ts"), 'console.log("a");\n', "utf8");
     await writeFile(join(workspace, "sub", "b.ts"), 'console.log("b");\nconst y = 2;\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [workspace], patterns: ["console.log($ARG)"] }, "call_37");
+    const result = await tools.scanCode.execute({ path: workspace, pattern: "console.log($ARG)" }, "call_37");
     const output = result.result.output;
     expect(output).toContain("scanned=2 matches=2");
   });
@@ -927,26 +923,22 @@ describe("scanCode", () => {
     await writeFile(filePath, lines, "utf8");
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.scanCode.execute(
-      { paths: [filePath], patterns: ["console.log($ARG)"], maxResults: 3 },
+      { path: filePath, pattern: "console.log($ARG)", maxResults: 3 },
       "call_38",
     );
     const output = result.result.output;
     expect(output).toContain("matches=3");
   });
 
-  test("batches multiple patterns", async () => {
-    const workspace = dirs.createDir("acolyte-test-scan-batch-");
+  test("matches structural pattern", async () => {
+    const workspace = dirs.createDir("acolyte-test-scan-single-");
     const filePath = join(workspace, "file.ts");
     await writeFile(filePath, 'export function hello() {}\nexport const x = 1;\nconsole.log("test");\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute(
-      { paths: [filePath], patterns: ["export function $NAME() {}", "console.log($ARG)"] },
-      "call_39",
-    );
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "export function $NAME() {}" }, "call_39");
     const output = result.result.output;
-    expect(output).toContain("matches=2");
+    expect(output).toContain("matches=1");
     expect(output).toContain("{$NAME=hello}");
-    expect(output).toContain('{$ARG="test"}');
   });
 
   test("includes enclosingSymbol for match inside a function", async () => {
@@ -958,7 +950,7 @@ describe("scanCode", () => {
       "utf8",
     );
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_40");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "console.log($ARG)" }, "call_40");
     const output = result.result.output;
     expect(output).toContain("[processItems]");
   });
@@ -972,7 +964,7 @@ describe("scanCode", () => {
       "utf8",
     );
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_41");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "console.log($ARG)" }, "call_41");
     const output = result.result.output;
     expect(output).toContain("[run]");
   });
@@ -982,7 +974,7 @@ describe("scanCode", () => {
     const filePath = join(workspace, "file.ts");
     await writeFile(filePath, "console.log('top-level');\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ["console.log($ARG)"] }, "call_42");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: "console.log($ARG)" }, "call_42");
     const output = result.result.output;
     expect(output).not.toMatch(/\[.*\]/);
     expect(output).toContain("console.log('top-level')");
@@ -993,7 +985,7 @@ describe("scanCode", () => {
     const filePath = join(workspace, "file.ts");
     await writeFile(filePath, 'type Status = "active" | "inactive";\n', "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.scanCode.execute({ paths: [filePath], patterns: ['"active"'] }, "call_43");
+    const result = await tools.scanCode.execute({ path: filePath, pattern: '"active"' }, "call_43");
     const output = result.result.output;
     expect(output).toContain("[Status]");
   });
