@@ -1,6 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { deleteTextFile, editFile, findFiles, readFileContents, searchFiles, writeTextFile } from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
@@ -10,7 +10,6 @@ import {
   searchResultSummaryStats,
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
-import { MAX_READ_PATHS } from "./tool-policy";
 
 function normalizeUniquePaths(paths: string[]): string[] {
   const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
@@ -32,18 +31,6 @@ function formatDeletePaths(paths: string[]): string {
   const shown = paths.slice(0, 3).join(", ");
   const remaining = paths.length - Math.min(paths.length, 3);
   return remaining > 0 ? `${shown} (+${remaining})` : shown;
-}
-
-function deduplicatePaths(paths: Array<{ path: string }>): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const entry of paths) {
-    const path = entry.path.trim();
-    if (path.length === 0 || seen.has(path)) continue;
-    seen.add(path);
-    result.push(path);
-  }
-  return result;
 }
 
 function createFindFilesTool(input: ToolkitInput) {
@@ -162,36 +149,32 @@ function createReadFileTool(input: ToolkitInput) {
     id: "file-read",
     toolkit: "file",
     category: "read",
-    description: `Read one or more text files (max ${MAX_READ_PATHS} per call). Pass \`paths\` as an array of {path} objects. Never re-read a file you already have.`,
-    instruction: `Use \`file-read\` before \`file-edit\` or \`code-edit\`. Batch up to ${MAX_READ_PATHS} files per call; for named edits, re-read the target file immediately before editing.`,
+    description:
+      "Read a single text file. Use parallel tool calls to read multiple files. Never re-read a file you already have.",
+    instruction:
+      "Use `file-read` before `file-edit` or `code-edit`. For named edits, re-read the target file immediately before editing.",
     inputSchema: z.object({
-      paths: z.array(z.object({ path: z.string().min(1) })).min(1),
+      path: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-read"),
-      paths: z.array(z.string().min(1)),
+      path: z.string().min(1),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
-        const paths = deduplicatePaths(toolInput.paths);
-        if (paths.length === 0) throw new Error("Read requires at least one non-empty path");
-        if (paths.length > MAX_READ_PATHS) {
-          throw new Error(`Too many files (${paths.length}). Split into batches of ${MAX_READ_PATHS} or fewer.`);
-        }
-        const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
         input.onOutput({
           toolName: "file-read",
           content: {
             kind: "file-header",
             labelKey: "tool.label.file_read",
-            count: displayPaths.length,
-            targets: displayPaths.slice(0, 1),
+            count: 1,
+            targets: [toDisplayPath(toolInput.path, input.workspace)],
           },
           toolCallId: callId,
         });
-        const output = await readFileContents(input.workspace, paths, FILE_READ_MAX_LINES);
-        return { kind: "file-read" as const, paths, output };
+        const output = await readFileContent(input.workspace, toolInput.path, FILE_READ_MAX_LINES);
+        return { kind: "file-read" as const, path: toolInput.path, output };
       });
     },
   });

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { readFileContent, readFileContents } from "./file-ops";
+import { readFileContent } from "./file-ops";
 import { tempDir, testUuid } from "./test-utils";
 import { toolsForAgent } from "./tool-registry";
 
@@ -15,7 +15,7 @@ describe("path validation — fs", () => {
     const filePath = join(workspace, `test-read-${testUuid()}.txt`);
     await writeFile(filePath, "hello from workspace", "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.readFile.execute({ paths: [{ path: filePath }] }, "call_read_ws");
+    const result = await tools.readFile.execute({ path: filePath }, "call_read_ws");
     expect(result.result.output).toContain("hello from workspace");
   });
 
@@ -34,15 +34,6 @@ describe("path validation — fs", () => {
     await writeFile(filePath, lines, "utf8");
     const output = await readFileContent(workspace, filePath, 10);
     expect(output).toContain("line 1");
-  });
-
-  test("readFileContents rejects batch when any file exceeds maxLines", async () => {
-    const workspace = dirs.createDir("acolyte-read-batch-");
-    const small = join(workspace, `test-small-${testUuid()}.txt`);
-    const large = join(workspace, `test-large-${testUuid()}.txt`);
-    await writeFile(small, "ok", "utf8");
-    await writeFile(large, Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n"), "utf8");
-    await expect(readFileContents(workspace, [small, large], 10)).rejects.toThrow(/too large/);
   });
 
   test("editFile allows workspace files", async () => {
@@ -392,6 +383,6 @@ describe("deleteFile", () => {
     expect(result.result.output).toContain("bytes=");
     expect(session.callLog[0]?.toolName).toBe("file-delete");
     const { tools: tools2 } = toolsForAgent({ workspace });
-    await expect(tools2.readFile.execute({ paths: [{ path: filePath }] }, "call_delete_verify")).rejects.toThrow();
+    await expect(tools2.readFile.execute({ path: filePath }, "call_delete_verify")).rejects.toThrow();
   });
 });
