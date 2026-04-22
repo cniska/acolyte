@@ -25,8 +25,7 @@ function createFindFilesTool(input: ToolkitInput) {
     id: "file-find",
     toolkit: "file",
     category: "search",
-    description:
-      "Find files by name or path pattern. Use parallel tool calls for multiple patterns. To search file contents use `file-search` instead.",
+    description: "Find files by name or path pattern. To search file contents use `file-search` instead.",
     instruction: "Use `file-find` to locate files by name/path pattern.",
     inputSchema: z.object({
       pattern: z.string().min(1),
@@ -62,7 +61,7 @@ function createSearchFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Search file contents for a text or regex pattern. Optionally scope with `path` (file or directory). Use parallel tool calls for multiple patterns. To locate files by name use `file-find` instead.",
+      "Search file contents for a text or regex pattern. Optionally scope with `path` (file or directory). To locate files by name use `file-find` instead.",
     instruction:
       "Use `file-search` for text/regex content search. Narrow scope with `path`. If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
     inputSchema: z.object({
@@ -106,8 +105,7 @@ function createReadFileTool(input: ToolkitInput) {
     id: "file-read",
     toolkit: "file",
     category: "read",
-    description:
-      "Read a single text file. Use parallel tool calls to read multiple files. Never re-read a file you already have.",
+    description: "Read a text file. Never re-read a file you already have.",
     instruction:
       "Use `file-read` before `file-edit` or `code-edit`. For named edits, re-read the target file immediately before editing.",
     inputSchema: z.object({
@@ -252,7 +250,7 @@ function createDeleteFileTool(input: ToolkitInput) {
     id: "file-delete",
     toolkit: "file",
     category: "write",
-    description: "Delete a single file from the repository. Use parallel tool calls to delete multiple files.",
+    description: "Delete a file from the file system.",
     instruction: "Use `file-delete` to remove a file.",
     inputSchema: z.object({
       path: z.string().min(1),

@@ -45,8 +45,7 @@ function createScanCodeTool(input: ToolkitInput) {
     id: "code-scan",
     toolkit: "code",
     category: "search",
-    description:
-      "Scan a file or directory for structural code patterns using AST matching. Use parallel tool calls for multiple paths or patterns.",
+    description: "Scan a file or directory for structural code patterns using AST matching.",
     instruction:
       "Use `code-scan` for AST pattern search. Use it to map structural targets before `code-edit`. For plain text/regex searches, use `file-search`. Matches include `enclosingSymbol`; reuse it as `withinSymbol` in follow-up `code-edit`.",
     inputSchema: z.object({
