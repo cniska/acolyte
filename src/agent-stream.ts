@@ -8,6 +8,7 @@ import type {
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
 import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
@@ -19,6 +20,7 @@ import {
 } from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
+import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
@@ -74,6 +76,27 @@ export function createAgentStream(
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
+
+        if (typeof options.preCallInputTokenLimit === "number") {
+          const size = estimatePromptSize(systemPrompt, messages, functionTools);
+          const message = promptBudgetError(size, options.preCallInputTokenLimit);
+          if (message) {
+            log.debug("agent-stream.precall.overflow", {
+              iteration: loopIteration,
+              limit: options.preCallInputTokenLimit,
+              total: size.total,
+              system: size.system,
+              tools: size.tools,
+              messages: size.messages,
+              message_count: messages.length,
+            });
+            const err = new Error(message) as Error & { code: string; kind: string };
+            err.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+            err.kind = ERROR_KINDS.budgetExhausted;
+            throw err;
+          }
+        }
+
         await rateLimiter.beforeCall();
         let streamResult: Awaited<ReturnType<typeof model.doStream>>;
         try {

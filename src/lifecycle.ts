@@ -299,8 +299,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
   ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
-  ctx.session.flags.totalTokenLimit = policy.maxTotalTokens;
-  ctx.session.flags.totalTokens = () => ctx.inputTokensAccum + ctx.outputTokensAccum;
+  ctx.session.flags.preCallInputTokenLimit = policy.contextMaxTokens;
   ctx.session.maxConsecutiveToolFailures = policy.maxConsecutiveToolFailures;
   if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 

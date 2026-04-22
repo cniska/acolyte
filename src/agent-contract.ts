@@ -15,6 +15,7 @@ export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
   providerOptions?: SharedV3ProviderOptions;
+  preCallInputTokenLimit?: number;
 };
 
 export type StreamOutput = {

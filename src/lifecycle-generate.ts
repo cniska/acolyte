@@ -164,6 +164,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       toolChoice: "auto",
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
+      ...(typeof ctx.session.flags.preCallInputTokenLimit === "number"
+        ? { preCallInputTokenLimit: ctx.session.flags.preCallInputTokenLimit }
+        : {}),
     });
     const fullOutput = streamOutput.getFullOutput();
     // If the AI SDK rejects an internal promise outside the reader chain, pipe it into the
