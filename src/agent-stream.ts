@@ -78,7 +78,7 @@ export function createAgentStream(
         log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
 
         if (typeof options.preCallInputTokenLimit === "number") {
-          const size = estimatePromptSize(systemPrompt, messages, functionTools);
+          const size = estimatePromptSize(messages, functionTools);
           const message = promptBudgetError(size, options.preCallInputTokenLimit);
           if (message) {
             log.debug("agent-stream.precall.overflow", {

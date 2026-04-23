@@ -9,13 +9,14 @@ export type PromptSize = {
 };
 
 export function estimatePromptSize(
-  systemPrompt: string,
   messages: LanguageModelV3Message[],
   tools: LanguageModelV3FunctionTool[],
 ): PromptSize {
-  const system = estimateTokens(systemPrompt);
+  const systemMessages = messages.filter((m) => m.role === "system");
+  const otherMessages = messages.filter((m) => m.role !== "system");
+  const system = systemMessages.length === 0 ? 0 : estimateTokens(JSON.stringify(systemMessages));
   const toolsTokens = tools.length === 0 ? 0 : estimateTokens(JSON.stringify(tools));
-  const messagesTokens = messages.length === 0 ? 0 : estimateTokens(JSON.stringify(messages));
+  const messagesTokens = otherMessages.length === 0 ? 0 : estimateTokens(JSON.stringify(otherMessages));
   return {
     total: system + toolsTokens + messagesTokens,
     system,
