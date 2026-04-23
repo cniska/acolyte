@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.20.0 (2026-04-23)
+
+- fix(skills): persist tool-activated skills across turns (#211) (`e178f96b`)
+- fix(signal): detect inline signal tokens (#210) (`da732552`)
+- refactor(skills): remove skill budget (#213) (`604d3ea6`)
+- refactor(tools): remove output budget system (#214) (`1d3118f9`)
+- refactor(tools): thread generic types through runTool (#217) (`e4a030c8`)
+- refactor(input): remove per-message limits (#218) (`04a35025`)
+- feat(chat): pulsing indicator for awaiting-input (#220) (`e1081e60`)
+- feat(session): on-demand session search (#219) (`8f6a75dc`)
+- feat(tools): tool result truncation (#221) (`0b7d77d8`)
+- refactor(tools): tool output hardening (#224) (`1de6029c`)
+- fix(tui): renderer fixes and streaming improvements (#226) (`0e889260`)
+- refactor(tools): unify tool output rendering (#227) (`cca8707c`)
+- feat(gh): GitHub CLI integration (#232) (`f010c2d1`)
+- feat(agent): microcompact tool results (#235) (`05cbadb7`)
+- refactor(tools): single-input tools (#237) (`89eb1c30`)
+- refactor(lifecycle): per-call input budget (#238) (`39203226`)
+- docs: add gh integration to features (`8b7693a5`)
+
+
 ## 0.19.0 (2026-04-14)
 
 - fix: strip @signal in lifecycle finalize (#182) (#183) (`29704910`)
