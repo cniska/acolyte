@@ -30,6 +30,12 @@ One generation pass runs, effects apply inline during tool execution, and the li
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
 - this is the only pre-tool policy check; there is no guard abstraction
 
+## Per-call input budget
+
+- before each model call, `agent-stream.ts` estimates the composed prompt size (system + messages + tools) and compares it against `SessionFlags.preCallInputTokenLimit` (defaulted from `MAX_CONTEXT_TOKENS`)
+- overflow throws `E_BUDGET_EXHAUSTED` with a composition breakdown (system, tools, messages tokens)
+- sessions are bounded by context pressure per call, not by cumulative tokens across calls; microcompaction keeps prior iterations lean
+
 ## Microcompaction
 
 - between model calls, prior tool results in the message history are replaced with a short marker so they stop consuming input tokens on re-send
