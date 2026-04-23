@@ -18,7 +18,6 @@ export type SessionFlags = {
   turnStepCount?: number;
   turnStepLimit?: number;
   totalStepLimit?: number;
-  preCallInputTokenLimit?: number;
 };
 
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
