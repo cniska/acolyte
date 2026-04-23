@@ -42,6 +42,7 @@ Shipped, user-visible capabilities.
 - edit/create/delete files
 - AST-based structural code editing with workspace-wide scope
 - git status/diff/log/show/add/commit
+- GitHub CLI integration for PR and issue management (view/create/edit), auto-enabled when `gh` is installed
 - shell and test execution
 - web search/fetch
 - MCP client: connect to external services via stdio or HTTP MCP servers
