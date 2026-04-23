@@ -52,7 +52,7 @@ describe("lifecycle effects through tool dispatch", () => {
     });
     attachLifecycleEffectHandlers(ctx, session);
 
-    await tools.readFile.execute({ paths: [{ path: join(workspace, "a.txt") }] }, "call_2");
+    await tools.readFile.execute({ path: join(workspace, "a.txt") }, "call_2");
 
     expect(debugEvents.some((e) => e.event === "lifecycle.effect.format")).toBe(false);
   });
@@ -76,7 +76,7 @@ describe("lifecycle effects through tool dispatch", () => {
     session.workspaceProfile = { depsDir: "node_modules" };
     attachLifecycleEffectHandlers(ctx, session);
 
-    await tools.readFile.execute({ paths: [{ path: join(workspace, "src.ts") }] }, "call_3");
+    await tools.readFile.execute({ path: join(workspace, "src.ts") }, "call_3");
 
     expect(debugEvents.some((e) => e.event === "lifecycle.effect.install")).toBe(false);
   });

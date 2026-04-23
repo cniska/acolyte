@@ -1,6 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { deleteTextFile, editFile, findFiles, readFileContents, searchFiles, writeTextFile } from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
@@ -10,12 +10,6 @@ import {
   searchResultSummaryStats,
   summarizeUnifiedDiff,
 } from "./tool-output-parse";
-import { MAX_READ_PATHS } from "./tool-policy";
-
-function normalizeUniquePaths(paths: string[]): string[] {
-  const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
-  return Array.from(new Set(normalized));
-}
 
 function toDisplayPath(path: string, workspace?: string): string {
   const trimmed = path.trim().replace(/\\/g, "/");
@@ -26,62 +20,32 @@ function toDisplayPath(path: string, workspace?: string): string {
   return rel || trimmed;
 }
 
-function formatDeletePaths(paths: string[]): string {
-  if (paths.length === 0) return "";
-  if (paths.length === 1) return paths[0] ?? "";
-  const shown = paths.slice(0, 3).join(", ");
-  const remaining = paths.length - Math.min(paths.length, 3);
-  return remaining > 0 ? `${shown} (+${remaining})` : shown;
-}
-
-function deduplicatePaths(paths: Array<{ path: string }>): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const entry of paths) {
-    const path = entry.path.trim();
-    if (path.length === 0 || seen.has(path)) continue;
-    seen.add(path);
-    result.push(path);
-  }
-  return result;
-}
-
 function createFindFilesTool(input: ToolkitInput) {
   return createTool({
     id: "file-find",
     toolkit: "file",
     category: "search",
-    description:
-      "Find files in the repository by name or path pattern. Pass `patterns` as an array to batch multiple lookups in one call. To search file contents use `file-search` instead.",
-    instruction:
-      "Use `file-find` to locate files by name/path pattern. Pass `patterns` as an array and batch related lookups.",
+    description: "Find files by name or path pattern. To search file contents use `file-search` instead.",
+    instruction: "Use `file-find` to locate files by name/path pattern.",
     inputSchema: z.object({
-      patterns: z.array(z.string().min(1)).min(1),
-      maxResults: z.number().int().min(1).max(200).optional(),
+      pattern: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-find"),
-      scope: z.string().min(1),
-      patterns: z.array(z.string().min(1)),
+      pattern: z.string().min(1),
       matches: z.number().int().nonnegative(),
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 40;
-        const raw = await findFiles(input.workspace, toolInput.patterns, maxResults);
+        const patterns = [toolInput.pattern];
+        const raw = await findFiles(input.workspace, patterns);
         const paths = findResultPaths(raw);
-        emitParts(
-          findSummaryParts(paths, toolInput.patterns, "tool.label.file_find"),
-          "file-find",
-          input.onOutput,
-          callId,
-        );
+        emitParts(findSummaryParts(paths, patterns, "tool.label.file_find"), "file-find", input.onOutput, callId);
         return {
           kind: "file-find" as const,
-          scope: "workspace",
-          patterns: toolInput.patterns,
+          pattern: toolInput.pattern,
           matches: paths.length,
           paths,
           output: raw,
@@ -97,57 +61,36 @@ function createSearchFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Search file contents in the repository for text or regex patterns. Optionally scope with `paths` (files or directories). To locate files by name use `file-find` instead.",
-    instruction: [
-      "Use `file-search` for text/regex content search.",
-      "Narrow scope with `paths` and batch related queries in `patterns`.",
-      "If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
-      "Build `file-edit` calls from current `file-read` text or scoped `file-search` hits.",
-    ].join(" "),
-    inputSchema: z
-      .object({
-        pattern: z.string().min(1).optional(),
-        patterns: z.array(z.string().min(1)).min(1).optional(),
-        paths: z.array(z.string().min(1)).min(1).optional(),
-        maxResults: z.number().int().min(1).max(200).optional(),
-      })
-      .refine((input) => Boolean(input.pattern) || Boolean(input.patterns && input.patterns.length > 0), {
-        message: "Provide pattern or patterns",
-        path: ["patterns"],
-      }),
+      "Search file contents for a text or regex pattern. Optionally scope with `path` (file or directory). To locate files by name use `file-find` instead.",
+    instruction:
+      "Use `file-search` for text/regex content search. Narrow scope with `path`. If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
+    inputSchema: z.object({
+      pattern: z.string().min(1),
+      path: z.string().min(1).optional(),
+      maxResults: z.number().int().min(1).max(200).optional(),
+    }),
     outputSchema: z.object({
       kind: z.literal("file-search"),
-      scope: z.string().min(1),
-      patterns: z.array(z.string().min(1)),
+      pattern: z.string().min(1),
       matches: z.number().int().nonnegative(),
-      entries: z.array(z.object({ path: z.string().min(1), hits: z.array(z.string().min(1)) })),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-search", toolCallId, toolInput, async (callId) => {
-        const maxResults = toolInput.maxResults ?? 20;
-        const patterns =
-          toolInput.patterns && toolInput.patterns.length > 0
-            ? toolInput.patterns
-            : toolInput.pattern
-              ? [toolInput.pattern]
-              : [];
-        const result = await searchFiles(input.workspace, patterns, maxResults, toolInput.paths);
+        const patterns = [toolInput.pattern];
+        const paths = toolInput.path ? [toolInput.path] : undefined;
+        const result = await searchFiles(input.workspace, patterns, toolInput.maxResults ?? 20, paths);
         const summaryStats = searchResultSummaryStats(result, patterns);
-        const summaryParts = searchSummaryParts(
-          summaryStats,
-          patterns,
-          toolInput.paths,
-          "tool.label.file_search",
-          input.workspace,
+        emitParts(
+          searchSummaryParts(summaryStats, patterns, paths, "tool.label.file_search", input.workspace),
+          "file-search",
+          input.onOutput,
+          callId,
         );
-        emitParts(summaryParts, "file-search", input.onOutput, callId);
         return {
           kind: "file-search" as const,
-          scope: toolInput.paths && toolInput.paths.length > 0 ? "paths" : "workspace",
-          patterns,
+          pattern: toolInput.pattern,
           matches: summaryStats.files,
-          entries: [] as { path: string; hits: string[] }[],
           output: result,
         };
       });
@@ -162,36 +105,31 @@ function createReadFileTool(input: ToolkitInput) {
     id: "file-read",
     toolkit: "file",
     category: "read",
-    description: `Read one or more text files (max ${MAX_READ_PATHS} per call). Pass \`paths\` as an array of {path} objects. Never re-read a file you already have.`,
-    instruction: `Use \`file-read\` before \`file-edit\` or \`code-edit\`. Batch up to ${MAX_READ_PATHS} files per call; for named edits, re-read the target file immediately before editing.`,
+    description: "Read a text file. Never re-read a file you already have.",
+    instruction:
+      "Use `file-read` before `file-edit` or `code-edit`. For named edits, re-read the target file immediately before editing.",
     inputSchema: z.object({
-      paths: z.array(z.object({ path: z.string().min(1) })).min(1),
+      path: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-read"),
-      paths: z.array(z.string().min(1)),
+      path: z.string().min(1),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
-        const paths = deduplicatePaths(toolInput.paths);
-        if (paths.length === 0) throw new Error("Read requires at least one non-empty path");
-        if (paths.length > MAX_READ_PATHS) {
-          throw new Error(`Too many files (${paths.length}). Split into batches of ${MAX_READ_PATHS} or fewer.`);
-        }
-        const displayPaths = paths.map((p) => toDisplayPath(p, input.workspace));
         input.onOutput({
           toolName: "file-read",
           content: {
             kind: "file-header",
             labelKey: "tool.label.file_read",
-            count: displayPaths.length,
-            targets: displayPaths.slice(0, 1),
+            count: 1,
+            targets: [toDisplayPath(toolInput.path, input.workspace)],
           },
           toolCallId: callId,
         });
-        const output = await readFileContents(input.workspace, paths, FILE_READ_MAX_LINES);
-        return { kind: "file-read" as const, paths, output };
+        const output = await readFileContent(input.workspace, toolInput.path, FILE_READ_MAX_LINES);
+        return { kind: "file-read" as const, path: toolInput.path, output };
       });
     },
   });
@@ -312,33 +250,29 @@ function createDeleteFileTool(input: ToolkitInput) {
     id: "file-delete",
     toolkit: "file",
     category: "write",
-    description: "Delete a file from the repository.",
-    instruction: "Use `file-delete` to remove files. Pass `paths` as an array and batch related deletes.",
+    description: "Delete a file from the file system.",
+    instruction: "Use `file-delete` to remove a file.",
     inputSchema: z.object({
-      paths: z.array(z.string().min(1)).min(1),
+      path: z.string().min(1),
     }),
     outputSchema: z.object({
       kind: z.literal("file-delete"),
-      paths: z.array(z.string().min(1)),
-      deleted: z.number().int().nonnegative(),
+      path: z.string().min(1),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-delete", toolCallId, toolInput, async (callId) => {
-        const paths = normalizeUniquePaths(toolInput.paths);
-        const deleteDetail = paths.length > 0 ? formatDeletePaths(paths) : undefined;
         input.onOutput({
           toolName: "file-delete",
-          content: { kind: "tool-header", labelKey: "tool.label.file_delete", detail: deleteDetail },
+          content: {
+            kind: "tool-header",
+            labelKey: "tool.label.file_delete",
+            detail: toDisplayPath(toolInput.path, input.workspace),
+          },
           toolCallId: callId,
         });
-        const resultParts: string[] = [];
-        for (const path of paths) {
-          const rawResult = await deleteTextFile({ workspace: input.workspace, path });
-          resultParts.push(rawResult);
-        }
-        const rawResult = resultParts.join("\n\n");
-        return { kind: "file-delete" as const, paths, deleted: paths.length, output: rawResult };
+        const output = await deleteTextFile({ workspace: input.workspace, path: toolInput.path });
+        return { kind: "file-delete" as const, path: toolInput.path, output };
       });
     },
   });

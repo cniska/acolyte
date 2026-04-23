@@ -120,9 +120,9 @@ describe("localization baseline", () => {
       ["file-read", "before", "file-edit", "code-edit"],
       ["re-read", "target file", "before editing"],
     ]);
-    expectIntent(findInstruction, [["file-find", "locate files"], ["patterns", "array"], ["batch"]]);
+    expectIntent(findInstruction, [["file-find", "locate files"]]);
     expectIntent(createInstruction, [["file-create", "full content"]]);
-    expectIntent(deleteInstruction, [["file-delete"], ["paths", "array"], ["batch"]]);
+    expectIntent(deleteInstruction, [["file-delete"]]);
     expectIntent(editInstruction, [
       ["latest direct", "file-read"],
       ["batch same-file edits"],
@@ -130,7 +130,7 @@ describe("localization baseline", () => {
       ["code-edit", "structural", "refactors"],
     ]);
     expectIntent(editCodeInstruction, [["ast-aware refactors"], ["target", "local", "member"], ["withinsymbol"]]);
-    expectIntent(searchInstruction, [["text/regex"], ["narrow scope", "paths"], ["edit from that evidence"]]);
+    expectIntent(searchInstruction, [["text/regex"], ["scope", "path"], ["edit from that evidence"]]);
     expectIntent(gitStatusInstruction, [["repo-wide state"], ["file-scoped edits"]]);
     expectIntent(gitDiffInstruction, [["git-level diff context"], ["write-tool previews"]]);
     expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);

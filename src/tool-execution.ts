@@ -128,7 +128,6 @@ export async function runTool<T = unknown>(
       taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
       if (cache?.isCacheable(toolId)) {
         cache.set(toolId, args, { result: taskResult });
-        cache.populateSubEntries(toolId, args, taskResult);
       }
       const postOutput = session.onAfterTool?.({
         toolId,

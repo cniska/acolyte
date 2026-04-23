@@ -1,5 +1,3 @@
-export const MAX_READ_PATHS = 5;
-
 export const CLI_TOOL_OUTPUT_LIMITS = {
   files: 5,
   run: 5,

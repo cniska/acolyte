@@ -40,7 +40,7 @@ describe("phaseGenerate", () => {
             },
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "file-read", args: { paths: [{ path: "src/a.ts" }] } },
+              payload: { toolCallId: "call_2", toolName: "file-read", args: { path: "src/a.ts" } },
             },
             {
               type: "tool-result" as const,

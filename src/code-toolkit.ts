@@ -7,11 +7,6 @@ import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts } from "./tool-output-format";
 import { numberedUnifiedDiffLines, summarizeUnifiedDiff } from "./tool-output-parse";
 
-function normalizeUniquePaths(paths: string[]): string[] {
-  const normalized = paths.map((path) => path.trim()).filter((path) => path.length > 0);
-  return Array.from(new Set(normalized));
-}
-
 function toDisplayPath(path: string, workspace?: string): string {
   const trimmed = path.trim().replace(/\\/g, "/");
   if (trimmed.startsWith("./")) return trimmed.slice(2);
@@ -50,54 +45,44 @@ function createScanCodeTool(input: ToolkitInput) {
     id: "code-scan",
     toolkit: "code",
     category: "search",
-    description:
-      "Scan files for structural code patterns using AST matching. Pass `paths` as an array of file or directory paths and `patterns` as an array of structural queries.",
-    instruction: [
-      "Use `code-scan` for AST pattern search.",
-      "Pass `paths` and `patterns` as arrays; batch related scans.",
-      "Use it to map structural targets before `code-edit`.",
-      "For plain text/regex searches, use `file-search`.",
-      "Matches include `enclosingSymbol`; reuse it as `withinSymbol` in follow-up `code-edit`.",
-    ].join(" "),
+    description: "Scan a file or directory for structural code patterns using AST matching.",
+    instruction:
+      "Use `code-scan` for AST pattern search. Use it to map structural targets before `code-edit`. For plain text/regex searches, use `file-search`. Matches include `enclosingSymbol`; reuse it as `withinSymbol` in follow-up `code-edit`.",
     inputSchema: z.object({
-      paths: z.array(z.string().min(1)).min(1),
-      patterns: z.array(z.string().min(1)).min(1),
+      path: z.string().min(1),
+      pattern: z.string().min(1),
       language: z.string().optional(),
       maxResults: z.number().int().min(1).max(200).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("code-scan"),
-      paths: z.array(z.string().min(1)),
-      patterns: z.array(z.string().min(1)),
+      path: z.string().min(1),
+      pattern: z.string().min(1),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "code-scan", toolCallId, toolInput, async (callId) => {
-        const paths = normalizeUniquePaths(toolInput.paths);
-        const unique = Array.from(new Set(paths.map((path) => toDisplayPath(path, input.workspace))));
-        if (unique.length > 0) {
-          input.onOutput({
-            toolName: "code-scan",
-            content: {
-              kind: "file-header",
-              labelKey: "tool.label.code_scan",
-              count: unique.length,
-              targets: unique.slice(0, 1),
-            },
-            toolCallId: callId,
-          });
-        }
+        input.onOutput({
+          toolName: "code-scan",
+          content: {
+            kind: "file-header",
+            labelKey: "tool.label.code_scan",
+            count: 1,
+            targets: [toDisplayPath(toolInput.path, input.workspace)],
+          },
+          toolCallId: callId,
+        });
         const rawScan = await scanCode({
           workspace: input.workspace,
-          paths,
-          pattern: toolInput.patterns,
+          paths: [toolInput.path],
+          pattern: toolInput.pattern,
           language: toolInput.language,
-          maxResults: toolInput.maxResults ?? 50,
+          maxResults: toolInput.maxResults,
         });
         return {
           kind: "code-scan" as const,
-          paths,
-          patterns: toolInput.patterns,
+          path: toolInput.path,
+          pattern: toolInput.pattern,
           output: formatScanCodeResult(rawScan),
         };
       });

@@ -22,7 +22,6 @@ import {
 } from "./lifecycle-contract";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
-import { extractToolTargetPaths } from "./tool-arg-paths";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
 import type { Toolset } from "./tool-registry";
@@ -301,7 +300,12 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     ctx.toolCallStartedAt.set(p.toolCallId, {
       toolName,
       startedAtMs: Date.now(),
-      targetPaths: extractToolTargetPaths(args, toolName),
+      targetPaths:
+        typeof args.path === "string"
+          ? [args.path]
+          : Array.isArray(args.paths)
+            ? args.paths.filter((p): p is string => typeof p === "string")
+            : [],
     });
     ctx.debug("lifecycle.tool.call", { tool: toolName, ...formatToolArgs(args) });
     ctx.emit({ type: "tool-call", toolCallId: p.toolCallId, toolName, args });

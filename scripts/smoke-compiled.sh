@@ -36,7 +36,7 @@ const x = 1;
 console.log(x);
 EOF
 
-  run_quiet ./acolyte tool code-scan '{"paths":["src/agent-input.ts"],"patterns":["estimateTokens($X)"],"maxResults":1}'
+  run_quiet ./acolyte tool code-scan '{"path":"src/agent-input.ts","pattern":"estimateTokens($X)","maxResults":1}'
   run_quiet ./acolyte tool code-edit '{"path":"'"$tmp_dir"'/test.ts","edits":[{"op":"rename","from":"x","to":"y"}]}'
 
   cat >"$tmp_dir/test.py" <<'EOF'
@@ -61,7 +61,7 @@ func main() {
 }
 EOF
 
-  run_quiet ./acolyte tool code-scan '{"paths":["'"$tmp_dir"'/test.py"],"patterns":["x = 1"],"language":"python","maxResults":1}'
-  run_quiet ./acolyte tool code-scan '{"paths":["'"$tmp_dir"'/test.rs"],"patterns":["let x = 1;"],"language":"rust","maxResults":1}'
-  run_quiet ./acolyte tool code-scan '{"paths":["'"$tmp_dir"'/test.go"],"patterns":["x := 1"],"language":"go","maxResults":1}'
+  run_quiet ./acolyte tool code-scan '{"path":"'"$tmp_dir"'/test.py","pattern":"x = 1","language":"python","maxResults":1}'
+  run_quiet ./acolyte tool code-scan '{"path":"'"$tmp_dir"'/test.rs","pattern":"let x = 1;","language":"rust","maxResults":1}'
+  run_quiet ./acolyte tool code-scan '{"path":"'"$tmp_dir"'/test.go","pattern":"x := 1","language":"go","maxResults":1}'
 fi
