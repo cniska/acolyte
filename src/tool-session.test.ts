@@ -46,34 +46,6 @@ describe("step budget", () => {
   });
 });
 
-describe("token ceiling", () => {
-  test("blocks when total tokens exceed limit", () => {
-    const session = createSessionContext();
-    session.flags.totalTokenLimit = 1000;
-    session.flags.totalTokens = () => 1500;
-    expect(checkStepBudget(session)).toContain("Token budget exhausted");
-  });
-
-  test("blocks when total tokens equal limit", () => {
-    const session = createSessionContext();
-    session.flags.totalTokenLimit = 1000;
-    session.flags.totalTokens = () => 1000;
-    expect(checkStepBudget(session)).toContain("Token budget exhausted");
-  });
-
-  test("allows when under limit", () => {
-    const session = createSessionContext();
-    session.flags.totalTokenLimit = 1000;
-    session.flags.totalTokens = () => 500;
-    expect(checkStepBudget(session)).toBeUndefined();
-  });
-
-  test("skips when not configured", () => {
-    const session = createSessionContext();
-    expect(checkStepBudget(session)).toBeUndefined();
-  });
-});
-
 describe("consecutive failures", () => {
   test("blocks tool after 3 consecutive failures", () => {
     const session = createSessionContext();

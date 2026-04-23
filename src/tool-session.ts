@@ -18,8 +18,6 @@ export type SessionFlags = {
   turnStepCount?: number;
   turnStepLimit?: number;
   totalStepLimit?: number;
-  totalTokenLimit?: number;
-  totalTokens?: () => number;
 };
 
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
@@ -84,15 +82,6 @@ export function resetTurnStepCount(session: SessionContext, limit?: number): voi
 }
 
 export function checkStepBudget(session: SessionContext, toolId?: string): string | undefined {
-  const tokenLimit = session.flags.totalTokenLimit;
-  const getTokens = session.flags.totalTokens;
-  if (tokenLimit && getTokens) {
-    const tokens = getTokens();
-    if (tokens >= tokenLimit) {
-      return `Token budget exhausted (${tokens} tokens, limit ${tokenLimit}). Commit what you have.`;
-    }
-  }
-
   if (toolId) {
     const limit = session.maxConsecutiveToolFailures ?? MAX_CONSECUTIVE_TOOL_FAILURES;
     const failures = session.consecutiveFailures.get(toolId) ?? 0;
