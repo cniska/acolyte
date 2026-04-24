@@ -10,6 +10,7 @@ export type CollectInput = {
   messages: readonly LanguageModelV3Message[];
   callLog: readonly ToolCallRecord[];
   writeToolSet: ReadonlySet<string>;
+  runnerToolSet: ReadonlySet<string>;
   config?: RemindersConfig;
 };
 
@@ -22,8 +23,6 @@ export function collectReminders(input: CollectInput): Reminder[] {
   return [...detectStuckLoop(input)];
 }
 
-const TEST_RUNNER_TOOL_IDS = new Set(["test-run"]);
-
 export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
   const threshold = input.config?.stuckLoopSameFileThreshold ?? STUCK_LOOP_SAME_FILE_THRESHOLD;
   const turnsBetween = input.config?.stuckLoopTurnsBetweenReminders ?? STUCK_LOOP_TURNS_BETWEEN_REMINDERS;
@@ -31,7 +30,12 @@ export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
   const lastPath = findLastWritePath(input.callLog, input.writeToolSet);
   if (!lastPath) return [];
 
-  const editCount = countConsecutiveEditsSinceGreenTest(input.callLog, input.writeToolSet, lastPath);
+  const editCount = countConsecutiveEditsSinceGreenTest(
+    input.callLog,
+    input.writeToolSet,
+    input.runnerToolSet,
+    lastPath,
+  );
   if (editCount < threshold) return [];
 
   if (turnsSinceLastReminder(input.messages, "stuck-loop") < turnsBetween) return [];
@@ -52,12 +56,13 @@ function findLastWritePath(callLog: readonly ToolCallRecord[], writeToolSet: Rea
 function countConsecutiveEditsSinceGreenTest(
   callLog: readonly ToolCallRecord[],
   writeToolSet: ReadonlySet<string>,
+  runnerToolSet: ReadonlySet<string>,
   path: string,
 ): number {
   let count = 0;
   for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
-    if (TEST_RUNNER_TOOL_IDS.has(entry.toolName) && entry.status === "succeeded") break;
+    if (runnerToolSet.has(entry.toolName) && entry.status === "succeeded") break;
     if (!writeToolSet.has(entry.toolName)) continue;
     if (entry.args.path === path) count += 1;
   }

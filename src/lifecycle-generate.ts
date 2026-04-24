@@ -26,7 +26,7 @@ import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import { RUNNER_TOOL_SET, type Toolset } from "./tool-registry";
 import { resetTurnStepCount } from "./tool-session";
 
 type CaptureErrorMeta = {
@@ -165,7 +165,12 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) =>
-        collectReminders({ messages, callLog: ctx.session.callLog, writeToolSet: WRITE_TOOL_SET }).map(renderReminder),
+        collectReminders({
+          messages,
+          callLog: ctx.session.callLog,
+          writeToolSet: ctx.session.writeTools,
+          runnerToolSet: RUNNER_TOOL_SET,
+        }).map(renderReminder),
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });

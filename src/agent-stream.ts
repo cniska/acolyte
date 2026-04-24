@@ -231,10 +231,10 @@ export function createAgentStream(
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
+        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
+
         const extras = options.onBeforeNextCall?.(messages) ?? [];
         for (const msg of extras) messages.push(msg);
-
-        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
       }
 
       log.debug("agent-stream.complete", {

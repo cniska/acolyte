@@ -294,6 +294,17 @@ describe("onBeforeNextCall hook", () => {
     },
   };
 
+  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
+    return {
+      type: "finish",
+      finishReason: { unified: reason, raw: reason },
+      usage: {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      },
+    };
+  }
+
   function scriptedModel(
     turns: LanguageModelV3StreamPart[][],
     promptCapture: LanguageModelV3Message[][],
@@ -339,29 +350,12 @@ describe("onBeforeNextCall hook", () => {
   test("injects returned messages into the next model prompt", async () => {
     const promptCapture: LanguageModelV3Message[][] = [];
     const turns: LanguageModelV3StreamPart[][] = [
-      [
-        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
-        {
-          type: "finish",
-          finishReason: { unified: "tool-calls", raw: "tool_calls" },
-          usage: {
-            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 1, text: 1, reasoning: 0 },
-          },
-        },
-      ],
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "done" },
         { type: "text-end", id: "t_1" },
-        {
-          type: "finish",
-          finishReason: { unified: "stop", raw: "stop" },
-          usage: {
-            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 1, text: 1, reasoning: 0 },
-          },
-        },
+        finishPart("stop"),
       ],
     ];
     const model = scriptedModel(turns, promptCapture);
@@ -384,18 +378,7 @@ describe("onBeforeNextCall hook", () => {
 
   test("skips injection when hook is not provided", async () => {
     const promptCapture: LanguageModelV3Message[][] = [];
-    const turns: LanguageModelV3StreamPart[][] = [
-      [
-        {
-          type: "finish",
-          finishReason: { unified: "stop", raw: "stop" },
-          usage: {
-            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 1, text: 1, reasoning: 0 },
-          },
-        },
-      ],
-    ];
+    const turns: LanguageModelV3StreamPart[][] = [[finishPart("stop")]];
     const model = scriptedModel(turns, promptCapture);
     const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
     const { getFullOutput } = await stream("hi", {});
