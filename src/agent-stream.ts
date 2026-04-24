@@ -231,6 +231,9 @@ export function createAgentStream(
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
+        const extras = options.onBeforeNextCall?.(messages) ?? [];
+        for (const msg of extras) messages.push(msg);
+
         if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
       }
 

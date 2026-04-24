@@ -1,6 +1,8 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
+import { collectReminders } from "./agent-reminders";
+import { renderReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -24,7 +26,7 @@ import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import type { Toolset } from "./tool-registry";
+import { type Toolset, WRITE_TOOL_SET } from "./tool-registry";
 import { resetTurnStepCount } from "./tool-session";
 
 type CaptureErrorMeta = {
@@ -162,6 +164,8 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
+      onBeforeNextCall: (messages) =>
+        collectReminders({ messages, callLog: ctx.session.callLog, writeToolSet: WRITE_TOOL_SET }).map(renderReminder),
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });

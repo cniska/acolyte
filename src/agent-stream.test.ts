@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import { COMPACTED_OUTPUT, compactPriorToolResults } from "./agent-stream";
+import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import { COMPACTED_OUTPUT, compactPriorToolResults, createAgentStream } from "./agent-stream";
 import {
   appendLifecycleTextDelta,
   createLifecycleTextStreamState,
@@ -8,6 +8,8 @@ import {
   finalizeLifecycleText,
   stripSignalLine,
 } from "./lifecycle-signal";
+import type { RateLimiter } from "./rate-limiter";
+import type { ToolDefinition } from "./tool-contract";
 
 describe("stripSignalLine", () => {
   test("returns text before the signal", () => {
@@ -271,5 +273,133 @@ describe("compactPriorToolResults", () => {
     const part = messages[0].content[0];
     if (part.type !== "tool-result") throw new Error("unexpected");
     expect(part.output).toEqual(COMPACTED_OUTPUT);
+  });
+});
+
+describe("onBeforeNextCall hook", () => {
+  const noopRateLimiter: RateLimiter = {
+    async beforeCall() {},
+    onResponse() {},
+    onError() {
+      return { shouldRetry: false, delayMs: 0 };
+    },
+    reset() {},
+    state() {
+      return {
+        requestsRemaining: undefined,
+        tokensRemaining: undefined,
+        requestsResetMs: undefined,
+        tokensResetMs: undefined,
+      };
+    },
+  };
+
+  function scriptedModel(
+    turns: LanguageModelV3StreamPart[][],
+    promptCapture: LanguageModelV3Message[][],
+  ): LanguageModelV3 {
+    let call = 0;
+    return {
+      specificationVersion: "v3",
+      provider: "test",
+      modelId: "test-model",
+      supportedUrls: {},
+      async doStream(args: { prompt: LanguageModelV3Message[] }) {
+        promptCapture.push(args.prompt.map((m) => ({ ...m })));
+        const parts = turns[call] ?? [];
+        call += 1;
+        return {
+          stream: new ReadableStream<LanguageModelV3StreamPart>({
+            start(controller) {
+              for (const part of parts) controller.enqueue(part);
+              controller.close();
+            },
+          }),
+        };
+      },
+    } as unknown as LanguageModelV3;
+  }
+
+  function echoTool(): ToolDefinition {
+    return {
+      id: "noop",
+      toolkit: "test",
+      category: "execute",
+      description: "noop",
+      instruction: "noop",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        return { result: { kind: "noop" } };
+      },
+    };
+  }
+
+  test("injects returned messages into the next model prompt", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        {
+          type: "finish",
+          finishReason: { unified: "tool-calls", raw: "tool_calls" },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+        },
+      ],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "done" },
+        { type: "text-end", id: "t_1" },
+        {
+          type: "finish",
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+        },
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+
+    const marker = "<<inject-test-marker>>";
+    const { getFullOutput } = await stream("hi", {
+      onBeforeNextCall: () => [{ role: "user", content: [{ type: "text", text: marker }] }],
+    });
+    await getFullOutput();
+
+    expect(promptCapture.length).toBeGreaterThanOrEqual(2);
+    const secondPrompt = promptCapture[1];
+    const injected = secondPrompt.find(
+      (m) =>
+        m.role === "user" && Array.isArray(m.content) && m.content.some((p) => p.type === "text" && p.text === marker),
+    );
+    expect(injected).toBeTruthy();
+  });
+
+  test("skips injection when hook is not provided", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        {
+          type: "finish",
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+        },
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", {});
+    await getFullOutput();
+    expect(promptCapture.length).toBe(1);
   });
 });
