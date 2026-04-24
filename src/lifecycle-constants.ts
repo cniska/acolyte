@@ -12,3 +12,4 @@ export const MAX_RECENT_TURNS = 5;
 
 export const STUCK_LOOP_SAME_FILE_THRESHOLD = 3;
 export const STUCK_LOOP_TURNS_BETWEEN_REMINDERS = 5;
+export const BUDGET_NUDGE_THRESHOLDS: readonly number[] = [0.5, 0.75];

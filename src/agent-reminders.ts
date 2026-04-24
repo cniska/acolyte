@@ -1,26 +1,38 @@
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import { STUCK_LOOP_SAME_FILE_THRESHOLD, STUCK_LOOP_TURNS_BETWEEN_REMINDERS } from "./lifecycle-constants";
+import {
+  BUDGET_NUDGE_THRESHOLDS,
+  STUCK_LOOP_SAME_FILE_THRESHOLD,
+  STUCK_LOOP_TURNS_BETWEEN_REMINDERS,
+} from "./lifecycle-constants";
 import type { ToolCallRecord } from "./tool-session";
 
 export type StuckLoopReminder = { type: "stuck-loop"; path: string; editCount: number };
+export type BudgetPressureReminder = {
+  type: "budget-pressure";
+  thresholdPct: number;
+  used: number;
+  limit: number;
+};
 
-export type Reminder = StuckLoopReminder;
+export type Reminder = StuckLoopReminder | BudgetPressureReminder;
 
 export type CollectInput = {
   messages: readonly LanguageModelV3Message[];
   callLog: readonly ToolCallRecord[];
   writeToolSet: ReadonlySet<string>;
   runnerToolSet: ReadonlySet<string>;
+  budget?: { used: number; limit: number };
   config?: RemindersConfig;
 };
 
 export type RemindersConfig = {
   stuckLoopSameFileThreshold?: number;
   stuckLoopTurnsBetweenReminders?: number;
+  budgetNudgeThresholds?: readonly number[];
 };
 
 export function collectReminders(input: CollectInput): Reminder[] {
-  return [...detectStuckLoop(input)];
+  return [...detectStuckLoop(input), ...detectBudgetPressure(input)];
 }
 
 export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
@@ -41,6 +53,35 @@ export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
   if (turnsSinceLastReminder(input.messages, "stuck-loop") < turnsBetween) return [];
 
   return [{ type: "stuck-loop", path: lastPath, editCount }];
+}
+
+export function detectBudgetPressure(input: CollectInput): BudgetPressureReminder[] {
+  const budget = input.budget;
+  if (!budget || budget.limit <= 0) return [];
+  if (budget.used >= budget.limit) return [];
+
+  const thresholds = input.config?.budgetNudgeThresholds ?? BUDGET_NUDGE_THRESHOLDS;
+  const ratio = budget.used / budget.limit;
+
+  const crossed = thresholds.filter((t) => ratio >= t).sort((a, b) => b - a);
+  for (const threshold of crossed) {
+    if (turnsSinceLastReminder(input.messages, budgetPressureTag(threshold)) !== Number.POSITIVE_INFINITY) continue;
+    return [{ type: "budget-pressure", thresholdPct: threshold, used: budget.used, limit: budget.limit }];
+  }
+  return [];
+}
+
+export function budgetPressureTag(thresholdPct: number): string {
+  return `budget-pressure-${Math.round(thresholdPct * 100)}`;
+}
+
+export function reminderTag(reminder: Reminder): string {
+  switch (reminder.type) {
+    case "stuck-loop":
+      return reminder.type;
+    case "budget-pressure":
+      return budgetPressureTag(reminder.thresholdPct);
+  }
 }
 
 function findLastWritePath(callLog: readonly ToolCallRecord[], writeToolSet: ReadonlySet<string>): string | undefined {
@@ -69,15 +110,15 @@ function countConsecutiveEditsSinceGreenTest(
   return count;
 }
 
-export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message[], type: Reminder["type"]): number {
-  const tag = `<system-reminder type="${type}">`;
+export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message[], tag: string): number {
+  const marker = `<system-reminder type="${tag}">`;
   let turns = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === "assistant") turns += 1;
     if (msg.role !== "user") continue;
     for (const part of msg.content) {
-      if (part.type === "text" && part.text.includes(tag)) return turns;
+      if (part.type === "text" && part.text.includes(marker)) return turns;
     }
   }
   return Number.POSITIVE_INFINITY;

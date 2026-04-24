@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import { collectReminders, detectStuckLoop, turnsSinceLastReminder } from "./agent-reminders";
+import {
+  budgetPressureTag,
+  collectReminders,
+  detectBudgetPressure,
+  detectStuckLoop,
+  turnsSinceLastReminder,
+} from "./agent-reminders";
 import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import type { ToolCallRecord, ToolCallStatus } from "./tool-session";
 
@@ -15,10 +21,10 @@ function call(toolName: string, args: Record<string, unknown>, status: ToolCallS
   return { toolName, args, status };
 }
 
-function userReminderMessage(type: string): LanguageModelV3Message {
+function userReminderMessage(tag: string): LanguageModelV3Message {
   return {
     role: "user",
-    content: [{ type: "text", text: `<system-reminder type="${type}">\nprior\n</system-reminder>` }],
+    content: [{ type: "text", text: `<system-reminder type="${tag}">\nprior\n</system-reminder>` }],
   };
 }
 
@@ -29,6 +35,7 @@ function input(overrides: {
   callLog?: readonly ToolCallRecord[];
   writeToolSet?: ReadonlySet<string>;
   runnerToolSet?: ReadonlySet<string>;
+  budget?: { used: number; limit: number };
   config?: Parameters<typeof detectStuckLoop>[0]["config"];
 }) {
   return {
@@ -36,6 +43,7 @@ function input(overrides: {
     callLog: overrides.callLog ?? [],
     writeToolSet: overrides.writeToolSet ?? WRITE_TOOL_SET,
     runnerToolSet: overrides.runnerToolSet ?? RUNNER_TOOL_SET,
+    ...(overrides.budget ? { budget: overrides.budget } : {}),
     config: overrides.config,
   };
 }
@@ -65,6 +73,31 @@ describe("renderReminder", () => {
         },
       ],
     });
+  });
+
+  test("renders budget-pressure at 50% with threshold-encoded tag", () => {
+    const msg = renderReminder({ type: "budget-pressure", thresholdPct: 0.5, used: 5, limit: 10 });
+    expect(msg).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text:
+            '<system-reminder type="budget-pressure-50">\n' +
+            "Budget: 5/10 tool calls used (50%)." +
+            " List remaining scope items ranked by cost and identify the minimum viable slice you can ship cleanly.\n" +
+            "</system-reminder>",
+        },
+      ],
+    });
+  });
+
+  test("renders budget-pressure at 75% with stronger phrasing", () => {
+    const msg = renderReminder({ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 });
+    const text = (msg.content as { type: string; text: string }[])[0].text;
+    expect(text).toContain('<system-reminder type="budget-pressure-75">');
+    expect(text).toContain("8/10 tool calls used (75%)");
+    expect(text).toContain("Descope now");
   });
 });
 
@@ -150,6 +183,52 @@ describe("detectStuckLoop", () => {
   });
 });
 
+describe("detectBudgetPressure", () => {
+  test("does not fire without a budget", () => {
+    expect(detectBudgetPressure(input({}))).toEqual([]);
+  });
+
+  test("does not fire below the first threshold", () => {
+    expect(detectBudgetPressure(input({ budget: { used: 4, limit: 10 } }))).toEqual([]);
+  });
+
+  test("fires at the 50% threshold", () => {
+    const out = detectBudgetPressure(input({ budget: { used: 5, limit: 10 } }));
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.5, used: 5, limit: 10 }]);
+  });
+
+  test("fires at the 75% threshold", () => {
+    const out = detectBudgetPressure(input({ budget: { used: 8, limit: 10 } }));
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 }]);
+  });
+
+  test("skips already-announced thresholds", () => {
+    const messages: LanguageModelV3Message[] = [userReminderMessage(budgetPressureTag(0.5))];
+    expect(detectBudgetPressure(input({ messages, budget: { used: 5, limit: 10 } }))).toEqual([]);
+  });
+
+  test("fires 75% after 50% was already announced", () => {
+    const messages: LanguageModelV3Message[] = [userReminderMessage(budgetPressureTag(0.5))];
+    const out = detectBudgetPressure(input({ messages, budget: { used: 8, limit: 10 } }));
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 }]);
+  });
+
+  test("does not fire when budget is already exhausted", () => {
+    expect(detectBudgetPressure(input({ budget: { used: 10, limit: 10 } }))).toEqual([]);
+  });
+
+  test("does not fire for non-positive limits", () => {
+    expect(detectBudgetPressure(input({ budget: { used: 0, limit: 0 } }))).toEqual([]);
+  });
+
+  test("config overrides default thresholds", () => {
+    const out = detectBudgetPressure(
+      input({ budget: { used: 3, limit: 10 }, config: { budgetNudgeThresholds: [0.25] } }),
+    );
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.25, used: 3, limit: 10 }]);
+  });
+});
+
 describe("collectReminders", () => {
   test("returns empty when nothing fires", () => {
     expect(collectReminders(input({}))).toEqual([]);
@@ -157,9 +236,8 @@ describe("collectReminders", () => {
 
   test("aggregates fired reminders", () => {
     const callLog: ToolCallRecord[] = [edit("src/a.ts"), edit("src/a.ts"), edit("src/a.ts")];
-    const out = collectReminders(input({ callLog }));
-    expect(out).toHaveLength(1);
-    expect(out[0].type).toBe("stuck-loop");
+    const out = collectReminders(input({ callLog, budget: { used: 8, limit: 10 } }));
+    expect(out.map((r) => r.type)).toEqual(["stuck-loop", "budget-pressure"]);
   });
 });
 

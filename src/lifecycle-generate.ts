@@ -29,6 +29,13 @@ import { extractToolErrorCode } from "./tool-error";
 import { RUNNER_TOOL_SET, type Toolset } from "./tool-registry";
 import { resetTurnStepCount } from "./tool-session";
 
+function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
+  const used = ctx.session.flags.turnStepCount;
+  const limit = ctx.session.flags.turnStepLimit;
+  if (typeof used !== "number" || typeof limit !== "number" || limit <= 0) return undefined;
+  return { used, limit };
+}
+
 type CaptureErrorMeta = {
   source?: ErrorSource;
   tool?: string;
@@ -170,6 +177,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
           callLog: ctx.session.callLog,
           writeToolSet: ctx.session.writeTools,
           runnerToolSet: RUNNER_TOOL_SET,
+          budget: budgetState(ctx),
         }).map(renderReminder),
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
