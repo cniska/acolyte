@@ -1,7 +1,7 @@
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
-import { collectReminders } from "./agent-reminders";
+import { collectReminders, reminderTag } from "./agent-reminders";
 import { renderReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
@@ -171,14 +171,22 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
-      onBeforeNextCall: (messages) =>
-        collectReminders({
+      onBeforeNextCall: (messages) => {
+        const reminders = collectReminders({
           messages,
           callLog: ctx.session.callLog,
           writeToolSet: ctx.session.writeTools,
           runnerToolSet: RUNNER_TOOL_SET,
           budget: budgetState(ctx),
-        }).map(renderReminder),
+        });
+        if (reminders.length > 0) {
+          ctx.debug("lifecycle.reminders.injected", {
+            count: reminders.length,
+            tags: reminders.map(reminderTag),
+          });
+        }
+        return reminders.map(renderReminder);
+      },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });
