@@ -75,8 +75,14 @@ describe("renderReminder", () => {
     });
   });
 
-  test("renders budget-pressure at 50% with threshold-encoded tag", () => {
-    const msg = renderReminder({ type: "budget-pressure", thresholdPct: 0.5, used: 5, limit: 10 });
+  test("renders budget-pressure soft variant with threshold-encoded tag", () => {
+    const msg = renderReminder({
+      type: "budget-pressure",
+      thresholdPct: 0.5,
+      variant: "soft",
+      used: 5,
+      limit: 10,
+    });
     expect(msg).toEqual({
       role: "user",
       content: [
@@ -92,12 +98,35 @@ describe("renderReminder", () => {
     });
   });
 
-  test("renders budget-pressure at 75% with stronger phrasing", () => {
-    const msg = renderReminder({ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 });
+  test("renders budget-pressure urgent variant with stronger phrasing", () => {
+    const msg = renderReminder({
+      type: "budget-pressure",
+      thresholdPct: 0.75,
+      variant: "urgent",
+      used: 8,
+      limit: 10,
+    });
+    expect(msg).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text:
+            '<system-reminder type="budget-pressure-75">\n' +
+            "Budget: 8/10 tool calls used (75%)." +
+            " Descope now — pick the single highest-value slice and commit or hand off the rest." +
+            " Budget exhaustion produces worse handoffs than voluntary descope.\n" +
+            "</system-reminder>",
+        },
+      ],
+    });
+  });
+
+  test("sanitizes backticks and angle brackets from stuck-loop paths", () => {
+    const msg = renderReminder({ type: "stuck-loop", path: "src/a`<b>.ts", editCount: 3 });
     const text = (msg.content as { type: string; text: string }[])[0].text;
-    expect(text).toContain('<system-reminder type="budget-pressure-75">');
-    expect(text).toContain("8/10 tool calls used (75%)");
-    expect(text).toContain("Descope now");
+    expect(text).toContain("`src/ab.ts`");
+    expect(text).not.toContain("a`<b>");
   });
 });
 
@@ -192,14 +221,20 @@ describe("detectBudgetPressure", () => {
     expect(detectBudgetPressure(input({ budget: { used: 4, limit: 10 } }))).toEqual([]);
   });
 
-  test("fires at the 50% threshold", () => {
+  test("fires at the 50% threshold with soft variant", () => {
     const out = detectBudgetPressure(input({ budget: { used: 5, limit: 10 } }));
-    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.5, used: 5, limit: 10 }]);
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.5, variant: "soft", used: 5, limit: 10 }]);
   });
 
-  test("fires at the 75% threshold", () => {
+  test("fires at the 75% threshold with urgent variant", () => {
     const out = detectBudgetPressure(input({ budget: { used: 8, limit: 10 } }));
-    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 }]);
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, variant: "urgent", used: 8, limit: 10 }]);
+  });
+
+  test("picks highest crossed threshold when multiple cross with nothing announced", () => {
+    const out = detectBudgetPressure(input({ budget: { used: 8, limit: 10 } }));
+    expect(out).toHaveLength(1);
+    expect(out[0].thresholdPct).toBe(0.75);
   });
 
   test("skips already-announced thresholds", () => {
@@ -210,7 +245,7 @@ describe("detectBudgetPressure", () => {
   test("fires 75% after 50% was already announced", () => {
     const messages: LanguageModelV3Message[] = [userReminderMessage(budgetPressureTag(0.5))];
     const out = detectBudgetPressure(input({ messages, budget: { used: 8, limit: 10 } }));
-    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, used: 8, limit: 10 }]);
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, variant: "urgent", used: 8, limit: 10 }]);
   });
 
   test("does not fire when budget is already exhausted", () => {
@@ -225,7 +260,14 @@ describe("detectBudgetPressure", () => {
     const out = detectBudgetPressure(
       input({ budget: { used: 3, limit: 10 }, config: { budgetNudgeThresholds: [0.25] } }),
     );
-    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.25, used: 3, limit: 10 }]);
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.25, variant: "urgent", used: 3, limit: 10 }]);
+  });
+
+  test("marks only the highest configured threshold as urgent", () => {
+    const out = detectBudgetPressure(
+      input({ budget: { used: 3, limit: 10 }, config: { budgetNudgeThresholds: [0.25, 0.5, 0.9] } }),
+    );
+    expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.25, variant: "soft", used: 3, limit: 10 }]);
   });
 });
 

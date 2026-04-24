@@ -10,6 +10,7 @@ export type StuckLoopReminder = { type: "stuck-loop"; path: string; editCount: n
 export type BudgetPressureReminder = {
   type: "budget-pressure";
   thresholdPct: number;
+  variant: "soft" | "urgent";
   used: number;
   limit: number;
 };
@@ -61,12 +62,22 @@ export function detectBudgetPressure(input: CollectInput): BudgetPressureReminde
   if (budget.used >= budget.limit) return [];
 
   const thresholds = input.config?.budgetNudgeThresholds ?? BUDGET_NUDGE_THRESHOLDS;
-  const ratio = budget.used / budget.limit;
+  if (thresholds.length === 0) return [];
 
+  const ratio = budget.used / budget.limit;
+  const maxThreshold = Math.max(...thresholds);
   const crossed = thresholds.filter((t) => ratio >= t).sort((a, b) => b - a);
   for (const threshold of crossed) {
     if (turnsSinceLastReminder(input.messages, budgetPressureTag(threshold)) !== Number.POSITIVE_INFINITY) continue;
-    return [{ type: "budget-pressure", thresholdPct: threshold, used: budget.used, limit: budget.limit }];
+    return [
+      {
+        type: "budget-pressure",
+        thresholdPct: threshold,
+        variant: threshold >= maxThreshold ? "urgent" : "soft",
+        used: budget.used,
+        limit: budget.limit,
+      },
+    ];
   }
   return [];
 }
@@ -82,6 +93,20 @@ export function reminderTag(reminder: Reminder): string {
     case "budget-pressure":
       return budgetPressureTag(reminder.thresholdPct);
   }
+}
+
+export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message[], tag: string): number {
+  const marker = `<system-reminder type="${tag}">`;
+  let turns = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === "assistant") turns += 1;
+    if (msg.role !== "user") continue;
+    for (const part of msg.content) {
+      if (part.type === "text" && part.text.includes(marker)) return turns;
+    }
+  }
+  return Number.POSITIVE_INFINITY;
 }
 
 function findLastWritePath(callLog: readonly ToolCallRecord[], writeToolSet: ReadonlySet<string>): string | undefined {
@@ -108,18 +133,4 @@ function countConsecutiveEditsSinceGreenTest(
     if (entry.args.path === path) count += 1;
   }
   return count;
-}
-
-export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message[], tag: string): number {
-  const marker = `<system-reminder type="${tag}">`;
-  let turns = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role === "assistant") turns += 1;
-    if (msg.role !== "user") continue;
-    for (const part of msg.content) {
-      if (part.type === "text" && part.text.includes(marker)) return turns;
-    }
-  }
-  return Number.POSITIVE_INFINITY;
 }
