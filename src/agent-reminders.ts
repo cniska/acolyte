@@ -40,20 +40,12 @@ export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
   const threshold = input.config?.stuckLoopSameFileThreshold ?? STUCK_LOOP_SAME_FILE_THRESHOLD;
   const turnsBetween = input.config?.stuckLoopTurnsBetweenReminders ?? STUCK_LOOP_TURNS_BETWEEN_REMINDERS;
 
-  const lastPath = findLastWritePath(input.callLog, input.writeToolSet);
-  if (!lastPath) return [];
-
-  const editCount = countConsecutiveEditsSinceGreenTest(
-    input.callLog,
-    input.writeToolSet,
-    input.runnerToolSet,
-    lastPath,
-  );
-  if (editCount < threshold) return [];
+  const stuckLoop = findStuckLoop(input.callLog, input.writeToolSet, input.runnerToolSet);
+  if (!stuckLoop || stuckLoop.editCount < threshold) return [];
 
   if (turnsSinceLastReminder(input.messages, "stuck-loop") < turnsBetween) return [];
 
-  return [{ type: "stuck-loop", path: lastPath, editCount }];
+  return [{ type: "stuck-loop", path: stuckLoop.path, editCount: stuckLoop.editCount }];
 }
 
 export function detectBudgetPressure(input: CollectInput): BudgetPressureReminder[] {
@@ -109,28 +101,28 @@ export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message
   return Number.POSITIVE_INFINITY;
 }
 
-function findLastWritePath(callLog: readonly ToolCallRecord[], writeToolSet: ReadonlySet<string>): string | undefined {
-  for (let i = callLog.length - 1; i >= 0; i--) {
-    const entry = callLog[i];
-    if (!writeToolSet.has(entry.toolName)) continue;
-    const path = entry.args.path;
-    if (typeof path === "string" && path.length > 0) return path;
-  }
-  return undefined;
-}
-
-function countConsecutiveEditsSinceGreenTest(
+function findStuckLoop(
   callLog: readonly ToolCallRecord[],
   writeToolSet: ReadonlySet<string>,
   runnerToolSet: ReadonlySet<string>,
-  path: string,
-): number {
-  let count = 0;
+): { path: string; editCount: number } | undefined {
+  let targetPath: string | undefined;
+  let editCount = 0;
   for (let i = callLog.length - 1; i >= 0; i--) {
     const entry = callLog[i];
-    if (runnerToolSet.has(entry.toolName) && entry.status === "succeeded") break;
+    if (isGreenRunner(entry, runnerToolSet)) break;
     if (!writeToolSet.has(entry.toolName)) continue;
-    if (entry.args.path === path) count += 1;
+    const path = entry.args.path;
+    if (typeof path !== "string" || path.length === 0) continue;
+    if (!targetPath) targetPath = path;
+    if (path !== targetPath) break;
+    editCount += 1;
   }
-  return count;
+  return targetPath ? { path: targetPath, editCount } : undefined;
+}
+
+function isGreenRunner(entry: ToolCallRecord, runnerToolSet: ReadonlySet<string>): boolean {
+  if (!runnerToolSet.has(entry.toolName)) return false;
+  if (typeof entry.exitCode === "number") return entry.exitCode === 0;
+  return entry.status === "succeeded";
 }

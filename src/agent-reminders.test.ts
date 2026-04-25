@@ -17,8 +17,13 @@ function edit(path: string, status: ToolCallStatus = "succeeded"): ToolCallRecor
   return { toolName: "file-edit", args: { path }, status };
 }
 
-function call(toolName: string, args: Record<string, unknown>, status: ToolCallStatus = "succeeded"): ToolCallRecord {
-  return { toolName, args, status };
+function call(
+  toolName: string,
+  args: Record<string, unknown>,
+  status: ToolCallStatus = "succeeded",
+  meta?: Pick<ToolCallRecord, "exitCode">,
+): ToolCallRecord {
+  return { toolName, args, status, ...meta };
 }
 
 function userReminderMessage(tag: string): LanguageModelV3Message {
@@ -151,10 +156,21 @@ describe("detectStuckLoop", () => {
       edit("src/a.ts"),
       edit("src/a.ts"),
       edit("src/a.ts"),
-      call("test-run", {}, "succeeded"),
+      call("test-run", {}, "succeeded", { exitCode: 0 }),
       edit("src/a.ts"),
     ];
     expect(detectStuckLoop(input({ callLog }))).toEqual([]);
+  });
+
+  test("resets after a successful shell-run", () => {
+    const callLog: ToolCallRecord[] = [
+      edit("src/a.ts"),
+      edit("src/a.ts"),
+      edit("src/a.ts"),
+      call("shell-run", {}, "succeeded", { exitCode: 0 }),
+      edit("src/a.ts"),
+    ];
+    expect(detectStuckLoop(input({ callLog, runnerToolSet: new Set(["shell-run", "test-run"]) }))).toEqual([]);
   });
 
   test("failed test-run does not reset the counter", () => {
@@ -169,8 +185,24 @@ describe("detectStuckLoop", () => {
     expect(out[0].editCount).toBe(3);
   });
 
+  test("nonzero test-run does not reset even when tool execution succeeded", () => {
+    const callLog: ToolCallRecord[] = [
+      edit("src/a.ts"),
+      edit("src/a.ts"),
+      call("test-run", {}, "succeeded", { exitCode: 1 }),
+      edit("src/a.ts"),
+    ];
+    const out = detectStuckLoop(input({ callLog }));
+    expect(out).toEqual([{ type: "stuck-loop", path: "src/a.ts", editCount: 3 }]);
+  });
+
   test("only counts edits to the most recent path", () => {
     const callLog: ToolCallRecord[] = [edit("src/a.ts"), edit("src/a.ts"), edit("src/b.ts"), edit("src/b.ts")];
+    expect(detectStuckLoop(input({ callLog }))).toEqual([]);
+  });
+
+  test("different write paths break a same-file edit streak", () => {
+    const callLog: ToolCallRecord[] = [edit("src/a.ts"), edit("src/a.ts"), edit("src/b.ts"), edit("src/a.ts")];
     expect(detectStuckLoop(input({ callLog }))).toEqual([]);
   });
 

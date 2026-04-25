@@ -178,6 +178,13 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
           writeToolSet: ctx.session.writeTools,
           runnerToolSet: RUNNER_TOOL_SET,
           budget: budgetState(ctx),
+          config: {
+            stuckLoopSameFileThreshold: ctx.policy.stuckLoopSameFileThreshold,
+            stuckLoopTurnsBetweenReminders: ctx.policy.stuckLoopTurnsBetweenReminders,
+            budgetNudgeThresholds: ctx.policy.budgetNudgeThresholds,
+            checklistTurnsSinceWrite: ctx.policy.checklistTurnsSinceWrite,
+            checklistTurnsBetweenReminders: ctx.policy.checklistTurnsBetweenReminders,
+          },
         });
         if (reminders.length > 0) {
           ctx.debug("lifecycle.reminders.injected", {
