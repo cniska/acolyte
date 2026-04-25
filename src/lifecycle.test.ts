@@ -3,7 +3,7 @@ import type { ChatResponse } from "./api";
 import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
 import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
-import { WRITE_TOOL_SET } from "./tool-registry";
+import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
@@ -110,6 +110,47 @@ describe("runLifecycle", () => {
     expect(events.find((entry) => entry.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
       "missing-validation-after-write",
     );
+  });
+
+  test("rejects done when the last runner failed (broken-handoff gate)", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx) => {
+        ctx.session.callLog.push({
+          toolName: "test-run",
+          args: { command: "bun test src/app.test.ts" },
+          taskId: ctx.taskId,
+          status: "failed",
+          exitCode: 1,
+        });
+        ctx.result = { text: "Done.\n@signal done", toolCalls: [], signal: "done" };
+      }),
+      phaseFinalize: mock((ctx): ChatResponse => {
+        const error = ctx.currentError?.message;
+        return {
+          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
+          model: ctx.model,
+          output: error ?? ctx.result?.text ?? "",
+          ...(error ? { error } : {}),
+        };
+      }),
+    });
+
+    const response = await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        taskId: "task_test",
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(RUNNER_TOOL_SET.has("test-run")).toBe(true);
+    expect(response.state).toBe("awaiting-input");
+    expect(response.error).toContain("exit code 1");
+    expect(response.error).toContain("bun test src/app.test.ts");
+    expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("broken-handoff");
   });
 });
 

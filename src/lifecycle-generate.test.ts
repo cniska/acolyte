@@ -1,11 +1,63 @@
 import { describe, expect, test } from "bun:test";
+import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import type { StreamOptions } from "./agent-contract";
+import { createAgentStream } from "./agent-stream";
 import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { resolveSignal } from "./lifecycle";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
+import type { RateLimiter } from "./rate-limiter";
 import { createRunContext } from "./test-utils";
+
+const noopRateLimiter: RateLimiter = {
+  async beforeCall() {},
+  onResponse() {},
+  onError() {
+    return { shouldRetry: false, delayMs: 0 };
+  },
+  reset() {},
+  state() {
+    return { requestsRemaining: undefined, tokensRemaining: undefined, requestsResetMs: undefined, tokensResetMs: undefined };
+  },
+};
+
+function scriptedModel(
+  turns: LanguageModelV3StreamPart[][],
+  promptCapture: LanguageModelV3Message[][],
+): LanguageModelV3 {
+  let call = 0;
+  return {
+    specificationVersion: "v3",
+    provider: "test",
+    modelId: "test-model",
+    supportedUrls: {},
+    async doStream(args: { prompt: LanguageModelV3Message[] }) {
+      promptCapture.push(args.prompt.map((m) => ({ ...m })));
+      const parts = turns[call] ?? [];
+      call += 1;
+      return {
+        stream: new ReadableStream<LanguageModelV3StreamPart>({
+          start(controller) {
+            for (const part of parts) controller.enqueue(part);
+            controller.close();
+          },
+        }),
+      };
+    },
+  } as unknown as LanguageModelV3;
+}
+
+function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
+  return {
+    type: "finish",
+    finishReason: { unified: reason, raw: reason },
+    usage: {
+      inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 1, text: 1, reasoning: 0 },
+    },
+  };
+}
 
 describe("phaseGenerate", () => {
   test("does not clear a file-edit error after an unrelated successful read", async () => {
@@ -475,5 +527,78 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(ctx.promptUsage.memoryTokens).toBe(0);
+  });
+
+  test("injects post-failure reminder when the last runner in callLog failed", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
+    // Turn 2: done signal
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const noopTool = {
+      id: "noop",
+      toolkit: "test",
+      category: "execute" as const,
+      description: "noop",
+      instruction: "noop",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        return { result: { kind: "noop" } };
+      },
+    };
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", { noop: noopTool }, noopRateLimiter);
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: { noop: noopTool },
+        stream: agentStream,
+      },
+    });
+
+    // Pre-populate callLog with a failed runner — R5 should fire before turn 2
+    ctx.session.callLog.push({
+      toolName: "test-run",
+      args: { command: "bun test src/app.test.ts" },
+      status: "failed",
+      exitCode: 1,
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    // The second model prompt should contain the post-failure system reminder
+    const secondPrompt = promptCapture[1] ?? [];
+    const injectedText = secondPrompt
+      .filter((m) => m.role === "user")
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+
+    expect(injectedText).toContain('type="post-failure');
+    expect(injectedText).toContain("bun test src/app.test.ts");
+    expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
   });
 });
