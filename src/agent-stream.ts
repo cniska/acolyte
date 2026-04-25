@@ -157,9 +157,25 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        if (stepText.length > 0) fullText += stepText;
 
-        if (pendingToolCalls.length === 0) break;
+        if (pendingToolCalls.length === 0) {
+          const extras =
+            options.onBeforeFinish?.({
+              messages,
+              text: stepText,
+              ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
+            }) ?? [];
+          if (extras.length > 0) {
+            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
+            for (const msg of extras) messages.push(msg);
+            lifecycleSignal = undefined;
+            continue;
+          }
+          if (stepText.length > 0) fullText += stepText;
+          break;
+        }
+
+        if (stepText.length > 0) fullText += stepText;
 
         const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
           type: "tool-call" as const,
@@ -232,6 +248,9 @@ export function createAgentStream(
         messages.push({ role: "tool", content: toolResultParts });
 
         if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
+
+        const extras = options.onBeforeNextCall?.(messages) ?? [];
+        for (const msg of extras) messages.push(msg);
       }
 
       log.debug("agent-stream.complete", {

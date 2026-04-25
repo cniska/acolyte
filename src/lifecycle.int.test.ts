@@ -64,7 +64,7 @@ describe("lifecycle integration", () => {
     if (fake) fake.stop();
   });
 
-  test("@signal done completes after write tools", async () => {
+  test("@signal done completion rejection continues to validation", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
@@ -82,12 +82,80 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
+      if (turnCount === 2) {
+        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
+      }
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ cmd: "true" }),
+          },
+        ]);
+      }
       return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
     });
 
     const reply = await run("update x to 2");
-    expect(turnCount).toBe(2);
+    expect(turnCount).toBe(4);
     expect(reply.output).toContain("Updated x to 2.");
+  });
+
+  test("unresolved tool errors get a recovery turn before finalization", async () => {
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const missing = 1;", replace: "export const x = 4;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 2) {
+        expect(JSON.stringify(ctx.body)).toContain("tool-error-recovery");
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ cmd: "true" }),
+          },
+        ]);
+      }
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Recovered and updated x to 4.\n\n@signal done");
+    });
+
+    const reply = await run("update x to 4");
+    expect(turnCount).toBe(4);
+    expect(reply.state).toBe("done");
+    expect(reply.output).toContain("Recovered and updated x to 4.");
+    expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
   });
 
   test("@signal no_op completes without write tools", async () => {
@@ -151,6 +219,17 @@ printf '%s\n' "$@" > "${formatLog}"
           },
         ]);
       }
+      if (turnCount === 2) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ cmd: "true" }),
+          },
+        ]);
+      }
       return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 6.\n\n@signal done");
     });
 
@@ -162,11 +241,11 @@ printf '%s\n' "$@" > "${formatLog}"
       }),
     );
 
-    expect(turnCount).toBe(2);
+    expect(turnCount).toBe(3);
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
-  test("lint effect surfaces errors without regeneration", async () => {
+  test("lint effect output does not satisfy completion validation", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const lintScript = await writeExecutableScript(
       "lint-effect.sh",
@@ -204,8 +283,9 @@ exit 1
       }),
     );
 
-    expect(turnCount).toBe(2);
-    expect(reply.output).toContain("Updated x to 7.");
+    expect(turnCount).toBe(3);
+    expect(reply.state).toBe("awaiting-input");
+    expect(reply.output).toContain("changed after the last successful validation");
   });
 
   test("runControl yield skips result acceptance", async () => {

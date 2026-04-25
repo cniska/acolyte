@@ -78,4 +78,11 @@ describe("per-tool timeout", () => {
     );
     expect(result).toEqual({ result: "done" });
   });
+
+  test("records exit code metadata from command-shaped results", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    await runTool(session, "test-run", "call_1", {}, async () => ({ kind: "test-run", exitCode: 1 }));
+    expect(session.callLog[0]).toMatchObject({ toolName: "test-run", status: "succeeded", exitCode: 1 });
+  });
 });

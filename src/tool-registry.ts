@@ -150,6 +150,7 @@ export const WRITE_TOOL_SET = new Set<string>(WRITE_TOOLS);
 export const READ_TOOL_SET = new Set<string>(READ_TOOLS);
 export const SEARCH_TOOL_SET = new Set<string>(SEARCH_TOOLS);
 export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
+export const RUNNER_TOOL_SET = new Set<string>(["shell-run", "test-run"]);
 
 export function toolsForAgent(options?: {
   workspace?: string;

@@ -13,9 +13,14 @@ resolve → prepare → generate → finalize
 - **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model may emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
 - **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`
 
-## Single-pass execution
+## Generation loop feedback
 
-One generation pass runs, effects apply inline during tool execution, and the lifecycle completes. There is no regeneration loop, no feedback injection, and no retry logic at the lifecycle level.
+Generation owns one model/tool loop. Effects apply inline during tool execution. Before the model is allowed to finalize, lifecycle feedback may inject one extra user message when hard evidence contradicts completion:
+
+- unresolved tool errors are sent back once so the model can inspect evidence and retry instead of falsely finalizing
+- missing post-write validation is sent back once so the model can run focused validation or explicitly block
+
+If the model still cannot recover, finalize returns an awaiting-input response with the unresolved error.
 
 ## Effects
 

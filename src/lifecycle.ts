@@ -2,6 +2,7 @@ import { ensureRealTokenEncoder } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
+import { findCompletionBlock } from "./lifecycle-completion";
 import type {
   LifecycleEventName,
   LifecycleInput,
@@ -20,7 +21,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutput } from "./tool-output-render";
-import { WRITE_TOOL_SET } from "./tool-registry";
+import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -178,6 +179,27 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
 }
 
 function acceptResult(ctx: RunContext): void {
+  const completionBlock = findCompletionBlock({
+    signal: ctx.result?.signal,
+    callLog: scopedCallLog(ctx.session, ctx.taskId),
+    writeToolSet: WRITE_TOOL_SET,
+    runnerToolSet: RUNNER_TOOL_SET,
+  });
+  if (completionBlock) {
+    ctx.currentError = {
+      message: completionBlock.message,
+      code: LIFECYCLE_ERROR_CODES.unknown,
+      category: "other",
+      blocksCompletion: true,
+    };
+    ctx.debug("lifecycle.signal.rejected", {
+      signal: ctx.result?.signal ?? null,
+      reason: completionBlock.reason,
+      path: completionBlock.path,
+    });
+    return;
+  }
+
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
     ctx.currentError = undefined;

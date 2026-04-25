@@ -1,6 +1,9 @@
+import type { LanguageModelV3Message } from "@ai-sdk/provider";
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
+import { collectReminders, reminderTag } from "./agent-reminders";
+import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -13,6 +16,7 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
+import { findCompletionBlock } from "./lifecycle-completion";
 import {
   type GenerateOptions,
   type GenerateResult,
@@ -24,8 +28,15 @@ import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import type { Toolset } from "./tool-registry";
-import { resetTurnStepCount } from "./tool-session";
+import { RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import { resetTurnStepCount, scopedCallLog } from "./tool-session";
+
+function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
+  const used = ctx.session.flags.turnStepCount;
+  const limit = ctx.session.flags.turnStepLimit;
+  if (typeof used !== "number" || typeof limit !== "number" || limit <= 0) return undefined;
+  return { used, limit };
+}
 
 type CaptureErrorMeta = {
   source?: ErrorSource;
@@ -86,6 +97,63 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
   }).error;
 }
 
+function unresolvedToolError(ctx: RunContext): { tool: string; message: string; code?: string } | undefined {
+  const err = ctx.currentError;
+  if (!err) return undefined;
+  if (err.source !== "tool-error" && err.source !== "tool-result") return undefined;
+  return {
+    tool: err.tool ?? "unknown",
+    message: err.message,
+    ...(err.code ? { code: err.code } : {}),
+  };
+}
+
+function renderToolErrorRecovery(error: { tool: string; message: string; code?: string }): string {
+  return wrapInSystemReminder(
+    "tool-error-recovery",
+    [
+      `The previous \`${error.tool}\` call failed and remains unresolved.`,
+      error.code ? `Error code: \`${error.code}\`.` : "",
+      `Error: ${error.message}`,
+      "Do not finalize yet. Recover autonomously: inspect the current file/output, choose a smaller or corrected action, and retry the necessary tool call.",
+      "Use `@signal blocked` only if recovery is genuinely impossible after inspecting the evidence.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+function unresolvedToolErrorFromMessages(
+  messages: readonly LanguageModelV3Message[],
+): { tool: string; message: string; code?: string } | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "tool") continue;
+    for (let j = message.content.length - 1; j >= 0; j--) {
+      const part = message.content[j];
+      if (part.type !== "tool-result") continue;
+      const output = part.output;
+      if (output.type !== "text") continue;
+      const parsed = parseError(safeParseToolOutput(output.value));
+      if (!parsed.ok) continue;
+      return {
+        tool: part.toolName,
+        message: parsed.value.message,
+        ...(parsed.value.code ? { code: parsed.value.code } : {}),
+      };
+    }
+  }
+  return undefined;
+}
+
+function safeParseToolOutput(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 export function createRunAgent(input: {
   soulPrompt: string;
   workspace: string | undefined;
@@ -144,6 +212,24 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
+  let completionRetryUsed = false;
+  let toolErrorRecoveryUsed = false;
+
+  const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
+    if (toolErrorRecoveryUsed) return [];
+    toolErrorRecoveryUsed = true;
+    ctx.debug("lifecycle.tool_error.recovery", {
+      tool: toolError.tool,
+      code: toolError.code ?? null,
+      action: "continue",
+    });
+    return [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: renderToolErrorRecovery(toolError) }],
+      },
+    ];
+  };
 
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId);
@@ -162,6 +248,66 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
+      onBeforeNextCall: (messages) => {
+        const toolError = unresolvedToolError(ctx) ?? unresolvedToolErrorFromMessages(messages);
+        if (toolError) return toolErrorRecoveryMessages(toolError);
+
+        const reminders = collectReminders({
+          messages,
+          callLog: ctx.session.callLog,
+          writeToolSet: ctx.session.writeTools,
+          runnerToolSet: RUNNER_TOOL_SET,
+          budget: budgetState(ctx),
+          config: {
+            stuckLoopSameFileThreshold: ctx.policy.stuckLoopSameFileThreshold,
+            stuckLoopTurnsBetweenReminders: ctx.policy.stuckLoopTurnsBetweenReminders,
+            budgetNudgeThresholds: ctx.policy.budgetNudgeThresholds,
+          },
+        });
+        if (reminders.length > 0) {
+          ctx.debug("lifecycle.reminders.injected", {
+            count: reminders.length,
+            tags: reminders.map(reminderTag),
+          });
+        }
+        return reminders.map(renderReminder);
+      },
+      onBeforeFinish: ({ signal }) => {
+        const toolError = unresolvedToolError(ctx);
+        if (toolError) return toolErrorRecoveryMessages(toolError);
+
+        const completionBlock = findCompletionBlock({
+          signal,
+          callLog: scopedCallLog(ctx.session, ctx.taskId),
+          writeToolSet: WRITE_TOOL_SET,
+          runnerToolSet: RUNNER_TOOL_SET,
+        });
+        if (!completionBlock || completionRetryUsed) return [];
+        completionRetryUsed = true;
+        ctx.debug("lifecycle.signal.rejected", {
+          signal: signal ?? null,
+          reason: completionBlock.reason,
+          path: completionBlock.path,
+          action: "continue",
+        });
+        return [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: wrapInSystemReminder(
+                  "completion-rejected",
+                  [
+                    completionBlock.message,
+                    "Continue autonomously: run focused validation now, or use `@signal blocked` only if validation is genuinely impossible.",
+                  ].join(" "),
+                ),
+              },
+            ],
+          },
+        ];
+      },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });
@@ -198,7 +344,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   }
 }
 
-function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string): void {
+function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string, isError = false): void {
   const started = ctx.toolCallStartedAt.get(toolCallId);
   if (!started) return;
   const durationMs = Date.now() - started.startedAtMs;
@@ -206,7 +352,7 @@ function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string)
     tool: toolName,
     tool_call_id: toolCallId,
     duration_ms: durationMs,
-    is_error: false,
+    is_error: isError,
   });
   ctx.toolCallStartedAt.delete(toolCallId);
 }
@@ -254,6 +400,15 @@ function accountMemoryRecallTokens(ctx: RunContext, toolName: string, result: un
   if (!serialized) return;
   const tokens = estimateTokens(serialized);
   ctx.promptUsage.memoryTokens += tokens;
+}
+
+function commandExitError(toolName: string, resultRecord: Record<string, unknown> | null): string | undefined {
+  const exitCode = resultRecord?.exitCode;
+  if (typeof exitCode !== "number" || !Number.isInteger(exitCode) || exitCode === 0) return undefined;
+  const command = resultRecord?.command;
+  return typeof command === "string" && command.length > 0
+    ? `${toolName} exited with code ${exitCode}: ${command}`
+    : `${toolName} exited with code ${exitCode}`;
 }
 
 function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
@@ -320,9 +475,10 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     const started = ctx.toolCallStartedAt.get(p.toolCallId);
     const resultRecord =
       typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
-    const isError = Boolean(resultRecord && "error" in resultRecord);
+    const exitError = commandExitError(toolName, resultRecord);
+    const isError = Boolean((resultRecord && "error" in resultRecord) || exitError);
     if (isError) {
-      const parsed = parseError(resultRecord?.error);
+      const parsed = parseError(resultRecord && "error" in resultRecord ? resultRecord.error : exitError);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
       captureError(ctx, errorInfo.message, {
@@ -336,7 +492,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       clearResolvedToolError(ctx, started ?? { toolName });
     }
     if (!isError) accountMemoryRecallTokens(ctx, toolName, p.result);
-    completeToolCall(ctx, p.toolCallId, toolName);
+    completeToolCall(ctx, p.toolCallId, toolName, isError);
     emitToolResult(ctx, p.toolCallId, toolName, isError);
   },
 
@@ -357,7 +513,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     });
     ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     if (p?.toolCallId && p?.toolName) {
-      completeToolCall(ctx, p.toolCallId, p.toolName);
+      completeToolCall(ctx, p.toolCallId, p.toolName, true);
       emitToolResult(ctx, p.toolCallId, p.toolName, true);
     }
   },
