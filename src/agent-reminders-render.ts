@@ -1,5 +1,5 @@
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import { type Reminder, reminderTag } from "./agent-reminders";
+import { type PostFailureReminder, type Reminder, reminderTag } from "./agent-reminders";
 
 export function wrapInSystemReminder(tag: string, text: string): string {
   return `<system-reminder type="${tag}">\n${text}\n</system-reminder>`;
@@ -22,6 +22,8 @@ function reminderText(reminder: Reminder): string {
       ].join(" ");
     case "budget-pressure":
       return budgetPressureText(reminder.variant, reminder.thresholdPct, reminder.used, reminder.limit);
+    case "post-failure":
+      return postFailureText(reminder);
   }
 }
 
@@ -37,6 +39,17 @@ function budgetPressureText(variant: "soft" | "urgent", thresholdPct: number, us
     `Budget: ${used}/${limit} tool calls used (${pct}%).`,
     "Descope now — pick the single highest-value slice and commit or hand off the rest.",
     "Budget exhaustion produces worse handoffs than voluntary descope.",
+  ].join(" ");
+}
+
+function postFailureText(reminder: PostFailureReminder): string {
+  const label = reminder.command
+    ? `\`${reminder.toolName}\` (\`${sanitizePath(reminder.command)}\`)`
+    : `\`${reminder.toolName}\``;
+  return [
+    `The last ${label} run failed (exit code ${reminder.exitCode}).`,
+    "Before the next edit, state the failure mode in one sentence.",
+    "If you are about to edit the test file rather than the code under test, justify why.",
   ].join(" ");
 }
 

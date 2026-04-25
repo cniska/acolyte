@@ -15,7 +15,14 @@ export type BudgetPressureReminder = {
   limit: number;
 };
 
-export type Reminder = StuckLoopReminder | BudgetPressureReminder;
+export type PostFailureReminder = {
+  type: "post-failure";
+  toolName: string;
+  command: string | undefined;
+  exitCode: number;
+};
+
+export type Reminder = StuckLoopReminder | BudgetPressureReminder | PostFailureReminder;
 
 export type CollectInput = {
   messages: readonly LanguageModelV3Message[];
@@ -33,7 +40,7 @@ export type RemindersConfig = {
 };
 
 export function collectReminders(input: CollectInput): Reminder[] {
-  return [...detectStuckLoop(input), ...detectBudgetPressure(input)];
+  return [...detectStuckLoop(input), ...detectBudgetPressure(input), ...detectPostFailure(input)];
 }
 
 export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
@@ -74,6 +81,25 @@ export function detectBudgetPressure(input: CollectInput): BudgetPressureReminde
   return [];
 }
 
+export function detectPostFailure(input: CollectInput): PostFailureReminder[] {
+  for (let i = input.callLog.length - 1; i >= 0; i--) {
+    const entry = input.callLog[i];
+    if (!input.runnerToolSet.has(entry.toolName)) continue;
+    if (isGreenRunner(entry, input.runnerToolSet)) return [];
+    const exitCode = typeof entry.exitCode === "number" ? entry.exitCode : 1;
+    const command = typeof entry.args.command === "string" ? entry.args.command : undefined;
+    const tag = postFailureTag(entry.toolName, command);
+    if (turnsSinceLastReminder(input.messages, tag) !== Number.POSITIVE_INFINITY) return [];
+    return [{ type: "post-failure", toolName: entry.toolName, command, exitCode }];
+  }
+  return [];
+}
+
+export function postFailureTag(toolName: string, command: string | undefined): string {
+  const suffix = command ? `:${command.slice(0, 60)}` : "";
+  return `post-failure:${toolName}${suffix}`;
+}
+
 export function budgetPressureTag(thresholdPct: number): string {
   return `budget-pressure-${Math.round(thresholdPct * 100)}`;
 }
@@ -84,6 +110,8 @@ export function reminderTag(reminder: Reminder): string {
       return reminder.type;
     case "budget-pressure":
       return budgetPressureTag(reminder.thresholdPct);
+    case "post-failure":
+      return postFailureTag(reminder.toolName, reminder.command);
   }
 }
 
