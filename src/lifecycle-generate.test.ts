@@ -18,7 +18,12 @@ const noopRateLimiter: RateLimiter = {
   },
   reset() {},
   state() {
-    return { requestsRemaining: undefined, tokensRemaining: undefined, requestsResetMs: undefined, tokensResetMs: undefined };
+    return {
+      requestsRemaining: undefined,
+      tokensRemaining: undefined,
+      requestsResetMs: undefined,
+      tokensResetMs: undefined,
+    };
   },
 };
 
@@ -536,10 +541,7 @@ describe("phaseGenerate", () => {
     // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
     // Turn 2: done signal
     const turns: LanguageModelV3StreamPart[][] = [
-      [
-        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
-        finishPart("tool-calls"),
-      ],
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },

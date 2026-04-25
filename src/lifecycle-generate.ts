@@ -17,6 +17,7 @@ import {
   parseError,
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
+import { SELF_REVIEW_TURNS_COOLDOWN } from "./lifecycle-constants";
 import {
   type GenerateOptions,
   type GenerateResult,
@@ -214,7 +215,10 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   const controller = new AbortController();
   let completionRetryUsed = false;
   let toolErrorRecoveryUsed = false;
-  let selfReviewDone = false;
+  // Number of turns remaining during which the self-review injection is allowed.
+  // Initialized from lifecycle constants so behavior can be tuned centrally.
+  // When set to 1 this behaves like the prior boolean `selfReviewDone` flag.
+  let selfReviewTurnsRemaining = SELF_REVIEW_TURNS_COOLDOWN;
 
   const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
     if (toolErrorRecoveryUsed) return [];
@@ -277,8 +281,8 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         const toolError = unresolvedToolError(ctx);
         if (toolError) return toolErrorRecoveryMessages(toolError);
 
-        if (signal === "done" && !selfReviewDone) {
-          selfReviewDone = true;
+        if (signal === "done" && selfReviewTurnsRemaining > 0) {
+          selfReviewTurnsRemaining = 0;
           ctx.debug("lifecycle.self_review.injected", { action: "continue" });
           return [
             {

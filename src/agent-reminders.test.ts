@@ -346,7 +346,12 @@ describe("detectPostFailure", () => {
       input({ callLog: [call("test-run", { command: "bun test" }, "failed", { exitCode: 1 })] }),
     );
     expect(reminders).toHaveLength(1);
-    expect(reminders[0]).toMatchObject({ type: "post-failure", toolName: "test-run", exitCode: 1, command: "bun test" });
+    expect(reminders[0]).toMatchObject({
+      type: "post-failure",
+      toolName: "test-run",
+      exitCode: 1,
+      command: "bun test",
+    });
   });
 
   test("does not fire when the most recent runner succeeded", () => {
@@ -385,16 +390,22 @@ describe("detectPostFailure", () => {
 
   test("fires after a failed runner that has no command arg", () => {
     const reminders = detectPostFailure(
-      input({ callLog: [call("shell-run", {}, "failed", { exitCode: 2 })], runnerToolSet: new Set(["test-run", "shell-run"]) }),
+      input({
+        callLog: [call("shell-run", {}, "failed", { exitCode: 2 })],
+        runnerToolSet: new Set(["test-run", "shell-run"]),
+      }),
     );
     expect(reminders).toHaveLength(1);
-    expect(reminders[0]).toMatchObject({ type: "post-failure", toolName: "shell-run", exitCode: 2, command: undefined });
+    expect(reminders[0]).toMatchObject({
+      type: "post-failure",
+      toolName: "shell-run",
+      exitCode: 2,
+      command: undefined,
+    });
   });
 
   test("uses exitCode 1 as default when exitCode is absent", () => {
-    const reminders = detectPostFailure(
-      input({ callLog: [call("test-run", { command: "bun test" }, "failed")] }),
-    );
+    const reminders = detectPostFailure(input({ callLog: [call("test-run", { command: "bun test" }, "failed")] }));
     expect(reminders[0]?.exitCode).toBe(1);
   });
 });
