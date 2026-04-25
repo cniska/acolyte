@@ -601,4 +601,58 @@ describe("phaseGenerate", () => {
     expect(injectedText).toContain("bun test src/app.test.ts");
     expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
   });
+
+  test("injects self-review prompt on first done signal", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Confirmed done.\n@signal done" },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "Add X, update tests, update render.", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: {},
+        stream: agentStream,
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    // Second prompt should contain the self-review injection
+    const secondPrompt = promptCapture[1] ?? [];
+    const injectedText = secondPrompt
+      .filter((m) => m.role === "user")
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+
+    expect(injectedText).toContain('type="task-self-review"');
+    expect(injectedText).toContain("original task");
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeDefined();
+
+    // Self-review is one-shot — second done signal should not re-inject it
+    expect(promptCapture.length).toBe(2);
+  });
 });

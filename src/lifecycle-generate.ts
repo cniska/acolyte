@@ -214,6 +214,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   const controller = new AbortController();
   let completionRetryUsed = false;
   let toolErrorRecoveryUsed = false;
+  let selfReviewDone = false;
 
   const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
     if (toolErrorRecoveryUsed) return [];
@@ -275,6 +276,29 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       onBeforeFinish: ({ signal }) => {
         const toolError = unresolvedToolError(ctx);
         if (toolError) return toolErrorRecoveryMessages(toolError);
+
+        if (signal === "done" && !selfReviewDone) {
+          selfReviewDone = true;
+          ctx.debug("lifecycle.self_review.injected", { action: "continue" });
+          return [
+            {
+              role: "user" as const,
+              content: [
+                {
+                  type: "text" as const,
+                  text: wrapInSystemReminder(
+                    "task-self-review",
+                    [
+                      "Before finishing, review the original task you were given.",
+                      "In one sentence, confirm what you completed.",
+                      "If anything requested is still outstanding — files not updated, tests not added, steps skipped — address it now rather than handing off silently.",
+                    ].join(" "),
+                  ),
+                },
+              ],
+            },
+          ];
+        }
 
         const completionBlock = findCompletionBlock({
           signal,

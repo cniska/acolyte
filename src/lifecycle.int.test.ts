@@ -152,7 +152,7 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("update x to 4");
-    expect(turnCount).toBe(4);
+    expect(turnCount).toBe(5);
     expect(reply.state).toBe("done");
     expect(reply.output).toContain("Recovered and updated x to 4.");
     expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
@@ -241,7 +241,7 @@ printf '%s\n' "$@" > "${formatLog}"
       }),
     );
 
-    expect(turnCount).toBe(3);
+    expect(turnCount).toBe(4);
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
@@ -283,7 +283,7 @@ exit 1
       }),
     );
 
-    expect(turnCount).toBe(3);
+    expect(turnCount).toBe(4);
     expect(reply.state).toBe("awaiting-input");
     expect(reply.output).toContain("changed after the last successful validation");
   });
