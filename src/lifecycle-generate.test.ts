@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { StreamOptions } from "./agent-contract";
 import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { resolveSignal } from "./lifecycle";
@@ -121,6 +122,68 @@ describe("phaseGenerate", () => {
     expect(toolResult).toMatchObject({ type: "tool-result", toolName: "file-edit", isError: true });
     const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
     expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
+  });
+
+  test("injects a recovery turn before finalizing an unresolved tool error", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    let recoveryPrompt = "";
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt: string, options: StreamOptions) {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "file-edit",
+                error: {
+                  message: "Replace text is too large",
+                  code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
+                },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              await new Promise((resolve) => setTimeout(resolve, 0));
+              const extras = options.onBeforeFinish?.({ messages: [], text: "Done.", signal: "done" }) ?? [];
+              const textPart = extras[0]?.content[0];
+              if (typeof textPart === "object" && textPart?.type === "text") recoveryPrompt = textPart.text;
+              return { text: extras.length > 0 ? "Recovered." : "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(recoveryPrompt).toContain('<system-reminder type="tool-error-recovery">');
+    expect(recoveryPrompt).toContain("The previous `file-edit` call failed and remains unresolved.");
+    expect(recoveryPrompt).toContain(`Error code: \`${TOOL_ERROR_CODES.editFileReplaceTooLarge}\`.`);
+    expect(recoveryPrompt).toContain("Do not finalize yet.");
+    expect(debugEvents.find((event) => event.event === "lifecycle.tool_error.recovery")?.fields).toMatchObject({
+      tool: "file-edit",
+      code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
+      action: "continue",
+    });
   });
 
   test("marks nonzero command results as failed", async () => {

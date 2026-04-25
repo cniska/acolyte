@@ -1,3 +1,4 @@
+import type { LanguageModelV3Message } from "@ai-sdk/provider";
 import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
@@ -96,6 +97,63 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
   }).error;
 }
 
+function unresolvedToolError(ctx: RunContext): { tool: string; message: string; code?: string } | undefined {
+  const err = ctx.currentError;
+  if (!err) return undefined;
+  if (err.source !== "tool-error" && err.source !== "tool-result") return undefined;
+  return {
+    tool: err.tool ?? "unknown",
+    message: err.message,
+    ...(err.code ? { code: err.code } : {}),
+  };
+}
+
+function renderToolErrorRecovery(error: { tool: string; message: string; code?: string }): string {
+  return wrapInSystemReminder(
+    "tool-error-recovery",
+    [
+      `The previous \`${error.tool}\` call failed and remains unresolved.`,
+      error.code ? `Error code: \`${error.code}\`.` : "",
+      `Error: ${error.message}`,
+      "Do not finalize yet. Recover autonomously: inspect the current file/output, choose a smaller or corrected action, and retry the necessary tool call.",
+      "Use `@signal blocked` only if recovery is genuinely impossible after inspecting the evidence.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+function unresolvedToolErrorFromMessages(
+  messages: readonly LanguageModelV3Message[],
+): { tool: string; message: string; code?: string } | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "tool") continue;
+    for (let j = message.content.length - 1; j >= 0; j--) {
+      const part = message.content[j];
+      if (part.type !== "tool-result") continue;
+      const output = part.output;
+      if (output.type !== "text") continue;
+      const parsed = parseError(safeParseToolOutput(output.value));
+      if (!parsed.ok) continue;
+      return {
+        tool: part.toolName,
+        message: parsed.value.message,
+        ...(parsed.value.code ? { code: parsed.value.code } : {}),
+      };
+    }
+  }
+  return undefined;
+}
+
+function safeParseToolOutput(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 export function createRunAgent(input: {
   soulPrompt: string;
   workspace: string | undefined;
@@ -155,6 +213,23 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
   let completionRetryUsed = false;
+  let toolErrorRecoveryUsed = false;
+
+  const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
+    if (toolErrorRecoveryUsed) return [];
+    toolErrorRecoveryUsed = true;
+    ctx.debug("lifecycle.tool_error.recovery", {
+      tool: toolError.tool,
+      code: toolError.code ?? null,
+      action: "continue",
+    });
+    return [
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: renderToolErrorRecovery(toolError) }],
+      },
+    ];
+  };
 
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId);
@@ -174,6 +249,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
+        const toolError = unresolvedToolError(ctx) ?? unresolvedToolErrorFromMessages(messages);
+        if (toolError) return toolErrorRecoveryMessages(toolError);
+
         const reminders = collectReminders({
           messages,
           callLog: ctx.session.callLog,
@@ -195,6 +273,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         return reminders.map(renderReminder);
       },
       onBeforeFinish: ({ signal }) => {
+        const toolError = unresolvedToolError(ctx);
+        if (toolError) return toolErrorRecoveryMessages(toolError);
+
         const completionBlock = findCompletionBlock({
           signal,
           callLog: scopedCallLog(ctx.session, ctx.taskId),

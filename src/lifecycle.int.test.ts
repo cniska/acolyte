@@ -104,6 +104,60 @@ describe("lifecycle integration", () => {
     expect(reply.output).toContain("Updated x to 2.");
   });
 
+  test("unresolved tool errors get a recovery turn before finalization", async () => {
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const missing = 1;", replace: "export const x = 4;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 2) {
+        expect(JSON.stringify(ctx.body)).toContain("tool-error-recovery");
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ cmd: "true" }),
+          },
+        ]);
+      }
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Recovered and updated x to 4.\n\n@signal done");
+    });
+
+    const reply = await run("update x to 4");
+    expect(turnCount).toBe(4);
+    expect(reply.state).toBe("done");
+    expect(reply.output).toContain("Recovered and updated x to 4.");
+    expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
+  });
+
   test("@signal no_op completes without write tools", async () => {
     setupFakeProvider((ctx) => {
       return createMessagePayload(ctx.model, ctx.responseCounter, "Nothing to do.\n\n@signal no_op");
