@@ -230,7 +230,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   }
 }
 
-function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string): void {
+function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string, isError = false): void {
   const started = ctx.toolCallStartedAt.get(toolCallId);
   if (!started) return;
   const durationMs = Date.now() - started.startedAtMs;
@@ -238,7 +238,7 @@ function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string)
     tool: toolName,
     tool_call_id: toolCallId,
     duration_ms: durationMs,
-    is_error: false,
+    is_error: isError,
   });
   ctx.toolCallStartedAt.delete(toolCallId);
 }
@@ -286,6 +286,15 @@ function accountMemoryRecallTokens(ctx: RunContext, toolName: string, result: un
   if (!serialized) return;
   const tokens = estimateTokens(serialized);
   ctx.promptUsage.memoryTokens += tokens;
+}
+
+function commandExitError(toolName: string, resultRecord: Record<string, unknown> | null): string | undefined {
+  const exitCode = resultRecord?.exitCode;
+  if (typeof exitCode !== "number" || !Number.isInteger(exitCode) || exitCode === 0) return undefined;
+  const command = resultRecord?.command;
+  return typeof command === "string" && command.length > 0
+    ? `${toolName} exited with code ${exitCode}: ${command}`
+    : `${toolName} exited with code ${exitCode}`;
 }
 
 function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
@@ -352,9 +361,10 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     const started = ctx.toolCallStartedAt.get(p.toolCallId);
     const resultRecord =
       typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
-    const isError = Boolean(resultRecord && "error" in resultRecord);
+    const exitError = commandExitError(toolName, resultRecord);
+    const isError = Boolean((resultRecord && "error" in resultRecord) || exitError);
     if (isError) {
-      const parsed = parseError(resultRecord?.error);
+      const parsed = parseError(resultRecord && "error" in resultRecord ? resultRecord.error : exitError);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
       captureError(ctx, errorInfo.message, {
@@ -368,7 +378,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       clearResolvedToolError(ctx, started ?? { toolName });
     }
     if (!isError) accountMemoryRecallTokens(ctx, toolName, p.result);
-    completeToolCall(ctx, p.toolCallId, toolName);
+    completeToolCall(ctx, p.toolCallId, toolName, isError);
     emitToolResult(ctx, p.toolCallId, toolName, isError);
   },
 
@@ -389,7 +399,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     });
     ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     if (p?.toolCallId && p?.toolName) {
-      completeToolCall(ctx, p.toolCallId, p.toolName);
+      completeToolCall(ctx, p.toolCallId, p.toolName, true);
       emitToolResult(ctx, p.toolCallId, p.toolName, true);
     }
   },
