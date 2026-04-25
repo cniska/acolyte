@@ -385,4 +385,40 @@ describe("onBeforeNextCall hook", () => {
     await getFullOutput();
     expect(promptCapture.length).toBe(1);
   });
+
+  test("continues when onBeforeFinish rejects a completion attempt", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Premature.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Validated.\n@signal done" },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    let rejected = false;
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: () => {
+        if (rejected) return [];
+        rejected = true;
+        return [{ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] }];
+      },
+    });
+    const output = await getFullOutput();
+
+    expect(output).toEqual({ text: "Validated.", toolCalls: [], signal: "done" });
+    expect(promptCapture).toHaveLength(2);
+    const secondPrompt = promptCapture[1];
+    expect(secondPrompt).toContainEqual({ role: "assistant", content: [{ type: "text", text: "Premature." }] });
+    expect(secondPrompt).toContainEqual({ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] });
+  });
 });

@@ -3,6 +3,7 @@ import type { ChatResponse } from "./api";
 import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
 import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
+import { WRITE_TOOL_SET } from "./tool-registry";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
@@ -68,6 +69,47 @@ describe("runLifecycle", () => {
     );
 
     expect(Number(response.output)).toBeGreaterThan(5);
+  });
+
+  test("rejects done after source writes without later validation", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx) => {
+        ctx.session.callLog.push({
+          toolName: "file-edit",
+          args: { path: "src/app.ts" },
+          taskId: ctx.taskId,
+          status: "succeeded",
+        });
+        ctx.result = { text: "Done.\n@signal done", toolCalls: [], signal: "done" };
+      }),
+      phaseFinalize: mock((ctx): ChatResponse => {
+        const error = ctx.currentError?.message;
+        return {
+          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
+          model: ctx.model,
+          output: error ?? ctx.result?.text ?? "",
+          ...(error ? { error } : {}),
+        };
+      }),
+    });
+
+    const response = await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        taskId: "task_test",
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
+    expect(response.state).toBe("awaiting-input");
+    expect(response.error).toContain("changed after the last successful validation");
+    expect(events.find((entry) => entry.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
+      "missing-validation-after-write",
+    );
   });
 });
 

@@ -1,5 +1,5 @@
 import type { LanguageModelV3, LanguageModelV3Message, SharedV3ProviderOptions } from "@ai-sdk/provider";
-import type { GenerateResult, StreamChunk } from "./lifecycle-contract";
+import type { GenerateResult, LifecycleSignal, StreamChunk } from "./lifecycle-contract";
 import type { ToolDefinition } from "./tool-contract";
 
 export type Agent = {
@@ -17,6 +17,11 @@ export type StreamOptions = {
   providerOptions?: SharedV3ProviderOptions;
   preCallInputTokenLimit?: number;
   onBeforeNextCall?: (messages: readonly LanguageModelV3Message[]) => LanguageModelV3Message[];
+  onBeforeFinish?: (attempt: {
+    messages: readonly LanguageModelV3Message[];
+    text: string;
+    signal?: LifecycleSignal;
+  }) => LanguageModelV3Message[];
 };
 
 export type StreamOutput = {

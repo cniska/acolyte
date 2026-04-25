@@ -2,7 +2,7 @@ import type { Agent } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { collectReminders, reminderTag } from "./agent-reminders";
-import { renderReminder } from "./agent-reminders-render";
+import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -15,6 +15,7 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
+import { findCompletionBlock } from "./lifecycle-completion";
 import {
   type GenerateOptions,
   type GenerateResult,
@@ -26,8 +27,8 @@ import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { RUNNER_TOOL_SET, type Toolset } from "./tool-registry";
-import { resetTurnStepCount } from "./tool-session";
+import { RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import { resetTurnStepCount, scopedCallLog } from "./tool-session";
 
 function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
   const used = ctx.session.flags.turnStepCount;
@@ -153,6 +154,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
+  let completionRetryUsed = false;
 
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId);
@@ -182,8 +184,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
             stuckLoopSameFileThreshold: ctx.policy.stuckLoopSameFileThreshold,
             stuckLoopTurnsBetweenReminders: ctx.policy.stuckLoopTurnsBetweenReminders,
             budgetNudgeThresholds: ctx.policy.budgetNudgeThresholds,
-            checklistTurnsSinceWrite: ctx.policy.checklistTurnsSinceWrite,
-            checklistTurnsBetweenReminders: ctx.policy.checklistTurnsBetweenReminders,
           },
         });
         if (reminders.length > 0) {
@@ -193,6 +193,39 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
           });
         }
         return reminders.map(renderReminder);
+      },
+      onBeforeFinish: ({ signal }) => {
+        const completionBlock = findCompletionBlock({
+          signal,
+          callLog: scopedCallLog(ctx.session, ctx.taskId),
+          writeToolSet: WRITE_TOOL_SET,
+          runnerToolSet: RUNNER_TOOL_SET,
+        });
+        if (!completionBlock || completionRetryUsed) return [];
+        completionRetryUsed = true;
+        ctx.debug("lifecycle.signal.rejected", {
+          signal: signal ?? null,
+          reason: completionBlock.reason,
+          path: completionBlock.path,
+          action: "continue",
+        });
+        return [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: wrapInSystemReminder(
+                  "completion-rejected",
+                  [
+                    completionBlock.message,
+                    "Continue autonomously: run focused validation now, or use `@signal blocked` only if validation is genuinely impossible.",
+                  ].join(" "),
+                ),
+              },
+            ],
+          },
+        ];
       },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),

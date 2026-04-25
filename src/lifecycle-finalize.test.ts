@@ -129,6 +129,23 @@ describe("phaseFinalize", () => {
     expect(response.error).toBe("file-edit failed: Find text matched 2 locations");
   });
 
+  test("blocks done output when completion evidence is missing", () => {
+    const ctx = createRunContext({
+      currentError: {
+        message: "Cannot finish yet: `src/app.ts` changed after the last successful validation.",
+        category: "other",
+        blocksCompletion: true,
+      },
+      result: { text: "I updated the file.", toolCalls: [], signal: "done" },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.state).toBe("awaiting-input");
+    expect(response.output).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
+    expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
+  });
+
   test("includes activeSkills when session has them", () => {
     const skills = [{ name: "build", instructions: "Build instructions" }];
     const ctx = createRunContext({

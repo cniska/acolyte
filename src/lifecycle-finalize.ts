@@ -8,9 +8,8 @@ import { scopedCallLog } from "./tool-session";
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const unresolvedToolError = ctx.currentError?.source === "tool-error" || ctx.currentError?.source === "tool-result";
-  const rawOutput = unresolvedToolError
-    ? (ctx.currentError?.message ?? "")
-    : stripSignalLine(ctx.result?.text ?? "").trim();
+  const blockingError = unresolvedToolError || ctx.currentError?.blocksCompletion === true;
+  const rawOutput = blockingError ? (ctx.currentError?.message ?? "") : stripSignalLine(ctx.result?.text ?? "").trim();
   const output =
     rawOutput.length > 0
       ? rawOutput
@@ -60,7 +59,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   });
 
   return {
-    state: unresolvedToolError || ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
+    state: blockingError || ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
     model: ctx.model,
     output,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
