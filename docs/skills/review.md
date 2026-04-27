@@ -43,6 +43,15 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 9. Order by merge relevance: must-fix → should-fix → optional.
 
+## Review checks
+
+Look for these patterns in every review:
+
+- term drift across code, schemas, tests, and docs after a rename or protocol change
+- shared contracts that blur distinct intent where separate variants or schemas would be clearer
+- escape hatches, bypass flags, and special-case options that are broader than the behavior they enable
+- updated implementation that leaves stale references behind in tests or docs
+
 ## Dependency review
 
 If the change adds a dependency, check:

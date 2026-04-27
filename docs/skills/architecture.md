@@ -32,6 +32,7 @@ Default: if a layer carries no policy, invariants, or boundary isolation, remove
 ### 3. Boundary and contract integrity
 
 - contracts and schemas as source of truth
+- renamed contract terms stay aligned across the boundary; partial renames count as drift
 - dependency direction consistency
 - design-pattern consistency for extension seams
 

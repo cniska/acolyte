@@ -45,6 +45,7 @@ Review security posture, trust boundaries, and unsafe defaults.
 
 - config defaults creating insecure behavior
 - unsafe opt-out flags or weak default modes
+- broad bypass options that disable enforcement when a narrower exception would do
 
 ## Evidence threshold
 

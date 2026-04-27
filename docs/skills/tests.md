@@ -14,6 +14,7 @@ Review test adequacy for changed code.
 - new exported functions or modules without tests
 - new branches or error paths without coverage
 - changed behavior that existing tests do not exercise
+- renamed concepts or protocol terms without tests that cover the new form and guard the old form if needed
 
 ### 2. Edge cases
 
