@@ -73,7 +73,7 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 - `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
 - `src/lifecycle-resolve.ts` — initial model resolution for the request
 - `src/signal-toolkit.ts` — lifecycle signal tools exposed to the model
-- `src/lifecycle-state.ts` — signal acceptance and state validation
+- `src/lifecycle.ts` — signal acceptance and state validation
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
 - `src/workspace-profile.ts` — workspace profile types, caching, and instruction generation
 - `src/workspace-detectors.ts` — ecosystem detectors for TypeScript, Python, Go, Rust

@@ -171,6 +171,14 @@ export function createAgentStream(
         }
         if (signalToolCalls.length === 0 && stepText.length > 0) fullText += stepText;
 
+        const signalToolCalls = pendingToolCalls.filter((tc) => signalForToolName(tc.toolName));
+        if (signalToolCalls.length > 1) {
+          throw new Error("Model response included more than one lifecycle signal tool.");
+        }
+        if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
+          throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
+        }
+
         const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
           type: "tool-call" as const,
           toolCallId: tc.toolCallId,

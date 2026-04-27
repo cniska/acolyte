@@ -216,6 +216,67 @@ describe("lifecycle integration", () => {
     expect(reply.state).toBe("awaiting-input");
   });
 
+  test("rejects duplicate lifecycle signal tools", async () => {
+    setupFakeProvider((ctx) => {
+      const doneName = pickFunctionToolName(ctx.body.tools, "signal_done", ["signal_done"]);
+      const blockedName = pickFunctionToolName(ctx.body.tools, "signal_blocked", ["signal_blocked"]);
+      return createToolCallsPayload(
+        ctx.model,
+        ctx.responseCounter,
+        [
+          {
+            id: `fc_${ctx.responseCounter}_done`,
+            callId: `call_${ctx.responseCounter}_done`,
+            name: doneName,
+            args: "{}",
+          },
+          {
+            id: `fc_${ctx.responseCounter}_blocked`,
+            callId: `call_${ctx.responseCounter}_blocked`,
+            name: blockedName,
+            args: JSON.stringify({ reason: "Missing input." }),
+          },
+        ],
+        "Done.",
+      );
+    });
+
+    const reply = await run("finish");
+    expect(reply.state).toBe("done");
+    expect(reply.error).toContain("more than one lifecycle signal tool");
+  });
+
+  test("rejects lifecycle signal tools mixed with ordinary tools", async () => {
+    setupFakeProvider((ctx) => {
+      const readName = pickFunctionToolName(ctx.body.tools, "file-read", ["read"]);
+      const doneName = pickFunctionToolName(ctx.body.tools, "signal_done", ["signal_done"]);
+      return createToolCallsPayload(
+        ctx.model,
+        ctx.responseCounter,
+        [
+          {
+            id: `fc_${ctx.responseCounter}_read`,
+            callId: `call_${ctx.responseCounter}_read`,
+            name: readName,
+            args: JSON.stringify({ path: join(workspace, "a.ts") }),
+          },
+          {
+            id: `fc_${ctx.responseCounter}_done`,
+            callId: `call_${ctx.responseCounter}_done`,
+            name: doneName,
+            args: "{}",
+          },
+        ],
+        "Done.",
+      );
+    });
+
+    const reply = await run("read and finish");
+    expect(reply.state).toBe("done");
+    expect(reply.error).toContain("must be the only tool call");
+    expect(reply.toolCalls).toEqual([]);
+  });
+
   test("format effect runs on written files", async () => {
     await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
     const formatLog = join(workspace, "format.log");
