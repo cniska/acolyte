@@ -8,9 +8,9 @@ import { resolveSignal } from "./lifecycle";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
-import { createSessionContext } from "./tool-session";
-import { WRITE_TOOL_SET } from "./tool-registry";
 import { createRunContext } from "./test-utils";
+import { WRITE_TOOL_SET } from "./tool-registry";
+import { createSessionContext } from "./tool-session";
 
 const noopRateLimiter: RateLimiter = {
   async beforeCall() {},
