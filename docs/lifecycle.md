@@ -10,7 +10,7 @@ resolve → prepare → generate → finalize
 
 - **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
-- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model may emit a lifecycle signal (`done`, `no_op`, `blocked`) alongside its final text
+- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a lifecycle signal tool (`signal_done`, `signal_no_op`, `signal_blocked`)
 - **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`
 
 ## Generation loop feedback
@@ -72,7 +72,7 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 - `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
 - `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
 - `src/lifecycle-resolve.ts` — initial model resolution for the request
-- `src/lifecycle-signal.ts` — extraction and parsing of agent signals from output
+- `src/signal-toolkit.ts` — lifecycle signal tools exposed to the model
 - `src/lifecycle-state.ts` — signal acceptance and state validation
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
 - `src/workspace-profile.ts` — workspace profile types, caching, and instruction generation

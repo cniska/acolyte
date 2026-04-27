@@ -85,7 +85,7 @@ resolve → prepare → generate → finalize
 - **generate:** run model + tool calls (one pass, effects applied per-tool-result)
 - **finalize:** accept lifecycle signal, persist outputs, emit final response
 
-- **model-host protocol:** model may explicitly signal `done`/`no_op`/`blocked`; host validates against runtime state
+- **model-host protocol:** model explicitly completes with `signal_done`/`signal_no_op`/`signal_blocked`; host validates against runtime state
 - **host/model boundary:** host provides runtime structure; model decides how to complete the task
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step
 - **details:** see [Lifecycle](./lifecycle.md)
