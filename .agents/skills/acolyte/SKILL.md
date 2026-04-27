@@ -40,6 +40,7 @@ CLI → daemon (RPC) → lifecycle → model + tools
 | Changing workspace detection | `docs/workspace.md`, then `src/workspace-*.ts` |
 | Adding a CLI command | `docs/cli.md`, then `src/cli-command-registry.ts` |
 | Adding or changing error codes | `docs/errors.md`, then `src/lifecycle-error.ts` |
+| Updating bundled skills | `docs/skills/{name}.md`; these are Acolyte's built-in skills. |
 
 ## Extension patterns
 
