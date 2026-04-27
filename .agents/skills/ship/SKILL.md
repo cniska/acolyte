@@ -24,21 +24,22 @@ Check the entire project. This is a release gate, not a diff review.
    - working directory is clean
    - `bun run verify` passes (lint, typecheck, tests)
    - no secrets in tracked files: grep for `sk-`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `Bearer`, private keys in non-`.env` tracked files
-2. Run quality checks (warn if any fail):
+2. If the release follows a long implementation or review session, run `handoff` before the release gate so checks start from a compact project summary.
+3. Run quality checks (warn if any fail):
    - no `TODO` or `FIXME` in non-test source files
    - commits exist since the last tag
    - `docs/features.md` covers high-signal capabilities introduced by commits since last tag — only user-visible features, not internal improvements (cross-reference `feat` commit subjects)
    - run the `/benchmark` skill to refresh `docs/benchmarks.md`
-3. Determine version bump from commits since last tag:
+4. Determine version bump from commits since last tag:
    - run `git describe --tags --abbrev=0 --match 'v[0-9]*'` to find the previous tag
    - run `git log <prev_tag>..HEAD --oneline --no-merges` to list commits
    - `major` — any commit contains `BREAKING CHANGE` in the body or `!:` in the subject
    - `minor` — any commit subject matches `feat(` or `feat:`
    - `patch` — everything else
-4. Report findings using the output format below.
-5. Ask for confirmation before proceeding.
-6. Run `bash scripts/release.sh <level>`. This runs verify, generates the changelog entry, and creates the commit and tag.
-7. Show the push commands from the release script output. Do not push.
+5. Report findings using the output format below.
+6. Ask for confirmation before proceeding.
+7. Run `bash scripts/release.sh <level>`. This runs verify, generates the changelog entry, and creates the commit and tag.
+8. Show the push commands from the release script output. Do not push.
 
 ## Output format
 
