@@ -67,15 +67,17 @@ export async function runTool<T = unknown>(
   toolCallId: string,
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<T>,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; skipBudget?: boolean },
 ): Promise<RunToolResult<T>> {
   return withToolError(toolId, async () => {
-    const budgetError = checkStepBudget(session, toolId);
-    if (budgetError) {
-      const error = new Error(budgetError) as Error & { code: string; kind: string };
-      error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
-      error.kind = ERROR_KINDS.budgetExhausted;
-      throw error;
+    if (!options?.skipBudget) {
+      const budgetError = checkStepBudget(session, toolId);
+      if (budgetError) {
+        const error = new Error(budgetError) as Error & { code: string; kind: string };
+        error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+        error.kind = ERROR_KINDS.budgetExhausted;
+        throw error;
+      }
     }
 
     const preOutput = session.onBeforeTool?.({ toolId, toolCallId, args });

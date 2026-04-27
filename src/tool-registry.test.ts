@@ -33,6 +33,9 @@ describe("toolsets", () => {
       "scanCode",
       "searchFiles",
       "sessionSearch",
+      "signalBlocked",
+      "signalDone",
+      "signalNoOp",
       "updateChecklist",
       "webFetch",
       "webSearch",
@@ -79,7 +82,7 @@ describe("toolIdsByCategory", () => {
 
 describe("localization baseline", () => {
   test("tool ids stay language-neutral", () => {
-    const toolNamePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+    const toolNamePattern = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
     for (const name of Object.keys(toolDefinitionsById)) {
       expect(name).toMatch(toolNamePattern);
     }
@@ -115,6 +118,9 @@ describe("localization baseline", () => {
     const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
     const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
+    const signalDoneInstruction = toolDefinitionsById.signal_done?.instruction ?? "";
+    const signalNoOpInstruction = toolDefinitionsById.signal_no_op?.instruction ?? "";
+    const signalBlockedInstruction = toolDefinitionsById.signal_blocked?.instruction ?? "";
 
     expectIntent(readInstruction, [
       ["file-read", "before", "file-edit", "code-edit"],
@@ -155,5 +161,8 @@ describe("localization baseline", () => {
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
     expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
+    expectIntent(signalDoneInstruction, [["signal_done"], ["requested work", "complete"]]);
+    expectIntent(signalNoOpInstruction, [["signal_no_op"], ["no changes", "needed"]]);
+    expectIntent(signalBlockedInstruction, [["signal_blocked"], ["blocked"], ["reason"], ["missing"]]);
   });
 });
