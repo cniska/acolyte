@@ -12,17 +12,12 @@ import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
-import {
-  appendLifecycleTextDelta,
-  createLifecycleTextStreamState,
-  finalizeLifecycleText,
-  type LifecycleTextStreamState,
-} from "./lifecycle-signal";
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
+import { signalForToolName } from "./signal-toolkit";
 import type { ToolDefinition } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
 
@@ -130,13 +125,12 @@ export function createAgentStream(
         }> = [];
         finishReason = undefined;
         const stepTextParts: string[] = [];
-        const lifecycleTextState = createLifecycleTextStreamState();
 
         const reader = streamResult.stream.getReader();
         while (true) {
           const { done, value: part } = await reader.read();
           if (done) break;
-          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, lifecycleTextState);
+          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls);
           if (part.type === "finish") {
             finishReason = part.finishReason;
             streamController.enqueue({
@@ -147,13 +141,6 @@ export function createAgentStream(
               },
             });
           }
-        }
-
-        const finalizedStep = finalizeLifecycleText(lifecycleTextState);
-        if (finalizedStep.signal) lifecycleSignal = finalizedStep.signal;
-        if (finalizedStep.text.length > 0) {
-          stepTextParts.push(finalizedStep.text);
-          streamController.enqueue({ type: "text-delta", payload: { text: finalizedStep.text } });
         }
 
         const stepText = stepTextParts.join("");
@@ -175,7 +162,14 @@ export function createAgentStream(
           break;
         }
 
-        if (stepText.length > 0) fullText += stepText;
+        const signalToolCalls = pendingToolCalls.filter((tc) => signalForToolName(tc.toolName));
+        if (signalToolCalls.length > 1) {
+          throw new Error("Model response included more than one lifecycle signal tool.");
+        }
+        if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
+          throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
+        }
+        if (signalToolCalls.length === 0 && stepText.length > 0) fullText += stepText;
 
         const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
           type: "tool-call" as const,
@@ -206,6 +200,8 @@ export function createAgentStream(
           try {
             const args = JSON.parse(tc.input);
             const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
+            const signal = signalForToolName(tc.toolName);
+            if (signal) lifecycleSignal = signal;
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
@@ -247,6 +243,22 @@ export function createAgentStream(
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
+        if (lifecycleSignal) {
+          const extras =
+            options.onBeforeFinish?.({
+              messages,
+              text: stepText,
+              signal: lifecycleSignal,
+            }) ?? [];
+          if (extras.length > 0) {
+            for (const msg of extras) messages.push(msg);
+            lifecycleSignal = undefined;
+            continue;
+          }
+          if (stepText.length > 0) fullText += stepText;
+          break;
+        }
+
         if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
 
         const extras = options.onBeforeNextCall?.(messages) ?? [];
@@ -280,14 +292,12 @@ function emitStreamPart(
   controller: ReadableStreamDefaultController<StreamChunk>,
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
-  lifecycleTextState: LifecycleTextStreamState,
 ): void {
   switch (part.type) {
     case "text-delta": {
-      const visibleText = appendLifecycleTextDelta(lifecycleTextState, part.delta);
-      if (visibleText.length > 0) {
-        textParts.push(visibleText);
-        controller.enqueue({ type: "text-delta", payload: { text: visibleText } });
+      if (part.delta.length > 0) {
+        textParts.push(part.delta);
+        controller.enqueue({ type: "text-delta", payload: { text: part.delta } });
       }
       break;
     }

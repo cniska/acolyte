@@ -52,6 +52,28 @@ function run(message: string) {
   return runLifecycle(createLifecycleInput({ request: { model: "gpt-5-mini", message, history: [] }, workspace }));
 }
 
+function createSignalPayload(
+  ctx: FakeProviderRequestContext,
+  signal: "signal_done" | "signal_no_op" | "signal_blocked",
+  text: string,
+  args: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const toolName = pickFunctionToolName(ctx.body.tools, signal, [signal]);
+  return createToolCallsPayload(
+    ctx.model,
+    ctx.responseCounter,
+    [
+      {
+        id: `fc_${ctx.responseCounter}`,
+        callId: `call_${ctx.responseCounter}`,
+        name: toolName,
+        args: JSON.stringify(args),
+      },
+    ],
+    text,
+  );
+}
+
 async function writeExecutableScript(name: string, body: string): Promise<string> {
   const path = join(workspace, name);
   await writeFile(path, body, "utf8");
@@ -64,7 +86,7 @@ describe("lifecycle integration", () => {
     if (fake) fake.stop();
   });
 
-  test("@signal done completion rejection continues to validation", async () => {
+  test("signal_done completion rejection continues to validation", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
@@ -83,7 +105,7 @@ describe("lifecycle integration", () => {
         ]);
       }
       if (turnCount === 2) {
-        return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
+        return createSignalPayload(ctx, "signal_done", "Updated x to 2.");
       }
       if (turnCount === 3) {
         const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
@@ -96,7 +118,7 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 2.\n\n@signal done");
+      return createSignalPayload(ctx, "signal_done", "Updated x to 2.");
     });
 
     const reply = await run("update x to 2");
@@ -148,7 +170,7 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Recovered and updated x to 4.\n\n@signal done");
+      return createSignalPayload(ctx, "signal_done", "Recovered and updated x to 4.");
     });
 
     const reply = await run("update x to 4");
@@ -158,16 +180,16 @@ describe("lifecycle integration", () => {
     expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
   });
 
-  test("@signal no_op completes without write tools", async () => {
+  test("signal_no_op completes without write tools", async () => {
     setupFakeProvider((ctx) => {
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Nothing to do.\n\n@signal no_op");
+      return createSignalPayload(ctx, "signal_no_op", "Nothing to do.");
     });
 
     const reply = await run("hello");
     expect(reply.output).toContain("Nothing to do.");
   });
 
-  test("@signal blocked returns awaiting-input state", async () => {
+  test("signal_blocked returns awaiting-input state", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
@@ -185,7 +207,9 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Cannot proceed.\n\n@signal blocked");
+      return createSignalPayload(ctx, "signal_blocked", "Cannot proceed.", {
+        reason: "Missing deployment environment. I will deploy once it is provided.",
+      });
     });
 
     const reply = await run("update x to 3");
@@ -230,7 +254,7 @@ printf '%s\n' "$@" > "${formatLog}"
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 6.\n\n@signal done");
+      return createSignalPayload(ctx, "signal_done", "Updated x to 6.");
     });
 
     await runLifecycle(
@@ -272,7 +296,7 @@ exit 1
           },
         ]);
       }
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 7.\n\n@signal done");
+      return createSignalPayload(ctx, "signal_done", "Updated x to 7.");
     });
 
     const reply = await runLifecycle(

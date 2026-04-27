@@ -186,6 +186,7 @@ function acceptResult(ctx: RunContext): void {
     runnerToolSet: RUNNER_TOOL_SET,
   });
   if (completionBlock) {
+    ctx.acceptedSignal = undefined;
     ctx.currentError = {
       message: completionBlock.message,
       code: LIFECYCLE_ERROR_CODES.unknown,
@@ -202,11 +203,14 @@ function acceptResult(ctx: RunContext): void {
 
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
+    ctx.acceptedSignal = lifecycleSignal;
     ctx.currentError = undefined;
     ctx.debug("lifecycle.signal.accepted", {
       signal: lifecycleSignal,
       tool_calls: ctx.result?.toolCalls.length ?? 0,
     });
+  } else {
+    ctx.acceptedSignal = undefined;
   }
 
   const errorBudgetExhausted =

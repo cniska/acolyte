@@ -173,6 +173,7 @@ export type RunContext = {
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
+  acceptedSignal?: LifecycleSignal;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   temperature?: number;

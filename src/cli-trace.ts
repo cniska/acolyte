@@ -248,7 +248,7 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
     }
 
     if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
-      rows.push({ kind: "separator", text: `@signal ${line.fields.signal ?? "?"}` });
+      rows.push({ kind: "separator", text: `signal ${line.fields.signal ?? "?"}` });
     }
   }
 
