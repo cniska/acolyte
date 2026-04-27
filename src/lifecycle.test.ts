@@ -106,7 +106,7 @@ describe("runLifecycle", () => {
 
     expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
     expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("changed after the last successful validation");
+    expect(response.error).toContain("changed and no later validation targeted it");
     expect(events.find((entry) => entry.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
       "missing-validation-after-write",
     );

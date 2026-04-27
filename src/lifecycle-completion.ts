@@ -33,12 +33,15 @@ export function findCompletionBlock(input: {
   if (!lastWrite) return undefined;
 
   const laterCalls = input.callLog.slice(lastWrite.index + 1);
-  if (laterCalls.some((entry) => isGreenRunner(entry, input.runnerToolSet))) return undefined;
+  const relatedPaths = relatedValidationPaths(lastWrite.path);
+  if (laterCalls.some((entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths))) {
+    return undefined;
+  }
 
   return {
     reason: "missing-validation-after-write",
     path: lastWrite.path,
-    message: `Cannot finish yet: \`${lastWrite.path}\` changed after the last successful validation. Run focused validation, or say why validation is blocked.`,
+    message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
   };
 }
 
@@ -83,4 +86,45 @@ function isGreenRunner(entry: ToolCallRecord, runnerToolSet: ReadonlySet<string>
   if (!runnerToolSet.has(entry.toolName)) return false;
   if (typeof entry.exitCode === "number") return entry.exitCode === 0;
   return entry.status === "succeeded";
+}
+
+function relatedValidationPaths(writtenPath: string): readonly string[] {
+  const paths = new Set<string>([writtenPath]);
+  const testCompanion = writtenPath.replace(/\.(tsx?|jsx?|mts|cts)$/, ".test.$1");
+  if (testCompanion !== writtenPath) paths.add(testCompanion);
+  const sourceCompanion = writtenPath.replace(/\.test\.(tsx?|jsx?|mts|cts)$/, ".$1");
+  if (sourceCompanion !== writtenPath) paths.add(sourceCompanion);
+  return Array.from(paths);
+}
+
+function runnerTargets(entry: ToolCallRecord, candidatePaths: readonly string[]): boolean {
+  const explicit = collectExplicitTargets(entry);
+  if (explicit.length === 0) return true;
+  return explicit.some((target) => candidatePaths.some((candidate) => pathMatches(target, candidate)));
+}
+
+function collectExplicitTargets(entry: ToolCallRecord): string[] {
+  const targets: string[] = [];
+  const args = entry.args;
+  if (Array.isArray(args.files)) {
+    for (const file of args.files) if (typeof file === "string") targets.push(file);
+  }
+  if (Array.isArray(args.args)) {
+    for (const arg of args.args) if (typeof arg === "string" && looksLikePath(arg)) targets.push(arg);
+  }
+  if (typeof args.command === "string") {
+    for (const token of args.command.split(/\s+/)) if (looksLikePath(token)) targets.push(token);
+  }
+  return targets;
+}
+
+function looksLikePath(token: string): boolean {
+  if (token.includes("/")) return true;
+  return /\.(tsx?|jsx?|mts|cts)$/.test(token);
+}
+
+function pathMatches(target: string, candidate: string): boolean {
+  if (target === candidate) return true;
+  if (target.endsWith(`/${candidate}`)) return true;
+  return false;
 }

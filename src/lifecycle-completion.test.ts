@@ -100,22 +100,65 @@ describe("findCompletionBlock", () => {
       reason: "missing-validation-after-write",
       path: "src/app.ts",
       message:
-        "Cannot finish yet: `src/app.ts` changed after the last successful validation. Run focused validation, or say why validation is blocked.",
+        "Cannot finish yet: `src/app.ts` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.",
     });
   });
 
-  test("allows done when a successful runner follows the last source write", () => {
+  test("allows done when a successful runner targets the test companion", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [
         record("file-edit", { path: "src/app.ts" }),
-        { ...record("test-run", { command: "bun test src/app.test.ts" }), exitCode: 0 },
+        { ...record("test-run", { files: ["src/app.test.ts"] }), exitCode: 0 },
       ],
       writeToolSet,
       runnerToolSet,
     });
 
     expect(block).toBeUndefined();
+  });
+
+  test("allows done when a successful runner targets the same file the test exercises", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      callLog: [
+        record("file-edit", { path: "src/app.test.ts" }),
+        { ...record("test-run", { files: ["src/app.ts"] }), exitCode: 0 },
+      ],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block).toBeUndefined();
+  });
+
+  test("allows done when a shell-run command references the written file", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      callLog: [
+        record("file-edit", { path: "src/app.ts" }),
+        { ...record("shell-run", { cmd: "bun", args: ["test", "src/app.test.ts"] }), exitCode: 0 },
+      ],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block).toBeUndefined();
+  });
+
+  test("blocks done when the only later green runner targets unrelated files", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      callLog: [
+        record("file-edit", { path: "src/app.ts" }),
+        { ...record("test-run", { files: ["src/other.test.ts"] }), exitCode: 0 },
+      ],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block?.reason).toBe("missing-validation-after-write");
+    expect(block?.path).toBe("src/app.ts");
   });
 
   test("blocks done when validation happened before the last source write", () => {

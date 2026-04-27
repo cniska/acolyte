@@ -285,7 +285,7 @@ exit 1
 
     expect(turnCount).toBe(4);
     expect(reply.state).toBe("awaiting-input");
-    expect(reply.output).toContain("changed after the last successful validation");
+    expect(reply.output).toContain("changed and no later validation targeted it");
   });
 
   test("runControl yield skips result acceptance", async () => {
