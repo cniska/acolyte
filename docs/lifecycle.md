@@ -10,7 +10,7 @@ resolve → prepare → generate → finalize
 
 - **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
-- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a lifecycle signal tool (`signal_done`, `signal_no_op`, `signal_blocked`)
+- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a lifecycle signal tool (`signal_done`, `signal_noop`, `signal_blocked`)
 - **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`
 
 ## Generation loop feedback
@@ -33,6 +33,7 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 
 - `checkStepBudget()` is inlined into tool execution and enforces per-turn and total tool-call limits
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
+- lifecycle signal tools skip the step counter so the model can still terminate after using the available ordinary tool-call budget
 - this is the only pre-tool policy check; there is no guard abstraction
 
 ## Per-call input budget
@@ -63,17 +64,16 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 
 ## Key files
 
-- `src/lifecycle.ts` — main orchestrator that coordinates all phases
-- `src/lifecycle-constants.ts` — configuration constants for step limits, timeouts, and thresholds
-- `src/lifecycle-contract.ts` — type definitions for lifecycle events, inputs, and runtime contexts
-- `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
-- `src/lifecycle-finalize.ts` — finalization phase including token accounting and tool statistics
-- `src/lifecycle-generate.ts` — generation phase with agent creation and tool-call loop
-- `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
-- `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
+- `src/lifecycle.ts` — main orchestrator that coordinates all phases, including signal acceptance and state validation
 - `src/lifecycle-resolve.ts` — initial model resolution for the request
+- `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
+- `src/lifecycle-generate.ts` — generation phase with agent creation and tool-call loop
 - `src/signal-toolkit.ts` — lifecycle signal tools exposed to the model
-- `src/lifecycle.ts` — signal acceptance and state validation
+- `src/lifecycle-finalize.ts` — finalization phase including token accounting and tool statistics
+- `src/lifecycle-contract.ts` — type definitions for lifecycle events, inputs, and runtime contexts
+- `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
+- `src/lifecycle-constants.ts` — configuration constants for step limits, timeouts, and thresholds
+- `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
 - `src/workspace-profile.ts` — workspace profile types, caching, and instruction generation
 - `src/workspace-detectors.ts` — ecosystem detectors for TypeScript, Python, Go, Rust

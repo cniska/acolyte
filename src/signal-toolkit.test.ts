@@ -16,7 +16,7 @@ function toolkit() {
 describe("signal tools", () => {
   test("maps tool names to lifecycle signals", () => {
     expect(signalForToolName("signal_done")).toBe("done");
-    expect(signalForToolName("signal_no_op")).toBe("no_op");
+    expect(signalForToolName("signal_noop")).toBe("noop");
     expect(signalForToolName("signal_blocked")).toBe("blocked");
     expect(signalForToolName("file-read")).toBeUndefined();
   });
@@ -24,6 +24,27 @@ describe("signal tools", () => {
   test("signal_done has no arguments", async () => {
     const result = await toolkit().signalDone.execute({}, "call_done");
     expect(result.result).toEqual({ kind: "lifecycle-signal", signal: "done" });
+  });
+
+  test("signal_done rejects unexpected output shape", async () => {
+    const tools = toolkit();
+    await expect(
+      tools.signalDone.outputSchema.parseAsync({ kind: "lifecycle-signal", signal: "blocked" }),
+    ).rejects.toThrow();
+    await expect(
+      tools.signalDone.outputSchema.parseAsync({ kind: "lifecycle-signal", signal: "done", reason: "extra" }),
+    ).rejects.toThrow();
+  });
+
+  test("signal_noop rejects blocked output shape", async () => {
+    const tools = toolkit();
+    await expect(
+      tools.signalNoop.outputSchema.parseAsync({
+        kind: "lifecycle-signal",
+        signal: "blocked",
+        reason: "Missing input.",
+      }),
+    ).rejects.toThrow();
   });
 
   test("signal_done bypasses step budget while still recording the call", async () => {
@@ -43,6 +64,9 @@ describe("signal tools", () => {
 
   test("signal_blocked requires a reason", async () => {
     await expect(toolkit().signalBlocked.execute({} as { reason: string }, "call_blocked")).rejects.toThrow();
+    await expect(
+      toolkit().signalBlocked.outputSchema.parseAsync({ kind: "lifecycle-signal", signal: "blocked" }),
+    ).rejects.toThrow();
     const result = await toolkit().signalBlocked.execute(
       { reason: "Missing credentials. I will deploy after they are provided." },
       "call_blocked",

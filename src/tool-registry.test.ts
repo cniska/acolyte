@@ -35,7 +35,7 @@ describe("toolsets", () => {
       "sessionSearch",
       "signalBlocked",
       "signalDone",
-      "signalNoOp",
+      "signalNoop",
       "updateChecklist",
       "webFetch",
       "webSearch",
@@ -119,7 +119,7 @@ describe("localization baseline", () => {
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
     const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
     const signalDoneInstruction = toolDefinitionsById.signal_done?.instruction ?? "";
-    const signalNoOpInstruction = toolDefinitionsById.signal_no_op?.instruction ?? "";
+    const signalNoopInstruction = toolDefinitionsById.signal_noop?.instruction ?? "";
     const signalBlockedInstruction = toolDefinitionsById.signal_blocked?.instruction ?? "";
 
     expectIntent(readInstruction, [
@@ -162,7 +162,7 @@ describe("localization baseline", () => {
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
     expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
     expectIntent(signalDoneInstruction, [["signal_done"], ["requested work", "complete"]]);
-    expectIntent(signalNoOpInstruction, [["signal_no_op"], ["no changes", "needed"]]);
+    expectIntent(signalNoopInstruction, [["signal_noop"], ["no changes", "needed"]]);
     expectIntent(signalBlockedInstruction, [["signal_blocked"], ["blocked"], ["reason"], ["missing"]]);
   });
 });

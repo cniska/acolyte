@@ -67,10 +67,10 @@ export async function runTool<T = unknown>(
   toolCallId: string,
   args: Record<string, unknown>,
   execute: (toolCallId: string) => Promise<T>,
-  options?: { timeoutMs?: number; skipBudget?: boolean },
+  options?: { timeoutMs?: number; skipStepBudget?: boolean },
 ): Promise<RunToolResult<T>> {
   return withToolError(toolId, async () => {
-    if (!options?.skipBudget) {
+    if (!options?.skipStepBudget) {
       const budgetError = checkStepBudget(session, toolId);
       if (budgetError) {
         const error = new Error(budgetError) as Error & { code: string; kind: string };

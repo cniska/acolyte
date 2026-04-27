@@ -19,7 +19,7 @@ describe("createInstructions", () => {
       ["concise", "outcome-first"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
       ["signal_done"],
-      ["signal_no_op"],
+      ["signal_noop"],
       ["signal_blocked"],
     ]);
   });

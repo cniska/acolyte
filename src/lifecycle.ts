@@ -150,9 +150,9 @@ export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
   const signal = ctx.result?.signal;
   if (!signal) return undefined;
   if (ctx.currentError) return undefined;
-  if (signal === "no_op" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
+  if (signal === "noop" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
     return undefined;
-  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;
+  if (signal === "done" || signal === "noop" || signal === "blocked") return signal;
   return undefined;
 }
 

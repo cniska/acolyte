@@ -54,7 +54,7 @@ function run(message: string) {
 
 function createSignalPayload(
   ctx: FakeProviderRequestContext,
-  signal: "signal_done" | "signal_no_op" | "signal_blocked",
+  signal: "signal_done" | "signal_noop" | "signal_blocked",
   text: string,
   args: Record<string, unknown> = {},
 ): Record<string, unknown> {
@@ -180,9 +180,9 @@ describe("lifecycle integration", () => {
     expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
   });
 
-  test("signal_no_op completes without write tools", async () => {
+  test("signal_noop completes without write tools", async () => {
     setupFakeProvider((ctx) => {
-      return createSignalPayload(ctx, "signal_no_op", "Nothing to do.");
+      return createSignalPayload(ctx, "signal_noop", "Nothing to do.");
     });
 
     const reply = await run("hello");

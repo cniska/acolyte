@@ -43,7 +43,7 @@ export type GenerateResult = {
   signal?: LifecycleSignal;
 };
 
-export const lifecycleSignalSchema = z.enum(["done", "no_op", "blocked"]);
+export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
 export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
 
 export type ToolOutputEvent = {

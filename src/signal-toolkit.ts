@@ -1,24 +1,43 @@
 import { z } from "zod";
-import { type LifecycleSignal, lifecycleSignalSchema } from "./lifecycle-contract";
+import type { LifecycleSignal } from "./lifecycle-contract";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-export const lifecycleSignalToolNameSchema = z.enum(["signal_done", "signal_no_op", "signal_blocked"]);
+export const lifecycleSignalToolNameSchema = z.enum(["signal_done", "signal_noop", "signal_blocked"]);
 export type LifecycleSignalToolName = z.infer<typeof lifecycleSignalToolNameSchema>;
 
 const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
   signal_done: "done",
-  signal_no_op: "no_op",
+  signal_noop: "noop",
   signal_blocked: "blocked",
 };
 
-const signalOutputSchema = z.object({
-  kind: z.literal("lifecycle-signal"),
-  signal: lifecycleSignalSchema,
-  reason: z.string().min(1).optional(),
-});
+const doneSignalOutputSchema = z
+  .object({
+    kind: z.literal("lifecycle-signal"),
+    signal: z.literal("done"),
+  })
+  .strict();
 
-export type SignalToolOutput = z.infer<typeof signalOutputSchema>;
+const noopSignalOutputSchema = z
+  .object({
+    kind: z.literal("lifecycle-signal"),
+    signal: z.literal("noop"),
+  })
+  .strict();
+
+const blockedSignalOutputSchema = z
+  .object({
+    kind: z.literal("lifecycle-signal"),
+    signal: z.literal("blocked"),
+    reason: z.string().min(1),
+  })
+  .strict();
+
+export type SignalToolOutput =
+  | z.infer<typeof doneSignalOutputSchema>
+  | z.infer<typeof noopSignalOutputSchema>
+  | z.infer<typeof blockedSignalOutputSchema>;
 
 export function signalForToolName(toolName: string): LifecycleSignal | undefined {
   const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
@@ -34,7 +53,7 @@ function createDoneSignalTool(input: ToolkitInput) {
     description: "Finish the task when the requested work has been completed.",
     instruction: "Call `signal_done` exactly once when the requested work is complete.",
     inputSchema: z.object({}).strict(),
-    outputSchema: signalOutputSchema,
+    outputSchema: doneSignalOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
@@ -45,32 +64,32 @@ function createDoneSignalTool(input: ToolkitInput) {
           kind: "lifecycle-signal" as const,
           signal: "done" as const,
         }),
-        { skipBudget: true },
+        { skipStepBudget: true },
       );
     },
   });
 }
 
-function createNoOpSignalTool(input: ToolkitInput) {
+function createNoopSignalTool(input: ToolkitInput) {
   return createTool({
-    id: "signal_no_op",
+    id: "signal_noop",
     toolkit: "signal",
     category: "meta",
     description: "Finish the task when no changes or actions were needed.",
-    instruction: "Call `signal_no_op` exactly once when no changes or actions were needed.",
+    instruction: "Call `signal_noop` exactly once when no changes or actions were needed.",
     inputSchema: z.object({}).strict(),
-    outputSchema: signalOutputSchema,
+    outputSchema: noopSignalOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
-        "signal_no_op",
+        "signal_noop",
         toolCallId,
         toolInput,
         async () => ({
           kind: "lifecycle-signal" as const,
-          signal: "no_op" as const,
+          signal: "noop" as const,
         }),
-        { skipBudget: true },
+        { skipStepBudget: true },
       );
     },
   });
@@ -90,7 +109,7 @@ function createBlockedSignalTool(input: ToolkitInput) {
         reason: z.string().min(1),
       })
       .strict(),
-    outputSchema: signalOutputSchema,
+    outputSchema: blockedSignalOutputSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
@@ -102,7 +121,7 @@ function createBlockedSignalTool(input: ToolkitInput) {
           signal: "blocked" as const,
           reason: toolInput.reason,
         }),
-        { skipBudget: true },
+        { skipStepBudget: true },
       );
     },
   });
@@ -111,7 +130,7 @@ function createBlockedSignalTool(input: ToolkitInput) {
 export function createSignalToolkit(input: ToolkitInput) {
   return {
     signalDone: createDoneSignalTool(input),
-    signalNoOp: createNoOpSignalTool(input),
+    signalNoop: createNoopSignalTool(input),
     signalBlocked: createBlockedSignalTool(input),
   };
 }

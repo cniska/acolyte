@@ -18,14 +18,14 @@ describe("resolveSignal", () => {
     expect(resolveSignal(ctx)).toBe("blocked");
   });
 
-  test("rejects no_op after writes happened", () => {
+  test("rejects noop after writes happened", () => {
     const session = createSessionContext("task_noop");
     session.writeTools = new Set(["file-edit"]);
     recordCall(session, "file-edit", { path: "src/a.ts" });
     const ctx = createRunContext({
       taskId: "task_noop",
       session,
-      result: { text: "No changes were needed.", toolCalls: [], signal: "no_op" },
+      result: { text: "No changes were needed.", toolCalls: [], signal: "noop" },
     });
     expect(resolveSignal(ctx)).toBeUndefined();
   });

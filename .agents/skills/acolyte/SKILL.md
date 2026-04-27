@@ -15,7 +15,7 @@ CLI → daemon (RPC) → lifecycle → model + tools
 
 | Subsystem | Key concepts | Docs |
 |-----------|-------------|------|
-| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends with `@signal done\|no_op\|blocked` | `docs/lifecycle.md` |
+| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends with `signal_done`, `signal_noop`, or `signal_blocked` | `docs/lifecycle.md` |
 | Tools | `runTool`: budget → cache → toolkit → registry. Nine toolkits: file, code, web, shell, test, git, checklist, memory, skill | `docs/tooling.md` |
 | Sessions & tasks | One active task per session. State machine: accepted → queued → running → completed\|failed\|cancelled | `docs/sessions-tasks.md` |
 | Memory | On-demand via toolkit, not injected. Observer distills facts via `@observe` directives. SQLite + semantic embeddings | `docs/memory.md` |
