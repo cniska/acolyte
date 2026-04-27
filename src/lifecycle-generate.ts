@@ -283,6 +283,12 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
 
         if (signal === "done" && selfReviewTurnsRemaining > 0) {
           selfReviewTurnsRemaining = 0;
+          const taskLog = scopedCallLog(ctx.session, ctx.taskId);
+          const hasWrites = taskLog.some((e) => ctx.session.writeTools.has(e.toolName));
+          if (!hasWrites) {
+            ctx.debug("lifecycle.self_review.skipped", { reason: "no-writes" });
+            return [];
+          }
           ctx.debug("lifecycle.self_review.injected", { action: "continue" });
           return [
             {

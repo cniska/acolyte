@@ -8,6 +8,8 @@ import { resolveSignal } from "./lifecycle";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
+import { createSessionContext } from "./tool-session";
+import { WRITE_TOOL_SET } from "./tool-registry";
 import { createRunContext } from "./test-utils";
 
 const noopRateLimiter: RateLimiter = {
@@ -626,9 +628,14 @@ describe("phaseGenerate", () => {
     const model = scriptedModel(turns, promptCapture);
     const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
 
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    session.callLog.push({ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" });
+    session.callLog.push({ toolName: "test-run", args: { command: "bun test" }, status: "succeeded" });
+
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Add X, update tests, update render.", history: [] },
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
       agent: {
         id: "test-agent",
         name: "test-agent",
@@ -656,5 +663,44 @@ describe("phaseGenerate", () => {
 
     // Self-review is one-shot — second done signal should not re-inject it
     expect(promptCapture.length).toBe(2);
+  });
+
+  test("skips self-review on done signal when no writes in callLog", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Here is the answer.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "What does X do?", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: {},
+        stream: agentStream,
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    expect(promptCapture.length).toBe(1);
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.skipped")).toMatchObject({
+      event: "lifecycle.self_review.skipped",
+      fields: { reason: "no-writes" },
+    });
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeUndefined();
   });
 });
