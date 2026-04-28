@@ -8,7 +8,9 @@ import { resolveSignal } from "./lifecycle";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
+import { createSignalToolkit } from "./signal-toolkit";
 import { createRunContext } from "./test-utils";
+import type { ToolDefinition } from "./tool-contract";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
@@ -419,6 +421,62 @@ describe("phaseGenerate", () => {
     expect(resolveSignal(ctx)).toBeUndefined();
   });
 
+  test("clears file-search no-match after later successful discovery recovery", async () => {
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "file-search", args: { path: ".", pattern: "TODO" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "file-search",
+                error: {
+                  message: "No matches found in '.'.",
+                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
+                },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "file-read", args: { path: "README.md" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_2", toolName: "file-read", result: { content: "# smoke\n" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "", toolCalls: [], signal: "noop" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError).toBeUndefined();
+    expect(resolveSignal(ctx)).toBe("noop");
+  });
+
   test("fails fast when fullOutput rejects outside the reader chain", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
@@ -539,6 +597,13 @@ describe("phaseGenerate", () => {
   test("injects post-failure reminder when the last runner in callLog failed", async () => {
     const promptCapture: LanguageModelV3Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
 
     // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
     // Turn 2: done signal
@@ -546,9 +611,10 @@ describe("phaseGenerate", () => {
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-delta", id: "t_1", delta: "Done." },
         { type: "text-end", id: "t_1" },
-        finishPart("stop"),
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
       ],
     ];
 
@@ -567,17 +633,19 @@ describe("phaseGenerate", () => {
     };
 
     const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", { noop: noopTool }, noopRateLimiter);
+    const tools = { noop: noopTool, ...signalTools };
+    const agentStream = createAgentStream(model, "sys", tools, noopRateLimiter);
 
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
       agent: {
         id: "test-agent",
         name: "test-agent",
         instructions: "sys",
         model: model as unknown as RunContext["agent"]["model"],
-        tools: { noop: noopTool },
+        tools,
         stream: agentStream,
       },
     });
@@ -606,29 +674,97 @@ describe("phaseGenerate", () => {
     expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
   });
 
-  test("injects self-review prompt on first done signal", async () => {
+  test("blocks completion when the model never calls a signal tool", async () => {
     const promptCapture: LanguageModelV3Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
     const turns: LanguageModelV3StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-delta", id: "t_1", delta: "Done." },
         { type: "text-end", id: "t_1" },
         finishPart("stop"),
       ],
       [
         { type: "text-start", id: "t_2" },
-        { type: "text-delta", id: "t_2", delta: "Confirmed done.\n@signal done" },
+        { type: "text-delta", id: "t_2", delta: "Still done." },
         { type: "text-end", id: "t_2" },
         finishPart("stop"),
       ],
     ];
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: signalTools,
+        stream: agentStream,
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    expect(promptCapture).toHaveLength(2);
+    expect(promptCapture[1]).toContainEqual({
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: expect.stringContaining('type="missing-signal"'),
+        },
+      ],
+    });
+    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
+    expect(ctx.result).toMatchObject({ text: "Still done.", toolCalls: [] });
+    expect(debugEvents.filter((e) => e.event === "lifecycle.signal.missing").map((e) => e.fields?.action)).toEqual([
+      "continue",
+      "block",
+    ]);
+  });
+
+  test("injects self-review prompt on first done signal", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
+
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Done." },
+        { type: "text-end", id: "t_1" },
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Confirmed done." },
+        { type: "text-end", id: "t_2" },
+        { type: "tool-call", toolCallId: "tc_signal_2", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
 
     const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
 
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
     session.callLog.push({ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" });
     session.callLog.push({ toolName: "test-run", args: { command: "bun test" }, status: "succeeded" });
 
@@ -641,7 +777,7 @@ describe("phaseGenerate", () => {
         name: "test-agent",
         instructions: "sys",
         model: model as unknown as RunContext["agent"]["model"],
-        tools: {},
+        tools: signalTools,
         stream: agentStream,
       },
     });
@@ -668,28 +804,37 @@ describe("phaseGenerate", () => {
   test("skips self-review on done signal when no writes in callLog", async () => {
     const promptCapture: LanguageModelV3Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
 
     const turns: LanguageModelV3StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Here is the answer.\n@signal done" },
+        { type: "text-delta", id: "t_1", delta: "Here is the answer." },
         { type: "text-end", id: "t_1" },
-        finishPart("stop"),
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
       ],
     ];
 
     const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
 
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "What does X do?", history: [] },
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
       agent: {
         id: "test-agent",
         name: "test-agent",
         instructions: "sys",
         model: model as unknown as RunContext["agent"]["model"],
-        tools: {},
+        tools: signalTools,
         stream: agentStream,
       },
     });

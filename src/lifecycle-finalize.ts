@@ -8,7 +8,15 @@ import { scopedCallLog } from "./tool-session";
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const unresolvedToolError = ctx.currentError?.source === "tool-error" || ctx.currentError?.source === "tool-result";
   const blockingError = unresolvedToolError || ctx.currentError?.blocksCompletion === true;
-  const rawOutput = blockingError ? (ctx.currentError?.message ?? "") : (ctx.result?.text ?? "").trim();
+  const signalOutput =
+    ctx.acceptedSignal === "blocked"
+      ? (ctx.result?.signalReason?.trim() ?? t("agent.output.blocked"))
+      : ctx.acceptedSignal === "noop"
+        ? t("agent.output.no_changes_needed")
+        : ctx.acceptedSignal === "done"
+          ? t("agent.output.done")
+          : "";
+  const rawOutput = blockingError ? (ctx.currentError?.message ?? "") : (ctx.result?.text ?? "").trim() || signalOutput;
   const output =
     rawOutput.length > 0
       ? rawOutput

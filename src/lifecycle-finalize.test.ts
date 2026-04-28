@@ -104,6 +104,21 @@ describe("phaseFinalize", () => {
     expect(response.output).toBe("Which environment should I deploy to?");
   });
 
+  test("uses blocked signal reason when final text is empty", () => {
+    const ctx = createRunContext({
+      result: {
+        text: "",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing deployment environment. I will deploy once it is provided.",
+      },
+      acceptedSignal: "blocked",
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.state).toBe("awaiting-input");
+    expect(response.output).toBe("Missing deployment environment. I will deploy once it is provided.");
+  });
+
   test("sets state to done when signal is done", () => {
     const ctx = createRunContext({
       result: { text: "Done.", toolCalls: [], signal: "done" },
@@ -111,6 +126,17 @@ describe("phaseFinalize", () => {
     });
     const response = phaseFinalize(ctx);
     expect(response.state).toBe("done");
+  });
+
+  test("uses signal-aware fallback output when final text is empty", () => {
+    const done = phaseFinalize(
+      createRunContext({ result: { text: "", toolCalls: [], signal: "done" }, acceptedSignal: "done" }),
+    );
+    const noop = phaseFinalize(
+      createRunContext({ result: { text: "", toolCalls: [], signal: "noop" }, acceptedSignal: "noop" }),
+    );
+    expect(done.output).toBe("Done.");
+    expect(noop.output).toBe("No changes needed.");
   });
 
   test("blocks done output when a tool error is unresolved", () => {

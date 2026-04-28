@@ -41,6 +41,7 @@ export type GenerateResult = {
   text: string;
   toolCalls: ToolCallEntry[];
   signal?: LifecycleSignal;
+  signalReason?: string;
 };
 
 export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);

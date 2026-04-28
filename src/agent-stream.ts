@@ -4,6 +4,7 @@ import type {
   LanguageModelV3FunctionTool,
   LanguageModelV3Message,
   LanguageModelV3StreamPart,
+  LanguageModelV3TextPart,
   LanguageModelV3ToolCallPart,
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
@@ -66,6 +67,7 @@ export function createAgentStream(
 
     const resultPromise = (async (): Promise<GenerateResult> => {
       let lifecycleSignal: LifecycleSignal | undefined;
+      let lifecycleSignalReason: string | undefined;
       let finishReason: LanguageModelV3FinishReason | undefined;
       while (true) {
         loopIteration++;
@@ -156,6 +158,7 @@ export function createAgentStream(
             messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             for (const msg of extras) messages.push(msg);
             lifecycleSignal = undefined;
+            lifecycleSignalReason = undefined;
             continue;
           }
           if (stepText.length > 0) fullText += stepText;
@@ -171,20 +174,15 @@ export function createAgentStream(
         }
         if (signalToolCalls.length === 0 && stepText.length > 0) fullText += stepText;
 
-        const signalToolCalls = pendingToolCalls.filter((tc) => signalForToolName(tc.toolName));
-        if (signalToolCalls.length > 1) {
-          throw new Error("Model response included more than one lifecycle signal tool.");
-        }
-        if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
-          throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
-        }
-
-        const assistantContent: LanguageModelV3ToolCallPart[] = pendingToolCalls.map((tc) => ({
-          type: "tool-call" as const,
-          toolCallId: tc.toolCallId,
-          toolName: tc.toolName,
-          input: safeParseJSON(tc.input),
-        }));
+        const assistantContent: Array<LanguageModelV3TextPart | LanguageModelV3ToolCallPart> = [
+          ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
+          ...pendingToolCalls.map((tc) => ({
+            type: "tool-call" as const,
+            toolCallId: tc.toolCallId,
+            toolName: tc.toolName,
+            input: safeParseJSON(tc.input),
+          })),
+        ];
 
         const toolResultParts: LanguageModelV3ToolResultPart[] = [];
         for (const tc of pendingToolCalls) {
@@ -209,7 +207,10 @@ export function createAgentStream(
             const args = JSON.parse(tc.input);
             const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
             const signal = signalForToolName(tc.toolName);
-            if (signal) lifecycleSignal = signal;
+            if (signal) {
+              lifecycleSignal = signal;
+              lifecycleSignalReason = signalReasonFromResult(result);
+            }
             streamController.enqueue({
               type: "tool-result",
               payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
@@ -261,6 +262,7 @@ export function createAgentStream(
           if (extras.length > 0) {
             for (const msg of extras) messages.push(msg);
             lifecycleSignal = undefined;
+            lifecycleSignalReason = undefined;
             continue;
           }
           if (stepText.length > 0) fullText += stepText;
@@ -281,7 +283,12 @@ export function createAgentStream(
         signal: lifecycleSignal ?? null,
       });
       streamController.close();
-      return { text: fullText, toolCalls: allToolCalls, ...(lifecycleSignal ? { signal: lifecycleSignal } : {}) };
+      return {
+        text: fullText,
+        toolCalls: allToolCalls,
+        ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
+        ...(lifecycleSignalReason ? { signalReason: lifecycleSignalReason } : {}),
+      };
     })().catch((error) => {
       try {
         streamController.error(error);
@@ -293,6 +300,12 @@ export function createAgentStream(
 
     return { fullStream, getFullOutput: () => resultPromise };
   };
+}
+
+function signalReasonFromResult(result: unknown): string | undefined {
+  if (!result || typeof result !== "object" || !("reason" in result)) return undefined;
+  const reason = (result as { reason?: unknown }).reason;
+  return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : undefined;
 }
 
 function emitStreamPart(

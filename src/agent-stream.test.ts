@@ -270,7 +270,10 @@ describe("onBeforeNextCall hook", () => {
     const secondPrompt = promptCapture[1];
     expect(secondPrompt).toContainEqual({
       role: "assistant",
-      content: [{ type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: {} }],
+      content: [
+        { type: "text", text: "Premature." },
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: {} },
+      ],
     });
     expect(secondPrompt).toContainEqual({ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] });
   });

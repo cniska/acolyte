@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, tes
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  createMessagePayload,
   createToolCallsPayload,
   type FakeProviderRequestContext,
   type FakeProviderServer,
@@ -216,6 +215,18 @@ describe("lifecycle integration", () => {
     expect(reply.state).toBe("awaiting-input");
   });
 
+  test("signal_blocked uses tool reason when final text is empty", async () => {
+    setupFakeProvider((ctx) => {
+      return createSignalPayload(ctx, "signal_blocked", "", {
+        reason: "Missing deployment environment. I will deploy once it is provided.",
+      });
+    });
+
+    const reply = await run("deploy");
+    expect(reply.state).toBe("awaiting-input");
+    expect(reply.output).toBe("Missing deployment environment. I will deploy once it is provided.");
+  });
+
   test("rejects duplicate lifecycle signal tools", async () => {
     setupFakeProvider((ctx) => {
       const doneName = pickFunctionToolName(ctx.body.tools, "signal_done", ["signal_done"]);
@@ -375,7 +386,7 @@ exit 1
 
   test("runControl yield skips result acceptance", async () => {
     setupFakeProvider((ctx) => {
-      return createMessagePayload(ctx.model, ctx.responseCounter, "Hello there.");
+      return createSignalPayload(ctx, "signal_done", "Hello there.");
     });
 
     const debugEvents: string[] = [];
@@ -394,7 +405,7 @@ exit 1
 
   test("runControl yield replaces empty output", async () => {
     setupFakeProvider((ctx) => {
-      return createMessagePayload(ctx.model, ctx.responseCounter, "  ");
+      return createSignalPayload(ctx, "signal_done", "  ");
     });
 
     const reply = await runLifecycle(

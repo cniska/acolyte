@@ -25,7 +25,7 @@ export function findCompletionBlock(input: {
     return {
       reason: "broken-handoff",
       path: brokenHandoff.command ?? brokenHandoff.toolName,
-      message: `Cannot finish yet: the last ${label} run failed (exit code ${brokenHandoff.exitCode}). Diagnose the failure and fix it, or use \`@signal blocked\` if recovery is genuinely impossible.`,
+      message: `Cannot finish yet: the last ${label} run failed (exit code ${brokenHandoff.exitCode}). Diagnose the failure and fix it, or call \`signal_blocked\` if recovery is genuinely impossible.`,
     };
   }
 
