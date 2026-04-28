@@ -196,6 +196,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
+      if (filtered.length === 0) return;
 
       const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output);
       let totalTokens = promptTokens;
@@ -224,7 +225,6 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         projectPromotedFacts: projectCount,
         userPromotedFacts: userCount,
         sessionScopedFacts: sessionCount,
-        droppedUntaggedFacts: 0,
         distillTokens: totalTokens,
       };
     },

@@ -172,7 +172,6 @@ describe("memoryDistiller", () => {
         projectPromotedFacts: 3,
         userPromotedFacts: 1,
         sessionScopedFacts: 1,
-        droppedUntaggedFacts: 0,
       });
     });
 
@@ -218,7 +217,6 @@ describe("memoryDistiller", () => {
             projectPromotedFacts: 1,
             userPromotedFacts: 1,
             sessionScopedFacts: 3,
-            droppedUntaggedFacts: 0,
           },
           expectedWriteCount: 5,
         },
@@ -229,7 +227,6 @@ describe("memoryDistiller", () => {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
             sessionScopedFacts: 0,
-            droppedUntaggedFacts: 0,
           },
           expectedWriteCount: 1,
         },
