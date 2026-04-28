@@ -24,7 +24,7 @@ The model uses the memory toolkit to search for relevant context when it determi
 
 ## Sources
 
-The observer runs after each request and promotes facts to the appropriate scope via `@observe` directives.
+The observer runs after each request and promotes facts to the appropriate scope via `memory_observe` tool calls.
 
 Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill-extracted facts).
 
@@ -35,19 +35,18 @@ Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (d
 
 ## Inspiration
 
-The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `@observe` directives and on-demand retrieval via the memory toolkit.
+The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `memory_observe` tool calls and on-demand retrieval via the memory toolkit.
 
 ## Distill behavior
 
-- the observer extracts facts from conversations, one per `@observe` directive
-- each fact is stored as an individual observation record with its own embedding
-- scope promotion via `@observe` directives:
-  - `@observe project` — project-scoped facts (architecture, tooling, conventions)
-  - `@observe user` — user-scoped facts (preferences that carry across projects)
-  - `@observe session` — session-scoped facts (in-progress state, temporary constraints)
-  - if a preference is project-scoped, use `@observe project` not `@observe user`
-  - untagged lines are dropped (strict directive promotion, no fallback)
-  - malformed directives (e.g. `@observe proj`) are silently dropped and logged
+- the observer extracts facts from conversations via `memory_observe(scope, content, topic?)` tool calls
+- each call produces one observation record with its own embedding
+- scope via the `scope` parameter:
+  - `"project"` — project-scoped facts (architecture, tooling, conventions)
+  - `"user"` — user-scoped facts (preferences that carry across projects)
+  - `"session"` — session-scoped facts (in-progress state, temporary constraints)
+  - if a preference is project-scoped, use `"project"` not `"user"`
+- topic via the optional `topic` parameter — single-word label (e.g. testing, auth, config)
 - dedup: exact duplicate observations are skipped at write time
 
 ## Runtime guarantees
@@ -56,8 +55,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - commits are serialized per session per process through a keyed task queue seam
 - agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget, conversational turns prioritized over tool payloads)
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
-- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `dropped_untagged_facts`)
-- repeated malformed-directive drops emit `lifecycle.memory.quality_warning` with `malformed_reject_streak` after 3 consecutive commits
+- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`)
 - distill record writes use the configured storage backend for atomic persistence
 - hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
 

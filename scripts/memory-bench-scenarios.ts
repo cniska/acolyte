@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { splitScopedObservation } from "../src/distill-ops";
+import type { DistillObservation } from "../src/memory-distiller";
 import { DISTILLER_PROMPT } from "../src/memory-distiller";
 import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
@@ -396,18 +396,16 @@ type CachedDistillResult = {
 
 async function distillSession(
   sessionTurns: { speaker: string; text: string }[],
-  runner: (systemPrompt: string, userContent: string) => Promise<string>,
+  runner: (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>,
 ): Promise<{ content: string; topic: string | null; scope: string }[]> {
   const conversationText = sessionTurns.map((t) => `${t.speaker}: ${t.text}`).join("\n");
-  const output = await runner(DISTILLER_PROMPT, conversationText);
-  if (!output.trim()) return [];
-  const parsed = splitScopedObservation(output);
-  return parsed.facts.map((f) => ({ content: f.content, topic: f.topic, scope: f.scope }));
+  const observations = await runner(DISTILLER_PROMPT, conversationText);
+  return observations.map((o) => ({ content: o.content, topic: o.topic, scope: o.scope }));
 }
 
 async function distillLoCoMoConversation(
   conv: Record<string, unknown>,
-  runner: (systemPrompt: string, userContent: string) => Promise<string>,
+  runner: (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>,
   cachePath: string,
 ): Promise<CachedDistillResult> {
   if (existsSync(cachePath)) {
