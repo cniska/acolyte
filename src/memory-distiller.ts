@@ -1,7 +1,8 @@
+import type { LanguageModelV3FunctionTool, LanguageModelV3ToolCall } from "@ai-sdk/provider";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
-import { clampToTokenEstimate, type DistillScope, normalizeMemoryText, splitScopedObservation } from "./distill-ops";
+import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
   defaultMemoryPolicy,
@@ -22,21 +23,42 @@ import { createId } from "./short-id";
 
 export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
-Preserve specifics: file paths, function names, error messages, config values, decisions with reasoning.
+For each fact, call memory_observe with:
+- scope: "project" for project-specific durable facts (architecture, tooling, conventions, decisions)
+         "user" for personal preferences that carry across projects
+         "session" for in-progress state, temporary constraints, working assumptions
+- content: the fact — preserve specifics: file paths, function names, error messages, config values, decisions with reasoning
+- topic: optional single-word topic label (e.g. testing, auth, config, tooling)
 
-Tag each fact with an observe directive on its own line, optionally followed by a topic tag, then the fact on the next line:
+If a preference is project-scoped, use "project" not "user". If unsure, default to "session".`;
 
-@observe project — project-specific durable facts (architecture, tooling, conventions, decisions)
-@observe user — personal preferences that carry across projects
-@observe session — in-progress state, temporary constraints, working assumptions
-@topic <word> — optional topic tag for the preceding observe (e.g. testing, auth, config, tooling)
+const MEMORY_OBSERVE_TOOL: LanguageModelV3FunctionTool = {
+  type: "function",
+  name: "memory_observe",
+  description: "Record a fact extracted from the conversation into memory.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      scope: {
+        type: "string",
+        enum: ["session", "project", "user"],
+        description:
+          "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
+      },
+      content: {
+        type: "string",
+        description: "The fact to store. Be specific and concrete.",
+      },
+      topic: {
+        type: "string",
+        description: "Optional single-word topic label (e.g. testing, auth, config).",
+      },
+    },
+    required: ["scope", "content"],
+  },
+};
 
-Example:
-@observe project
-@topic testing
-Project uses Vitest for unit tests
-
-If a preference is project-scoped, use @observe project not @observe user. If unsure, default to @observe session.`;
+export type DistillObservation = { scope: DistillScope; content: string; topic: string | null };
 
 export function createDistillInput(messages: readonly { role: string; content: string }[], output: string): string {
   return [...messages, { role: "assistant", content: output }].map((m) => `${m.role}: ${m.content}`).join("\n\n");
@@ -67,9 +89,22 @@ async function embedAndStore(ds: MemoryStore, id: string, scope: string, content
   }
 }
 
-export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<string>;
+export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
 
-async function defaultRunner(systemPrompt: string, userContent: string): Promise<string> {
+function parseToolCall(call: LanguageModelV3ToolCall): DistillObservation | null {
+  try {
+    const args = JSON.parse(call.input) as { scope?: unknown; content?: unknown; topic?: unknown };
+    if (typeof args.content !== "string" || !args.content.trim()) return null;
+    const scope = args.scope as DistillScope;
+    if (scope !== "session" && scope !== "project" && scope !== "user") return null;
+    const topic = typeof args.topic === "string" && args.topic.trim() ? args.topic.trim().toLowerCase() : null;
+    return { scope, content: args.content, topic };
+  } catch {
+    return null;
+  }
+}
+
+async function defaultRunner(systemPrompt: string, userContent: string): Promise<DistillObservation[]> {
   const qualifiedModel = normalizeModel(appConfig.distillModel);
   const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   const result = await model.doGenerate({
@@ -77,13 +112,14 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: userContent }] },
     ],
+    tools: [MEMORY_OBSERVE_TOOL],
+    toolChoice: { type: "auto" },
     temperature: 0,
   });
-  const text = result.content
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
-    .map((part) => part.text)
-    .join("");
-  return text.trim();
+  return result.content
+    .filter((part): part is LanguageModelV3ToolCall => part.type === "tool-call" && part.toolName === "memory_observe")
+    .map(parseToolCall)
+    .filter((obs): obs is DistillObservation => obs !== null);
 }
 
 const DISTILL_SCOPE_KEY_RESOLVERS: Record<
@@ -147,64 +183,48 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
-  const malformedStreaks = new Map<string, number>();
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
-      const ds = deps.store ?? (await getCachedStore());
-      const key = resolveDistillScopeKey(commitScope, ctx);
-      if (!key) return;
+      if (commitScope === "session" && !ctx.sessionId) return;
       if (ctx.messages.length < policy.messageThreshold) return;
 
+      const ds = deps.store ?? (await getCachedStore());
       const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
       const distillInput = createDistillInput(recentMessages, ctx.output);
-      const observedRaw = await runner(DISTILLER_PROMPT, distillInput);
-      const observed = clampToTokenEstimate(observedRaw, policy.maxOutputTokens);
-      if (!observed.trim()) return;
-      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output) + estimateTokens(observed);
-      if (commitScope !== "session") {
-        const usage = await commitFact(ds, key, observed, null);
-        const observedFactCount = observed.split(/\r?\n/).filter((line) => line.trim()).length;
-        return {
-          projectPromotedFacts: commitScope === "project" ? observedFactCount : 0,
-          userPromotedFacts: commitScope === "user" ? observedFactCount : 0,
-          sessionScopedFacts: 0,
-          droppedUntaggedFacts: 0,
-          distillTokens: promptTokens + usage,
-        };
+      const observations = await runner(DISTILLER_PROMPT, distillInput);
+
+      const filtered =
+        commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
+
+      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output);
+      let totalTokens = promptTokens;
+      let projectCount = 0;
+      let userCount = 0;
+      let sessionCount = 0;
+
+      for (const obs of filtered) {
+        const factKey = resolveDistillScopeKey(obs.scope, obs.scope === "session" ? { sessionId: ctx.sessionId } : ctx);
+        if (!factKey) continue;
+        const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
+        if (!clamped) continue;
+        totalTokens += await commitFact(ds, factKey, clamped, obs.topic);
+        if (obs.scope === "project") projectCount++;
+        else if (obs.scope === "user") userCount++;
+        else sessionCount++;
       }
 
-      const scoped = splitScopedObservation(observed);
-      if (scoped.droppedUntaggedCount > 0) {
-        log.debug("memory.distill.dropped_untagged", { key, count: scoped.droppedUntaggedCount });
-      }
-      if (scoped.droppedMalformedCount > 0) {
-        const streak = (malformedStreaks.get(key) ?? 0) + 1;
-        malformedStreaks.set(key, streak);
-        log.debug("memory.distill.dropped_malformed", { key, count: scoped.droppedMalformedCount });
-        if (streak >= policy.malformedStreakWarningThreshold) {
-          log.warn("lifecycle.memory.quality_warning", { key, malformed_reject_streak: streak });
-        }
-      } else {
-        malformedStreaks.delete(key);
-      }
-      let totalTokens = promptTokens;
-      for (const fact of scoped.facts) {
-        const factKey = resolveDistillScopeKey(fact.scope, fact.scope === "session" ? { sessionId: key } : ctx);
-        if (factKey) totalTokens += await commitFact(ds, factKey, fact.content, fact.topic);
-      }
       log.debug("memory.distill.commit_done", {
-        key,
-        session: scoped.sessionCount,
-        project: scoped.projectCount,
-        user: scoped.userCount,
-        dropped: scoped.droppedUntaggedCount,
+        session: sessionCount,
+        project: projectCount,
+        user: userCount,
       });
+
       return {
-        projectPromotedFacts: scoped.projectCount,
-        userPromotedFacts: scoped.userCount,
-        sessionScopedFacts: scoped.sessionCount,
-        droppedUntaggedFacts: scoped.droppedUntaggedCount,
+        projectPromotedFacts: projectCount,
+        userPromotedFacts: userCount,
+        sessionScopedFacts: sessionCount,
+        droppedUntaggedFacts: 0,
         distillTokens: totalTokens,
       };
     },
