@@ -12,33 +12,6 @@ const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
   signal_blocked: "blocked",
 };
 
-const doneSignalOutputSchema = z
-  .object({
-    kind: z.literal("lifecycle-signal"),
-    signal: z.literal("done"),
-  })
-  .strict();
-
-const noopSignalOutputSchema = z
-  .object({
-    kind: z.literal("lifecycle-signal"),
-    signal: z.literal("noop"),
-  })
-  .strict();
-
-const blockedSignalOutputSchema = z
-  .object({
-    kind: z.literal("lifecycle-signal"),
-    signal: z.literal("blocked"),
-    reason: z.string().min(1),
-  })
-  .strict();
-
-export type SignalToolOutput =
-  | z.infer<typeof doneSignalOutputSchema>
-  | z.infer<typeof noopSignalOutputSchema>
-  | z.infer<typeof blockedSignalOutputSchema>;
-
 export function signalForToolName(toolName: string): LifecycleSignal | undefined {
   const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
   if (!parsed.success) return undefined;
@@ -53,7 +26,12 @@ function createDoneSignalTool(input: ToolkitInput) {
     description: "Finish the task when the requested work has been completed.",
     instruction: "Call `signal_done` exactly once when the requested work is complete.",
     inputSchema: z.object({}).strict(),
-    outputSchema: doneSignalOutputSchema,
+    outputSchema: z
+      .object({
+        kind: z.literal("lifecycle-signal"),
+        signal: z.literal("done"),
+      })
+      .strict(),
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
@@ -78,7 +56,12 @@ function createNoopSignalTool(input: ToolkitInput) {
     description: "Finish the task when no changes or actions were needed.",
     instruction: "Call `signal_noop` exactly once when no changes or actions were needed.",
     inputSchema: z.object({}).strict(),
-    outputSchema: noopSignalOutputSchema,
+    outputSchema: z
+      .object({
+        kind: z.literal("lifecycle-signal"),
+        signal: z.literal("noop"),
+      })
+      .strict(),
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
@@ -109,7 +92,13 @@ function createBlockedSignalTool(input: ToolkitInput) {
         reason: z.string().min(1),
       })
       .strict(),
-    outputSchema: blockedSignalOutputSchema,
+    outputSchema: z
+      .object({
+        kind: z.literal("lifecycle-signal"),
+        signal: z.literal("blocked"),
+        reason: z.string().min(1),
+      })
+      .strict(),
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,
