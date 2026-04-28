@@ -40,12 +40,14 @@ const traceEventSchema = z.enum([
   "lifecycle.tool.output",
   "lifecycle.budget",
   "lifecycle.signal.accepted",
+  "lifecycle.signal.rejected",
   "lifecycle.skill.context",
   "lifecycle.effect.format",
   "lifecycle.effect.lint",
   "lifecycle.effect.lint.output",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
+  "lifecycle.reminders.injected",
   "lifecycle.summary",
 ]);
 
@@ -90,11 +92,13 @@ const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
   "lifecycle.tool.output": ["tool"],
   "lifecycle.budget": ["tool", "action", "detail"],
   "lifecycle.signal.accepted": ["signal"],
+  "lifecycle.signal.rejected": ["signal", "reason", "path", "action"],
   "lifecycle.skill.context": ["skill_name", "instruction_chars"],
   "lifecycle.effect.format": ["files"],
   "lifecycle.effect.lint": ["files"],
   "lifecycle.eval.decision": ["effect", "action"],
   "lifecycle.eval.skipped": ["reason"],
+  "lifecycle.reminders.injected": ["count", "tags"],
   "lifecycle.effect.lint.output": ["output"],
   "lifecycle.summary": [
     "model_calls",

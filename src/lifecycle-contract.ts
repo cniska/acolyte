@@ -18,6 +18,7 @@ export type LifecycleError = {
   category?: ErrorCategory;
   source?: ErrorSource;
   tool?: string;
+  blocksCompletion?: boolean;
 };
 
 export type LifecycleEventName = `lifecycle.${string}`;

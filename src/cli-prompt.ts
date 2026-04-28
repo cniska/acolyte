@@ -169,6 +169,7 @@ export async function handlePrompt(
 
     if (reply.error) {
       printError(reply.error);
+      return false;
     } else {
       await agentRenderer.renderReply(reply.output, hasPrintedToolProgress);
     }

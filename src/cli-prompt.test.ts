@@ -69,6 +69,24 @@ describe("cli-prompt", () => {
     expect(session.messages[session.messages.length - 1]?.kind).toBe("tool_payload");
   });
 
+  test("handlePrompt returns failure when final reply has error", async () => {
+    const session = createTestSession();
+    const client: Client = {
+      replyStream: async () => ({
+        state: "awaiting-input" as const,
+        output: "file-edit failed: Find text matched 2 locations",
+        model: "gpt-5-mini",
+        error: "file-edit failed: Find text matched 2 locations",
+      }),
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    const { ok } = await runPromptAndCapture("fix it", session, client);
+
+    expect(ok).toBe(false);
+  });
+
   test("checklist events print header and items", async () => {
     const events: StreamEvent[] = [
       {

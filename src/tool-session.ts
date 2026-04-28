@@ -11,6 +11,7 @@ export type ToolCallRecord = {
   args: Record<string, unknown>;
   taskId?: string;
   resultHash?: string;
+  exitCode?: number;
   status: ToolCallStatus;
 };
 
@@ -111,8 +112,9 @@ export function recordCall(
   args: Record<string, unknown>,
   resultHash?: string,
   status: ToolCallStatus = "succeeded",
+  meta?: { exitCode?: number },
 ): void {
-  session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status });
+  session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status, ...meta });
   if (status === "failed") {
     session.consecutiveFailures.set(toolName, (session.consecutiveFailures.get(toolName) ?? 0) + 1);
   } else {

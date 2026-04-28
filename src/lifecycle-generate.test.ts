@@ -1,9 +1,70 @@
 import { describe, expect, test } from "bun:test";
+import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import type { StreamOptions } from "./agent-contract";
+import { createAgentStream } from "./agent-stream";
+import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { resolveSignal } from "./lifecycle";
-import type { RunContext } from "./lifecycle-contract";
+import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
+import type { RateLimiter } from "./rate-limiter";
 import { createRunContext } from "./test-utils";
+import { WRITE_TOOL_SET } from "./tool-registry";
+import { createSessionContext } from "./tool-session";
+
+const noopRateLimiter: RateLimiter = {
+  async beforeCall() {},
+  onResponse() {},
+  onError() {
+    return { shouldRetry: false, delayMs: 0 };
+  },
+  reset() {},
+  state() {
+    return {
+      requestsRemaining: undefined,
+      tokensRemaining: undefined,
+      requestsResetMs: undefined,
+      tokensResetMs: undefined,
+    };
+  },
+};
+
+function scriptedModel(
+  turns: LanguageModelV3StreamPart[][],
+  promptCapture: LanguageModelV3Message[][],
+): LanguageModelV3 {
+  let call = 0;
+  return {
+    specificationVersion: "v3",
+    provider: "test",
+    modelId: "test-model",
+    supportedUrls: {},
+    async doStream(args: { prompt: LanguageModelV3Message[] }) {
+      promptCapture.push(args.prompt.map((m) => ({ ...m })));
+      const parts = turns[call] ?? [];
+      call += 1;
+      return {
+        stream: new ReadableStream<LanguageModelV3StreamPart>({
+          start(controller) {
+            for (const part of parts) controller.enqueue(part);
+            controller.close();
+          },
+        }),
+      };
+    },
+  } as unknown as LanguageModelV3;
+}
+
+function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
+  return {
+    type: "finish",
+    finishReason: { unified: reason, raw: reason },
+    usage: {
+      inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 1, text: 1, reasoning: 0 },
+    },
+  };
+}
 
 describe("phaseGenerate", () => {
   test("does not clear a file-edit error after an unrelated successful read", async () => {
@@ -66,6 +127,172 @@ describe("phaseGenerate", () => {
 
     expect(ctx.currentError?.tool).toBe("file-edit");
     expect(resolveSignal(ctx)).toBeUndefined();
+  });
+
+  test("marks tool-error completion as failed in trace", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const streamEvents: StreamEvent[] = [];
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      emit: (event) => streamEvents.push(event),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "file-edit",
+                error: {
+                  message: "Find text matched 2 locations",
+                  code: TOOL_ERROR_CODES.editFileMultiMatch,
+                },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const toolResult = streamEvents.find((event) => event.type === "tool-result");
+    expect(toolResult).toMatchObject({ type: "tool-result", toolName: "file-edit", isError: true });
+    const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
+    expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
+  });
+
+  test("injects a recovery turn before finalizing an unresolved tool error", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    let recoveryPrompt = "";
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt: string, options: StreamOptions) {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-error" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "file-edit",
+                error: {
+                  message: "Replace text is too large",
+                  code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
+                },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              await new Promise((resolve) => setTimeout(resolve, 0));
+              const extras = options.onBeforeFinish?.({ messages: [], text: "Done.", signal: "done" }) ?? [];
+              const textPart = extras[0]?.content[0];
+              if (typeof textPart === "object" && textPart?.type === "text") recoveryPrompt = textPart.text;
+              return { text: extras.length > 0 ? "Recovered." : "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(recoveryPrompt).toContain('<system-reminder type="tool-error-recovery">');
+    expect(recoveryPrompt).toContain("The previous `file-edit` call failed and remains unresolved.");
+    expect(recoveryPrompt).toContain(`Error code: \`${TOOL_ERROR_CODES.editFileReplaceTooLarge}\`.`);
+    expect(recoveryPrompt).toContain("Do not finalize yet.");
+    expect(debugEvents.find((event) => event.event === "lifecycle.tool_error.recovery")?.fields).toMatchObject({
+      tool: "file-edit",
+      code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
+      action: "continue",
+    });
+  });
+
+  test("marks nonzero command results as failed", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "test-run", args: { files: ["src/a.test.ts"] } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "test-run",
+                result: { kind: "test-run", command: "bun test src/a.test.ts", exitCode: 1, output: "failed" },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [], signal: "done" as const };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(ctx.currentError?.source).toBe("tool-result");
+    expect(ctx.currentError?.message).toBe("test-run exited with code 1: bun test src/a.test.ts");
+    expect(resolveSignal(ctx)).toBeUndefined();
+    const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
+    expect(traceResult?.fields).toMatchObject({ tool: "test-run", is_error: true });
   });
 
   test("clears a file-edit error after a later successful write recovery", async () => {
@@ -307,5 +534,173 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(ctx.promptUsage.memoryTokens).toBe(0);
+  });
+
+  test("injects post-failure reminder when the last runner in callLog failed", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
+    // Turn 2: done signal
+    const turns: LanguageModelV3StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const noopTool = {
+      id: "noop",
+      toolkit: "test",
+      category: "execute" as const,
+      description: "noop",
+      instruction: "noop",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        return { result: { kind: "noop" } };
+      },
+    };
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", { noop: noopTool }, noopRateLimiter);
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: { noop: noopTool },
+        stream: agentStream,
+      },
+    });
+
+    // Pre-populate callLog with a failed runner — R5 should fire before turn 2
+    ctx.session.callLog.push({
+      toolName: "test-run",
+      args: { command: "bun test src/app.test.ts" },
+      status: "failed",
+      exitCode: 1,
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    // The second model prompt should contain the post-failure system reminder
+    const secondPrompt = promptCapture[1] ?? [];
+    const injectedText = secondPrompt
+      .filter((m) => m.role === "user")
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+
+    expect(injectedText).toContain('type="post-failure');
+    expect(injectedText).toContain("bun test src/app.test.ts");
+    expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
+  });
+
+  test("injects self-review prompt on first done signal", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Done.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Confirmed done.\n@signal done" },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    session.callLog.push({ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" });
+    session.callLog.push({ toolName: "test-run", args: { command: "bun test" }, status: "succeeded" });
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "Add X, update tests, update render.", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: {},
+        stream: agentStream,
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    // Second prompt should contain the self-review injection
+    const secondPrompt = promptCapture[1] ?? [];
+    const injectedText = secondPrompt
+      .filter((m) => m.role === "user")
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+
+    expect(injectedText).toContain('type="task-self-review"');
+    expect(injectedText).toContain("original task");
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeDefined();
+
+    // Self-review is one-shot — second done signal should not re-inject it
+    expect(promptCapture.length).toBe(2);
+  });
+
+  test("skips self-review on done signal when no writes in callLog", async () => {
+    const promptCapture: LanguageModelV3Message[][] = [];
+    const debugEvents: LifecycleDebugEvent[] = [];
+
+    const turns: LanguageModelV3StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Here is the answer.\n@signal done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+
+    const model = scriptedModel(turns, promptCapture);
+    const agentStream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "What does X do?", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: {},
+        stream: agentStream,
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+
+    expect(promptCapture.length).toBe(1);
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.skipped")).toMatchObject({
+      event: "lifecycle.self_review.skipped",
+      fields: { reason: "no-writes" },
+    });
+    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeUndefined();
   });
 });

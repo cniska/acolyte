@@ -7,7 +7,9 @@ import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } fr
 import { scopedCallLog } from "./tool-session";
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
-  const rawOutput = stripSignalLine(ctx.result?.text ?? "").trim();
+  const unresolvedToolError = ctx.currentError?.source === "tool-error" || ctx.currentError?.source === "tool-result";
+  const blockingError = unresolvedToolError || ctx.currentError?.blocksCompletion === true;
+  const rawOutput = blockingError ? (ctx.currentError?.message ?? "") : stripSignalLine(ctx.result?.text ?? "").trim();
   const output =
     rawOutput.length > 0
       ? rawOutput
@@ -57,7 +59,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   });
 
   return {
-    state: ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
+    state: blockingError || ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
     model: ctx.model,
     output,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),

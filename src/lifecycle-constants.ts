@@ -9,3 +9,12 @@ export const MAX_CONTEXT_TOKENS = 100_000;
 export const MAX_CONSECUTIVE_TOOL_FAILURES = 3;
 export const MAX_TOOL_RESULT_CHARS = 30_000;
 export const MAX_RECENT_TURNS = 5;
+
+export const BUDGET_NUDGE_THRESHOLDS: readonly number[] = [0.5, 0.75];
+
+// Number of turns during which the self-review injection is allowed. This controls a
+// short cooldown so the self-review reminder is only injected once per generation loop.
+export const SELF_REVIEW_TURNS_COOLDOWN = 1;
+
+export const STUCK_LOOP_SAME_FILE_THRESHOLD = 3;
+export const STUCK_LOOP_TURNS_BETWEEN_REMINDERS = 5;

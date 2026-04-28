@@ -101,6 +101,12 @@ describe("recordCall", () => {
     expect(session.callLog[1]?.toolName).toBe("file-edit");
     expect(session.callLog[1]?.taskId).toBe("task_1");
   });
+
+  test("records optional exit code metadata", () => {
+    const session = createSessionContext("task_1");
+    recordCall(session, "test-run", { files: ["a.test.ts"] }, undefined, "succeeded", { exitCode: 1 });
+    expect(session.callLog[0]).toMatchObject({ toolName: "test-run", exitCode: 1, status: "succeeded" });
+  });
 });
 
 describe("hashResultValue", () => {

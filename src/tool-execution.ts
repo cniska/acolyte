@@ -36,6 +36,12 @@ export function hashResultValue(value: unknown): string | undefined {
   return hasher.digest("hex").slice(0, 16);
 }
 
+function extractExitCode(value: unknown): number | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const exitCode = (value as { exitCode?: unknown }).exitCode;
+  return typeof exitCode === "number" && Number.isInteger(exitCode) ? exitCode : undefined;
+}
+
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
@@ -115,7 +121,9 @@ export async function runTool<T = unknown>(
             });
           }
         }
-        recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded");
+        recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded", {
+          exitCode: extractExitCode(cached.result),
+        });
         return { result: cached.result as T };
       }
       session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
@@ -178,6 +186,7 @@ export async function runTool<T = unknown>(
         args,
         taskFailed ? undefined : hashResultValue(taskResult),
         taskFailed ? "failed" : "succeeded",
+        taskFailed ? undefined : { exitCode: extractExitCode(taskResult) },
       );
       if (cache && !cache.isCacheable(toolId) && !taskFailed) {
         cache.invalidateForWrite(toolId, args);
