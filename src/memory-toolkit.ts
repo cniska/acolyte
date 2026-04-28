@@ -42,8 +42,9 @@ export async function searchMemories(
   const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
-  const all = await store.list({ kind: "stored" });
-  const filtered = options?.scope ? all.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : all;
+  const all = await store.list();
+  const durable = all.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
+  const filtered = options?.scope ? durable.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durable;
   if (filtered.length === 0) return [];
 
   const queryEmbedding = await embedText(query);
@@ -55,8 +56,9 @@ export async function searchMemories(
 
   if (store.searchByEmbedding) {
     const oversample = (options?.scope ? limit * 2 : limit) * 2;
-    const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
-    const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
+    const raw = await store.searchByEmbedding(queryEmbedding, { limit: oversample });
+    const durableRaw = raw.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
+    const scoped = options?.scope ? durableRaw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durableRaw;
     const pgTopicEmbeddings = await embedTopics(scoped);
     const pgMatchedTopics = matchTopicsByEmbedding(queryEmbedding, pgTopicEmbeddings, policy.topicThreshold);
     const pgTopicFiltered = filterByTopicEmbedding(scoped, pgMatchedTopics, policy.minTopicFilterSize);
