@@ -8,7 +8,7 @@ A session tracks chat context and message history across requests.
 - one active task runs at a time per session
 - session state persists outside lifecycle and is passed in per request
 - messages are appended during chat and persisted at checkpoints
-- token usage is tracked per response with optional prompt breakdown
+- token usage is tracked per response with optional prompt and prompt-cache breakdowns
 
 ## Lifecycle
 

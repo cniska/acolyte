@@ -27,6 +27,8 @@ acolyte config set model anthropic/claude-sonnet-4
 
 When a direct provider key is also set (e.g. `ANTHROPIC_API_KEY`), Acolyte prefers the direct connection. When it's missing, requests fall back to the gateway automatically — no prefix or config change needed.
 
+Acolyte enables AI Gateway automatic prompt caching on gateway requests. For direct Anthropic requests, Acolyte marks stable system and tool prefixes for ephemeral prompt caching. OpenAI-hosted models use stable prompt cache keys when supported, and Google models use provider-side implicit caching when available.
+
 ```bash
 # Explicitly target a provider only available through the gateway
 acolyte config set model vercel/xai/grok-4.1
