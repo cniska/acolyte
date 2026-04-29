@@ -96,7 +96,12 @@ describe("phaseFinalize", () => {
 
   test("sets state to awaiting-input when signal is blocked", () => {
     const ctx = createRunContext({
-      result: { text: "Which environment should I deploy to?", toolCalls: [], signal: "blocked" },
+      result: {
+        text: "Which environment should I deploy to?",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing deployment environment. I will deploy once it is provided.",
+      },
       acceptedSignal: "blocked",
     });
     const response = phaseFinalize(ctx);

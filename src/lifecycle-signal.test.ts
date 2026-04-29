@@ -13,9 +13,21 @@ describe("resolveSignal", () => {
 
   test("accepts blocked when no contradiction exists", () => {
     const ctx = createRunContext({
-      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+      result: {
+        text: "Blocked by a missing file.",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing file path. I will continue once it is provided.",
+      },
     });
     expect(resolveSignal(ctx)).toBe("blocked");
+  });
+
+  test("rejects blocked without a reason", () => {
+    const ctx = createRunContext({
+      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+    });
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("rejects noop after writes happened", () => {
