@@ -109,6 +109,38 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
+  test("passes Vercel AI Gateway prompt caching options", async () => {
+    let capturedOptions: StreamOptions | undefined;
+    const ctx = createRunContext({
+      model: "vercel/anthropic/claude-sonnet-4",
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt, options) {
+          capturedOptions = options;
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "done", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(capturedOptions?.providerOptions?.gateway).toEqual({ caching: "auto" });
+    expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
+  });
+
   test("does not clear a file-edit error after an unrelated successful read", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
