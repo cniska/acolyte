@@ -15,8 +15,8 @@ CLI → daemon (RPC) → lifecycle → model + tools
 
 | Subsystem | Key concepts | Docs |
 |-----------|-------------|------|
-| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends with `@signal done\|no_op\|blocked` | `docs/lifecycle.md` |
-| Tools | `runTool`: budget → cache → toolkit → registry. Nine toolkits: file, code, web, shell, test, git, checklist, memory, skill | `docs/tooling.md` |
+| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends with `signal_done`, `signal_noop`, or `signal_blocked` | `docs/lifecycle.md` |
+| Tools | `runTool`: budget → cache → toolkit → registry. Toolkits cover file, code, undo, session, signal, memory, skill, test, checklist, gh, git, web, and shell | `docs/tooling.md` |
 | Sessions & tasks | One active task per session. State machine: accepted → queued → running → completed\|failed\|cancelled | `docs/sessions-tasks.md` |
 | Memory | On-demand via toolkit, not injected. Observer distills facts via `@observe` directives. SQLite + semantic embeddings | `docs/memory.md` |
 | TUI | Custom React reconciler. Three primitives: `Box`, `Text`, `Static` | `docs/tui.md` |
@@ -40,6 +40,7 @@ CLI → daemon (RPC) → lifecycle → model + tools
 | Changing workspace detection | `docs/workspace.md`, then `src/workspace-*.ts` |
 | Adding a CLI command | `docs/cli.md`, then `src/cli-command-registry.ts` |
 | Adding or changing error codes | `docs/errors.md`, then `src/lifecycle-error.ts` |
+| Updating bundled skills | `docs/skills/{name}.md`; these are Acolyte's built-in skills. |
 
 ## Extension patterns
 

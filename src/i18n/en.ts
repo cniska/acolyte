@@ -2,6 +2,9 @@ export const EN_MESSAGES = {
   "agent.output.no_output": "No output from model. Check /status and server logs, then retry or switch model/provider.",
   "agent.output.no_response_after_tools":
     "No final response after tool execution. Retry, or check server logs if this repeats.",
+  "agent.output.done": "Done.",
+  "agent.output.no_changes_needed": "No changes needed.",
+  "agent.output.blocked": "Blocked. More input is needed.",
   "agent.status.working": "Working…",
   "chat.at_ref.attach_file": "attach file",
   "chat.at_ref.no_matches": "No file or folder matches.",

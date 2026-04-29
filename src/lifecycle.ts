@@ -150,9 +150,10 @@ export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
   const signal = ctx.result?.signal;
   if (!signal) return undefined;
   if (ctx.currentError) return undefined;
-  if (signal === "no_op" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
+  if (signal === "blocked" && !ctx.result?.signalReason?.trim()) return undefined;
+  if (signal === "noop" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
     return undefined;
-  if (signal === "done" || signal === "no_op" || signal === "blocked") return signal;
+  if (signal === "done" || signal === "noop" || signal === "blocked") return signal;
   return undefined;
 }
 
@@ -186,6 +187,7 @@ function acceptResult(ctx: RunContext): void {
     runnerToolSet: RUNNER_TOOL_SET,
   });
   if (completionBlock) {
+    ctx.acceptedSignal = undefined;
     ctx.currentError = {
       message: completionBlock.message,
       code: LIFECYCLE_ERROR_CODES.unknown,
@@ -202,11 +204,14 @@ function acceptResult(ctx: RunContext): void {
 
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
+    ctx.acceptedSignal = lifecycleSignal;
     ctx.currentError = undefined;
     ctx.debug("lifecycle.signal.accepted", {
       signal: lifecycleSignal,
       tool_calls: ctx.result?.toolCalls.length ?? 0,
     });
+  } else {
+    ctx.acceptedSignal = undefined;
   }
 
   const errorBudgetExhausted =

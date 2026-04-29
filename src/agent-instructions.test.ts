@@ -18,9 +18,9 @@ describe("createInstructions", () => {
       ["validation is blocked or unavailable", "skipped", "why"],
       ["concise", "outcome-first"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
-      ["@signal done"],
-      ["@signal no_op"],
-      ["@signal blocked"],
+      ["signal_done"],
+      ["signal_noop"],
+      ["signal_blocked"],
     ]);
   });
 

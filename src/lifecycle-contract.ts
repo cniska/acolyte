@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Agent } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
@@ -40,9 +41,11 @@ export type GenerateResult = {
   text: string;
   toolCalls: ToolCallEntry[];
   signal?: LifecycleSignal;
+  signalReason?: string;
 };
 
-export type LifecycleSignal = "done" | "no_op" | "blocked";
+export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
+export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
 
 export type ToolOutputEvent = {
   toolName: string;
@@ -171,6 +174,7 @@ export type RunContext = {
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
+  acceptedSignal?: LifecycleSignal;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   temperature?: number;

@@ -13,19 +13,31 @@ describe("resolveSignal", () => {
 
   test("accepts blocked when no contradiction exists", () => {
     const ctx = createRunContext({
-      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+      result: {
+        text: "Blocked by a missing file.",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing file path. I will continue once it is provided.",
+      },
     });
     expect(resolveSignal(ctx)).toBe("blocked");
   });
 
-  test("rejects no_op after writes happened", () => {
+  test("rejects blocked without a reason", () => {
+    const ctx = createRunContext({
+      result: { text: "Blocked by a missing file.", toolCalls: [], signal: "blocked" },
+    });
+    expect(resolveSignal(ctx)).toBeUndefined();
+  });
+
+  test("rejects noop after writes happened", () => {
     const session = createSessionContext("task_noop");
     session.writeTools = new Set(["file-edit"]);
     recordCall(session, "file-edit", { path: "src/a.ts" });
     const ctx = createRunContext({
       taskId: "task_noop",
       session,
-      result: { text: "No changes were needed.", toolCalls: [], signal: "no_op" },
+      result: { text: "No changes were needed.", toolCalls: [], signal: "noop" },
     });
     expect(resolveSignal(ctx)).toBeUndefined();
   });

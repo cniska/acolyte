@@ -24,6 +24,7 @@ Separate refactoring from feature work. Separate formatting from behavior change
 ## Branch workflow
 
 - Start from latest main branch.
+- Use short topic branch names without type prefixes, e.g. `signal-toolkit`, not `feat/signal-toolkit`.
 - Keep branches short-lived — merge within days, not weeks.
 - Rewrite local history before pushing — amend, rebase, squash to keep history clean. Commit noise should never become permanent.
 - Never amend commits already pushed to remote.

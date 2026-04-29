@@ -12,6 +12,7 @@ Review code quality consistency, coding patterns, and style drift.
 ### 1. Naming and shape consistency
 
 - naming consistency across types, constants, functions, and files
+- renamed concepts stay aligned across code, tests, docs, and exported identifiers
 - constructor and factory naming follows a single project convention
 - module and file layout follows the established project structure
 - import/export patterns are consistent across the codebase
@@ -32,6 +33,7 @@ Check where the codebase already has a clear local pattern:
 - error classification follows the project's established convention
 - repeated argument groups that want one named type
 - raw strings or magic values that should become typed constants
+- sibling concepts with different intent should not collapse into one ambiguous shape or name
 
 ### 4. Readability and hygiene
 

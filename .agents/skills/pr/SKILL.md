@@ -21,25 +21,27 @@ Create a pull request for the current branch against `main`.
    - working directory is clean (`git status`)
    - branch has commits ahead of `main` (`git log main..HEAD --oneline`)
    - `bun run verify` passes
-2. **Run review**:
+2. **Prepare review context**:
+   - if the implementation happened in a long session, run `handoff` before review so the review starts from a compact branch summary
+3. **Run review**:
    - Acolyte: use the `skill-activate` tool to activate `review`
    - Others: follow the repo review checklist at `docs/skills/review.md`
    - if there are must-fix findings, stop and report them — do not create the PR
-3. **Gather context**:
+4. **Gather context**:
    - read `.github/pull_request_template.md`
    - run `git log main..HEAD --oneline` to see commits
    - run `git diff main...HEAD --stat` to see changed files
    - run `git diff main...HEAD` to read the full diff
    - run `gh issue list` to check for an associated issue
-4. **Draft the PR**:
+5. **Draft the PR**:
    - infer a title from the commits and diff
    - fill in the template body
-5. **Push if needed**:
+6. **Push if needed**:
    - check remote tracking: `git status -sb`
    - if not pushed: `git push -u origin HEAD`
-6. **Create the PR**:
+7. **Create the PR**:
    - `gh pr create --title "..." --body "..."`
-7. **Return only the PR URL**
+8. **Return only the PR URL**
 
 ## Rules
 

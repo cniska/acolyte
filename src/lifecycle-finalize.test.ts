@@ -96,19 +96,52 @@ describe("phaseFinalize", () => {
 
   test("sets state to awaiting-input when signal is blocked", () => {
     const ctx = createRunContext({
-      result: { text: "Which environment should I deploy to?", toolCalls: [], signal: "blocked" },
+      result: {
+        text: "Which environment should I deploy to?",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing deployment environment. I will deploy once it is provided.",
+      },
+      acceptedSignal: "blocked",
     });
     const response = phaseFinalize(ctx);
     expect(response.state).toBe("awaiting-input");
     expect(response.output).toBe("Which environment should I deploy to?");
   });
 
+  test("uses blocked signal reason when final text is empty", () => {
+    const ctx = createRunContext({
+      result: {
+        text: "",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Missing deployment environment. I will deploy once it is provided.",
+      },
+      acceptedSignal: "blocked",
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.state).toBe("awaiting-input");
+    expect(response.output).toBe("Missing deployment environment. I will deploy once it is provided.");
+  });
+
   test("sets state to done when signal is done", () => {
     const ctx = createRunContext({
       result: { text: "Done.", toolCalls: [], signal: "done" },
+      acceptedSignal: "done",
     });
     const response = phaseFinalize(ctx);
     expect(response.state).toBe("done");
+  });
+
+  test("uses signal-aware fallback output when final text is empty", () => {
+    const done = phaseFinalize(
+      createRunContext({ result: { text: "", toolCalls: [], signal: "done" }, acceptedSignal: "done" }),
+    );
+    const noop = phaseFinalize(
+      createRunContext({ result: { text: "", toolCalls: [], signal: "noop" }, acceptedSignal: "noop" }),
+    );
+    expect(done.output).toBe("Done.");
+    expect(noop.output).toBe("No changes needed.");
   });
 
   test("blocks done output when a tool error is unresolved", () => {
@@ -144,6 +177,16 @@ describe("phaseFinalize", () => {
     expect(response.state).toBe("awaiting-input");
     expect(response.output).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
     expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
+  });
+
+  test("does not use an unaccepted blocked signal for response state", () => {
+    const ctx = createRunContext({
+      currentError: { message: "tool failed", category: "other" },
+      result: { text: "Cannot proceed.", toolCalls: [], signal: "blocked" },
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.state).toBe("done");
+    expect(response.error).toBe("tool failed");
   });
 
   test("includes activeSkills when session has them", () => {

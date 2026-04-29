@@ -2,14 +2,32 @@ import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
-import { stripSignalLine } from "./lifecycle-signal";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
+
+const SIGNAL_OUTPUT_KEYS = {
+  done: "agent.output.done",
+  noop: "agent.output.no_changes_needed",
+} as const;
+
+function signalOutput(ctx: RunContext): string {
+  if (ctx.acceptedSignal === "blocked") {
+    return ctx.result?.signalReason?.trim() ?? "";
+  }
+
+  if (ctx.acceptedSignal === "done" || ctx.acceptedSignal === "noop") {
+    return t(SIGNAL_OUTPUT_KEYS[ctx.acceptedSignal]);
+  }
+
+  return "";
+}
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const unresolvedToolError = ctx.currentError?.source === "tool-error" || ctx.currentError?.source === "tool-result";
   const blockingError = unresolvedToolError || ctx.currentError?.blocksCompletion === true;
-  const rawOutput = blockingError ? (ctx.currentError?.message ?? "") : stripSignalLine(ctx.result?.text ?? "").trim();
+  const rawOutput = blockingError
+    ? (ctx.currentError?.message ?? "")
+    : (ctx.result?.text ?? "").trim() || signalOutput(ctx);
   const output =
     rawOutput.length > 0
       ? rawOutput
@@ -47,7 +65,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     search_calls: searchCalls,
     write_calls: writeCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
-    lifecycle_signal: ctx.result?.signal ?? null,
+    lifecycle_signal: ctx.acceptedSignal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
     active_skills: ctx.request.activeSkills?.map((s) => s.name) ?? null,
     last_error_code: ctx.currentError?.code ?? null,
@@ -59,7 +77,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   });
 
   return {
-    state: blockingError || ctx.result?.signal === "blocked" ? "awaiting-input" : "done",
+    state: blockingError || ctx.acceptedSignal === "blocked" ? "awaiting-input" : "done",
     model: ctx.model,
     output,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),

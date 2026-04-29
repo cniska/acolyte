@@ -26,7 +26,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Cloud Sync | Feature that syncs memory and sessions to a hosted cloud API for portable agent identity across machines |
 | CloudClient | HTTP client that implements `MemoryStore` and `SessionStore` against the cloud API |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
-| Directive | Model-to-host structured annotation emitted via `@` prefix (e.g. `@signal done`, `@observe project`) |
+| Directive | Model-to-host structured annotation emitted via `@` prefix (e.g. `@observe project`) |
 | Distill | Memory source that extracts observations from conversations at project, user, or session scope |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
@@ -36,7 +36,7 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Host | Runtime environment around the model that provides tools, lifecycle structure, and memory |
 | Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
-| Lifecycle Signal | Model-to-host control signal emitted at generation completion (`done`, `no_op`, `blocked`) |
+| Lifecycle Signal | Model-to-host control signal emitted by a signal tool at generation completion (`done`, `noop`, `blocked`) |
 | Lifecycle State | Internal task-scoped runtime state used during the lifecycle pass |
 | Memory Distiller | Extracts and commits observations from conversations after each request |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |

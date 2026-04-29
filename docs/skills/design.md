@@ -21,6 +21,8 @@ All observable behaviors of your system will be depended on by somebody, regardl
 
 Extend interfaces by adding optional fields rather than changing existing ones. Changing a field's type or removing it breaks consumers silently. Adding is safe; modifying is not.
 
+When different behaviors carry different intent, prefer separate variants or schemas over a single shared shape with conditionally meaningful fields.
+
 ### Validate at boundaries
 
 Trust internal code. Validate at system boundaries — API payloads, config files, external inputs. Don't scatter validation deep inside the call stack.

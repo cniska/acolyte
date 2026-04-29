@@ -81,7 +81,7 @@ describe("runLifecycle", () => {
           taskId: ctx.taskId,
           status: "succeeded",
         });
-        ctx.result = { text: "Done.\n@signal done", toolCalls: [], signal: "done" };
+        ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
       }),
       phaseFinalize: mock((ctx): ChatResponse => {
         const error = ctx.currentError?.message;
@@ -123,7 +123,7 @@ describe("runLifecycle", () => {
           status: "failed",
           exitCode: 1,
         });
-        ctx.result = { text: "Done.\n@signal done", toolCalls: [], signal: "done" };
+        ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
       }),
       phaseFinalize: mock((ctx): ChatResponse => {
         const error = ctx.currentError?.message;

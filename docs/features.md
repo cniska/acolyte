@@ -24,7 +24,7 @@ Shipped, user-visible capabilities.
 ## Agent execution
 
 - single-pass lifecycle with `resolve`/`prepare`/`generate`/`finalize` phases
-- explicit completion signals (`done`, `no_op`, `blocked`)
+- explicit completion signals (`done`, `noop`, `blocked`)
 - pre/post-tool-call effect pipeline (auto-install deps, format, lint)
 - Workspace profile detection with auto-detected install, lint, format, and test commands
 - Configurable model reasoning level (low, medium, high) with provider-specific mapping

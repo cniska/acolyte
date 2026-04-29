@@ -6,7 +6,7 @@ import { collectReminders, reminderTag } from "./agent-reminders";
 import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
-import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -29,7 +29,7 @@ import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET, RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
 import { resetTurnStepCount, scopedCallLog } from "./tool-session";
 
 function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
@@ -117,7 +117,7 @@ function renderToolErrorRecovery(error: { tool: string; message: string; code?: 
       error.code ? `Error code: \`${error.code}\`.` : "",
       `Error: ${error.message}`,
       "Do not finalize yet. Recover autonomously: inspect the current file/output, choose a smaller or corrected action, and retry the necessary tool call.",
-      "Use `@signal blocked` only if recovery is genuinely impossible after inspecting the evidence.",
+      "Call `signal_blocked` only if recovery is genuinely impossible after inspecting the evidence.",
     ]
       .filter(Boolean)
       .join(" "),
@@ -215,6 +215,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   const controller = new AbortController();
   let completionRetryUsed = false;
   let toolErrorRecoveryUsed = false;
+  let missingSignalRetryUsed = false;
   // Number of turns remaining during which the self-review injection is allowed.
   // Initialized from lifecycle constants so behavior can be tuned centrally.
   // When set to 1 this behaves like the prior boolean `selfReviewDone` flag.
@@ -281,6 +282,37 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         const toolError = unresolvedToolError(ctx);
         if (toolError) return toolErrorRecoveryMessages(toolError);
 
+        if (!signal) {
+          const message =
+            "Cannot finish yet: final responses must call exactly one lifecycle signal tool (`signal_done`, `signal_noop`, or `signal_blocked`).";
+          if (!missingSignalRetryUsed) {
+            missingSignalRetryUsed = true;
+            ctx.debug("lifecycle.signal.missing", { action: "continue" });
+            return [
+              {
+                role: "user" as const,
+                content: [
+                  {
+                    type: "text" as const,
+                    text: wrapInSystemReminder(
+                      "missing-signal",
+                      `${message} Continue by calling the correct signal tool now.`,
+                    ),
+                  },
+                ],
+              },
+            ];
+          }
+          ctx.currentError = {
+            message,
+            code: LIFECYCLE_ERROR_CODES.unknown,
+            category: "other",
+            blocksCompletion: true,
+          };
+          ctx.debug("lifecycle.signal.missing", { action: "block" });
+          return [];
+        }
+
         if (signal === "done" && selfReviewTurnsRemaining > 0) {
           selfReviewTurnsRemaining = 0;
           const taskLog = scopedCallLog(ctx.session, ctx.taskId);
@@ -334,7 +366,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
                   "completion-rejected",
                   [
                     completionBlock.message,
-                    "Continue autonomously: run focused validation now, or use `@signal blocked` only if validation is genuinely impossible.",
+                    "Continue autonomously: run focused validation now, or call `signal_blocked` only if validation is genuinely impossible.",
                   ].join(" "),
                 ),
               },
@@ -451,6 +483,10 @@ function clearResolvedToolError(ctx: RunContext, started: { toolName: string }):
   const failedTool = ctx.currentError.tool;
   if (!failedTool) return;
   if (failedTool === started.toolName) {
+    ctx.currentError = undefined;
+    return;
+  }
+  if (ctx.currentError.code === TOOL_ERROR_CODES.searchFilesNoMatch && DISCOVERY_TOOL_SET.has(started.toolName)) {
     ctx.currentError = undefined;
   }
 }
