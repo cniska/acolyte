@@ -1,7 +1,6 @@
 import type {
   LanguageModelV3,
   LanguageModelV3FinishReason,
-  LanguageModelV3FunctionTool,
   LanguageModelV3Message,
   LanguageModelV3StreamPart,
   LanguageModelV3TextPart,
@@ -19,17 +18,8 @@ import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import { signalForToolName } from "./signal-toolkit";
-import type { ToolDefinition } from "./tool-contract";
+import { type ToolDefinition, toFunctionTools } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
-
-function toolsToFunctionTools(tools: Record<string, ToolDefinition>): LanguageModelV3FunctionTool[] {
-  return Object.values(tools).map((tool) => ({
-    type: "function" as const,
-    name: tool.id,
-    description: tool.description,
-    inputSchema: tool.inputSchema as LanguageModelV3FunctionTool["inputSchema"],
-  }));
-}
 
 async function resolveInstructions(instructions: Agent["instructions"]): Promise<string> {
   if (typeof instructions === "string") return instructions;
@@ -49,7 +39,7 @@ export function createAgentStream(
 
   return async (prompt: string, options: StreamOptions): Promise<StreamOutput> => {
     const systemPrompt = await resolveInstructions(instructions);
-    const functionTools = toolsToFunctionTools(tools);
+    const functionTools = toFunctionTools(tools);
     const messages: LanguageModelV3Message[] = [
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: prompt }] },

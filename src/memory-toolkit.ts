@@ -1,4 +1,3 @@
-import type { LanguageModelV3FunctionTool } from "@ai-sdk/provider";
 import { z } from "zod";
 import {
   createMemoryPolicy,
@@ -20,7 +19,7 @@ import {
 import { addMemory, removeMemory } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
-import { createTool } from "./tool-contract";
+import { createTool, toFunctionTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
 const memoryObserveDef = createTool({
@@ -42,12 +41,7 @@ const memoryObserveDef = createTool({
   execute: async () => ({ result: { kind: "memory-observe" as const } }),
 });
 
-export const MEMORY_OBSERVE_TOOL: LanguageModelV3FunctionTool = {
-  type: "function",
-  name: memoryObserveDef.id,
-  description: memoryObserveDef.description,
-  inputSchema: memoryObserveDef.inputSchema as LanguageModelV3FunctionTool["inputSchema"],
-};
+export const MEMORY_OBSERVE_TOOL = toFunctionTool(memoryObserveDef);
 
 async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
   const topics = new Set<string>();
