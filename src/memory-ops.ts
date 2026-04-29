@@ -1,7 +1,9 @@
 import { estimateTokens } from "./agent-input";
+import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
   type MemoryEntry,
+  type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
   type RemoveMemoryResult,
@@ -90,6 +92,51 @@ export async function addMemory(
   }
 
   return toMemoryEntry(record);
+}
+
+export interface AddObservationOptions {
+  topic?: string | null;
+  store?: MemoryStore;
+}
+
+export async function addObservation(
+  scopeKey: string,
+  content: string,
+  options: AddObservationOptions = {},
+): Promise<MemoryRecord | null> {
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  const store = options.store ?? (await getMemoryStore());
+  const existing = await store.list({ scopeKey });
+  const latest = existing.filter((e) => e.kind === "observation").slice(-1)[0];
+  if (latest && normalizeMemoryText(latest.content) === normalizeMemoryText(trimmed)) return null;
+
+  const record: MemoryRecord = {
+    id: `mem_${createId()}`,
+    scopeKey,
+    kind: "observation",
+    content: trimmed,
+    createdAt: new Date().toISOString(),
+    tokenEstimate: estimateTokens(trimmed),
+    topic: options.topic ?? null,
+  };
+  await store.write(record);
+  log.debug("memory.observation.written", { id: record.id, scopeKey, topic: record.topic });
+
+  try {
+    const vec = await embedText(trimmed);
+    if (vec) await store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
+  } catch (error) {
+    log.warn("memory.observation.embed_failed", { id: record.id, error: String(error) });
+  }
+  return record;
+}
+
+export function resolveScopeKey(scope: MemoryScope, ctx: { sessionId?: string; workspace?: string }): string | null {
+  if (scope === "session") return ctx.sessionId ?? null;
+  if (scope === "project") return projectResourceIdFromWorkspace(ctx.workspace ?? process.cwd());
+  return defaultUserResourceId();
 }
 
 export async function removeMemory(id: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {

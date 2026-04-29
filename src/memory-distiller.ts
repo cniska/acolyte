@@ -1,7 +1,6 @@
 import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
-import { nowIso } from "./datetime";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
@@ -10,17 +9,15 @@ import {
   type MemoryCommitMetrics,
   type MemoryDistiller,
   type MemoryPolicy,
-  type MemoryRecord,
   type MemoryStore,
 } from "./memory-contract";
-import { embeddingToBuffer, embedText } from "./memory-embedding";
+import { addObservation } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import { MEMORY_OBSERVE_TOOL } from "./memory-toolkit";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
-import { createId } from "./short-id";
 
 export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
@@ -53,15 +50,6 @@ async function getCachedStore(): Promise<MemoryStore> {
     cachedStore = await getMemoryStore();
   }
   return cachedStore;
-}
-
-async function embedAndStore(ds: MemoryStore, id: string, scope: string, content: string): Promise<void> {
-  try {
-    const vec = await embedText(content);
-    if (vec) await ds.writeEmbedding(id, scope, embeddingToBuffer(vec));
-  } catch (error) {
-    log.warn("memory.distill.embed_failed", { id, error: String(error) });
-  }
 }
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
@@ -123,28 +111,8 @@ function resolveDistillScopeKey(
 }
 
 async function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<number> {
-  const existingEntries = await ds.list({ scopeKey: key });
-  const latestObservation = existingEntries.filter((e) => e.kind === "observation").slice(-1)[0];
-  if (latestObservation && normalizeMemoryText(latestObservation.content) === normalizeMemoryText(content)) return 0;
-
-  const observation: MemoryRecord = {
-    id: `mem_${createId()}`,
-    scopeKey: key,
-    kind: "observation",
-    content,
-    createdAt: nowIso(),
-    tokenEstimate: estimateTokens(content),
-    topic,
-  };
-  await ds.write(observation);
-  await embedAndStore(ds, observation.id, key, content);
-  log.debug("memory.distill.observation_written", {
-    key,
-    id: observation.id,
-    topic,
-    tokens: observation.tokenEstimate,
-  });
-  return observation.tokenEstimate;
+  const record = await addObservation(key, content, { topic, store: ds });
+  return record?.tokenEstimate ?? 0;
 }
 
 export type DistillerDeps = {

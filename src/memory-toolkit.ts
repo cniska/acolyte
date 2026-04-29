@@ -16,32 +16,48 @@ import {
   matchTopicsByEmbedding,
   tokenOverlap,
 } from "./memory-embedding";
-import { addMemory, removeMemory } from "./memory-ops";
+import { addMemory, addObservation, removeMemory, resolveScopeKey } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool, toFunctionTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-const memoryObserveDef = createTool({
-  id: "memory_observe",
-  toolkit: "memory",
-  category: "meta",
-  description: "Record a fact extracted from the conversation into memory.",
-  instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
-  inputSchema: z.object({
-    scope: z
-      .enum(["session", "project", "user"])
-      .describe(
-        "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
-      ),
-    content: z.string().min(1).describe("The fact to store. Be specific and concrete."),
-    topic: z.string().optional().describe("Optional single-word topic label (e.g. testing, auth, config)."),
-  }),
-  outputSchema: z.object({ kind: z.literal("memory-observe") }),
-  execute: async () => ({ result: { kind: "memory-observe" as const } }),
+const memoryObserveInputSchema = z.object({
+  scope: memoryScopeSchema.describe(
+    "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
+  ),
+  content: z.string().min(1).describe("The fact to store. Be specific and concrete."),
+  topic: z.string().optional().describe("Optional single-word topic label (e.g. testing, auth, config)."),
 });
 
-export const MEMORY_OBSERVE_TOOL = toFunctionTool(memoryObserveDef);
+function createMemoryObserveTool(input: ToolkitInput) {
+  return createTool({
+    id: "memory_observe",
+    toolkit: "memory",
+    category: "meta",
+    description: "Record a fact extracted from the conversation into memory.",
+    instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
+    inputSchema: memoryObserveInputSchema,
+    outputSchema: z.object({ kind: z.literal("memory-observe"), id: z.string().nullable() }),
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "memory_observe", toolCallId, toolInput, async () => {
+        const scopeKey = resolveScopeKey(toolInput.scope, {
+          sessionId: input.sessionId,
+          workspace: input.workspace,
+        });
+        if (!scopeKey) return { kind: "memory-observe" as const, id: null };
+        const record = await addObservation(scopeKey, toolInput.content, { topic: toolInput.topic ?? null });
+        return { kind: "memory-observe" as const, id: record?.id ?? null };
+      });
+    },
+  });
+}
+
+export const MEMORY_OBSERVE_TOOL = toFunctionTool({
+  id: "memory_observe",
+  description: "Record a fact extracted from the conversation into memory.",
+  inputSchema: z.toJSONSchema(memoryObserveInputSchema) as Record<string, unknown>,
+});
 
 async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
   const topics = new Set<string>();
@@ -223,5 +239,6 @@ export function createMemoryToolkit(input: ToolkitInput) {
     memorySearch: createMemorySearchTool(input),
     memoryAdd: createMemoryAddTool(input),
     memoryRemove: createMemoryRemoveTool(input),
+    memoryObserve: createMemoryObserveTool(input),
   };
 }
