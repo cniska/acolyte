@@ -6,6 +6,9 @@ import type { ActiveSkill } from "./skill-contract";
 
 export interface TokenUsage {
   readonly inputTokens: number;
+  readonly inputNoCacheTokens?: number;
+  readonly inputCacheReadTokens?: number;
+  readonly inputCacheWriteTokens?: number;
   readonly outputTokens: number;
   readonly totalTokens: number;
   readonly inputBudgetTokens?: number;

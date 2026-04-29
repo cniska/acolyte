@@ -30,6 +30,9 @@ export interface ClientOptions {
 const streamUsageEventSchema = z.object({
   type: z.literal("usage"),
   inputTokens: z.number(),
+  inputNoCacheTokens: z.number().optional(),
+  inputCacheReadTokens: z.number().optional(),
+  inputCacheWriteTokens: z.number().optional(),
   outputTokens: z.number(),
 });
 
@@ -90,7 +93,14 @@ type ToolResultEvent = {
   errorCode?: string;
   error?: z.infer<typeof streamErrorSchema>;
 };
-type UsageEvent = { type: "usage"; inputTokens: number; outputTokens: number };
+type UsageEvent = {
+  type: "usage";
+  inputTokens: number;
+  inputNoCacheTokens?: number;
+  inputCacheReadTokens?: number;
+  inputCacheWriteTokens?: number;
+  outputTokens: number;
+};
 type StatusEvent = { type: "status"; state: PendingState };
 type ChecklistEvent = {
   type: "checklist";

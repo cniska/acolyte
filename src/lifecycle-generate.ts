@@ -25,6 +25,7 @@ import {
   type RunContext,
   type StreamChunk,
 } from "./lifecycle-contract";
+import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -248,9 +249,15 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
 
   try {
     resetTimeout();
-    const provider = providerFromModel(appConfig.model);
-    const providerOptions = reasoningProviderOptions(provider, appConfig.reasoning);
-    const temperature = providerOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
+    const provider = providerFromModel(ctx.model);
+    const cacheKey = createPromptCacheKey({
+      model: ctx.model,
+      sessionId: ctx.request.sessionId,
+      workspace: ctx.workspace,
+    });
+    const reasoningOptions = reasoningProviderOptions(provider, appConfig.reasoning);
+    const providerOptions = mergeProviderOptions(reasoningOptions, promptCacheProviderOptions(provider, cacheKey));
+    const temperature = reasoningOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
@@ -592,11 +599,17 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     if (chunk.type !== "model-usage") return;
     const p = chunk.payload;
     if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
+    if (typeof p?.inputNoCacheTokens === "number") ctx.inputNoCacheTokensAccum += p.inputNoCacheTokens;
+    if (typeof p?.inputCacheReadTokens === "number") ctx.inputCacheReadTokensAccum += p.inputCacheReadTokens;
+    if (typeof p?.inputCacheWriteTokens === "number") ctx.inputCacheWriteTokensAccum += p.inputCacheWriteTokens;
     if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
     ctx.modelCallCount += 1;
     ctx.emit({
       type: "usage",
       inputTokens: ctx.inputTokensAccum,
+      inputNoCacheTokens: ctx.inputNoCacheTokensAccum,
+      inputCacheReadTokens: ctx.inputCacheReadTokensAccum,
+      inputCacheWriteTokens: ctx.inputCacheWriteTokensAccum,
       outputTokens: ctx.outputTokensAccum,
     });
   },

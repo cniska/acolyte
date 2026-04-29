@@ -12,6 +12,9 @@ export const tokenCountSchema = z.number().int().nonnegative();
 
 export const tokenUsageSchema = z.object({
   inputTokens: tokenCountSchema,
+  inputNoCacheTokens: tokenCountSchema.optional(),
+  inputCacheReadTokens: tokenCountSchema.optional(),
+  inputCacheWriteTokens: tokenCountSchema.optional(),
   outputTokens: tokenCountSchema,
   totalTokens: tokenCountSchema,
   inputBudgetTokens: tokenCountSchema.optional(),

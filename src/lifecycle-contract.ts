@@ -87,6 +87,9 @@ export type ToolErrorPayload = {
 };
 export type ModelUsagePayload = {
   inputTokens?: number;
+  inputNoCacheTokens?: number;
+  inputCacheReadTokens?: number;
+  inputCacheWriteTokens?: number;
   outputTokens?: number;
 };
 export type StreamChunk =
@@ -168,6 +171,9 @@ export type RunContext = {
   observedTools: Set<string>;
   modelCallCount: number;
   inputTokensAccum: number;
+  inputNoCacheTokensAccum: number;
+  inputCacheReadTokensAccum: number;
+  inputCacheWriteTokensAccum: number;
   outputTokensAccum: number;
   streamingChars: number;
   lastUsageEmitChars: number;

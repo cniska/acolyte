@@ -76,6 +76,26 @@ describe("chat-commands-usage", () => {
     expect(find("Messages")).toContain("40%");
   });
 
+  test("usageRows includes cache usage when present", () => {
+    const usage: SessionTokenUsageEntry = {
+      id: "row_cache",
+      usage: {
+        inputTokens: 100,
+        inputNoCacheTokens: 80,
+        inputCacheReadTokens: 20,
+        inputCacheWriteTokens: 10,
+        outputTokens: 5,
+        totalTokens: 105,
+      },
+    };
+    const [row] = usageRows(usage);
+    const content = row?.content;
+    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
+    const keys = allPairs.map(([k]) => k);
+    expect(keys).toContain("Cached input");
+    expect(keys).toContain("Cache write");
+  });
+
   test("usageRows returns fallback row when no usage data", () => {
     const [row] = usageRows(null);
     expect(row?.content).toBe("No usage data yet. Send a prompt first.");

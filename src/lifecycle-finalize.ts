@@ -38,6 +38,10 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const { promptUsage } = ctx;
   const promptInputTokens = promptUsageTotalTokens(promptUsage);
   const inputTokens = Math.max(ctx.inputTokensAccum, promptInputTokens);
+  const inputNoCacheTokens =
+    ctx.inputNoCacheTokensAccum > 0 || ctx.inputCacheReadTokensAccum > 0 || ctx.inputCacheWriteTokensAccum > 0
+      ? ctx.inputNoCacheTokensAccum
+      : undefined;
   const outputTokens = ctx.outputTokensAccum || estimateTokens(output);
 
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
@@ -86,6 +90,9 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     ...(ctx.session.activeSkills?.length ? { activeSkills: ctx.session.activeSkills } : {}),
     usage: {
       inputTokens,
+      ...(inputNoCacheTokens !== undefined ? { inputNoCacheTokens } : {}),
+      ...(ctx.inputCacheReadTokensAccum > 0 ? { inputCacheReadTokens: ctx.inputCacheReadTokensAccum } : {}),
+      ...(ctx.inputCacheWriteTokensAccum > 0 ? { inputCacheWriteTokens: ctx.inputCacheWriteTokensAccum } : {}),
       outputTokens,
       totalTokens: inputTokens + outputTokens,
       inputBudgetTokens: ctx.promptUsage.inputBudgetTokens,
