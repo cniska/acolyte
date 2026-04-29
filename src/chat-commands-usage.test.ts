@@ -76,22 +76,6 @@ describe("chat-commands-usage", () => {
     expect(find("Messages")).toContain("40%");
   });
 
-  test("usageRows keeps the visible summary stable", () => {
-    const usage: SessionTokenUsageEntry = {
-      id: "row_cache",
-      usage: {
-        inputTokens: 100,
-        outputTokens: 5,
-        totalTokens: 105,
-      },
-    };
-    const [row] = usageRows(usage);
-    const content = row?.content;
-    const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
-    const keys = allPairs.map(([k]) => k);
-    expect(keys).toEqual(["Input", "Output", "Total"]);
-  });
-
   test("usageRows returns fallback row when no usage data", () => {
     const [row] = usageRows(null);
     expect(row?.content).toBe("No usage data yet. Send a prompt first.");

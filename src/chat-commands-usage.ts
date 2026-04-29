@@ -36,7 +36,7 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
       : [formatUsageValue(last.usage.totalTokens)],
   ];
   const summaryLabels = [t("chat.usage.metric.input"), t("chat.usage.metric.output"), t("chat.usage.metric.total")];
-  const summaryAligned = alignCols(summaryGrid.filter((row) => row.length > 0));
+  const summaryAligned = alignCols(summaryGrid);
   const summary: [string, string][] = summaryLabels.map((label, i) => [label, summaryAligned[i]]);
   const breakdown: [string, string][] = [];
   if (last.promptBreakdown) {
