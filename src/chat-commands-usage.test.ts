@@ -76,14 +76,11 @@ describe("chat-commands-usage", () => {
     expect(find("Messages")).toContain("40%");
   });
 
-  test("usageRows keeps the visible summary stable when cache usage is present", () => {
+  test("usageRows keeps the visible summary stable", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_cache",
       usage: {
         inputTokens: 100,
-        inputNoCacheTokens: 80,
-        inputCacheReadTokens: 20,
-        inputCacheWriteTokens: 10,
         outputTokens: 5,
         totalTokens: 105,
       },

@@ -142,9 +142,6 @@ export function createAgentStream(
               type: "model-usage",
               payload: {
                 inputTokens: part.usage?.inputTokens?.total,
-                inputNoCacheTokens: part.usage?.inputTokens?.noCache,
-                inputCacheReadTokens: part.usage?.inputTokens?.cacheRead,
-                inputCacheWriteTokens: part.usage?.inputTokens?.cacheWrite,
                 outputTokens: part.usage?.outputTokens?.total,
               },
             });

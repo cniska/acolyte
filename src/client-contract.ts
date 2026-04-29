@@ -3,7 +3,7 @@ import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./
 import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
-import { promptBreakdownSchema, tokenUsageSchema } from "./session-contract";
+import { promptBreakdownSchema, tokenCountSchema, tokenUsageSchema } from "./session-contract";
 import { activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
@@ -29,11 +29,8 @@ export interface ClientOptions {
 
 const streamUsageEventSchema = z.object({
   type: z.literal("usage"),
-  inputTokens: z.number(),
-  inputNoCacheTokens: z.number().optional(),
-  inputCacheReadTokens: z.number().optional(),
-  inputCacheWriteTokens: z.number().optional(),
-  outputTokens: z.number(),
+  inputTokens: tokenCountSchema,
+  outputTokens: tokenCountSchema,
 });
 
 export const streamEventSchema = z.discriminatedUnion("type", [
@@ -96,9 +93,6 @@ type ToolResultEvent = {
 type UsageEvent = {
   type: "usage";
   inputTokens: number;
-  inputNoCacheTokens?: number;
-  inputCacheReadTokens?: number;
-  inputCacheWriteTokens?: number;
   outputTokens: number;
 };
 type StatusEvent = { type: "status"; state: PendingState };

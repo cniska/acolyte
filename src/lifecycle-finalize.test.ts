@@ -68,29 +68,6 @@ describe("phaseFinalize", () => {
     });
   });
 
-  test("includes prompt cache usage when providers report it", () => {
-    const ctx = createRunContext({
-      inputTokensAccum: 120,
-      inputNoCacheTokensAccum: 80,
-      inputCacheReadTokensAccum: 30,
-      inputCacheWriteTokensAccum: 10,
-      outputTokensAccum: 20,
-      result: { text: "done", toolCalls: [] },
-    });
-
-    const response = phaseFinalize(ctx);
-
-    expect(response.usage).toEqual({
-      inputTokens: 120,
-      inputNoCacheTokens: 80,
-      inputCacheReadTokens: 30,
-      inputCacheWriteTokens: 10,
-      outputTokens: 20,
-      totalTokens: 140,
-      inputBudgetTokens: 8000,
-    });
-  });
-
   test("includes promptBreakdown when currentError is set", () => {
     const ctx = createRunContext({
       promptUsage: {
