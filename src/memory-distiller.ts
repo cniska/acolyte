@@ -1,4 +1,4 @@
-import type { LanguageModelV3FunctionTool, LanguageModelV3ToolCall } from "@ai-sdk/provider";
+import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { nowIso } from "./datetime";
@@ -15,6 +15,7 @@ import {
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
+import { MEMORY_OBSERVE_TOOL } from "./memory-toolkit";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -31,32 +32,6 @@ For each fact, call memory_observe with:
 - topic: optional single-word topic label (e.g. testing, auth, config, tooling)
 
 If a preference is project-scoped, use "project" not "user". If unsure, default to "session".`;
-
-const MEMORY_OBSERVE_TOOL: LanguageModelV3FunctionTool = {
-  type: "function",
-  name: "memory_observe",
-  description: "Record a fact extracted from the conversation into memory.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      scope: {
-        type: "string",
-        enum: ["session", "project", "user"],
-        description:
-          "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
-      },
-      content: {
-        type: "string",
-        description: "The fact to store. Be specific and concrete.",
-      },
-      topic: {
-        type: "string",
-        description: "Optional single-word topic label (e.g. testing, auth, config).",
-      },
-    },
-    required: ["scope", "content"],
-  },
-};
 
 export type DistillObservation = { scope: DistillScope; content: string; topic: string | null };
 

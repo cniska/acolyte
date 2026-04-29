@@ -1,3 +1,4 @@
+import type { LanguageModelV3FunctionTool } from "@ai-sdk/provider";
 import { z } from "zod";
 import {
   createMemoryPolicy,
@@ -21,6 +22,32 @@ import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
+
+const memoryObserveDef = createTool({
+  id: "memory_observe",
+  toolkit: "memory",
+  category: "meta",
+  description: "Record a fact extracted from the conversation into memory.",
+  instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
+  inputSchema: z.object({
+    scope: z
+      .enum(["session", "project", "user"])
+      .describe(
+        "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
+      ),
+    content: z.string().min(1).describe("The fact to store. Be specific and concrete."),
+    topic: z.string().optional().describe("Optional single-word topic label (e.g. testing, auth, config)."),
+  }),
+  outputSchema: z.object({ kind: z.literal("memory-observe") }),
+  execute: async () => ({ result: { kind: "memory-observe" as const } }),
+});
+
+export const MEMORY_OBSERVE_TOOL: LanguageModelV3FunctionTool = {
+  type: "function",
+  name: memoryObserveDef.id,
+  description: memoryObserveDef.description,
+  inputSchema: memoryObserveDef.inputSchema as LanguageModelV3FunctionTool["inputSchema"],
+};
 
 async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
   const topics = new Set<string>();
