@@ -76,7 +76,7 @@ describe("chat-commands-usage", () => {
     expect(find("Messages")).toContain("40%");
   });
 
-  test("usageRows includes cache usage when present", () => {
+  test("usageRows keeps the visible summary stable when cache usage is present", () => {
     const usage: SessionTokenUsageEntry = {
       id: "row_cache",
       usage: {
@@ -92,8 +92,7 @@ describe("chat-commands-usage", () => {
     const content = row?.content;
     const allPairs = isCommandOutput(content) ? content.sections.flat() : [];
     const keys = allPairs.map(([k]) => k);
-    expect(keys).toContain("Cached input");
-    expect(keys).toContain("Cache write");
+    expect(keys).toEqual(["Input", "Output", "Total"]);
   });
 
   test("usageRows returns fallback row when no usage data", () => {

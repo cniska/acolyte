@@ -85,8 +85,6 @@ export const EN_MESSAGES = {
   "chat.task.followup.still_running": "Still running on server…",
   "chat.usage.header": "Usage",
   "chat.usage.metric.input": "Input",
-  "chat.usage.metric.cached_input": "Cached input",
-  "chat.usage.metric.cache_write": "Cache write",
   "chat.usage.metric.memory": "Memory",
   "chat.usage.metric.messages": "Messages",
   "chat.usage.metric.output": "Output",

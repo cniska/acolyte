@@ -28,22 +28,6 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
     hasSession
       ? [formatUsageValue(last.usage.inputTokens), formatUsageValue(totals.input)]
       : [formatUsageValue(last.usage.inputTokens)],
-    last.usage.inputCacheReadTokens
-      ? hasSession
-        ? [
-            formatUsageValue(last.usage.inputCacheReadTokens),
-            formatUsageValue(all.reduce((sum, entry) => sum + (entry.usage.inputCacheReadTokens ?? 0), 0)),
-          ]
-        : [formatUsageValue(last.usage.inputCacheReadTokens)]
-      : [],
-    last.usage.inputCacheWriteTokens
-      ? hasSession
-        ? [
-            formatUsageValue(last.usage.inputCacheWriteTokens),
-            formatUsageValue(all.reduce((sum, entry) => sum + (entry.usage.inputCacheWriteTokens ?? 0), 0)),
-          ]
-        : [formatUsageValue(last.usage.inputCacheWriteTokens)]
-      : [],
     hasSession
       ? [formatUsageValue(last.usage.outputTokens), formatUsageValue(totals.output)]
       : [formatUsageValue(last.usage.outputTokens)],
@@ -51,13 +35,7 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
       ? [formatUsageValue(last.usage.totalTokens), formatUsageValue(totals.total)]
       : [formatUsageValue(last.usage.totalTokens)],
   ];
-  const summaryLabels = [
-    t("chat.usage.metric.input"),
-    ...(last.usage.inputCacheReadTokens ? [t("chat.usage.metric.cached_input")] : []),
-    ...(last.usage.inputCacheWriteTokens ? [t("chat.usage.metric.cache_write")] : []),
-    t("chat.usage.metric.output"),
-    t("chat.usage.metric.total"),
-  ];
+  const summaryLabels = [t("chat.usage.metric.input"), t("chat.usage.metric.output"), t("chat.usage.metric.total")];
   const summaryAligned = alignCols(summaryGrid.filter((row) => row.length > 0));
   const summary: [string, string][] = summaryLabels.map((label, i) => [label, summaryAligned[i]]);
   const breakdown: [string, string][] = [];
