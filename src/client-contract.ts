@@ -8,7 +8,7 @@ import { activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
-import { type ToolOutputPart, toolOutputPartSchema } from "./tool-output-contract";
+import { toolOutputPartSchema } from "./tool-output-contract";
 
 export const pendingStateSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("queued"), position: z.number().int().nonnegative().optional() }),
@@ -27,99 +27,60 @@ export interface ClientOptions {
   replyTimeoutMs?: number;
 }
 
+const textDeltaEventSchema = z.object({ type: z.literal("text-delta"), text: z.string() });
+const reasoningEventSchema = z.object({ type: z.literal("reasoning"), text: z.string() });
+const toolCallEventSchema = z.object({
+  type: z.literal("tool-call"),
+  toolCallId: z.string(),
+  toolName: z.string(),
+  args: z.record(z.string(), z.unknown()).default({}),
+});
+const toolOutputEventSchema = z.object({
+  type: z.literal("tool-output"),
+  toolCallId: z.string(),
+  toolName: z.string(),
+  content: toolOutputPartSchema,
+});
+const toolResultEventSchema = z.object({
+  type: z.literal("tool-result"),
+  toolCallId: z.string(),
+  toolName: z.string(),
+  isError: z.boolean().optional(),
+  errorCode: z.string().optional(),
+  error: streamErrorSchema.optional(),
+});
 const streamUsageEventSchema = z.object({
   type: z.literal("usage"),
   inputTokens: tokenCountSchema,
   outputTokens: tokenCountSchema,
 });
+const statusEventSchema = z.object({ type: z.literal("status"), state: pendingStateSchema });
+const checklistEventSchema = z.object({
+  type: z.literal("checklist"),
+  groupId: z.string().min(1),
+  groupTitle: z.string().min(1),
+  items: z.array(checklistItemSchema),
+});
+const errorEventSchema = z.object({
+  type: z.literal("error"),
+  errorMessage: z.string(),
+  errorId: z.string().optional(),
+  errorCode: z.string().optional(),
+  error: streamErrorSchema.optional(),
+});
 
 export const streamEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text-delta"), text: z.string() }),
-  z.object({ type: z.literal("reasoning"), text: z.string() }),
-  z.object({
-    type: z.literal("tool-call"),
-    toolCallId: z.string(),
-    toolName: z.string(),
-    args: z.record(z.string(), z.unknown()).default({}),
-  }),
-  z.object({
-    type: z.literal("tool-output"),
-    toolCallId: z.string(),
-    toolName: z.string(),
-    content: toolOutputPartSchema,
-  }),
-  z.object({
-    type: z.literal("tool-result"),
-    toolCallId: z.string(),
-    toolName: z.string(),
-    isError: z.boolean().optional(),
-    errorCode: z.string().optional(),
-    error: streamErrorSchema.optional(),
-  }),
+  textDeltaEventSchema,
+  reasoningEventSchema,
+  toolCallEventSchema,
+  toolOutputEventSchema,
+  toolResultEventSchema,
   streamUsageEventSchema,
-  z.object({ type: z.literal("status"), state: pendingStateSchema }),
-  z.object({
-    type: z.literal("checklist"),
-    groupId: z.string().min(1),
-    groupTitle: z.string().min(1),
-    items: z.array(checklistItemSchema),
-  }),
-  z.object({
-    type: z.literal("error"),
-    errorMessage: z.string(),
-    errorId: z.string().optional(),
-    errorCode: z.string().optional(),
-    error: streamErrorSchema.optional(),
-  }),
+  statusEventSchema,
+  checklistEventSchema,
+  errorEventSchema,
 ]);
-
-type TextDeltaEvent = { type: "text-delta"; text: string };
-type ReasoningEvent = { type: "reasoning"; text: string };
-type ToolCallEvent = { type: "tool-call"; toolCallId: string; toolName: string; args: Record<string, unknown> };
-type ToolOutputEvent = {
-  type: "tool-output";
-  toolCallId: string;
-  toolName: string;
-  content: ToolOutputPart;
-};
-type ToolResultEvent = {
-  type: "tool-result";
-  toolCallId: string;
-  toolName: string;
-  isError?: boolean;
-  errorCode?: string;
-  error?: z.infer<typeof streamErrorSchema>;
-};
-type UsageEvent = {
-  type: "usage";
-  inputTokens: number;
-  outputTokens: number;
-};
-type StatusEvent = { type: "status"; state: PendingState };
-type ChecklistEvent = {
-  type: "checklist";
-  groupId: string;
-  groupTitle: string;
-  items: z.infer<typeof checklistItemSchema>[];
-};
-type ErrorEvent = {
-  type: "error";
-  errorMessage: string;
-  errorId?: string;
-  errorCode?: string;
-  error?: z.infer<typeof streamErrorSchema>;
-};
-
-export type StreamEvent =
-  | TextDeltaEvent
-  | ReasoningEvent
-  | ToolCallEvent
-  | ToolOutputEvent
-  | ToolResultEvent
-  | UsageEvent
-  | StatusEvent
-  | ChecklistEvent
-  | ErrorEvent;
+export type StreamEvent = z.infer<typeof streamEventSchema>;
 
 export interface Client {
   replyStream(input: {
@@ -164,8 +125,9 @@ const chatResponseSchema = z.object({
   error: z.string().optional(),
   activeSkills: activeSkillsSchema.optional(),
 });
+type ChatResponsePayload = z.infer<typeof chatResponseSchema>;
 
-export function parseChatResponse(payload: unknown): ChatResponse | null {
+export function parseChatResponse(payload: unknown): ChatResponsePayload | null {
   const result = chatResponseSchema.safeParse(payload);
   return result.success ? result.data : null;
 }
