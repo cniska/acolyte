@@ -1,17 +1,8 @@
-import { z } from "zod";
 import { createRow } from "./chat-contract";
 import type { Client } from "./client-contract";
 import type { Session } from "./session-contract";
 
-export const handoffRequestSchema = z
-  .object({
-    kind: z.literal("session-handoff"),
-    requested: z.literal(true),
-    reason: z.string().min(1).optional(),
-  })
-  .strict();
-
-export type HandoffRequest = z.infer<typeof handoffRequestSchema>;
+export type { HandoffRequest } from "./session-handoff-contract";
 
 export const HANDOFF_SUMMARY_PROMPT = [
   "Write a concise session handoff summary for the next agent.",

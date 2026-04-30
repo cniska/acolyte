@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { messageKindSchema, roleSchema } from "./chat-contract";
 import { isoDateTimeSchema } from "./datetime";
+import { handoffRequestSchema } from "./session-handoff-contract";
 import { getSessionStore } from "./session-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -64,13 +65,7 @@ function createSessionHandoffTool(input: ToolkitInput) {
         reason: z.string().min(1).optional(),
       })
       .strict(),
-    outputSchema: z
-      .object({
-        kind: z.literal("session-handoff"),
-        requested: z.literal(true),
-        reason: z.string().min(1).optional(),
-      })
-      .strict(),
+    outputSchema: handoffRequestSchema,
     execute: async (toolInput, toolCallId) => {
       return runTool(
         input.session,

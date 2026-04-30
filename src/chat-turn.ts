@@ -5,13 +5,13 @@ import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatCompactNumber } from "./chat-format";
-import { type HandoffRequest, handoffRequestSchema } from "./chat-handoff";
 import type { Client, StreamEvent } from "./client-contract";
 import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry, TokenUsage } from "./session-contract";
+import { type HandoffRequest, handoffRequestSchema } from "./session-handoff-contract";
 import { createId } from "./short-id";
 import type { ActiveSkill } from "./skill-contract";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
@@ -134,8 +134,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     signal: params.signal,
     onEvent: (event) => {
       if (event.type === "tool-result" && event.toolName === "session-handoff") {
-        const parsed = handoffRequestSchema.safeParse(event.result);
-        if (parsed.success) handoffRequest = parsed.data;
+        handoffRequest = handoffRequestSchema.parse(event.result);
       }
       params.onEvent?.(event);
     },
