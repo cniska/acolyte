@@ -20,9 +20,6 @@ import { loadSkills } from "./skill-ops";
 import { createSoulPrompt, loadProjectRulesPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
-const OPENAI_API_KEY = appConfig.openai.apiKey;
-const OPENAI_BASE_URL = appConfig.openai.baseUrl;
-
 const debug = createDebugLogger({
   scope: "server",
   sink: (line) => log.debug(line),
@@ -149,8 +146,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   const requestId = nextErrorId();
   const startedAt = Date.now();
   const modelProvider = providerFromModel(chatRequest.model);
-  const providerCredentials: Record<string, { apiKey?: string; baseUrl?: string }> = {
-    openai: { apiKey: OPENAI_API_KEY, baseUrl: OPENAI_BASE_URL },
+  const providerCredentials = {
+    openai: appConfig.openai,
     anthropic: appConfig.anthropic,
     google: appConfig.google,
     vercel: appConfig.vercel,
