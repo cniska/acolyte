@@ -158,13 +158,14 @@ function safeParseToolOutput(value: string): unknown {
 
 export function createRunAgent(input: {
   soulPrompt: string;
+  projectRulesPrompt?: string;
   workspace: string | undefined;
   model: string;
   tools: Toolset;
 }): Agent {
   return createAgent({
     model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.workspace),
+    instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt),
     tools: input.tools as Record<string, ToolDefinition>,
   });
 }

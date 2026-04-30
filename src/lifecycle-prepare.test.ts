@@ -24,4 +24,33 @@ describe("phasePrepare", () => {
     expect(prepared.promptUsage.toolTokens).toBeGreaterThan(0);
     expect(prepared.promptUsage.messageTokens).toBe(prepared.promptUsage.inputTokens);
   });
+
+  test("counts project rules in system prompt tokens", () => {
+    const base = phasePrepare({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      workspace: undefined,
+      taskId: "task_base",
+      soulPrompt: "Soul.",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    const withRules = phasePrepare({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      workspace: undefined,
+      taskId: "task_rules",
+      soulPrompt: "Soul.",
+      projectRulesPrompt: "Project rules.",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    expect(withRules.promptUsage.systemPromptTokens).toBeGreaterThan(base.promptUsage.systemPromptTokens);
+  });
 });

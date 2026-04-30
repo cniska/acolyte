@@ -103,6 +103,7 @@ export type PhasePrepareInput = {
   workspace: string | undefined;
   taskId: string | undefined;
   soulPrompt: string;
+  projectRulesPrompt?: string;
   model: string;
   policy: LifecyclePolicy;
   debug: RunContext["debug"];
@@ -140,6 +141,7 @@ export function createRunControl(overrides?: Partial<RunControl>): RunControl {
 export type LifecycleInput = {
   request: ChatRequest;
   soulPrompt: string;
+  projectRulesPrompt?: string;
   workspace?: string;
   taskId?: string;
   features: ResolvedFeatureFlags;
@@ -155,6 +157,7 @@ export type RunContext = {
   readonly workspace: string | undefined;
   readonly taskId: string | undefined;
   readonly soulPrompt: string;
+  readonly projectRulesPrompt?: string;
   readonly features: ResolvedFeatureFlags;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;

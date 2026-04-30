@@ -43,6 +43,12 @@ describe("createInstructions", () => {
     ]);
   });
 
+  test("appends project rules as a separate prompt block", () => {
+    const out = createInstructions("Soul.", undefined, "Project rules.");
+    expect(out).toContain("Project rules.");
+    expect(out.indexOf("Project rules.")).toBeGreaterThan(out.indexOf("signal_blocked"));
+  });
+
   test("does not include removed work-layer preamble rules", () => {
     const out = createInstructions("Soul.");
     expect(out).not.toContain("make `file-read` on X your first tool call");

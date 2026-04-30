@@ -33,8 +33,11 @@ function createRuntimeInstructions(workspace?: string): string {
   return lines.join("\n");
 }
 
-export function createInstructions(soulPrompt: string, workspace?: string): string {
+export function createInstructions(soulPrompt: string, workspace?: string, projectRulesPrompt = ""): string {
   const coreInstructions = CORE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const runtimeInstructions = createRuntimeInstructions(workspace);
-  return `${soulPrompt}\n\n${coreInstructions}\n\n${runtimeInstructions}`;
+  const sections = [soulPrompt, coreInstructions, projectRulesPrompt, runtimeInstructions].filter(
+    (section) => section.trim().length > 0,
+  );
+  return sections.join("\n\n");
 }

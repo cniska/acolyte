@@ -17,7 +17,7 @@ import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { isActiveSkillsPayload } from "./skill-contract";
 import { loadSkills } from "./skill-ops";
-import { createSoulPrompt } from "./soul";
+import { createSoulPrompt, loadProjectRulesPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
 const OPENAI_API_KEY = appConfig.openai.apiKey;
@@ -208,12 +208,14 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     }
     const soulPrompt = await createSoulPrompt({
       cwd: workspaceResolution.workspacePath,
-      includeAgents: !config.features.syncAgents,
-      agentsHint: config.features.syncAgents ? "memory" : "none",
     });
+    const projectRulesPrompt = config.features.syncAgents
+      ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
+      : loadProjectRulesPrompt(workspaceResolution.workspacePath);
     const reply = await runLifecycle({
       request: lifecycleRequest,
       soulPrompt,
+      projectRulesPrompt,
       workspace: workspaceResolution.workspacePath,
       features: config.features,
       taskId: handlers.taskId,

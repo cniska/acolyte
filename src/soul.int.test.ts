@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSoulPrompt, loadAgentsPrompt, loadSoulPrompt, loadSystemPrompt } from "./soul";
+import { createSoulPrompt, loadAgentsPrompt, loadProjectRulesPrompt, loadSoulPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -19,25 +19,17 @@ describe("soul prompt loading", () => {
     expect(loadAgentsPrompt(dir)).toBe("");
   });
 
-  test("loadSystemPrompt combines soul and agents", () => {
+  test("loadProjectRulesPrompt returns project rules from AGENTS.md", () => {
     const dir = createDir("acolyte-combined-");
     writeFileSync(join(dir, "AGENTS.md"), "Rules.", "utf8");
-    const prompt = loadSystemPrompt(dir);
-    expect(prompt).toContain("Acolyte");
+    const prompt = loadProjectRulesPrompt(dir);
+    expect(prompt).toContain("Project rules (AGENTS.md):");
     expect(prompt).toContain("Rules.");
   });
 
-  test("loadSystemPrompt can omit agents prompt and include a memory hint", () => {
-    const dir = createDir("acolyte-omit-agents-");
-    writeFileSync(join(dir, "AGENTS.md"), "Rules.", "utf8");
-    const prompt = loadSystemPrompt(dir, { includeAgents: false, agentsHint: "memory" });
-    expect(prompt).toContain("Acolyte");
-    expect(prompt).not.toContain("Rules.");
-    expect(prompt).toContain("memory-search");
-  });
-
-  test("createSoulPrompt returns prompt string", async () => {
+  test("createSoulPrompt returns bundled soul only", async () => {
     const result = await createSoulPrompt();
     expect(result).toContain("Acolyte");
+    expect(result).not.toContain("Rules.");
   });
 });

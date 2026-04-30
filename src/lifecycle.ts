@@ -96,6 +96,7 @@ function createRunContext(
   const session = params.prepared.session;
   const agent = params.createRunAgent({
     soulPrompt: input.soulPrompt,
+    projectRulesPrompt: input.projectRulesPrompt,
     workspace: input.workspace,
     model: params.model,
     tools: params.prepared.tools,
@@ -106,6 +107,7 @@ function createRunContext(
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
+    projectRulesPrompt: input.projectRulesPrompt,
     features: input.features,
     emit: params.emit,
     debug: params.debug,
@@ -303,6 +305,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     workspace: input.workspace,
     taskId: input.taskId,
     soulPrompt: input.soulPrompt,
+    projectRulesPrompt: input.projectRulesPrompt,
     model,
     policy,
     debug,
