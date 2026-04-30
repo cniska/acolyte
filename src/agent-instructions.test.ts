@@ -45,8 +45,11 @@ describe("createInstructions", () => {
 
   test("appends project rules as a separate prompt block", () => {
     const out = createInstructions("Soul.", undefined, "Project rules.");
+    expect(out).toContain("Project rules take precedence over generic guidance when they conflict.");
     expect(out).toContain("Project rules.");
-    expect(out.indexOf("Project rules.")).toBeGreaterThan(out.indexOf("signal_blocked"));
+    expect(out.indexOf("Project rules.")).toBeGreaterThan(
+      out.indexOf("Project rules take precedence over generic guidance when they conflict."),
+    );
   });
 
   test("does not include removed work-layer preamble rules", () => {
