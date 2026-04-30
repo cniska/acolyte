@@ -162,7 +162,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      streamState.finalize();
+      const streamingRowIds = streamState.finalize();
+      const hasStreamingAssistantRow = streamingRowIds.length > 0;
 
       if (turn.activeSkills?.length) {
         input.currentSession.activeSkills = turn.activeSkills;
@@ -187,7 +188,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       } else {
         input.setPendingState(null);
       }
-      input.setRows((current) => [...current, ...turn.rows]);
+      const finalRows =
+        !hasStreamingAssistantRow && assistantMessage.content.trim().length > 0
+          ? [createRow("assistant", assistantMessage.content)]
+          : [];
+      input.setRows((current) => [...current, ...finalRows, ...turn.rows]);
       if (!turn.awaitingInput) input.promote?.();
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);

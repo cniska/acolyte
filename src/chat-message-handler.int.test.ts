@@ -602,6 +602,24 @@ describe("chat message handler", () => {
     expect(promoted.some((r) => r.kind === "tool")).toBe(true);
   });
 
+  test("renders assistant output even when the reply streams no deltas", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "No changes needed.",
+        }),
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("hello");
+
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "assistant" && r.content === "No changes needed.")).toBe(true);
+  });
+
   test("promote clears dynamic rows", async () => {
     const { handleMessage, rows, calls } = createMessageHandlerHarness({
       client: createClient({
