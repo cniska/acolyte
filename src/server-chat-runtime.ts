@@ -10,6 +10,7 @@ import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
+import { loadProjectRulesPrompt } from "./project-rules";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
@@ -17,7 +18,7 @@ import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { isActiveSkillsPayload } from "./skill-contract";
 import { loadSkills } from "./skill-ops";
-import { createSoulPrompt, loadProjectRulesPrompt } from "./soul";
+import { loadSoulPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
 
 const debug = createDebugLogger({
@@ -203,9 +204,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     if (config.features.syncAgents) {
       await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath });
     }
-    const soulPrompt = await createSoulPrompt({
-      cwd: workspaceResolution.workspacePath,
-    });
+    const soulPrompt = loadSoulPrompt();
     const projectRulesPrompt = config.features.syncAgents
       ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
       : loadProjectRulesPrompt(workspaceResolution.workspacePath);

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSoulPrompt, loadAgentsPrompt, loadProjectRulesPrompt, loadSoulPrompt } from "./soul";
+import { loadProjectRulesPrompt } from "./project-rules";
+import { loadSoulPrompt } from "./soul";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -14,9 +15,9 @@ describe("soul prompt loading", () => {
     expect(result).toContain("Acolyte");
   });
 
-  test("loadAgentsPrompt returns empty when no AGENTS.md", () => {
+  test("loadProjectRulesPrompt returns empty when no AGENTS.md", () => {
     const dir = createDir("acolyte-no-agents-");
-    expect(loadAgentsPrompt(dir)).toBe("");
+    expect(loadProjectRulesPrompt(dir)).toBe("");
   });
 
   test("loadProjectRulesPrompt returns project rules from AGENTS.md", () => {
@@ -27,8 +28,8 @@ describe("soul prompt loading", () => {
     expect(prompt).toContain("Rules.");
   });
 
-  test("createSoulPrompt returns bundled soul only", async () => {
-    const result = await createSoulPrompt();
+  test("loadSoulPrompt returns bundled soul only", () => {
+    const result = loadSoulPrompt();
     expect(result).toContain("Acolyte");
     expect(result).not.toContain("Rules.");
   });
