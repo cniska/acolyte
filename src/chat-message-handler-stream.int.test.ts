@@ -516,6 +516,7 @@ describe("chat message handler stream behavior", () => {
         activateSkill: async () => true,
         openResumePanel: () => {},
         openModelPanel: () => {},
+        startHandoffReview: async () => {},
         tokenUsage: [],
         isPending: false,
         setInputHistory: () => {},
