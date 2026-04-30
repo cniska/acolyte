@@ -1,3 +1,4 @@
+import type { LanguageModelV3FunctionTool } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
 import { log } from "./log";
@@ -55,6 +56,21 @@ function toJsonSchema(schema: z.ZodType | Record<string, unknown>): Record<strin
   if (!isZodSchema(schema)) return schema;
   const { $schema: _, ...rest } = z.toJSONSchema(schema);
   return rest;
+}
+
+type AnyToolDefinition = Pick<ToolDefinition, "id" | "description" | "inputSchema">;
+
+export function toFunctionTool(tool: AnyToolDefinition): LanguageModelV3FunctionTool {
+  return {
+    type: "function",
+    name: tool.id,
+    description: tool.description,
+    inputSchema: tool.inputSchema as LanguageModelV3FunctionTool["inputSchema"],
+  };
+}
+
+export function toFunctionTools(tools: Record<string, AnyToolDefinition>): LanguageModelV3FunctionTool[] {
+  return Object.values(tools).map(toFunctionTool);
 }
 
 export function createTool<TInput, TOutput>(

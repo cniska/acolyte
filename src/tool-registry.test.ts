@@ -24,6 +24,7 @@ describe("toolsets", () => {
       "listSkills",
       "listUndo",
       "memoryAdd",
+      "memoryObserve",
       "memoryRemove",
       "memorySearch",
       "readFile",

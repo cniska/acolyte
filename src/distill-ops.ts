@@ -2,17 +2,6 @@ import { estimateTokens } from "./agent-input";
 
 export type DistillScope = "session" | "project" | "user";
 
-type ParsedFact = { scope: DistillScope; content: string; topic: string | null };
-
-export type SplitResult = {
-  facts: ParsedFact[];
-  sessionCount: number;
-  projectCount: number;
-  userCount: number;
-  droppedUntaggedCount: number;
-  droppedMalformedCount: number;
-};
-
 function stripTrailingSurrogate(s: string): string {
   if (s.length === 0) return s;
   const last = s.charCodeAt(s.length - 1);
@@ -38,65 +27,4 @@ export function clampToTokenEstimate(content: string, maxTokens: number): string
 
 export function normalizeMemoryText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
-}
-
-export function parseObserveDirective(line: string): DistillScope | null {
-  const match = line.trim().match(/^@observe\s+(project|user|session)$/i);
-  return match ? (match[1].toLowerCase() as DistillScope) : null;
-}
-
-export function parseTopicDirective(line: string): string | null {
-  const match = line.trim().match(/^@topic\s+(\S+)$/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
-export function hasMalformedObserveDirective(line: string): boolean {
-  return /^@observe\b/i.test(line.trim()) && !parseObserveDirective(line);
-}
-
-export function splitScopedObservation(observed: string): SplitResult {
-  const lines = observed
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const facts: ParsedFact[] = [];
-  let droppedUntaggedCount = 0;
-  let droppedMalformedCount = 0;
-  let pendingScope: DistillScope | null = null;
-  let pendingTopic: string | null = null;
-  for (const line of lines) {
-    const scope = parseObserveDirective(line);
-    if (scope) {
-      pendingScope = scope;
-      pendingTopic = null;
-      continue;
-    }
-    if (hasMalformedObserveDirective(line)) {
-      droppedMalformedCount += 1;
-      pendingScope = null;
-      pendingTopic = null;
-      continue;
-    }
-    const topic = parseTopicDirective(line);
-    if (topic) {
-      pendingTopic = topic;
-      continue;
-    }
-    if (!pendingScope) {
-      droppedUntaggedCount += 1;
-      continue;
-    }
-    facts.push({ scope: pendingScope, content: line, topic: pendingTopic });
-    pendingScope = null;
-    pendingTopic = null;
-  }
-
-  return {
-    facts,
-    sessionCount: facts.filter((f) => f.scope === "session").length,
-    projectCount: facts.filter((f) => f.scope === "project").length,
-    userCount: facts.filter((f) => f.scope === "user").length,
-    droppedUntaggedCount,
-    droppedMalformedCount,
-  };
 }

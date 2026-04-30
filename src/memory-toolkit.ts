@@ -16,11 +16,38 @@ import {
   matchTopicsByEmbedding,
   tokenOverlap,
 } from "./memory-embedding";
-import { addMemory, removeMemory } from "./memory-ops";
+import { addMemory, addObservation, removeMemory, resolveScopeKey } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
+
+function createMemoryObserveTool(input: ToolkitInput) {
+  return createTool({
+    id: "memory_observe",
+    toolkit: "memory",
+    category: "meta",
+    description: "Record a fact extracted from the conversation into memory.",
+    instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
+    inputSchema: z.object({
+      scope: memoryScopeSchema,
+      content: z.string().min(1),
+      topic: z.string().optional(),
+    }),
+    outputSchema: z.object({ kind: z.literal("memory-observe"), id: z.string().nullable() }),
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "memory_observe", toolCallId, toolInput, async () => {
+        const scopeKey = resolveScopeKey(toolInput.scope, {
+          sessionId: input.sessionId,
+          workspace: input.workspace,
+        });
+        if (!scopeKey) return { kind: "memory-observe" as const, id: null };
+        const record = await addObservation(scopeKey, toolInput.content, { topic: toolInput.topic ?? null });
+        return { kind: "memory-observe" as const, id: record?.id ?? null };
+      });
+    },
+  });
+}
 
 async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
   const topics = new Set<string>();
@@ -42,8 +69,9 @@ export async function searchMemories(
   const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
-  const all = await store.list({ kind: "stored" });
-  const filtered = options?.scope ? all.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : all;
+  const all = await store.list();
+  const durable = all.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
+  const filtered = options?.scope ? durable.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durable;
   if (filtered.length === 0) return [];
 
   const queryEmbedding = await embedText(query);
@@ -55,8 +83,9 @@ export async function searchMemories(
 
   if (store.searchByEmbedding) {
     const oversample = (options?.scope ? limit * 2 : limit) * 2;
-    const raw = await store.searchByEmbedding(queryEmbedding, { kind: "stored", limit: oversample });
-    const scoped = options?.scope ? raw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : raw;
+    const raw = await store.searchByEmbedding(queryEmbedding, { limit: oversample });
+    const durableRaw = raw.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
+    const scoped = options?.scope ? durableRaw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durableRaw;
     const pgTopicEmbeddings = await embedTopics(scoped);
     const pgMatchedTopics = matchTopicsByEmbedding(queryEmbedding, pgTopicEmbeddings, policy.topicThreshold);
     const pgTopicFiltered = filterByTopicEmbedding(scoped, pgMatchedTopics, policy.minTopicFilterSize);
@@ -200,5 +229,6 @@ export function createMemoryToolkit(input: ToolkitInput) {
     memorySearch: createMemorySearchTool(input),
     memoryAdd: createMemoryAddTool(input),
     memoryRemove: createMemoryRemoveTool(input),
+    memoryObserve: createMemoryObserveTool(input),
   };
 }
