@@ -1,13 +1,17 @@
-import { createHash } from "node:crypto";
 import type { LanguageModelV3FunctionTool, LanguageModelV3Message, SharedV3ProviderOptions } from "@ai-sdk/provider";
 import type { Provider } from "./provider-contract";
 
 const CACHE_CONTROL = { type: "ephemeral" as const };
 
+function hashValue(value: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(value);
+  return hasher.digest("hex").slice(0, 32);
+}
+
 export function createPromptCacheKey(input: { model: string; sessionId?: string; workspace?: string }): string {
   const source = [input.model, input.sessionId ?? "", input.workspace ?? ""].join("\n");
-  const digest = createHash("sha256").update(source).digest("hex").slice(0, 32);
-  return `acolyte-${digest}`;
+  return `acolyte-${hashValue(source)}`;
 }
 
 export function mergeProviderOptions(
