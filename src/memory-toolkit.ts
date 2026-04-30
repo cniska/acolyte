@@ -19,16 +19,8 @@ import {
 import { addMemory, addObservation, removeMemory, resolveScopeKey } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
-import { createTool, toFunctionTool } from "./tool-contract";
+import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
-
-const memoryObserveInputSchema = z.object({
-  scope: memoryScopeSchema.describe(
-    "Memory scope: session (in-progress), project (durable project facts), user (cross-project preferences)",
-  ),
-  content: z.string().min(1).describe("The fact to store. Be specific and concrete."),
-  topic: z.string().optional().describe("Optional single-word topic label (e.g. testing, auth, config)."),
-});
 
 function createMemoryObserveTool(input: ToolkitInput) {
   return createTool({
@@ -37,7 +29,11 @@ function createMemoryObserveTool(input: ToolkitInput) {
     category: "meta",
     description: "Record a fact extracted from the conversation into memory.",
     instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
-    inputSchema: memoryObserveInputSchema,
+    inputSchema: z.object({
+      scope: memoryScopeSchema,
+      content: z.string().min(1),
+      topic: z.string().optional(),
+    }),
     outputSchema: z.object({ kind: z.literal("memory-observe"), id: z.string().nullable() }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory_observe", toolCallId, toolInput, async () => {
@@ -52,12 +48,6 @@ function createMemoryObserveTool(input: ToolkitInput) {
     },
   });
 }
-
-export const MEMORY_OBSERVE_TOOL = toFunctionTool({
-  id: "memory_observe",
-  description: "Record a fact extracted from the conversation into memory.",
-  inputSchema: z.toJSONSchema(memoryObserveInputSchema) as Record<string, unknown>,
-});
 
 async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
   const topics = new Set<string>();

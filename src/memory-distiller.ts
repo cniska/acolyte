@@ -1,4 +1,5 @@
 import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
+import { z } from "zod";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
@@ -10,14 +11,27 @@ import {
   type MemoryDistiller,
   type MemoryPolicy,
   type MemoryStore,
+  memoryScopeSchema,
 } from "./memory-contract";
 import { addObservation } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
-import { MEMORY_OBSERVE_TOOL } from "./memory-toolkit";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
+import { toFunctionTool } from "./tool-contract";
+
+const MEMORY_OBSERVE_TOOL = toFunctionTool({
+  id: "memory_observe",
+  description: "Record a fact extracted from the conversation into memory.",
+  inputSchema: z.toJSONSchema(
+    z.object({
+      scope: memoryScopeSchema,
+      content: z.string().min(1),
+      topic: z.string().optional(),
+    }),
+  ) as Record<string, unknown>,
+});
 
 export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
