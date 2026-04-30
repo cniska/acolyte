@@ -9,6 +9,7 @@ export const BREAKPOINT_TWO_COLUMN = 92;
 export const SHORTCUT_ITEMS = [
   { key: "@path", description: t("chat.at_ref.attach_file") },
   { key: "/new", description: slashCommandHelp("/new") },
+  { key: "/handoff", description: slashCommandHelp("/handoff") },
   { key: "/resume <id>", description: slashCommandHelp("/resume") },
   { key: "/sessions", description: slashCommandHelp("/sessions") },
   { key: "/workspaces", description: slashCommandHelp("/workspaces") },

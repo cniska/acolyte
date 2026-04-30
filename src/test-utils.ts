@@ -343,6 +343,7 @@ export function createMessageHandlerHarness(overrides?: {
     activateSkill: async () => true,
     openResumePanel: () => {},
     openModelPanel: () => {},
+    startHandoffReview: async () => {},
     tokenUsage,
     isPending: overrides?.isPending ?? false,
     setInputHistory: () => {
@@ -405,6 +406,8 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
   const handlers = createPickerHandlers({
     sessionState: createSessionState(),
     currentSession: createSession(),
+    pendingHandoff: null,
+    setPendingHandoff: () => {},
     setCurrentSession: (next) => {
       spies.currentSessions.push(next);
     },
@@ -579,6 +582,7 @@ export function createCommandContext(
     openModelPanel: () => {
       spies.openedModel = true;
     },
+    startHandoffReview: async () => {},
     clearTranscript: () => {
       spies.rows = [];
     },

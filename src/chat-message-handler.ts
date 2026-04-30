@@ -36,6 +36,7 @@ type CreateMessageHandlerInput = {
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   openResumePanel: () => void;
   openModelPanel: () => void | Promise<void>;
+  startHandoffReview: (reason?: string) => Promise<void>;
   tokenUsage: SessionTokenUsageEntry[];
   isPending: boolean;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
@@ -344,6 +345,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       openModelPanel: input.openModelPanel,
       tokenUsage: input.tokenUsage,
       clearTranscript: input.clearTranscript,
+      startHandoffReview: input.startHandoffReview,
     });
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {

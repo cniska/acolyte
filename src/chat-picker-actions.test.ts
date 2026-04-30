@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { createModelPicker, createResumePicker } from "./chat-picker-actions";
+import { createHandoffPicker, createModelPicker, createResumePicker } from "./chat-picker-actions";
 import { invalidateModelsCache } from "./provider-models";
 import type { Session, SessionState } from "./session-contract";
 
@@ -62,6 +62,17 @@ describe("chat picker actions", () => {
       items: [first, second],
       index: 1,
       scrollOffset: 0,
+    });
+  });
+
+  test("createHandoffPicker returns start/cancel choices", () => {
+    expect(createHandoffPicker()).toEqual({
+      kind: "handoff",
+      items: [
+        { label: "Confirm", value: "confirm" },
+        { label: "Cancel", value: "cancel" },
+      ],
+      index: 0,
     });
   });
 
