@@ -14,6 +14,7 @@ import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
 import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import { log } from "./log";
 import { createModel } from "./model-factory";
+import { applyPromptCacheMarkers } from "./prompt-cache";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
@@ -31,6 +32,7 @@ export function createAgentStream(
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
   rateLimiter: RateLimiter,
+  provider = providerFromModel(model.modelId),
 ): Agent["stream"] {
   const toolsByName = new Map<string, ToolDefinition>();
   for (const tool of Object.values(tools)) {
@@ -44,6 +46,7 @@ export function createAgentStream(
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: prompt }] },
     ];
+    applyPromptCacheMarkers(provider, messages, functionTools);
 
     let fullText = "";
     const allToolCalls: ToolCallEntry[] = [];
@@ -381,7 +384,7 @@ export function createAgent(input: {
   const rateLimiter = sharedRateLimiter(provider);
   const modelInstance = createModel(qualifiedModel, rateLimiter);
   const tools = input.tools ?? {};
-  const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter);
+  const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter, provider);
   return {
     id: input.id ?? "agent",
     name: input.name ?? "Agent",

@@ -10,6 +10,7 @@ import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
+import { loadProjectRulesPrompt } from "./project-rules";
 import { isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
@@ -17,11 +18,8 @@ import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { isActiveSkillsPayload } from "./skill-contract";
 import { loadSkills } from "./skill-ops";
-import { createSoulPrompt } from "./soul";
+import { loadSoulPrompt } from "./soul";
 import { getDefaultTraceStore, type TraceStore } from "./trace-store";
-
-const OPENAI_API_KEY = appConfig.openai.apiKey;
-const OPENAI_BASE_URL = appConfig.openai.baseUrl;
 
 const debug = createDebugLogger({
   scope: "server",
@@ -149,8 +147,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   const requestId = nextErrorId();
   const startedAt = Date.now();
   const modelProvider = providerFromModel(chatRequest.model);
-  const providerCredentials: Record<string, { apiKey?: string; baseUrl?: string }> = {
-    openai: { apiKey: OPENAI_API_KEY, baseUrl: OPENAI_BASE_URL },
+  const providerCredentials = {
+    openai: appConfig.openai,
     anthropic: appConfig.anthropic,
     google: appConfig.google,
     vercel: appConfig.vercel,
@@ -206,14 +204,14 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     if (config.features.syncAgents) {
       await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath });
     }
-    const soulPrompt = await createSoulPrompt({
-      cwd: workspaceResolution.workspacePath,
-      includeAgents: !config.features.syncAgents,
-      agentsHint: config.features.syncAgents ? "memory" : "none",
-    });
+    const soulPrompt = loadSoulPrompt();
+    const projectRulesPrompt = config.features.syncAgents
+      ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
+      : loadProjectRulesPrompt(workspaceResolution.workspacePath);
     const reply = await runLifecycle({
       request: lifecycleRequest,
       soulPrompt,
+      projectRulesPrompt,
       workspace: workspaceResolution.workspacePath,
       features: config.features,
       taskId: handlers.taskId,

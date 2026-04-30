@@ -30,6 +30,7 @@ Shipped, user-visible capabilities.
 - Configurable model reasoning level (low, medium, high) with provider-specific mapping
 - Multi-provider support (OpenAI, Anthropic, Google, Vercel)
 - Provider rate limit awareness with sliding window pacing and exponential backoff
+- Provider prompt-cache awareness with cached input token reporting
 - Proactive token budgeting with system prompt reservation and priority-based allocation
 - Step budget enforcement for cost protection
 - Two-tier result cache for read-only and search tools with cross-task persistence
@@ -66,7 +67,7 @@ Shipped, user-visible capabilities.
 
 - lifecycle trace with SQLite-backed indexed queries
 - structured logs with level, session, and time filtering
-- token usage reporting with prompt breakdown per turn
+- token usage reporting with prompt and prompt-cache breakdown per turn
 - status command with JSON output
 - scoped debug logging with wildcard tag matching
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
 import type { StreamOptions } from "./agent-contract";
 import { createAgentStream } from "./agent-stream";
+import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { resolveSignal } from "./lifecycle";
@@ -69,6 +70,77 @@ function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
 }
 
 describe("phaseGenerate", () => {
+  test("prompt cache options do not suppress temperature without reasoning", async () => {
+    const savedReasoning = appConfig.reasoning;
+    (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = undefined;
+    let capturedOptions: StreamOptions | undefined;
+    const ctx = createRunContext({
+      model: "openai/gpt-5-mini",
+      temperature: 0.42,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt, options) {
+          capturedOptions = options;
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "done", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    try {
+      await phaseGenerate(ctx, { timeoutMs: 1000 });
+    } finally {
+      (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = savedReasoning;
+    }
+
+    expect(capturedOptions?.temperature).toBe(0.42);
+    expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
+  });
+
+  test("passes Vercel AI Gateway prompt caching options", async () => {
+    let capturedOptions: StreamOptions | undefined;
+    const ctx = createRunContext({
+      model: "vercel/anthropic/claude-sonnet-4",
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt, options) {
+          capturedOptions = options;
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "done", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    expect(capturedOptions?.providerOptions?.gateway).toEqual({ caching: "auto" });
+    expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
+  });
+
   test("does not clear a file-edit error after an unrelated successful read", async () => {
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },

@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
+import { withVercelPromptCacheFetch } from "./prompt-cache";
 import { providerFromModel } from "./provider-config";
 import { createRateLimitFetch, type RateLimiter } from "./rate-limiter";
 
@@ -45,10 +46,11 @@ export function createModel(
       return openai(modelId);
     }
     case "vercel": {
+      const vercelFetch = withVercelPromptCacheFetch(fetchFn);
       const vercel = createOpenAI({
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-        fetch: fetchFn,
+        fetch: vercelFetch,
       });
       // The gateway expects provider/model format (e.g. "anthropic/claude-sonnet-4").
       // When explicitly prefixed with vercel/, strip that prefix.

@@ -16,7 +16,8 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   // System prompt tokens are calculated here and passed into createAgentInput
   // so it can reserve context-window space. This is the only place they are
   // counted — createAgentInput's returned inputTokens intentionally excludes them.
-  const systemPromptTokens = estimateTokens(input.soulPrompt) + INSTRUCTION_OVERHEAD_TOKENS;
+  const systemPromptTokens =
+    estimateTokens(input.soulPrompt) + estimateTokens(input.projectRulesPrompt ?? "") + INSTRUCTION_OVERHEAD_TOKENS;
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
     onOutput: input.onOutput,

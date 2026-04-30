@@ -19,6 +19,7 @@ const CORE_INSTRUCTIONS = [
 ];
 
 const TOOL_IDS = toolIds();
+const PROJECT_RULES_PRECEDENCE = "Project rules take precedence over generic guidance when they conflict.";
 
 function createRuntimeInstructions(workspace?: string): string {
   const lines: string[] = [];
@@ -33,8 +34,13 @@ function createRuntimeInstructions(workspace?: string): string {
   return lines.join("\n");
 }
 
-export function createInstructions(soulPrompt: string, workspace?: string): string {
+export function createInstructions(soulPrompt: string, workspace?: string, projectRulesPrompt = ""): string {
   const coreInstructions = CORE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const runtimeInstructions = createRuntimeInstructions(workspace);
-  return `${soulPrompt}\n\n${coreInstructions}\n\n${runtimeInstructions}`;
+  const projectRulesSection =
+    projectRulesPrompt.trim().length > 0 ? `${PROJECT_RULES_PRECEDENCE}\n\n${projectRulesPrompt}` : "";
+  const sections = [soulPrompt, coreInstructions, projectRulesSection, runtimeInstructions].filter(
+    (section) => section.trim().length > 0,
+  );
+  return sections.join("\n\n");
 }

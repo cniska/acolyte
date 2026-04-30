@@ -25,6 +25,7 @@ import {
   type RunContext,
   type StreamChunk,
 } from "./lifecycle-contract";
+import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -157,13 +158,14 @@ function safeParseToolOutput(value: string): unknown {
 
 export function createRunAgent(input: {
   soulPrompt: string;
+  projectRulesPrompt?: string;
   workspace: string | undefined;
   model: string;
   tools: Toolset;
 }): Agent {
   return createAgent({
     model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.workspace),
+    instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt),
     tools: input.tools as Record<string, ToolDefinition>,
   });
 }
@@ -248,9 +250,15 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
 
   try {
     resetTimeout();
-    const provider = providerFromModel(appConfig.model);
-    const providerOptions = reasoningProviderOptions(provider, appConfig.reasoning);
-    const temperature = providerOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
+    const provider = providerFromModel(ctx.model);
+    const cacheKey = createPromptCacheKey({
+      model: ctx.model,
+      sessionId: ctx.request.sessionId,
+      workspace: ctx.workspace,
+    });
+    const reasoningOptions = reasoningProviderOptions(provider, appConfig.reasoning);
+    const providerOptions = mergeProviderOptions(reasoningOptions, promptCacheProviderOptions(provider, cacheKey));
+    const temperature = reasoningOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,

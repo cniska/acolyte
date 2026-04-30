@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { configDir, type Env } from "./paths";
+import { loadProjectRulesPrompt } from "./project-rules";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skill-ops";
-import { loadAgentsPrompt } from "./soul";
 import type { StatusFields } from "./status-contract";
 
 function hasConfigFileCollision(scopeDir: string): boolean {
@@ -19,7 +19,7 @@ export function collectResourceDiagnostics(options?: { cwd?: string; env?: Env }
   if (hasConfigFileCollision(userConfigDir)) collisionScopes.push("user");
   if (collisionScopes.length > 0) diagnostics["resources.config.collisions"] = collisionScopes.join(",");
 
-  if (loadAgentsPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.agents"] = "missing_or_unreadable";
+  if (loadProjectRulesPrompt(cwd).trim().length === 0) diagnostics["resources.prompt.agents"] = "missing_or_unreadable";
 
   const skills = getLoadedSkills();
   const skillDiagnostics = getSkillLoadDiagnostics();
