@@ -5,6 +5,7 @@ import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatCompactNumber } from "./chat-format";
+import { type HandoffRequest, handoffRequestSchema } from "./chat-handoff";
 import type { Client, StreamEvent } from "./client-contract";
 import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
@@ -117,7 +118,9 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   rows: ChatRow[];
   activeSkills?: ActiveSkill[];
   awaitingInput: boolean;
+  handoffRequest?: HandoffRequest;
 }> {
+  let handoffRequest: HandoffRequest | undefined;
   const reply = await params.client.replyStream({
     request: {
       message: params.userText,
@@ -129,7 +132,13 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
       ...createWorkspaceSpecifier(params.workspace ?? process.cwd()),
     },
     signal: params.signal,
-    onEvent: params.onEvent ?? (() => {}),
+    onEvent: (event) => {
+      if (event.type === "tool-result" && event.toolName === "session-handoff") {
+        const parsed = handoffRequestSchema.safeParse(event.result);
+        if (parsed.success) handoffRequest = parsed.data;
+      }
+      params.onEvent?.(event);
+    },
   });
 
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
@@ -170,5 +179,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     rows,
     activeSkills: reply.activeSkills,
     awaitingInput,
+    ...(handoffRequest ? { handoffRequest } : {}),
   };
 }

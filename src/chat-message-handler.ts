@@ -199,6 +199,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       await input.persist();
+      if (turn.handoffRequest) {
+        await input.startHandoffReview(turn.handoffRequest.reason);
+      }
     } catch (error) {
       const remoteTaskId = remoteTaskIdFromError(error);
       if (!isAbortError(error) && remoteTaskId) {

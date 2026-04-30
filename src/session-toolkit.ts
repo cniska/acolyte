@@ -51,8 +51,48 @@ function createSessionSearchTool(input: ToolkitInput) {
   });
 }
 
+function createSessionHandoffTool(input: ToolkitInput) {
+  return createTool({
+    id: "session-handoff",
+    toolkit: "session",
+    category: "meta",
+    description: "Request a handoff to a new session without mutating session state.",
+    instruction:
+      "Call `session-handoff` when the current session should get a summary review before starting a new session. Provide a short `reason` when helpful.",
+    inputSchema: z
+      .object({
+        reason: z.string().min(1).optional(),
+      })
+      .strict(),
+    outputSchema: z
+      .object({
+        kind: z.literal("session-handoff"),
+        requested: z.literal(true),
+        reason: z.string().min(1).optional(),
+      })
+      .strict(),
+    execute: async (toolInput, toolCallId) => {
+      return runTool(
+        input.session,
+        "session-handoff",
+        toolCallId,
+        toolInput,
+        async () => {
+          return {
+            kind: "session-handoff" as const,
+            requested: true as const,
+            ...(toolInput.reason ? { reason: toolInput.reason } : {}),
+          };
+        },
+        { skipStepBudget: true },
+      );
+    },
+  });
+}
+
 export function createSessionToolkit(input: ToolkitInput) {
   return {
     sessionSearch: createSessionSearchTool(input),
+    sessionHandoff: createSessionHandoffTool(input),
   };
 }
