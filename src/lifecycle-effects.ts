@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Effect, EffectResult, RunContext } from "./lifecycle-contract";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
-import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } from "./tool-session";
+import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } from "./tool-contract";
 import { formatWorkspaceCommand, renderCommandResult, runCommand, runCommandWithFiles } from "./workspace-profile";
 
 export const formatEffect: Effect = {

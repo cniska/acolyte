@@ -14,9 +14,9 @@ import { createSkillToolkit } from "./skill-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
-import type { ChecklistListener, ToolCategory, ToolDefinition, ToolkitInput } from "./tool-contract";
+import type { ChecklistListener, SessionContext, ToolCategory, ToolDefinition, ToolkitInput } from "./tool-contract";
 import type { ToolOutputListener } from "./tool-output-format";
-import { createSessionContext, type SessionContext } from "./tool-session";
+import { createSessionContext } from "./tool-session";
 import { createUndoToolkit } from "./undo-toolkit";
 import { createWebToolkit } from "./web-toolkit";
 

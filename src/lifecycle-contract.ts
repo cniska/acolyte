@@ -11,7 +11,7 @@ import type { MemoryCommitMetrics } from "./memory-contract";
 import type { ChecklistListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
-import type { SessionContext } from "./tool-session";
+import type { SessionContext } from "./tool-contract";
 
 export type LifecycleError = {
   message: string;

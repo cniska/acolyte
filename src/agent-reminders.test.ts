@@ -10,7 +10,7 @@ import {
   turnsSinceLastReminder,
 } from "./agent-reminders";
 import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
-import type { ToolCallRecord, ToolCallStatus } from "./tool-session";
+import type { ToolCallRecord, ToolCallStatus } from "./tool-contract";
 
 const WRITE_TOOL_SET = new Set(["file-edit", "file-create"]);
 const RUNNER_TOOL_SET = new Set(["test-run"]);

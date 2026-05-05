@@ -21,7 +21,7 @@ import {
 import { getOrConnectClient } from "./mcp-session";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import type { SessionContext } from "./tool-session";
+import type { SessionContext } from "./tool-contract";
 
 // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
 type AnyToolDefinition = ToolDefinition<any, any>;

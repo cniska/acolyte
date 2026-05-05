@@ -3,7 +3,8 @@ import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contra
 import { parseError } from "./error-handling";
 import { field } from "./field";
 import { ToolError } from "./tool-error";
-import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
+import type { SessionContext } from "./tool-contract";
+import { checkStepBudget, recordCall } from "./tool-session";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
