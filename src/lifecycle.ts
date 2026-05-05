@@ -3,10 +3,10 @@ import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
 import { findCompletionBlock } from "./lifecycle-completion";
+import type { LifecycleSignal } from "./agent-contract";
 import type {
   LifecycleEventName,
   LifecycleInput,
-  LifecycleSignal,
   RunContext,
   ToolOutputEvent,
 } from "./lifecycle-contract";

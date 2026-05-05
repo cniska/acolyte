@@ -18,12 +18,11 @@ import {
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
 import { SELF_REVIEW_TURNS_COOLDOWN } from "./lifecycle-constants";
+import type { GenerateResult, StreamChunk } from "./agent-contract";
 import {
   type GenerateOptions,
-  type GenerateResult,
   promptUsageTotalTokens,
   type RunContext,
-  type StreamChunk,
 } from "./lifecycle-contract";
 import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";

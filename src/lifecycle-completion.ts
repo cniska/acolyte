@@ -1,4 +1,4 @@
-import type { LifecycleSignal } from "./lifecycle-contract";
+import type { LifecycleSignal } from "./agent-contract";
 import type { ToolCallRecord } from "./tool-contract";
 
 export type CompletionBlockReason = "broken-handoff" | "missing-validation-after-write";

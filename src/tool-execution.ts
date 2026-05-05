@@ -3,7 +3,7 @@ import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contra
 import { parseError } from "./error-handling";
 import { field } from "./field";
 import { ToolError } from "./tool-error";
-import type { SessionContext } from "./tool-contract";
+import type { RunToolResult, SessionContext } from "./tool-contract";
 import { checkStepBudget, recordCall } from "./tool-session";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
@@ -59,8 +59,6 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     throw wrapped;
   }
 }
-
-export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
 
 export async function runTool<T = unknown>(
   session: SessionContext,

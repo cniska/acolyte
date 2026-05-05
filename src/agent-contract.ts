@@ -1,6 +1,46 @@
 import type { LanguageModelV3, LanguageModelV3Message, SharedV3ProviderOptions } from "@ai-sdk/provider";
-import type { GenerateResult, LifecycleSignal, StreamChunk } from "./lifecycle-contract";
+import { z } from "zod";
 import type { ToolDefinition } from "./tool-contract";
+
+export type ToolCallEntry = {
+  toolCallId: string;
+  toolName: string;
+  args: unknown;
+};
+
+export type GenerateResult = {
+  text: string;
+  toolCalls: ToolCallEntry[];
+  signal?: LifecycleSignal;
+  signalReason?: string;
+};
+
+export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
+export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
+
+export type TextDeltaPayload = { text?: string };
+export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
+export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
+export type ToolErrorPayload = {
+  error?: unknown;
+  message?: string;
+  code?: unknown;
+  kind?: unknown;
+  toolName?: string;
+  toolCallId?: string;
+};
+export type ModelUsagePayload = {
+  inputTokens?: number;
+  outputTokens?: number;
+};
+export type StreamChunk =
+  | { type: "step-start" }
+  | { type: "text-delta"; payload: TextDeltaPayload }
+  | { type: "reasoning-delta"; payload: TextDeltaPayload }
+  | { type: "tool-call"; payload: ToolCallPayload }
+  | { type: "tool-result"; payload: ToolResultPayload }
+  | { type: "tool-error"; payload: ToolErrorPayload }
+  | { type: "model-usage"; payload: ModelUsagePayload };
 
 export type Agent = {
   readonly id: string;

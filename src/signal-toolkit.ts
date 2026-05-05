@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LifecycleSignal } from "./lifecycle-contract";
+import type { LifecycleSignal } from "./agent-contract";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 

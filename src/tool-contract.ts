@@ -4,7 +4,6 @@ import type { ChecklistItem } from "./checklist-contract";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { log } from "./log";
 import type { ActiveSkill } from "./skill-contract";
-import type { RunToolResult } from "./tool-execution";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { WorkspaceProfile } from "./workspace-contract";
 
@@ -32,6 +31,8 @@ export type ToolkitInput = {
   onOutput: ToolOutputListener;
   onChecklist: ChecklistListener;
 };
+
+export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
 
 export type ToolCacheEntry = {
   result: unknown;
