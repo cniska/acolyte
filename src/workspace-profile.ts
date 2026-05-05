@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { detectWorkspaceProfile } from "./workspace-detectors";
-
-export type WorkspaceCommand = { readonly bin: string; readonly args: readonly string[] };
+import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
 
 export type CommandResult = { hasErrors: boolean; stdout: string; stderr: string };
 
@@ -44,16 +43,6 @@ export function runCommandWithFiles(workspace: string, command: WorkspaceCommand
   if (filePaths.length === 0) return { hasErrors: false, stdout: "", stderr: "" };
   return runCommand(workspace, resolveCommandFiles(command, filePaths));
 }
-
-export type WorkspaceProfile = {
-  ecosystem?: string;
-  packageManager?: string;
-  installCommand?: WorkspaceCommand;
-  depsDir?: string;
-  lintCommand?: WorkspaceCommand;
-  formatCommand?: WorkspaceCommand;
-  testCommand?: WorkspaceCommand;
-};
 
 export function formatWorkspaceCommand(cmd: WorkspaceCommand): string {
   return `${cmd.bin} ${cmd.args.join(" ")}`.trim();

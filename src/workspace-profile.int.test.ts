@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { WorkspaceCommand } from "./workspace-profile";
+import type { WorkspaceCommand } from "./workspace-contract";
 import { runCommand, runCommandWithFiles } from "./workspace-profile";
 
 const BIOME: WorkspaceCommand = { bin: "bunx", args: ["biome", "check", "$FILES"] };
