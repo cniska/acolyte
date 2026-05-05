@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { TokenUsage } from "./api";
 import { type ChatMessage, type MessageId, messageIdSchema, messageSchema } from "./chat-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
@@ -16,6 +15,13 @@ export const tokenUsageSchema = z.object({
   totalTokens: tokenCountSchema,
   inputBudgetTokens: tokenCountSchema.optional(),
 });
+
+export interface TokenUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly totalTokens: number;
+  readonly inputBudgetTokens?: number;
+}
 
 export const promptBreakdownSchema = z.object({
   budgetTokens: tokenCountSchema.default(0),
