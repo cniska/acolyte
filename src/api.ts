@@ -4,8 +4,6 @@ import type { ResourceId } from "./resource-id";
 import type { PromptBreakdown, SessionId, TokenUsage } from "./session-contract";
 import type { ActiveSkill } from "./skill-contract";
 
-export type { TokenUsage };
-
 export interface ChatRequest {
   readonly message: string;
   readonly history: ChatMessage[];

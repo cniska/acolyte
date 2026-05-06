@@ -63,7 +63,8 @@ Workspace and sandbox behavior is visible in lifecycle debug/trace events:
 
 ## Key files
 
-- `src/workspace-profile.ts` — profile type and resolution
+- `src/workspace-contract.ts` — `WorkspaceProfile` and `WorkspaceCommand` types
+- `src/workspace-profile.ts` — profile resolution, caching, and instruction generation
 - `src/workspace-detectors.ts` — ecosystem detection from project files
 - `src/workspace-sandbox.ts` — path validation and sandbox enforcement
 

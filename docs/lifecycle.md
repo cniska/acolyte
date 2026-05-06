@@ -75,5 +75,7 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 - `src/lifecycle-constants.ts` — configuration constants for step limits, timeouts, and thresholds
 - `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
-- `src/workspace-profile.ts` — workspace profile types, caching, and instruction generation
+- `src/agent-contract.ts` — agent interface, stream types (`StreamChunk`, `GenerateResult`, `LifecycleSignal`)
+- `src/workspace-profile.ts` — workspace profile resolution, caching, and instruction generation
+- `src/workspace-contract.ts` — workspace profile and command types
 - `src/workspace-detectors.ts` — ecosystem detectors for TypeScript, Python, Go, Rust

@@ -15,7 +15,7 @@ export type GenerateResult = {
   signalReason?: string;
 };
 
-export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
+const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
 export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
 
 export type TextDeltaPayload = { text?: string };

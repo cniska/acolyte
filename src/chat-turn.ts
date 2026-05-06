@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { createWorkspaceSpecifier, type TokenUsage } from "./api";
+import { createWorkspaceSpecifier } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
@@ -10,7 +10,7 @@ import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import type { Session, SessionTokenUsageEntry } from "./session-contract";
+import type { Session, SessionTokenUsageEntry, TokenUsage } from "./session-contract";
 import { createId } from "./short-id";
 import type { ActiveSkill } from "./skill-contract";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
