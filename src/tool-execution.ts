@@ -2,7 +2,15 @@ import { invariant } from "./assert";
 import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
 import { field } from "./field";
-import type { RunToolResult, SessionContext } from "./tool-contract";
+import type {
+  EffectOutput,
+  PostToolContext,
+  PreToolContext,
+  RunToolResult,
+  SessionContext,
+  ToolCache,
+  ToolCacheEntry,
+} from "./tool-contract";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall } from "./tool-session";
 
@@ -43,6 +51,165 @@ function extractExitCode(value: unknown): number | undefined {
   return typeof exitCode === "number" && Number.isInteger(exitCode) ? exitCode : undefined;
 }
 
+type ToolRunInput<T> = {
+  session: SessionContext;
+  toolId: string;
+  toolCallId: string;
+  args: Record<string, unknown>;
+  execute: (toolCallId: string) => Promise<T>;
+  options?: { timeoutMs?: number; skipStepBudget?: boolean };
+};
+
+type BeforeToolResult = {
+  preOutput?: EffectOutput;
+};
+
+type ToolExecutionResult<T> = {
+  result: T;
+  taskFailed: boolean;
+  taskError?: unknown;
+};
+
+function debugHookFailure(
+  session: SessionContext,
+  hook: "before" | "after",
+  toolId: string,
+  toolCallId: string,
+  error: unknown,
+) {
+  session.onDebug?.("lifecycle.tool.hook_failed", {
+    hook,
+    tool: toolId,
+    tool_call_id: toolCallId,
+    message: errorMessage(error),
+  });
+}
+
+function assertStepBudget(input: Pick<ToolRunInput<unknown>, "session" | "toolId" | "options">): void {
+  if (input.options?.skipStepBudget) return;
+  const budgetError = checkStepBudget(input.session, input.toolId);
+  if (!budgetError) return;
+  const error = new Error(budgetError) as Error & { code: string; kind: string };
+  error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+  error.kind = ERROR_KINDS.budgetExhausted;
+  throw error;
+}
+
+async function runBeforeToolHooks(
+  input: Pick<ToolRunInput<unknown>, "session" | "toolId" | "toolCallId" | "args">,
+): Promise<BeforeToolResult> {
+  const ctx: PreToolContext = { toolId: input.toolId, toolCallId: input.toolCallId, args: input.args };
+  const preOutput = input.session.onBeforeTool?.(ctx);
+  if (input.session.onBeforeToolAsync) {
+    try {
+      await input.session.onBeforeToolAsync(ctx);
+    } catch (error) {
+      debugHookFailure(input.session, "before", input.toolId, input.toolCallId, error);
+    }
+  }
+  return { preOutput };
+}
+
+async function runAfterToolAsync(session: SessionContext, ctx: PostToolContext): Promise<void> {
+  if (!session.onAfterToolAsync) return;
+  try {
+    await session.onAfterToolAsync(ctx);
+  } catch (error) {
+    debugHookFailure(session, "after", ctx.toolId, ctx.toolCallId, error);
+  }
+}
+
+function resolveTimeoutMs(session: SessionContext, options?: ToolRunInput<unknown>["options"]): number {
+  const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
+  invariant(
+    typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
+    "timeoutMs must be a positive number",
+  );
+  return timeoutMs;
+}
+
+function readCachedResult<T>(
+  cache: ToolCache | undefined,
+  input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
+): ToolCacheEntry | undefined {
+  if (!cache?.isCacheable(input.toolId)) return undefined;
+  const cached = cache.get(input.toolId, input.args);
+  if (!cached) {
+    input.session.onDebug?.("lifecycle.tool.cache", { tool: input.toolId, hit: false, ...cache.stats() });
+    return undefined;
+  }
+
+  input.session.onDebug?.("lifecycle.tool.cache", { tool: input.toolId, hit: true, ...cache.stats() });
+  return cached;
+}
+
+function recordToolSuccess<T>(session: SessionContext, toolId: string, args: Record<string, unknown>, result: T): void {
+  recordCall(session, toolId, args, hashResultValue(result), "succeeded", {
+    exitCode: extractExitCode(result),
+  });
+}
+
+function recordToolFailure(session: SessionContext, toolId: string, args: Record<string, unknown>): void {
+  recordCall(session, toolId, args, undefined, "failed");
+}
+
+async function returnCachedResult<T>(
+  input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
+  result: T,
+): Promise<RunToolResult<T>> {
+  await runAfterToolAsync(input.session, {
+    toolId: input.toolId,
+    toolCallId: input.toolCallId,
+    args: input.args,
+    status: "succeeded",
+    result,
+  });
+  recordToolSuccess(input.session, input.toolId, input.args, result);
+  return { result };
+}
+
+async function executeToolTask<T>(input: ToolRunInput<T>, timeoutMs: number): Promise<ToolExecutionResult<T>> {
+  try {
+    const result = await withTimeout(() => input.execute(input.toolCallId), timeoutMs, input.toolId);
+    return { result, taskFailed: false };
+  } catch (error) {
+    return { result: undefined as T, taskFailed: true, taskError: error };
+  }
+}
+
+async function finalizeExecutedTool<T>(
+  input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
+  execution: ToolExecutionResult<T>,
+): Promise<void> {
+  if (execution.taskFailed) {
+    const parsed = parseError(execution.taskError);
+    await runAfterToolAsync(input.session, {
+      toolId: input.toolId,
+      toolCallId: input.toolCallId,
+      args: input.args,
+      status: "failed",
+      error: parsed.ok ? parsed.value : { message: `${input.toolId} failed` },
+    });
+    recordToolFailure(input.session, input.toolId, input.args);
+    return;
+  }
+
+  await runAfterToolAsync(input.session, {
+    toolId: input.toolId,
+    toolCallId: input.toolCallId,
+    args: input.args,
+    status: "succeeded",
+    result: execution.result,
+  });
+  recordToolSuccess(input.session, input.toolId, input.args, execution.result);
+}
+
+function invalidateCacheAfterWrite(cache: ToolCache | undefined, toolId: string, args: Record<string, unknown>): void {
+  if (cache && !cache.isCacheable(toolId)) {
+    cache.invalidateForWrite(toolId, args);
+  }
+}
+
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
@@ -69,129 +236,35 @@ export async function runTool<T = unknown>(
   options?: { timeoutMs?: number; skipStepBudget?: boolean },
 ): Promise<RunToolResult<T>> {
   return withToolError(toolId, async () => {
-    if (!options?.skipStepBudget) {
-      const budgetError = checkStepBudget(session, toolId);
-      if (budgetError) {
-        const error = new Error(budgetError) as Error & { code: string; kind: string };
-        error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
-        error.kind = ERROR_KINDS.budgetExhausted;
-        throw error;
-      }
-    }
-
-    const preOutput = session.onBeforeTool?.({ toolId, toolCallId, args });
-    if (session.onBeforeToolAsync) {
-      try {
-        await session.onBeforeToolAsync({ toolId, toolCallId, args });
-      } catch (error) {
-        session.onDebug?.("lifecycle.tool.hook_failed", {
-          hook: "before",
-          tool: toolId,
-          tool_call_id: toolCallId,
-          message: errorMessage(error),
-        });
-      }
-    }
-
+    const input: ToolRunInput<T> = { session, toolId, toolCallId, args, execute, options };
+    assertStepBudget(input);
+    const { preOutput } = await runBeforeToolHooks(input);
     const cache = session.cache;
-    const timeoutMs = options?.timeoutMs ?? session.toolTimeoutMs;
-    invariant(
-      typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0,
-      "timeoutMs must be a positive number",
-    );
+    const timeoutMs = resolveTimeoutMs(session, options);
+    const cached = readCachedResult<T>(cache, input);
+    if (cached) return returnCachedResult(input, cached.result as T);
 
-    if (cache?.isCacheable(toolId)) {
-      const cached = cache.get(toolId, args);
-      if (cached) {
-        session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: true, ...cache.stats() });
-        if (session.onAfterToolAsync) {
-          try {
-            await session.onAfterToolAsync({
-              toolId,
-              toolCallId,
-              args: args,
-              status: "succeeded",
-              result: cached.result,
-            });
-          } catch (error) {
-            session.onDebug?.("lifecycle.tool.hook_failed", {
-              hook: "after",
-              tool: toolId,
-              tool_call_id: toolCallId,
-              message: errorMessage(error),
-            });
-          }
-        }
-        recordCall(session, toolId, args, hashResultValue(cached.result), "succeeded", {
-          exitCode: extractExitCode(cached.result),
-        });
-        return { result: cached.result as T };
-      }
-      session.onDebug?.("lifecycle.tool.cache", { tool: toolId, hit: false, ...cache.stats() });
-    }
-
-    let taskFailed = false;
-    let taskResult = undefined as T;
-    let taskError: unknown;
+    let execution = await executeToolTask(input, timeoutMs);
     try {
-      taskResult = await withTimeout(() => execute(toolCallId), timeoutMs, toolId);
+      if (execution.taskFailed) throw execution.taskError;
       if (cache?.isCacheable(toolId)) {
-        cache.set(toolId, args, { result: taskResult });
+        cache.set(toolId, args, { result: execution.result });
       }
       const postOutput = session.onAfterTool?.({
         toolId,
         toolCallId,
         args: args,
         status: "succeeded",
-        result: taskResult,
+        result: execution.result,
       });
       const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
-      return { result: taskResult, effectOutput: append || undefined };
+      return { result: execution.result, effectOutput: append || undefined };
     } catch (error) {
-      taskFailed = true;
-      taskError = error;
+      execution = { result: undefined as T, taskFailed: true, taskError: error };
       throw error;
     } finally {
-      if (session.onAfterToolAsync) {
-        try {
-          if (taskFailed) {
-            const parsed = parseError(taskError);
-            await session.onAfterToolAsync({
-              toolId,
-              toolCallId,
-              args: args,
-              status: "failed",
-              error: parsed.ok ? parsed.value : { message: `${toolId} failed` },
-            });
-          } else {
-            await session.onAfterToolAsync({
-              toolId,
-              toolCallId,
-              args: args,
-              status: "succeeded",
-              result: taskResult,
-            });
-          }
-        } catch (error) {
-          session.onDebug?.("lifecycle.tool.hook_failed", {
-            hook: "after",
-            tool: toolId,
-            tool_call_id: toolCallId,
-            message: errorMessage(error),
-          });
-        }
-      }
-      recordCall(
-        session,
-        toolId,
-        args,
-        taskFailed ? undefined : hashResultValue(taskResult),
-        taskFailed ? "failed" : "succeeded",
-        taskFailed ? undefined : { exitCode: extractExitCode(taskResult) },
-      );
-      if (cache && !cache.isCacheable(toolId) && !taskFailed) {
-        cache.invalidateForWrite(toolId, args);
-      }
+      await finalizeExecutedTool(input, execution);
+      if (!execution.taskFailed) invalidateCacheAfterWrite(cache, toolId, args);
     }
   });
 }
