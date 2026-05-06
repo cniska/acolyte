@@ -6,6 +6,7 @@ import { collectReminders, reminderTag } from "./agent-reminders";
 import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { appConfig } from "./app-config";
+import { unreachable } from "./assert";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
@@ -17,9 +18,14 @@ import {
   parseError,
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
-import { SELF_REVIEW_TURNS_COOLDOWN } from "./lifecycle-constants";
 import { type GenerateOptions, promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
-import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
+import {
+  createGenerateFinishPolicyState,
+  createGeneratePromptCacheKey,
+  decideGenerateFinish,
+  renderGenerateFinishPolicyMessages,
+} from "./lifecycle-generate-policy";
+import { mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -209,13 +215,8 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
-  let completionRetryUsed = false;
   let toolErrorRecoveryUsed = false;
-  let missingSignalRetryUsed = false;
-  // Number of turns remaining during which the self-review injection is allowed.
-  // Initialized from lifecycle constants so behavior can be tuned centrally.
-  // When set to 1 this behaves like the prior boolean `selfReviewDone` flag.
-  let selfReviewTurnsRemaining = SELF_REVIEW_TURNS_COOLDOWN;
+  const finishPolicyState = createGenerateFinishPolicyState();
 
   const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
     if (toolErrorRecoveryUsed) return [];
@@ -245,7 +246,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   try {
     resetTimeout();
     const provider = providerFromModel(ctx.model);
-    const cacheKey = createPromptCacheKey({
+    const cacheKey = createGeneratePromptCacheKey({
       model: ctx.model,
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,
@@ -284,97 +285,52 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         const toolError = unresolvedToolError(ctx);
         if (toolError) return toolErrorRecoveryMessages(toolError);
 
-        if (!signal) {
-          const message =
-            "Cannot finish yet: final responses must call exactly one lifecycle signal tool (`signal_done`, `signal_noop`, or `signal_blocked`).";
-          if (!missingSignalRetryUsed) {
-            missingSignalRetryUsed = true;
-            ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            return [
-              {
-                role: "user" as const,
-                content: [
-                  {
-                    type: "text" as const,
-                    text: wrapInSystemReminder(
-                      "missing-signal",
-                      `${message} Continue by calling the correct signal tool now.`,
-                    ),
-                  },
-                ],
-              },
-            ];
-          }
-          ctx.currentError = {
-            message,
-            code: LIFECYCLE_ERROR_CODES.unknown,
-            category: "other",
-            blocksCompletion: true,
-          };
-          ctx.debug("lifecycle.signal.missing", { action: "block" });
-          return [];
-        }
-
-        if (signal === "done" && selfReviewTurnsRemaining > 0) {
-          selfReviewTurnsRemaining = 0;
-          const taskLog = scopedCallLog(ctx.session, ctx.taskId);
-          const hasWrites = taskLog.some((e) => ctx.session.writeTools.has(e.toolName));
-          if (!hasWrites) {
-            ctx.debug("lifecycle.self_review.skipped", { reason: "no-writes" });
-            return [];
-          }
-          ctx.debug("lifecycle.self_review.injected", { action: "continue" });
-          return [
-            {
-              role: "user" as const,
-              content: [
-                {
-                  type: "text" as const,
-                  text: wrapInSystemReminder(
-                    "task-self-review",
-                    [
-                      "Before finishing, review the original task you were given.",
-                      "In one sentence, confirm what you completed.",
-                      "If anything requested is still outstanding — files not updated, tests not added, steps skipped — address it now rather than handing off silently.",
-                    ].join(" "),
-                  ),
-                },
-              ],
-            },
-          ];
-        }
-
+        const taskLog = scopedCallLog(ctx.session, ctx.taskId);
         const completionBlock = findCompletionBlock({
           signal,
-          callLog: scopedCallLog(ctx.session, ctx.taskId),
+          callLog: taskLog,
           writeToolSet: WRITE_TOOL_SET,
           runnerToolSet: RUNNER_TOOL_SET,
         });
-        if (!completionBlock || completionRetryUsed) return [];
-        completionRetryUsed = true;
-        ctx.debug("lifecycle.signal.rejected", {
-          signal: signal ?? null,
-          reason: completionBlock.reason,
-          path: completionBlock.path,
-          action: "continue",
+        const decision = decideGenerateFinish({
+          state: finishPolicyState,
+          signal,
+          hasWrites: taskLog.some((e) => ctx.session.writeTools.has(e.toolName)),
+          completionBlock,
         });
-        return [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: wrapInSystemReminder(
-                  "completion-rejected",
-                  [
-                    completionBlock.message,
-                    "Continue autonomously: run focused validation now, or call `signal_blocked` only if validation is genuinely impossible.",
-                  ].join(" "),
-                ),
-              },
-            ],
-          },
-        ];
+        switch (decision.kind) {
+          case "missing-signal-continue":
+            ctx.debug("lifecycle.signal.missing", { action: "continue" });
+            break;
+          case "missing-signal-block":
+            ctx.currentError = {
+              message: decision.message,
+              code: decision.code,
+              category: "other",
+              blocksCompletion: true,
+            };
+            ctx.debug("lifecycle.signal.missing", { action: "block" });
+            break;
+          case "self-review-inject":
+            ctx.debug("lifecycle.self_review.injected", { action: "continue" });
+            break;
+          case "self-review-skip":
+            ctx.debug("lifecycle.self_review.skipped", { reason: decision.reason });
+            break;
+          case "completion-rejected-continue":
+            ctx.debug("lifecycle.signal.rejected", {
+              signal: signal ?? null,
+              reason: decision.block.reason,
+              path: decision.block.path,
+              action: "continue",
+            });
+            break;
+          case "none":
+            break;
+          default:
+            unreachable(decision);
+        }
+        return renderGenerateFinishPolicyMessages(decision);
       },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
