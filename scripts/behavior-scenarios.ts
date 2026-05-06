@@ -370,7 +370,7 @@ function validatePostSuccessStopTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
     issues.push("first tool call should be file-read on src/provider-config.ts");
   }
   if (toolCallLines.some((line) => line.includes("tool=file-find") || line.includes("tool=file-search"))) {
@@ -739,7 +739,7 @@ function validateStructuredEditCodeReplaceTrace(traceLines: string[]): string[] 
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/logger-migration.ts")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/logger-migration.ts")) {
     issues.push("first tool call should be file-read on src/logger-migration.ts");
   }
   const editCodeCalls = toolCallLines.filter(
@@ -759,7 +759,7 @@ function validateClassFieldEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.js")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/provider-config.js")) {
     issues.push("first tool call should be file-read on src/provider-config.js");
   }
   const editCodeCalls = toolCallLines.filter(
@@ -779,7 +779,7 @@ function validateScopedEditCodeRenameTargetTrace(traceLines: string[]): string[]
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/provider-config.ts")) {
     issues.push("first tool call should be file-read on src/provider-config.ts");
   }
   const editCodeCalls = toolCallLines.filter(
@@ -799,7 +799,7 @@ function validateScopedEditCodeRenameTrace(traceLines: string[]): string[] {
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
     issues.push("first tool call should be file-read on src/code-ops.ts");
   }
   const editCodeCalls = toolCallLines.filter(
@@ -819,7 +819,7 @@ function validateScopedEditCodeRenameShorthandTrace(traceLines: string[]): strin
   const issues: string[] = [];
   const toolCallLines = traceLines.filter((line) => line.includes("event=lifecycle.tool.call"));
   const firstTool = toolCallLines[0];
-  if (!firstTool || !firstTool.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
+  if (!firstTool?.includes("tool=file-read") || !firstTool.includes("src/code-ops.ts")) {
     issues.push("first tool call should be file-read on src/code-ops.ts");
   }
   const editCodeCalls = toolCallLines.filter(
