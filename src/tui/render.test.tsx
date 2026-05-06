@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
-import { ChatInputPanel } from "../chat-input-panel";
 import { ansi } from "./styles";
 import { renderCapture } from "./test-utils";
 
@@ -233,26 +232,16 @@ describe("render", () => {
             };
           }, []);
 
-          const items = [
-            { label: "alibaba/qwen-3-235b", value: "a1" },
-            { label: "alibaba/qwen3-max", value: "a2" },
-            { label: "alibaba/qwen-3-14b", value: "a3" },
-            { label: "alibaba/qwen-3-30b", value: "a4" },
-            { label: "alibaba/qwen-3-32b", value: "a5" },
-            { label: "alibaba/qwen3-coder", value: "a6" },
-            { label: "alibaba/qwen3.5-plus", value: "a7" },
-            { label: "alibaba/qwen3.6-plus", value: "a8" },
+          const pickerItems = [
+            "alibaba/qwen-3-235b",
+            "alibaba/qwen3-max",
+            "alibaba/qwen-3-14b",
+            "alibaba/qwen-3-30b",
+            "alibaba/qwen-3-32b",
+            "alibaba/qwen3-coder",
+            "alibaba/qwen3.5-plus",
+            "alibaba/qwen3.6-plus",
           ];
-          const picker = open
-            ? {
-                kind: "model" as const,
-                items,
-                filtered: items,
-                query: "",
-                index: 1,
-                scrollOffset: 0,
-              }
-            : null;
 
           return (
             <tui-box flexDirection="column">
@@ -261,15 +250,10 @@ describe("render", () => {
                 <tui-text>static line 2</tui-text>
               </tui-static>
               <tui-text>transcript line</tui-text>
-              <ChatInputPanel
-                picker={picker}
-                onPickerQueryChange={() => {}}
-                onPickerSubmit={() => {}}
-                onCursorLine={() => {}}
-                brandColor="white"
-                value=""
-                footer={{ workspace: "~/code/acolyte", branch: "main", pr: null, model: "qwen3-235b-a22b-thinking" }}
-              />
+              <tui-box flexDirection="column">
+                {open && pickerItems.map((item) => <tui-text key={item}>{item}</tui-text>)}
+                <tui-text>Model: qwen3-235b-a22b-thinking</tui-text>
+              </tui-box>
             </tui-box>
           );
         }

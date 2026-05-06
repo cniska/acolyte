@@ -1,3 +1,5 @@
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { ChatChecklist } from "./chat-checklist";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
@@ -6,7 +8,9 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
 import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { setLogSink } from "./log";
 import { palette } from "./palette";
+import { stateDir } from "./paths";
 import { Box, render, Static, Text, useApp } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
 
@@ -83,6 +87,20 @@ function ChatApp(props: ChatAppProps) {
 }
 
 export async function runChat(props: ChatAppProps): Promise<void> {
+  if (process.env.ACOLYTE_DEBUG) {
+    const logPath = join(stateDir(), "client.log");
+    setLogSink((line) => {
+      try {
+        appendFileSync(logPath, line);
+      } catch {
+        // best-effort
+      }
+    });
+  }
   const app = render(<ChatApp {...props} />);
-  await app.waitUntilExit();
+  try {
+    await app.waitUntilExit();
+  } finally {
+    setLogSink(null);
+  }
 }

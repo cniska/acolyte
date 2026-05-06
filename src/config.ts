@@ -233,7 +233,7 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   const subKey = key.slice(dot + 1);
   if (!(section in CONFIG_SET_SCHEMAS) || subKey.length === 0) return null;
   const allowed = RECORD_VALID_KEYS[section];
-  if (!allowed || !allowed.has(subKey)) return null;
+  if (!allowed?.has(subKey)) return null;
   return { section, subKey };
 }
 

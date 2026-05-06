@@ -19,9 +19,9 @@ import {
   STDIO_ENV_ALLOWLIST,
 } from "./mcp-contract";
 import { getOrConnectClient } from "./mcp-session";
+import type { SessionContext } from "./tool-contract";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import type { SessionContext } from "./tool-session";
 
 // biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
 type AnyToolDefinition = ToolDefinition<any, any>;

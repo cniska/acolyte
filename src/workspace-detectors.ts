@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readJson } from "./json";
-import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-profile";
+import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
 
 export function fileExists(workspace: string, name: string): boolean {
   return existsSync(join(workspace, name));

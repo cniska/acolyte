@@ -10,7 +10,7 @@ import {
   STUCK_LOOP_TURNS_BETWEEN_REMINDERS,
   TOOL_TIMEOUT_MS,
 } from "./lifecycle-constants";
-import type { WorkspaceCommand } from "./workspace-profile";
+import type { WorkspaceCommand } from "./workspace-contract";
 
 export type LifecyclePolicy = {
   // Step limits

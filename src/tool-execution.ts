@@ -2,8 +2,9 @@ import { invariant } from "./assert";
 import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
 import { field } from "./field";
+import type { RunToolResult, SessionContext } from "./tool-contract";
 import { ToolError } from "./tool-error";
-import { checkStepBudget, recordCall, type SessionContext } from "./tool-session";
+import { checkStepBudget, recordCall } from "./tool-session";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -58,8 +59,6 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
     throw wrapped;
   }
 }
-
-export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
 
 export async function runTool<T = unknown>(
   session: SessionContext,

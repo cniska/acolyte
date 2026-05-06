@@ -4,7 +4,7 @@ import {
   STUCK_LOOP_SAME_FILE_THRESHOLD,
   STUCK_LOOP_TURNS_BETWEEN_REMINDERS,
 } from "./lifecycle-constants";
-import type { ToolCallRecord } from "./tool-session";
+import type { ToolCallRecord } from "./tool-contract";
 
 export type StuckLoopReminder = { type: "stuck-loop"; path: string; editCount: number };
 export type BudgetPressureReminder = {

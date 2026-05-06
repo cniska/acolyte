@@ -1,10 +1,11 @@
 import type { LanguageModelV3FunctionTool } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { ChecklistItem } from "./checklist-contract";
+import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { log } from "./log";
-import type { RunToolResult } from "./tool-execution";
+import type { ActiveSkill } from "./skill-contract";
 import type { ToolOutputListener } from "./tool-output-format";
-import type { SessionContext } from "./tool-session";
+import type { WorkspaceProfile } from "./workspace-contract";
 
 export type ToolCategory = "read" | "search" | "write" | "execute" | "network" | "meta";
 
@@ -31,6 +32,8 @@ export type ToolkitInput = {
   onChecklist: ChecklistListener;
 };
 
+export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
+
 export type ToolCacheEntry = {
   result: unknown;
 };
@@ -42,6 +45,62 @@ export type ToolCache = {
   invalidateForWrite(toolName: string, args: Record<string, unknown>): void;
   clear(): void;
   stats(): { hits: number; misses: number; invalidations: number; evictions: number; size: number };
+};
+
+export type ToolCallStatus = "succeeded" | "failed";
+
+export type ToolCallRecord = {
+  toolName: string;
+  args: Record<string, unknown>;
+  taskId?: string;
+  resultHash?: string;
+  exitCode?: number;
+  status: ToolCallStatus;
+};
+
+export type SessionFlags = {
+  turnStepCount?: number;
+  turnStepLimit?: number;
+  totalStepLimit?: number;
+};
+
+export type ToolErrorSummary = { message: string; code?: string; kind?: string };
+
+export type PreToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown> };
+export type PostToolContext =
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "succeeded";
+      result: unknown;
+    }
+  | {
+      toolId: string;
+      toolCallId: string;
+      args: Record<string, unknown>;
+      status: "failed";
+      error: ToolErrorSummary;
+    };
+export type EffectOutput = { append?: string };
+
+export type SessionContext = {
+  callLog: ToolCallRecord[];
+  taskId?: string;
+  flags: SessionFlags;
+  writeTools: ReadonlySet<string>;
+  toolTimeoutMs?: number;
+  cache?: ToolCache;
+  featureFlags?: ResolvedFeatureFlags;
+  consecutiveFailures: Map<string, number>;
+  maxConsecutiveToolFailures?: number;
+  onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
+  onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
+  onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
+  onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
+  onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
+  workspaceProfile?: WorkspaceProfile;
+  activeSkills?: ActiveSkill[];
 };
 
 type CreateToolConfig<TInput, TOutput> = Omit<ToolDefinition<TInput, TOutput>, "inputSchema"> & {

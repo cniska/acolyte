@@ -1,5 +1,4 @@
-import { z } from "zod";
-import type { Agent } from "./agent-contract";
+import type { Agent, GenerateResult, LifecycleSignal } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCode } from "./error-contract";
@@ -8,10 +7,9 @@ import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
-import type { ChecklistListener } from "./tool-contract";
+import type { ChecklistListener, SessionContext } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
-import type { SessionContext } from "./tool-session";
 
 export type LifecycleError = {
   message: string;
@@ -30,22 +28,6 @@ export type LifecycleDebugEvent = {
   ts: string;
   fields?: Record<string, unknown>;
 };
-
-export type ToolCallEntry = {
-  toolCallId: string;
-  toolName: string;
-  args: unknown;
-};
-
-export type GenerateResult = {
-  text: string;
-  toolCalls: ToolCallEntry[];
-  signal?: LifecycleSignal;
-  signalReason?: string;
-};
-
-export const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
-export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
 
 export type ToolOutputEvent = {
   toolName: string;
@@ -74,29 +56,6 @@ export function promptUsageTotalTokens(usage: PromptUsage): number {
   return usage.systemPromptTokens + usage.toolTokens + usage.skillTokens + usage.memoryTokens + usage.messageTokens;
 }
 
-export type TextDeltaPayload = { text?: string };
-export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
-export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
-export type ToolErrorPayload = {
-  error?: unknown;
-  message?: string;
-  code?: unknown;
-  kind?: unknown;
-  toolName?: string;
-  toolCallId?: string;
-};
-export type ModelUsagePayload = {
-  inputTokens?: number;
-  outputTokens?: number;
-};
-export type StreamChunk =
-  | { type: "step-start" }
-  | { type: "text-delta"; payload: TextDeltaPayload }
-  | { type: "reasoning-delta"; payload: TextDeltaPayload }
-  | { type: "tool-call"; payload: ToolCallPayload }
-  | { type: "tool-result"; payload: ToolResultPayload }
-  | { type: "tool-error"; payload: ToolErrorPayload }
-  | { type: "model-usage"; payload: ModelUsagePayload };
 export type ModelResolution = { model: string; provider: string };
 export type PhasePrepareInput = {
   request: ChatRequest;

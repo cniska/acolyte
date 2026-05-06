@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { findCompletionBlock } from "./lifecycle-completion";
-import type { ToolCallRecord } from "./tool-session";
+import type { ToolCallRecord } from "./tool-contract";
 
 const writeToolSet = new Set(["file-edit", "file-create"]);
 const runnerToolSet = new Set(["shell-run", "test-run"]);

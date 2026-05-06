@@ -1,9 +1,5 @@
-import { appendFileSync } from "node:fs";
-import { join } from "node:path";
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
-import { setLogSink } from "../log";
-import { stateDir } from "../paths";
 import { DEFAULT_COLUMNS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
@@ -14,10 +10,6 @@ import { serializeSplit, stripAnsiLength } from "./serialize";
 import { ansi, kitty } from "./styles";
 
 const KITTY_TERMINALS = ["kitty", "WezTerm", "ghostty", "iTerm.app"];
-
-function clientLogPath(): string {
-  return join(stateDir(), "client.log");
-}
 
 /** Count physical terminal rows, accounting for line wrapping. */
 function physicalRowCount(output: string, columns: number): number {
@@ -37,18 +29,6 @@ type RenderInstance = {
 };
 
 export function render(node: ReactNode): RenderInstance {
-  setLogSink(
-    process.env.ACOLYTE_DEBUG
-      ? (line) => {
-          try {
-            appendFileSync(clientLogPath(), line);
-          } catch {
-            // best-effort
-          }
-        }
-      : () => {},
-  );
-
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
@@ -295,7 +275,6 @@ export function render(node: ReactNode): RenderInstance {
   reconciler.updateContainer(wrappedNode, container, null, () => {});
 
   function cleanup() {
-    setLogSink(null);
     setOnCommit(null);
     if (resizeTimer) clearTimeout(resizeTimer);
     process.removeListener("SIGINT", onSignal);

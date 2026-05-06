@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import type { PostToolContext, PreToolContext, SessionContext } from "./tool-session";
+import type { PostToolContext, PreToolContext, SessionContext } from "./tool-contract";
 import { captureUndoBefore, commitUndoCheckpoint } from "./undo-checkpoints";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 

@@ -7,11 +7,18 @@ import type {
   LanguageModelV3ToolCallPart,
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
-import type { Agent, StreamOptions, StreamOutput } from "./agent-contract";
+import type {
+  Agent,
+  GenerateResult,
+  LifecycleSignal,
+  StreamChunk,
+  StreamOptions,
+  StreamOutput,
+  ToolCallEntry,
+} from "./agent-contract";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
-import type { GenerateResult, LifecycleSignal, StreamChunk, ToolCallEntry } from "./lifecycle-contract";
 import { log } from "./log";
 import { createModel } from "./model-factory";
 import { applyPromptCacheMarkers } from "./prompt-cache";
