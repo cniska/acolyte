@@ -12,8 +12,8 @@ import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
 import { createLifecycleDeps, createLifecycleInput, tempDir } from "./test-utils";
-import { runTool } from "./tool-execution";
 import type { SessionContext } from "./tool-contract";
+import { runTool } from "./tool-execution";
 import { listUndoCheckpoints } from "./undo-checkpoints";
 
 const dirs = tempDir();

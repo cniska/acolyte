@@ -2,8 +2,8 @@ import { invariant } from "./assert";
 import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
 import { field } from "./field";
-import { ToolError } from "./tool-error";
 import type { RunToolResult, SessionContext } from "./tool-contract";
+import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall } from "./tool-session";
 
 function withTimeout<T>(task: () => Promise<T>, timeoutMs: number, toolId: string): Promise<T> {

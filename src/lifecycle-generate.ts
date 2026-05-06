@@ -1,5 +1,5 @@
 import type { LanguageModelV3Message } from "@ai-sdk/provider";
-import type { Agent } from "./agent-contract";
+import type { Agent, GenerateResult, StreamChunk } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { collectReminders, reminderTag } from "./agent-reminders";
@@ -18,12 +18,7 @@ import {
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
 import { SELF_REVIEW_TURNS_COOLDOWN } from "./lifecycle-constants";
-import type { GenerateResult, StreamChunk } from "./agent-contract";
-import {
-  type GenerateOptions,
-  promptUsageTotalTokens,
-  type RunContext,
-} from "./lifecycle-contract";
+import { type GenerateOptions, promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";

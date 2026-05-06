@@ -1,4 +1,4 @@
-import type { Agent, GenerateResult, LifecycleSignal, ToolCallEntry } from "./agent-contract";
+import type { Agent, GenerateResult, LifecycleSignal } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ErrorCode } from "./error-contract";
@@ -7,10 +7,9 @@ import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
-import type { ChecklistListener } from "./tool-contract";
+import type { ChecklistListener, SessionContext } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
-import type { SessionContext } from "./tool-contract";
 
 export type LifecycleError = {
   message: string;

@@ -1,3 +1,5 @@
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { ChatChecklist } from "./chat-checklist";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
@@ -6,8 +8,6 @@ import { ChatInputPanel } from "./chat-input-panel";
 import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
 import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
-import { appendFileSync } from "node:fs";
-import { join } from "node:path";
 import { setLogSink } from "./log";
 import { palette } from "./palette";
 import { stateDir } from "./paths";

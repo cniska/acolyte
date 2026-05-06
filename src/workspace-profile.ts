@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { detectWorkspaceProfile } from "./workspace-detectors";
 import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
+import { detectWorkspaceProfile } from "./workspace-detectors";
 
 export type CommandResult = { hasErrors: boolean; stdout: string; stderr: string };
 

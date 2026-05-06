@@ -1,5 +1,5 @@
 import { MAX_CONSECUTIVE_TOOL_FAILURES, MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
-import type { SessionContext, SessionFlags, ToolCallRecord, ToolCallStatus } from "./tool-contract";
+import type { SessionContext, ToolCallRecord, ToolCallStatus } from "./tool-contract";
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
   return {
