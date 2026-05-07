@@ -48,7 +48,7 @@ describe("per-tool timeout", () => {
     expect(result).toEqual({ result: "done" });
   });
 
-  test("returns effectOutput from lifecycle hooks", async () => {
+  test("returns effectOutput from lifecycle side effects", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     session.onAfterTool = () => ({ append: "Lint errors:\nsrc/foo.ts:1 missing semicolon" });
@@ -57,7 +57,7 @@ describe("per-tool timeout", () => {
     expect(result.effectOutput).toBe("Lint errors:\nsrc/foo.ts:1 missing semicolon");
   });
 
-  test("omits effectOutput when lifecycle hooks return no feedback", async () => {
+  test("omits effectOutput when lifecycle side effects return no feedback", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     session.onAfterTool = () => undefined;
@@ -144,7 +144,7 @@ describe("per-tool timeout", () => {
     expect(session.callLog[0]).toMatchObject({ toolName: "file-read", status: "succeeded" });
   });
 
-  test("reports failed executions to async hooks before recording the failed call", async () => {
+  test("reports failed executions to async side effects before recording the failed call", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     const events: string[] = [];

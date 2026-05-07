@@ -70,15 +70,15 @@ type ToolExecutionResult<T> = {
   taskError?: unknown;
 };
 
-function debugHookFailure(
+function debugSideEffectFailure(
   session: SessionContext,
-  hook: "before" | "after",
+  phase: "before" | "after",
   toolId: string,
   toolCallId: string,
   error: unknown,
 ) {
-  session.onDebug?.("lifecycle.tool.hook_failed", {
-    hook,
+  session.onDebug?.("lifecycle.tool.side_effect_failed", {
+    phase,
     tool: toolId,
     tool_call_id: toolCallId,
     message: errorMessage(error),
@@ -95,7 +95,7 @@ function assertStepBudget(input: Pick<ToolRunInput<unknown>, "session" | "toolId
   throw error;
 }
 
-async function runBeforeToolHooks(
+async function runBeforeToolSideEffects(
   input: Pick<ToolRunInput<unknown>, "session" | "toolId" | "toolCallId" | "args">,
 ): Promise<BeforeToolResult> {
   const ctx: PreToolContext = { toolId: input.toolId, toolCallId: input.toolCallId, args: input.args };
@@ -104,18 +104,18 @@ async function runBeforeToolHooks(
     try {
       await input.session.onBeforeToolAsync(ctx);
     } catch (error) {
-      debugHookFailure(input.session, "before", input.toolId, input.toolCallId, error);
+      debugSideEffectFailure(input.session, "before", input.toolId, input.toolCallId, error);
     }
   }
   return { preOutput };
 }
 
-async function runAfterToolAsync(session: SessionContext, ctx: PostToolContext): Promise<void> {
+async function runAfterToolSideEffects(session: SessionContext, ctx: PostToolContext): Promise<void> {
   if (!session.onAfterToolAsync) return;
   try {
     await session.onAfterToolAsync(ctx);
   } catch (error) {
-    debugHookFailure(session, "after", ctx.toolId, ctx.toolCallId, error);
+    debugSideEffectFailure(session, "after", ctx.toolId, ctx.toolCallId, error);
   }
 }
 
@@ -157,7 +157,7 @@ async function returnCachedResult<T>(
   input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
   result: T,
 ): Promise<RunToolResult<T>> {
-  await runAfterToolAsync(input.session, {
+  await runAfterToolSideEffects(input.session, {
     toolId: input.toolId,
     toolCallId: input.toolCallId,
     args: input.args,
@@ -183,7 +183,7 @@ async function finalizeExecutedTool<T>(
 ): Promise<void> {
   if (execution.taskFailed) {
     const parsed = parseError(execution.taskError);
-    await runAfterToolAsync(input.session, {
+    await runAfterToolSideEffects(input.session, {
       toolId: input.toolId,
       toolCallId: input.toolCallId,
       args: input.args,
@@ -194,7 +194,7 @@ async function finalizeExecutedTool<T>(
     return;
   }
 
-  await runAfterToolAsync(input.session, {
+  await runAfterToolSideEffects(input.session, {
     toolId: input.toolId,
     toolCallId: input.toolCallId,
     args: input.args,
@@ -238,7 +238,7 @@ export async function runTool<T = unknown>(
   return withToolError(toolId, async () => {
     const input: ToolRunInput<T> = { session, toolId, toolCallId, args, execute, options };
     assertStepBudget(input);
-    const { preOutput } = await runBeforeToolHooks(input);
+    const { preOutput } = await runBeforeToolSideEffects(input);
     const cache = session.cache;
     const timeoutMs = resolveTimeoutMs(session, options);
     const cached = readCachedResult<T>(cache, input);
