@@ -43,6 +43,14 @@ describe("tool-cache", () => {
     expect(cache.stats().misses).toBe(1);
   });
 
+  test("file-read windows are cached separately from full reads", () => {
+    const cache = createToolCache(CACHEABLE);
+    cache.set("file-read", { path: "src/foo.ts" }, { result: "full" });
+    cache.set("file-read", { path: "src/foo.ts", aroundLine: 10, contextLines: 20 }, { result: "window" });
+    expect(cache.get("file-read", { path: "src/foo.ts" })?.result).toBe("full");
+    expect(cache.get("file-read", { path: "src/foo.ts", aroundLine: 10, contextLines: 20 })?.result).toBe("window");
+  });
+
   test("stable key ignores object key order", () => {
     const cache = createToolCache(CACHEABLE);
     cache.set("file-read", { path: "a.ts", extra: 1 }, { result: "ok" });
@@ -66,6 +74,17 @@ describe("tool-cache", () => {
     expect(cache.get("file-read", { path: "src/foo.ts" })).toBeUndefined();
     expect(cache.get("file-read", { path: "src/bar.ts" })).toBeDefined();
     expect(cache.stats().invalidations).toBeGreaterThan(0);
+  });
+
+  test("invalidateForWrite evicts all file-read windows for an overlapping path", () => {
+    const cache = createToolCache(CACHEABLE);
+    cache.set("file-read", { path: "src/foo.ts" }, { result: "full" });
+    cache.set("file-read", { path: "src/foo.ts", aroundLine: 10, contextLines: 20 }, { result: "window" });
+    cache.set("file-read", { path: "src/bar.ts", aroundLine: 10, contextLines: 20 }, { result: "unrelated" });
+    cache.invalidateForWrite("file-edit", { path: "src/foo.ts" });
+    expect(cache.get("file-read", { path: "src/foo.ts" })).toBeUndefined();
+    expect(cache.get("file-read", { path: "src/foo.ts", aroundLine: 10, contextLines: 20 })).toBeUndefined();
+    expect(cache.get("file-read", { path: "src/bar.ts", aroundLine: 10, contextLines: 20 })).toBeDefined();
   });
 
   test("invalidateForWrite clears search/find entries on any write", () => {
