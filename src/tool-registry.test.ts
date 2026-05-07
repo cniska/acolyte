@@ -125,6 +125,10 @@ describe("localization baseline", () => {
 
     expectIntent(readInstruction, [
       ["file-read", "before", "file-edit", "code-edit"],
+      ["file-search", "aroundLine"],
+      ["Default", "contextLines", "20"],
+      ["up to", "60"],
+      ["widen", "incrementally"],
       ["re-read", "target file", "before editing"],
     ]);
     expectIntent(findInstruction, [["file-find", "locate files"]]);

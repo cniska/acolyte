@@ -50,7 +50,7 @@ Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore
 
 ## Tool result cache
 
-Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`) are cached. Identical calls return the cached result without re-executing.
+Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`) are cached. Identical calls return the cached result without re-executing. Bounded `file-read` windows are keyed by `aroundLine` and `contextLines`, so full reads and windowed reads cache independently while still invalidating together by path.
 
 - **Key**: deterministic `toolName:stableJSON(args)` — object keys sorted for stability
 - **Invalidation**: write tools (`file-edit`, `file-create`, `file-delete`) evict entries with overlapping paths; `shell-run` clears the entire cache
