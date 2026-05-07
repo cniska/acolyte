@@ -84,6 +84,18 @@ function createNewCommand(ctx: CommandContext): SlashCommand {
   };
 }
 
+function createHandoffCommand(ctx: CommandContext): SlashCommand {
+  return {
+    name: "handoff",
+    match: (value) => value === "/handoff" || value.startsWith("/handoff "),
+    run: async () => {
+      const reason = ctx.resolvedText.split(/\s+/).slice(1).join(" ").trim();
+      await ctx.startHandoffReview(reason.length > 0 ? reason : undefined);
+      return { stop: true, userText: ctx.text };
+    },
+  };
+}
+
 function createExitCommand(ctx: CommandContext): SlashCommand {
   return {
     name: "exit",
@@ -91,17 +103,6 @@ function createExitCommand(ctx: CommandContext): SlashCommand {
     run: async () => {
       await ctx.persist();
       ctx.exit();
-      return { stop: true, userText: ctx.text };
-    },
-  };
-}
-
-function createClearCommand(ctx: CommandContext): SlashCommand {
-  return {
-    name: "clear",
-    match: (value) => value === "/clear",
-    run: async () => {
-      ctx.clearTranscript();
       return { stop: true, userText: ctx.text };
     },
   };
@@ -117,10 +118,10 @@ function resolveSlashCommands(ctx: CommandContext): SlashCommand[] {
     ...createModelCommands(ctx),
     ...createMemoryCommands(ctx, memoryApi),
     createUsageCommand(ctx),
+    createHandoffCommand(ctx),
     createSkillsCommand(ctx),
     createNewCommand(ctx),
     createExitCommand(ctx),
-    createClearCommand(ctx),
   ];
 }
 

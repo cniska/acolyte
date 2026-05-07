@@ -42,7 +42,7 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 ## Chat commands
 
 - `/new`: start new session
-- `/clear`: clear transcript
+- `/handoff`: review and start a new session
 - `/resume`: resume a previous session
 - `/sessions`: show sessions
 - `/workspaces`: manage parallel workspaces (feature-flagged)

@@ -2,18 +2,23 @@ import { setModel } from "./app-config";
 import { unreachable } from "./assert";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
+import { summaryTitle } from "./chat-handoff";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import { createSession } from "./session-store";
+import { createId } from "./short-id";
 import { loadSkills } from "./skill-ops";
 
 export type CreatePickerHandlersInput = {
   sessionState: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
+  pendingHandoff: { summary: string; reason?: string } | null;
+  setPendingHandoff: (next: { summary: string; reason?: string } | null) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setRowsDirect: (next: ChatRow[]) => void;
@@ -136,6 +141,50 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           await input.persist();
         }
         input.setPicker(null);
+        return;
+      }
+      case "handoff": {
+        const selected = state.items[state.index];
+        if (!selected) return;
+        if (selected.value === "cancel") {
+          input.setPendingHandoff(null);
+          input.setPicker(null);
+          return;
+        }
+        const pending = input.pendingHandoff;
+        if (!pending) {
+          input.setPicker(null);
+          return;
+        }
+        const now = input.nowIso();
+        const next = createSession(input.currentSession.model);
+        next.workspace = input.currentSession.workspace;
+        next.workspaceName = input.currentSession.workspaceName;
+        next.workspaceBranch = input.currentSession.workspaceBranch;
+        if (input.currentSession.activeSkills) next.activeSkills = [...input.currentSession.activeSkills];
+        const title = summaryTitle(pending.summary);
+        if (title) next.title = title;
+        next.messages = [
+          {
+            id: `msg_${createId()}`,
+            role: "user",
+            content: pending.summary,
+            kind: "text",
+            timestamp: now,
+          },
+        ];
+        next.updatedAt = now;
+        input.sessionState.sessions.unshift(next);
+        input.sessionState.activeSessionId = next.id;
+        input.setCurrentSession(next);
+        input.setTokenUsage?.(() => []);
+        input.clearTranscript(next.id);
+        input.setRowsDirect(input.toRows(next.messages));
+        input.setShowHelp(false);
+        input.setValue("");
+        input.setPendingHandoff(null);
+        input.setPicker(null);
+        await input.persist();
         return;
       }
       default:

@@ -87,6 +87,18 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No usage data yet. Send a prompt first.")).toBe(true);
   });
 
+  test("dispatchSlashCommand handles /handoff", async () => {
+    let receivedReason: string | undefined;
+    const { stop } = await runCommand("/handoff continue from here", {
+      startHandoffReview: async (reason) => {
+        receivedReason = reason;
+      },
+    });
+
+    expect(stop).toBe(true);
+    expect(receivedReason).toBe("continue from here");
+  });
+
   test("dispatchSlashCommand handles /status", async () => {
     const { rows, stop } = await runCommand("/status");
     expect(stop).toBe(true);

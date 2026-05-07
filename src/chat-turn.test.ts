@@ -205,4 +205,85 @@ describe("chat turn helpers", () => {
 
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
+
+  test("runAssistantTurn captures session handoff tool requests", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async ({ onEvent }) => {
+          onEvent({
+            type: "tool-result",
+            toolCallId: "call_handoff",
+            toolName: "session-handoff",
+            result: {
+              kind: "session-handoff",
+              requested: true,
+              reason: "Need a clean continuation.",
+            },
+          });
+          return {
+            state: "done" as const,
+            model: "gpt-5-mini",
+            output: "done",
+          };
+        },
+        status: async () => ({}),
+        taskStatus: async () => null,
+      },
+      userText: "handoff",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      pendingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.handoffRequest).toEqual({
+      kind: "session-handoff",
+      requested: true,
+      reason: "Need a clean continuation.",
+    });
+  });
+
+  test("runAssistantTurn rejects malformed session handoff tool requests", async () => {
+    await expect(
+      runAssistantTurn({
+        client: {
+          replyStream: async ({ onEvent }) => {
+            onEvent({
+              type: "tool-result",
+              toolCallId: "call_handoff",
+              toolName: "session-handoff",
+              result: {
+                kind: "session-handoff",
+                requested: false,
+              },
+            });
+            return {
+              state: "done" as const,
+              model: "gpt-5-mini",
+              output: "done",
+            };
+          },
+          status: async () => ({}),
+          taskStatus: async () => null,
+        },
+        userText: "handoff",
+        history: [],
+        model: "gpt-5-mini",
+        sessionId: "sess_test",
+        pendingStartedAt: Date.now(),
+        createMessage: (role, content) => ({
+          id: "msg_assistant",
+          role,
+          content,
+          timestamp: "2026-02-20T00:00:00.000Z",
+        }),
+      }),
+    ).rejects.toThrow();
+  });
 });

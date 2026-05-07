@@ -3,10 +3,10 @@ import { getLoadedSkills } from "./skill-ops";
 
 const CHAT_SLASH_COMMANDS = [
   "/new",
-  "/clear",
   "/model",
   "/status",
   "/sessions",
+  "/handoff",
   "/workspaces",
   "/skills",
   "/resume",
@@ -22,10 +22,10 @@ const SUB_COMMANDS: Record<string, string[]> = {
 
 const SLASH_HELP: Record<string, string> = {
   "/new": t("chat.slash.help.new"),
-  "/clear": t("chat.slash.help.clear"),
   "/model": t("chat.slash.help.model"),
   "/status": t("chat.slash.help.status"),
   "/sessions": t("chat.slash.help.sessions"),
+  "/handoff": t("chat.slash.help.handoff"),
   "/workspaces": t("chat.slash.help.workspaces"),
   "/workspaces list": t("chat.slash.help.workspaces.list"),
   "/workspaces new": t("chat.slash.help.workspaces.new"),
