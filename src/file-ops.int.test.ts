@@ -19,12 +19,52 @@ describe("path validation — fs", () => {
     expect(result.result.output).toContain("hello from workspace");
   });
 
+  test("readFile supports bounded windows", async () => {
+    const workspace = dirs.createDir("acolyte-read-tool-window-");
+    const filePath = join(workspace, `test-read-tool-window-${testUuid()}.txt`);
+    const lines = Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.readFile.execute({ path: filePath, aroundLine: 3, contextLines: 1 }, "call_read_window");
+    expect(result.result.aroundLine).toBe(3);
+    expect(result.result.contextLines).toBe(1);
+    expect(result.result.output).toContain("Lines: 2-4 of 6");
+    expect(result.result.output).toContain("2: line 2");
+    expect(result.result.output).not.toContain("5: line 5");
+  });
+
+  test("readFile defaults bounded window context to 20 lines", async () => {
+    const workspace = dirs.createDir("acolyte-read-tool-default-window-");
+    const filePath = join(workspace, `test-read-tool-default-window-${testUuid()}.txt`);
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.readFile.execute({ path: filePath, aroundLine: 50 }, "call_read_default_window");
+    expect(result.result.contextLines).toBe(20);
+    expect(result.result.output).toContain("Lines: 30-70 of 100");
+    expect(result.result.output).toContain("50: line 50");
+    expect(result.result.output).not.toContain("29: line 29");
+    expect(result.result.output).not.toContain("71: line 71");
+  });
+
+  test("readFile ignores contextLines without aroundLine", async () => {
+    const workspace = dirs.createDir("acolyte-read-tool-context-only-");
+    const filePath = join(workspace, `test-read-tool-context-only-${testUuid()}.txt`);
+    await writeFile(filePath, "line 1\nline 2\nline 3", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.readFile.execute({ path: filePath, contextLines: 1 }, "call_read_context_only");
+    expect(result.result.contextLines).toBeUndefined();
+    expect(result.result.output).not.toContain("Lines:");
+    expect(result.result.output).toContain("1: line 1");
+    expect(result.result.output).toContain("3: line 3");
+  });
+
   test("readFileContent rejects files exceeding maxLines", async () => {
     const workspace = dirs.createDir("acolyte-read-maxlines-");
     const filePath = join(workspace, `test-large-${testUuid()}.txt`);
     const lines = Array.from({ length: 11 }, (_, i) => `line ${i + 1}`).join("\n");
     await writeFile(filePath, lines, "utf8");
-    await expect(readFileContent(workspace, filePath, 10)).rejects.toThrow(/too large/);
+    await expect(readFileContent(workspace, filePath, { maxLines: 10 })).rejects.toThrow(/too large/);
   });
 
   test("readFileContent allows files at exactly maxLines", async () => {
@@ -32,8 +72,54 @@ describe("path validation — fs", () => {
     const filePath = join(workspace, `test-exact-${testUuid()}.txt`);
     const lines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n");
     await writeFile(filePath, lines, "utf8");
-    const output = await readFileContent(workspace, filePath, 10);
+    const output = await readFileContent(workspace, filePath, { maxLines: 10 });
     expect(output).toContain("line 1");
+  });
+
+  test("readFileContent returns a bounded line window", async () => {
+    const workspace = dirs.createDir("acolyte-read-window-");
+    const filePath = join(workspace, `test-window-${testUuid()}.txt`);
+    const lines = Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    const output = await readFileContent(workspace, filePath, { aroundLine: 4, contextLines: 1, maxLines: 10 });
+    expect(output).toContain("Lines: 3-5 of 6");
+    expect(output).toContain("3: line 3");
+    expect(output).toContain("5: line 5");
+    expect(output).not.toContain("2: line 2");
+    expect(output).not.toContain("6: line 6");
+  });
+
+  test("readFileContent clamps window end to file length", async () => {
+    const workspace = dirs.createDir("acolyte-read-window-clamp-");
+    const filePath = join(workspace, `test-window-clamp-${testUuid()}.txt`);
+    await writeFile(filePath, "line 1\nline 2\nline 3", "utf8");
+    const output = await readFileContent(workspace, filePath, { aroundLine: 3, contextLines: 1, maxLines: 10 });
+    expect(output).toContain("Lines: 2-3 of 3");
+    expect(output).toContain("2: line 2");
+    expect(output).toContain("3: line 3");
+  });
+
+  test("readFileContent rejects invalid windows", async () => {
+    const workspace = dirs.createDir("acolyte-read-window-invalid-");
+    const filePath = join(workspace, `test-window-invalid-${testUuid()}.txt`);
+    await writeFile(filePath, "line 1\nline 2\nline 3", "utf8");
+    await expect(readFileContent(workspace, filePath, { aroundLine: 0 })).rejects.toThrow("aroundLine must be >= 1");
+    await expect(readFileContent(workspace, filePath, { aroundLine: 2, contextLines: -1 })).rejects.toThrow(
+      "contextLines must be >= 0",
+    );
+    await expect(readFileContent(workspace, filePath, { aroundLine: 4 })).rejects.toThrow(
+      "aroundLine (4) exceeds file length (3)",
+    );
+  });
+
+  test("readFileContent enforces maxLines on bounded windows", async () => {
+    const workspace = dirs.createDir("acolyte-read-window-maxlines-");
+    const filePath = join(workspace, `test-window-maxlines-${testUuid()}.txt`);
+    const lines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n");
+    await writeFile(filePath, lines, "utf8");
+    await expect(
+      readFileContent(workspace, filePath, { aroundLine: 10, contextLines: 6, maxLines: 10 }),
+    ).rejects.toThrow("Read window");
   });
 
   test("editFile allows workspace files", async () => {
