@@ -15,13 +15,13 @@ const SELF_REVIEW_MESSAGE = [
   "If anything requested is still outstanding — files not updated, tests not added, steps skipped — address it now rather than handing off silently.",
 ].join(" ");
 
-export type GenerateFinishPolicyState = {
+export type FinishPolicyState = {
   completionRetryUsed: boolean;
   missingSignalRetryUsed: boolean;
   selfReviewTurnsRemaining: number;
 };
 
-export type GenerateFinishPolicyDecision =
+export type FinishPolicyDecision =
   | { kind: "none" }
   | { kind: "missing-signal-continue"; message: string }
   | { kind: "missing-signal-block"; message: string; code: typeof LIFECYCLE_ERROR_CODES.unknown }
@@ -29,9 +29,7 @@ export type GenerateFinishPolicyDecision =
   | { kind: "self-review-skip"; reason: "no-writes" }
   | { kind: "completion-rejected-continue"; block: CompletionBlock };
 
-export function createFinishPolicyState(
-  selfReviewTurnsRemaining = SELF_REVIEW_TURNS_COOLDOWN,
-): GenerateFinishPolicyState {
+export function createFinishPolicyState(selfReviewTurnsRemaining = SELF_REVIEW_TURNS_COOLDOWN): FinishPolicyState {
   return {
     completionRetryUsed: false,
     missingSignalRetryUsed: false,
@@ -40,11 +38,11 @@ export function createFinishPolicyState(
 }
 
 export function decideFinish(input: {
-  state: GenerateFinishPolicyState;
+  state: FinishPolicyState;
   signal?: LifecycleSignal;
   hasWrites: boolean;
   completionBlock?: CompletionBlock;
-}): GenerateFinishPolicyDecision {
+}): FinishPolicyDecision {
   if (!input.signal) {
     if (!input.state.missingSignalRetryUsed) {
       input.state.missingSignalRetryUsed = true;
@@ -67,7 +65,7 @@ export function decideFinish(input: {
   return { kind: "none" };
 }
 
-export function renderFinishPolicyMessages(decision: GenerateFinishPolicyDecision): LanguageModelV3Message[] {
+export function renderFinishPolicyMessages(decision: FinishPolicyDecision): LanguageModelV3Message[] {
   switch (decision.kind) {
     case "missing-signal-continue":
       return [
