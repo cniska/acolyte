@@ -5,7 +5,6 @@ import { unreachable } from "./assert";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import type { CompletionBlock } from "./lifecycle-completion";
 import { SELF_REVIEW_TURNS_COOLDOWN } from "./lifecycle-constants";
-import { createPromptCacheKey } from "./prompt-cache";
 
 const MISSING_SIGNAL_MESSAGE =
   "Cannot finish yet: final responses must call exactly one lifecycle signal tool (`signal_done`, `signal_noop`, or `signal_blocked`).";
@@ -30,15 +29,7 @@ export type GenerateFinishPolicyDecision =
   | { kind: "self-review-skip"; reason: "no-writes" }
   | { kind: "completion-rejected-continue"; block: CompletionBlock };
 
-export function createGeneratePromptCacheKey(input: {
-  model: string;
-  sessionId: string | undefined;
-  workspace: string | undefined;
-}): string {
-  return createPromptCacheKey(input);
-}
-
-export function createGenerateFinishPolicyState(
+export function createFinishPolicyState(
   selfReviewTurnsRemaining = SELF_REVIEW_TURNS_COOLDOWN,
 ): GenerateFinishPolicyState {
   return {
@@ -48,7 +39,7 @@ export function createGenerateFinishPolicyState(
   };
 }
 
-export function decideGenerateFinish(input: {
+export function decideFinish(input: {
   state: GenerateFinishPolicyState;
   signal?: LifecycleSignal;
   hasWrites: boolean;
@@ -76,7 +67,7 @@ export function decideGenerateFinish(input: {
   return { kind: "none" };
 }
 
-export function renderGenerateFinishPolicyMessages(decision: GenerateFinishPolicyDecision): LanguageModelV3Message[] {
+export function renderFinishPolicyMessages(decision: GenerateFinishPolicyDecision): LanguageModelV3Message[] {
   switch (decision.kind) {
     case "missing-signal-continue":
       return [

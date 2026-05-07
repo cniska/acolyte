@@ -19,13 +19,8 @@ import {
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
 import { type GenerateOptions, promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
-import {
-  createGenerateFinishPolicyState,
-  createGeneratePromptCacheKey,
-  decideGenerateFinish,
-  renderGenerateFinishPolicyMessages,
-} from "./lifecycle-generate-policy";
-import { mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
+import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
+import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel, reasoningProviderOptions } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
@@ -216,7 +211,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
   let toolErrorRecoveryUsed = false;
-  const finishPolicyState = createGenerateFinishPolicyState();
+  const finishPolicyState = createFinishPolicyState();
 
   const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
     if (toolErrorRecoveryUsed) return [];
@@ -246,7 +241,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   try {
     resetTimeout();
     const provider = providerFromModel(ctx.model);
-    const cacheKey = createGeneratePromptCacheKey({
+    const cacheKey = createPromptCacheKey({
       model: ctx.model,
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,
@@ -292,7 +287,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
           writeToolSet: WRITE_TOOL_SET,
           runnerToolSet: RUNNER_TOOL_SET,
         });
-        const decision = decideGenerateFinish({
+        const decision = decideFinish({
           state: finishPolicyState,
           signal,
           hasWrites: taskLog.some((e) => ctx.session.writeTools.has(e.toolName)),
@@ -330,7 +325,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
           default:
             unreachable(decision);
         }
-        return renderGenerateFinishPolicyMessages(decision);
+        return renderFinishPolicyMessages(decision);
       },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(providerOptions ? { providerOptions } : {}),
