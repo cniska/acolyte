@@ -101,6 +101,21 @@ describe("createTraceStore", () => {
     expect(tasks[0]?.hasError).toBe(true);
   });
 
+  test("listTasks detects boolean hasError from lifecycle.summary", () => {
+    const store = createStore();
+    store.write(entry({ taskId: "task_err", event: "lifecycle.start" }));
+    store.write(
+      entry({
+        taskId: "task_err",
+        event: "lifecycle.summary",
+        timestamp: "2026-03-20T10:00:01.000Z",
+        fields: { has_error: true, model_calls: 3 },
+      }),
+    );
+    const tasks = store.listTasks(10);
+    expect(tasks[0]?.hasError).toBe(true);
+  });
+
   test("listTasks returns hasError false when no error", () => {
     const store = createStore();
     store.write(entry({ taskId: "task_ok", event: "lifecycle.start" }));
@@ -121,5 +136,16 @@ describe("createTraceStore", () => {
     store.write(entry());
     const lines = store.listByTaskId("task_1");
     expect(lines[0]?.raw).toBe("");
+  });
+
+  test("write validates fields through the trace event catalog", () => {
+    const store = createStore();
+    expect(() =>
+      store.write(
+        entry({
+          fields: { model: "gpt-5", invalid: { nested: true } } as never,
+        }),
+      ),
+    ).toThrow();
   });
 });

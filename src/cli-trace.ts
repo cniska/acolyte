@@ -1,10 +1,10 @@
-import { z } from "zod";
 import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import type { LogLine } from "./log-parser";
+import { traceEventDisplayFields } from "./trace-event-catalog";
 import type { TraceStore } from "./trace-store";
 
 type TraceModeDeps = {
@@ -16,103 +16,7 @@ type TraceModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-const traceEventSchema = z.enum([
-  "task.state_updated",
-  "rpc.task.accepted",
-  "rpc.task.queued",
-  "rpc.task.dequeued",
-  "rpc.worker.scheduled",
-  "rpc.task.started",
-  "chat.request.started",
-  "chat.request.completed",
-  "lifecycle.workspace.profile",
-  "lifecycle.start",
-  "lifecycle.prepare",
-  "lifecycle.generate.start",
-  "lifecycle.generate.done",
-  "lifecycle.generate.error",
-  "lifecycle.error",
-  "lifecycle.yield",
-  "lifecycle.tool.call",
-  "lifecycle.tool.cache",
-  "lifecycle.tool.result",
-  "lifecycle.tool.error",
-  "lifecycle.tool.output",
-  "lifecycle.budget",
-  "lifecycle.signal.accepted",
-  "lifecycle.signal.rejected",
-  "lifecycle.skill.context",
-  "lifecycle.effect.format",
-  "lifecycle.effect.lint",
-  "lifecycle.effect.lint.output",
-  "lifecycle.eval.decision",
-  "lifecycle.eval.skipped",
-  "lifecycle.reminders.injected",
-  "lifecycle.summary",
-]);
-
-type TraceEvent = z.infer<typeof traceEventSchema>;
 type FieldSpec = string | { key: string; label: string };
-
-const EVENT_FIELDS: Record<TraceEvent, FieldSpec[]> = {
-  "task.state_updated": [{ key: "from_state", label: "from" }, { key: "to_state", label: "to" }, "reason", "transport"],
-  "rpc.task.accepted": [
-    { key: "session_id", label: "session" },
-    { key: "queued_task_count", label: "queued" },
-    { key: "has_running_task", label: "has_running" },
-  ],
-  "rpc.task.queued": [{ key: "queue_position", label: "position" }, "running_task_id"],
-  "rpc.task.dequeued": [],
-  "rpc.worker.scheduled": [
-    { key: "session_id", label: "session" },
-    { key: "queued_task_count", label: "queued" },
-  ],
-  "rpc.task.started": [{ key: "session_id", label: "session" }],
-  "chat.request.started": ["model", "workspace_mode", "message_chars"],
-  "chat.request.completed": ["duration_ms", "model_calls", "tool_count"],
-  "lifecycle.workspace.profile": [
-    "ecosystem",
-    "package_manager",
-    "lint_command",
-    "format_command",
-    "test_command",
-    "line_width",
-  ],
-  "lifecycle.start": ["model"],
-  "lifecycle.prepare": ["model", "history_messages"],
-  "lifecycle.generate.start": ["model"],
-  "lifecycle.generate.done": ["model", "tool_calls", "text_chars"],
-  "lifecycle.generate.error": ["model", "error"],
-  "lifecycle.error": ["source", "kind", "code", "category", "tool"],
-  "lifecycle.yield": [],
-  "lifecycle.tool.call": ["tool", "path", "paths", "pattern", "command"],
-  "lifecycle.tool.cache": ["tool", "hit", "hits", "misses", "size"],
-  "lifecycle.tool.result": ["tool", "duration_ms", "is_error"],
-  "lifecycle.tool.error": ["tool", "error"],
-  "lifecycle.tool.output": ["tool"],
-  "lifecycle.budget": ["tool", "action", "detail"],
-  "lifecycle.signal.accepted": ["signal"],
-  "lifecycle.signal.rejected": ["signal", "reason", "path", "action"],
-  "lifecycle.skill.context": ["skill_name", "instruction_chars"],
-  "lifecycle.effect.format": ["files"],
-  "lifecycle.effect.lint": ["files"],
-  "lifecycle.eval.decision": ["effect", "action"],
-  "lifecycle.eval.skipped": ["reason"],
-  "lifecycle.reminders.injected": ["count", "tags"],
-  "lifecycle.effect.lint.output": ["output"],
-  "lifecycle.summary": [
-    "model_calls",
-    { key: "tool_calls", label: "total_tool_calls" },
-    { key: "read_calls", label: "read" },
-    { key: "search_calls", label: "search" },
-    { key: "write_calls", label: "write" },
-    { key: "pre_write_discovery_calls", label: "pre_write_discovery" },
-    { key: "budget_exhausted_count", label: "budget_exhausted" },
-    "has_error",
-  ],
-};
-
-const KNOWN_EVENTS = new Set<string>(traceEventSchema.options);
 
 function verboseRowData(line: LogLine): Record<string, string | undefined> {
   const event = line.fields.event;
@@ -128,15 +32,10 @@ function verboseRowData(line: LogLine): Record<string, string | undefined> {
 
   data.event = event;
 
-  if (KNOWN_EVENTS.has(event)) {
-    const specs = EVENT_FIELDS[event as TraceEvent];
-    for (const spec of specs) {
-      const key = typeof spec === "string" ? spec : spec.key;
-      const label = typeof spec === "string" ? spec : spec.label;
-      data[label] = line.fields[key];
-    }
-  } else if (event.startsWith("lifecycle.memory.")) {
-    data.reason = line.fields.reason;
+  for (const spec of traceEventDisplayFields(event) as FieldSpec[]) {
+    const key = typeof spec === "string" ? spec : spec.key;
+    const label = typeof spec === "string" ? spec : spec.label;
+    data[label] = line.fields[key];
   }
 
   return data;

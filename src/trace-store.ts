@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
 import type { LogLine, TaskSummary } from "./log-parser";
 import { dataDir } from "./paths";
+import { parseTraceFields, type TraceFields } from "./trace-event-catalog";
 
 const PROMOTED_COLUMNS = new Set(["event", "task_id", "request_id", "session_id", "sequence"]);
 
@@ -14,7 +15,7 @@ export type TraceEntry = {
   sessionId?: string;
   event?: string;
   sequence?: number;
-  fields: Record<string, string | number | boolean | null | undefined>;
+  fields: TraceFields;
 };
 
 export interface TraceStore {
@@ -98,7 +99,7 @@ function taskRowToSummary(row: TaskRow): TaskSummary {
   };
 }
 
-function fieldsToJson(fields: Record<string, string | number | boolean | null | undefined>): string {
+function fieldsToJson(fields: TraceFields): string {
   const clean: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
     if (value !== undefined && !PROMOTED_COLUMNS.has(key)) clean[key] = value;
@@ -115,7 +116,7 @@ const LIST_TASKS_SQL = `
     e.task_id,
     MIN(e.timestamp) AS timestamp,
     (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
-    MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') = 'true' THEN 1 ELSE 0 END) AS has_error,
+    MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') IN ('true', 1) THEN 1 ELSE 0 END) AS has_error,
     (SELECT json_extract(e3.fields_json, '$.lifecycle_signal') FROM trace_events e3 WHERE e3.task_id = e.task_id AND e3.event = 'lifecycle.summary' LIMIT 1) AS lifecycle_signal
   FROM trace_events e
   WHERE e.task_id IS NOT NULL
@@ -149,6 +150,7 @@ export function createTraceStore(dbPath?: string): TraceStore {
 
   return {
     write(entry) {
+      const fields = parseTraceFields(entry.event, entry.fields);
       writeStmt.run(
         entry.timestamp,
         entry.taskId ?? null,
@@ -156,7 +158,7 @@ export function createTraceStore(dbPath?: string): TraceStore {
         entry.sessionId ?? null,
         entry.event ?? null,
         entry.sequence ?? null,
-        fieldsToJson(entry.fields),
+        fieldsToJson(fields),
       );
     },
     listTasks(limit) {
