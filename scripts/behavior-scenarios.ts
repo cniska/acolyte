@@ -401,7 +401,7 @@ function validateBoundedReturnFixTrace(traceLines: string[]): string[] {
   }));
 
   const firstTool = toolCalls[0];
-  if (!firstTool || firstTool.tool !== "file-read" || !firstTool.line.includes("src/lifecycle-state.ts")) {
+  if (firstTool?.tool !== "file-read" || !firstTool.line.includes("src/lifecycle-state.ts")) {
     issues.push("first tool call should be file-read on src/lifecycle-state.ts");
   }
 

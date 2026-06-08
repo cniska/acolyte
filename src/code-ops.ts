@@ -305,7 +305,7 @@ function requestedRenameMode(edit: EditCodeRenameEdit): RenameMode | null {
 function isThisMemberReference(node: napi.SgNode): boolean {
   if (node.kind() !== "property_identifier") return false;
   const parent = node.parent();
-  if (!parent || parent.kind() !== "member_expression") return false;
+  if (parent?.kind() !== "member_expression") return false;
   const objectNode = parent.child(0);
   return objectNode?.kind() === "this" || objectNode?.kind() === "super";
 }

@@ -265,7 +265,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const handlePickerQueryChange = useCallback((query: string) => {
     setPicker((current) => {
-      if (!current || current.kind !== "model") return current;
+      if (current?.kind !== "model") return current;
       const filtered = suggestModels(query, current.items);
       return { ...current, query, filtered, index: 0, scrollOffset: 0 };
     });
