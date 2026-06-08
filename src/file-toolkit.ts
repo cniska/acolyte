@@ -1,6 +1,14 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
+import {
+  DEFAULT_READ_CONTEXT_LINES,
+  deleteTextFile,
+  editFile,
+  findFiles,
+  readFileContent,
+  searchFiles,
+  writeTextFile,
+} from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
@@ -105,31 +113,56 @@ function createReadFileTool(input: ToolkitInput) {
     id: "file-read",
     toolkit: "file",
     category: "read",
-    description: "Read a text file. Never re-read a file you already have.",
-    instruction:
-      "Use `file-read` before `file-edit` or `code-edit`. For named edits, re-read the target file immediately before editing.",
+    description:
+      "Read a text file. Prefer bounded windows with aroundLine after file-search; full-read only when broad context is necessary.",
+    instruction: [
+      "Use `file-read` before `file-edit` or `code-edit`.",
+      "After `file-search`, pass aroundLine from the matching line instead of reading the whole file.",
+      "Default contextLines is 20; widen contextLines incrementally up to 60 when local context is insufficient.",
+      "For named edits, re-read the target file immediately before editing.",
+    ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
+      aroundLine: z.number().int().min(1).optional(),
+      contextLines: z.number().int().min(0).max(60).optional(),
     }),
     outputSchema: z.object({
       kind: z.literal("file-read"),
       path: z.string().min(1),
+      aroundLine: z.number().int().min(1).optional(),
+      contextLines: z.number().int().min(0).max(60).optional(),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "file-read", toolCallId, toolInput, async (callId) => {
+      const contextLines =
+        toolInput.aroundLine === undefined ? undefined : (toolInput.contextLines ?? DEFAULT_READ_CONTEXT_LINES);
+      const readInput =
+        toolInput.aroundLine === undefined
+          ? { path: toolInput.path }
+          : { path: toolInput.path, aroundLine: toolInput.aroundLine, contextLines };
+      return runTool(input.session, "file-read", toolCallId, readInput, async (callId) => {
         input.onOutput({
           toolName: "file-read",
           content: {
             kind: "file-header",
             labelKey: "tool.label.file_read",
             count: 1,
-            targets: [toDisplayPath(toolInput.path, input.workspace)],
+            targets: [toDisplayPath(readInput.path, input.workspace)],
           },
           toolCallId: callId,
         });
-        const output = await readFileContent(input.workspace, toolInput.path, FILE_READ_MAX_LINES);
-        return { kind: "file-read" as const, path: toolInput.path, output };
+        const output = await readFileContent(input.workspace, toolInput.path, {
+          maxLines: FILE_READ_MAX_LINES,
+          aroundLine: toolInput.aroundLine,
+          contextLines,
+        });
+        return {
+          kind: "file-read" as const,
+          path: toolInput.path,
+          aroundLine: toolInput.aroundLine,
+          contextLines,
+          output,
+        };
       });
     },
   });

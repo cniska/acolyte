@@ -20,6 +20,19 @@ describe("L2 SQLite integration", () => {
     expect(entry?.result).toBe("content-a");
   });
 
+  test("file-read windows persist and invalidate by path in L2", () => {
+    const store = createStore();
+    const cache1 = createToolCache(CACHEABLE, 256, store);
+    cache1.set("file-read", { path: "/a.ts", aroundLine: 10, contextLines: 20 }, { result: "window-a" });
+    cache1.set("file-read", { path: "/b.ts", aroundLine: 10, contextLines: 20 }, { result: "window-b" });
+
+    cache1.invalidateForWrite("file-edit", { path: "/a.ts" });
+
+    const cache2 = createToolCache(CACHEABLE, 256, store);
+    expect(cache2.get("file-read", { path: "/a.ts", aroundLine: 10, contextLines: 20 })).toBeUndefined();
+    expect(cache2.get("file-read", { path: "/b.ts", aroundLine: 10, contextLines: 20 })?.result).toBe("window-b");
+  });
+
   test("pathless entries are not persisted to L2", () => {
     const store = createStore();
     const cache1 = createToolCache(CACHEABLE, 256, store);

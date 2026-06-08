@@ -20,12 +20,19 @@ export type FindReplaceEdit = { find: string; replace: string };
 export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
+export type FileReadOptions = {
+  maxLines?: number;
+  aroundLine?: number;
+  contextLines?: number;
+};
+
 const MAX_FIND_SNIPPET_LINES = 8;
 const MAX_FIND_SNIPPET_CHARS = 500;
 const MAX_FIND_REPLACE_LINES = 24;
 const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
+export const DEFAULT_READ_CONTEXT_LINES = 20;
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
@@ -118,17 +125,43 @@ export async function searchFiles(
   return "No matches.";
 }
 
-export async function readFileContent(workspace: string, path: string, maxLines?: number): Promise<string> {
+export async function readFileContent(workspace: string, path: string, options: FileReadOptions = {}): Promise<string> {
   const absPath = ensurePathWithinSandbox(path, workspace);
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
-  if (maxLines !== undefined && lines.length > maxLines) {
+  const { maxLines, aroundLine } = options;
+  const contextLines = aroundLine === undefined ? 0 : (options.contextLines ?? DEFAULT_READ_CONTEXT_LINES);
+  if (maxLines !== undefined && (!Number.isInteger(maxLines) || maxLines < 1)) {
+    throw new Error("maxLines must be >= 1");
+  }
+  if (aroundLine !== undefined && (!Number.isInteger(aroundLine) || aroundLine < 1)) {
+    throw new Error("aroundLine must be >= 1");
+  }
+  if (!Number.isInteger(contextLines) || contextLines < 0) {
+    throw new Error("contextLines must be >= 0");
+  }
+  const hasWindow = aroundLine !== undefined;
+  if (maxLines !== undefined && !hasWindow && lines.length > maxLines) {
     throw new Error(
       `File "${path}" is too large (${lines.length} lines). Use \`file-search\` or \`code-scan\` to find the relevant sections.`,
     );
   }
-  const numbered = lines.map((line, idx) => `${idx + 1}: ${line}`);
-  return [`File: ${absPath}`, ...numbered].join("\n");
+  if (aroundLine !== undefined && aroundLine > lines.length) {
+    throw new Error(`aroundLine (${aroundLine}) exceeds file length (${lines.length})`);
+  }
+  const startLine = aroundLine === undefined ? 1 : Math.max(1, aroundLine - contextLines);
+  const endLine = aroundLine === undefined ? lines.length : aroundLine + contextLines;
+  const clampedEndLine = Math.min(endLine, lines.length);
+  const selectedLines = lines.slice(startLine - 1, clampedEndLine);
+  if (maxLines !== undefined && selectedLines.length > maxLines) {
+    throw new Error(
+      `Read window for "${path}" is too large (${selectedLines.length} lines). Use a smaller contextLines value.`,
+    );
+  }
+  const numbered = selectedLines.map((line, idx) => `${startLine + idx}: ${line}`);
+  const header = [`File: ${absPath}`];
+  if (hasWindow) header.push(`Lines: ${startLine}-${clampedEndLine} of ${lines.length}`);
+  return [...header, ...numbered].join("\n");
 }
 
 export async function editFile(input: {
