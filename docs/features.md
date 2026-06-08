@@ -16,6 +16,7 @@ Shipped, user-visible capabilities.
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
+- associated PR shown in status footer
 - auto-update on startup with progress UI
 - update flags to force or skip auto-update (`--update`, `--no-update`)
 - XDG Base Directory support on Linux
@@ -44,6 +45,7 @@ Shipped, user-visible capabilities.
 - AST-based structural code editing with workspace-wide scope
 - git status/diff/log/show/add/commit
 - GitHub CLI integration for PR and issue management (view/create/edit), auto-enabled when `gh` is installed
+- on-demand session search across conversation history
 - shell and test execution
 - web search/fetch
 - MCP client: connect to external services via stdio or HTTP MCP servers
@@ -53,9 +55,10 @@ Shipped, user-visible capabilities.
 - on-demand memory toolkit (`memory-search`, `memory-add`, `memory-remove`)
 - three-scope persistent memory (session, project, user)
 - memory recalled on-demand via tools (not injected into the system prompt)
-- automatic observation via distiller with `@observe` directives
+- automatic observation via distiller (tool-based, runs after generation)
+- self-bootstrap project memory from codebase on first run
 - Semantic recall with embeddings and cosine similarity ranking
-- Hybrid retrieval scoring (cosine similarity + TF-IDF token overlap)
+- Hybrid retrieval scoring (cosine similarity + TF-IDF token overlap) with search result re-ranking
 - Topic tags on observations for filtered recall
 
 ## Safety and control
@@ -79,3 +82,4 @@ Implemented but gated behind feature flags. See [Configuration](configuration.md
 - `undoCheckpoints` — session-level undo via write-tool checkpoints
 - `parallelWorkspaces` — manage git worktrees and workspace-scoped sessions via `/workspaces`
 - `cloudSync` — portable memory and sessions across machines via `acolyte login` and `acolyte logout`
+- Postgres session storage backend and Postgres + pgvector memory backend (used by cloud tier)
