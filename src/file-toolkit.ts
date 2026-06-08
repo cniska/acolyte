@@ -1,6 +1,14 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
+import {
+  DEFAULT_READ_CONTEXT_LINES,
+  deleteTextFile,
+  editFile,
+  findFiles,
+  readFileContent,
+  searchFiles,
+  writeTextFile,
+} from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
@@ -99,7 +107,6 @@ function createSearchFilesTool(input: ToolkitInput) {
 }
 
 const FILE_READ_MAX_LINES = 10_000;
-const FILE_READ_DEFAULT_CONTEXT_LINES = 20;
 
 function createReadFileTool(input: ToolkitInput) {
   return createTool({
@@ -128,7 +135,7 @@ function createReadFileTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       const contextLines =
-        toolInput.aroundLine === undefined ? undefined : (toolInput.contextLines ?? FILE_READ_DEFAULT_CONTEXT_LINES);
+        toolInput.aroundLine === undefined ? undefined : (toolInput.contextLines ?? DEFAULT_READ_CONTEXT_LINES);
       const readInput =
         toolInput.aroundLine === undefined
           ? { path: toolInput.path }

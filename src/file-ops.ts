@@ -32,7 +32,7 @@ const MAX_FIND_REPLACE_LINES = 24;
 const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
-const DEFAULT_READ_CONTEXT_LINES = 20;
+export const DEFAULT_READ_CONTEXT_LINES = 20;
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
