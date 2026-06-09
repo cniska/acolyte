@@ -6,7 +6,7 @@ beforeEach(() => resetSkillCache());
 
 describe("chat-slash helpers", () => {
   test("suggestSlashCommands filters known commands by prefix", () => {
-    expect(suggestSlashCommands("/c")).toEqual(["/clear"]);
+    expect(suggestSlashCommands("/c")).toEqual([]);
     expect(suggestSlashCommands("/p")).toEqual([]);
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
@@ -25,6 +25,7 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model"]);
+    expect(suggestSlashCommands("/han")).toEqual(["/handoff"]);
     expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
@@ -76,6 +77,7 @@ describe("chat-slash helpers", () => {
     expect(isKnownSlashToken("/status")).toBe(true);
     expect(isKnownSlashToken("/usage")).toBe(true);
     expect(isKnownSlashToken("/model")).toBe(true);
+    expect(isKnownSlashToken("/handoff")).toBe(true);
     expect(isKnownSlashToken("/model work")).toBe(false);
     expect(isKnownSlashToken("/memory list")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
@@ -83,6 +85,7 @@ describe("chat-slash helpers", () => {
 
   test("slashCommandHelp returns short descriptions", () => {
     expect(slashCommandHelp("/model")).toBe("change model");
+    expect(slashCommandHelp("/handoff")).toBe("review and start a new session");
     expect(slashCommandHelp("/model work")).toBe("");
     expect(slashCommandHelp("/unknown")).toBe("");
   });

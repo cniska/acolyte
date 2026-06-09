@@ -48,6 +48,7 @@ const toolResultEventSchema = z.object({
   isError: z.boolean().optional(),
   errorCode: z.string().optional(),
   error: streamErrorSchema.optional(),
+  result: z.unknown().optional(),
 });
 const streamUsageEventSchema = z.object({
   type: z.literal("usage"),

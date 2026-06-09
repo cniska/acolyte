@@ -16,6 +16,7 @@ export type ModelPickerItem = {
 export type PickerState =
   | { kind: "skills"; items: SkillMeta[]; index: number }
   | { kind: "resume"; items: Session[]; index: number; scrollOffset: number }
+  | { kind: "handoff"; items: { label: string; value: string }[]; index: number }
   | {
       kind: "model";
       items: ModelPickerItem[];
@@ -60,6 +61,8 @@ export function pickerLabel(picker: PickerState): string {
       return t("chat.picker.title.skills");
     case "resume":
       return t("chat.picker.title.resume");
+    case "handoff":
+      return t("chat.picker.title.handoff");
     case "model":
       return `${t("chat.picker.title.model")}: `;
     default:
@@ -73,6 +76,8 @@ export function pickerHint(picker: PickerState): string {
       return t("chat.picker.hint.skills");
     case "resume":
       return t("chat.picker.hint.resume");
+    case "handoff":
+      return t("chat.picker.hint.handoff");
     case "model":
       return t("chat.picker.hint.model");
     default:
@@ -84,6 +89,8 @@ export function pickerItemCount(picker: PickerState): number {
   switch (picker.kind) {
     case "model":
       return picker.filtered.length;
+    case "handoff":
+      return picker.items.length;
     default:
       return picker.items.length;
   }
@@ -140,6 +147,13 @@ export function renderPickerItems(
           </Text>
         );
       });
+    }
+    case "handoff": {
+      return renderPickerRows(
+        picker.items.map((item) => ({ key: item.value, label: item.label })),
+        picker.index,
+        brandColor,
+      );
     }
     default:
       return unreachable(picker);

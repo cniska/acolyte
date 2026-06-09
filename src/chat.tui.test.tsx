@@ -70,10 +70,11 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
         @path               attach file             /status             show server status
         /new                start new session       /memory [scope]     show memory notes
-        /resume <id>        resume session          /memory add <text>  add memory note
-        /sessions           show sessions           /usage              show token usage
-        /workspaces         manage workspaces       /skills             show skills picker
-        /model              change model            /exit               exit chat
+        /handoff            review and start a new session  /memory add <text>  add memory note
+        /resume <id>        resume session          /usage              show token usage
+        /sessions           show sessions           /skills             show skills picker
+        /workspaces         manage workspaces       /exit               exit chat
+        /model              change model
     `),
     );
   });
@@ -87,6 +88,7 @@ describe("chat tui visual regression: footer and help", () => {
       ────────────────────────────────────────────────────────────────────────────────
         @path               attach file
         /new                start new session
+        /handoff            review and start a new session
         /resume <id>        resume session
         /sessions           show sessions
         /workspaces         manage workspaces
@@ -169,6 +171,31 @@ describe("chat tui visual regression: model picker", () => {
 
     const output = renderInputPanel({ picker });
     expect(output).toContain("openai-compatible/qwen2.5-coder:3b");
+  });
+
+  test("renders handoff picker", () => {
+    const picker = {
+      kind: "handoff" as const,
+      items: [
+        { label: "Confirm", value: "confirm" },
+        { label: "Cancel", value: "cancel" },
+      ],
+      index: 0,
+    };
+
+    const output = renderInputPanel({ picker });
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+      Handoff
+
+      › Confirm
+        Cancel
+
+      Enter to confirm · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
   });
 
   test("renders model picker with query filter", () => {

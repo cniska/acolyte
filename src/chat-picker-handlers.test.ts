@@ -86,4 +86,65 @@ describe("chat picker handlers", () => {
 
     expect(spies.persistCalls).toBe(1);
   });
+
+  test("handlePickerSelect handoff starts a new session from pending summary", async () => {
+    const currentSession = createSession({
+      id: "sess_current",
+      title: "Current Session",
+      workspace: "/tmp/work",
+      workspaceName: "work",
+      workspaceBranch: "main",
+    });
+    const sessionState = createSessionState({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const { handlers, spies } = createPickerHandlerHarness({
+      sessionState,
+      currentSession,
+      pendingHandoff: {
+        summary:
+          "# Session summary - main\n\n## What was built\n- done\n\n## Design decisions\n- keep going\n\n## What's next\n- continue",
+      },
+      toRows: (messages) => messages.map((m) => ({ id: m.id, kind: m.role, content: m.content })),
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "handoff",
+      items: [
+        { label: "Confirm", value: "confirm" },
+        { label: "Cancel", value: "cancel" },
+      ],
+      index: 0,
+    });
+
+    expect(sessionState.sessions[0]?.messages[0]?.role).toBe("user");
+    expect(sessionState.sessions[0]?.messages[0]?.content).toContain("Session summary - main");
+    expect(spies.currentSessions.at(-1)?.messages[0]?.content).toContain("Session summary - main");
+    expect(spies.rowsDirectSets.at(-1)?.[0]?.content).toContain("Session summary - main");
+    expect(spies.persistCalls).toBe(1);
+  });
+
+  test("handlePickerSelect handoff cancel leaves session untouched", async () => {
+    const currentSession = createSession({ id: "sess_current" });
+    const sessionState = createSessionState({ sessions: [currentSession], activeSessionId: currentSession.id });
+    const { handlers, spies } = createPickerHandlerHarness({
+      sessionState,
+      currentSession,
+      pendingHandoff: {
+        summary: "# Session summary - main\n\n## What was built\n- done",
+      },
+    });
+
+    await handlers.handlePickerSelect({
+      kind: "handoff",
+      items: [
+        { label: "Confirm", value: "confirm" },
+        { label: "Cancel", value: "cancel" },
+      ],
+      index: 1,
+    });
+
+    expect(sessionState.activeSessionId).toBe(currentSession.id);
+    expect(spies.currentSessions).toEqual([]);
+    expect(spies.persistCalls).toBe(0);
+    expect(spies.pickerValues.at(-1)).toBeNull();
+  });
 });

@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { appConfig } from "./app-config";
-import type { ChatRow } from "./chat-contract";
+import { type ChatRow, createRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
 import type { FooterState } from "./chat-footer";
+import { createSummaryRow, generateHandoffSummary } from "./chat-handoff";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
@@ -11,6 +12,7 @@ import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount } from "./chat-picker";
+import { createHandoffPicker } from "./chat-picker-actions";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
@@ -124,6 +126,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [showHelp, setShowHelp] = useState(false);
   const cursorLineRef = useRef(0);
   const [picker, setPicker] = useState<PickerState | null>(null);
+  const [pendingHandoff, setPendingHandoff] = useState<{ summary: string; reason?: string } | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
@@ -167,10 +170,40 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     persist,
   });
 
+  const startHandoffReview = useCallback(
+    async (reason?: string): Promise<void> => {
+      setPendingHandoff(null);
+      setPicker(null);
+      setRunningUsage(null);
+      setPendingState({ kind: "running" });
+      try {
+        const summary = await generateHandoffSummary({
+          client,
+          session: currentSession,
+          reason,
+        });
+        setRows((current) => [...current, createSummaryRow(summary)]);
+        setPendingHandoff({ summary, reason });
+        setPicker(createHandoffPicker());
+        setShowHelp(false);
+      } catch (error) {
+        setRows((current) => [
+          ...current,
+          createRow("system", error instanceof Error ? error.message : "Failed to generate handoff summary."),
+        ]);
+      } finally {
+        setPendingState(null);
+      }
+    },
+    [client, currentSession, setPendingState, setRunningUsage],
+  );
+
   const { openSkillsPanel, openResumePanel, openModelPanel, handlePickerSelect } = createPickerHandlers({
     sessionState,
     currentSession,
     setCurrentSession: updateSession,
+    pendingHandoff,
+    setPendingHandoff,
     setTokenUsage,
     setRows,
     setRowsDirect: setRows,
@@ -200,6 +233,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     activateSkill,
     openResumePanel,
     openModelPanel,
+    startHandoffReview,
     tokenUsage,
     isPending,
     setInputHistory,

@@ -26,6 +26,7 @@ export type CommandContext = {
   openSkillsPanel: () => Promise<void>;
   openResumePanel: () => void;
   openModelPanel: () => void | Promise<void>;
+  startHandoffReview: (reason?: string) => Promise<void>;
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   startAssistantTurn?: (userText: string) => Promise<void>;

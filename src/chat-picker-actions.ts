@@ -22,6 +22,17 @@ export function createPicker<K extends keyof PickerByKind>(config: CreatePickerC
   } as PickerByKind[K];
 }
 
+export function createHandoffPicker(): Extract<PickerState, { kind: "handoff" }> {
+  return {
+    kind: "handoff",
+    items: [
+      { label: "Confirm", value: "confirm" },
+      { label: "Cancel", value: "cancel" },
+    ],
+    index: 0,
+  };
+}
+
 export function createResumePicker(sessionState: SessionState): PickerState | null {
   const items = sessionState.sessions;
   if (items.length === 0) return null;
