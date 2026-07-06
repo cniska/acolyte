@@ -44,8 +44,9 @@ fi
 
 echo "$old → $new"
 
-# Verify everything passes with new version
-bun run verify
+# Verify against the bumped version. Unset the stale npm_package_version the
+# outer `bun run` exported before the bump — resolveCliVersion prefers it.
+env -u npm_package_version bun run verify
 
 # Commit and tag
 git add -A
