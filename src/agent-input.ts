@@ -132,27 +132,37 @@ function collectLinesWithinBudget(
   usedIds: Set<string>,
   remainingTokens: number,
 ): { lines: string[]; consumedTokens: number } {
-  const lines: string[] = [];
   let consumed = 0;
-  const includeMessage = (i: number): void => {
+  // Selected lines keyed by original index, so the budget-selection priority below
+  // never dictates render order — the transcript must stay chronological.
+  const selected = new Map<number, string>();
+  const selectMessage = (i: number): void => {
     const message = messages[i];
     if (usedIds.has(message.id)) return;
     const candidate = lineForMessageWithinBudget(message, remainingTokens - consumed);
     if (!candidate || candidate.tokens === 0) return;
     usedIds.add(message.id);
-    lines.unshift(candidate.line);
+    selected.set(i, candidate.line);
     consumed += candidate.tokens;
   };
 
-  // Prefer conversational turns first and only then spend remaining budget on tool payloads.
+  // Priority: spend budget on conversational turns first, then tool payloads, so under
+  // pressure it is tool output that drops out — not user/assistant turns.
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     if (isAssistantToolPayloadMessage(messages[i])) continue;
-    includeMessage(i);
+    selectMessage(i);
   }
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     if (!isAssistantToolPayloadMessage(messages[i])) continue;
-    includeMessage(i);
+    selectMessage(i);
   }
+
+  // Emit in original (chronological) order. The passes above choose *which* messages
+  // survive the budget; they must not reorder them, or a later turn's tool payload
+  // renders ahead of an earlier user/assistant message.
+  const lines = Array.from(selected.keys())
+    .sort((a, b) => a - b)
+    .map((i) => selected.get(i) as string);
   return { lines, consumedTokens: consumed };
 }
 

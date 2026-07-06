@@ -20,8 +20,8 @@ import {
 import { findCompletionBlock } from "./lifecycle-completion";
 import { type GenerateOptions, promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
-import { createPromptCacheKey, mergeProviderOptions, promptCacheProviderOptions } from "./prompt-cache";
-import { providerFromModel, reasoningProviderOptions } from "./provider-config";
+import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
+import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
@@ -246,9 +246,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       sessionId: ctx.request.sessionId,
       workspace: ctx.workspace,
     });
-    const reasoningOptions = reasoningProviderOptions(provider, appConfig.reasoning);
-    const providerOptions = mergeProviderOptions(reasoningOptions, promptCacheProviderOptions(provider, cacheKey));
-    const temperature = reasoningOptions ? undefined : (ctx.temperature ?? appConfig.temperature);
+    const providerOptions = promptCacheProviderOptions(provider, cacheKey);
+    const reasoning = appConfig.reasoning;
+    const temperature = reasoning ? undefined : (ctx.temperature ?? appConfig.temperature);
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
@@ -328,6 +328,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         return renderFinishPolicyMessages(decision);
       },
       ...(typeof temperature === "number" ? { temperature } : {}),
+      ...(reasoning ? { reasoning } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });
     const fullOutput = streamOutput.getFullOutput();
@@ -547,6 +548,13 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
     if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
     ctx.modelCallCount += 1;
+    ctx.debug("lifecycle.model_usage", {
+      inputTokens: p?.inputTokens,
+      outputTokens: p?.outputTokens,
+      cacheReadTokens: p?.cacheReadTokens,
+      cacheWriteTokens: p?.cacheWriteTokens,
+      reasoningTokens: p?.reasoningTokens,
+    });
     ctx.emit({
       type: "usage",
       inputTokens: ctx.inputTokensAccum,

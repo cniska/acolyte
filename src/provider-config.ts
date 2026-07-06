@@ -1,4 +1,3 @@
-import type { SharedV4ProviderOptions } from "@ai-sdk/provider";
 import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
 
@@ -72,28 +71,6 @@ export function providerFromModel(model: string): Provider {
 export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
 
 export const DEFAULT_REASONING = "medium";
-
-const ANTHROPIC_THINKING_BUDGET: Record<string, number> = {
-  low: 5_000,
-  medium: 10_000,
-  high: 20_000,
-};
-
-export function reasoningProviderOptions(
-  provider: Provider,
-  level: ReasoningLevel | undefined,
-): SharedV4ProviderOptions | undefined {
-  if (!level) return undefined;
-  switch (provider) {
-    case "openai":
-    case "vercel":
-      return { openai: { reasoningEffort: level } };
-    case "anthropic":
-      return { anthropic: { thinking: { type: "enabled", budgetTokens: ANTHROPIC_THINKING_BUDGET[level] ?? 10_000 } } };
-    case "google":
-      return { google: { thinkingConfig: { thinkingLevel: level } } };
-  }
-}
 
 export function isProviderAvailable(provider: Provider, credentials: ProviderCredentials): boolean {
   if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);

@@ -145,6 +145,22 @@ describe("createAgentInput", () => {
     expect(input).not.toContain("TOOL_SENTINEL");
   });
 
+  test("renders history chronologically — a later tool payload never precedes earlier turns", () => {
+    // Budget is ample so all three are kept; the tool payload occurs last, so it must
+    // render last. Regression: the two-pass selection used to hoist every tool payload
+    // ahead of every conversational message, so turn-N tool output preceded the turn-1 user.
+    const { input } = createAgentInput(
+      req("continue", [
+        msg("u", "user", "FIRST_USER"),
+        msg("a", "assistant", "SECOND_ASSISTANT"),
+        msg("tool", "assistant", "THIRD_TOOL", "tool_payload"),
+      ]),
+      defaultOptions,
+    );
+    expect(input.indexOf("FIRST_USER")).toBeLessThan(input.indexOf("THIRD_TOOL"));
+    expect(input.indexOf("SECOND_ASSISTANT")).toBeLessThan(input.indexOf("THIRD_TOOL"));
+  });
+
   test("excludes turns beyond the window even when budget allows", () => {
     const count = MAX_RECENT_TURNS + 3;
     const { input, usage } = createAgentInput(req("go", exchanges(count)), defaultOptions);

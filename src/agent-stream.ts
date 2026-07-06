@@ -2,10 +2,12 @@ import type {
   LanguageModelV4,
   LanguageModelV4FinishReason,
   LanguageModelV4Message,
+  LanguageModelV4ReasoningPart,
   LanguageModelV4StreamPart,
   LanguageModelV4TextPart,
   LanguageModelV4ToolCallPart,
   LanguageModelV4ToolResultPart,
+  SharedV4ProviderOptions,
 } from "@ai-sdk/provider";
 import type {
   Agent,
@@ -108,6 +110,7 @@ export function createAgentStream(
               : functionTools.length > 0
                 ? { type: "auto" }
                 : undefined,
+            ...(options.reasoning ? { reasoning: options.reasoning } : {}),
             ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
           });
           rateLimiter.reset();
@@ -128,12 +131,13 @@ export function createAgentStream(
         }> = [];
         finishReason = undefined;
         const stepTextParts: string[] = [];
+        const reasoningBlocks = new Map<string, ReasoningBlock>();
 
         const reader = streamResult.stream.getReader();
         while (true) {
           const { done, value: part } = await reader.read();
           if (done) break;
-          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls);
+          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, reasoningBlocks);
           if (part.type === "finish") {
             finishReason = part.finishReason;
             streamController.enqueue({
@@ -141,6 +145,9 @@ export function createAgentStream(
               payload: {
                 inputTokens: part.usage?.inputTokens?.total,
                 outputTokens: part.usage?.outputTokens?.total,
+                cacheReadTokens: part.usage?.inputTokens?.cacheRead,
+                cacheWriteTokens: part.usage?.inputTokens?.cacheWrite,
+                reasoningTokens: part.usage?.outputTokens?.reasoning,
               },
             });
           }
@@ -173,7 +180,10 @@ export function createAgentStream(
         if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
           throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
         }
-        const assistantContent: Array<LanguageModelV4TextPart | LanguageModelV4ToolCallPart> = [
+        const assistantContent: Array<
+          LanguageModelV4ReasoningPart | LanguageModelV4TextPart | LanguageModelV4ToolCallPart
+        > = [
+          ...reasoningContentParts(reasoningBlocks),
           ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
           ...pendingToolCalls.map((tc) => ({
             type: "tool-call" as const,
@@ -306,11 +316,26 @@ function signalReasonFromResult(result: unknown): string | undefined {
   return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : undefined;
 }
 
+type ReasoningBlock = { text: string; providerOptions?: SharedV4ProviderOptions };
+
+function reasoningContentParts(blocks: Map<string, ReasoningBlock>): LanguageModelV4ReasoningPart[] {
+  const parts: LanguageModelV4ReasoningPart[] = [];
+  for (const block of blocks.values()) {
+    parts.push({
+      type: "reasoning",
+      text: block.text,
+      ...(block.providerOptions ? { providerOptions: block.providerOptions } : {}),
+    });
+  }
+  return parts;
+}
+
 function emitStreamPart(
   part: LanguageModelV4StreamPart,
   controller: ReadableStreamDefaultController<StreamChunk>,
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
+  reasoningBlocks: Map<string, ReasoningBlock>,
 ): void {
   switch (part.type) {
     case "text-delta": {
@@ -320,9 +345,20 @@ function emitStreamPart(
       }
       break;
     }
-    case "reasoning-delta":
+    case "reasoning-start": {
+      const block = reasoningBlocks.get(part.id) ?? { text: "" };
+      if (part.providerMetadata) block.providerOptions = { ...block.providerOptions, ...part.providerMetadata };
+      reasoningBlocks.set(part.id, block);
+      break;
+    }
+    case "reasoning-delta": {
+      const block = reasoningBlocks.get(part.id) ?? { text: "" };
+      block.text += part.delta;
+      if (part.providerMetadata) block.providerOptions = { ...block.providerOptions, ...part.providerMetadata };
+      reasoningBlocks.set(part.id, block);
       controller.enqueue({ type: "reasoning-delta", payload: { text: part.delta } });
       break;
+    }
     case "tool-call":
       pendingToolCalls.push({
         toolCallId: part.toolCallId,
