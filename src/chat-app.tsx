@@ -86,17 +86,25 @@ function ChatApp(props: ChatAppProps) {
   );
 }
 
-export async function runChat(props: ChatAppProps): Promise<void> {
-  if (process.env.ACOLYTE_DEBUG) {
-    const logPath = join(stateDir(), "client.log");
-    setLogSink((line) => {
-      try {
-        appendFileSync(logPath, line);
-      } catch {
-        // best-effort
-      }
-    });
+export function installClientLogSink(): void {
+  // The TUI owns stdout exclusively, so a sink is always installed to keep logs
+  // off the frame; it writes to client.log under ACOLYTE_DEBUG, else swallows.
+  if (!process.env.ACOLYTE_DEBUG) {
+    setLogSink(() => {});
+    return;
   }
+  const logPath = join(stateDir(), "client.log");
+  setLogSink((line) => {
+    try {
+      appendFileSync(logPath, line);
+    } catch {
+      // best-effort
+    }
+  });
+}
+
+export async function runChat(props: ChatAppProps): Promise<void> {
+  installClientLogSink();
   const app = render(<ChatApp {...props} />);
   try {
     await app.waitUntilExit();
