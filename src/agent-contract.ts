@@ -9,6 +9,7 @@ export type ToolCallEntry = {
 };
 
 export type GenerateResult = {
+  /** The model's latest non-blank assistant text; later steps supersede earlier ones. */
   text: string;
   toolCalls: ToolCallEntry[];
   signal?: LifecycleSignal;
@@ -17,6 +18,21 @@ export type GenerateResult = {
 
 const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
 export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
+
+export const lifecycleSignalToolNameSchema = z.enum(["signal_done", "signal_noop", "signal_blocked"]);
+export type LifecycleSignalToolName = z.infer<typeof lifecycleSignalToolNameSchema>;
+
+const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
+  signal_done: "done",
+  signal_noop: "noop",
+  signal_blocked: "blocked",
+};
+
+export function signalForToolName(toolName: string): LifecycleSignal | undefined {
+  const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
+  if (!parsed.success) return undefined;
+  return signalToolToSignal[parsed.data];
+}
 
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };

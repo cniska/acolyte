@@ -1,22 +1,6 @@
 import { z } from "zod";
-import type { LifecycleSignal } from "./agent-contract";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-
-export const lifecycleSignalToolNameSchema = z.enum(["signal_done", "signal_noop", "signal_blocked"]);
-export type LifecycleSignalToolName = z.infer<typeof lifecycleSignalToolNameSchema>;
-
-const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
-  signal_done: "done",
-  signal_noop: "noop",
-  signal_blocked: "blocked",
-};
-
-export function signalForToolName(toolName: string): LifecycleSignal | undefined {
-  const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
-  if (!parsed.success) return undefined;
-  return signalToolToSignal[parsed.data];
-}
 
 function createDoneSignalTool(input: ToolkitInput) {
   return createTool({

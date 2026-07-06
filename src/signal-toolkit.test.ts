@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { createSignalToolkit, signalForToolName } from "./signal-toolkit";
+import { signalForToolName } from "./agent-contract";
+import { createSignalToolkit } from "./signal-toolkit";
 import { createSessionContext } from "./tool-session";
 
 const noop = () => {};

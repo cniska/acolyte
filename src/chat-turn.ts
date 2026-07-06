@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { signalForToolName } from "./agent-contract";
 import { createWorkspaceSpecifier } from "./api";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -133,8 +134,10 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   });
 
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
+  // A signal-only reply is a normal answer, not tool work — don't demote it to tool_payload next turn.
+  const nonSignalToolCalls = (reply.toolCalls ?? []).filter((name) => !signalForToolName(name));
   const assistantMessage: ChatMessage =
-    (reply.toolCalls?.length ?? 0) > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
+    nonSignalToolCalls.length > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;
   const rows: ChatRow[] = [];
   if (reply.error) {
     rows.push(createRow("system", reply.error, { text: palette.error }));

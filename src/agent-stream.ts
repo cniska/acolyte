@@ -16,6 +16,7 @@ import type {
   StreamOutput,
   ToolCallEntry,
 } from "./agent-contract";
+import { signalForToolName } from "./agent-contract";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
@@ -25,7 +26,6 @@ import { applyPromptCacheMarkers } from "./prompt-cache";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
-import { signalForToolName } from "./signal-toolkit";
 import { type ToolDefinition, toFunctionTools } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
 
@@ -55,7 +55,8 @@ export function createAgentStream(
     ];
     applyPromptCacheMarkers(provider, messages, functionTools);
 
-    let fullText = "";
+    // No "commit on stop" rule, so a nudge/rejection continue can never lose the answer.
+    let answerText = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
@@ -146,6 +147,7 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
+        if (stepText.trim().length > 0) answerText = stepText;
 
         if (pendingToolCalls.length === 0) {
           const extras =
@@ -161,7 +163,6 @@ export function createAgentStream(
             lifecycleSignalReason = undefined;
             continue;
           }
-          if (stepText.length > 0) fullText += stepText;
           break;
         }
 
@@ -172,8 +173,6 @@ export function createAgentStream(
         if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
           throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
         }
-        if (signalToolCalls.length === 0 && stepText.length > 0) fullText += stepText;
-
         const assistantContent: Array<LanguageModelV4TextPart | LanguageModelV4ToolCallPart> = [
           ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
           ...pendingToolCalls.map((tc) => ({
@@ -265,7 +264,6 @@ export function createAgentStream(
             lifecycleSignalReason = undefined;
             continue;
           }
-          if (stepText.length > 0) fullText += stepText;
           break;
         }
 
@@ -278,13 +276,13 @@ export function createAgentStream(
       log.debug("agent-stream.complete", {
         iterations: loopIteration,
         total_tool_calls: allToolCalls.length,
-        text_length: fullText.length,
+        text_length: answerText.length,
         finish_reason: finishReason?.unified ?? "unknown",
         signal: lifecycleSignal ?? null,
       });
       streamController.close();
       return {
-        text: fullText,
+        text: answerText,
         toolCalls: allToolCalls,
         ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
         ...(lifecycleSignalReason ? { signalReason: lifecycleSignalReason } : {}),
