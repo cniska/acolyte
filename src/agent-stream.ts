@@ -16,6 +16,7 @@ import type {
   StreamOutput,
   ToolCallEntry,
 } from "./agent-contract";
+import { signalForToolName } from "./agent-contract";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
@@ -25,7 +26,6 @@ import { applyPromptCacheMarkers } from "./prompt-cache";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
-import { signalForToolName } from "./signal-toolkit";
 import { type ToolDefinition, toFunctionTools } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
 

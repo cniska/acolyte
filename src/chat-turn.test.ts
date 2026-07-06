@@ -205,4 +205,60 @@ describe("chat turn helpers", () => {
 
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
+
+  test("runAssistantTurn does not mark a signal-only reply as tool_payload", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "The answer is 42.",
+          toolCalls: ["signal_done"],
+        }),
+        status: async () => ({}),
+        taskStatus: async () => null,
+      },
+      userText: "what is the answer",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      pendingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.assistantMessage.kind).toBeUndefined();
+  });
+
+  test("runAssistantTurn keeps tool_payload when a real tool is mixed with a signal", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "Reading the file.",
+          toolCalls: ["file-read", "signal_done"],
+        }),
+        status: async () => ({}),
+        taskStatus: async () => null,
+      },
+      userText: "read the file",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      pendingStartedAt: Date.now(),
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    expect(turn.assistantMessage.kind).toBe("tool_payload");
+  });
 });
