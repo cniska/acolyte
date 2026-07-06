@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.21.0 (2026-07-06)
+
+- feat(agent): meta-cognitive reminders (#239) (`561ad19a`)
+- feat(lifecycle): add signal tools (#246) (`f293f43e`)
+- feat(memory): distill observations via tool call (#247) (`ce9f5595`)
+- feat(provider): support prompt caching (#248) (`63f33e27`)
+- fix(chat): render non-streamed assistant output (`dd4a5819`)
+- refactor: break circular imports and fix tui layer boundary (#250) (`e5389739`)
+- refactor(trace): add typed event catalog (#261) (`3ab1dc40`)
+- refactor(lifecycle): extract generate policy (#260) (`60cf20c0`)
+- refactor(tools): deepen runTool pipeline (#259) (`0aa63f46`)
+- docs: update features (`bc470401`)
+- fix(deps): bump deps and fix audit vulnerabilities (`e2bd7df5`)
+- feat(tools): add bounded file-read windows (#263) (`27da9009`)
+- chore(deps): refresh deps and migrate ai-sdk to v4 (#265) (`390e9b53`)
+- fix(agent): preserve answers on signal turns (#266) (`d9c0ff47`)
+- fix: prompt ordering, reasoning migration, usage telemetry (#271) (`a8a65613`)
+- fix(tui): always install the client log sink (#272) (`dbdd3f15`)
+- fix(chat): stop dropping the final answer (#273) (`91b36063`)
+- fix(release): verify at the bumped version (`6a4367ce`)
+- docs: refresh benchmarks (`30b4e73c`)
+
+
 ## 0.20.0 (2026-04-23)
 
 - fix(skills): persist tool-activated skills across turns (#211) (`e178f96b`)
