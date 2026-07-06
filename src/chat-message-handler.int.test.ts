@@ -253,6 +253,52 @@ describe("chat message handler", () => {
     expect(promoted.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
+  test("commits the authoritative reply.output, not the streamed partial", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "partial " });
+          return {
+            state: "done" as const,
+            model: "gpt-5-mini",
+            output: "partial plus the complete authoritative answer.",
+          };
+        },
+      }),
+    });
+
+    await handleMessage("tell me about this project");
+
+    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    expect(assistantRows).toHaveLength(1);
+    expect(assistantRows[0]?.content).toBe("partial plus the complete authoritative answer.");
+  });
+
+  test("signal turn: streamed answer is not duplicated by the authoritative commit", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "The complete answer." });
+          input.onEvent({ type: "tool-call", toolCallId: "sig_1", toolName: "signal_done", args: {} });
+          return {
+            state: "done" as const,
+            model: "gpt-5-mini",
+            output: "The complete answer.",
+            toolCalls: ["signal_done"],
+          };
+        },
+      }),
+    });
+
+    await handleMessage("say the complete answer");
+
+    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    expect(assistantRows).toHaveLength(1);
+    expect(assistantRows[0]?.content).toBe("The complete answer.");
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness();
     await handleMessage("?");

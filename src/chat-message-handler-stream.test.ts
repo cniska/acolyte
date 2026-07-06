@@ -256,4 +256,52 @@ describe("chat-message-handler-stream", () => {
     expect(assistantRow).toBeDefined();
     expect(assistantRow?.content).toBe("Tell me what to build.");
   });
+
+  // React 19 + StrictMode may invoke a setRows updater more than once, or defer
+  // it past a closure reset. This harness models both: every queued updater is
+  // invoked once with its result DISCARDED (the StrictMode extra call) and then
+  // again for real. The stream state's updaters must be pure or the streamed
+  // assistant row desyncs from its tracked id and silently vanishes.
+  function createStrictHarness(): {
+    rows: ChatRow[];
+    setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+    render: () => void;
+  } {
+    const rows: ChatRow[] = [];
+    const queue: Array<(current: ChatRow[]) => ChatRow[]> = [];
+    const setRows = (updater: (current: ChatRow[]) => ChatRow[]): void => {
+      queue.push(updater);
+    };
+    const render = (): void => {
+      while (queue.length > 0) {
+        const updater = queue.shift();
+        if (!updater) continue;
+        updater([...rows]); // StrictMode extra invocation — result discarded
+        rows.splice(0, rows.length, ...updater(rows)); // real invocation — committed
+      }
+    };
+    return { rows, setRows, render };
+  }
+
+  test("streamed answer survives StrictMode double-invocation of the flush updater", async () => {
+    const h = createStrictHarness();
+    const state = createMessageStreamState({ setRows: h.setRows });
+    state.onDelta("The final answer.");
+    await new Promise((resolve) => setTimeout(resolve, 60)); // flush timer enqueues the updater
+    h.render();
+    expect(h.rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["The final answer."]);
+    state.dispose();
+  });
+
+  test("streamed content survives a flush deferred past finalize's closure reset", () => {
+    const h = createStrictHarness();
+    const state = createMessageStreamState({ setRows: h.setRows });
+    state.onDelta("Tail that must not vanish.");
+    const ids = state.finalize(); // enqueues flush, then resets the closure — before render
+    h.render();
+    expect(h.rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["Tail that must not vanish."]);
+    // finalize()'s returned ids must reference rows that actually committed.
+    for (const id of ids) expect(h.rows.some((r) => r.id === id)).toBe(true);
+    state.dispose();
+  });
 });
