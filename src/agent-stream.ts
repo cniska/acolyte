@@ -145,6 +145,9 @@ export function createAgentStream(
               payload: {
                 inputTokens: part.usage?.inputTokens?.total,
                 outputTokens: part.usage?.outputTokens?.total,
+                cacheReadTokens: part.usage?.inputTokens?.cacheRead,
+                cacheWriteTokens: part.usage?.inputTokens?.cacheWrite,
+                reasoningTokens: part.usage?.outputTokens?.reasoning,
               },
             });
           }

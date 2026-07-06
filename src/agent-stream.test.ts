@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart } from "@ai-sdk/provider";
+import type { StreamChunk } from "./agent-contract";
 import { COMPACTED_OUTPUT, compactPriorToolResults, createAgentStream } from "./agent-stream";
 import type { RateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
@@ -404,6 +405,47 @@ describe("onBeforeNextCall hook", () => {
         { type: "reasoning", text: "Weighing options.", providerOptions: { anthropic: { signature: "sig-abc" } } },
         { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: {} },
       ],
+    });
+  });
+
+  test("emits cache and reasoning token counts from the finish part", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        {
+          type: "finish",
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: {
+            inputTokens: { total: 100, noCache: 40, cacheRead: 60, cacheWrite: 10 },
+            outputTokens: { total: 20, text: 12, reasoning: 8 },
+          },
+        },
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { fullStream, getFullOutput } = await stream("hi", {});
+
+    const chunks: StreamChunk[] = [];
+    const reader = fullStream.getReader();
+    const drain = (async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+    })();
+    await getFullOutput();
+    await drain;
+
+    const usage = chunks.find((c) => c.type === "model-usage");
+    if (usage?.type !== "model-usage") throw new Error("no model-usage chunk emitted");
+    expect(usage.payload).toMatchObject({
+      inputTokens: 100,
+      outputTokens: 20,
+      cacheReadTokens: 60,
+      cacheWriteTokens: 10,
+      reasoningTokens: 8,
     });
   });
 });

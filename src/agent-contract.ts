@@ -49,6 +49,9 @@ export type ToolErrorPayload = {
 export type ModelUsagePayload = {
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  reasoningTokens?: number;
 };
 export type StreamChunk =
   | { type: "step-start" }

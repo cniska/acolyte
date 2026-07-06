@@ -548,6 +548,13 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     if (typeof p?.inputTokens === "number") ctx.inputTokensAccum += p.inputTokens;
     if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
     ctx.modelCallCount += 1;
+    ctx.debug("lifecycle.model_usage", {
+      inputTokens: p?.inputTokens,
+      outputTokens: p?.outputTokens,
+      cacheReadTokens: p?.cacheReadTokens,
+      cacheWriteTokens: p?.cacheWriteTokens,
+      reasoningTokens: p?.reasoningTokens,
+    });
     ctx.emit({
       type: "usage",
       inputTokens: ctx.inputTokensAccum,
