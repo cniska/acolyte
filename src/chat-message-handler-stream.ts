@@ -53,18 +53,25 @@ export function createMessageStreamState(input: {
 
   function flush(): void {
     cancelFlushTimer();
-    if (agentContent.trim().length === 0) return;
-    input.setRows((current) => {
-      if (!activeRowId) {
-        const trimmed = agentContent.trim();
-        if (trimmed.length === 0) return current;
-        agentContent = trimmed;
-        activeRowId = `row_${createId()}`;
-        agentRowIds.push(activeRowId);
-        return [...current, { id: activeRowId, kind: "assistant", content: agentContent }];
-      }
-      return current.map((row) => (row.id === activeRowId ? { ...row, content: agentContent } : row));
-    });
+    // Leading whitespace stripped every call so `content` is a pure function of
+    // agentContent (no mutation), keeping the updater idempotent.
+    const content = agentContent.replace(/^\s+/, "");
+    if (content.length === 0) return;
+    // Row identity is assigned OUTSIDE the updater: React may invoke a setRows
+    // updater more than once (StrictMode) or after sealAgentRow/finalize reset
+    // the closure, so the updater must be a pure function of `current` only —
+    // any id creation / tracking mutation inside it desyncs agentRowIds from the
+    // committed rows and silently drops the answer.
+    if (!activeRowId) {
+      activeRowId = `row_${createId()}`;
+      agentRowIds.push(activeRowId);
+    }
+    const id = activeRowId;
+    input.setRows((current) =>
+      current.some((row) => row.id === id)
+        ? current.map((row) => (row.id === id ? { ...row, content } : row))
+        : [...current, { id, kind: "assistant" as const, content }],
+    );
   }
 
   /** Flush pending content and detach from the current agent row. */
@@ -100,14 +107,19 @@ export function createMessageStreamState(input: {
         agentContent = "";
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
+        // Decide (and track) any fallback assistant row OUTSIDE the updater, for
+        // the same pure-updater reason as flush().
+        const fallbackAssistantId =
+          !(pendingContent && pendingRowId) && pendingContent.trim().length > 0 ? `row_${createId()}` : null;
+        if (fallbackAssistantId) agentRowIds.push(fallbackAssistantId);
         input.setRows((current) => {
           let rows = current;
           if (pendingContent && pendingRowId) {
             rows = rows.map((row) => (row.id === pendingRowId ? { ...row, content: pendingContent } : row));
-          } else if (pendingContent && pendingContent.trim().length > 0) {
-            const id = `row_${createId()}`;
-            agentRowIds.push(id);
-            rows = [...rows, { id, kind: "assistant" as const, content: pendingContent }];
+          } else if (fallbackAssistantId) {
+            rows = current.some((row) => row.id === fallbackAssistantId)
+              ? rows.map((row) => (row.id === fallbackAssistantId ? { ...row, content: pendingContent } : row))
+              : [...rows, { id: fallbackAssistantId, kind: "assistant" as const, content: pendingContent }];
           }
           return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
