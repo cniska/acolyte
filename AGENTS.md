@@ -28,7 +28,7 @@ These must always hold. Break them and the system breaks.
 
 ## Commits
 
-Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters. ASCII only.
+Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters. ASCII only. No issue references or links in the subject (`(#123)`, `Fixes #123`) — issue references belong in the PR body.
 
 ## Code
 
