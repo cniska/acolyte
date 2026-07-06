@@ -109,6 +109,48 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
+  test("forwards the reasoning level as a call option and suppresses temperature", async () => {
+    const savedReasoning = appConfig.reasoning;
+    (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = "high";
+    let capturedOptions: StreamOptions | undefined;
+    const ctx = createRunContext({
+      model: "anthropic/claude-opus-4-8",
+      temperature: 0.42,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream(_prompt, options) {
+          capturedOptions = options;
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "done", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    try {
+      await phaseGenerate(ctx, { timeoutMs: 1000 });
+    } finally {
+      (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = savedReasoning;
+    }
+
+    expect(capturedOptions?.reasoning).toBe("high");
+    // Reasoning models reject an explicit temperature, and the deprecated thinking
+    // budget must never be assembled by hand.
+    expect(capturedOptions?.temperature).toBeUndefined();
+    expect(capturedOptions?.providerOptions?.anthropic).toBeUndefined();
+  });
+
   test("passes Vercel AI Gateway prompt caching options", async () => {
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({

@@ -1,5 +1,6 @@
 import type { LanguageModelV4, LanguageModelV4Message, SharedV4ProviderOptions } from "@ai-sdk/provider";
 import { z } from "zod";
+import type { ReasoningLevel } from "./config-contract";
 import type { ToolDefinition } from "./tool-contract";
 
 export type ToolCallEntry = {
@@ -70,6 +71,7 @@ export type Agent = {
 export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
+  reasoning?: ReasoningLevel;
   providerOptions?: SharedV4ProviderOptions;
   preCallInputTokenLimit?: number;
   onBeforeNextCall?: (messages: readonly LanguageModelV4Message[]) => LanguageModelV4Message[];

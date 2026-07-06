@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatModel,
-  isProviderAvailable,
-  normalizeModel,
-  providerFromModel,
-  reasoningProviderOptions,
-} from "./provider-config";
+import { formatModel, isProviderAvailable, normalizeModel, providerFromModel } from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
@@ -41,19 +35,6 @@ describe("provider config", () => {
     expect(providerFromModel("vercel/anthropic/claude-sonnet-4")).toBe("vercel");
     expect(providerFromModel("xai/grok-4.1")).toBe("vercel");
     expect(providerFromModel("mistral/mistral-large")).toBe("vercel");
-  });
-
-  test("reasoningProviderOptions returns provider-specific options", () => {
-    expect(reasoningProviderOptions("openai", "high")).toEqual({ openai: { reasoningEffort: "high" } });
-    expect(reasoningProviderOptions("anthropic", "high")).toEqual({
-      anthropic: { thinking: { type: "enabled", budgetTokens: 20_000 } },
-    });
-    expect(reasoningProviderOptions("google", "low")).toEqual({ google: { thinkingConfig: { thinkingLevel: "low" } } });
-    expect(reasoningProviderOptions("vercel", "high")).toEqual({ openai: { reasoningEffort: "high" } });
-  });
-
-  test("reasoningProviderOptions returns undefined when level is not set", () => {
-    expect(reasoningProviderOptions("openai", undefined)).toBeUndefined();
   });
 
   test("isProviderAvailable validates credential requirements", () => {

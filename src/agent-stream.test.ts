@@ -138,6 +138,7 @@ describe("onBeforeNextCall hook", () => {
   function scriptedModel(
     turns: LanguageModelV4StreamPart[][],
     promptCapture: LanguageModelV4Message[][],
+    argsCapture?: Array<Record<string, unknown>>,
   ): LanguageModelV4 {
     let call = 0;
     return {
@@ -145,8 +146,9 @@ describe("onBeforeNextCall hook", () => {
       provider: "test",
       modelId: "test-model",
       supportedUrls: {},
-      async doStream(args: { prompt: LanguageModelV4Message[] }) {
+      async doStream(args: { prompt: LanguageModelV4Message[] } & Record<string, unknown>) {
         promptCapture.push(args.prompt.map((m) => ({ ...m })));
+        argsCapture?.push(args);
         const parts = turns[call] ?? [];
         call += 1;
         return {
@@ -355,5 +357,53 @@ describe("onBeforeNextCall hook", () => {
 
     expect(output.text).toBe("");
     expect(output.signal).toBe("done");
+  });
+
+  test("passes the reasoning level through to the model as a call option", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const argsCapture: Array<Record<string, unknown>> = [];
+    const turns: LanguageModelV4StreamPart[][] = [[finishPart("stop")]];
+    const model = scriptedModel(turns, promptCapture, argsCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", { reasoning: "high" });
+    await getFullOutput();
+
+    expect(argsCapture).toHaveLength(1);
+    expect(argsCapture[0].reasoning).toBe("high");
+    // Reasoning must ride the unified call option, never a hand-built thinking budget.
+    expect(argsCapture[0].providerOptions).toBeUndefined();
+  });
+
+  test("replays reasoning blocks with their signature alongside the tool call", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "reasoning-start", id: "r_1" },
+        { type: "reasoning-delta", id: "r_1", delta: "Weighing options." },
+        // Anthropic delivers the thinking-block signature on a zero-length delta.
+        { type: "reasoning-delta", id: "r_1", delta: "", providerMetadata: { anthropic: { signature: "sig-abc" } } },
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", { reasoning: "high" });
+    await getFullOutput();
+
+    const secondPrompt = promptCapture[1];
+    expect(secondPrompt).toContainEqual({
+      role: "assistant",
+      content: [
+        { type: "reasoning", text: "Weighing options.", providerOptions: { anthropic: { signature: "sig-abc" } } },
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: {} },
+      ],
+    });
   });
 });
