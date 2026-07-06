@@ -49,7 +49,6 @@
     "@ast-grep/lang-rust": "^0.0.7",
     "@ast-grep/napi": "^0.42.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "hono": "^4.12.27",
     "react": "^19.2.7",
     "react-reconciler": "^0.33.0",
     "tiktoken": "^1.0.22",
