@@ -1,4 +1,4 @@
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import type { LifecycleSignal } from "./agent-contract";
 import { wrapInSystemReminder } from "./agent-reminders-render";
 import { unreachable } from "./assert";
@@ -65,7 +65,7 @@ export function decideFinish(input: {
   return { kind: "none" };
 }
 
-export function renderFinishPolicyMessages(decision: FinishPolicyDecision): LanguageModelV3Message[] {
+export function renderFinishPolicyMessages(decision: FinishPolicyDecision): LanguageModelV4Message[] {
   switch (decision.kind) {
     case "missing-signal-continue":
       return [

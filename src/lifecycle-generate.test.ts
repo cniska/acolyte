@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import type { StreamOptions } from "./agent-contract";
 import { createAgentStream } from "./agent-stream";
 import { appConfig } from "./app-config";
@@ -33,21 +33,21 @@ const noopRateLimiter: RateLimiter = {
 };
 
 function scriptedModel(
-  turns: LanguageModelV3StreamPart[][],
-  promptCapture: LanguageModelV3Message[][],
-): LanguageModelV3 {
+  turns: LanguageModelV4StreamPart[][],
+  promptCapture: LanguageModelV4Message[][],
+): LanguageModelV4 {
   let call = 0;
   return {
     specificationVersion: "v3",
     provider: "test",
     modelId: "test-model",
     supportedUrls: {},
-    async doStream(args: { prompt: LanguageModelV3Message[] }) {
+    async doStream(args: { prompt: LanguageModelV4Message[] }) {
       promptCapture.push(args.prompt.map((m) => ({ ...m })));
       const parts = turns[call] ?? [];
       call += 1;
       return {
-        stream: new ReadableStream<LanguageModelV3StreamPart>({
+        stream: new ReadableStream<LanguageModelV4StreamPart>({
           start(controller) {
             for (const part of parts) controller.enqueue(part);
             controller.close();
@@ -55,10 +55,10 @@ function scriptedModel(
         }),
       };
     },
-  } as unknown as LanguageModelV3;
+  } as unknown as LanguageModelV4;
 }
 
-function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
+function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
   return {
     type: "finish",
     finishReason: { unified: reason, raw: reason },
@@ -667,7 +667,7 @@ describe("phaseGenerate", () => {
   });
 
   test("injects post-failure reminder when the last runner in callLog failed", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
+    const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
     const signalTools = createSignalToolkit({
@@ -679,7 +679,7 @@ describe("phaseGenerate", () => {
 
     // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
     // Turn 2: done signal
-    const turns: LanguageModelV3StreamPart[][] = [
+    const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
@@ -747,7 +747,7 @@ describe("phaseGenerate", () => {
   });
 
   test("blocks completion when the model never calls a signal tool", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
+    const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
     const signalTools = createSignalToolkit({
@@ -756,7 +756,7 @@ describe("phaseGenerate", () => {
       onOutput: () => {},
       onChecklist: () => {},
     }) as unknown as Record<string, ToolDefinition>;
-    const turns: LanguageModelV3StreamPart[][] = [
+    const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Done." },
@@ -807,7 +807,7 @@ describe("phaseGenerate", () => {
   });
 
   test("injects self-review prompt on first done signal", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
+    const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
     const signalTools = createSignalToolkit({
@@ -817,7 +817,7 @@ describe("phaseGenerate", () => {
       onChecklist: () => {},
     }) as unknown as Record<string, ToolDefinition>;
 
-    const turns: LanguageModelV3StreamPart[][] = [
+    const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Done." },
@@ -874,7 +874,7 @@ describe("phaseGenerate", () => {
   });
 
   test("skips self-review on done signal when no writes in callLog", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
+    const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
     const signalTools = createSignalToolkit({
@@ -884,7 +884,7 @@ describe("phaseGenerate", () => {
       onChecklist: () => {},
     }) as unknown as Record<string, ToolDefinition>;
 
-    const turns: LanguageModelV3StreamPart[][] = [
+    const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Here is the answer." },

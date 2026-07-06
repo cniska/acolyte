@@ -1,4 +1,4 @@
-import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
+import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
 import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
@@ -68,7 +68,7 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
 
-function parseToolCall(call: LanguageModelV3ToolCall): DistillObservation | null {
+function parseToolCall(call: LanguageModelV4ToolCall): DistillObservation | null {
   try {
     const args = JSON.parse(call.input) as { scope?: unknown; content?: unknown; topic?: unknown };
     if (typeof args.content !== "string" || !args.content.trim()) return null;
@@ -94,7 +94,7 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
     temperature: 0,
   });
   return result.content
-    .filter((part): part is LanguageModelV3ToolCall => part.type === "tool-call" && part.toolName === "memory_observe")
+    .filter((part): part is LanguageModelV4ToolCall => part.type === "tool-call" && part.toolName === "memory_observe")
     .map(parseToolCall)
     .filter((obs): obs is DistillObservation => obs !== null);
 }

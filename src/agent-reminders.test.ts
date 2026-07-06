@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import {
   budgetPressureTag,
   collectReminders,
@@ -28,17 +28,17 @@ function call(
   return { toolName, args, status, ...meta };
 }
 
-function userReminderMessage(tag: string): LanguageModelV3Message {
+function userReminderMessage(tag: string): LanguageModelV4Message {
   return {
     role: "user",
     content: [{ type: "text", text: `<system-reminder type="${tag}">\nprior\n</system-reminder>` }],
   };
 }
 
-const EMPTY_MESSAGES: LanguageModelV3Message[] = [];
+const EMPTY_MESSAGES: LanguageModelV4Message[] = [];
 
 function input(overrides: {
-  messages?: readonly LanguageModelV3Message[];
+  messages?: readonly LanguageModelV4Message[];
   callLog?: readonly ToolCallRecord[];
   writeToolSet?: ReadonlySet<string>;
   runnerToolSet?: ReadonlySet<string>;
@@ -210,7 +210,7 @@ describe("detectStuckLoop", () => {
 
   test("throttles while a recent stuck-loop reminder is present", () => {
     const callLog: ToolCallRecord[] = [edit("src/a.ts"), edit("src/a.ts"), edit("src/a.ts")];
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "user", content: [{ type: "text", text: "go" }] },
       { role: "assistant", content: [{ type: "text", text: "ok" }] },
       userReminderMessage("stuck-loop"),
@@ -221,9 +221,9 @@ describe("detectStuckLoop", () => {
 
   test("fires again after cooldown turns", () => {
     const callLog: ToolCallRecord[] = [edit("src/a.ts"), edit("src/a.ts"), edit("src/a.ts")];
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       userReminderMessage("stuck-loop"),
-      ...Array.from<unknown, LanguageModelV3Message>({ length: 6 }, () => ({
+      ...Array.from<unknown, LanguageModelV4Message>({ length: 6 }, () => ({
         role: "assistant",
         content: [{ type: "text", text: "step" }],
       })),
@@ -272,12 +272,12 @@ describe("detectBudgetPressure", () => {
   });
 
   test("skips already-announced thresholds", () => {
-    const messages: LanguageModelV3Message[] = [userReminderMessage(budgetPressureTag(0.5))];
+    const messages: LanguageModelV4Message[] = [userReminderMessage(budgetPressureTag(0.5))];
     expect(detectBudgetPressure(input({ messages, budget: { used: 5, limit: 10 } }))).toEqual([]);
   });
 
   test("fires 75% after 50% was already announced", () => {
-    const messages: LanguageModelV3Message[] = [userReminderMessage(budgetPressureTag(0.5))];
+    const messages: LanguageModelV4Message[] = [userReminderMessage(budgetPressureTag(0.5))];
     const out = detectBudgetPressure(input({ messages, budget: { used: 8, limit: 10 } }));
     expect(out).toEqual([{ type: "budget-pressure", thresholdPct: 0.75, variant: "urgent", used: 8, limit: 10 }]);
   });
@@ -323,7 +323,7 @@ describe("turnsSinceLastReminder", () => {
   });
 
   test("counts assistant turns since a matching reminder", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       userReminderMessage("stuck-loop"),
       { role: "assistant", content: [{ type: "text", text: "a" }] },
       { role: "assistant", content: [{ type: "text", text: "b" }] },
@@ -332,7 +332,7 @@ describe("turnsSinceLastReminder", () => {
   });
 
   test("ignores reminders of a different type", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       userReminderMessage("budget-pressure"),
       { role: "assistant", content: [{ type: "text", text: "a" }] },
     ];

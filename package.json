@@ -40,10 +40,10 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.93",
-    "@ai-sdk/google": "^3.0.88",
-    "@ai-sdk/openai": "^3.0.80",
-    "@ai-sdk/provider": "^3.0.13",
+    "@ai-sdk/anthropic": "^4.0.8",
+    "@ai-sdk/google": "^4.0.8",
+    "@ai-sdk/openai": "^4.0.8",
+    "@ai-sdk/provider": "^4.0.2",
     "@ast-grep/lang-go": "^0.0.6",
     "@ast-grep/lang-python": "^0.0.6",
     "@ast-grep/lang-rust": "^0.0.7",

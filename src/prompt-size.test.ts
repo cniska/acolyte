@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3FunctionTool, LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4FunctionTool, LanguageModelV4Message } from "@ai-sdk/provider";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
 
 describe("estimatePromptSize", () => {
@@ -9,7 +9,7 @@ describe("estimatePromptSize", () => {
   });
 
   test("counts system-role messages under system", () => {
-    const messages: LanguageModelV3Message[] = [{ role: "system", content: "you are helpful" }];
+    const messages: LanguageModelV4Message[] = [{ role: "system", content: "you are helpful" }];
     const size = estimatePromptSize(messages, []);
     expect(size.system).toBeGreaterThan(0);
     expect(size.tools).toBe(0);
@@ -18,7 +18,7 @@ describe("estimatePromptSize", () => {
   });
 
   test("counts tool definitions", () => {
-    const tools: LanguageModelV3FunctionTool[] = [
+    const tools: LanguageModelV4FunctionTool[] = [
       { type: "function", name: "file-read", description: "Read a file", inputSchema: { type: "object" } },
     ];
     const size = estimatePromptSize([], tools);
@@ -27,7 +27,7 @@ describe("estimatePromptSize", () => {
   });
 
   test("counts non-system messages separately from system", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: "sys" },
       { role: "user", content: [{ type: "text", text: "hello from the user" }] },
       {
@@ -63,11 +63,11 @@ describe("estimatePromptSize", () => {
   });
 
   test("total is the sum of system, tools, and messages", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: "sys" },
       { role: "user", content: [{ type: "text", text: "hello" }] },
     ];
-    const tools: LanguageModelV3FunctionTool[] = [
+    const tools: LanguageModelV4FunctionTool[] = [
       { type: "function", name: "t", description: "t", inputSchema: { type: "object" } },
     ];
     const size = estimatePromptSize(messages, tools);

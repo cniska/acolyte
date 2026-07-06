@@ -1,11 +1,11 @@
 import type {
-  LanguageModelV3,
-  LanguageModelV3FinishReason,
-  LanguageModelV3Message,
-  LanguageModelV3StreamPart,
-  LanguageModelV3TextPart,
-  LanguageModelV3ToolCallPart,
-  LanguageModelV3ToolResultPart,
+  LanguageModelV4,
+  LanguageModelV4FinishReason,
+  LanguageModelV4Message,
+  LanguageModelV4StreamPart,
+  LanguageModelV4TextPart,
+  LanguageModelV4ToolCallPart,
+  LanguageModelV4ToolResultPart,
 } from "@ai-sdk/provider";
 import type {
   Agent,
@@ -35,7 +35,7 @@ async function resolveInstructions(instructions: Agent["instructions"]): Promise
 }
 
 export function createAgentStream(
-  model: LanguageModelV3,
+  model: LanguageModelV4,
   instructions: Agent["instructions"],
   tools: Record<string, ToolDefinition>,
   rateLimiter: RateLimiter,
@@ -49,7 +49,7 @@ export function createAgentStream(
   return async (prompt: string, options: StreamOptions): Promise<StreamOutput> => {
     const systemPrompt = await resolveInstructions(instructions);
     const functionTools = toFunctionTools(tools);
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: prompt }] },
     ];
@@ -68,7 +68,7 @@ export function createAgentStream(
     const resultPromise = (async (): Promise<GenerateResult> => {
       let lifecycleSignal: LifecycleSignal | undefined;
       let lifecycleSignalReason: string | undefined;
-      let finishReason: LanguageModelV3FinishReason | undefined;
+      let finishReason: LanguageModelV4FinishReason | undefined;
       while (true) {
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
@@ -174,7 +174,7 @@ export function createAgentStream(
         }
         if (signalToolCalls.length === 0 && stepText.length > 0) fullText += stepText;
 
-        const assistantContent: Array<LanguageModelV3TextPart | LanguageModelV3ToolCallPart> = [
+        const assistantContent: Array<LanguageModelV4TextPart | LanguageModelV4ToolCallPart> = [
           ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
           ...pendingToolCalls.map((tc) => ({
             type: "tool-call" as const,
@@ -184,7 +184,7 @@ export function createAgentStream(
           })),
         ];
 
-        const toolResultParts: LanguageModelV3ToolResultPart[] = [];
+        const toolResultParts: LanguageModelV4ToolResultPart[] = [];
         for (const tc of pendingToolCalls) {
           allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
           const tool = toolsByName.get(tc.toolName);
@@ -309,7 +309,7 @@ function signalReasonFromResult(result: unknown): string | undefined {
 }
 
 function emitStreamPart(
-  part: LanguageModelV3StreamPart,
+  part: LanguageModelV4StreamPart,
   controller: ReadableStreamDefaultController<StreamChunk>,
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
@@ -355,7 +355,7 @@ export const COMPACTED_OUTPUT = { type: "text" as const, value: "[previous tool 
 
 const PRESERVE_TOOL_RESULTS = new Set<string>(["file-read"]);
 
-export function compactPriorToolResults(messages: LanguageModelV3Message[]): void {
+export function compactPriorToolResults(messages: LanguageModelV4Message[]): void {
   for (const message of messages) {
     if (message.role !== "tool") continue;
     for (let i = 0; i < message.content.length; i++) {
