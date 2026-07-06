@@ -55,9 +55,7 @@ export function createAgentStream(
     ];
     applyPromptCacheMarkers(provider, messages, functionTools);
 
-    // The model's answer: the text of the latest step that said anything non-blank. Each step's
-    // text supersedes the previous candidate; an empty step supersedes nothing. There is no
-    // "commit on stop" rule, so a nudge/rejection continue can never lose the answer.
+    // No "commit on stop" rule, so a nudge/rejection continue can never lose the answer.
     let answerText = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;

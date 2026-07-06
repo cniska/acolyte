@@ -134,8 +134,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   });
 
   const baseAssistantMessage = params.createMessage("assistant", reply.output);
-  // Signal tools (signal_done/noop/blocked) aren't real work — a reply whose only tool calls are
-  // signals is a normal assistant answer, so don't demote it to tool_payload in the next turn's context.
+  // A signal-only reply is a normal answer, not tool work — don't demote it to tool_payload next turn.
   const nonSignalToolCalls = (reply.toolCalls ?? []).filter((name) => !signalForToolName(name));
   const assistantMessage: ChatMessage =
     nonSignalToolCalls.length > 0 ? { ...baseAssistantMessage, kind: "tool_payload" } : baseAssistantMessage;

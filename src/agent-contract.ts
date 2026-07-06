@@ -28,7 +28,6 @@ const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
   signal_blocked: "blocked",
 };
 
-/** Map a tool name to its lifecycle signal, or undefined if it is not a signal tool. */
 export function signalForToolName(toolName: string): LifecycleSignal | undefined {
   const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
   if (!parsed.success) return undefined;
