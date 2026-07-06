@@ -5,7 +5,7 @@
 Acolyte is a terminal-first AI coding agent: local-first, observable, extensible. Read `docs/architecture.md` before working on unfamiliar subsystems.
 
 Extension points:
-- New lifecycle effect → `Effect` in `lifecycle-effects.ts`, add to `EFFECTS`
+- New lifecycle effect → `Effect` in `lifecycle-effects.ts`, add to `POST_EFFECTS` or `PRE_EFFECTS`
 - New tool → appropriate `*-toolkit.ts`; all tools flow through `runTool`
 - New ecosystem → `EcosystemDetector` in `workspace-detectors.ts`, add to `ECOSYSTEM_DETECTORS`
 
@@ -15,7 +15,7 @@ These must always hold. Break them and the system breaks.
 
 1. All tools go through `runTool` in `tool-execution.ts` — never call a tool function directly.
 2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
-3. `@signal` is a suffix — model output must end with exactly one `@signal` line. Strip the signal line and everything after it.
+3. Completion is signaled with a lifecycle signal tool (`signal_done` / `signal_noop` / `signal_blocked`), not inline text. A signal tool must be the only tool call in its response, and only one may appear. Signal tools are exempt from the step budget.
 4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
 5. Error handling must follow `docs/errors.md`.
 6. Run `bun run verify` before every commit.
