@@ -9,6 +9,7 @@ export type ToolCallEntry = {
 };
 
 export type GenerateResult = {
+  /** The model's latest non-blank assistant text; later steps supersede earlier ones. */
   text: string;
   toolCalls: ToolCallEntry[];
   signal?: LifecycleSignal;

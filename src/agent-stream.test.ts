@@ -277,4 +277,83 @@ describe("onBeforeNextCall hook", () => {
     });
     expect(secondPrompt).toContainEqual({ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] });
   });
+
+  test("returns the answer when a nudged text step is followed by a bare signal", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "The answer is 42." },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      [
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+
+    let nudged = false;
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: () => {
+        if (nudged) return [];
+        nudged = true;
+        return [{ role: "user", content: [{ type: "text", text: "<<signal to finish>>" }] }];
+      },
+    });
+    const output = await getFullOutput();
+
+    expect(output.text).toBe("The answer is 42.");
+    expect(output.signal).toBe("done");
+  });
+
+  test("the final answer supersedes earlier tool-step narration", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Checking file." },
+        { type: "text-end", id: "t_1" },
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "x is 2." },
+        { type: "text-end", id: "t_2" },
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(
+      model,
+      "sys",
+      { noop: echoTool(), signal_done: signalDoneTool() },
+      noopRateLimiter,
+    );
+    const { getFullOutput } = await stream("hi", {});
+    const output = await getFullOutput();
+
+    expect(output.text).toBe("x is 2.");
+  });
+
+  test("a bare signal with no text yields empty result text", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", {});
+    const output = await getFullOutput();
+
+    expect(output.text).toBe("");
+    expect(output.signal).toBe("done");
+  });
 });
