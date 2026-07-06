@@ -1,4 +1,4 @@
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import type { Agent, GenerateResult, StreamChunk } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
@@ -121,7 +121,7 @@ function renderToolErrorRecovery(error: { tool: string; message: string; code?: 
 }
 
 function unresolvedToolErrorFromMessages(
-  messages: readonly LanguageModelV3Message[],
+  messages: readonly LanguageModelV4Message[],
 ): { tool: string; message: string; code?: string } | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];

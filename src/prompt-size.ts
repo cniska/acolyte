@@ -1,4 +1,4 @@
-import type { LanguageModelV3FunctionTool, LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4FunctionTool, LanguageModelV4Message } from "@ai-sdk/provider";
 import { estimateTokens } from "./agent-input";
 
 export type PromptSize = {
@@ -9,8 +9,8 @@ export type PromptSize = {
 };
 
 export function estimatePromptSize(
-  messages: LanguageModelV3Message[],
-  tools: LanguageModelV3FunctionTool[],
+  messages: LanguageModelV4Message[],
+  tools: LanguageModelV4FunctionTool[],
 ): PromptSize {
   const systemMessages = messages.filter((m) => m.role === "system");
   const otherMessages = messages.filter((m) => m.role !== "system");

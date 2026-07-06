@@ -1,4 +1,4 @@
-import type { SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { SharedV4ProviderOptions } from "@ai-sdk/provider";
 import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
 
@@ -82,7 +82,7 @@ const ANTHROPIC_THINKING_BUDGET: Record<string, number> = {
 export function reasoningProviderOptions(
   provider: Provider,
   level: ReasoningLevel | undefined,
-): SharedV3ProviderOptions | undefined {
+): SharedV4ProviderOptions | undefined {
   if (!level) return undefined;
   switch (provider) {
     case "openai":

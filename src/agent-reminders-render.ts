@@ -1,11 +1,11 @@
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import { type PostFailureReminder, type Reminder, reminderTag } from "./agent-reminders";
 
 export function wrapInSystemReminder(tag: string, text: string): string {
   return `<system-reminder type="${tag}">\n${text}\n</system-reminder>`;
 }
 
-export function renderReminder(reminder: Reminder): LanguageModelV3Message {
+export function renderReminder(reminder: Reminder): LanguageModelV4Message {
   return {
     role: "user",
     content: [{ type: "text", text: wrapInSystemReminder(reminderTag(reminder), reminderText(reminder)) }],

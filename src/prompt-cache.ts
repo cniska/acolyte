@@ -1,4 +1,4 @@
-import type { LanguageModelV3FunctionTool, LanguageModelV3Message, SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { LanguageModelV4FunctionTool, LanguageModelV4Message, SharedV4ProviderOptions } from "@ai-sdk/provider";
 import type { Provider } from "./provider-contract";
 
 const CACHE_CONTROL = { type: "ephemeral" as const };
@@ -15,19 +15,19 @@ export function createPromptCacheKey(input: { model: string; sessionId?: string;
 }
 
 export function mergeProviderOptions(
-  first: SharedV3ProviderOptions | undefined,
-  second: SharedV3ProviderOptions | undefined,
-): SharedV3ProviderOptions | undefined {
+  first: SharedV4ProviderOptions | undefined,
+  second: SharedV4ProviderOptions | undefined,
+): SharedV4ProviderOptions | undefined {
   if (!first) return second;
   if (!second) return first;
-  const merged: SharedV3ProviderOptions = { ...first };
+  const merged: SharedV4ProviderOptions = { ...first };
   for (const [provider, options] of Object.entries(second)) {
     merged[provider] = { ...(merged[provider] ?? {}), ...options };
   }
   return merged;
 }
 
-export function promptCacheProviderOptions(provider: Provider, cacheKey: string): SharedV3ProviderOptions | undefined {
+export function promptCacheProviderOptions(provider: Provider, cacheKey: string): SharedV4ProviderOptions | undefined {
   switch (provider) {
     case "openai":
       return { openai: { promptCacheKey: cacheKey } };
@@ -44,8 +44,8 @@ export function promptCacheProviderOptions(provider: Provider, cacheKey: string)
 
 export function applyPromptCacheMarkers(
   provider: Provider,
-  messages: LanguageModelV3Message[],
-  tools: LanguageModelV3FunctionTool[],
+  messages: LanguageModelV4Message[],
+  tools: LanguageModelV4FunctionTool[],
 ): void {
   if (provider !== "anthropic") return;
 

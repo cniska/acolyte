@@ -1,4 +1,4 @@
-import type { LanguageModelV3, LanguageModelV3Message, SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { LanguageModelV4, LanguageModelV4Message, SharedV4ProviderOptions } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { ToolDefinition } from "./tool-contract";
 
@@ -46,7 +46,7 @@ export type Agent = {
   readonly id: string;
   readonly name: string;
   readonly instructions: string | (() => string | Promise<string>);
-  readonly model: LanguageModelV3;
+  readonly model: LanguageModelV4;
   readonly tools: Record<string, ToolDefinition>;
   stream(prompt: string, options: StreamOptions): Promise<StreamOutput>;
 };
@@ -54,14 +54,14 @@ export type Agent = {
 export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
-  providerOptions?: SharedV3ProviderOptions;
+  providerOptions?: SharedV4ProviderOptions;
   preCallInputTokenLimit?: number;
-  onBeforeNextCall?: (messages: readonly LanguageModelV3Message[]) => LanguageModelV3Message[];
+  onBeforeNextCall?: (messages: readonly LanguageModelV4Message[]) => LanguageModelV4Message[];
   onBeforeFinish?: (attempt: {
-    messages: readonly LanguageModelV3Message[];
+    messages: readonly LanguageModelV4Message[];
     text: string;
     signal?: LifecycleSignal;
-  }) => LanguageModelV3Message[];
+  }) => LanguageModelV4Message[];
 };
 
 export type StreamOutput = {

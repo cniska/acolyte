@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3, LanguageModelV3Message, LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import { COMPACTED_OUTPUT, compactPriorToolResults, createAgentStream } from "./agent-stream";
 import type { RateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
 describe("compactPriorToolResults", () => {
-  function toolMsg(results: Array<{ id: string; name: string; value: string }>): LanguageModelV3Message {
+  function toolMsg(results: Array<{ id: string; name: string; value: string }>): LanguageModelV4Message {
     return {
       role: "tool",
       content: results.map((r) => ({
@@ -18,7 +18,7 @@ describe("compactPriorToolResults", () => {
   }
 
   test("replaces tool result output with compact marker", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: "you are helpful" },
       { role: "user", content: [{ type: "text", text: "search for foo" }] },
       toolMsg([{ id: "tc_1", name: "file-search", value: "hit:\n".repeat(500) }]),
@@ -37,7 +37,7 @@ describe("compactPriorToolResults", () => {
 
   test("skips non-tool messages", () => {
     const systemContent = "you are helpful";
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: systemContent },
       { role: "user", content: [{ type: "text", text: "hello" }] },
     ];
@@ -47,7 +47,7 @@ describe("compactPriorToolResults", () => {
   });
 
   test("compacts multiple tool messages", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: "sys" },
       toolMsg([{ id: "tc_1", name: "file-search", value: "hit1" }]),
       toolMsg([{ id: "tc_2", name: "file-search", value: "hit2" }]),
@@ -64,7 +64,7 @@ describe("compactPriorToolResults", () => {
 
   test("preserves file-read results across compaction", () => {
     const fileContent = "File: src/foo.ts\n1: const x = 1;\n2: const y = 2;\n";
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       toolMsg([{ id: "tc_1", name: "file-read", value: fileContent }]),
       toolMsg([{ id: "tc_2", name: "file-search", value: "hits" }]),
     ];
@@ -80,7 +80,7 @@ describe("compactPriorToolResults", () => {
   });
 
   test("compacts multiple results within a single tool message", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       toolMsg([
         { id: "tc_1", name: "file-search", value: "content1" },
         { id: "tc_2", name: "shell-exec", value: "output2" },
@@ -96,7 +96,7 @@ describe("compactPriorToolResults", () => {
   });
 
   test("is idempotent", () => {
-    const messages: LanguageModelV3Message[] = [toolMsg([{ id: "tc_1", name: "file-search", value: "content" }])];
+    const messages: LanguageModelV4Message[] = [toolMsg([{ id: "tc_1", name: "file-search", value: "content" }])];
     compactPriorToolResults(messages);
     compactPriorToolResults(messages);
     if (messages[0].role !== "tool") throw new Error("unexpected");
@@ -124,7 +124,7 @@ describe("onBeforeNextCall hook", () => {
     },
   };
 
-  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV3StreamPart {
+  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
     return {
       type: "finish",
       finishReason: { unified: reason, raw: reason },
@@ -136,21 +136,21 @@ describe("onBeforeNextCall hook", () => {
   }
 
   function scriptedModel(
-    turns: LanguageModelV3StreamPart[][],
-    promptCapture: LanguageModelV3Message[][],
-  ): LanguageModelV3 {
+    turns: LanguageModelV4StreamPart[][],
+    promptCapture: LanguageModelV4Message[][],
+  ): LanguageModelV4 {
     let call = 0;
     return {
       specificationVersion: "v3",
       provider: "test",
       modelId: "test-model",
       supportedUrls: {},
-      async doStream(args: { prompt: LanguageModelV3Message[] }) {
+      async doStream(args: { prompt: LanguageModelV4Message[] }) {
         promptCapture.push(args.prompt.map((m) => ({ ...m })));
         const parts = turns[call] ?? [];
         call += 1;
         return {
-          stream: new ReadableStream<LanguageModelV3StreamPart>({
+          stream: new ReadableStream<LanguageModelV4StreamPart>({
             start(controller) {
               for (const part of parts) controller.enqueue(part);
               controller.close();
@@ -158,7 +158,7 @@ describe("onBeforeNextCall hook", () => {
           }),
         };
       },
-    } as unknown as LanguageModelV3;
+    } as unknown as LanguageModelV4;
   }
 
   function echoTool(): ToolDefinition {
@@ -194,8 +194,8 @@ describe("onBeforeNextCall hook", () => {
   }
 
   test("injects returned messages into the next model prompt", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
-    const turns: LanguageModelV3StreamPart[][] = [
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
@@ -223,8 +223,8 @@ describe("onBeforeNextCall hook", () => {
   });
 
   test("skips injection when hook is not provided", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
-    const turns: LanguageModelV3StreamPart[][] = [[finishPart("stop")]];
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [[finishPart("stop")]];
     const model = scriptedModel(turns, promptCapture);
     const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
     const { getFullOutput } = await stream("hi", {});
@@ -233,8 +233,8 @@ describe("onBeforeNextCall hook", () => {
   });
 
   test("continues when onBeforeFinish rejects a completion attempt", async () => {
-    const promptCapture: LanguageModelV3Message[][] = [];
-    const turns: LanguageModelV3StreamPart[][] = [
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Premature." },

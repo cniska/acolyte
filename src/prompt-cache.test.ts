@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV3FunctionTool, LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4FunctionTool, LanguageModelV4Message } from "@ai-sdk/provider";
 import {
   applyPromptCacheMarkers,
   createPromptCacheKey,
@@ -44,11 +44,11 @@ describe("prompt cache", () => {
   });
 
   test("marks Anthropic system prompt and final tool definition as cacheable", () => {
-    const messages: LanguageModelV3Message[] = [
+    const messages: LanguageModelV4Message[] = [
       { role: "system", content: "stable instructions" },
       { role: "user", content: [{ type: "text", text: "dynamic prompt" }] },
     ];
-    const tools: LanguageModelV3FunctionTool[] = [
+    const tools: LanguageModelV4FunctionTool[] = [
       { type: "function", name: "file-read", description: "read", inputSchema: {} },
       { type: "function", name: "file-search", description: "search", inputSchema: {} },
     ];

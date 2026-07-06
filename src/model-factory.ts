@@ -1,7 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
 import { withVercelPromptCacheFetch } from "./prompt-cache";
@@ -12,7 +12,7 @@ export function createModel(
   qualifiedModel: string,
   rateLimiter: RateLimiter,
   credentials?: ProviderCredentialsMap,
-): LanguageModelV3 {
+): LanguageModelV4 {
   const creds = credentials ?? defaultCredentials();
   const provider = providerFromModel(qualifiedModel);
   const slash = qualifiedModel.indexOf("/");

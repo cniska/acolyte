@@ -1,4 +1,4 @@
-import type { LanguageModelV3Message } from "@ai-sdk/provider";
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import {
   BUDGET_NUDGE_THRESHOLDS,
   STUCK_LOOP_SAME_FILE_THRESHOLD,
@@ -25,7 +25,7 @@ export type PostFailureReminder = {
 export type Reminder = StuckLoopReminder | BudgetPressureReminder | PostFailureReminder;
 
 export type CollectInput = {
-  messages: readonly LanguageModelV3Message[];
+  messages: readonly LanguageModelV4Message[];
   callLog: readonly ToolCallRecord[];
   writeToolSet: ReadonlySet<string>;
   runnerToolSet: ReadonlySet<string>;
@@ -115,7 +115,7 @@ export function reminderTag(reminder: Reminder): string {
   }
 }
 
-export function turnsSinceLastReminder(messages: readonly LanguageModelV3Message[], tag: string): number {
+export function turnsSinceLastReminder(messages: readonly LanguageModelV4Message[], tag: string): number {
   const marker = `<system-reminder type="${tag}">`;
   let turns = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
