@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, tes
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  createMessagePayload,
   createToolCallsPayload,
   type FakeProviderRequestContext,
   type FakeProviderServer,
@@ -123,6 +124,52 @@ describe("lifecycle integration", () => {
     const reply = await run("update x to 2");
     expect(turnCount).toBe(4);
     expect(reply.output).toContain("Updated x to 2.");
+  });
+
+  test("a prose reply after completion rejection re-opens the loop without blocking", async () => {
+    // Regression (dogfood, residual): the missing-signal one-shot retry is spent, then
+    // signal_done re-opens the loop via completion rejection. A prose reply to that
+    // reminder must get a fresh retry — before the latch reset it hit missing-signal-block
+    // and surfaced "Cannot finish yet" despite a valid signal.
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 3;" }],
+            }),
+          },
+        ]);
+      }
+      if (turnCount === 2) return createMessagePayload(ctx.model, ctx.responseCounter, "Edited the file.");
+      if (turnCount === 3) return createSignalPayload(ctx, "signal_done", "Done.");
+      // Prose reply to the reminder — must not block on the already-spent retry.
+      if (turnCount === 4) return createMessagePayload(ctx.model, ctx.responseCounter, "Running validation next.");
+      if (turnCount === 5) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({ cmd: "true" }),
+          },
+        ]);
+      }
+      return createSignalPayload(ctx, "signal_done", "Updated x to 3.");
+    });
+
+    const reply = await run("update x to 3");
+    expect(reply.state).toBe("done");
+    expect(reply.error).toBeUndefined();
+    expect(reply.output).toContain("Updated x to 3.");
   });
 
   test("unresolved tool errors get a recovery turn before finalization", async () => {
@@ -381,7 +428,6 @@ exit 1
 
     expect(turnCount).toBe(3);
     expect(reply.state).toBe("awaiting-input");
-    // The blocking reason is surfaced through `error` alone (never duplicated into output).
     expect(reply.error).toContain("changed and no later validation targeted it");
   });
 
