@@ -11,7 +11,7 @@ import {
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
-import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
 export type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
@@ -61,17 +61,22 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   return entries;
 }
 
-export async function addMemory(
-  content: string,
-  options: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope } = {},
-): Promise<MemoryEntry> {
+export interface AddMemoryOptions {
+  scope?: MemoryScope;
+  workspace?: string;
+  sessionId?: string;
+  resourceId?: ResourceId;
+  store?: MemoryStore;
+}
+
+export async function addMemory(content: string, options: AddMemoryOptions = {}): Promise<MemoryEntry> {
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Memory content cannot be empty");
 
-  const { scope = "user", workspace } = options;
+  const { scope = "user", workspace, sessionId, resourceId } = options;
   const store = options.store ?? (await getMemoryStore());
-  const scopeKey =
-    scope === "project" ? projectResourceIdFromWorkspace(workspace ?? process.cwd()) : defaultUserResourceId();
+  const scopeKey = resolveScopeKey(scope, { sessionId, workspace, resourceId });
+  if (!scopeKey) throw new Error(`Cannot resolve scope key for scope "${scope}"`);
 
   const record = {
     id: `mem_${createId()}`,
@@ -133,10 +138,36 @@ export async function addObservation(
   return record;
 }
 
-export function resolveScopeKey(scope: MemoryScope, ctx: { sessionId?: string; workspace?: string }): string | null {
+export type ScopeContext = {
+  sessionId?: string;
+  workspace?: string;
+  resourceId?: ResourceId;
+};
+
+export function resolveScopeKey(
+  scope: MemoryScope,
+  ctx: ScopeContext,
+  options: { strict?: boolean } = {},
+): string | null {
   if (scope === "session") return ctx.sessionId ?? null;
-  if (scope === "project") return projectResourceIdFromWorkspace(ctx.workspace ?? process.cwd());
+  if (scope === "project") {
+    const fromResource = parseResourceId(ctx.resourceId);
+    if (fromResource?.startsWith("proj_")) return fromResource;
+    if (ctx.workspace) return projectResourceIdFromWorkspace(ctx.workspace);
+    return options.strict ? null : projectResourceIdFromWorkspace(process.cwd());
+  }
+  const fromResource = parseResourceId(ctx.resourceId);
+  if (fromResource?.startsWith("user_")) return fromResource;
   return defaultUserResourceId();
+}
+
+export function visibleScopeKeys(ctx: ScopeContext): Set<string> {
+  const keys = new Set<string>();
+  for (const scope of ["session", "project", "user"] as const) {
+    const key = resolveScopeKey(scope, ctx, { strict: true });
+    if (key) keys.add(key);
+  }
+  return keys;
 }
 
 export async function removeMemory(id: string, options: MemoryOptions = {}): Promise<RemoveMemoryResult> {

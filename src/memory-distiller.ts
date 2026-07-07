@@ -13,16 +13,15 @@ import {
   type MemoryStore,
   memoryScopeSchema,
 } from "./memory-contract";
-import { addObservation } from "./memory-ops";
+import { addObservation, resolveScopeKey } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
-import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { toFunctionTool } from "./tool-contract";
 
 const MEMORY_OBSERVE_TOOL = toFunctionTool({
-  id: "memory_observe",
+  id: "memory-observe",
   description: "Record a fact extracted from the conversation into memory.",
   inputSchema: z.toJSONSchema(
     z.object({
@@ -35,7 +34,7 @@ const MEMORY_OBSERVE_TOOL = toFunctionTool({
 
 export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
-For each fact, call memory_observe with:
+For each fact, call memory-observe with:
 - scope: "project" for project-specific durable facts (architecture, tooling, conventions, decisions)
          "user" for personal preferences that carry across projects
          "session" for in-progress state, temporary constraints, working assumptions
@@ -94,34 +93,9 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
     temperature: 0,
   });
   return result.content
-    .filter((part): part is LanguageModelV4ToolCall => part.type === "tool-call" && part.toolName === "memory_observe")
+    .filter((part): part is LanguageModelV4ToolCall => part.type === "tool-call" && part.toolName === "memory-observe")
     .map(parseToolCall)
     .filter((obs): obs is DistillObservation => obs !== null);
-}
-
-const DISTILL_SCOPE_KEY_RESOLVERS: Record<
-  DistillScope,
-  (ctx: { sessionId?: string; workspace?: string; resourceId?: ResourceId }) => string | null
-> = {
-  session: (ctx) => ctx.sessionId ?? null,
-  project: (ctx) => {
-    const parsed = parseResourceId(ctx.resourceId);
-    if (parsed?.startsWith("proj_")) return parsed;
-    if (!ctx.workspace) return null;
-    return projectResourceIdFromWorkspace(ctx.workspace);
-  },
-  user: (ctx) => {
-    const parsed = parseResourceId(ctx.resourceId);
-    if (parsed?.startsWith("user_")) return parsed;
-    return defaultUserResourceId();
-  },
-};
-
-function resolveDistillScopeKey(
-  scope: DistillScope,
-  ctx: { sessionId?: string; workspace?: string; resourceId?: ResourceId },
-): string | null {
-  return DISTILL_SCOPE_KEY_RESOLVERS[scope](ctx);
 }
 
 async function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<number> {
@@ -162,7 +136,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       let sessionCount = 0;
 
       for (const obs of filtered) {
-        const factKey = resolveDistillScopeKey(obs.scope, obs.scope === "session" ? { sessionId: ctx.sessionId } : ctx);
+        const factKey = resolveScopeKey(obs.scope, ctx, { strict: true });
         if (!factKey) continue;
         const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
         if (!clamped) continue;

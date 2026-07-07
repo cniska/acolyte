@@ -30,19 +30,19 @@ beforeAll(() => {
         {
           id: `fc_proj_${ctx.responseCounter}`,
           callId: `call_proj_${ctx.responseCounter}`,
-          name: "memory_observe",
+          name: "memory-observe",
           args: JSON.stringify({ scope: "project", content: "project uses Bun as runtime", topic: "tooling" }),
         },
         {
           id: `fc_user_${ctx.responseCounter}`,
           callId: `call_user_${ctx.responseCounter}`,
-          name: "memory_observe",
+          name: "memory-observe",
           args: JSON.stringify({ scope: "user", content: "prefers concise responses" }),
         },
         {
           id: `fc_sess_${ctx.responseCounter}`,
           callId: `call_sess_${ctx.responseCounter}`,
-          name: "memory_observe",
+          name: "memory-observe",
           args: JSON.stringify({ scope: "session", content: "fixing memory search bug" }),
         },
       ]),
@@ -62,7 +62,7 @@ afterAll(() => {
 afterEach(cleanupStores);
 
 describe("memoryDistiller integration", () => {
-  test("defaultRunner emits memory_observe tool calls and stores all scopes", async () => {
+  test("defaultRunner emits memory-observe tool calls and stores all scopes", async () => {
     const store = createStore();
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
@@ -107,7 +107,7 @@ describe("memoryDistiller integration", () => {
       output: "hi",
     });
 
-    const results = await searchMemories("Bun runtime tooling", { store });
+    const results = await searchMemories("Bun runtime tooling", { resourceId: "proj_inttest002" }, { store });
     const contents = results.map((r) => r.content);
     expect(contents).toContain("project uses Bun as runtime");
     expect(contents).toContain("prefers concise responses");
