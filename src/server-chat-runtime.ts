@@ -48,6 +48,9 @@ function toLogFieldMap(fields?: Record<string, unknown>): Record<string, string 
   return out;
 }
 
+/** Outcome of trying to persist one trace event — the signal for the self-check. */
+export type TraceSinkHealth = "written" | "store-unavailable" | "write-failed";
+
 export function logLifecycleDebugEntry(params: {
   requestId: string;
   taskId?: string;
@@ -59,7 +62,7 @@ export function logLifecycleDebugEntry(params: {
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
   logDebug?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
   traceStore?: TraceStore | null;
-}): void {
+}): TraceSinkHealth {
   const logFn = VERBOSE_ONLY_EVENTS.has(params.event) ? (params.logDebug ?? log.debug) : (params.logInfo ?? log.info);
   const logFields = toLogFieldMap(params.fields);
   logFn("agent debug", {
@@ -72,22 +75,51 @@ export function logLifecycleDebugEntry(params: {
     ...logFields,
   });
 
-  const store = params.traceStore !== undefined ? params.traceStore : getDefaultTraceStore();
-  if (store) {
-    try {
-      store.write({
-        timestamp: params.eventTs,
-        taskId: params.taskId,
-        requestId: params.requestId,
-        sessionId: params.sessionId,
-        event: params.event,
-        sequence: params.sequence,
-        fields: logFields,
-      });
-    } catch {
-      // Don't let trace store failures affect the hot path.
-    }
+  // Store acquisition can throw (createTraceStore: mkdir/open/migrate) — guard it here
+  // so a trace-DB failure never crashes the request it is only meant to observe.
+  let store: TraceStore | null;
+  try {
+    store = params.traceStore !== undefined ? params.traceStore : getDefaultTraceStore();
+  } catch {
+    return "store-unavailable";
   }
+  if (!store) return "store-unavailable";
+  try {
+    store.write({
+      timestamp: params.eventTs,
+      taskId: params.taskId,
+      requestId: params.requestId,
+      sessionId: params.sessionId,
+      event: params.event,
+      sequence: params.sequence,
+      fields: logFields,
+    });
+    return "written";
+  } catch {
+    return "write-failed";
+  }
+}
+
+// Latch so an unwritable trace DB surfaces once per process per failure kind — not a
+// warning row on every turn, which would retrain the user to ignore it.
+const reportedTraceSinkFailures = new Set<Exclude<TraceSinkHealth, "written">>();
+
+/** Test-only: clear the process-level trace-sink notice latch. */
+export function resetTraceSinkNoticeLatch(): void {
+  reportedTraceSinkFailures.clear();
+}
+
+/** Claim the first-per-process report for a failure kind; returns false once latched. */
+export function claimTraceSinkNotice(kind: Exclude<TraceSinkHealth, "written">): boolean {
+  if (reportedTraceSinkFailures.has(kind)) return false;
+  reportedTraceSinkFailures.add(kind);
+  return true;
+}
+
+export function traceSinkNoticeMessage(kind: Exclude<TraceSinkHealth, "written">, droppedEvents: number): string {
+  const reason = kind === "store-unavailable" ? "the trace database could not be opened" : "writes are failing";
+  const events = droppedEvents === 1 ? "1 diagnostic event was" : `${droppedEvents} diagnostic events were`;
+  return `Trace logging is off for this session — ${reason}, so ${events} not recorded.`;
 }
 
 function nextErrorId(): string {
@@ -208,6 +240,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     const projectRulesPrompt = config.features.syncAgents
       ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
       : loadProjectRulesPrompt(workspaceResolution.workspacePath);
+    let traceSinkFailureKind: Exclude<TraceSinkHealth, "written"> | null = null;
+    let traceSinkDropped = 0;
     const reply = await runLifecycle({
       request: lifecycleRequest,
       soulPrompt,
@@ -229,7 +263,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       },
       onMemoryCommit: handlers.onMemoryCommit,
       onDebug: (entry) => {
-        logLifecycleDebugEntry({
+        const health = logLifecycleDebugEntry({
           requestId,
           taskId: handlers.taskId,
           sessionId: chatRequest.sessionId,
@@ -238,6 +272,28 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           eventTs: entry.ts,
           fields: entry.fields,
         });
+        if (health !== "written") {
+          traceSinkFailureKind = health;
+          traceSinkDropped += 1;
+        }
+        // Surface the blackout in the transcript once the summary is in (its own write is
+        // counted above). log.warn is the durable record; the notice is for the human.
+        if (entry.event === "lifecycle.summary" && traceSinkFailureKind && claimTraceSinkNotice(traceSinkFailureKind)) {
+          log.warn("trace sink dark", {
+            event: "trace.sink.dark",
+            kind: traceSinkFailureKind,
+            dropped_events: traceSinkDropped,
+            request_id: requestId,
+          });
+          if (!runControl?.isCancelled()) {
+            handlers.onEvent({
+              type: "notice",
+              level: "warn",
+              message: traceSinkNoticeMessage(traceSinkFailureKind, traceSinkDropped),
+              source: "trace-store",
+            });
+          }
+        }
       },
     });
     if (runControl?.isCancelled()) {

@@ -5,11 +5,11 @@ import { t } from "./i18n";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import type { LogLine } from "./log-parser";
 import { traceEventDisplayFields } from "./trace-event-catalog";
-import type { TraceStore } from "./trace-store";
+import type { TraceReader } from "./trace-store";
 
 type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
-  traceStore?: TraceStore;
+  traceStore?: TraceReader;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   commandError: (name: string, message?: string) => void;

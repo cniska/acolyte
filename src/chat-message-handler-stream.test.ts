@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
+import { palette } from "./palette";
 
 function createRowsHarness(): {
   rows: ChatRow[];
@@ -302,6 +303,30 @@ describe("chat-message-handler-stream", () => {
     expect(h.rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["Tail that must not vanish."]);
     // finalize()'s returned ids must reference rows that actually committed.
     for (const id of ids) expect(h.rows.some((r) => r.id === id)).toBe(true);
+    state.dispose();
+  });
+
+  test("onProgressNotice appends a warn-styled system row", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onProgressNotice({ message: "Trace logging is off.", level: "warn", source: "trace-store" });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe("system");
+    expect(rows[0]?.content).toBe("Trace logging is off.");
+    // warn is not the error color — a non-fatal notice must not read as a task failure.
+    expect(rows[0]?.style?.text).toBe(palette.yellow);
+    expect(rows[0]?.style?.text).not.toBe(palette.error);
+    state.dispose();
+  });
+
+  test("onProgressNotice deduplicates an identical consecutive notice", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onProgressNotice({ message: "same", level: "warn" });
+    state.onProgressNotice({ message: "same", level: "warn" });
+    expect(rows).toHaveLength(1);
     state.dispose();
   });
 });

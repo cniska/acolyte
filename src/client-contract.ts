@@ -68,6 +68,14 @@ const errorEventSchema = z.object({
   errorCode: z.string().optional(),
   error: streamErrorSchema.optional(),
 });
+// Non-fatal internal-diagnostic surfaced in the transcript (e.g. trace logging is off).
+// Distinct from `error`, which reports a task failure.
+const noticeEventSchema = z.object({
+  type: z.literal("notice"),
+  level: z.enum(["warn", "error"]),
+  message: z.string(),
+  source: z.string().optional(),
+});
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   textDeltaEventSchema,
@@ -79,6 +87,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   statusEventSchema,
   checklistEventSchema,
   errorEventSchema,
+  noticeEventSchema,
 ]);
 export type StreamEvent = z.infer<typeof streamEventSchema>;
 
