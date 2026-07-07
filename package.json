@@ -10,6 +10,7 @@
     "prepare": "bash scripts/setup-hooks.sh",
     "start": "bun run src/cli.ts",
     "dev": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
+    "dogfood": "bun run src/cli.ts stop; bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
     "behavior:run": "bun run scripts/run-behavior.ts",
     "perf:run": "bun run scripts/run-perf.ts",

@@ -48,6 +48,9 @@ function toLogFieldMap(fields?: Record<string, unknown>): Record<string, string 
   return out;
 }
 
+/** Outcome of trying to persist one trace event — the signal for the self-check. */
+export type TraceSinkHealth = "written" | "store-unavailable" | "write-failed";
+
 export function logLifecycleDebugEntry(params: {
   requestId: string;
   taskId?: string;
@@ -59,7 +62,7 @@ export function logLifecycleDebugEntry(params: {
   logInfo?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
   logDebug?: (message: string, fields?: Record<string, string | number | boolean | null | undefined>) => void;
   traceStore?: TraceStore | null;
-}): void {
+}): TraceSinkHealth {
   const logFn = VERBOSE_ONLY_EVENTS.has(params.event) ? (params.logDebug ?? log.debug) : (params.logInfo ?? log.info);
   const logFields = toLogFieldMap(params.fields);
   logFn("agent debug", {
@@ -72,22 +75,73 @@ export function logLifecycleDebugEntry(params: {
     ...logFields,
   });
 
-  const store = params.traceStore !== undefined ? params.traceStore : getDefaultTraceStore();
-  if (store) {
-    try {
-      store.write({
-        timestamp: params.eventTs,
-        taskId: params.taskId,
-        requestId: params.requestId,
-        sessionId: params.sessionId,
-        event: params.event,
-        sequence: params.sequence,
-        fields: logFields,
-      });
-    } catch {
-      // Don't let trace store failures affect the hot path.
-    }
+  // Store acquisition can throw (createTraceStore: mkdir/open/migrate) — guard it here
+  // so a trace-DB failure never crashes the request it is only meant to observe.
+  let store: TraceStore | null;
+  try {
+    store = params.traceStore !== undefined ? params.traceStore : getDefaultTraceStore();
+  } catch {
+    return "store-unavailable";
   }
+  if (!store) return "store-unavailable";
+  try {
+    store.write({
+      timestamp: params.eventTs,
+      taskId: params.taskId,
+      requestId: params.requestId,
+      sessionId: params.sessionId,
+      event: params.event,
+      sequence: params.sequence,
+      fields: logFields,
+    });
+    return "written";
+  } catch {
+    return "write-failed";
+  }
+}
+
+type TraceSinkFailure = Exclude<TraceSinkHealth, "written">;
+
+// Once per session per failure kind — not per turn (spam), and not per process (a
+// long-lived daemon would then warn only the first session, recreating the blackout).
+const reportedTraceSinkFailures = new Set<string>();
+
+const latchKey = (sessionId: string | undefined, kind: TraceSinkFailure): string => `${sessionId ?? "-"}:${kind}`;
+
+/** Test-only: clear the trace-sink notice latch. */
+export function resetTraceSinkNoticeLatch(): void {
+  reportedTraceSinkFailures.clear();
+}
+
+/** Claim the first report for a (session, failure kind); returns false once latched. */
+export function claimTraceSinkNotice(sessionId: string | undefined, kind: TraceSinkFailure): boolean {
+  const key = latchKey(sessionId, kind);
+  if (reportedTraceSinkFailures.has(key)) return false;
+  reportedTraceSinkFailures.add(key);
+  return true;
+}
+
+/** Trace-sink notice to surface on the summary event, or null if nothing to report / already latched. */
+export function maybeTraceSinkNotice(params: {
+  event: string;
+  sessionId: string | undefined;
+  failureKind: TraceSinkFailure | null;
+  droppedEvents: number;
+}): { type: "notice"; level: "warn"; message: string; source: string } | null {
+  if (params.event !== "lifecycle.summary" || !params.failureKind) return null;
+  if (!claimTraceSinkNotice(params.sessionId, params.failureKind)) return null;
+  return {
+    type: "notice",
+    level: "warn",
+    message: traceSinkNoticeMessage(params.failureKind, params.droppedEvents),
+    source: "trace-store",
+  };
+}
+
+export function traceSinkNoticeMessage(kind: TraceSinkFailure, droppedEvents: number): string {
+  const reason = kind === "store-unavailable" ? "the trace database could not be opened" : "writes are failing";
+  const events = droppedEvents === 1 ? "1 diagnostic event was" : `${droppedEvents} diagnostic events were`;
+  return `Trace logging is off for this session — ${reason}, so ${events} not recorded.`;
 }
 
 function nextErrorId(): string {
@@ -208,6 +262,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     const projectRulesPrompt = config.features.syncAgents
       ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
       : loadProjectRulesPrompt(workspaceResolution.workspacePath);
+    let traceSinkFailureKind: Exclude<TraceSinkHealth, "written"> | null = null;
+    let traceSinkDropped = 0;
     const reply = await runLifecycle({
       request: lifecycleRequest,
       soulPrompt,
@@ -229,7 +285,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       },
       onMemoryCommit: handlers.onMemoryCommit,
       onDebug: (entry) => {
-        logLifecycleDebugEntry({
+        const health = logLifecycleDebugEntry({
           requestId,
           taskId: handlers.taskId,
           sessionId: chatRequest.sessionId,
@@ -238,6 +294,29 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           eventTs: entry.ts,
           fields: entry.fields,
         });
+        if (health !== "written") {
+          traceSinkFailureKind = health;
+          traceSinkDropped += 1;
+        }
+        const notice = maybeTraceSinkNotice({
+          event: entry.event,
+          sessionId: chatRequest.sessionId,
+          failureKind: traceSinkFailureKind,
+          droppedEvents: traceSinkDropped,
+        });
+        if (notice) {
+          try {
+            log.warn("trace sink dark", {
+              event: "trace.sink.dark",
+              kind: traceSinkFailureKind,
+              dropped_events: traceSinkDropped,
+              request_id: requestId,
+            });
+            if (!runControl?.isCancelled()) handlers.onEvent(notice);
+          } catch {
+            // A failed notice must not crash the request the sink only observes.
+          }
+        }
       },
     });
     if (runControl?.isCancelled()) {

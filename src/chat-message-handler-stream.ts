@@ -19,6 +19,7 @@ export type MessageStreamState = {
   }) => void;
   onChecklist: (entry: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
   onProgressError: (error: string) => void;
+  onProgressNotice: (notice: { message: string; level: "warn" | "error"; source?: string }) => void;
   streamedText: () => string;
   /** Flush remaining content and return IDs of all streaming agent rows (for replacement by final turn rows). */
   finalize: () => string[];
@@ -175,6 +176,15 @@ export function createMessageStreamState(input: {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
         return [...current, createRow("system", error, { dim: true, text: palette.error })];
+      });
+    },
+
+    onProgressNotice: (notice) => {
+      const color = notice.level === "error" ? palette.error : palette.yellow;
+      input.setRows((current) => {
+        const last = current[current.length - 1];
+        if (last?.style?.text === color && last.content === notice.message) return current;
+        return [...current, createRow("system", notice.message, { dim: true, text: color })];
       });
     },
 

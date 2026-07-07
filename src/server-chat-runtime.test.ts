@@ -1,7 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
-import { isChatRequest, logLifecycleDebugEntry, runChatRequest } from "./server-chat-runtime";
+import {
+  claimTraceSinkNotice,
+  isChatRequest,
+  logLifecycleDebugEntry,
+  maybeTraceSinkNotice,
+  resetTraceSinkNoticeLatch,
+  runChatRequest,
+  traceSinkNoticeMessage,
+} from "./server-chat-runtime";
 import type { StreamErrorPayload } from "./server-contract";
+import type { TraceStore } from "./trace-store";
+
+const debugEntry = {
+  requestId: "err_abc123",
+  taskId: "task_1",
+  sessionId: "sess_1",
+  event: "lifecycle.summary",
+  sequence: 1,
+  eventTs: "2026-03-06T10:00:00.000Z",
+  logInfo: () => {},
+};
 
 describe("server chat runtime", () => {
   test("logLifecycleDebugEntry logs agent debug entry", () => {
@@ -69,6 +88,88 @@ describe("server chat runtime", () => {
     expect(debugLogs).toHaveLength(2);
     expect(infoLogs).toHaveLength(1);
     expect(infoLogs[0]).toBe("agent debug");
+  });
+
+  test("logLifecycleDebugEntry reports 'written' when the store accepts the write", () => {
+    const writes: unknown[] = [];
+    const store = { write: (e: unknown) => writes.push(e) } as unknown as TraceStore;
+    const health = logLifecycleDebugEntry({ ...debugEntry, traceStore: store });
+    expect(health).toBe("written");
+    expect(writes).toHaveLength(1);
+  });
+
+  test("logLifecycleDebugEntry reports 'store-unavailable' when there is no store", () => {
+    expect(logLifecycleDebugEntry({ ...debugEntry, traceStore: null })).toBe("store-unavailable");
+  });
+
+  test("a failing trace write is reported, never propagated to the request hot path", () => {
+    const store = {
+      write: () => {
+        throw new Error("disk full");
+      },
+    } as unknown as TraceStore;
+    // Regression: store acquisition/write used to sit outside a guard and could crash the
+    // request it only observes. It must degrade to a health signal, not throw.
+    expect(() => logLifecycleDebugEntry({ ...debugEntry, traceStore: store })).not.toThrow();
+    expect(logLifecycleDebugEntry({ ...debugEntry, traceStore: store })).toBe("write-failed");
+  });
+
+  test("trace-sink notice latches once per session per failure kind", () => {
+    resetTraceSinkNoticeLatch();
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(true);
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(false);
+    // A distinct kind, and a distinct session, each get their own first report — the latter
+    // is why a long-lived daemon still warns every session, not just the first.
+    expect(claimTraceSinkNotice("sess_1", "write-failed")).toBe(true);
+    expect(claimTraceSinkNotice("sess_2", "store-unavailable")).toBe(true);
+    resetTraceSinkNoticeLatch();
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(true);
+  });
+
+  test("maybeTraceSinkNotice emits only on the summary event, and only when the sink failed", () => {
+    resetTraceSinkNoticeLatch();
+    // Non-summary events never emit, even mid-failure.
+    expect(
+      maybeTraceSinkNotice({
+        event: "lifecycle.tool.call",
+        sessionId: "s",
+        failureKind: "write-failed",
+        droppedEvents: 2,
+      }),
+    ).toBeNull();
+    // Summary with a healthy sink emits nothing.
+    expect(
+      maybeTraceSinkNotice({ event: "lifecycle.summary", sessionId: "s", failureKind: null, droppedEvents: 0 }),
+    ).toBeNull();
+    // Summary after a failure emits one warn notice carrying the drop count...
+    const notice = maybeTraceSinkNotice({
+      event: "lifecycle.summary",
+      sessionId: "s",
+      failureKind: "write-failed",
+      droppedEvents: 2,
+    });
+    expect(notice).toEqual({
+      type: "notice",
+      level: "warn",
+      message: traceSinkNoticeMessage("write-failed", 2),
+      source: "trace-store",
+    });
+    // ...but never twice for the same session+kind (the latch).
+    expect(
+      maybeTraceSinkNotice({
+        event: "lifecycle.summary",
+        sessionId: "s",
+        failureKind: "write-failed",
+        droppedEvents: 2,
+      }),
+    ).toBeNull();
+  });
+
+  test("trace-sink notice message names the cause and pluralizes the count", () => {
+    expect(traceSinkNoticeMessage("store-unavailable", 1)).toContain("could not be opened");
+    expect(traceSinkNoticeMessage("store-unavailable", 1)).toContain("1 diagnostic event was not recorded");
+    expect(traceSinkNoticeMessage("write-failed", 3)).toContain("writes are failing");
+    expect(traceSinkNoticeMessage("write-failed", 3)).toContain("3 diagnostic events were not recorded");
   });
 
   test("isChatRequest rejects malformed activeSkills entries", () => {

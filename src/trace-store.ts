@@ -18,11 +18,14 @@ export type TraceEntry = {
   fields: TraceFields;
 };
 
-export interface TraceStore {
-  write(entry: TraceEntry): void;
+export interface TraceReader {
   listTasks(limit: number): TaskSummary[];
   listByTaskId(taskId: string): LogLine[];
   close(): void;
+}
+
+export interface TraceStore extends TraceReader {
+  write(entry: TraceEntry): void;
 }
 
 const MIGRATIONS: Migration[] = [
@@ -174,13 +177,10 @@ export function createTraceStore(dbPath?: string): TraceStore {
   };
 }
 
-function openReadOnly(dbPath: string): TraceStore {
+function openReadOnly(dbPath: string): TraceReader {
   const db = new Database(dbPath, { readonly: true });
   const queries = prepareReadQueries(db);
   return {
-    write() {
-      // Read-only store — writes are silently dropped.
-    },
     listTasks(limit) {
       return queries.listTasks.all(limit).map(taskRowToSummary);
     },
@@ -213,7 +213,7 @@ export function defaultTraceDbPath(): string {
   return join(dataDir(), "trace.db");
 }
 
-export function openTraceStore(dbPath?: string): TraceStore | null {
+export function openTraceStore(dbPath?: string): TraceReader | null {
   const resolvedPath = dbPath ?? defaultTraceDbPath();
   try {
     return openReadOnly(resolvedPath);

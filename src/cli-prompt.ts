@@ -163,6 +163,10 @@ export async function handlePrompt(
             if (budgetExhausted) toolOutput.delete(event.toolCallId);
             break;
           }
+          case "notice":
+            // Surface diagnostics in headless runs too, not only the interactive TUI.
+            printError(event.message);
+            break;
         }
       },
     });

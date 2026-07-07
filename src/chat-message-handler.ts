@@ -156,6 +156,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             case "error":
               streamState.onProgressError(event.errorMessage);
               break;
+            case "notice":
+              streamState.onProgressNotice({ message: event.message, level: event.level, source: event.source });
+              break;
           }
         },
         pendingStartedAt,
