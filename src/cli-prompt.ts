@@ -164,8 +164,7 @@ export async function handlePrompt(
             break;
           }
           case "notice":
-            // Internal diagnostic (e.g. trace logging is off) — surface it here too, not just
-            // in the interactive TUI, or headless runs stay silent about a dark trace sink.
+            // Surface diagnostics in headless runs too, not only the interactive TUI.
             printError(event.message);
             break;
         }

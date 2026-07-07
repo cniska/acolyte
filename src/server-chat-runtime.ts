@@ -102,10 +102,8 @@ export function logLifecycleDebugEntry(params: {
 
 type TraceSinkFailure = Exclude<TraceSinkHealth, "written">;
 
-// Latch so an unwritable trace DB surfaces once per session per failure kind — not a
-// warning row on every turn (which retrains the user to ignore it), but not once-per-
-// process either: on a long-lived daemon that would leave every session after the first
-// silent, recreating the very blackout this warns about.
+// Once per session per failure kind — not per turn (spam), and not per process (a
+// long-lived daemon would then warn only the first session, recreating the blackout).
 const reportedTraceSinkFailures = new Set<string>();
 
 const latchKey = (sessionId: string | undefined, kind: TraceSinkFailure): string => `${sessionId ?? "-"}:${kind}`;
@@ -300,8 +298,6 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           traceSinkFailureKind = health;
           traceSinkDropped += 1;
         }
-        // Surface the blackout in the transcript once the summary is in (its own write is
-        // counted above). log.warn is the durable record; the notice is for the human.
         const notice = maybeTraceSinkNotice({
           event: entry.event,
           sessionId: chatRequest.sessionId,
@@ -309,7 +305,6 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
           droppedEvents: traceSinkDropped,
         });
         if (notice) {
-          // This is a diagnostic about the request — it must never itself crash the request.
           try {
             log.warn("trace sink dark", {
               event: "trace.sink.dark",
@@ -319,7 +314,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
             });
             if (!runControl?.isCancelled()) handlers.onEvent(notice);
           } catch {
-            // The trace sink is already dark; a failed notice must not take the request with it.
+            // A failed notice must not crash the request the sink only observes.
           }
         }
       },
