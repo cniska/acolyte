@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import type { ChatRequest } from "./api";
+import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
+
+function historyExceedingWindow(): ChatRequest["history"] {
+  return Array.from({ length: MAX_RECENT_TURNS + 2 }, (_, i) => [
+    { id: `u${i}`, role: "user" as const, content: `USER_${i}`, timestamp: "2026-02-20T10:00:00.000Z" },
+    { id: `a${i}`, role: "assistant" as const, content: `ASSISTANT_${i}`, timestamp: "2026-02-20T10:00:00.000Z" },
+  ]).flat();
+}
 
 describe("phasePrepare", () => {
   test("applies lifecycle policy to tool session context", () => {
@@ -52,5 +61,44 @@ describe("phasePrepare", () => {
       mcpListings: [],
     });
     expect(withRules.promptUsage.systemPromptTokens).toBeGreaterThan(base.promptUsage.systemPromptTokens);
+  });
+
+  test("emits lifecycle.window.drop when the window rolls", () => {
+    const events: { event: string; fields?: Record<string, unknown> }[] = [];
+    phasePrepare({
+      request: { model: "gpt-5-mini", message: "go", history: historyExceedingWindow() },
+      workspace: undefined,
+      taskId: "task_drop",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: (event, fields) => events.push({ event, fields }),
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    const drop = events.find((e) => e.event === "lifecycle.window.drop");
+    expect(drop).toBeDefined();
+    expect(drop?.fields?.dropped_turns).toBe(2);
+    expect(drop?.fields?.tokens_idle_at_drop).toBeGreaterThan(0);
+    expect(drop?.fields?.kept_history_tokens).toBeGreaterThan(0);
+    expect(drop?.fields?.missing_turns).toBe(2);
+  });
+
+  test("does not emit lifecycle.window.drop when history fits the window", () => {
+    const events: string[] = [];
+    phasePrepare({
+      request: { model: "gpt-5-mini", message: "go", history: [] },
+      workspace: undefined,
+      taskId: "task_nodrop",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: (event) => events.push(event),
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    expect(events).not.toContain("lifecycle.window.drop");
   });
 });

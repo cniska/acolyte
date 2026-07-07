@@ -4,6 +4,14 @@ import { log } from "./log";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
+type WindowDrop = {
+  droppedTurns: number;
+  droppedTokens: number;
+  tokensIdleAtDrop: number;
+  keptHistoryTokens: number;
+  missingTurns: number;
+};
+
 function createApproxEncoder(): TokenEncoder {
   return {
     encode(input) {
@@ -89,18 +97,21 @@ function isConversationalMessage(message: ChatRequest["history"][number]): boole
   return true;
 }
 
-function recentTurns(messages: ChatRequest["history"], n: number): ChatRequest["history"] {
+function recentTurns(
+  messages: ChatRequest["history"],
+  n: number,
+): { kept: ChatRequest["history"]; dropped: ChatRequest["history"] } {
   const conversational = messages.filter(isConversationalMessage);
   let turns = 0;
   let cutIndex = 0;
   for (let i = conversational.length - 1; i >= 0; i--) {
     if (conversational[i].role === "user") {
       turns++;
-      if (turns > n) return conversational.slice(cutIndex);
+      if (turns > n) return { kept: conversational.slice(cutIndex), dropped: conversational.slice(0, cutIndex) };
       cutIndex = i;
     }
   }
-  return conversational;
+  return { kept: conversational, dropped: [] };
 }
 
 function isAssistantToolPayloadMessage(message: ChatRequest["history"][number]): boolean {
@@ -182,6 +193,7 @@ export function createAgentInput(
     includedHistoryMessages: number;
     totalHistoryMessages: number;
   };
+  drop?: WindowDrop;
 } {
   const contextMaxTokens = options.contextMaxTokens;
   const requestedSystemTokens = options.systemPromptTokens ?? 0;
@@ -219,8 +231,32 @@ export function createAgentInput(
     }
   }
 
-  const turns = recentTurns(req.history, MAX_RECENT_TURNS);
-  const recentResult = collectLinesWithinBudget(turns, usedIds, tokenBudget.remaining());
+  const { kept, dropped } = recentTurns(req.history, MAX_RECENT_TURNS);
+  // Read before history/notice consume budget: the cap never consults budget, so this
+  // is the room it ignored when it dropped turns.
+  const tokensIdleAtDrop = tokenBudget.remaining();
+  const recentResult = collectLinesWithinBudget(kept, usedIds, tokenBudget.remaining());
+  let drop: WindowDrop | undefined;
+  if (dropped.length > 0) {
+    const droppedTurns = dropped.reduce((count, m) => count + (m.role === "user" ? 1 : 0), 0);
+    const droppedTokens = dropped.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+    // Turns absent from the rendered prompt, not just cap-dropped ones — a tight budget
+    // omits kept turns too, and the notice must not under-claim the gap. The trace keeps
+    // both: droppedTurns (cap only) answers "is the cap premature", missingTurns the true gap.
+    const totalUserTurns = req.history.filter((m) => isConversationalMessage(m) && m.role === "user").length;
+    const renderedUserTurns = kept.filter((m) => m.role === "user" && usedIds.has(m.id)).length;
+    const missingTurns = totalUserTurns - renderedUserTurns;
+    drop = {
+      droppedTurns,
+      droppedTokens,
+      tokensIdleAtDrop,
+      keptHistoryTokens: recentResult.consumedTokens,
+      missingTurns,
+    };
+    const notice = `SYSTEM: ${missingTurns} earlier turn${missingTurns === 1 ? "" : "s"} not shown here; use session-search to retrieve earlier context if needed.`;
+    lines.push(notice);
+    tokenBudget.consume(estimateTokens(notice));
+  }
   lines.push(...recentResult.lines);
 
   if (lines.length > 0) lines.push("");
@@ -244,5 +280,6 @@ export function createAgentInput(
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
     },
+    drop,
   };
 }
