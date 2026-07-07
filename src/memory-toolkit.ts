@@ -3,6 +3,7 @@ import {
   createMemoryPolicy,
   type MemoryPolicy,
   type MemoryRecord,
+  type MemoryScope,
   type MemoryStore,
   memoryScopeSchema,
   scopeFromKey,
@@ -16,7 +17,14 @@ import {
   matchTopicsByEmbedding,
   tokenOverlap,
 } from "./memory-embedding";
-import { addMemory, addObservation, removeMemory, resolveScopeKey } from "./memory-ops";
+import {
+  addMemory,
+  addObservation,
+  removeMemory,
+  resolveScopeKey,
+  type ScopeContext,
+  visibleScopeKeys,
+} from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -24,11 +32,11 @@ import { runTool } from "./tool-execution";
 
 function createMemoryObserveTool(input: ToolkitInput) {
   return createTool({
-    id: "memory_observe",
+    id: "memory-observe",
     toolkit: "memory",
     category: "meta",
     description: "Record a fact extracted from the conversation into memory.",
-    instruction: "Use `memory_observe` to persist facts extracted from the conversation into the memory store.",
+    instruction: "Use `memory-observe` to persist facts extracted from the conversation into the memory store.",
     inputSchema: z.object({
       scope: memoryScopeSchema,
       content: z.string().min(1),
@@ -36,7 +44,7 @@ function createMemoryObserveTool(input: ToolkitInput) {
     }),
     outputSchema: z.object({ kind: z.literal("memory-observe"), id: z.string().nullable() }),
     execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "memory_observe", toolCallId, toolInput, async () => {
+      return runTool(input.session, "memory-observe", toolCallId, toolInput, async () => {
         const scopeKey = resolveScopeKey(toolInput.scope, {
           sessionId: input.sessionId,
           workspace: input.workspace,
@@ -62,16 +70,25 @@ async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string
   return result;
 }
 
+function allowedScopeKeys(ctx: ScopeContext, scope?: MemoryScope): Set<string> {
+  if (!scope) return visibleScopeKeys(ctx);
+  const key = resolveScopeKey(scope, ctx, { strict: true });
+  return new Set(key ? [key] : []);
+}
+
 export async function searchMemories(
   query: string,
-  options?: { scope?: "user" | "project"; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
+  ctx: ScopeContext,
+  options?: { scope?: MemoryScope; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
 ): Promise<MemoryRecord[]> {
   const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
+  const allowed = allowedScopeKeys(ctx, options?.scope);
+  if (allowed.size === 0) return [];
+
   const all = await store.list();
-  const durable = all.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
-  const filtered = options?.scope ? durable.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durable;
+  const filtered = all.filter((r) => allowed.has(r.scopeKey));
   if (filtered.length === 0) return [];
 
   const queryEmbedding = await embedText(query);
@@ -84,8 +101,7 @@ export async function searchMemories(
   if (store.searchByEmbedding) {
     const oversample = (options?.scope ? limit * 2 : limit) * 2;
     const raw = await store.searchByEmbedding(queryEmbedding, { limit: oversample });
-    const durableRaw = raw.filter((r) => r.kind === "stored" || !r.scopeKey.startsWith("sess_"));
-    const scoped = options?.scope ? durableRaw.filter((r) => scopeFromKey(r.scopeKey) === options.scope) : durableRaw;
+    const scoped = raw.filter((r) => allowed.has(r.scopeKey));
     const pgTopicEmbeddings = await embedTopics(scoped);
     const pgMatchedTopics = matchTopicsByEmbedding(queryEmbedding, pgTopicEmbeddings, policy.topicThreshold);
     const pgTopicFiltered = filterByTopicEmbedding(scoped, pgMatchedTopics, policy.minTopicFilterSize);
@@ -131,7 +147,7 @@ function createMemorySearchTool(input: ToolkitInput) {
       "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions.",
     inputSchema: z.object({
       query: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
-      scope: memoryScopeSchema.extract(["user", "project"]).optional(),
+      scope: memoryScopeSchema.optional(),
       limit: z.number().int().min(1).max(20).optional(),
     }),
     outputSchema: z.object({
@@ -140,7 +156,7 @@ function createMemorySearchTool(input: ToolkitInput) {
         z.object({
           id: z.string(),
           content: z.string(),
-          scope: memoryScopeSchema.extract(["user", "project"]),
+          scope: memoryScopeSchema,
           createdAt: z.string(),
           lastRecalledAt: z.string().nullable(),
         }),
@@ -148,11 +164,12 @@ function createMemorySearchTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-search", toolCallId, toolInput, async () => {
+        const ctx: ScopeContext = { sessionId: input.sessionId, workspace: input.workspace };
         const queries = Array.isArray(toolInput.query) ? toolInput.query : [toolInput.query];
         const seen = new Set<string>();
         const results: MemoryRecord[] = [];
         for (const q of queries) {
-          for (const r of await searchMemories(q, { scope: toolInput.scope, limit: toolInput.limit })) {
+          for (const r of await searchMemories(q, ctx, { scope: toolInput.scope, limit: toolInput.limit })) {
             if (!seen.has(r.id)) {
               seen.add(r.id);
               results.push(r);
@@ -194,7 +211,7 @@ function createMemoryAddTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-add", toolCallId, toolInput, async () => {
-        const entry = await addMemory(toolInput.content, { scope: toolInput.scope });
+        const entry = await addMemory(toolInput.content, { scope: toolInput.scope, workspace: input.workspace });
         return { kind: "memory-add" as const, id: entry.id, scope: entry.scope };
       });
     },

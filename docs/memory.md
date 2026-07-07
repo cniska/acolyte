@@ -24,7 +24,7 @@ The model uses the memory toolkit to search for relevant context when it determi
 
 ## Sources
 
-The observer runs after each request and promotes facts to the appropriate scope via `memory_observe` tool calls.
+The observer runs after each request and promotes facts to the appropriate scope via `memory-observe` tool calls.
 
 Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill-extracted facts).
 
@@ -35,11 +35,11 @@ Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (d
 
 ## Inspiration
 
-The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `memory_observe` tool calls and on-demand retrieval via the memory toolkit.
+The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `memory-observe` tool calls and on-demand retrieval via the memory toolkit.
 
 ## Distill behavior
 
-- the observer extracts facts from conversations via `memory_observe(scope, content, topic?)` tool calls
+- the observer extracts facts from conversations via `memory-observe(scope, content, topic?)` tool calls
 - each call produces one observation record with its own embedding
 - scope via the `scope` parameter:
   - `"project"` — project-scoped facts (architecture, tooling, conventions)
@@ -60,6 +60,14 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
 
 ## Recall
+
+Recall is scoped to the caller's context before ranking — a record is returned only if the caller could have written to its scope:
+
+- `"session"` — the current session's own facts (when a session id is known); other sessions are never returned
+- `"project"` — facts for the current project, derived from the workspace; other projects are never returned
+- `"user"` — always visible
+
+An explicit `scope` argument narrows recall to that single scope.
 
 Memory records are embedded at write time using the provider embedding API. At query time, entries are scored by a weighted blend of two signals:
 

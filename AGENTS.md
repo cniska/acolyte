@@ -34,14 +34,15 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 
 - No transitional architecture: land the canonical owner, normalized contract, and single source of truth.
 - When defining a string union or shared type: define it as a Zod schema first and infer the TS type from it.
-- No banner or separator comments. Import from the canonical source module directly — no re-export layers.
+- Comments: code documents itself. Don't comment *what* code does and don't write banner/separator comments; add one only for a *why* that can't be encoded in a name, type, or test (e.g. a non-obvious external constraint).
+- Import from the canonical source module directly — no re-export layers.
 - No direct `useEffect` in chat-layer code. Use the approved effect helpers from `src/tui/effects.ts`.
 
 ## Style
 
 - Factory naming: `create*` for factories. Avoid `build*` / `make*` unless established locally.
 - Export shape: prefer direct `export const` over local alias + `export { ... }`.
-- Module layout: flat `src/`, `*-contract` for type/schema modules. No re-export layers.
+- Module layout: flat `src/`, `*-contract` for type/schema modules.
 - Error classification: prefer `kind` field contracts over message string matching.
 - Switch exhaustiveness: `default` + `unreachable` when applicable.
 
