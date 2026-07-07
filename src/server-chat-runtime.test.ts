@@ -4,6 +4,7 @@ import {
   claimTraceSinkNotice,
   isChatRequest,
   logLifecycleDebugEntry,
+  maybeTraceSinkNotice,
   resetTraceSinkNoticeLatch,
   runChatRequest,
   traceSinkNoticeMessage,
@@ -113,14 +114,55 @@ describe("server chat runtime", () => {
     expect(logLifecycleDebugEntry({ ...debugEntry, traceStore: store })).toBe("write-failed");
   });
 
-  test("trace-sink notice latches once per failure kind per process", () => {
+  test("trace-sink notice latches once per session per failure kind", () => {
     resetTraceSinkNoticeLatch();
-    expect(claimTraceSinkNotice("store-unavailable")).toBe(true);
-    expect(claimTraceSinkNotice("store-unavailable")).toBe(false);
-    // A distinct failure kind still gets its own first report.
-    expect(claimTraceSinkNotice("write-failed")).toBe(true);
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(true);
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(false);
+    // A distinct kind, and a distinct session, each get their own first report — the latter
+    // is why a long-lived daemon still warns every session, not just the first.
+    expect(claimTraceSinkNotice("sess_1", "write-failed")).toBe(true);
+    expect(claimTraceSinkNotice("sess_2", "store-unavailable")).toBe(true);
     resetTraceSinkNoticeLatch();
-    expect(claimTraceSinkNotice("store-unavailable")).toBe(true);
+    expect(claimTraceSinkNotice("sess_1", "store-unavailable")).toBe(true);
+  });
+
+  test("maybeTraceSinkNotice emits only on the summary event, and only when the sink failed", () => {
+    resetTraceSinkNoticeLatch();
+    // Non-summary events never emit, even mid-failure.
+    expect(
+      maybeTraceSinkNotice({
+        event: "lifecycle.tool.call",
+        sessionId: "s",
+        failureKind: "write-failed",
+        droppedEvents: 2,
+      }),
+    ).toBeNull();
+    // Summary with a healthy sink emits nothing.
+    expect(
+      maybeTraceSinkNotice({ event: "lifecycle.summary", sessionId: "s", failureKind: null, droppedEvents: 0 }),
+    ).toBeNull();
+    // Summary after a failure emits one warn notice carrying the drop count...
+    const notice = maybeTraceSinkNotice({
+      event: "lifecycle.summary",
+      sessionId: "s",
+      failureKind: "write-failed",
+      droppedEvents: 2,
+    });
+    expect(notice).toEqual({
+      type: "notice",
+      level: "warn",
+      message: traceSinkNoticeMessage("write-failed", 2),
+      source: "trace-store",
+    });
+    // ...but never twice for the same session+kind (the latch).
+    expect(
+      maybeTraceSinkNotice({
+        event: "lifecycle.summary",
+        sessionId: "s",
+        failureKind: "write-failed",
+        droppedEvents: 2,
+      }),
+    ).toBeNull();
   });
 
   test("trace-sink notice message names the cause and pluralizes the count", () => {

@@ -100,23 +100,47 @@ export function logLifecycleDebugEntry(params: {
   }
 }
 
-// Latch so an unwritable trace DB surfaces once per process per failure kind — not a
-// warning row on every turn, which would retrain the user to ignore it.
-const reportedTraceSinkFailures = new Set<Exclude<TraceSinkHealth, "written">>();
+type TraceSinkFailure = Exclude<TraceSinkHealth, "written">;
 
-/** Test-only: clear the process-level trace-sink notice latch. */
+// Latch so an unwritable trace DB surfaces once per session per failure kind — not a
+// warning row on every turn (which retrains the user to ignore it), but not once-per-
+// process either: on a long-lived daemon that would leave every session after the first
+// silent, recreating the very blackout this warns about.
+const reportedTraceSinkFailures = new Set<string>();
+
+const latchKey = (sessionId: string | undefined, kind: TraceSinkFailure): string => `${sessionId ?? "-"}:${kind}`;
+
+/** Test-only: clear the trace-sink notice latch. */
 export function resetTraceSinkNoticeLatch(): void {
   reportedTraceSinkFailures.clear();
 }
 
-/** Claim the first-per-process report for a failure kind; returns false once latched. */
-export function claimTraceSinkNotice(kind: Exclude<TraceSinkHealth, "written">): boolean {
-  if (reportedTraceSinkFailures.has(kind)) return false;
-  reportedTraceSinkFailures.add(kind);
+/** Claim the first report for a (session, failure kind); returns false once latched. */
+export function claimTraceSinkNotice(sessionId: string | undefined, kind: TraceSinkFailure): boolean {
+  const key = latchKey(sessionId, kind);
+  if (reportedTraceSinkFailures.has(key)) return false;
+  reportedTraceSinkFailures.add(key);
   return true;
 }
 
-export function traceSinkNoticeMessage(kind: Exclude<TraceSinkHealth, "written">, droppedEvents: number): string {
+/** Trace-sink notice to surface on the summary event, or null if nothing to report / already latched. */
+export function maybeTraceSinkNotice(params: {
+  event: string;
+  sessionId: string | undefined;
+  failureKind: TraceSinkFailure | null;
+  droppedEvents: number;
+}): { type: "notice"; level: "warn"; message: string; source: string } | null {
+  if (params.event !== "lifecycle.summary" || !params.failureKind) return null;
+  if (!claimTraceSinkNotice(params.sessionId, params.failureKind)) return null;
+  return {
+    type: "notice",
+    level: "warn",
+    message: traceSinkNoticeMessage(params.failureKind, params.droppedEvents),
+    source: "trace-store",
+  };
+}
+
+export function traceSinkNoticeMessage(kind: TraceSinkFailure, droppedEvents: number): string {
   const reason = kind === "store-unavailable" ? "the trace database could not be opened" : "writes are failing";
   const events = droppedEvents === 1 ? "1 diagnostic event was" : `${droppedEvents} diagnostic events were`;
   return `Trace logging is off for this session — ${reason}, so ${events} not recorded.`;
@@ -278,20 +302,24 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
         }
         // Surface the blackout in the transcript once the summary is in (its own write is
         // counted above). log.warn is the durable record; the notice is for the human.
-        if (entry.event === "lifecycle.summary" && traceSinkFailureKind && claimTraceSinkNotice(traceSinkFailureKind)) {
-          log.warn("trace sink dark", {
-            event: "trace.sink.dark",
-            kind: traceSinkFailureKind,
-            dropped_events: traceSinkDropped,
-            request_id: requestId,
-          });
-          if (!runControl?.isCancelled()) {
-            handlers.onEvent({
-              type: "notice",
-              level: "warn",
-              message: traceSinkNoticeMessage(traceSinkFailureKind, traceSinkDropped),
-              source: "trace-store",
+        const notice = maybeTraceSinkNotice({
+          event: entry.event,
+          sessionId: chatRequest.sessionId,
+          failureKind: traceSinkFailureKind,
+          droppedEvents: traceSinkDropped,
+        });
+        if (notice) {
+          // This is a diagnostic about the request — it must never itself crash the request.
+          try {
+            log.warn("trace sink dark", {
+              event: "trace.sink.dark",
+              kind: traceSinkFailureKind,
+              dropped_events: traceSinkDropped,
+              request_id: requestId,
             });
+            if (!runControl?.isCancelled()) handlers.onEvent(notice);
+          } catch {
+            // The trace sink is already dark; a failed notice must not take the request with it.
           }
         }
       },
