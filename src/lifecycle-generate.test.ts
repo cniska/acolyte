@@ -848,7 +848,9 @@ describe("phaseGenerate", () => {
     ]);
   });
 
-  test("injects self-review prompt on first done signal", async () => {
+  test("a missing signal followed by a valid done completes without error", async () => {
+    // Regression (dogfood): the model answers without signalling, gets one nudge, then
+    // calls signal_done — this must complete cleanly, not re-open the loop and block.
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
@@ -862,16 +864,12 @@ describe("phaseGenerate", () => {
     const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Done." },
+        { type: "text-delta", id: "t_1", delta: "Added the alias." },
         { type: "text-end", id: "t_1" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
       [
-        { type: "text-start", id: "t_2" },
-        { type: "text-delta", id: "t_2", delta: "Confirmed done." },
-        { type: "text-end", id: "t_2" },
-        { type: "tool-call", toolCallId: "tc_signal_2", toolName: "signal_done", input: "{}" },
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
         finishPart("tool-calls"),
       ],
     ];
@@ -883,7 +881,7 @@ describe("phaseGenerate", () => {
     session.callLog.push({ toolName: "test-run", args: { command: "bun test" }, status: "succeeded" });
 
     const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "Add X, update tests, update render.", history: [] },
+      request: { model: "gpt-5-mini", message: "Add a -v alias.", history: [] },
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
       session,
       agent: {
@@ -898,68 +896,11 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 5000 });
 
-    // Second prompt should contain the self-review injection
-    const secondPrompt = promptCapture[1] ?? [];
-    const injectedText = secondPrompt
-      .filter((m) => m.role === "user")
-      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
-      .filter((p): p is { type: "text"; text: string } => p.type === "text")
-      .map((p) => p.text)
-      .join("\n");
-
-    expect(injectedText).toContain('type="task-self-review"');
-    expect(injectedText).toContain("original task");
-    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeDefined();
-
-    // Self-review is one-shot — second done signal should not re-inject it
-    expect(promptCapture.length).toBe(2);
-  });
-
-  test("skips self-review on done signal when no writes in callLog", async () => {
-    const promptCapture: LanguageModelV4Message[][] = [];
-    const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
-
-    const turns: LanguageModelV4StreamPart[][] = [
-      [
-        { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Here is the answer." },
-        { type: "text-end", id: "t_1" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
-      ],
-    ];
-
-    const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
-
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "What does X do?", history: [] },
-      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
-      session,
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "sys",
-        model: model as unknown as RunContext["agent"]["model"],
-        tools: signalTools,
-        stream: agentStream,
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 5000 });
-
-    expect(promptCapture.length).toBe(1);
-    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.skipped")).toMatchObject({
-      event: "lifecycle.self_review.skipped",
-      fields: { reason: "no-writes" },
-    });
-    expect(debugEvents.find((e) => e.event === "lifecycle.self_review.injected")).toBeUndefined();
+    expect(debugEvents.filter((e) => e.event === "lifecycle.signal.missing").map((e) => e.fields?.action)).toEqual([
+      "continue",
+    ]);
+    expect(debugEvents.find((e) => e.event.startsWith("lifecycle.self_review"))).toBeUndefined();
+    expect(ctx.currentError).toBeUndefined();
+    expect(ctx.result?.signal).toBe("done");
   });
 });

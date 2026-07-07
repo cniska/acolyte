@@ -18,8 +18,8 @@ describe("generate finish policy", () => {
   test("missing signal gets one retry before blocking completion", () => {
     const state = createFinishPolicyState();
 
-    const retry = decideFinish({ state, hasWrites: false });
-    const block = decideFinish({ state, hasWrites: false });
+    const retry = decideFinish({ state });
+    const block = decideFinish({ state });
 
     expect(retry).toMatchObject({ kind: "missing-signal-continue" });
     expect(renderFinishPolicyMessages(retry)[0]).toMatchObject({
@@ -35,47 +35,49 @@ describe("generate finish policy", () => {
     expect(renderFinishPolicyMessages(block)).toEqual([]);
   });
 
-  test("done with writes injects self-review once", () => {
+  test("done completes immediately when completion evidence is present", () => {
     const state = createFinishPolicyState();
 
-    const first = decideFinish({ state, signal: "done", hasWrites: true });
-    const second = decideFinish({ state, signal: "done", hasWrites: true });
-
-    expect(first).toEqual({ kind: "self-review-inject" });
-    expect(renderFinishPolicyMessages(first)[0]).toMatchObject({
-      role: "user",
-      content: [{ type: "text", text: expect.stringContaining('type="task-self-review"') }],
-    });
-    expect(second).toEqual({ kind: "none" });
+    expect(decideFinish({ state, signal: "done" })).toEqual({ kind: "none" });
   });
 
-  test("done without writes consumes self-review and records skip reason", () => {
+  test("completion rejection gets one retry", () => {
     const state = createFinishPolicyState();
-
-    const first = decideFinish({ state, signal: "done", hasWrites: false });
-    const second = decideFinish({ state, signal: "done", hasWrites: true });
-
-    expect(first).toEqual({ kind: "self-review-skip", reason: "no-writes" });
-    expect(renderFinishPolicyMessages(first)).toEqual([]);
-    expect(second).toEqual({ kind: "none" });
-  });
-
-  test("completion rejection gets one retry after self-review is exhausted", () => {
-    const state = createFinishPolicyState(0);
     const completionBlock = {
       reason: "missing-validation-after-write" as const,
       message: "Cannot finish yet.",
       path: "src/app.ts",
     };
 
-    const first = decideFinish({ state, signal: "done", hasWrites: true, completionBlock });
-    const second = decideFinish({ state, signal: "done", hasWrites: true, completionBlock });
+    const first = decideFinish({ state, signal: "done", completionBlock });
+    const second = decideFinish({ state, signal: "done", completionBlock });
 
     expect(first).toEqual({ kind: "completion-rejected-continue", block: completionBlock });
     expect(renderFinishPolicyMessages(first)[0]).toMatchObject({
       role: "user",
       content: [{ type: "text", text: expect.stringContaining('type="completion-rejected"') }],
     });
+    expect(renderFinishPolicyMessages(first)[0]).toMatchObject({
+      content: [{ type: "text", text: expect.stringContaining("signal_done") }],
+    });
     expect(second).toEqual({ kind: "none" });
+  });
+
+  test("re-opening the loop restores the spent missing-signal retry", () => {
+    // Regression (dogfood): a missing-signal retry consumed before a completion-rejected
+    // re-entry must not carry over, or a prose reply to the reminder blocks with
+    // "Cannot finish yet" despite a valid earlier signal.
+    const state = createFinishPolicyState();
+    const completionBlock = {
+      reason: "missing-validation-after-write" as const,
+      message: "Cannot finish yet.",
+      path: "src/app.ts",
+    };
+
+    expect(decideFinish({ state })).toMatchObject({ kind: "missing-signal-continue" });
+    expect(decideFinish({ state, signal: "done", completionBlock })).toMatchObject({
+      kind: "completion-rejected-continue",
+    });
+    expect(decideFinish({ state })).toMatchObject({ kind: "missing-signal-continue" });
   });
 });
