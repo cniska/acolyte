@@ -43,6 +43,16 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     history_messages: input.request.history.length,
   });
 
+  if (requestInput.drop) {
+    input.debug("lifecycle.window.drop", {
+      dropped_turns: requestInput.drop.droppedTurns,
+      dropped_tokens: requestInput.drop.droppedTokens,
+      tokens_idle_at_drop: requestInput.drop.tokensIdleAtDrop,
+      kept_history_tokens: requestInput.drop.keptHistoryTokens,
+      missing_turns: requestInput.drop.missingTurns,
+    });
+  }
+
   if (input.request.activeSkills?.length) {
     input.debug("lifecycle.skill.context", {
       skill_names: input.request.activeSkills.map((s) => s.name),

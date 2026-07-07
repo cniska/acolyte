@@ -172,6 +172,67 @@ describe("createAgentInput", () => {
     expect(usage.totalHistoryMessages).toBe(count * 2);
   });
 
+  test("reports window-drop metadata and injects a gap notice when turns exceed the window", () => {
+    const count = MAX_RECENT_TURNS + 3;
+    const { input, drop } = createAgentInput(req("go", exchanges(count)), defaultOptions);
+    expect(drop).toBeDefined();
+    expect(drop?.droppedTurns).toBe(3);
+    expect(drop?.droppedTokens).toBeGreaterThan(0);
+    expect(drop?.keptHistoryTokens).toBeGreaterThan(0);
+    // Ample budget renders every kept turn, so nothing is lost beyond the cap-dropped 3.
+    expect(drop?.missingTurns).toBe(3);
+    expect(input).toContain("3 earlier turns not shown here; use session-search");
+  });
+
+  test("captures budget still idle when the turn cap forces the drop", () => {
+    const { drop } = createAgentInput(req("go", exchanges(MAX_RECENT_TURNS + 2)), {
+      ...defaultOptions,
+      contextMaxTokens: 10_000,
+      systemPromptTokens: 2_000,
+      toolTokens: 1_000,
+    });
+    expect(drop).toBeDefined();
+    // 10k budget − 3k system/tool overhead leaves ~7k idle when the cap fires.
+    expect(drop?.tokensIdleAtDrop).toBeGreaterThan(5_000);
+    expect(drop?.tokensIdleAtDrop).toBeLessThanOrEqual(7_000);
+  });
+
+  test("gap notice renders before the recent turns it refers to", () => {
+    const { input } = createAgentInput(req("go", exchanges(MAX_RECENT_TURNS + 1)), defaultOptions);
+    // Oldest kept turn is USER_1 (USER_0 is dropped); the notice heads the history block.
+    expect(input.indexOf("not shown here")).toBeLessThan(input.indexOf("USER_1"));
+  });
+
+  test("gap notice counts budget-omitted kept turns, not only cap-dropped ones", () => {
+    const big = "X".repeat(3_000);
+    const history = Array.from({ length: MAX_RECENT_TURNS + 3 }, (_, i) => [
+      msg(`u${i}`, "user", `U${i}_${big}`),
+      msg(`a${i}`, "assistant", `A${i}`),
+    ]).flat();
+    const { input, drop } = createAgentInput(req("go", history), { ...defaultOptions, contextMaxTokens: 1_500 });
+    // Cap drops 3 turns; the 1.5k budget can't fit the 5 kept big turns either — so the
+    // metric stays cap-specific (3) but the notice reports more than the cap alone removed.
+    expect(drop?.droppedTurns).toBe(3);
+    // missingTurns diverges above droppedTurns when budget pressure omits kept turns —
+    // and the notice text tracks missingTurns, not the cap-only count.
+    expect(drop?.missingTurns).toBeGreaterThan(3);
+    const stated = Number(input.match(/SYSTEM: (\d+) earlier turns not shown/)?.[1]);
+    expect(drop?.missingTurns).toBe(stated);
+  });
+
+  test("uses singular phrasing when exactly one turn drops", () => {
+    const { input, drop } = createAgentInput(req("go", exchanges(MAX_RECENT_TURNS + 1)), defaultOptions);
+    expect(drop?.droppedTurns).toBe(1);
+    expect(input).toContain("1 earlier turn not shown here");
+  });
+
+  test("no drop metadata or gap notice when history fits the window", () => {
+    const { input, drop } = createAgentInput(req("go", exchanges(MAX_RECENT_TURNS - 1)), defaultOptions);
+    expect(drop).toBeUndefined();
+    expect(input).not.toContain("session-search");
+    expect(input).not.toContain("not shown here");
+  });
+
   test("includes tool payloads that belong to a windowed turn", () => {
     const history = [
       ...exchange(99),
