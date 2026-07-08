@@ -202,6 +202,9 @@ export function createMessageStreamState(input: {
     },
 
     onProgressError: (error) => {
+      // Flush buffered prose first so it renders before the notice, not after the
+      // pending flush timer fires (which would invert their order).
+      sealAgentRow();
       input.setRows((current) => {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
@@ -210,6 +213,7 @@ export function createMessageStreamState(input: {
     },
 
     onProgressNotice: (notice) => {
+      sealAgentRow();
       const color = notice.level === "error" ? palette.error : palette.yellow;
       input.setRows((current) => {
         const last = current[current.length - 1];

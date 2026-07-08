@@ -182,6 +182,18 @@ describe("cli-prompt", () => {
     expect(output).toBe("❯ hi\n• Hello there.");
   });
 
+  // Regression: a notice appended while agent prose is still buffered used to render
+  // before the prose (the flush timer had not fired yet), inverting their order.
+  test("buffered prose flushes before a notice", async () => {
+    const events: StreamEvent[] = [
+      { type: "text-delta", text: "Alpha text." },
+      { type: "notice", level: "warn", message: "trace sink is dark" },
+    ];
+
+    const { output } = await runPromptAndCapture("hi", createTestSession(), createStreamingClient(events));
+    expect(output.indexOf("Alpha text.")).toBeLessThan(output.indexOf("trace sink is dark"));
+  });
+
   // Regression: a failed turn left the flush timer armed, so buffered text wrote to
   // stdout after handlePrompt returned — a write outside any output-capture window.
   test("a failed turn writes nothing to stdout after it returns", async () => {
