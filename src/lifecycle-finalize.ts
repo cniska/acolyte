@@ -31,9 +31,13 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const output =
     rawOutput.length > 0
       ? rawOutput
-      : ctx.observedTools.size > 0
-        ? t("agent.output.no_response_after_tools")
-        : t("agent.output.no_output");
+      : blockingError
+        ? // On a blocking error the status/error row is the authoritative output; emit
+          // no fallback so it never renders a placeholder bubble beside the reason.
+          ""
+        : ctx.observedTools.size > 0
+          ? t("agent.output.no_response_after_tools")
+          : t("agent.output.no_output");
 
   const { promptUsage } = ctx;
   const promptInputTokens = promptUsageTotalTokens(promptUsage);

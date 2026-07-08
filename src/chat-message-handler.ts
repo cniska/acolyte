@@ -121,6 +121,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         workspace: input.currentSession.workspace,
         signal: controller.signal,
         onEvent: (event) => {
+          // Row projection goes through the single interpreter; this switch owns only
+          // the TUI-local pending/usage indicators, which are not row mutations.
+          streamState.onEvent(event);
           switch (event.type) {
             case "status":
               if (event.state.kind === "running") {
@@ -137,27 +140,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
               break;
             case "tool-call":
-              streamState.onToolCall();
               runningToolCallIds.add(event.toolCallId);
               input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
-              break;
-            case "text-delta":
-              streamState.onDelta(event.text);
-              break;
-            case "tool-output":
-              streamState.onOutput(event);
-              break;
-            case "tool-result":
-              streamState.onToolResult(event);
-              break;
-            case "checklist":
-              streamState.onChecklist(event);
-              break;
-            case "error":
-              streamState.onProgressError(event.errorMessage);
-              break;
-            case "notice":
-              streamState.onProgressNotice({ message: event.message, level: event.level, source: event.source });
               break;
           }
         },
@@ -170,7 +154,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       if (turn.activeSkills?.length) {
         input.currentSession.activeSkills = turn.activeSkills;
       }
-      input.currentSession.messages.push(assistantMessage);
+      // A blocked turn with no model prose has empty output; don't persist a blank
+      // assistant message — a textless bubble is noise, and the block reason is already
+      // shown as the error row in the live transcript.
+      if (assistantMessage.content.trim().length > 0) {
+        input.currentSession.messages.push(assistantMessage);
+      }
       for (const row of turn.rows) {
         if (row.kind === "status" && typeof row.content === "string") {
           const msg = input.createMessage("system", row.content);

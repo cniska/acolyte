@@ -1,5 +1,6 @@
 import { type ChatRow, createRow } from "./chat-contract";
 import type { ChecklistItem } from "./checklist-contract";
+import type { StreamEvent } from "./client-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { palette } from "./palette";
 import { createId } from "./short-id";
@@ -7,6 +8,9 @@ import type { ToolOutputPart } from "./tool-output-contract";
 import { createToolOutputState } from "./tool-output-render";
 
 export type MessageStreamState = {
+  /** The single interpreter: translate one stream event into row mutations. Non-row
+   *  events (status/usage/reasoning) are ignored — the caller owns those. */
+  onEvent: (event: StreamEvent) => void;
   onDelta: (delta: string) => void;
   onToolCall: () => void;
   onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
@@ -83,7 +87,33 @@ export function createMessageStreamState(input: {
     agentContent = "";
   }
 
-  return {
+  const state: MessageStreamState = {
+    onEvent: (event) => {
+      switch (event.type) {
+        case "text-delta":
+          state.onDelta(event.text);
+          break;
+        case "tool-call":
+          state.onToolCall();
+          break;
+        case "tool-output":
+          state.onOutput(event);
+          break;
+        case "tool-result":
+          state.onToolResult(event);
+          break;
+        case "checklist":
+          state.onChecklist(event);
+          break;
+        case "error":
+          state.onProgressError(event.errorMessage);
+          break;
+        case "notice":
+          state.onProgressNotice({ message: event.message, level: event.level, source: event.source });
+          break;
+      }
+    },
+
     onDelta: (delta) => {
       if (delta.length === 0) return;
       agentContent += delta;
@@ -172,6 +202,9 @@ export function createMessageStreamState(input: {
     },
 
     onProgressError: (error) => {
+      // Flush buffered prose first so it renders before the notice, not after the
+      // pending flush timer fires (which would invert their order).
+      sealAgentRow();
       input.setRows((current) => {
         const last = current[current.length - 1];
         if (last?.style?.text === palette.error && last.content === error) return current;
@@ -180,6 +213,7 @@ export function createMessageStreamState(input: {
     },
 
     onProgressNotice: (notice) => {
+      sealAgentRow();
       const color = notice.level === "error" ? palette.error : palette.yellow;
       input.setRows((current) => {
         const last = current[current.length - 1];
@@ -217,4 +251,6 @@ export function createMessageStreamState(input: {
       }
     },
   };
+
+  return state;
 }

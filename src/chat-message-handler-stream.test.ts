@@ -26,6 +26,33 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
+  test("onEvent routes row events to the same projection as the direct methods", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onEvent({ type: "text-delta", text: "answer" });
+    expect(state.streamedText()).toBe("answer");
+
+    state.onEvent({ type: "notice", level: "warn", message: "sink is dark" });
+    expect(rows.some((r) => r.content === "sink is dark" && r.style?.text === palette.yellow)).toBe(true);
+
+    state.onEvent({ type: "error", errorMessage: "boom" });
+    expect(rows.some((r) => r.content === "boom" && r.style?.text === palette.error)).toBe(true);
+    state.dispose();
+  });
+
+  test("onEvent ignores non-row events (status/usage/reasoning)", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onEvent({ type: "status", state: { kind: "running" } });
+    state.onEvent({ type: "usage", inputTokens: 10, outputTokens: 2 });
+    state.onEvent({ type: "reasoning", text: "thinking" });
+    expect(rows).toHaveLength(0);
+    expect(state.streamedText()).toBe("");
+    state.dispose();
+  });
+
   test("finalize returns pending row id and clears state", async () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });

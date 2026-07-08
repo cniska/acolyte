@@ -179,6 +179,20 @@ describe("phaseFinalize", () => {
     expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
   });
 
+  test("blocking error with no model text emits empty output, not a fallback bubble", () => {
+    const ctx = createRunContext({
+      currentError: { message: "Cannot finish yet: validation missing", category: "other", blocksCompletion: true },
+      result: { text: "", toolCalls: [], signal: "done" },
+    });
+
+    const response = phaseFinalize(ctx);
+
+    expect(response.state).toBe("awaiting-input");
+    // The error row is authoritative; no placeholder output to render beside it.
+    expect(response.output).toBe("");
+    expect(response.error).toBe("Cannot finish yet: validation missing");
+  });
+
   test("does not use an unaccepted blocked signal for response state", () => {
     const ctx = createRunContext({
       currentError: { message: "tool failed", category: "other" },
