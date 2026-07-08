@@ -6,16 +6,6 @@ import { palette } from "./palette";
 import { renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printOutput, printWarning, streamText } from "./ui";
 
-// If the final answer extends the streamed preview, return the un-streamed tail; if it
-// equals it, return "" (already shown). Divergence returns "" too — a known run-mode gap
-// (the final answer is dropped) that the fold's follow-up commit addresses.
-function missingAgentStreamTail(streamed: string, finalOutput: string): string {
-  if (streamed.length === 0) return finalOutput;
-  if (finalOutput === streamed) return "";
-  if (finalOutput.startsWith(streamed)) return finalOutput.slice(streamed.length);
-  return "";
-}
-
 /**
  * Projects the row model (fed by MessageStreamState.onEvent) onto append-only stdout,
  * reproducing run mode's incremental rendering. Diffs each row against what it has
@@ -133,14 +123,20 @@ export function createStdoutRowProjector(): {
       if (!atLineStart) output.write("\n");
       printOutput("");
       if (hasPrintedProgress) printOutput("");
-      const missingTail = missingAgentStreamTail(agentStreamText, replyOutput);
-      if (missingTail.length > 0) {
-        writeRaw(missingTail);
+      // reply.output is authoritative and must appear in full exactly once. The streamed
+      // deltas are a non-authoritative preview: if they already equal the answer, it is
+      // shown (no-op); if the answer extends them, print only the tail; otherwise the
+      // preview diverged (or nothing streamed) and the full answer is printed — the old
+      // path silently dropped a divergent answer.
+      const streamed = agentStreamText;
+      if (replyOutput === streamed) return;
+      if (streamed.length > 0 && replyOutput.startsWith(streamed)) {
+        writeRaw(replyOutput.slice(streamed.length));
         if (!atLineStart) output.write("\n");
-      } else if (!agentStreamStarted) {
-        const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
-        await streamText(formatAgentReplyOutput(replyOutput, wrapWidth));
+        return;
       }
+      const wrapWidth = Math.max(24, (output.columns ?? 120) - 4);
+      await streamText(formatAgentReplyOutput(replyOutput, wrapWidth));
     },
   };
 }

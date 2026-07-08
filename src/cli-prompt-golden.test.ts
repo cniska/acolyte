@@ -73,8 +73,10 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       { type: "notice", level: "warn", message: "trace sink is dark" },
     ];
     const out = await capture("check config", client(events, { state: "done", output: "Updated the config." }));
+    // The final answer ("Updated the config.") diverges from the streamed preview ("Let
+    // me check the config.") and now appears in full — previously it was dropped.
     expect(out).toBe(
-      "❯ check config\n• Let me check the config.• tool.file_read.header src/config.ts\n• Steps (1/2)\n  ● read\n  ○ edit\ntrace sink is dark",
+      "❯ check config\n• Let me check the config.• tool.file_read.header src/config.ts\n• Steps (1/2)\n  ● read\n  ○ edit\ntrace sink is dark\n\n\n\n• Updated the config.",
     );
   });
 
