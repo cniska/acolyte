@@ -182,12 +182,13 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   const store = options.store ?? (await getMemoryStore());
   const keys = scopeKeysForScope(scope, workspace);
   for (const key of keys) {
-    const records = await store.list({ scopeKey: key, kind: "stored" });
+    // Match all kinds so distilled observations are removable, not only stored memories.
+    const records = await store.list({ scopeKey: key });
     const record = records.find((r) => r.id === trimmed);
     if (record) {
       const entry = toMemoryEntry(record);
       await store.remove(entry.id);
-      log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
+      log.debug("memory.removed", { id: entry.id, kind: entry.kind, scope: entry.scope });
       return { kind: "removed", entry };
     }
   }
