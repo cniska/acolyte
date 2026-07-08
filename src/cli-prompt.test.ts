@@ -164,4 +164,21 @@ describe("cli-prompt", () => {
     const headerMatches = output.match(/src\/foo\.ts/g) ?? [];
     expect(headerMatches.length).toBe(1);
   });
+
+  // Regression: reply.output is trimmed upstream while the streamed preview keeps its
+  // trailing newline, so a naive equality check saw divergence and reprinted the whole
+  // answer — the authoritative output rendered twice.
+  test("a trailing newline in the preview does not duplicate the final answer", async () => {
+    const client: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "Hello there.\n" });
+        return { state: "done" as const, output: "Hello there.", model: "gpt-5-mini", toolCalls: [] };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    const { output } = await runPromptAndCapture("hi", createTestSession(), client);
+    expect(output).toBe("❯ hi\n• Hello there.");
+  });
 });

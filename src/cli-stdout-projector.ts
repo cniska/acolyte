@@ -138,7 +138,10 @@ export function createStdoutRowProjector(): {
       // shown (no-op); if the answer extends them, print only the tail; otherwise the
       // preview diverged (or nothing streamed) and the full answer is printed — the old
       // path silently dropped a divergent answer.
-      const streamed = agentStreamText;
+      // reply.output is trimmed upstream while the streamed preview keeps trailing
+      // whitespace, so compare on the trimmed preview or a lone trailing newline reads
+      // as divergence and reprints the whole answer.
+      const streamed = agentStreamText.trimEnd();
       if (replyOutput === streamed) return;
       if (streamed.length > 0 && replyOutput.startsWith(streamed)) {
         writeRaw(replyOutput.slice(streamed.length));
