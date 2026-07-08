@@ -196,6 +196,40 @@ describe("render", () => {
     expect(joined).not.toContain("A4");
   });
 
+  test("overflow lines are written to terminal so they scroll into scrollback", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          return (
+            <tui-box flexDirection="column">
+              {["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"].map((l) => (
+                <tui-text key={l}>{l}</tui-text>
+              ))}
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await new Promise((r) => setTimeout(r, 80));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    // rows=6 → maxLiveRows=5. 8 lines overflow by 3 (L1-L3).
+    // Those 3 lines must appear in raw writes so the terminal can scroll them into scrollback.
+    const allWrites = writes.join("");
+    expect(allWrites).toContain("L1");
+    expect(allWrites).toContain("L2");
+    expect(allWrites).toContain("L3");
+    // Bottom-fitting slice must also be present.
+    expect(allWrites).toContain("L4");
+    expect(allWrites).toContain("L8");
+  });
+
   test("height jumps use normal erase instead of forceRedraw", async () => {
     const writes = await withMockedStdout(
       async () => {

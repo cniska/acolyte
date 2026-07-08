@@ -39,6 +39,10 @@ export function render(node: ReactNode): RenderInstance {
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
+  // Lines from the active region that have already been written to scrollback.
+  // Lets us emit only the delta on subsequent frames instead of re-emitting.
+  let frozenLineCount = 0;
+  let frozenScrollbackText = "";
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -86,6 +90,8 @@ export function render(node: ReactNode): RenderInstance {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
+      frozenLineCount = 0;
+      frozenScrollbackText = "";
       lastActive = "";
       commitRender();
     }, 16);
@@ -136,6 +142,8 @@ export function render(node: ReactNode): RenderInstance {
   /** Repaint the active region on focus-in. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
+    frozenLineCount = 0;
+    frozenScrollbackText = "";
     lastActive = "";
     commitRender();
   }
@@ -155,6 +163,8 @@ export function render(node: ReactNode): RenderInstance {
       }
       buf += appendedStatic;
       flushedStaticCount = staticItems.length;
+      frozenLineCount = 0;
+      frozenScrollbackText = "";
       const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
       syncWrite(buf + active);
       lastActive = active;
@@ -166,15 +176,21 @@ export function render(node: ReactNode): RenderInstance {
     if (active === lastActive) return;
 
     const allLines = active.split("\n");
-    const erase = eraseSequence();
 
-    // Overflow lines above the split are not emitted — they are lost from
-    // the active region (static content should already be in scrollback via
-    // tui-static; the active region should not grow unboundedly).
+    // If frozen lines no longer match the current active prefix (non-append-only
+    // change), invalidate the frozen state so we repaint from scratch.
+    if (frozenLineCount > 0 && allLines.slice(0, frozenLineCount).join("\n") !== frozenScrollbackText) {
+      frozenLineCount = 0;
+      frozenScrollbackText = "";
+    }
+
+    const erase = eraseSequence();
+    const liveLines = allLines.slice(frozenLineCount);
+
     let physRows = 0;
     let splitIdx = 0;
-    for (let i = allLines.length - 1; i >= 0; i--) {
-      const rows = linePhysRows(allLines[i] ?? "", cols);
+    for (let i = liveLines.length - 1; i >= 0; i--) {
+      const rows = linePhysRows(liveLines[i] ?? "", cols);
       if (physRows + rows > maxLiveRows) {
         splitIdx = i + 1;
         break;
@@ -182,7 +198,16 @@ export function render(node: ReactNode): RenderInstance {
       physRows += rows;
     }
 
-    syncWrite(erase + allLines.slice(splitIdx).join("\n"));
+    if (splitIdx > 0) {
+      // Write overflow + bottom-fitting slice atomically. The overflow lines scroll
+      // into terminal scrollback naturally as the write pushes past the viewport top.
+      const overflowLines = liveLines.slice(0, splitIdx);
+      frozenLineCount += splitIdx;
+      frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      syncWrite(erase + overflowLines.join("\n") + "\n" + liveLines.slice(splitIdx).join("\n"));
+    } else {
+      syncWrite(erase + liveLines.join("\n"));
+    }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
   }
