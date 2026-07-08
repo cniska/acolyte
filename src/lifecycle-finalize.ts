@@ -46,14 +46,24 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
 
   const callLog = scopedCallLog(ctx.session, ctx.taskId);
   const totalToolCalls = callLog.length;
+  // Recall probes search memory/history, not the codebase (session-search is category
+  // "search", so it would otherwise land in the code-search and discovery tallies);
+  // keep them off those axes so read/search/discovery stay a clean over-exploration signal.
+  const isRecallProbe = (toolName: string) => toolName === "memory-search" || toolName === "session-search";
+  const isCodeDiscovery = (entry: { toolName: string }) =>
+    DISCOVERY_TOOL_SET.has(entry.toolName) && !isRecallProbe(entry.toolName);
   const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;
-  const searchCalls = callLog.filter((entry) => SEARCH_TOOL_SET.has(entry.toolName)).length;
+  const searchCalls = callLog.filter(
+    (entry) => SEARCH_TOOL_SET.has(entry.toolName) && !isRecallProbe(entry.toolName),
+  ).length;
   const writeCalls = callLog.filter((entry) => WRITE_TOOL_SET.has(entry.toolName)).length;
+  const memorySearchCalls = callLog.filter((entry) => entry.toolName === "memory-search").length;
+  const sessionSearchCalls = callLog.filter((entry) => entry.toolName === "session-search").length;
   const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
   const preWriteDiscoveryCalls =
     firstWriteIndex >= 0
-      ? callLog.slice(0, firstWriteIndex).filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length
-      : callLog.filter((entry) => DISCOVERY_TOOL_SET.has(entry.toolName)).length;
+      ? callLog.slice(0, firstWriteIndex).filter(isCodeDiscovery).length
+      : callLog.filter(isCodeDiscovery).length;
 
   ctx.debug("lifecycle.summary", {
     task_id: ctx.taskId ?? null,
@@ -68,6 +78,8 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     read_calls: readCalls,
     search_calls: searchCalls,
     write_calls: writeCalls,
+    memory_search_calls: memorySearchCalls,
+    session_search_calls: sessionSearchCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
     lifecycle_signal: ctx.acceptedSignal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,

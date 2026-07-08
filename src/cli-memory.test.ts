@@ -12,6 +12,7 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
     list: async () => [
       {
         id: "mem_abc",
+        kind: "stored" as const,
         content: "remember this",
         scope: "user" as const,
         createdAt: "9999-01-01T00:00:00.000Z",
@@ -20,6 +21,7 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
     ],
     add: async (content, scope) => ({
       id: "mem_test123",
+      kind: "stored" as const,
       content,
       scope: scope ?? "user",
       createdAt: "9999-01-01T00:00:00.000Z",
@@ -106,6 +108,7 @@ describe("cli-memory", () => {
           savedScope = scope;
           return {
             id: "mem_test123",
+            kind: "stored" as const,
             content,
             scope: scope ?? "user",
             createdAt: "9999-01-01T00:00:00.000Z",

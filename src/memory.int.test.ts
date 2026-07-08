@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { addMemory, listMemories, removeMemory } from "./memory-ops";
+import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
+import { defaultUserResourceId } from "./resource-id";
 import { tempDb } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
@@ -47,5 +48,21 @@ describe("sqlite memory store", () => {
     const db = createDb();
     const result = await removeMemory("mem_missing", { store: db });
     expect(result).toEqual({ kind: "not_found", id: "mem_missing" });
+  });
+
+  test("removeMemory removes a distilled observation and its embedding", async () => {
+    const db = createDb();
+    const record = await addObservation(defaultUserResourceId(), "Prefers tabs over spaces", { store: db });
+    expect(record).not.toBeNull();
+    const id = record?.id ?? "";
+    await db.writeEmbedding(id, defaultUserResourceId(), Buffer.from([1, 2, 3, 4]));
+
+    const result = await removeMemory(id, { store: db });
+    expect(result.kind).toBe("removed");
+    if (result.kind === "removed") expect(result.entry.kind).toBe("observation");
+
+    const all = await listMemories({ store: db });
+    expect(all.some((item) => item.id === id)).toBe(false);
+    expect(await db.getEmbedding(id)).toBeNull();
   });
 });

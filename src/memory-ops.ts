@@ -3,6 +3,7 @@ import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
   type MemoryEntry,
+  type MemoryKind,
   type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
@@ -34,6 +35,7 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
 
 function toMemoryEntry(record: {
   id: string;
+  kind: MemoryKind;
   scopeKey: string;
   content: string;
   createdAt: string;
@@ -41,6 +43,7 @@ function toMemoryEntry(record: {
 }): MemoryEntry {
   return {
     id: record.id,
+    kind: record.kind,
     content: record.content,
     createdAt: record.createdAt,
     lastRecalledAt: record.lastRecalledAt ?? null,
@@ -54,7 +57,8 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
-    const records = await store.list({ scopeKey: key, kind: "stored" });
+    // List all kinds so distilled observations appear, not only stored memories.
+    const records = await store.list({ scopeKey: key });
     entries.push(...records.map(toMemoryEntry));
   }
   entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -178,12 +182,13 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   const store = options.store ?? (await getMemoryStore());
   const keys = scopeKeysForScope(scope, workspace);
   for (const key of keys) {
-    const records = await store.list({ scopeKey: key, kind: "stored" });
+    // Match all kinds so distilled observations are removable, not only stored memories.
+    const records = await store.list({ scopeKey: key });
     const record = records.find((r) => r.id === trimmed);
     if (record) {
       const entry = toMemoryEntry(record);
       await store.remove(entry.id);
-      log.debug("memory.stored.removed", { id: entry.id, scope: entry.scope });
+      log.debug("memory.removed", { id: entry.id, kind: entry.kind, scope: entry.scope });
       return { kind: "removed", entry };
     }
   }

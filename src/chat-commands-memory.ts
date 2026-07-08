@@ -84,7 +84,9 @@ async function handleMemoryList(
     ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);
     return { stop: true, userText: text };
   }
-  const list = memories.slice(0, 10).map((entry) => `${entry.scope}:${entry.id} ${entry.content}`);
+  const list = memories
+    .slice(0, 10)
+    .map((entry) => `${entry.scope}:${entry.id}${entry.kind === "observation" ? " (obs)" : ""} ${entry.content}`);
   const header =
     scope === "all"
       ? t("chat.memory.header.all", { count: memories.length })

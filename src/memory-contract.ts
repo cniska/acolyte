@@ -11,6 +11,7 @@ export type MemoryId = z.infer<typeof memoryIdSchema>;
 
 export interface MemoryEntry {
   readonly id: MemoryId;
+  readonly kind: MemoryKind;
   readonly content: string;
   readonly createdAt: IsoDateTimeString;
   readonly lastRecalledAt: IsoDateTimeString | null;
