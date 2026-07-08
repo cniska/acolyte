@@ -77,17 +77,7 @@ function skipEscapeSequence(value: string, start: number): number {
 }
 
 export function stripAnsiLength(value: string): number {
-  let length = 0;
-  let i = 0;
-  while (i < value.length) {
-    if (value[i] === "\x1b") {
-      i = skipEscapeSequence(value, i + 1);
-      continue;
-    }
-    length++;
-    i++;
-  }
-  return length;
+  return Bun.stringWidth(stripAnsi(value));
 }
 
 export function stripAnsi(value: string): string {

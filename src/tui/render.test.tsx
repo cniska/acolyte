@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
+import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
 import { renderCapture } from "./test-utils";
 
@@ -540,5 +541,35 @@ describe("render", () => {
     const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
     const frameWrites = extractFrameWrites(writes);
     expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
+  });
+});
+
+describe("physicalRowCount", () => {
+  test("single ASCII line fits in columns", () => {
+    expect(physicalRowCount("hello", 80)).toBe(0);
+  });
+
+  test("single ASCII line wraps", () => {
+    expect(physicalRowCount("a".repeat(10), 5)).toBe(1);
+  });
+
+  test("CJK line counts each character as 2 columns", () => {
+    // 5 CJK chars = 10 display columns; in an 8-column terminal → ceil(10/8)=2 rows
+    expect(physicalRowCount("こんにちは", 8)).toBe(1);
+  });
+
+  test("CJK line wraps when wider than columns", () => {
+    // 10 CJK chars = 20 display cols; 8-col terminal → ceil(20/8)=3 rows
+    expect(physicalRowCount("こんにちはこんにちは", 8)).toBe(2);
+  });
+
+  test("emoji line counts each emoji as 2 columns", () => {
+    // 3 emoji = 6 display cols; 4-col terminal → ceil(6/4)=2 rows
+    expect(physicalRowCount("😀🎉🔥", 4)).toBe(1);
+  });
+
+  test("multiline output sums physical rows", () => {
+    // "hello" (5) in 80 cols = 1 row; "world" (5) in 80 cols = 1 row; total 2 rows - 1
+    expect(physicalRowCount("hello\nworld", 80)).toBe(1);
   });
 });

@@ -12,7 +12,7 @@ import { ansi, kitty } from "./styles";
 const KITTY_TERMINALS = ["kitty", "WezTerm", "ghostty", "iTerm.app"];
 
 /** Count physical terminal rows, accounting for line wrapping. */
-function physicalRowCount(output: string, columns: number): number {
+export function physicalRowCount(output: string, columns: number): number {
   const lines = output.split("\n");
   let rows = 0;
   for (const line of lines) {
