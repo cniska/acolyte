@@ -21,6 +21,7 @@ function createMemoryApi(overrides?: {
       overrides?.addMemory ??
       (async () => ({
         id: "mem_unused",
+        kind: "stored" as const,
         scope: "user" as const,
         content: "unused",
         createdAt: "2026-02-21T00:00:00.000Z",
@@ -139,6 +140,7 @@ describe("chat-commands", () => {
       listMemories: async () => [
         {
           id: "mem_1",
+          kind: "stored" as const,
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
@@ -146,6 +148,7 @@ describe("chat-commands", () => {
         },
         {
           id: "mem_2",
+          kind: "stored" as const,
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:01.000Z",
@@ -166,6 +169,7 @@ describe("chat-commands", () => {
       listMemories: async () => [
         {
           id: "mem_1",
+          kind: "stored" as const,
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
@@ -173,6 +177,7 @@ describe("chat-commands", () => {
         },
         {
           id: "mem_2",
+          kind: "stored" as const,
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:01.000Z",
@@ -194,6 +199,7 @@ describe("chat-commands", () => {
         kind: "removed" as const,
         entry: {
           id: "mem_deadbeef",
+          kind: "stored" as const,
           scope: "project" as const,
           content: "x",
           createdAt: "2026-02-21T00:00:00.000Z",
@@ -224,6 +230,7 @@ describe("chat-commands", () => {
       listMemories: async () => [
         {
           id: "mem_1",
+          kind: "stored" as const,
           scope: "user" as const,
           content: "prefer concise output",
           createdAt: "2026-02-21T00:00:00.000Z",
@@ -241,6 +248,7 @@ describe("chat-commands", () => {
       listMemories: async () => [
         {
           id: "mem_1",
+          kind: "stored" as const,
           scope: "project" as const,
           content: "use bun scripts",
           createdAt: "2026-02-21T00:00:00.000Z",
@@ -275,6 +283,7 @@ describe("chat-commands", () => {
         savedScope = scope;
         return {
           id: "mem_3",
+          kind: "stored" as const,
           scope,
           content,
           createdAt: "2026-02-21T00:00:02.000Z",

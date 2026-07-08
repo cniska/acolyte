@@ -73,9 +73,9 @@ describe("listMemories", () => {
     for (const record of records) await store.write(record);
 
     const entries = await listMemories({ scope: "user", store });
-    const contents = entries.map((entry) => entry.content);
-    expect(contents).toContain("a stored fact");
-    expect(contents).toContain("a distilled observation");
+    const byContent = new Map(entries.map((entry) => [entry.content, entry.kind]));
+    expect(byContent.get("a stored fact")).toBe("stored");
+    expect(byContent.get("a distilled observation")).toBe("observation");
     store.close();
   });
 });

@@ -3,6 +3,7 @@ import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
   type MemoryEntry,
+  type MemoryKind,
   type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
@@ -34,6 +35,7 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
 
 function toMemoryEntry(record: {
   id: string;
+  kind: MemoryKind;
   scopeKey: string;
   content: string;
   createdAt: string;
@@ -41,6 +43,7 @@ function toMemoryEntry(record: {
 }): MemoryEntry {
   return {
     id: record.id,
+    kind: record.kind,
     content: record.content,
     createdAt: record.createdAt,
     lastRecalledAt: record.lastRecalledAt ?? null,

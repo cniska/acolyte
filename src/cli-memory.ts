@@ -49,6 +49,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     out.addTable(
       rows.slice(0, 50).map((row) => ({
         id: row.id,
+        kind: row.kind,
         content: truncateText(row.content, 80),
         created: formatRelativeTime(row.createdAt),
         recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
