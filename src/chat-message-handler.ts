@@ -155,7 +155,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         input.currentSession.activeSkills = turn.activeSkills;
       }
       // A blocked turn with no model prose has empty output; don't persist a blank
-      // assistant message (the error row carries the turn, and history filtering keeps it).
+      // assistant message — a textless bubble is noise, and the block reason is already
+      // shown as the error row in the live transcript.
       if (assistantMessage.content.trim().length > 0) {
         input.currentSession.messages.push(assistantMessage);
       }
