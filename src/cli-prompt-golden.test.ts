@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { captureCliOutput } from "./cli-test-harness";
 import { handlePrompt } from "./cli-prompt";
+import { captureCliOutput } from "./cli-test-harness";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
 
