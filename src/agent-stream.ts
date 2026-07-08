@@ -100,7 +100,6 @@ export function createAgentStream(
         }
 
         const resolvedToolChoice = stepToolChoice ?? options.toolChoice;
-        stepToolChoice = undefined;
         await rateLimiter.beforeCall();
         let streamResult: Awaited<ReturnType<typeof model.doStream>>;
         try {
@@ -117,6 +116,8 @@ export function createAgentStream(
             ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
           });
           rateLimiter.reset();
+          // Reset only after a successful call so a rate-limit retry (continue) reuses the override.
+          stepToolChoice = undefined;
         } catch (error) {
           const recovery = rateLimiter.onError(error);
           if (recovery.shouldRetry) {
