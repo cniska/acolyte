@@ -154,7 +154,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       if (turn.activeSkills?.length) {
         input.currentSession.activeSkills = turn.activeSkills;
       }
-      input.currentSession.messages.push(assistantMessage);
+      // A blocked turn with no model prose has empty output; don't persist a blank
+      // assistant message (the error row carries the turn, and history filtering keeps it).
+      if (assistantMessage.content.trim().length > 0) {
+        input.currentSession.messages.push(assistantMessage);
+      }
       for (const row of turn.rows) {
         if (row.kind === "status" && typeof row.content === "string") {
           const msg = input.createMessage("system", row.content);
