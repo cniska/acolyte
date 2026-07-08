@@ -290,7 +290,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         const decision = decideFinish({
           state: finishPolicyState,
           signal,
-          hasWrites: taskLog.some((e) => ctx.session.writeTools.has(e.toolName)),
           completionBlock,
         });
         switch (decision.kind) {
@@ -305,12 +304,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               blocksCompletion: true,
             };
             ctx.debug("lifecycle.signal.missing", { action: "block" });
-            break;
-          case "self-review-inject":
-            ctx.debug("lifecycle.self_review.injected", { action: "continue" });
-            break;
-          case "self-review-skip":
-            ctx.debug("lifecycle.self_review.skipped", { reason: decision.reason });
             break;
           case "completion-rejected-continue":
             ctx.debug("lifecycle.signal.rejected", {

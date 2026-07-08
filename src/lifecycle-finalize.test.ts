@@ -158,7 +158,7 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
 
     expect(response.state).toBe("awaiting-input");
-    expect(response.output).toBe("file-edit failed: Find text matched 2 locations");
+    expect(response.output).toBe("I updated the tests.");
     expect(response.error).toBe("file-edit failed: Find text matched 2 locations");
   });
 
@@ -175,7 +175,7 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
 
     expect(response.state).toBe("awaiting-input");
-    expect(response.output).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
+    expect(response.output).toBe("I updated the file.");
     expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
   });
 
