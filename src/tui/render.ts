@@ -106,11 +106,6 @@ export function render(node: ReactNode): RenderInstance {
     stdout.on("resize", onResize);
   }
 
-  function countRows(output: string): number {
-    const cols = stdout.columns ?? DEFAULT_COLUMNS;
-    return physicalRowCount(output, cols);
-  }
-
   function eraseSequence(): string {
     if (!stdout.isTTY || lastActiveLineCount <= 0) return "";
     return `${ansi.cursorUp(lastActiveLineCount)}\r${ansi.eraseDown}`;
