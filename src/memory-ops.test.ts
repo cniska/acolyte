@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { resolveScopeKey, visibleScopeKeys } from "./memory-ops";
+import type { MemoryRecord } from "./memory-contract";
+import { listMemories, resolveScopeKey, visibleScopeKeys } from "./memory-ops";
+import { createSqliteMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 
 describe("resolveScopeKey", () => {
@@ -55,5 +57,25 @@ describe("visibleScopeKeys", () => {
     const keys = visibleScopeKeys({ sessionId: "sess_alpha" });
     expect(keys.has(projectResourceIdFromWorkspace(process.cwd()))).toBe(false);
     expect(keys).toEqual(new Set(["sess_alpha", defaultUserResourceId()]));
+  });
+});
+
+describe("listMemories", () => {
+  // Regression: the list used to filter kind:"stored", hiding distilled observations.
+  test("returns both stored memories and observations", async () => {
+    const store = createSqliteMemoryStore(":memory:");
+    const scopeKey = defaultUserResourceId();
+    const base = { scopeKey, createdAt: "2026-03-05T10:00:00.000Z", tokenEstimate: 1 };
+    const records: MemoryRecord[] = [
+      { ...base, id: "mem_stored01", kind: "stored", content: "a stored fact" },
+      { ...base, id: "mem_obs01", kind: "observation", content: "a distilled observation" },
+    ];
+    for (const record of records) await store.write(record);
+
+    const entries = await listMemories({ scope: "user", store });
+    const contents = entries.map((entry) => entry.content);
+    expect(contents).toContain("a stored fact");
+    expect(contents).toContain("a distilled observation");
+    store.close();
   });
 });

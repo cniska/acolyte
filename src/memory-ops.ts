@@ -54,7 +54,8 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
-    const records = await store.list({ scopeKey: key, kind: "stored" });
+    // List all kinds so distilled observations appear, not only stored memories.
+    const records = await store.list({ scopeKey: key });
     entries.push(...records.map(toMemoryEntry));
   }
   entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
