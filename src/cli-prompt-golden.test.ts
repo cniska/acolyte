@@ -4,10 +4,13 @@ import { captureCliOutput } from "./cli-test-harness";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
 
-// Byte-for-byte safety net for the output-path fold: run mode's exact stdout for
-// representative event streams, frozen against the pre-fold renderer. The projector
-// that replaces cli-prompt's hand-rolled renderer must reproduce these verbatim; any
-// diff is a deliberate behavior change, not an accident. Captured output is ANSI-
+// Golden test. Freeze the exact stdout of run mode against known-good code, then assert
+// every future run reproduces it byte for byte. The purpose is change detection: refactor
+// the renderer and these pass, so the output is provably unchanged; a real diff points at
+// exactly what moved. When a change is intentional, update the frozen string in the same
+// commit, so the diff becomes the review surface.
+//
+// Each test freezes run mode's output for one event stream. Captured output is ANSI-
 // stripped and trimmed (see captureCliOutput), so this locks structure, not color.
 
 function session(): Session {
