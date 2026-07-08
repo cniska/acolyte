@@ -121,6 +121,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         workspace: input.currentSession.workspace,
         signal: controller.signal,
         onEvent: (event) => {
+          // Row projection goes through the single interpreter; this switch owns only
+          // the TUI-local pending/usage indicators, which are not row mutations.
+          streamState.onEvent(event);
           switch (event.type) {
             case "status":
               if (event.state.kind === "running") {
@@ -137,27 +140,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
               break;
             case "tool-call":
-              streamState.onToolCall();
               runningToolCallIds.add(event.toolCallId);
               input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
-              break;
-            case "text-delta":
-              streamState.onDelta(event.text);
-              break;
-            case "tool-output":
-              streamState.onOutput(event);
-              break;
-            case "tool-result":
-              streamState.onToolResult(event);
-              break;
-            case "checklist":
-              streamState.onChecklist(event);
-              break;
-            case "error":
-              streamState.onProgressError(event.errorMessage);
-              break;
-            case "notice":
-              streamState.onProgressNotice({ message: event.message, level: event.level, source: event.source });
               break;
           }
         },
