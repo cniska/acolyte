@@ -37,11 +37,6 @@ export function render(node: ReactNode): RenderInstance {
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
-  // Number of logical lines (split by \n) frozen into scrollback. When the
-  // active region overflows the terminal, top lines are written once and we
-  // only re-render the bottom portion that fits on screen.
-  let frozenLineCount = 0;
-  let frozenOverflowText = "";
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -89,8 +84,6 @@ export function render(node: ReactNode): RenderInstance {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
-      frozenLineCount = 0;
-      frozenOverflowText = "";
       lastActive = "";
       commitRender();
     }, 16);
@@ -138,13 +131,9 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Repaint the active region on focus-in.  Invalidates frozen overflow
-   *  state (may be stale after tab switch) and delegates to commitRender
-   *  which handles viewport overflow correctly. */
+  /** Repaint the active region on focus-in. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    frozenLineCount = 0;
-    frozenOverflowText = "";
     lastActive = "";
     commitRender();
   }
@@ -162,13 +151,8 @@ export function render(node: ReactNode): RenderInstance {
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      if (frozenOverflowText.length > 0 && appendedStatic.startsWith(frozenOverflowText)) {
-        appendedStatic = appendedStatic.slice(frozenOverflowText.length);
-      }
       buf += appendedStatic;
       flushedStaticCount = staticItems.length;
-      frozenLineCount = 0;
-      frozenOverflowText = "";
       const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
       syncWrite(buf + active);
       lastActive = active;
@@ -180,27 +164,17 @@ export function render(node: ReactNode): RenderInstance {
     if (active === lastActive) return;
 
     const allLines = active.split("\n");
+    const erase = eraseSequence();
 
-    // If the frozen prefix was invalidated (content shrank or changed),
-    // defer the viewport erase into the render syncWrite below so
-    // erase+paint is atomic within one BSU/ESU block.
-    let frozenResetErase = "";
-    if (
-      frozenLineCount > 0 &&
-      (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
-    ) {
-      frozenResetErase = `${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`;
-      lastActiveLineCount = 0;
-      frozenLineCount = 0;
-      frozenOverflowText = "";
-    }
-
-    const liveLines = allLines.slice(frozenLineCount);
-
+    // Find the bottom-fitting slice: walk from the last line upward until
+    // physRows would exceed maxLiveRows, then render only those lines.
+    // Overflow lines above the split are not emitted — they are lost from
+    // the active region (static content should already be in scrollback via
+    // tui-static; the active region should not grow unboundedly).
     let physRows = 0;
     let splitIdx = 0;
-    for (let i = liveLines.length - 1; i >= 0; i--) {
-      const rows = linePhysRows(liveLines[i] ?? "", cols);
+    for (let i = allLines.length - 1; i >= 0; i--) {
+      const rows = linePhysRows(allLines[i] ?? "", cols);
       if (physRows + rows > maxLiveRows) {
         splitIdx = i + 1;
         break;
@@ -208,21 +182,8 @@ export function render(node: ReactNode): RenderInstance {
       physRows += rows;
     }
 
-    const erase = frozenResetErase || eraseSequence();
-
-    if (splitIdx === 0) {
-      syncWrite(erase + liveLines.join("\n"));
-      lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
-    } else {
-      const overflow = liveLines.slice(0, splitIdx);
-      const onScreen = liveLines.slice(splitIdx);
-      frozenLineCount += splitIdx;
-      const overflowText = overflow.join("\n");
-      frozenOverflowText += `${overflowText}\n`;
-      syncWrite(`${erase}${overflowText}\n${onScreen.join("\n")}`);
-      lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
-    }
-
+    syncWrite(erase + allLines.slice(splitIdx).join("\n"));
+    lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
   }
 

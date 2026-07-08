@@ -175,7 +175,7 @@ describe("render", () => {
     expect(renderWrite).not.toContain("alpha\nbravo");
   });
 
-  test("resets frozen overflow when active content changes non-append-only", async () => {
+  test("renders bottom-fitting slice when active region overflows", async () => {
     const writes = await withMockedStdout(
       async () => {
         const { render } = await import("./render");
@@ -336,7 +336,7 @@ describe("render", () => {
     expect(headerCount).toBe(1);
   });
 
-  test("frozen-content reset and repaint happen in a single syncWrite", async () => {
+  test("overflow erase and repaint are atomic within one syncWrite", async () => {
     const writes = await withMockedStdout(
       async () => {
         const { render } = await import("./render");
