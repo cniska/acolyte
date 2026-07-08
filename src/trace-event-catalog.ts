@@ -175,3 +175,18 @@ export function parseTraceFields(event: string | undefined, fields: TraceFields)
   if (isCatalogTraceEvent(event)) return TRACE_EVENT_CATALOG[event].fields.parse(fields);
   return traceFieldsSchema.parse(fields);
 }
+
+/**
+ * Returns the displayField keys that are missing from `fields`.
+ * An empty result means all catalog display keys are present — use in tests to catch
+ * mismatches between what a debug() call site emits and what the catalog expects to read.
+ */
+export function missingCatalogDisplayFields(event: string | undefined, fields: TraceFields): string[] {
+  if (!isCatalogTraceEvent(event)) return [];
+  const missing: string[] = [];
+  for (const spec of TRACE_EVENT_CATALOG[event].displayFields) {
+    const key = typeof spec === "string" ? spec : spec.key;
+    if (!(key in fields)) missing.push(key);
+  }
+  return missing;
+}
