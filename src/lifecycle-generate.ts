@@ -295,7 +295,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         switch (decision.kind) {
           case "missing-signal-continue":
             ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            break;
+            // Force the retry step to use toolChoice:"required" so the Responses API
+            // grammar-constrains decoding — prevents GPT-5.x from emitting the call as text.
+            return { messages: renderFinishPolicyMessages(decision), toolChoice: "required" };
           case "missing-signal-block":
             ctx.currentError = {
               message: decision.message,

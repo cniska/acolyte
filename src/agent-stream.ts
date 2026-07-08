@@ -72,6 +72,7 @@ export function createAgentStream(
       let lifecycleSignal: LifecycleSignal | undefined;
       let lifecycleSignalReason: string | undefined;
       let finishReason: LanguageModelV4FinishReason | undefined;
+      let stepToolChoice: "auto" | "required" | "none" | undefined;
       while (true) {
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
@@ -98,6 +99,8 @@ export function createAgentStream(
           }
         }
 
+        const resolvedToolChoice = stepToolChoice ?? options.toolChoice;
+        stepToolChoice = undefined;
         await rateLimiter.beforeCall();
         let streamResult: Awaited<ReturnType<typeof model.doStream>>;
         try {
@@ -105,8 +108,8 @@ export function createAgentStream(
             prompt: messages,
             temperature: options.temperature,
             tools: functionTools.length > 0 ? functionTools : undefined,
-            toolChoice: options.toolChoice
-              ? { type: options.toolChoice }
+            toolChoice: resolvedToolChoice
+              ? { type: resolvedToolChoice }
               : functionTools.length > 0
                 ? { type: "auto" }
                 : undefined,
@@ -157,13 +160,17 @@ export function createAgentStream(
         if (stepText.trim().length > 0) answerText = stepText;
 
         if (pendingToolCalls.length === 0) {
-          const extras =
+          const finishResult =
             options.onBeforeFinish?.({
               messages,
               text: stepText,
               ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
             }) ?? [];
+          const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
           if (extras.length > 0) {
+            if (!Array.isArray(finishResult) && finishResult.toolChoice) {
+              stepToolChoice = finishResult.toolChoice;
+            }
             messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             for (const msg of extras) messages.push(msg);
             lifecycleSignal = undefined;

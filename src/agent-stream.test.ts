@@ -408,6 +408,40 @@ describe("onBeforeNextCall hook", () => {
     });
   });
 
+  test("onBeforeFinish toolChoice override is used for the retry step", async () => {
+    const argsCapture: Array<Record<string, unknown>> = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      // Step 1: no tool call (simulates GPT-5.x leaking function call as text).
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "oops" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      // Step 2: proper tool call on retry.
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" }, finishPart("tool-calls")],
+    ];
+    const model = scriptedModel(turns, [], argsCapture);
+    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+
+    let nudged = false;
+    await stream("hi", {
+      onBeforeFinish: () => {
+        if (nudged) return [];
+        nudged = true;
+        return {
+          messages: [{ role: "user", content: [{ type: "text", text: "<<call a signal tool>>" }] }],
+          toolChoice: "required",
+        };
+      },
+    }).then(({ getFullOutput }) => getFullOutput());
+
+    // Step 1 uses default "auto" toolChoice.
+    expect(argsCapture[0]?.toolChoice).toEqual({ type: "auto" });
+    // Step 2 uses "required" toolChoice from the onBeforeFinish override.
+    expect(argsCapture[1]?.toolChoice).toEqual({ type: "required" });
+  });
+
   test("emits cache and reasoning token counts from the finish part", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [

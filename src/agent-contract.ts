@@ -71,6 +71,10 @@ export type Agent = {
   stream(prompt: string, options: StreamOptions): Promise<StreamOutput>;
 };
 
+export type OnBeforeFinishResult =
+  | LanguageModelV4Message[]
+  | { messages: LanguageModelV4Message[]; toolChoice?: "auto" | "required" | "none" };
+
 export type StreamOptions = {
   toolChoice?: "auto" | "none" | "required";
   temperature?: number;
@@ -82,7 +86,7 @@ export type StreamOptions = {
     messages: readonly LanguageModelV4Message[];
     text: string;
     signal?: LifecycleSignal;
-  }) => LanguageModelV4Message[];
+  }) => OnBeforeFinishResult;
 };
 
 export type StreamOutput = {
