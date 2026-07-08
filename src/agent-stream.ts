@@ -269,13 +269,17 @@ export function createAgentStream(
         messages.push({ role: "tool", content: toolResultParts });
 
         if (lifecycleSignal) {
-          const extras =
+          const finishResult =
             options.onBeforeFinish?.({
               messages,
               text: stepText,
               signal: lifecycleSignal,
             }) ?? [];
+          const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
           if (extras.length > 0) {
+            if (!Array.isArray(finishResult) && finishResult.toolChoice) {
+              stepToolChoice = finishResult.toolChoice;
+            }
             for (const msg of extras) messages.push(msg);
             lifecycleSignal = undefined;
             lifecycleSignalReason = undefined;

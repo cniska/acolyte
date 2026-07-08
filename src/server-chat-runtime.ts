@@ -270,6 +270,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       projectRulesPrompt,
       workspace: workspaceResolution.workspacePath,
       features: config.features,
+      reasoning: config.reasoning,
+      temperature: config.temperature,
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {

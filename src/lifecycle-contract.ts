@@ -1,6 +1,7 @@
 import type { Agent, GenerateResult, LifecycleSignal } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
+import type { ReasoningLevel } from "./config-contract";
 import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
@@ -104,6 +105,8 @@ export type LifecycleInput = {
   workspace?: string;
   taskId?: string;
   features: ResolvedFeatureFlags;
+  reasoning?: ReasoningLevel;
+  temperature?: number;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;
@@ -139,5 +142,6 @@ export type RunContext = {
   acceptedSignal?: LifecycleSignal;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
+  reasoning?: ReasoningLevel;
   temperature?: number;
 };

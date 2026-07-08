@@ -124,6 +124,8 @@ function createRunContext(
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
     toolOutputHandler: null,
+    reasoning: input.reasoning,
+    temperature: input.temperature,
   };
 
   session.featureFlags = ctx.features;
