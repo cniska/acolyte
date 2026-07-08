@@ -26,6 +26,8 @@ export function physicalRowCount(output: string, columns: number): number {
 type RenderInstance = {
   waitUntilExit: () => Promise<void>;
   unmount: () => void;
+  /** Force any pending throttled render to commit immediately. Test seam. */
+  flush: () => void;
 };
 
 export function render(node: ReactNode): RenderInstance {
@@ -281,6 +283,14 @@ export function render(node: ReactNode): RenderInstance {
     waitUntilExit: () => exitPromise,
     unmount() {
       exit();
+    },
+    flush() {
+      if (renderTimer) {
+        clearTimeout(renderTimer);
+        renderTimer = null;
+        renderPending = false;
+      }
+      commitRender();
     },
   };
 }

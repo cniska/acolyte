@@ -542,6 +542,34 @@ describe("render", () => {
     const frameWrites = extractFrameWrites(writes);
     expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
   });
+
+  test("flush commits a pending throttled render immediately", async () => {
+    const writes = await withMockedStdout(async () => {
+      const { render } = await import("./render");
+
+      function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+        const [text, setText] = useState("initial");
+        useEffect(() => {
+          // Two rapid state updates within the throttle window.
+          setText("intermediate");
+          setText("final");
+          setTimeout(unmount, 200);
+        }, [unmount]);
+        return <tui-text>{text}</tui-text>;
+      }
+
+      const app = render(<App unmount={() => app.unmount()} />);
+      // Wait for React to reconcile the state update.
+      await new Promise((r) => setTimeout(r, 16));
+      // Flush any throttled pending render synchronously.
+      app.flush();
+      await app.waitUntilExit();
+    });
+
+    const frameWrites = extractFrameWrites(writes);
+    // "final" must appear — flush must have committed the pending render.
+    expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
+  });
 });
 
 describe("physicalRowCount", () => {
