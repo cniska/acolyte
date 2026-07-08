@@ -181,4 +181,34 @@ describe("cli-prompt", () => {
     const { output } = await runPromptAndCapture("hi", createTestSession(), client);
     expect(output).toBe("❯ hi\n• Hello there.");
   });
+
+  // Regression: a failed turn left the flush timer armed, so buffered text wrote to
+  // stdout after handlePrompt returned — a write outside any output-capture window.
+  test("a failed turn writes nothing to stdout after it returns", async () => {
+    const failing: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "partial secret" });
+        throw new Error("network dropped");
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    const writes: string[] = [];
+    const original = process.stdout.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      const ok = await handlePrompt("hi", createTestSession(), failing);
+      expect(ok).toBe(false);
+      const countAtReturn = writes.length;
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(writes.length).toBe(countAtReturn);
+      expect(writes.join("")).not.toContain("partial secret");
+    } finally {
+      process.stdout.write = original;
+    }
+  });
 });

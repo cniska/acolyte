@@ -27,10 +27,11 @@ export async function handlePrompt(
   session.messages.push(userMsg);
   setSessionTitle(session, prompt);
 
+  const projector = createStdoutRowProjector();
+  const streamState = createMessageStreamState({ setRows: projector.setRows });
+
   try {
     printOutput(`❯ ${prompt}`);
-    const projector = createStdoutRowProjector();
-    const streamState = createMessageStreamState({ setRows: projector.setRows });
 
     const suggestions: string[] = [];
     const skillSuggestion = createSkillSuggestion(prompt, session.activeSkills);
@@ -68,6 +69,9 @@ export async function handlePrompt(
     session.updatedAt = nowIso();
     return true;
   } catch (error) {
+    // A failed turn may leave a flush timer armed; dispose it so buffered text can't
+    // write to stdout after we've returned (mirrors the TUI's non-abort catch).
+    streamState.dispose();
     if (!(error instanceof Error)) printError(t("error.prompt.request_failed"));
     else printError(formatPromptError(error.message));
     session.updatedAt = nowIso();
