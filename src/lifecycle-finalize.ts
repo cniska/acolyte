@@ -88,7 +88,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     last_error_category: ctx.currentError?.category ?? null,
     timeout_error_count: ctx.errorStats.timeout,
     file_not_found_error_count: ctx.errorStats["file-not-found"],
-    budget_blocked_count: ctx.errorStats["budget-exhausted"],
+    budget_exhausted_count: ctx.errorStats["budget-exhausted"],
     other_error_count: ctx.errorStats.other,
   });
 

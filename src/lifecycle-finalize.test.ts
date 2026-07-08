@@ -3,6 +3,7 @@ import { parseChatResponse } from "./client-contract";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunContext } from "./test-utils";
 import { createSessionContext } from "./tool-session";
+import { missingCatalogDisplayFields } from "./trace-event-catalog";
 
 describe("ChatResponse error field", () => {
   test("parseChatResponse preserves error field", () => {
@@ -163,6 +164,26 @@ describe("phaseFinalize", () => {
     // "search" category, and neither recall probe inflates pre-write discovery.
     expect(summary?.search_calls).toBe(1);
     expect(summary?.pre_write_discovery_calls).toBe(2);
+  });
+
+  test("lifecycle.summary debug event has all catalog display fields", () => {
+    const debugEvents: Array<{ event: string; fields: Record<string, unknown> }> = [];
+    const ctx = createRunContext({
+      result: { text: "done", toolCalls: [] },
+      errorStats: { timeout: 0, "file-not-found": 0, "budget-exhausted": 2, other: 0 },
+      debug: (event, fields) => debugEvents.push({ event, fields: fields as Record<string, unknown> }),
+    });
+
+    phaseFinalize(ctx);
+
+    const summary = debugEvents.find((e) => e.event === "lifecycle.summary");
+    if (!summary) throw new Error("lifecycle.summary debug event not emitted");
+    const missing = missingCatalogDisplayFields(
+      "lifecycle.summary",
+      summary.fields as Record<string, string | number | boolean | null | undefined>,
+    );
+    expect(missing).toEqual([]);
+    expect(summary.fields.budget_exhausted_count).toBe(2);
   });
 
   test("uses signal-aware fallback output when final text is empty", () => {
