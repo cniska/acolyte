@@ -577,6 +577,131 @@ describe("render", () => {
     expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
   });
 
+  test("single live line taller than viewport is not frozen so streaming updates stay in live region", async () => {
+    // rows=4 → maxLiveRows=3. A single line wrapping to 4+ physical rows must not
+    // be frozen — it stays in the live region so updates remain visible, not pushed
+    // permanently to scrollback.
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+        type Ref<T> = { current: T };
+        const setLine: Ref<(v: string) => void> = { current: () => {} };
+
+        function App(): React.JSX.Element {
+          const [line, setLineState] = useState("A".repeat(81));
+          setLine.current = setLineState;
+          return <tui-text>{line}</tui-text>;
+        }
+
+        const app = render(<App />);
+        await new Promise((r) => setTimeout(r, 50));
+        setLine.current("B".repeat(81));
+        await new Promise((r) => setTimeout(r, 50));
+        app.unmount();
+      },
+      { columns: 20, rows: 4 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    // B-content must be visible in the live region — not pushed to scrollback.
+    const visible = replayVisibleScreen(frameWrites, 4, 20);
+    const joined = visible.join("\n");
+    expect(joined).toContain("B".repeat(20));
+    expect(joined).not.toContain("A".repeat(20));
+  });
+
+  test("resize resets lastActiveLineCount so post-resize render does not use stale erase geometry", async () => {
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          return (
+            <tui-box flexDirection="column">
+              <tui-text>resize line 1</tui-text>
+              <tui-text>resize line 2</tui-text>
+              <tui-text>resize line 3</tui-text>
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        // Let initial render settle — lastActiveLineCount is now > 0.
+        await new Promise((r) => setTimeout(r, 50));
+        process.stdout.emit("resize");
+        // Wait for 16ms debounce + throttle window.
+        await new Promise((r) => setTimeout(r, 80));
+        app.unmount();
+      },
+      { columns: 80, rows: 24 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    const contentWrites = frameWrites.filter((w) => w.includes("resize line 1"));
+    // Initial render + post-resize render.
+    expect(contentWrites.length).toBeGreaterThanOrEqual(2);
+    // Post-resize: lastActiveLineCount was reset to 0, so eraseSequence() returns "".
+    // The post-resize write must not contain a cursor-up erase for the old row count.
+    const postResizeWrite = contentWrites[contentWrites.length - 1] ?? "";
+    expect(postResizeWrite).not.toContain(ansi.cursorUp(2));
+  });
+
+  test("overflow after static flush is tracked so re-render does not re-emit frozen overflow lines", async () => {
+    // rows=5 → maxLiveRows=4. Active has 6 lines so top 2 overflow. When static
+    // items are flushed at the same time, the overflow must be recorded in
+    // frozenLineCount so a subsequent active-change render does not re-emit them.
+    const writes = await withMockedStdout(
+      async () => {
+        const { render } = await import("./render");
+
+        function App(): React.JSX.Element {
+          const [staticItems, setStaticItems] = useState<string[]>([]);
+          const [extra, setExtra] = useState(false);
+
+          useEffect(() => {
+            const t1 = setTimeout(() => setStaticItems(["STATIC_ITEM"]), 30);
+            const t2 = setTimeout(() => setExtra(true), 80);
+            const t3 = setTimeout(() => app.unmount(), 200);
+            return () => {
+              clearTimeout(t1);
+              clearTimeout(t2);
+              clearTimeout(t3);
+            };
+          }, []);
+
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>
+                {staticItems.map((item) => (
+                  <tui-text key={item}>{item}</tui-text>
+                ))}
+              </tui-static>
+              {["OVF1", "OVF2", "OVF3", "OVF4", "OVF5", "OVF6"].map((l) => (
+                <tui-text key={l}>{l}</tui-text>
+              ))}
+              {extra && <tui-text>EXTRA</tui-text>}
+            </tui-box>
+          );
+        }
+
+        const app = render(<App />);
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 5 },
+    );
+
+    const frameWrites = extractFrameWrites(writes);
+    // OVF1 is the topmost overflow line. After the static flush, it should appear
+    // in at most one write (the overflow-split that re-establishes frozen state).
+    // With the bug, frozenLineCount is not recorded so the EXTRA re-render
+    // re-emits OVF1 a second time — two writes after the flush, not one.
+    const staticFlushIdx = frameWrites.findIndex((w) => w.includes("STATIC_ITEM"));
+    expect(staticFlushIdx).toBeGreaterThanOrEqual(0);
+    const writesAfterFlush = frameWrites.slice(staticFlushIdx);
+    const ovf1AfterFlush = writesAfterFlush.filter((w) => w.includes("OVF1"));
+    expect(ovf1AfterFlush.length).toBeLessThanOrEqual(1);
+  });
+
   test("flush commits a pending throttled render immediately", async () => {
     const writes = await withMockedStdout(async () => {
       const { render } = await import("./render");

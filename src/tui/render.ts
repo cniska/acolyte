@@ -93,6 +93,7 @@ export function render(node: ReactNode): RenderInstance {
       frozenLineCount = 0;
       frozenScrollbackText = "";
       lastActive = "";
+      lastActiveLineCount = 0;
       commitRender();
     }, 16);
   };
@@ -165,11 +166,9 @@ export function render(node: ReactNode): RenderInstance {
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenScrollbackText = "";
-      const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
-      syncWrite(buf + active);
-      lastActive = active;
-      lastActiveLineCount = nextActiveLineCount;
-      return;
+      syncWrite(buf);
+      lastActive = "";
+      lastActiveLineCount = 0;
     }
 
     // Only re-render the active region if it changed.
@@ -196,6 +195,10 @@ export function render(node: ReactNode): RenderInstance {
         break;
       }
       physRows += rows;
+    }
+    // Never freeze the last live line — it may still be streaming.
+    if (splitIdx > 0 && splitIdx === liveLines.length) {
+      splitIdx = liveLines.length - 1;
     }
 
     if (splitIdx > 0) {
