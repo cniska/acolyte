@@ -24,6 +24,7 @@ export function createStdoutRowProjector(): {
 
   const emittedAssistant = new Map<string, string>();
   const emittedTool = new Map<string, string>();
+  const emittedChecklist = new Map<string, string>();
   const emittedRowIds = new Set<string>();
 
   function writeRaw(text: string): void {
@@ -57,7 +58,11 @@ export function createStdoutRowProjector(): {
 
   function renderTool(row: ChatRow): void {
     if (!isToolOutput(row.content)) return;
-    const rendered = renderToolOutput(row.content.parts);
+    const parts = row.content.parts;
+    // A lone header with no detail carries nothing to show yet — wait for real content,
+    // matching the old run-mode guard.
+    if (parts.length === 1 && parts[0]?.kind === "tool-header" && !parts[0].detail) return;
+    const rendered = renderToolOutput(parts);
     const previous = emittedTool.get(row.id);
     emittedTool.set(row.id, rendered);
     if (previous !== undefined) {
@@ -85,6 +90,11 @@ export function createStdoutRowProjector(): {
   function renderChecklist(row: ChatRow): void {
     if (!isChecklistOutput(row.content)) return;
     const { header, items } = formatChecklist(row.content);
+    // The stream reuses one row id per checklist group, so reprint on every content
+    // change (progress update) but not when an unrelated event re-runs the projection.
+    const rendered = `${header}\n${items.map((item) => `${item.marker} ${item.label}`).join("\n")}`;
+    if (emittedChecklist.get(row.id) === rendered) return;
+    emittedChecklist.set(row.id, rendered);
     printDim(`• ${header}`);
     for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
     hasPrintedProgress = true;
@@ -102,7 +112,7 @@ export function createStdoutRowProjector(): {
             renderTool(row);
             break;
           case "task":
-            if (!emittedRowIds.has(row.id)) renderChecklist(row);
+            renderChecklist(row);
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {

@@ -94,4 +94,40 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     );
     expect(out).toBe("❯ fix\n• Trying the edit.Cannot finish yet: validation missing");
   });
+
+  test("a lone detail-less tool header prints nothing until it has content", async () => {
+    const out = await capture(
+      "search",
+      client(
+        [
+          {
+            type: "tool-output",
+            toolCallId: "c1",
+            toolName: "memory-search",
+            content: { kind: "tool-header", labelKey: "tool.memory_search.header" },
+          },
+        ],
+        { state: "done", output: "Done." },
+      ),
+    );
+    expect(out).toBe("❯ search\n\n• Done.");
+  });
+
+  test("checklist reprints on each progress update", async () => {
+    const items = (readDone: boolean) => [
+      { id: "s1", label: "read", status: readDone ? ("done" as const) : ("pending" as const), order: 0 },
+      { id: "s2", label: "edit", status: "pending" as const, order: 1 },
+    ];
+    const out = await capture(
+      "run",
+      client(
+        [
+          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
+          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
+        ],
+        { state: "done", output: "Done." },
+      ),
+    );
+    expect(out).toBe("❯ run\n• Steps (0/2)\n  ○ read\n  ○ edit\n• Steps (1/2)\n  ● read\n  ○ edit\n\n\n• Done.");
+  });
 });
