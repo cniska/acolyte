@@ -59,8 +59,7 @@ export function createStdoutRowProjector(): {
   function renderTool(row: ChatRow): void {
     if (!isToolOutput(row.content)) return;
     const parts = row.content.parts;
-    // A lone header with no detail carries nothing to show yet — wait for real content,
-    // matching the old run-mode guard.
+    // A lone header with no detail carries nothing to show yet — wait for real content.
     if (parts.length === 1 && parts[0]?.kind === "tool-header" && !parts[0].detail) return;
     const rendered = renderToolOutput(parts);
     const previous = emittedTool.get(row.id);
@@ -116,8 +115,8 @@ export function createStdoutRowProjector(): {
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {
-              // Honor the notice/error level carried on the row style (warn→yellow,
-              // error→red), the unified colouring run mode previously lacked.
+              // Color by the notice/error level carried on the row style: warn→yellow,
+              // error→red.
               if (row.style?.text === palette.error) printError(row.content);
               else printWarning(row.content);
               hasPrintedProgress = true;
@@ -133,14 +132,11 @@ export function createStdoutRowProjector(): {
       if (!atLineStart) output.write("\n");
       printOutput("");
       if (hasPrintedProgress) printOutput("");
-      // reply.output is authoritative and must appear in full exactly once. The streamed
-      // deltas are a non-authoritative preview: if they already equal the answer, it is
-      // shown (no-op); if the answer extends them, print only the tail; otherwise the
-      // preview diverged (or nothing streamed) and the full answer is printed — the old
-      // path silently dropped a divergent answer.
-      // reply.output is trimmed upstream while the streamed preview keeps trailing
-      // whitespace, so compare on the trimmed preview or a lone trailing newline reads
-      // as divergence and reprints the whole answer.
+      // reply.output is the authoritative answer, printed in full exactly once; the
+      // streamed deltas are a preview, reused only when they equal it (no-op) or prefix
+      // it (print the tail). reply.output is trimmed upstream while the preview keeps
+      // trailing whitespace, so compare trimmed — else a lone trailing newline reads as
+      // divergence and reprints the whole answer.
       const streamed = agentStreamText.trimEnd();
       if (replyOutput === streamed) return;
       if (streamed.length > 0 && replyOutput.startsWith(streamed)) {
