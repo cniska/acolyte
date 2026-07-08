@@ -109,8 +109,8 @@ export async function runChat(
 ): Promise<void> {
   installClientLogSink();
   const app = render(<ChatApp {...props} />);
-  onMount?.(app);
   try {
+    onMount?.(app);
     await app.waitUntilExit();
   } finally {
     setLogSink(null);

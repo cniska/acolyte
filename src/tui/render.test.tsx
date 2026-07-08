@@ -559,15 +559,12 @@ describe("render", () => {
       }
 
       const app = render(<App unmount={() => app.unmount()} />);
-      // Wait for React to reconcile the state update.
       await new Promise((r) => setTimeout(r, 16));
-      // Flush any throttled pending render synchronously.
       app.flush();
       await app.waitUntilExit();
     });
 
     const frameWrites = extractFrameWrites(writes);
-    // "final" must appear — flush must have committed the pending render.
     expect(frameWrites.some((w) => w.includes("final"))).toBe(true);
   });
 });
@@ -582,17 +579,17 @@ describe("physicalRowCount", () => {
   });
 
   test("CJK line counts each character as 2 columns", () => {
-    // 5 CJK chars = 10 display columns; in an 8-column terminal → ceil(10/8)=2 rows
+    // 5 CJK chars = 10 display cols; 8-col terminal → ceil(10/8)=2 rows − 1
     expect(physicalRowCount("こんにちは", 8)).toBe(1);
   });
 
   test("CJK line wraps when wider than columns", () => {
-    // 10 CJK chars = 20 display cols; 8-col terminal → ceil(20/8)=3 rows
+    // 10 CJK chars = 20 display cols; 8-col terminal → ceil(20/8)=3 rows − 1
     expect(physicalRowCount("こんにちはこんにちは", 8)).toBe(2);
   });
 
   test("emoji line counts each emoji as 2 columns", () => {
-    // 3 emoji = 6 display cols; 4-col terminal → ceil(6/4)=2 rows
+    // 3 emoji = 6 display cols; 4-col terminal → ceil(6/4)=2 rows − 1
     expect(physicalRowCount("😀🎉🔥", 4)).toBe(1);
   });
 

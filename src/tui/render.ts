@@ -168,8 +168,6 @@ export function render(node: ReactNode): RenderInstance {
     const allLines = active.split("\n");
     const erase = eraseSequence();
 
-    // Find the bottom-fitting slice: walk from the last line upward until
-    // physRows would exceed maxLiveRows, then render only those lines.
     // Overflow lines above the split are not emitted — they are lost from
     // the active region (static content should already be in scrollback via
     // tui-static; the active region should not grow unboundedly).
@@ -288,7 +286,6 @@ export function render(node: ReactNode): RenderInstance {
       if (renderTimer) {
         clearTimeout(renderTimer);
         renderTimer = null;
-        renderPending = false;
       }
       commitRender();
     },
