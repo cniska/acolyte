@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { parseChatResponse } from "./client-contract";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunContext } from "./test-utils";
+import { createSessionContext } from "./tool-session";
 
 describe("ChatResponse error field", () => {
   test("parseChatResponse preserves error field", () => {
@@ -131,6 +132,37 @@ describe("phaseFinalize", () => {
     });
     const response = phaseFinalize(ctx);
     expect(response.state).toBe("done");
+  });
+
+  test("counts recall probes separately and keeps them out of search/discovery", () => {
+    const session = createSessionContext("task_1");
+    session.callLog.push(
+      { toolName: "memory-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "session-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "session-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "file-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "file-read", args: {}, taskId: "task_1", status: "succeeded" },
+      // A call from a different task must not be counted.
+      { toolName: "session-search", args: {}, taskId: "task_other", status: "succeeded" },
+    );
+    let summary: Record<string, unknown> | undefined;
+    const ctx = createRunContext({
+      taskId: "task_1",
+      session,
+      result: { text: "done", toolCalls: [] },
+      debug: (event, fields) => {
+        if (event === "lifecycle.summary") summary = fields;
+      },
+    });
+
+    phaseFinalize(ctx);
+
+    expect(summary?.memory_search_calls).toBe(1);
+    expect(summary?.session_search_calls).toBe(2);
+    // Only file-search counts as code search; session-search is excluded despite its
+    // "search" category, and neither recall probe inflates pre-write discovery.
+    expect(summary?.search_calls).toBe(1);
+    expect(summary?.pre_write_discovery_calls).toBe(2);
   });
 
   test("uses signal-aware fallback output when final text is empty", () => {
