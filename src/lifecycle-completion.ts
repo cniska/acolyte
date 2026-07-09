@@ -1,7 +1,7 @@
 import type { LifecycleSignal } from "./agent-contract";
 import type { ToolCallRecord } from "./tool-contract";
 
-export type CompletionBlockReason = "broken-handoff" | "missing-validation-after-write";
+export type CompletionBlockReason = "broken-handoff" | "missing-validation-after-write" | "empty-answer";
 
 export type CompletionBlock = {
   reason: CompletionBlockReason;
@@ -13,6 +13,7 @@ const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]
 
 export function findCompletionBlock(input: {
   signal?: LifecycleSignal;
+  finalText: string;
   callLog: readonly ToolCallRecord[];
   writeToolSet: ReadonlySet<string>;
   runnerToolSet: ReadonlySet<string>;
@@ -30,19 +31,31 @@ export function findCompletionBlock(input: {
   }
 
   const lastWrite = findLastSourceWrite(input.callLog, input.writeToolSet);
-  if (!lastWrite) return undefined;
-
-  const laterCalls = input.callLog.slice(lastWrite.index + 1);
-  const relatedPaths = relatedValidationPaths(lastWrite.path);
-  if (laterCalls.some((entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths))) {
-    return undefined;
+  if (lastWrite) {
+    const laterCalls = input.callLog.slice(lastWrite.index + 1);
+    const relatedPaths = relatedValidationPaths(lastWrite.path);
+    const validated = laterCalls.some(
+      (entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths),
+    );
+    if (!validated) {
+      return {
+        reason: "missing-validation-after-write",
+        path: lastWrite.path,
+        message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
+      };
+    }
   }
 
-  return {
-    reason: "missing-validation-after-write",
-    path: lastWrite.path,
-    message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
-  };
+  // A `done` carries the final response; an empty answer is not a completion.
+  if (input.finalText.trim().length === 0) {
+    return {
+      reason: "empty-answer",
+      path: "",
+      message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
+    };
+  }
+
+  return undefined;
 }
 
 function findBrokenHandoff(

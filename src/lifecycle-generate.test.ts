@@ -327,7 +327,8 @@ describe("phaseGenerate", () => {
             }),
             async getFullOutput() {
               await new Promise((resolve) => setTimeout(resolve, 0));
-              const finishResult = options.onBeforeFinish?.({ messages: [], text: "Done.", signal: "done" }) ?? [];
+              const finishResult =
+                options.onBeforeFinish?.({ messages: [], text: "Done.", answerText: "Done.", signal: "done" }) ?? [];
               const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
               const textPart = extras[0]?.content[0];
               if (typeof textPart === "object" && textPart?.type === "text") recoveryPrompt = textPart.text;

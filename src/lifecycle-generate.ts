@@ -275,13 +275,14 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         }
         return reminders.map(renderReminder);
       },
-      onBeforeFinish: ({ signal }) => {
+      onBeforeFinish: ({ signal, answerText }) => {
         const toolError = unresolvedToolError(ctx);
         if (toolError) return toolErrorRecoveryMessages(toolError);
 
         const taskLog = scopedCallLog(ctx.session, ctx.taskId);
         const completionBlock = findCompletionBlock({
           signal,
+          finalText: answerText,
           callLog: taskLog,
           writeToolSet: WRITE_TOOL_SET,
           runnerToolSet: RUNNER_TOOL_SET,

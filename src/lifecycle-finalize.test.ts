@@ -186,14 +186,24 @@ describe("phaseFinalize", () => {
     expect(summary.fields.budget_exhausted_count).toBe(2);
   });
 
-  test("uses signal-aware fallback output when final text is empty", () => {
+  test("an empty done is blocked and surfaces no fabricated Done.", () => {
+    // Real path: acceptResult rejects an empty done, clearing acceptedSignal and
+    // setting a blocking error, so finalize emits no output — the error row carries it.
     const done = phaseFinalize(
-      createRunContext({ result: { text: "", toolCalls: [], signal: "done" }, acceptedSignal: "done" }),
+      createRunContext({
+        result: { text: "", toolCalls: [], signal: "done" },
+        currentError: {
+          message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
+          blocksCompletion: true,
+        },
+      }),
     );
+    expect(done.output).toBe("");
+
+    // noop is not blocked: it keeps its terse completion.
     const noop = phaseFinalize(
       createRunContext({ result: { text: "", toolCalls: [], signal: "noop" }, acceptedSignal: "noop" }),
     );
-    expect(done.output).toBe("Done.");
     expect(noop.output).toBe("No changes needed.");
   });
 

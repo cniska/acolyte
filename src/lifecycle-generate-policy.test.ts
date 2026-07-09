@@ -63,6 +63,21 @@ describe("generate finish policy", () => {
     expect(second).toEqual({ kind: "none" });
   });
 
+  test("empty-answer rejection asks for a final response, not validation", () => {
+    const rendered = renderFinishPolicyMessages({
+      kind: "completion-rejected-continue",
+      block: {
+        reason: "empty-answer",
+        message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
+        path: "",
+      },
+    });
+    const text = JSON.stringify(rendered);
+
+    expect(text).toContain("Write your final response");
+    expect(text).not.toContain("run focused validation");
+  });
+
   test("re-opening the loop restores the spent missing-signal retry", () => {
     // Regression (dogfood): a missing-signal retry consumed before a completion-rejected
     // re-entry must not carry over, or a prose reply to the reminder blocks with
