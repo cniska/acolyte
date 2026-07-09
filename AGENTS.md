@@ -30,6 +30,15 @@ These must always hold. Break them and the system breaks.
 
 Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters. ASCII only. No issue references or links in the subject (`(#123)`, `Fixes #123`) — issue references belong in the PR body.
 
+## Pull requests
+
+- Gate: run `/review` (multi-dimension, not `/code-review`) before opening, and fix all findings first.
+- Title: `type(scope): description`, under 50 characters, no trailing period.
+- Body follows `.github/pull_request_template.md`: brief motivation (omit when obvious), then a flat summary bullet list. Cut anything a reviewer would infer from the diff — mechanical steps, refactors in service of the change, renames.
+- End with `Fixes #N` when an issue matches the work.
+- Fold related changes into one PR; keep genuinely unrelated work separate.
+- Never push or open a PR without explicit approval.
+
 ## Code
 
 - No transitional architecture: land the canonical owner, normalized contract, and single source of truth.
