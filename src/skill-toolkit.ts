@@ -2,7 +2,6 @@ import { z } from "zod";
 import { addActiveSkill } from "./chat-skill-activator";
 import { type SkillSource, skillSourceSchema } from "./skill-contract";
 import { findSkillByName, getLoadedSkills, readSkillInstructions } from "./skill-ops";
-import { getSkillUseWhen } from "./skill-triggers";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -29,14 +28,11 @@ function createListSkillsTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-list", toolCallId, toolInput, async () => {
-        const skills = getLoadedSkills().map((s) => {
-          const useWhen = getSkillUseWhen(s.name);
-          return {
-            name: s.name,
-            description: useWhen ? `${s.description} ${useWhen}` : s.description,
-            source: s.source,
-          };
-        });
+        const skills = getLoadedSkills().map((s) => ({
+          name: s.name,
+          description: s.description,
+          source: s.source,
+        }));
         return { kind: "skill-list" as const, skills };
       });
     },

@@ -1,6 +1,7 @@
 import type { ChatRequest } from "./api";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { log } from "./log";
+import { getLoadedSkills } from "./skill-ops";
 
 type TokenEncoder = { encode(input: string): { length: number } };
 
@@ -177,6 +178,27 @@ function collectLinesWithinBudget(
   return { lines, consumedTokens: consumed };
 }
 
+// The roster is ambient: every turn lists the skills the model could activate, so
+// discovery never depends on a keyword in the prompt. Bodies stay lazy — only names and
+// descriptions ride along; `skill-activate` loads the full instructions on demand.
+const SKILL_ROSTER_CONTEXT_FRACTION = 0.01;
+const SKILL_ROSTER_DESCRIPTION_MAX_CHARS = 250;
+
+function skillRosterLine(activeSkills: ChatRequest["activeSkills"], contextMaxTokens: number): string | null {
+  const active = new Set((activeSkills ?? []).map((s) => s.name));
+  const available = getLoadedSkills().filter((s) => !active.has(s.name));
+  if (available.length === 0) return null;
+  const entries = available.map((s) => {
+    const desc =
+      s.description.length > SKILL_ROSTER_DESCRIPTION_MAX_CHARS
+        ? `${s.description.slice(0, SKILL_ROSTER_DESCRIPTION_MAX_CHARS - 1)}…`
+        : s.description;
+    return `- ${s.name}: ${desc}`;
+  });
+  const line = `SYSTEM: Available skills — activate one with \`skill-activate\` when its use matches the task:\n${entries.join("\n")}`;
+  return truncateByTokens(line, Math.floor(contextMaxTokens * SKILL_ROSTER_CONTEXT_FRACTION));
+}
+
 export function createAgentInput(
   req: ChatRequest,
   options: { systemPromptTokens?: number; toolTokens?: number; contextMaxTokens: number },
@@ -218,6 +240,17 @@ export function createAgentInput(
       lines.push(skillLine);
       tokenBudget.consume(skillTokens);
       includedSkillTokens += skillTokens;
+    }
+  }
+
+  const roster = skillRosterLine(req.activeSkills, contextMaxTokens);
+  if (roster) {
+    const rosterTokens = estimateTokens(roster);
+    if (rosterTokens > tokenBudget.remaining()) {
+      log.warn("skill roster dropped", { tokens: rosterTokens, remaining: tokenBudget.remaining() });
+    } else {
+      lines.push(roster);
+      tokenBudget.consume(rosterTokens);
     }
   }
 

@@ -1,6 +1,6 @@
 ---
 name: simplify
-description: Simplify code by reducing complexity while preserving exact behavior.
+description: Simplify code by reducing complexity while preserving exact behavior. Use after a feature is working, during review when complexity is flagged, or when encountering unclear code.
 ---
 
 # Simplify

@@ -3,6 +3,7 @@ import { createAgentInput, setTokenEncoder } from "./agent-input";
 import type { ChatRequest } from "./api";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import { loadSkills, resetSkillCache } from "./skill-ops";
 
 const defaultOptions = {
   contextMaxTokens: defaultLifecyclePolicy.contextMaxTokens,
@@ -10,7 +11,12 @@ const defaultOptions = {
 
 // Use a deterministic chars/4 estimator so budget tests don't depend on the tiktoken encoding.
 const charsPerToken = 4;
-beforeAll(() => setTokenEncoder({ encode: (input: string) => ({ length: Math.ceil(input.length / charsPerToken) }) }));
+beforeAll(() => {
+  setTokenEncoder({ encode: (input: string) => ({ length: Math.ceil(input.length / charsPerToken) }) });
+  // The skill cache is a process-global; another test file may have populated it. Reset so
+  // the roster stays empty until the roster block explicitly loads skills.
+  resetSkillCache();
+});
 afterAll(() => setTokenEncoder(null));
 
 type HistoryMessage = ChatRequest["history"][number];
@@ -294,5 +300,34 @@ describe("createAgentInput", () => {
   test("totalHistoryMessages reflects full history, not windowed subset", () => {
     const { usage } = createAgentInput(req("go", exchanges(25)), defaultOptions);
     expect(usage.totalHistoryMessages).toBe(50);
+  });
+
+  test("no skill roster when no skills are loaded", () => {
+    const { input } = createAgentInput(req("go", []), defaultOptions);
+    expect(input).not.toContain("Available skills");
+  });
+});
+
+describe("createAgentInput skill roster", () => {
+  beforeAll(async () => {
+    await loadSkills();
+  });
+  afterAll(() => resetSkillCache());
+
+  test("lists available skills as an ambient roster", () => {
+    const { input } = createAgentInput(req("go", []), defaultOptions);
+    expect(input).toContain("Available skills");
+    expect(input).toContain("skill-activate");
+    expect(input).toContain("- build:");
+  });
+
+  test("omits skills that are already active from the roster", () => {
+    const { input } = createAgentInput(req("go", [], { activeSkills: [{ name: "build", instructions: "x" }] }), {
+      ...defaultOptions,
+    });
+    expect(input).toContain("SYSTEM: Active skill (build)");
+    expect(input).not.toContain("- build:");
+    // Other skills still appear, so the roster is present and only build was filtered.
+    expect(input).toContain("- debug:");
   });
 });

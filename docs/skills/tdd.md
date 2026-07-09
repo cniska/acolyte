@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Drive implementation with red-green-refactor.
+description: Drive implementation with red-green-refactor. Use when building features or fixing bugs test-first.
 ---
 
 # TDD
