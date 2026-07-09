@@ -330,4 +330,14 @@ describe("createAgentInput skill roster", () => {
     // Other skills still appear, so the roster is present and only build was filtered.
     expect(input).toContain("- debug:");
   });
+
+  test("drops whole entries and stays well-formed when the roster cap is tight", () => {
+    const rosterEntries = (text: string): string[] => text.split("\n").filter((l) => l.startsWith("- "));
+    const full = rosterEntries(createAgentInput(req("go", []), defaultOptions).input);
+    const tight = rosterEntries(createAgentInput(req("go", []), { ...defaultOptions, contextMaxTokens: 10_000 }).input);
+    expect(tight.length).toBeGreaterThan(0);
+    expect(tight.length).toBeLessThan(full.length);
+    // Every emitted entry is a complete "- name: desc" line — the cap never cuts mid-entry.
+    for (const entry of tight) expect(entry).toMatch(/^- [a-z-]+: .+/);
+  });
 });

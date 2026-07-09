@@ -188,15 +188,31 @@ function skillRosterLine(activeSkills: ChatRequest["activeSkills"], contextMaxTo
   const active = new Set((activeSkills ?? []).map((s) => s.name));
   const available = getLoadedSkills().filter((s) => !active.has(s.name));
   if (available.length === 0) return null;
-  const entries = available.map((s) => {
+  const cap = Math.floor(contextMaxTokens * SKILL_ROSTER_CONTEXT_FRACTION);
+  const header = "SYSTEM: Available skills — activate one with `skill-activate` when its use matches the task:";
+  // Fit whole entries under the cap rather than blindly truncating the joined string —
+  // a mid-entry cut would emit a malformed skill line. Drop by whole skill and log the
+  // omission so a roster that outgrows its cap never silently reads as complete.
+  const kept: string[] = [];
+  let omitted = 0;
+  let tokens = estimateTokens(header);
+  for (const s of available) {
     const desc =
       s.description.length > SKILL_ROSTER_DESCRIPTION_MAX_CHARS
         ? `${s.description.slice(0, SKILL_ROSTER_DESCRIPTION_MAX_CHARS - 1)}…`
         : s.description;
-    return `- ${s.name}: ${desc}`;
-  });
-  const line = `SYSTEM: Available skills — activate one with \`skill-activate\` when its use matches the task:\n${entries.join("\n")}`;
-  return truncateByTokens(line, Math.floor(contextMaxTokens * SKILL_ROSTER_CONTEXT_FRACTION));
+    const entry = `- ${s.name}: ${desc}`;
+    const entryTokens = estimateTokens(`\n${entry}`);
+    if (tokens + entryTokens > cap) {
+      omitted += 1;
+      continue;
+    }
+    kept.push(entry);
+    tokens += entryTokens;
+  }
+  if (omitted > 0) log.warn("skill roster truncated to fit cap", { omitted, cap });
+  if (kept.length === 0) return null;
+  return `${header}\n${kept.join("\n")}`;
 }
 
 export function createAgentInput(
