@@ -251,3 +251,44 @@ describe("findCompletionBlock — empty-answer", () => {
     expect(block?.reason).toBe("empty-answer");
   });
 });
+
+describe("findCompletionBlock — empty-answer (noop)", () => {
+  test("blocks an empty noop", () => {
+    const block = findCompletionBlock({
+      signal: "noop",
+      finalText: "   ",
+      callLog: [record("file-read", { path: "src/app.ts" })],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block?.reason).toBe("empty-answer");
+    expect(block?.message).toContain("signal_noop");
+  });
+
+  test("allows a noop that carries the model's own words", () => {
+    const block = findCompletionBlock({
+      signal: "noop",
+      finalText: "Already consistent; nothing to change.",
+      callLog: [record("file-read", { path: "src/app.ts" })],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block).toBeUndefined();
+  });
+
+  test("does not apply the missing-validation gate to a noop with a source write", () => {
+    // Work-quality gates are done-only; a noop with text passes even with an
+    // unvalidated source write in the log (noop-with-writes is vetoed elsewhere).
+    const block = findCompletionBlock({
+      signal: "noop",
+      finalText: "No change was needed after inspection.",
+      callLog: [record("file-edit", { path: "src/app.ts" })],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block).toBeUndefined();
+  });
+});

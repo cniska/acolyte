@@ -78,6 +78,22 @@ describe("generate finish policy", () => {
     expect(text).not.toContain("run focused validation");
   });
 
+  test("empty-answer follow-up is signal-agnostic (does not hardcode signal_done for a noop)", () => {
+    const rendered = renderFinishPolicyMessages({
+      kind: "completion-rejected-continue",
+      block: {
+        reason: "empty-answer",
+        message: "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed.",
+        path: "",
+      },
+    });
+    const text = JSON.stringify(rendered);
+
+    expect(text).toContain("Write your final response");
+    // The follow-up must not reintroduce a `signal_done`-specific instruction for a noop block.
+    expect(text).not.toContain("signal_done");
+  });
+
   test("re-opening the loop restores the spent missing-signal retry", () => {
     // Regression (dogfood): a missing-signal retry consumed before a completion-rejected
     // re-entry must not carry over, or a prose reply to the reminder blocks with

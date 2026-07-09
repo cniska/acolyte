@@ -10,13 +10,10 @@ function signalOutput(ctx: RunContext): string {
     return ctx.result?.signalReason?.trim() ?? "";
   }
 
-  // `done` has no fallback text: a done carries the model's own final response,
-  // and the completion block rejects an empty one — so an empty done must surface
-  // honestly (no_response_after_tools / no_output), never a fabricated "Done.".
-  if (ctx.acceptedSignal === "noop") {
-    return t("agent.output.no_changes_needed");
-  }
-
+  // `done` and `noop` both carry the model's own final text, and the completion
+  // block rejects an empty one — so an empty finish surfaces honestly
+  // (no_response_after_tools / no_output), never a fabricated "Done." or canned
+  // "No changes needed.".
   return "";
 }
 
