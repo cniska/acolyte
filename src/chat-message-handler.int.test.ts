@@ -275,6 +275,31 @@ describe("chat message handler", () => {
     expect(assistantRows[0]?.content).toBe("partial plus the complete authoritative answer.");
   });
 
+  test("clears running usage in the same commit as the token entry, before stop-pending", async () => {
+    // Regression: the status line sums committed + running usage. If running
+    // usage is cleared only in the finally (past `await persist()`) rather than
+    // alongside the token commit, one render double-counts the finished turn.
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "answer" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "answer" };
+        },
+      }),
+    });
+
+    await handleMessage("hi");
+
+    const tokenIdx = calls.order.indexOf("token-commit");
+    const clearIdx = calls.order.indexOf("running-clear");
+    const stopIdx = calls.order.indexOf("stop-pending");
+    expect(tokenIdx).toBeGreaterThanOrEqual(0);
+    expect(clearIdx).toBeGreaterThan(tokenIdx);
+    expect(stopIdx).toBeGreaterThan(clearIdx);
+    expect(calls.runningUsageSets.at(-1)).toBeNull();
+  });
+
   test("signal turn: streamed answer is not duplicated by the authoritative commit", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({

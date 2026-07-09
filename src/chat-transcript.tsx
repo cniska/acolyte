@@ -238,7 +238,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
   const marker = isAnimated && !blinkOn ? " " : "•";
   const markerColor = kind ? PENDING_MARKER_COLORS[kind] : "";
   const tokenText = runningUsage
-    ? t("unit.token.split", {
+    ? t("unit.token.arrows", {
         input: formatCompactNumber(runningUsage.inputTokens),
         output: formatCompactNumber(runningUsage.outputTokens),
       })

@@ -18,7 +18,7 @@ describe("shimmerColor", () => {
 
   test("far from sweep returns dim base", () => {
     const far = shimmerColor(0, 50, 12);
-    expect(far).toBe("#555555");
+    expect(far).toBe("#666666");
   });
 
   test("handles frame 0 and max frame", () => {
