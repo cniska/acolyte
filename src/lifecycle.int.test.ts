@@ -172,58 +172,33 @@ describe("lifecycle integration", () => {
     expect(reply.output).toContain("Updated x to 3.");
   });
 
-  test("unresolved tool errors get a recovery turn before finalization", async () => {
+  test("a tool error does not inject a recovery turn before finalization", async () => {
     let turnCount = 0;
+    let secondTurnBody = "";
     setupFakeProvider((ctx) => {
       turnCount += 1;
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-search", ["search"]);
         return createToolCallsPayload(ctx.model, ctx.responseCounter, [
           {
             id: `fc_${ctx.responseCounter}`,
             callId: `call_${ctx.responseCounter}`,
             name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const missing = 1;", replace: "export const x = 4;" }],
-            }),
+            args: JSON.stringify({ pattern: "ZZZ_NO_SUCH_PATTERN_ZZZ", path: "." }),
           },
         ]);
       }
-      if (turnCount === 2) {
-        expect(JSON.stringify(ctx.body)).toContain("tool-error-recovery");
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
-            }),
-          },
-        ]);
-      }
-      if (turnCount === 3) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({ cmd: "true" }),
-          },
-        ]);
-      }
-      return createSignalPayload(ctx, "signal_done", "Recovered and updated x to 4.");
+      secondTurnBody = JSON.stringify(ctx.body);
+      return createSignalPayload(ctx, "signal_done", "No matches found; nothing to change.");
     });
 
-    const reply = await run("update x to 4");
-    expect(turnCount).toBe(4);
+    const reply = await run("find the missing pattern");
+    // A no-match search is a normal outcome, not a broken run: the harness injects no
+    // recovery turn, and the model's own next decision (here, a done) is accepted directly.
+    expect(turnCount).toBe(2);
+    expect(secondTurnBody).not.toContain("tool-error-recovery");
     expect(reply.state).toBe("done");
-    expect(reply.output).toContain("Recovered and updated x to 4.");
-    expect(await readFile(join(workspace, "a.ts"), "utf8")).toContain("export const x = 4;");
+    expect(reply.output).toContain("No matches found");
   });
 
   test("signal_noop completes without write tools", async () => {

@@ -172,9 +172,11 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
-  test("does not clear a file-edit error after an unrelated successful read", async () => {
+  test("a no-match search does not gate a later done", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
       agent: {
         id: "test-agent",
         name: "test-agent",
@@ -185,32 +187,15 @@ describe("phaseGenerate", () => {
           const chunks = [
             {
               type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
+              payload: { toolCallId: "call_1", toolName: "file-search", args: { path: ".", pattern: "TODO" } },
             },
             {
               type: "tool-error" as const,
               payload: {
                 toolCallId: "call_1",
-                toolName: "file-edit",
-                error: {
-                  message: "Find text not found",
-                  code: TOOL_ERROR_CODES.editFileFindNotFound,
-                  recovery: {
-                    tool: "file-edit" as const,
-                    kind: "refresh-snippet" as const,
-                    summary: "Refresh the snippet.",
-                    instruction: "Reread the file and rebuild the edit.",
-                  },
-                },
+                toolName: "file-search",
+                error: { message: "No matches found in '.'.", code: TOOL_ERROR_CODES.searchFilesNoMatch },
               },
-            },
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "file-read", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "file-read", result: { output: "File: src/a.ts" } },
             },
           ];
           return {
@@ -221,7 +206,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
+              return { text: "No TODOs found.", toolCalls: [], signal: "done" as const };
             },
           };
         },
@@ -230,8 +215,11 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.currentError?.tool).toBe("file-edit");
-    expect(resolveSignal(ctx)).toBeUndefined();
+    // A no-match search is a normal result, not a broken run: it neither sets a
+    // run-level error nor injects a recovery turn, so a valid done still completes.
+    expect(ctx.currentError).toBeUndefined();
+    expect(resolveSignal(ctx)).toBe("done");
+    expect(debugEvents.some((event) => event.event === "lifecycle.tool_error.recovery")).toBe(false);
   });
 
   test("marks tool-error completion as failed in trace", async () => {
@@ -288,70 +276,6 @@ describe("phaseGenerate", () => {
     expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
   });
 
-  test("injects a recovery turn before finalizing an unresolved tool error", async () => {
-    const debugEvents: LifecycleDebugEvent[] = [];
-    let recoveryPrompt = "";
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "",
-        model: {} as RunContext["agent"]["model"],
-        tools: {},
-        async stream(_prompt: string, options: StreamOptions) {
-          const chunks = [
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-error" as const,
-              payload: {
-                toolCallId: "call_1",
-                toolName: "file-edit",
-                error: {
-                  message: "Replace text is too large",
-                  code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
-                },
-              },
-            },
-          ];
-          return {
-            fullStream: new ReadableStream({
-              start(controller) {
-                for (const chunk of chunks) controller.enqueue(chunk);
-                controller.close();
-              },
-            }),
-            async getFullOutput() {
-              await new Promise((resolve) => setTimeout(resolve, 0));
-              const finishResult =
-                options.onBeforeFinish?.({ messages: [], text: "Done.", answerText: "Done.", signal: "done" }) ?? [];
-              const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
-              const textPart = extras[0]?.content[0];
-              if (typeof textPart === "object" && textPart?.type === "text") recoveryPrompt = textPart.text;
-              return { text: extras.length > 0 ? "Recovered." : "Done.", toolCalls: [], signal: "done" as const };
-            },
-          };
-        },
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 1000 });
-
-    expect(recoveryPrompt).toContain('<system-reminder type="tool-error-recovery">');
-    expect(recoveryPrompt).toContain("The previous `file-edit` call failed and remains unresolved.");
-    expect(recoveryPrompt).toContain(`Error code: \`${TOOL_ERROR_CODES.editFileReplaceTooLarge}\`.`);
-    expect(recoveryPrompt).toContain("Do not finalize yet.");
-    expect(debugEvents.find((event) => event.event === "lifecycle.tool_error.recovery")?.fields).toMatchObject({
-      tool: "file-edit",
-      code: TOOL_ERROR_CODES.editFileReplaceTooLarge,
-      action: "continue",
-    });
-  });
-
   test("marks nonzero command results as failed", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({
@@ -395,191 +319,13 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(ctx.currentError?.source).toBe("tool-result");
-    expect(ctx.currentError?.message).toBe("test-run exited with code 1: bun test src/a.test.ts");
-    expect(resolveSignal(ctx)).toBeUndefined();
-    const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
-    expect(traceResult?.fields).toMatchObject({ tool: "test-run", is_error: true });
-  });
-
-  test("clears a file-edit error after a later successful write recovery", async () => {
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "",
-        model: {} as RunContext["agent"]["model"],
-        tools: {},
-        async stream() {
-          const chunks = [
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-error" as const,
-              payload: {
-                toolCallId: "call_1",
-                toolName: "file-edit",
-                error: {
-                  message: "Find text not found",
-                  code: TOOL_ERROR_CODES.editFileFindNotFound,
-                  recovery: {
-                    tool: "file-edit" as const,
-                    kind: "refresh-snippet" as const,
-                    summary: "Refresh the snippet.",
-                    instruction: "Reread the file and rebuild the edit.",
-                  },
-                },
-              },
-            },
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "file-edit", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "file-edit", result: { ok: true } },
-            },
-          ];
-          return {
-            fullStream: new ReadableStream({
-              start(controller) {
-                for (const chunk of chunks) controller.enqueue(chunk);
-                controller.close();
-              },
-            }),
-            async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
-            },
-          };
-        },
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 1000 });
-
+    // A nonzero exit is marked failed for the UI/trace but is not a run-level error:
+    // it must not populate ctx.currentError nor gate a subsequent done (a red exit is
+    // often the answer — e.g. "diagnose why this test fails").
     expect(ctx.currentError).toBeUndefined();
     expect(resolveSignal(ctx)).toBe("done");
-  });
-
-  test("does not clear a file-edit error after a different write tool succeeds", async () => {
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "",
-        model: {} as RunContext["agent"]["model"],
-        tools: {},
-        async stream() {
-          const chunks = [
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "file-edit", args: { path: "src/a.ts" } },
-            },
-            {
-              type: "tool-error" as const,
-              payload: {
-                toolCallId: "call_1",
-                toolName: "file-edit",
-                error: {
-                  message: "Find text not found",
-                  code: TOOL_ERROR_CODES.editFileFindNotFound,
-                  recovery: {
-                    tool: "file-edit" as const,
-                    kind: "refresh-snippet" as const,
-                    summary: "Refresh the snippet.",
-                    instruction: "Reread the file and rebuild the edit.",
-                  },
-                },
-              },
-            },
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "file-create", args: { path: "src/b.ts" } },
-            },
-            {
-              type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "file-create", result: { ok: true } },
-            },
-          ];
-          return {
-            fullStream: new ReadableStream({
-              start(controller) {
-                for (const chunk of chunks) controller.enqueue(chunk);
-                controller.close();
-              },
-            }),
-            async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
-            },
-          };
-        },
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 1000 });
-
-    expect(ctx.currentError?.tool).toBe("file-edit");
-    expect(resolveSignal(ctx)).toBeUndefined();
-  });
-
-  test("clears file-search no-match after later successful discovery recovery", async () => {
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "",
-        model: {} as RunContext["agent"]["model"],
-        tools: {},
-        async stream() {
-          const chunks = [
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_1", toolName: "file-search", args: { path: ".", pattern: "TODO" } },
-            },
-            {
-              type: "tool-error" as const,
-              payload: {
-                toolCallId: "call_1",
-                toolName: "file-search",
-                error: {
-                  message: "No matches found in '.'.",
-                  code: TOOL_ERROR_CODES.searchFilesNoMatch,
-                },
-              },
-            },
-            {
-              type: "tool-call" as const,
-              payload: { toolCallId: "call_2", toolName: "file-read", args: { path: "README.md" } },
-            },
-            {
-              type: "tool-result" as const,
-              payload: { toolCallId: "call_2", toolName: "file-read", result: { content: "# smoke\n" } },
-            },
-          ];
-          return {
-            fullStream: new ReadableStream({
-              start(controller) {
-                for (const chunk of chunks) controller.enqueue(chunk);
-                controller.close();
-              },
-            }),
-            async getFullOutput() {
-              return { text: "", toolCalls: [], signal: "noop" as const };
-            },
-          };
-        },
-      },
-    });
-
-    await phaseGenerate(ctx, { timeoutMs: 1000 });
-
-    expect(ctx.currentError).toBeUndefined();
-    expect(resolveSignal(ctx)).toBe("noop");
+    const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
+    expect(traceResult?.fields).toMatchObject({ tool: "test-run", is_error: true });
   });
 
   test("fails fast when fullOutput rejects outside the reader chain", async () => {
@@ -606,6 +352,8 @@ describe("phaseGenerate", () => {
 
     expect(ctx.currentError?.message).toBe("invalid_api_key");
     expect(ctx.currentError?.source).toBe("generate");
+    // A run-level (generate) error still gates completion, unlike a tool error.
+    expect(resolveSignal(ctx)).toBeUndefined();
   });
 
   test("accounts memory recall tokens from memory-search results", async () => {

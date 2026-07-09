@@ -207,22 +207,19 @@ describe("phaseFinalize", () => {
     expect(noop.output).toBe("No changes needed.");
   });
 
-  test("blocks done output when a tool error is unresolved", () => {
+  test("a tool error alone does not block a done at finalize", () => {
+    // Tool errors no longer populate ctx.currentError; only a run-level (blocksCompletion)
+    // error blocks. A done that carries model text completes cleanly.
     const ctx = createRunContext({
-      currentError: {
-        message: "file-edit failed: Find text matched 2 locations",
-        category: "other",
-        source: "tool-error",
-        tool: "file-edit",
-      },
       result: { text: "I updated the tests.", toolCalls: [], signal: "done" },
+      acceptedSignal: "done",
     });
 
     const response = phaseFinalize(ctx);
 
-    expect(response.state).toBe("awaiting-input");
+    expect(response.state).toBe("done");
     expect(response.output).toBe("I updated the tests.");
-    expect(response.error).toBe("file-edit failed: Find text matched 2 locations");
+    expect(response.error).toBeUndefined();
   });
 
   test("blocks done output when completion evidence is missing", () => {

@@ -21,8 +21,7 @@ function signalOutput(ctx: RunContext): string {
 }
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
-  const unresolvedToolError = ctx.currentError?.source === "tool-error" || ctx.currentError?.source === "tool-result";
-  const blockingError = unresolvedToolError || ctx.currentError?.blocksCompletion === true;
+  const blockingError = ctx.currentError?.blocksCompletion === true;
   // A blocking error is surfaced through `error` alone; `output` keeps the model's own
   // text (or a neutral fallback) so the reason is never rendered twice.
   const rawOutput = (ctx.result?.text ?? "").trim() || signalOutput(ctx);
