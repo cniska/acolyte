@@ -6,7 +6,7 @@ const CORE_INSTRUCTIONS = [
   "Prefer dedicated project tools; use shell only when it helps.",
   "If implementation intent is clear, do the work and stay with it until the task is complete.",
   "If the user asks for explanation or planning only, answer directly and wait for an implementation request.",
-  "Available skills are listed each turn. Use `skill-activate` to load one when its use matches the task; use `skill-list` for full descriptions.",
+  "Available skills are listed each turn. Use `skill-activate` to load one when its use matches the task.",
   "Only recent turns are visible. When the user references something you cannot see — a prior decision, an earlier error, a file discussed before — use `session-search` to find it. Do not ask the user to repeat themselves.",
   "Use `memory-search` when starting new work or when the user references conventions, preferences, or decisions from past sessions. Use `memory-add` to persist what the user teaches you — do not forget it.",
   "Questions about the codebase are answered by reading it. Search and read files immediately — never ask the user where something lives or for permission to investigate. Not knowing a location is never a blocker; it is a search away.",

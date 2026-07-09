@@ -1,43 +1,11 @@
 import { z } from "zod";
 import { addActiveSkill } from "./chat-skill-activator";
 import { type SkillSource, skillSourceSchema } from "./skill-contract";
-import { findSkillByName, getLoadedSkills, readSkillInstructions } from "./skill-ops";
+import { findSkillByName, readSkillInstructions } from "./skill-ops";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { toolLabelKey } from "./tool-output-format";
-
-function createListSkillsTool(input: ToolkitInput) {
-  return createTool({
-    id: "skill-list",
-    toolkit: "skill",
-    category: "meta",
-    description: "List all available skills with names, descriptions, and sources.",
-    instruction:
-      "Use `skill-list` to see available engineering skills. Returns bundled (universal) and project (repo-specific) skills.",
-    inputSchema: z.object({}),
-    outputSchema: z.object({
-      kind: z.literal("skill-list"),
-      skills: z.array(
-        z.object({
-          name: z.string(),
-          description: z.string(),
-          source: skillSourceSchema,
-        }),
-      ),
-    }),
-    execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "skill-list", toolCallId, toolInput, async () => {
-        const skills = getLoadedSkills().map((s) => ({
-          name: s.name,
-          description: s.description,
-          source: s.source,
-        }));
-        return { kind: "skill-list" as const, skills };
-      });
-    },
-  });
-}
 
 function createActivateSkillTool(input: ToolkitInput) {
   return createTool({
@@ -46,7 +14,7 @@ function createActivateSkillTool(input: ToolkitInput) {
     category: "meta",
     description: "Activate one or more skills by name to load structured guidance into context.",
     instruction:
-      "Use `skill-activate` with one or more skill names to load structured guidance. Use `skill-list` to discover project-specific skills.",
+      "Use `skill-activate` with one or more skill names to load their structured guidance; the available skills are listed each turn.",
     inputSchema: z.object({
       names: z.array(z.string().min(1)).min(1),
       args: z.string().optional(),
@@ -84,7 +52,6 @@ function createActivateSkillTool(input: ToolkitInput) {
 
 export function createSkillToolkit(input: ToolkitInput) {
   return {
-    listSkills: createListSkillsTool(input),
     activateSkill: createActivateSkillTool(input),
   };
 }
