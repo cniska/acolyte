@@ -261,4 +261,39 @@ describe("chat turn helpers", () => {
 
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
+
+  test("runAssistantTurn worked row uses the arrow token format shared with the status line", async () => {
+    const turn = await runAssistantTurn({
+      client: {
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "done",
+          toolCalls: ["file-read", "signal_done"],
+          usage: { inputTokens: 52000, outputTokens: 586, totalTokens: 52586 },
+        }),
+        status: async () => ({}),
+        taskStatus: async () => null,
+      },
+      userText: "read the file",
+      history: [],
+      model: "gpt-5-mini",
+      sessionId: "sess_test",
+      pendingStartedAt: Date.now() - 1000,
+      createMessage: (role, content) => ({
+        id: "msg_assistant",
+        role,
+        content,
+        timestamp: "2026-02-20T00:00:00.000Z",
+      }),
+    });
+
+    const worked = turn.rows.find(
+      (row) => row.kind === "status" && typeof row.content === "string" && row.content.includes("Worked"),
+    );
+    const content = worked?.content;
+    expect(typeof content).toBe("string");
+    expect(content as string).toContain("↑52.0k ↓586");
+    expect(content as string).not.toContain("52.0k/586");
+  });
 });
