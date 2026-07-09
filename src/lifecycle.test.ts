@@ -199,6 +199,38 @@ describe("runLifecycle", () => {
     expect(response.error).toContain("without writing a final response");
     expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
   });
+
+  test("rejects a noop that gave no reason (empty-answer gate)", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx) => {
+        ctx.result = { text: "", toolCalls: [], signal: "noop" };
+      }),
+      phaseFinalize: mock((ctx): ChatResponse => {
+        const error = ctx.currentError?.message;
+        return {
+          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
+          model: ctx.model,
+          output: error ?? ctx.result?.text ?? "",
+          ...(error ? { error } : {}),
+        };
+      }),
+    });
+
+    const response = await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        taskId: "task_test",
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(response.state).toBe("awaiting-input");
+    expect(response.error).toContain("without telling the user why no changes were needed");
+    expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
+  });
 });
 
 describe("scheduleMemoryCommit", () => {

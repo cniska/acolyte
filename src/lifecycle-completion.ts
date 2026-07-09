@@ -18,40 +18,47 @@ export function findCompletionBlock(input: {
   writeToolSet: ReadonlySet<string>;
   runnerToolSet: ReadonlySet<string>;
 }): CompletionBlock | undefined {
-  if (input.signal !== "done") return undefined;
+  if (input.signal !== "done" && input.signal !== "noop") return undefined;
 
-  const brokenHandoff = findBrokenHandoff(input.callLog, input.runnerToolSet);
-  if (brokenHandoff) {
-    const label = brokenHandoff.command ? `\`${brokenHandoff.command}\`` : `\`${brokenHandoff.toolName}\``;
-    return {
-      reason: "broken-handoff",
-      path: brokenHandoff.command ?? brokenHandoff.toolName,
-      message: `Cannot finish yet: the last ${label} run failed (exit code ${brokenHandoff.exitCode}). Diagnose the failure and fix it, or call \`signal_blocked\` if recovery is genuinely impossible.`,
-    };
-  }
-
-  const lastWrite = findLastSourceWrite(input.callLog, input.writeToolSet);
-  if (lastWrite) {
-    const laterCalls = input.callLog.slice(lastWrite.index + 1);
-    const relatedPaths = relatedValidationPaths(lastWrite.path);
-    const validated = laterCalls.some(
-      (entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths),
-    );
-    if (!validated) {
+  // Work-quality gates apply only to `done` — a `noop` asserts no work was done.
+  if (input.signal === "done") {
+    const brokenHandoff = findBrokenHandoff(input.callLog, input.runnerToolSet);
+    if (brokenHandoff) {
+      const label = brokenHandoff.command ? `\`${brokenHandoff.command}\`` : `\`${brokenHandoff.toolName}\``;
       return {
-        reason: "missing-validation-after-write",
-        path: lastWrite.path,
-        message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
+        reason: "broken-handoff",
+        path: brokenHandoff.command ?? brokenHandoff.toolName,
+        message: `Cannot finish yet: the last ${label} run failed (exit code ${brokenHandoff.exitCode}). Diagnose the failure and fix it, or call \`signal_blocked\` if recovery is genuinely impossible.`,
       };
+    }
+
+    const lastWrite = findLastSourceWrite(input.callLog, input.writeToolSet);
+    if (lastWrite) {
+      const laterCalls = input.callLog.slice(lastWrite.index + 1);
+      const relatedPaths = relatedValidationPaths(lastWrite.path);
+      const validated = laterCalls.some(
+        (entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths),
+      );
+      if (!validated) {
+        return {
+          reason: "missing-validation-after-write",
+          path: lastWrite.path,
+          message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
+        };
+      }
     }
   }
 
-  // A `done` carries the final response; an empty answer is not a completion.
+  // Both signals carry the model's own words — a `done` is the final response,
+  // a `noop` is why no changes were needed. An empty answer is not a completion.
   if (input.finalText.trim().length === 0) {
     return {
       reason: "empty-answer",
       path: "",
-      message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
+      message:
+        input.signal === "noop"
+          ? "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed."
+          : "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
     };
   }
 

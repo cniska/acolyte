@@ -186,7 +186,7 @@ describe("phaseFinalize", () => {
     expect(summary.fields.budget_exhausted_count).toBe(2);
   });
 
-  test("an empty done is blocked and surfaces no fabricated Done.", () => {
+  test("an empty done or noop is blocked and surfaces no fabricated text", () => {
     // Real path: acceptResult rejects an empty done, clearing acceptedSignal and
     // setting a blocking error, so finalize emits no output — the error row carries it.
     const done = phaseFinalize(
@@ -200,11 +200,26 @@ describe("phaseFinalize", () => {
     );
     expect(done.output).toBe("");
 
-    // noop is not blocked: it keeps its terse completion.
+    // An empty noop is blocked the same way — no canned "No changes needed.".
     const noop = phaseFinalize(
-      createRunContext({ result: { text: "", toolCalls: [], signal: "noop" }, acceptedSignal: "noop" }),
+      createRunContext({
+        result: { text: "", toolCalls: [], signal: "noop" },
+        currentError: {
+          message: "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed.",
+          blocksCompletion: true,
+        },
+      }),
     );
-    expect(noop.output).toBe("No changes needed.");
+    expect(noop.output).toBe("");
+
+    // A noop that carries the model's own words keeps them as the output.
+    const noopWithText = phaseFinalize(
+      createRunContext({
+        result: { text: "Already consistent; nothing to change.", toolCalls: [], signal: "noop" },
+        acceptedSignal: "noop",
+      }),
+    );
+    expect(noopWithText.output).toBe("Already consistent; nothing to change.");
   });
 
   test("a tool error alone does not block a done at finalize", () => {
