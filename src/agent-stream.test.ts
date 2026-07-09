@@ -408,6 +408,101 @@ describe("onBeforeNextCall hook", () => {
     });
   });
 
+  test("onBeforeFinish toolChoice override is used for the retry step", async () => {
+    const argsCapture: Array<Record<string, unknown>> = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      // Step 1: no tool call (simulates GPT-5.x leaking function call as text).
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "oops" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+      // Step 2: proper tool call on retry.
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" }, finishPart("tool-calls")],
+    ];
+    const model = scriptedModel(turns, [], argsCapture);
+    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+
+    let nudged = false;
+    await stream("hi", {
+      onBeforeFinish: () => {
+        if (nudged) return [];
+        nudged = true;
+        return {
+          messages: [{ role: "user", content: [{ type: "text", text: "<<call a signal tool>>" }] }],
+          toolChoice: "required",
+        };
+      },
+    }).then(({ getFullOutput }) => getFullOutput());
+
+    // Step 1 uses default "auto" toolChoice.
+    expect(argsCapture[0]?.toolChoice).toEqual({ type: "auto" });
+    // Step 2 uses "required" toolChoice from the onBeforeFinish override.
+    expect(argsCapture[1]?.toolChoice).toEqual({ type: "required" });
+  });
+
+  test("toolChoice override survives a rate-limit retry of the same step", async () => {
+    // The retry step is served only after one retryable doStream failure; the override
+    // must persist across the rate-limit retry, not fall back to "auto".
+    const retryOnceLimiter: RateLimiter = { ...noopRateLimiter, onError: () => ({ shouldRetry: true, delayMs: 0 }) };
+    const argsCapture: Array<Record<string, unknown>> = [];
+    const step2 = [
+      { type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" },
+      finishPart("tool-calls"),
+    ] satisfies LanguageModelV4StreamPart[];
+    const step1 = [
+      { type: "text-start", id: "t_1" },
+      { type: "text-delta", id: "t_1", delta: "oops" },
+      { type: "text-end", id: "t_1" },
+      finishPart("stop"),
+    ] satisfies LanguageModelV4StreamPart[];
+
+    let call = 0;
+    const model = {
+      specificationVersion: "v3",
+      provider: "test",
+      modelId: "test-model",
+      supportedUrls: {},
+      async doStream(args: Record<string, unknown>) {
+        call += 1;
+        argsCapture.push(args);
+        if (call === 2) throw new Error("rate limited"); // first attempt of the required-retry step
+        const parts = call === 1 ? step1 : step2;
+        return {
+          stream: new ReadableStream<LanguageModelV4StreamPart>({
+            start(controller) {
+              for (const part of parts) controller.enqueue(part);
+              controller.close();
+            },
+          }),
+        };
+      },
+    } as unknown as LanguageModelV4;
+
+    let nudged = false;
+    await createAgentStream(
+      model,
+      "sys",
+      { signal_done: signalDoneTool() },
+      retryOnceLimiter,
+    )("hi", {
+      onBeforeFinish: () => {
+        if (nudged) return [];
+        nudged = true;
+        return {
+          messages: [{ role: "user", content: [{ type: "text", text: "<<signal>>" }] }],
+          toolChoice: "required",
+        };
+      },
+    }).then(({ getFullOutput }) => getFullOutput());
+
+    // call 1 = step 1 (auto); call 2 = required attempt that throws; call 3 = required retry that succeeds.
+    expect(argsCapture[0]?.toolChoice).toEqual({ type: "auto" });
+    expect(argsCapture[1]?.toolChoice).toEqual({ type: "required" });
+    expect(argsCapture[2]?.toolChoice).toEqual({ type: "required" });
+  });
+
   test("emits cache and reasoning token counts from the finish part", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [

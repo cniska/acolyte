@@ -179,6 +179,18 @@ describe("serialize", () => {
     test("handles plain text", () => {
       expect(stripAnsiLength("hello world")).toBe(11);
     });
+
+    test("counts CJK characters as 2 columns each", () => {
+      expect(stripAnsiLength("こんにちは")).toBe(10);
+    });
+
+    test("counts emoji as 2 columns each", () => {
+      expect(stripAnsiLength("😀🎉")).toBe(4);
+    });
+
+    test("counts CJK with ANSI codes correctly", () => {
+      expect(stripAnsiLength("\x1b[1mこんにちは\x1b[0m")).toBe(10);
+    });
   });
 
   describe("text sanitization", () => {

@@ -103,10 +103,14 @@ export function installClientLogSink(): void {
   });
 }
 
-export async function runChat(props: ChatAppProps): Promise<void> {
+export async function runChat(
+  props: ChatAppProps,
+  onMount?: (app: { flush: () => void; unmount: () => void }) => void,
+): Promise<void> {
   installClientLogSink();
   const app = render(<ChatApp {...props} />);
   try {
+    onMount?.(app);
     await app.waitUntilExit();
   } finally {
     setLogSink(null);

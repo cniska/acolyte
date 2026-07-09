@@ -12,7 +12,7 @@ import { ansi, kitty } from "./styles";
 const KITTY_TERMINALS = ["kitty", "WezTerm", "ghostty", "iTerm.app"];
 
 /** Count physical terminal rows, accounting for line wrapping. */
-function physicalRowCount(output: string, columns: number): number {
+export function physicalRowCount(output: string, columns: number): number {
   const lines = output.split("\n");
   let rows = 0;
   for (const line of lines) {
@@ -26,6 +26,8 @@ function physicalRowCount(output: string, columns: number): number {
 type RenderInstance = {
   waitUntilExit: () => Promise<void>;
   unmount: () => void;
+  /** Force any pending throttled render to commit immediately. Test seam. */
+  flush: () => void;
 };
 
 export function render(node: ReactNode): RenderInstance {
@@ -37,11 +39,10 @@ export function render(node: ReactNode): RenderInstance {
   let lastActive = "";
   let lastActiveLineCount = 0;
   let flushedStaticCount = 0;
-  // Number of logical lines (split by \n) frozen into scrollback. When the
-  // active region overflows the terminal, top lines are written once and we
-  // only re-render the bottom portion that fits on screen.
+  // Lines from the active region that have already been written to scrollback.
+  // Lets us emit only the delta on subsequent frames instead of re-emitting.
   let frozenLineCount = 0;
-  let frozenOverflowText = "";
+  let frozenScrollbackText = "";
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -90,8 +91,9 @@ export function render(node: ReactNode): RenderInstance {
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
       frozenLineCount = 0;
-      frozenOverflowText = "";
+      frozenScrollbackText = "";
       lastActive = "";
+      lastActiveLineCount = 0;
       commitRender();
     }, 16);
   };
@@ -102,11 +104,6 @@ export function render(node: ReactNode): RenderInstance {
     stdout.write(ansi.bracketedPasteEnable);
     stdout.write(ansi.focusReportEnable);
     stdout.on("resize", onResize);
-  }
-
-  function countRows(output: string): number {
-    const cols = stdout.columns ?? DEFAULT_COLUMNS;
-    return physicalRowCount(output, cols);
   }
 
   function eraseSequence(): string {
@@ -138,13 +135,11 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Repaint the active region on focus-in.  Invalidates frozen overflow
-   *  state (may be stale after tab switch) and delegates to commitRender
-   *  which handles viewport overflow correctly. */
+  /** Repaint the active region on focus-in. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
     frozenLineCount = 0;
-    frozenOverflowText = "";
+    frozenScrollbackText = "";
     lastActive = "";
     commitRender();
   }
@@ -162,18 +157,13 @@ export function render(node: ReactNode): RenderInstance {
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      if (frozenOverflowText.length > 0 && appendedStatic.startsWith(frozenOverflowText)) {
-        appendedStatic = appendedStatic.slice(frozenOverflowText.length);
-      }
       buf += appendedStatic;
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
-      frozenOverflowText = "";
-      const nextActiveLineCount = Math.min(countRows(active), maxLiveRows);
-      syncWrite(buf + active);
-      lastActive = active;
-      lastActiveLineCount = nextActiveLineCount;
-      return;
+      frozenScrollbackText = "";
+      syncWrite(buf);
+      lastActive = "";
+      lastActiveLineCount = 0;
     }
 
     // Only re-render the active region if it changed.
@@ -181,20 +171,14 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If the frozen prefix was invalidated (content shrank or changed),
-    // defer the viewport erase into the render syncWrite below so
-    // erase+paint is atomic within one BSU/ESU block.
-    let frozenResetErase = "";
-    if (
-      frozenLineCount > 0 &&
-      (allLines.length < frozenLineCount || (frozenOverflowText.length > 0 && !active.startsWith(frozenOverflowText)))
-    ) {
-      frozenResetErase = `${ansi.cursorUp(maxLiveRows)}\r${ansi.eraseDown}`;
-      lastActiveLineCount = 0;
+    // If frozen lines no longer match the current active prefix (non-append-only
+    // change), invalidate the frozen state so we repaint from scratch.
+    if (frozenLineCount > 0 && allLines.slice(0, frozenLineCount).join("\n") !== frozenScrollbackText) {
       frozenLineCount = 0;
-      frozenOverflowText = "";
+      frozenScrollbackText = "";
     }
 
+    const erase = eraseSequence();
     const liveLines = allLines.slice(frozenLineCount);
 
     let physRows = 0;
@@ -207,22 +191,22 @@ export function render(node: ReactNode): RenderInstance {
       }
       physRows += rows;
     }
-
-    const erase = frozenResetErase || eraseSequence();
-
-    if (splitIdx === 0) {
-      syncWrite(erase + liveLines.join("\n"));
-      lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
-    } else {
-      const overflow = liveLines.slice(0, splitIdx);
-      const onScreen = liveLines.slice(splitIdx);
-      frozenLineCount += splitIdx;
-      const overflowText = overflow.join("\n");
-      frozenOverflowText += `${overflowText}\n`;
-      syncWrite(`${erase}${overflowText}\n${onScreen.join("\n")}`);
-      lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
+    // Never freeze the last live line — it may still be streaming.
+    if (splitIdx > 0 && splitIdx === liveLines.length) {
+      splitIdx = liveLines.length - 1;
     }
 
+    if (splitIdx > 0) {
+      // Write overflow + bottom-fitting slice atomically. The overflow lines scroll
+      // into terminal scrollback naturally as the write pushes past the viewport top.
+      const overflowLines = liveLines.slice(0, splitIdx);
+      frozenLineCount += splitIdx;
+      frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      syncWrite(erase + overflowLines.join("\n") + "\n" + liveLines.slice(splitIdx).join("\n"));
+    } else {
+      syncWrite(erase + liveLines.join("\n"));
+    }
+    lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
   }
 
@@ -320,6 +304,13 @@ export function render(node: ReactNode): RenderInstance {
     waitUntilExit: () => exitPromise,
     unmount() {
       exit();
+    },
+    flush() {
+      if (renderTimer) {
+        clearTimeout(renderTimer);
+        renderTimer = null;
+      }
+      commitRender();
     },
   };
 }

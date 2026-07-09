@@ -5,7 +5,6 @@ import { createInstructions } from "./agent-instructions";
 import { collectReminders, reminderTag } from "./agent-reminders";
 import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
-import { appConfig } from "./app-config";
 import { unreachable } from "./assert";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
@@ -247,8 +246,8 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       workspace: ctx.workspace,
     });
     const providerOptions = promptCacheProviderOptions(provider, cacheKey);
-    const reasoning = appConfig.reasoning;
-    const temperature = reasoning ? undefined : (ctx.temperature ?? appConfig.temperature);
+    const reasoning = ctx.reasoning;
+    const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
@@ -295,7 +294,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         switch (decision.kind) {
           case "missing-signal-continue":
             ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            break;
+            // Force the retry step to use toolChoice:"required" so the Responses API
+            // grammar-constrains decoding — prevents GPT-5.x from emitting the call as text.
+            return { messages: renderFinishPolicyMessages(decision), toolChoice: "required" };
           case "missing-signal-block":
             ctx.currentError = {
               message: decision.message,

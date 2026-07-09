@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import type { StreamOptions } from "./agent-contract";
 import { createAgentStream } from "./agent-stream";
-import { appConfig } from "./app-config";
 import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { resolveSignal } from "./lifecycle";
@@ -71,11 +70,10 @@ function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
 
 describe("phaseGenerate", () => {
   test("prompt cache options do not suppress temperature without reasoning", async () => {
-    const savedReasoning = appConfig.reasoning;
-    (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = undefined;
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({
       model: "openai/gpt-5-mini",
+      reasoning: undefined,
       temperature: 0.42,
       agent: {
         id: "test-agent",
@@ -99,22 +97,17 @@ describe("phaseGenerate", () => {
       },
     });
 
-    try {
-      await phaseGenerate(ctx, { timeoutMs: 1000 });
-    } finally {
-      (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = savedReasoning;
-    }
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(capturedOptions?.temperature).toBe(0.42);
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
   test("forwards the reasoning level as a call option and suppresses temperature", async () => {
-    const savedReasoning = appConfig.reasoning;
-    (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = "high";
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({
       model: "anthropic/claude-opus-4-8",
+      reasoning: "high",
       temperature: 0.42,
       agent: {
         id: "test-agent",
@@ -138,11 +131,7 @@ describe("phaseGenerate", () => {
       },
     });
 
-    try {
-      await phaseGenerate(ctx, { timeoutMs: 1000 });
-    } finally {
-      (appConfig as { reasoning: typeof appConfig.reasoning }).reasoning = savedReasoning;
-    }
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(capturedOptions?.reasoning).toBe("high");
     // Reasoning models reject an explicit temperature, and the deprecated thinking
@@ -338,7 +327,8 @@ describe("phaseGenerate", () => {
             }),
             async getFullOutput() {
               await new Promise((resolve) => setTimeout(resolve, 0));
-              const extras = options.onBeforeFinish?.({ messages: [], text: "Done.", signal: "done" }) ?? [];
+              const finishResult = options.onBeforeFinish?.({ messages: [], text: "Done.", signal: "done" }) ?? [];
+              const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
               const textPart = extras[0]?.content[0];
               if (typeof textPart === "object" && textPart?.type === "text") recoveryPrompt = textPart.text;
               return { text: extras.length > 0 ? "Recovered." : "Done.", toolCalls: [], signal: "done" as const };
