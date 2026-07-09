@@ -4,6 +4,7 @@ import { createElement as h, useEffect, useState } from "react";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
 import { renderCapture } from "./test-utils";
+import { replayTerminal } from "./vt";
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
@@ -42,81 +43,10 @@ function withMockedStdout(
   );
 }
 
+// Screen-only view for the visible-region assertions below; transcript-integrity
+// (scrollback) assertions live in vt.test.tsx.
 function replayVisibleScreen(writes: string[], rows: number, columns: number): string[] {
-  const screen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));
-  let row = 0;
-  let col = 0;
-
-  const scroll = (): void => {
-    screen.shift();
-    screen.push(Array.from({ length: columns }, () => " "));
-    row = rows - 1;
-  };
-
-  const eraseDown = (): void => {
-    const currentRow = screen[row];
-    if (currentRow) {
-      for (let c = col; c < columns; c++) currentRow[c] = " ";
-    }
-    for (let r = row + 1; r < rows; r++) {
-      const nextRow = screen[r];
-      if (!nextRow) continue;
-      for (let c = 0; c < columns; c++) nextRow[c] = " ";
-    }
-  };
-
-  const applyWrite = (data: string): void => {
-    let index = 0;
-    while (index < data.length) {
-      const char = data[index];
-      if (char === "\x1b" && data[index + 1] === "[") {
-        let end = index + 2;
-        while (end < data.length) {
-          const code = data.charCodeAt(end);
-          if (code >= 0x40 && code <= 0x7e) break;
-          end += 1;
-        }
-        if (end >= data.length) break;
-        const sequence = data.slice(index + 2, end);
-        const finalByte = data[end];
-        const paramText = sequence.replace(/^\?/, "");
-        const param = paramText.length > 0 ? Number.parseInt(paramText, 10) : 1;
-        if (finalByte === "A") {
-          row = Math.max(0, row - (Number.isFinite(param) ? param : 1));
-        } else if (finalByte === "J") {
-          eraseDown();
-        }
-        index = end + 1;
-        continue;
-      }
-      if (char === "\r") {
-        col = 0;
-        index += 1;
-        continue;
-      }
-      if (char === "\n") {
-        row += 1;
-        col = 0;
-        if (row >= rows) scroll();
-        index += 1;
-        continue;
-      }
-      if (col >= columns) {
-        row += 1;
-        col = 0;
-        if (row >= rows) scroll();
-      }
-      if (row >= 0 && row < rows && col >= 0 && col < columns) {
-        const currentRow = screen[row];
-        if (currentRow) currentRow[col] = char;
-      }
-      col += 1;
-      index += 1;
-    }
-  };
-
-  for (const write of writes) applyWrite(write);
-  return screen.map((line) => line.join("").trimEnd());
+  return replayTerminal(writes, rows, columns).screen;
 }
 
 function extractFrameWrites(writes: string[]): string[] {
