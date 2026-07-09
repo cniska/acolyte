@@ -85,9 +85,9 @@ function debugEffectFailure(
   });
 }
 
-function assertStepBudget(input: Pick<ToolRunInput<unknown>, "session" | "toolId" | "options">): void {
+function assertStepBudget(input: Pick<ToolRunInput<unknown>, "session" | "options">): void {
   if (input.options?.skipStepBudget) return;
-  const budgetError = checkStepBudget(input.session, input.toolId);
+  const budgetError = checkStepBudget(input.session);
   if (!budgetError) return;
   const error = new Error(budgetError) as Error & { code: string; kind: string };
   error.code = LIFECYCLE_ERROR_CODES.budgetExhausted;

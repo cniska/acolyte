@@ -1,4 +1,4 @@
-import { MAX_CONSECUTIVE_TOOL_FAILURES, MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
+import { MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { SessionContext, ToolCallRecord, ToolCallStatus } from "./tool-contract";
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
@@ -8,7 +8,6 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
     flags: {},
     writeTools,
     toolTimeoutMs: TOOL_TIMEOUT_MS,
-    consecutiveFailures: new Map(),
   };
 }
 
@@ -23,15 +22,7 @@ export function resetTurnStepCount(session: SessionContext, limit?: number): voi
   if (limit !== undefined) session.flags.turnStepLimit = limit;
 }
 
-export function checkStepBudget(session: SessionContext, toolId?: string): string | undefined {
-  if (toolId) {
-    const limit = session.maxConsecutiveToolFailures ?? MAX_CONSECUTIVE_TOOL_FAILURES;
-    const failures = session.consecutiveFailures.get(toolId) ?? 0;
-    if (failures >= limit) {
-      return `Tool "${toolId}" failed ${failures} times consecutively. Skipping further attempts.`;
-    }
-  }
-
+export function checkStepBudget(session: SessionContext): string | undefined {
   const turnLimit = session.flags.turnStepLimit ?? MAX_TURN_STEPS;
   const turnCount = session.flags.turnStepCount ?? 0;
   const totalLimit = session.flags.totalStepLimit ?? MAX_TOTAL_STEPS;
@@ -56,9 +47,4 @@ export function recordCall(
   meta?: { exitCode?: number },
 ): void {
   session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status, ...meta });
-  if (status === "failed") {
-    session.consecutiveFailures.set(toolName, (session.consecutiveFailures.get(toolName) ?? 0) + 1);
-  } else {
-    session.consecutiveFailures.delete(toolName);
-  }
 }
