@@ -308,11 +308,12 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   }, [picker, handlePickerSelect]);
 
   const handleInputChange = useCallback(
-    (next: string) => {
+    (next: string, fromPaste = false) => {
       const decision = processInputChange({
         currentValue: value,
         nextValue: next,
         applyingHistory: applyingHistoryRef.current,
+        paste: fromPaste,
       });
       if (decision.ignore) return;
       if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
