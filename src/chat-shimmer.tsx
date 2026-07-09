@@ -1,9 +1,10 @@
 import type React from "react";
 import { Text } from "./tui";
 
-const DIM_R = 0x55;
-const DIM_G = 0x55;
-const DIM_B = 0x55;
+// Sweeps between the shared palette dim (#666) and gray (#999).
+const DIM_R = 0x66;
+const DIM_G = 0x66;
+const DIM_B = 0x66;
 const BRIGHT_R = 0x99;
 const BRIGHT_G = 0x99;
 const BRIGHT_B = 0x99;

@@ -7,7 +7,19 @@ import { dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui/test-utils";
 
-const DEFAULT_FOOTER = { workspace: "~/code/acolyte", branch: "main", pr: null, model: "gpt-5-mini" } as const;
+const DEFAULT_STATUS_LINE = {
+  repo: "acolyte",
+  worktree: null,
+  branch: "main",
+  dirty: false,
+  ahead: 0,
+  behind: 0,
+  model: "gpt-5-mini",
+  effort: "medium",
+  inputTokens: 0,
+  outputTokens: 0,
+  pr: null,
+} as const;
 
 const noopCursorLine = () => {};
 
@@ -16,7 +28,12 @@ function renderInputPanel(
   columns = DEFAULT_TERMINAL_WIDTH,
 ): string {
   return renderPlain(
-    <ChatInputPanel brandColor={palette.brand} footer={DEFAULT_FOOTER} onCursorLine={noopCursorLine} {...overrides} />,
+    <ChatInputPanel
+      brandColor={palette.brand}
+      statusLine={DEFAULT_STATUS_LINE}
+      onCursorLine={noopCursorLine}
+      {...overrides}
+    />,
     columns,
   );
 }
@@ -48,15 +65,15 @@ describe("chat tui visual regression: header", () => {
   });
 });
 
-describe("chat tui visual regression: footer and help", () => {
-  test("renders stable footer context row", () => {
+describe("chat tui visual regression: status line and help", () => {
+  test("renders stable, left-aligned status line row", () => {
     const out = renderInputPanel();
     expect(out).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        ? help                                                    ~/code/acolyte · main · gpt-5-mini
+        acolyte · main · gpt-5-mini medium
     `),
     );
   });
@@ -101,12 +118,7 @@ describe("chat tui visual regression: footer and help", () => {
     );
   });
 
-  test("hides context when typing", () => {
-    const out = renderInputPanel({ value: "hello" });
-    expect(out).not.toContain(DEFAULT_FOOTER.workspace);
-  });
-
-  test("renders slash suggestions with selected help and no footer row", () => {
+  test("renders slash suggestions with selected help and no status line row", () => {
     const out = renderInputPanel({
       value: "/mo",
       slashSuggestions: ["/model"],

@@ -1,9 +1,9 @@
 import type React from "react";
 import { clampSuggestionIndex } from "./chat-effects";
-import { FooterContext, type FooterState } from "./chat-footer";
 import { BREAKPOINT_TWO_COLUMN, borderLine, SHORTCUT_ITEMS } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
+import { StatusLine, type StatusLineState } from "./chat-status-line";
 import { t } from "./i18n";
 import { PromptInput } from "./prompt-input";
 import { Box, Text } from "./tui";
@@ -15,7 +15,7 @@ type ChatInputPanelProps = {
   onPickerSubmit?: () => void;
   activeSessionId?: string | undefined;
   brandColor?: string;
-  footer?: FooterState;
+  statusLine?: StatusLineState;
   value?: string;
   inputRevision?: number;
   onChange?: (next: string) => void;
@@ -34,7 +34,7 @@ const noop = (): void => {};
 
 const SLASH_COMMAND_COLUMN_WIDTH = 16;
 
-function resolveFooterVisible(input: { hasSuggestions: boolean; hasPicker: boolean }): boolean {
+function resolveStatusLineVisible(input: { hasSuggestions: boolean; hasPicker: boolean }): boolean {
   if (input.hasSuggestions) return false;
   if (input.hasPicker) return false;
   return true;
@@ -123,7 +123,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     onPickerSubmit = noop,
     activeSessionId,
     brandColor = "white",
-    footer,
+    statusLine,
     value = "",
     inputRevision = 0,
     onChange = noop,
@@ -139,7 +139,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   } = props;
   const caretVisible = true;
   const hasSuggestions = atQuery !== null || slashSuggestions.length > 0;
-  const showFooter = resolveFooterVisible({ hasSuggestions, hasPicker: Boolean(picker) });
+  const showStatusLine = resolveStatusLineVisible({ hasSuggestions, hasPicker: Boolean(picker) });
   const termWidth = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
 
   if (picker) {
@@ -202,10 +202,13 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           slashSuggestionIndex,
         })
       )}
-      {showFooter && !showHelp && value.length === 0 && footer ? (
-        <Box justifyContent="space-between" width={termWidth}>
-          <Text dimColor>{`  ${ctrlCPending ? t("chat.input.ctrl_c_hint") : `? ${t("chat.input.help_hint")}`}`}</Text>
-          <FooterContext {...footer} />
+      {showStatusLine && !showHelp && (statusLine || ctrlCPending) ? (
+        <Box>
+          {ctrlCPending ? (
+            <Text dimColor>{`  ${t("chat.input.ctrl_c_hint")}`}</Text>
+          ) : statusLine ? (
+            <StatusLine {...statusLine} />
+          ) : null}
         </Box>
       ) : null}
     </>

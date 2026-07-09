@@ -283,7 +283,9 @@ export type MessageHandlerHarness = {
     pendingTransitions: boolean[];
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
+    runningUsageSets: Array<{ inputTokens: number; outputTokens: number } | null>;
     promotedSnapshots: ChatRow[][];
+    order: string[];
   };
   interrupt: {
     registered: boolean;
@@ -310,7 +312,10 @@ export function createMessageHandlerHarness(overrides?: {
     pendingTransitions: [] as boolean[],
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
+    runningUsageSets: [] as Array<{ inputTokens: number; outputTokens: number } | null>,
     promotedSnapshots: [] as ChatRow[][],
+    // Ordered log of the turn-commit lifecycle setters, for asserting batching.
+    order: [] as string[],
   };
   const session = overrides?.session ?? createSession({ id: "sess_test" });
   const sessionState =
@@ -355,13 +360,18 @@ export function createMessageHandlerHarness(overrides?: {
     },
     onStopPending: () => {
       calls.pendingTransitions.push(false);
+      calls.order.push("stop-pending");
     },
     setPendingState: (next) => {
       calls.pendingStates.push(next);
     },
-    setRunningUsage: () => {},
+    setRunningUsage: (next) => {
+      calls.runningUsageSets.push(next);
+      calls.order.push(next === null ? "running-clear" : "running-set");
+    },
     setTokenUsage: (updater) => {
       calls.tokenUsageSnapshots.push(updater([]));
+      calls.order.push("token-commit");
     },
     createMessage,
     nowIso: () => DEFAULT_TIME,

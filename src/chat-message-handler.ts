@@ -189,6 +189,11 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
+      // Clear running usage in the same synchronous batch as the committed
+      // entry: the status line sums committed + running, so deferring this to
+      // the finally block (past `await persist()`) would render one frame that
+      // counts the finished turn twice.
+      input.setRunningUsage(null);
       await input.persist();
     } catch (error) {
       const remoteTaskId = remoteTaskIdFromError(error);

@@ -1,12 +1,12 @@
+import { basename } from "node:path";
 import { useCallback, useRef, useState } from "react";
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
-import type { FooterState } from "./chat-footer";
 import { processInputChange, processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { shownBranch, shownCwd } from "./chat-layout";
+import { type GitStatus, gitStatus } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
@@ -15,6 +15,7 @@ import { createPickerHandlers } from "./chat-picker-handlers";
 import { type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage, toRows } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
+import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
@@ -27,6 +28,9 @@ import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
+
+/** Debounce for the git-status refresh; coalesces rapid pending-state churn. */
+const GIT_REFRESH_DEBOUNCE_MS = 300;
 
 export interface ChatAppProps {
   client: Client;
@@ -56,7 +60,7 @@ export interface ChatStateResult {
   showHelp: boolean;
   ctrlCPending: boolean;
   activeSessionId: string | undefined;
-  footer: FooterState | undefined;
+  statusLine: StatusLineState;
   handleInputChange: (next: string) => void;
   handleInputSubmit: (next: string) => void;
   handlePickerQueryChange: (query: string) => void;
@@ -124,7 +128,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [showHelp, setShowHelp] = useState(false);
   const cursorLineRef = useRef(0);
   const [picker, setPicker] = useState<PickerState | null>(null);
-  const [branch, setBranch] = useState<string | null>(null);
+  const [git, setGit] = useState<GitStatus | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
   const { promotedRows, promote, clearTranscript } = usePromotion({
@@ -137,28 +141,56 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
-  const workspace = shownCwd();
-  const footerModel = formatModel(currentSession.model, appConfig.reasoning);
-  const footer = branch ? { workspace, branch, pr, model: footerModel } : undefined;
+  const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
+  const statusLine: StatusLineState = {
+    repo: git?.repo ?? basename(process.cwd()),
+    worktree: git?.worktree ?? null,
+    branch: git?.branch ?? null,
+    dirty: git?.dirty ?? false,
+    ahead: git?.ahead ?? 0,
+    behind: git?.behind ?? 0,
+    model: formatModel(currentSession.model),
+    effort: appConfig.reasoning ?? null,
+    inputTokens: tokenTotals.inputTokens,
+    outputTokens: tokenTotals.outputTokens,
+    pr,
+  };
 
   useMountEffect(() => {
     loadSkills().catch(() => {});
   });
 
-  useAsyncEffect(async (cancelled) => {
-    try {
-      const [branchResult, prResult] = await Promise.all([shownBranch(), ghPrView(process.cwd())]);
-      if (!cancelled()) {
-        setBranch(branchResult);
-        setPr(prResult);
+  // PR state can change mid-session (the agent may open one), but `gh` is a
+  // network call, so refresh it only at turn boundaries — never on the per-tool
+  // churn that drives the git refresh below. Runs on mount and each turn end.
+  useAsyncEffect(
+    async (cancelled) => {
+      if (pendingState !== null) return;
+      try {
+        const prResult = await ghPrView(process.cwd());
+        if (!cancelled()) setPr(prResult);
+      } catch {
+        if (!cancelled()) setPr(null);
       }
-    } catch {
-      if (!cancelled()) {
-        setBranch(null);
-        setPr(null);
-      }
-    }
-  }, []);
+    },
+    [pendingState === null],
+  );
+
+  // Git status is fast and local, so refresh it on every pending-state
+  // transition — tool-call churn included, so a mid-turn commit surfaces within
+  // a debounce window. The sleep coalesces rapid transitions: each new one
+  // cancels the prior effect's timer and in-flight fetch (useAsyncEffect's
+  // cleanup), mirroring Claude Code's debounce + abort. Keep the last-known-good
+  // status on a transient failure so the segment never flickers away.
+  useAsyncEffect(
+    async (cancelled) => {
+      await Bun.sleep(GIT_REFRESH_DEBOUNCE_MS);
+      if (cancelled()) return;
+      const result = await gitStatus();
+      if (!cancelled()) setGit((previous) => result ?? previous);
+    },
+    [pendingState],
+  );
 
   const activateSkill = createSkillActivator({
     currentSession,
@@ -352,7 +384,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     showHelp,
     ctrlCPending,
     activeSessionId: sessionState.activeSessionId,
-    footer,
+    statusLine,
     handleInputChange,
     handleInputSubmit,
     handlePickerQueryChange,

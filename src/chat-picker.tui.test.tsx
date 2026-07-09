@@ -8,13 +8,7 @@ import { renderPlain } from "./tui/test-utils";
 
 function renderInputPanelWithPicker(picker: PickerState, columns = DEFAULT_TERMINAL_WIDTH): string {
   return renderPlain(
-    <ChatInputPanel
-      picker={picker}
-      activeSessionId="sess_active"
-      brandColor={palette.brand}
-      footer={{ workspace: "~/code/acolyte", branch: "main", pr: null, model: "gpt-5-mini" }}
-      onCursorLine={() => {}}
-    />,
+    <ChatInputPanel picker={picker} activeSessionId="sess_active" brandColor={palette.brand} onCursorLine={() => {}} />,
     columns,
   );
 }

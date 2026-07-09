@@ -4,9 +4,10 @@ export const palette = {
   mascot: "#2A1D4A",
   mascotEyes: "#FFD84D",
 
-  // Text
+  // Text — one gray + one dim, borrowed from Claude Code, shared across the UI.
   text: "white",
-  textMuted: "#6B7280",
+  gray: "#999999", // secondary content (Claude Code promptBorder / shimmer bright)
+  dim: "#666666", // dimmest ambient detail (Claude Code inactive)
 
   // Diff
   diffAdd: "#1a3a1a",

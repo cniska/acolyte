@@ -16,7 +16,7 @@ Shipped, user-visible capabilities.
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
-- associated PR shown in status footer
+- live status line with location, model, token, and PR segments
 - auto-update on startup with progress UI
 - update flags to force or skip auto-update (`--update`, `--no-update`)
 - XDG Base Directory support on Linux

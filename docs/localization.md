@@ -35,5 +35,5 @@ Keep user-facing copy translatable while keeping protocol and tool contracts lan
 
 - put chat content under `chat.*` keys (slash-command responses, chat status rows, chat progress/error text)
 - keep CLI-only command text under `cli.*` keys
-- reserve `tui.*` for terminal UI chrome only (panel labels, key hints, picker/footer framing), not chat content
+- reserve `tui.*` for terminal UI chrome only (panel labels, key hints, picker/status-line framing), not chat content
 - prefer one stable key per message intent; avoid duplicate keys for the same user-visible string
