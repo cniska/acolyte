@@ -1,12 +1,11 @@
-import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import type { Agent, GenerateResult, StreamChunk } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { collectReminders, reminderTag } from "./agent-reminders";
-import { renderReminder, wrapInSystemReminder } from "./agent-reminders-render";
+import { renderReminder } from "./agent-reminders-render";
 import { createAgent } from "./agent-stream";
 import { unreachable } from "./assert";
-import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
+import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -17,14 +16,19 @@ import {
   parseError,
 } from "./error-handling";
 import { findCompletionBlock } from "./lifecycle-completion";
-import { type GenerateOptions, promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
+import {
+  type GenerateOptions,
+  type LifecycleError,
+  promptUsageTotalTokens,
+  type RunContext,
+} from "./lifecycle-contract";
 import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { DISCOVERY_TOOL_SET, RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
+import { RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
 import { resetTurnStepCount, scopedCallLog } from "./tool-session";
 
 function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
@@ -60,7 +64,11 @@ function emitInputTokens(ctx: RunContext): number {
   return Math.max(ctx.inputTokensAccum, promptUsageTotalTokens(ctx.promptUsage));
 }
 
-function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): void {
+// A tool returning a nonzero exit or an error result is a normal outcome the model
+// acts on — not a broken run. Errors are recorded for stats/UI and returned to the
+// caller; only run-level (generate/lifecycle) errors are written to `ctx.currentError`,
+// which means "the run itself is broken" and gates completion.
+function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta): LifecycleError {
   const kindCategory = categoryFromErrorKind(meta?.kind);
   const code =
     meta?.code ??
@@ -69,7 +77,7 @@ function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta)
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
   const kind = meta?.kind ?? errorKindFromCategory(category);
-  ctx.currentError = { message, code, category, source: meta?.source, tool: meta?.tool };
+  const error: LifecycleError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
   ctx.debug("lifecycle.error", {
     source: meta?.source ?? "generate",
@@ -79,11 +87,10 @@ function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta)
     category,
     message: message.length > 240 ? `${message.slice(0, 239)}…` : message,
   });
+  return error;
 }
 
-function currentStreamError(ctx: RunContext): StreamError | undefined {
-  if (!ctx.currentError) return undefined;
-  const err = ctx.currentError;
+function streamErrorFrom(err: LifecycleError): StreamError | undefined {
   return createStreamError({
     message: err.message,
     code: err.code,
@@ -91,63 +98,6 @@ function currentStreamError(ctx: RunContext): StreamError | undefined {
     source: err.source,
     tool: err.tool,
   }).error;
-}
-
-function unresolvedToolError(ctx: RunContext): { tool: string; message: string; code?: string } | undefined {
-  const err = ctx.currentError;
-  if (!err) return undefined;
-  if (err.source !== "tool-error" && err.source !== "tool-result") return undefined;
-  return {
-    tool: err.tool ?? "unknown",
-    message: err.message,
-    ...(err.code ? { code: err.code } : {}),
-  };
-}
-
-function renderToolErrorRecovery(error: { tool: string; message: string; code?: string }): string {
-  return wrapInSystemReminder(
-    "tool-error-recovery",
-    [
-      `The previous \`${error.tool}\` call failed and remains unresolved.`,
-      error.code ? `Error code: \`${error.code}\`.` : "",
-      `Error: ${error.message}`,
-      "Do not finalize yet. Recover autonomously: inspect the current file/output, choose a smaller or corrected action, and retry the necessary tool call.",
-      "Call `signal_blocked` only if recovery is genuinely impossible after inspecting the evidence.",
-    ]
-      .filter(Boolean)
-      .join(" "),
-  );
-}
-
-function unresolvedToolErrorFromMessages(
-  messages: readonly LanguageModelV4Message[],
-): { tool: string; message: string; code?: string } | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.role !== "tool") continue;
-    for (let j = message.content.length - 1; j >= 0; j--) {
-      const part = message.content[j];
-      if (part.type !== "tool-result") continue;
-      const output = part.output;
-      if (output.type !== "text") continue;
-      const parsed = parseError(safeParseToolOutput(output.value));
-      if (!parsed.ok) continue;
-      return {
-        tool: part.toolName,
-        message: parsed.value.message,
-        ...(parsed.value.code ? { code: parsed.value.code } : {}),
-      };
-    }
-  }
-  return undefined;
-}
-
-function safeParseToolOutput(value: string): unknown {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
 }
 
 export function createRunAgent(input: {
@@ -201,7 +151,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   } catch (error) {
     const message = errorMessage(error);
     const code = errorCode(error);
-    captureError(ctx, message, { source: "generate", code });
+    ctx.currentError = captureError(ctx, message, { source: "generate", code });
     ctx.debug("lifecycle.generate.error", { model: ctx.model, error: message });
   }
 }
@@ -209,24 +159,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
 async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: number): Promise<GenerateResult> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   const controller = new AbortController();
-  let toolErrorRecoveryUsed = false;
   const finishPolicyState = createFinishPolicyState();
-
-  const toolErrorRecoveryMessages = (toolError: { tool: string; message: string; code?: string }) => {
-    if (toolErrorRecoveryUsed) return [];
-    toolErrorRecoveryUsed = true;
-    ctx.debug("lifecycle.tool_error.recovery", {
-      tool: toolError.tool,
-      code: toolError.code ?? null,
-      action: "continue",
-    });
-    return [
-      {
-        role: "user" as const,
-        content: [{ type: "text" as const, text: renderToolErrorRecovery(toolError) }],
-      },
-    ];
-  };
 
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId);
@@ -252,9 +185,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
       toolChoice: "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
-        const toolError = unresolvedToolError(ctx) ?? unresolvedToolErrorFromMessages(messages);
-        if (toolError) return toolErrorRecoveryMessages(toolError);
-
         const reminders = collectReminders({
           messages,
           callLog: ctx.session.callLog,
@@ -276,9 +206,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         return reminders.map(renderReminder);
       },
       onBeforeFinish: ({ signal, answerText }) => {
-        const toolError = unresolvedToolError(ctx);
-        if (toolError) return toolErrorRecoveryMessages(toolError);
-
         const taskLog = scopedCallLog(ctx.session, ctx.taskId);
         const completionBlock = findCompletionBlock({
           signal,
@@ -372,16 +299,17 @@ function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string,
   ctx.toolCallStartedAt.delete(toolCallId);
 }
 
-function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, isError: boolean): void {
+function emitToolResult(ctx: RunContext, toolCallId: string, toolName: string, error?: LifecycleError): void {
+  const streamError = error ? streamErrorFrom(error) : undefined;
   ctx.emit({
     type: "tool-result",
     toolCallId,
     toolName,
-    ...(isError
+    ...(error
       ? {
           isError: true,
-          ...(ctx.currentError?.code ? { errorCode: ctx.currentError.code } : {}),
-          ...(currentStreamError(ctx) ? { error: currentStreamError(ctx) } : {}),
+          ...(error.code ? { errorCode: error.code } : {}),
+          ...(streamError ? { error: streamError } : {}),
         }
       : {}),
   });
@@ -424,20 +352,6 @@ function commandExitError(toolName: string, resultRecord: Record<string, unknown
   return typeof command === "string" && command.length > 0
     ? `${toolName} exited with code ${exitCode}: ${command}`
     : `${toolName} exited with code ${exitCode}`;
-}
-
-function clearResolvedToolError(ctx: RunContext, started: { toolName: string }): void {
-  if (!ctx.currentError) return;
-  if (ctx.currentError.source !== "tool-error" && ctx.currentError.source !== "tool-result") return;
-  const failedTool = ctx.currentError.tool;
-  if (!failedTool) return;
-  if (failedTool === started.toolName) {
-    ctx.currentError = undefined;
-    return;
-  }
-  if (ctx.currentError.code === TOOL_ERROR_CODES.searchFilesNoMatch && DISCOVERY_TOOL_SET.has(started.toolName)) {
-    ctx.currentError = undefined;
-  }
 }
 
 type ChunkHandler = (ctx: RunContext, chunk: StreamChunk) => void;
@@ -491,16 +405,16 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     const p = chunk.payload;
     if (!p?.toolCallId || !p?.toolName) return;
     const toolName = p.toolName;
-    const started = ctx.toolCallStartedAt.get(p.toolCallId);
     const resultRecord =
       typeof p.result === "object" && p.result !== null ? (p.result as Record<string, unknown>) : null;
     const exitError = commandExitError(toolName, resultRecord);
     const isError = Boolean((resultRecord && "error" in resultRecord) || exitError);
+    let error: LifecycleError | undefined;
     if (isError) {
       const parsed = parseError(resultRecord && "error" in resultRecord ? resultRecord.error : exitError);
       const errorInfo = parsed.ok ? parsed.value : { message: "Tool error" };
       const resultCode = typeof resultRecord?.code === "string" ? resultRecord.code : undefined;
-      captureError(ctx, errorInfo.message, {
+      error = captureError(ctx, errorInfo.message, {
         source: "tool-result",
         tool: toolName,
         code: resultCode ?? errorInfo.code,
@@ -508,11 +422,10 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       });
       ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     } else {
-      clearResolvedToolError(ctx, started ?? { toolName });
+      accountMemoryRecallTokens(ctx, toolName, p.result);
     }
-    if (!isError) accountMemoryRecallTokens(ctx, toolName, p.result);
     completeToolCall(ctx, p.toolCallId, toolName, isError);
-    emitToolResult(ctx, p.toolCallId, toolName, isError);
+    emitToolResult(ctx, p.toolCallId, toolName, error);
   },
 
   "tool-error"(ctx, chunk) {
@@ -524,7 +437,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     const payloadCode = typeof p?.code === "string" ? p.code : undefined;
     const payloadKind = typeof p?.kind === "string" ? p.kind : undefined;
     const toolName = p?.toolName ?? "unknown";
-    captureError(ctx, errorInfo.message, {
+    const error = captureError(ctx, errorInfo.message, {
       source: "tool-error",
       tool: toolName,
       code: payloadCode ?? errorInfo.code,
@@ -533,7 +446,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     ctx.debug("lifecycle.tool.error", { tool: toolName, error: errorInfo.message });
     if (p?.toolCallId && p?.toolName) {
       completeToolCall(ctx, p.toolCallId, p.toolName, true);
-      emitToolResult(ctx, p.toolCallId, p.toolName, true);
+      emitToolResult(ctx, p.toolCallId, p.toolName, error);
     }
   },
 
