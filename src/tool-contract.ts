@@ -92,8 +92,6 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   cache?: ToolCache;
   featureFlags?: ResolvedFeatureFlags;
-  consecutiveFailures: Map<string, number>;
-  maxConsecutiveToolFailures?: number;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
   onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
   onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
