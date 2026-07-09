@@ -181,6 +181,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
 function acceptResult(ctx: RunContext): void {
   const completionBlock = findCompletionBlock({
     signal: ctx.result?.signal,
+    finalText: ctx.result?.text ?? "",
     callLog: scopedCallLog(ctx.session, ctx.taskId),
     writeToolSet: WRITE_TOOL_SET,
     runnerToolSet: RUNNER_TOOL_SET,

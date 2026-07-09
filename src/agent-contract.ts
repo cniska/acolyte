@@ -85,6 +85,7 @@ export type StreamOptions = {
   onBeforeFinish?: (attempt: {
     messages: readonly LanguageModelV4Message[];
     text: string;
+    answerText: string;
     signal?: LifecycleSignal;
   }) => OnBeforeFinishResult;
 };

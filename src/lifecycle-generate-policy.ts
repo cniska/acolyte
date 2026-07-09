@@ -68,24 +68,23 @@ export function renderFinishPolicyMessages(decision: FinishPolicyDecision): Lang
           ],
         },
       ];
-    case "completion-rejected-continue":
+    case "completion-rejected-continue": {
+      const followUp =
+        decision.block.reason === "empty-answer"
+          ? "Write your final response to the user now, then call `signal_done` again to finish."
+          : "Continue autonomously: run focused validation now, then call `signal_done` again to finish — or call `signal_blocked` only if validation is genuinely impossible.";
       return [
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: wrapInSystemReminder(
-                "completion-rejected",
-                [
-                  decision.block.message,
-                  "Continue autonomously: run focused validation now, then call `signal_done` again to finish — or call `signal_blocked` only if validation is genuinely impossible.",
-                ].join(" "),
-              ),
+              text: wrapInSystemReminder("completion-rejected", [decision.block.message, followUp].join(" ")),
             },
           ],
         },
       ];
+    }
     case "missing-signal-block":
     case "none":
       return [];

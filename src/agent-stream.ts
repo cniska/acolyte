@@ -165,6 +165,7 @@ export function createAgentStream(
             options.onBeforeFinish?.({
               messages,
               text: stepText,
+              answerText,
               ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
             }) ?? [];
           const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
@@ -274,6 +275,7 @@ export function createAgentStream(
             options.onBeforeFinish?.({
               messages,
               text: stepText,
+              answerText,
               signal: lifecycleSignal,
             }) ?? [];
           const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;

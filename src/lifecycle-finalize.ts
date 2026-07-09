@@ -5,18 +5,16 @@ import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
-const SIGNAL_OUTPUT_KEYS = {
-  done: "agent.output.done",
-  noop: "agent.output.no_changes_needed",
-} as const;
-
 function signalOutput(ctx: RunContext): string {
   if (ctx.acceptedSignal === "blocked") {
     return ctx.result?.signalReason?.trim() ?? "";
   }
 
-  if (ctx.acceptedSignal === "done" || ctx.acceptedSignal === "noop") {
-    return t(SIGNAL_OUTPUT_KEYS[ctx.acceptedSignal]);
+  // `done` has no fallback text: a done carries the model's own final response,
+  // and the completion block rejects an empty one — so an empty done must surface
+  // honestly (no_response_after_tools / no_output), never a fabricated "Done.".
+  if (ctx.acceptedSignal === "noop") {
+    return t("agent.output.no_changes_needed");
   }
 
   return "";

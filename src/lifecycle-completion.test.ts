@@ -14,6 +14,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [{ ...record("test-run", { command: "bun test src/app.test.ts" }), exitCode: 1 }],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -27,6 +28,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [{ ...record("shell-run", {}), exitCode: 2 }],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -43,6 +45,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
         { ...record("test-run", { command: "bun test" }), exitCode: 1 },
         { ...record("test-run", { command: "bun test" }), exitCode: 0 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -57,6 +60,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
         record("file-edit", { path: "src/app.ts" }),
         { ...record("test-run", { command: "bun test" }), exitCode: 1 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -68,6 +72,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
     const block = findCompletionBlock({
       signal: "blocked",
       callLog: [{ ...record("test-run", { command: "bun test" }), exitCode: 1 }],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -79,6 +84,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [record("file-read", { path: "src/app.ts" })],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -92,6 +98,7 @@ describe("findCompletionBlock", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [record("file-edit", { path: "src/app.ts" })],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -111,6 +118,7 @@ describe("findCompletionBlock", () => {
         record("file-edit", { path: "src/app.ts" }),
         { ...record("test-run", { files: ["src/app.test.ts"] }), exitCode: 0 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -125,6 +133,7 @@ describe("findCompletionBlock", () => {
         record("file-edit", { path: "src/app.test.ts" }),
         { ...record("test-run", { files: ["src/app.ts"] }), exitCode: 0 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -139,6 +148,7 @@ describe("findCompletionBlock", () => {
         record("file-edit", { path: "src/app.ts" }),
         { ...record("shell-run", { cmd: "bun", args: ["test", "src/app.test.ts"] }), exitCode: 0 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -153,6 +163,7 @@ describe("findCompletionBlock", () => {
         record("file-edit", { path: "src/app.ts" }),
         { ...record("test-run", { files: ["src/other.test.ts"] }), exitCode: 0 },
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -168,6 +179,7 @@ describe("findCompletionBlock", () => {
         { ...record("test-run", { command: "bun test src/app.test.ts" }), exitCode: 0 },
         record("file-edit", { path: "src/app.ts" }),
       ],
+      finalText: "answer",
       writeToolSet,
       runnerToolSet,
     });
@@ -179,6 +191,7 @@ describe("findCompletionBlock", () => {
     expect(
       findCompletionBlock({
         signal: "done",
+        finalText: "answer",
         callLog: [record("file-edit", { path: "docs/readme.md" })],
         writeToolSet,
         runnerToolSet,
@@ -188,10 +201,53 @@ describe("findCompletionBlock", () => {
     expect(
       findCompletionBlock({
         signal: "blocked",
+        finalText: "answer",
         callLog: [record("file-edit", { path: "src/app.ts" })],
         writeToolSet,
         runnerToolSet,
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("findCompletionBlock — empty-answer", () => {
+  test("blocks a done that wrote no final response", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      finalText: "   ",
+      callLog: [record("file-read", { path: "src/app.ts" })],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block?.reason).toBe("empty-answer");
+    expect(block?.message).toContain("signal_done");
+  });
+
+  test("does not fire when the done wrote a final response", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      finalText: "Here is the answer.",
+      callLog: [record("file-read", { path: "src/app.ts" })],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block).toBeUndefined();
+  });
+
+  test("a green run does not excuse an empty answer", () => {
+    const block = findCompletionBlock({
+      signal: "done",
+      finalText: "",
+      callLog: [
+        record("file-edit", { path: "src/app.ts" }),
+        { ...record("test-run", { files: ["src/app.test.ts"] }), exitCode: 0 },
+      ],
+      writeToolSet,
+      runnerToolSet,
+    });
+
+    expect(block?.reason).toBe("empty-answer");
   });
 });
