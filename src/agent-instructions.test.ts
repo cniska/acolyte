@@ -18,9 +18,10 @@ describe("createInstructions", () => {
       ["validation is blocked or unavailable", "skipped", "why"],
       ["concise", "outcome-first"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
+      ["Questions about the codebase", "Search and read files immediately", "never ask"],
       ["signal_done"],
       ["signal_noop"],
-      ["signal_blocked"],
+      ["signal_blocked", "cannot obtain", "never for information findable in the workspace"],
     ]);
   });
 

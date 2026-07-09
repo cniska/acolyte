@@ -24,6 +24,7 @@ export type KeyEvent = {
   end: boolean;
   backspace: boolean;
   delete: boolean;
+  paste: boolean;
 };
 
 export type InputRegistration = {

@@ -21,6 +21,23 @@ type ResolveTabAutocompleteInput = {
   isTab: boolean;
 };
 
+export type BareCharShortcut = "help" | "skills" | null;
+
+// `?`/`$` on an empty input are shortcuts only for a genuine keystroke — never
+// for a pasted character, which must insert literally (a paste with "?" would
+// otherwise pop the help panel).
+export function resolveBareCharShortcut(params: {
+  keyInput: string;
+  paste: boolean;
+  valueLength: number;
+  isPending: boolean;
+}): BareCharShortcut {
+  if (params.paste || params.valueLength !== 0) return null;
+  if (params.keyInput === "?") return "help";
+  if (params.keyInput === "$" && !params.isPending) return "skills";
+  return null;
+}
+
 export function resolveHistoryUp(
   inputHistory: string[],
   inputHistoryIndex: number,
@@ -241,11 +258,17 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           return;
         }
       }
-      if (!input.isPending && keyInput === "$" && input.value.length === 0) {
+      const bareShortcut = resolveBareCharShortcut({
+        keyInput,
+        paste: key.paste,
+        valueLength: input.value.length,
+        isPending: input.isPending,
+      });
+      if (bareShortcut === "skills") {
         void input.openSkillsPanel();
         return;
       }
-      if (keyInput === "?" && input.value.length === 0) {
+      if (bareShortcut === "help") {
         input.setShowHelp((current) => !current);
         return;
       }

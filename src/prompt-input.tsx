@@ -14,7 +14,7 @@ interface PromptInputProps {
   caretVisible?: boolean;
   linePrefixFirst?: string;
   linePrefixRest?: string;
-  onChange: (next: string) => void;
+  onChange: (next: string, fromPaste?: boolean) => void;
   onSubmit: (value: string) => void;
   onCursorLine: (line: number) => void;
   wrapWidth?: number;
@@ -225,9 +225,9 @@ export function PromptInput({
   onSubmitRef.current = onSubmit;
 
   const handleInput = useCallback((input: string, key: Parameters<Parameters<typeof useInput>[0]>[1]) => {
-    const emitChange = (next: string) => {
+    const emitChange = (next: string, fromPaste = false) => {
       valueRef.current = next;
-      onChangeRef.current(next);
+      onChangeRef.current(next, fromPaste);
     };
     const moveCursor = (next: number) => {
       cursorRef.current = next;
@@ -303,7 +303,7 @@ export function PromptInput({
         return;
       case "insert":
         metaPrefixAt.current = null;
-        emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`);
+        emitChange(`${v.slice(0, c)}${action.text}${v.slice(c)}`, key.paste);
         moveCursor(c + action.text.length);
         return;
       default:

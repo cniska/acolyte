@@ -4,6 +4,7 @@ type ProcessInputChangeParams = {
   currentValue: string;
   nextValue: string;
   applyingHistory: boolean;
+  paste: boolean;
 };
 
 export type InputChangeDecision = {
@@ -14,7 +15,10 @@ export type InputChangeDecision = {
 };
 
 export function processInputChange(params: ProcessInputChangeParams): InputChangeDecision {
-  if (params.currentValue.length === 0 && params.nextValue === "?") {
+  // Swallow only a *typed* "?" on an empty field — it is the help shortcut the
+  // keybinding layer consumes. A pasted "?" must insert as text (matching the
+  // keybinding layer, which already ignores paste for the same shortcut).
+  if (!params.paste && params.currentValue.length === 0 && params.nextValue === "?") {
     return {
       ignore: true,
       clearApplyingHistory: false,

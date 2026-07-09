@@ -39,6 +39,7 @@ export function emptyKey(): KeyEvent {
     end: false,
     backspace: false,
     delete: false,
+    paste: false,
   };
 }
 
@@ -280,7 +281,7 @@ function parseBracketedPaste(
   const content = raw.slice(contentStart, contentEnd).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const events: Array<{ input: string; key: KeyEvent }> = [];
   for (const ch of content) {
-    events.push({ input: ch, key: emptyKey() });
+    events.push({ input: ch, key: { ...emptyKey(), paste: true } });
   }
   return { events, consumed };
 }
