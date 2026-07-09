@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  resolveBareCharShortcut,
   resolveEscapeAction,
   resolveHistoryDown,
   resolveHistoryUp,
@@ -49,6 +50,22 @@ describe("chat keybindings helpers", () => {
       isTab: true,
     });
     expect(result).toBe("/status");
+  });
+
+  test("resolveBareCharShortcut ignores pasted ? and $ so they insert as text", () => {
+    // Regression: pasting text ending in "?" popped the help panel.
+    expect(resolveBareCharShortcut({ keyInput: "?", paste: true, valueLength: 0, isPending: false })).toBeNull();
+    expect(resolveBareCharShortcut({ keyInput: "$", paste: true, valueLength: 0, isPending: false })).toBeNull();
+  });
+
+  test("resolveBareCharShortcut fires only on a genuine keystroke on an empty field", () => {
+    expect(resolveBareCharShortcut({ keyInput: "?", paste: false, valueLength: 0, isPending: false })).toBe("help");
+    expect(resolveBareCharShortcut({ keyInput: "$", paste: false, valueLength: 0, isPending: false })).toBe("skills");
+    // non-empty field: a real char in the text, not a shortcut
+    expect(resolveBareCharShortcut({ keyInput: "?", paste: false, valueLength: 3, isPending: false })).toBeNull();
+    // help works while pending; skills does not
+    expect(resolveBareCharShortcut({ keyInput: "?", paste: false, valueLength: 0, isPending: true })).toBe("help");
+    expect(resolveBareCharShortcut({ keyInput: "$", paste: false, valueLength: 0, isPending: true })).toBeNull();
   });
 
   test("resolveEscapeAction prefers interrupt while thinking", () => {

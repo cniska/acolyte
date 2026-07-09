@@ -237,6 +237,13 @@ describe("parseKeyInput", () => {
       expect(results[0]?.key.return).toBe(true);
     });
 
+    test("pasted chars are flagged paste; typed chars are not", () => {
+      const pasted = parseKeyInput("\x1b[200~a?\x1b[201~");
+      expect(pasted.every((r) => r.key.paste)).toBe(true);
+      const typed = parseKeyInput("?");
+      expect(typed[0]?.key.paste).toBe(false);
+    });
+
     test("unterminated paste consumes remaining input as text", () => {
       const pasted = "\x1b[200~hello world";
       const results = parseKeyInput(pasted);
