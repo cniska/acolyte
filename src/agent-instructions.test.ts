@@ -19,6 +19,7 @@ describe("createInstructions", () => {
       ["concise", "outcome-first"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
       ["Questions about the codebase", "Search and read files immediately", "never ask"],
+      ["Available skills are listed each turn", "skill-activate"],
       ["signal_done"],
       ["signal_noop"],
       ["signal_blocked", "cannot obtain", "never for information findable in the workspace"],
@@ -59,5 +60,11 @@ describe("createInstructions", () => {
     expect(out).not.toContain("If the user names the files to change");
     expect(out).not.toContain("work one named file at a time");
     expect(out).not.toContain("once every requested file has the requested bounded change, stop");
+  });
+
+  test("does not claim skills auto-activate", () => {
+    const out = createInstructions("Soul.");
+    expect(out).not.toContain("activated automatically");
+    expect(out).not.toContain("auto-activation");
   });
 });

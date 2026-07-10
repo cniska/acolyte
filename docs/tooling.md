@@ -22,7 +22,7 @@ lifecycle → budget → cache → toolkit → registry
 | `session` | Search current session history |
 | `signal` | Complete lifecycle turns |
 | `memory` | Persistent cross-session knowledge |
-| `skill` | Skill discovery and activation |
+| `skill` | Skill activation |
 | `test` | Run workspace tests |
 | `checklist` | Multi-step task tracking |
 | `gh` | GitHub issue and pull request operations |

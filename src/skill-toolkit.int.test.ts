@@ -7,7 +7,6 @@ import { tempDir } from "./test-utils";
 import type { ToolkitInput } from "./tool-contract";
 import { createSessionContext } from "./tool-session";
 
-type SkillListResult = { kind: string; skills: { name: string; description: string; source: string }[] };
 type SkillActivateResult = { kind: string; activated: { name: string; source: string; instructions: string }[] };
 
 const { createDir, cleanupDirs } = tempDir();
@@ -31,42 +30,6 @@ function writeProjectSkill(cwd: string, name: string, description: string, body:
 
 beforeEach(() => resetSkillCache());
 afterEach(cleanupDirs);
-
-describe("skill-list", () => {
-  test("returns bundled skills", async () => {
-    const dir = createDir("acolyte-skill-list-");
-    await loadSkills(dir);
-    const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = (await toolkit.listSkills.execute({}, "call-1")) as { result: SkillListResult };
-    expect(result.kind).toBe("skill-list");
-    expect(result.skills.length).toBeGreaterThan(0);
-    const build = result.skills.find((s) => s.name === "build");
-    expect(build).toBeDefined();
-    expect(build?.source).toBe("bundled");
-  });
-
-  test("returns project skills with source", async () => {
-    const dir = createDir("acolyte-skill-list-proj-");
-    writeProjectSkill(dir, "deploy", "Deploy to prod", "# Deploy\nRun deploy.");
-    await loadSkills(dir);
-    const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = (await toolkit.listSkills.execute({}, "call-2")) as { result: SkillListResult };
-    const deploy = result.skills.find((s) => s.name === "deploy");
-    expect(deploy).toBeDefined();
-    expect(deploy?.source).toBe("project");
-  });
-
-  test("includes both bundled and project skills", async () => {
-    const dir = createDir("acolyte-skill-list-both-");
-    writeProjectSkill(dir, "deploy", "Deploy to prod", "# Deploy\nRun deploy.");
-    await loadSkills(dir);
-    const toolkit = createSkillToolkit(createToolkitInput(dir));
-    const { result } = (await toolkit.listSkills.execute({}, "call-3")) as { result: SkillListResult };
-    const sources = new Set(result.skills.map((s) => s.source));
-    expect(sources.has("bundled")).toBe(true);
-    expect(sources.has("project")).toBe(true);
-  });
-});
 
 describe("skill-activate", () => {
   test("activates bundled skill and sets session activeSkills", async () => {

@@ -21,7 +21,6 @@ describe("toolsets", () => {
       "gitLog",
       "gitShow",
       "gitStatus",
-      "listSkills",
       "listUndo",
       "memoryAdd",
       "memoryObserve",
