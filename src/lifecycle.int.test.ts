@@ -472,4 +472,56 @@ exit 1
     expect(checkpoints[0]?.toolId).toBe("file-edit");
     expect(checkpoints[0]?.paths).toEqual(["a.txt"]);
   });
+
+  test("mid-turn narration does not overwrite the final response", async () => {
+    // Regression: the narration cadence lets the model write short lines during tool work.
+    // A trailing narration line in a working step must not become the user's final response,
+    // and must not let the empty-answer gate wave through a signal that carried no text.
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      if (turnCount === 1) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+          {
+            id: `fc_${ctx.responseCounter}`,
+            callId: `call_${ctx.responseCounter}`,
+            name: toolName,
+            args: JSON.stringify({
+              path: join(workspace, "a.ts"),
+              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
+            }),
+          },
+        ]);
+      }
+      // A done with a proper summary — rejected because the write is not yet validated.
+      if (turnCount === 2) return createSignalPayload(ctx, "signal_done", "Here is the summary of what changed.");
+      // Validation, with a narration line riding along in the same working step.
+      if (turnCount === 3) {
+        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
+        return createToolCallsPayload(
+          ctx.model,
+          ctx.responseCounter,
+          [
+            {
+              id: `fc_${ctx.responseCounter}`,
+              callId: `call_${ctx.responseCounter}`,
+              name: toolName,
+              args: JSON.stringify({ cmd: "true" }),
+            },
+          ],
+          "Running the tests once more.",
+        );
+      }
+      // The final signal carries no text; the earlier summary must stand.
+      return createSignalPayload(ctx, "signal_done", "");
+    });
+
+    const reply = await run("update x to 4");
+    expect(turnCount).toBe(4);
+    expect(reply.state).toBe("done");
+    expect(reply.error).toBeUndefined();
+    expect(reply.output).toContain("Here is the summary of what changed.");
+    expect(reply.output).not.toContain("Running the tests once more.");
+  });
 });
