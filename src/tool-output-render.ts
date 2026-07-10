@@ -1,5 +1,6 @@
 import { t, tDynamic } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
+import { truncateToWidth } from "./truncate-text";
 
 export type ResolvedHeader = { label: string; detail?: string; meta?: Record<string, unknown> };
 
@@ -87,7 +88,7 @@ function renderDiffLine(item: Extract<ToolOutputPart, { kind: "diff" }>, numWidt
   return `${num} ${prefix}${item.text}`;
 }
 
-function renderList(items: ToolOutputPart[]): string {
+function renderList(items: ToolOutputPart[], width?: number): string {
   const first = items[0];
   if (!first) return "";
   const header = renderPart(first);
@@ -107,11 +108,15 @@ function renderList(items: ToolOutputPart[]): string {
     }
     return renderPart(item);
   });
-  return `${header}\n${lines.map((line) => `  ${line}`).join("\n")}`;
+  // Truncate each assembled body line (indent + gutter + content) at the display width so
+  // preview lines never wrap; the gutter sits at line start, so alignment is preserved.
+  // The header is left intact (long paths want middle-truncation, a separate concern).
+  const bodyLines = lines.map((line) => (width === undefined ? `  ${line}` : truncateToWidth(`  ${line}`, width)));
+  return `${header}\n${bodyLines.join("\n")}`;
 }
 
-export function renderToolOutput(content: ToolOutputPart | ToolOutputPart[]): string {
-  return Array.isArray(content) ? renderList(content) : renderPart(content);
+export function renderToolOutput(content: ToolOutputPart | ToolOutputPart[], width?: number): string {
+  return Array.isArray(content) ? renderList(content, width) : renderPart(content);
 }
 
 export type ToolOutputUpdate = {

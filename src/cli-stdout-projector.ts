@@ -1,7 +1,7 @@
 import { stdout as output } from "node:process";
 import { type ChatRow, isChecklistOutput, isToolOutput } from "./chat-contract";
 import { formatChecklist } from "./checklist-format";
-import { formatAgentReplyOutput, printIndentedDim } from "./cli-format";
+import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
 import { palette } from "./palette";
 import { renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printOutput, printWarning, streamText } from "./ui";
@@ -61,7 +61,7 @@ export function createStdoutRowProjector(): {
     const parts = row.content.parts;
     // A lone header with no detail carries nothing to show yet — wait for real content.
     if (parts.length === 1 && parts[0]?.kind === "tool-header" && !parts[0].detail) return;
-    const rendered = renderToolOutput(parts);
+    const rendered = renderToolOutput(parts, Math.max(24, (output.columns ?? 120) - TOOL_BODY_INDENT));
     const previous = emittedTool.get(row.id);
     emittedTool.set(row.id, rendered);
     if (previous !== undefined) {

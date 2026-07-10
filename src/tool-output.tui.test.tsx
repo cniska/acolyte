@@ -6,9 +6,9 @@ import type { ToolOutputPart } from "./tool-output-contract";
 import { renderToolOutput } from "./tool-output-render";
 import { renderPlain } from "./tui/test-utils";
 
-function renderChat(toolOutput: ToolOutputPart[]): string {
+function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
   const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
-  return renderPlain(<ChatTranscript rows={[row]} pendingFrame={0} />, 96);
+  return renderPlain(<ChatTranscript rows={[row]} pendingFrame={0} />, columns);
 }
 
 describe("tool output TUI — CLI (renderToolOutput)", () => {
@@ -423,6 +423,25 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
       `),
     );
   });
+
+  test("truncates a long body line to the given width, leaving the header intact", () => {
+    const items: ToolOutputPart[] = [
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
+    ];
+    const [header, body] = renderToolOutput(items, 20).split("\n");
+    expect(header).toBe("Edit notes.ts (+1 -0)"); // header is never truncated
+    expect(body).toBe(`  1 +${"X".repeat(14)}…`);
+    expect(Bun.stringWidth(body)).toBe(20);
+  });
+
+  test("omitting the width leaves long lines unwrapped (default path unchanged)", () => {
+    const items: ToolOutputPart[] = [
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
+    ];
+    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n  1 +${"X".repeat(60)}`);
+  });
 });
 
 describe("tool output TUI — chat (Ink rendering)", () => {
@@ -676,5 +695,17 @@ describe("tool output TUI — chat (Ink rendering)", () => {
 
   test("skill-activate with name", () => {
     expect(renderChat([{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }])).toBe("• Skill build");
+  });
+
+  test("truncates a long diff line to the terminal width instead of wrapping", () => {
+    const items: ToolOutputPart[] = [
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(80) },
+    ];
+    const out = renderChat(items, 40); // terminal width 40 → line must fit, not wrap
+    const diffLine = out.split("\n").find((line) => line.includes("X")) ?? "";
+    expect(diffLine.endsWith("…")).toBe(true); // content was cut, not wrapped
+    expect(Bun.stringWidth(diffLine)).toBeLessThanOrEqual(40);
+    expect(out).toContain("• Edit notes.ts (+1 -0)");
   });
 });
