@@ -121,7 +121,8 @@ describe("runLifecycle", () => {
 
     expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
     expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("changed and no later validation targeted it");
+    expect(response.error).toBe("The agent finished without validating its changes to `src/app.ts`.");
+    expect(response.error).not.toContain("Run a related test");
     expect(events.find((entry) => entry.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
       "missing-validation-after-write",
     );
@@ -163,8 +164,10 @@ describe("runLifecycle", () => {
 
     expect(RUNNER_TOOL_SET.has("test-run")).toBe(true);
     expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("exit code 1");
+    expect(response.error).toContain("exit 1");
     expect(response.error).toContain("bun test src/app.test.ts");
+    // The terminal error is user-audience: never the model-facing retry nudge.
+    expect(response.error).not.toContain("Diagnose the failure");
     expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("broken-handoff");
   });
 
@@ -196,7 +199,10 @@ describe("runLifecycle", () => {
     );
 
     expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("without writing a final response");
+    // Regression (dogfood 2026-07-10): the terminal error must be user-audience, never the
+    // model-facing "you called `signal_done`…" retry nudge that used to leak into the transcript.
+    expect(response.error).toBe("The agent finished without writing a response. Retry or rephrase the request.");
+    expect(response.error).not.toContain("you called");
     expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
   });
 
@@ -228,7 +234,10 @@ describe("runLifecycle", () => {
     );
 
     expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("without telling the user why no changes were needed");
+    // Same user-audience message as the empty done — the done/noop split lives only in the
+    // model-facing nudge, never in the user's error row.
+    expect(response.error).toBe("The agent finished without writing a response. Retry or rephrase the request.");
+    expect(response.error).not.toContain("you called");
     expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
   });
 });
