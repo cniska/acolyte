@@ -30,6 +30,68 @@ describe("replayTerminal", () => {
   });
 });
 
+describe("replayTerminal — width & deferred wrap", () => {
+  test("a wide grapheme exactly filling the row stays one line", () => {
+    // あ(2) + あ(2) + a(1) = 5 columns exactly.
+    expect(transcriptLines(replayTerminal(["ああa"], 4, 5))).toEqual(["ああa"]);
+  });
+
+  test("a wide grapheme with one cell left wraps whole, never split", () => {
+    // x(1) leaves col at 3; the second あ can't fit in the single last cell.
+    expect(transcriptLines(replayTerminal(["xああ"], 4, 4))).toEqual(["xあ", "あ"]);
+  });
+
+  test("an exactly-full row followed by \\r\\n produces no blank row", () => {
+    expect(transcriptLines(replayTerminal(["abcde\r\nnext"], 4, 5))).toEqual(["abcde", "next"]);
+  });
+
+  test("a pending wrap commits on the next printable char", () => {
+    expect(transcriptLines(replayTerminal(["abcdef"], 4, 5))).toEqual(["abcde", "f"]);
+  });
+
+  test("a bare line feed while a wrap is pending advances one row, preserving the column", () => {
+    // LF advances one row (not two) and clears the last-column flag, but does NOT
+    // carriage-return — so a foreign \n after a full row shows the column splice
+    // (X on the last column), never a clean col-0 write that would hide corruption.
+    expect(transcriptLines(replayTerminal(["abcde\nX"], 4, 5))).toEqual(["abcde", "    X"]);
+  });
+
+  test("erase-down landing on a wide char's continuation blanks the orphaned head", () => {
+    // CUU preserves the column onto the あ continuation at col 2; erase-down must
+    // blank the あ head at col 1 so no half-erased double-width char survives.
+    const vt = replayTerminal(["xあ\r\nab", `${ansi.cursorUp(1)}${ansi.eraseDown}`], 4, 5);
+    expect(transcriptLines(vt)).toEqual(["x"]);
+  });
+
+  test("cursor-up commits a pending wrap; a preceding \\r cancels it", () => {
+    // Without the \r, the full row parks a pending wrap that cursor-up commits, so
+    // CUU(1) lands on the "abcde" row and erase-down leaves "one".
+    const committed = replayTerminal(["one\r\nabcde", `${ansi.cursorUp(1)}\r${ansi.eraseDown}`], 5, 5);
+    expect(transcriptLines(committed)).toEqual(["one"]);
+    // With the \r, the pending wrap is cancelled, CUU(1) lands one row higher, and
+    // erase-down wipes everything — this is exactly render.ts's trailing-\r defusal.
+    const cancelled = replayTerminal(["one\r\nabcde\r", `${ansi.cursorUp(1)}\r${ansi.eraseDown}`], 5, 5);
+    expect(transcriptLines(cancelled)).toEqual([]);
+  });
+
+  test("SGR (color reset) does not commit a pending wrap", () => {
+    // If ESC[0m committed the wrap, \r+X would land on a new row → ["abcde","X"].
+    expect(transcriptLines(replayTerminal(["abcde\x1b[0m\rX"], 5, 5))).toEqual(["Xbcde"]);
+  });
+
+  test("overwriting a wide head blanks its orphaned continuation cell", () => {
+    // あ occupies col0-1; writing x over col0 must blank col1 so it does not merge
+    // with the following b as "xb".
+    expect(transcriptLines(replayTerminal(["あb\rx"], 4, 5))).toEqual(["x b"]);
+  });
+
+  test("a wide grapheme cluster survives scroll into scrollback intact", () => {
+    const vt = replayTerminal(["👩‍👩‍👧\r\nL2\r\nL3"], 2, 10);
+    expect(vt.scrollback).toEqual(["👩‍👩‍👧"]);
+    expect(transcriptLines(vt)).toEqual(["👩‍👩‍👧", "L2", "L3"]);
+  });
+});
+
 describe("assertTranscriptIntegrity", () => {
   test("passes when the committed+visible transcript matches", () => {
     const vt = replayTerminal(["a\r\nb\r\nc"], 5, 20);
@@ -106,7 +168,38 @@ function GrowingLinesApp(props: { unmount: () => void }): React.JSX.Element {
   );
 }
 
+function ExactWidthApp(props: { unmount: () => void }): React.JSX.Element {
+  const [withC, setWithC] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setWithC(true), 20);
+    const t2 = setTimeout(props.unmount, 40);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [props.unmount]);
+  return (
+    <tui-box flexDirection="column">
+      <tui-text>a</tui-text>
+      <tui-text>{"B".repeat(10)}</tui-text>
+      {withC ? <tui-text>c</tui-text> : null}
+    </tui-box>
+  );
+}
+
 describe("renderer transcript integrity", () => {
+  test("an exactly-full-width line does not desync the erase math across frames", async () => {
+    // The "BBBBBBBBBB" line is exactly `columns`, so it parks a pending wrap. render.ts's
+    // trailing `\r` cancels it before the next frame's cursor-up; deleting that `\r`
+    // (render.ts:132) makes cursor-up land one row low and duplicate "a" — caught here.
+    const writes = await renderCapture(({ unmount }) => <ExactWidthApp unmount={unmount} />, {
+      columns: 10,
+      rows: 6,
+    });
+    const vt = replayTerminal(frameWrites(writes), 6, 10);
+    assertTranscriptIntegrity(vt, ["a", "BBBBBBBBBB", "c"]);
+  });
+
   test("every overflowing line survives in the transcript exactly once", async () => {
     const lines = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
     const writes = await renderCapture(({ unmount }) => <LinesApp unmount={unmount} lines={lines} />, {
