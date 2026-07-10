@@ -158,7 +158,13 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        if (stepText.trim().length > 0) answerText = stepText;
+        // Text emitted alongside working tool calls is narration ("Running the tests once
+        // more."), not the final response — only a signal-bearing step or a pure-text step
+        // carries the answer. Without this guard a trailing narration line overwrites a good
+        // summary written before a completion-rejection reopen, and the empty-answer gate
+        // waves it through as the user's final response.
+        const isWorkingStep = pendingToolCalls.some((tc) => !signalForToolName(tc.toolName));
+        if (stepText.trim().length > 0 && !isWorkingStep) answerText = stepText;
 
         if (pendingToolCalls.length === 0) {
           const finishResult =
