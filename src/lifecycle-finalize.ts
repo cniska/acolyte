@@ -5,6 +5,21 @@ import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
+// Stable key for a tool call so identical (tool, args) pairs collapse regardless of arg
+// key order — a repeated discovery call (re-read or re-search) counts as a duplicate.
+function toolCallKey(toolName: string, args: Record<string, unknown>): string {
+  const canonical = (value: unknown): string => {
+    if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+    if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(obj[k])}`)
+      .join(",")}}`;
+  };
+  return `${toolName}\u0000${canonical(args)}`;
+}
+
 function signalOutput(ctx: RunContext): string {
   if (ctx.acceptedSignal === "blocked") {
     return ctx.result?.signalReason?.trim() ?? "";
@@ -59,6 +74,18 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
       ? callLog.slice(0, firstWriteIndex).filter(isCodeDiscovery).length
       : callLog.filter(isCodeDiscovery).length;
 
+  // Discovery calls (reads + searches) repeating an identical earlier (tool, args) within the
+  // task — the field that splits over-exploration into harness-induced re-derivation (high)
+  // vs. genuine breadth (≈0), per the RC5a diagnosis.
+  const seenDiscoveryKeys = new Set<string>();
+  let duplicateDiscoveryCalls = 0;
+  for (const entry of callLog) {
+    if (!isCodeDiscovery(entry)) continue;
+    const key = toolCallKey(entry.toolName, entry.args);
+    if (seenDiscoveryKeys.has(key)) duplicateDiscoveryCalls += 1;
+    else seenDiscoveryKeys.add(key);
+  }
+
   ctx.debug("lifecycle.summary", {
     task_id: ctx.taskId ?? null,
     model: ctx.model,
@@ -75,6 +102,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     memory_search_calls: memorySearchCalls,
     session_search_calls: sessionSearchCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
+    duplicate_discovery_calls: duplicateDiscoveryCalls,
     lifecycle_signal: ctx.acceptedSignal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
     active_skills: ctx.request.activeSkills?.map((s) => s.name) ?? null,

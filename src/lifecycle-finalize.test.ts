@@ -166,6 +166,36 @@ describe("phaseFinalize", () => {
     expect(summary?.pre_write_discovery_calls).toBe(2);
   });
 
+  test("counts duplicate discovery calls (repeated tool+args), independent of arg order", () => {
+    const session = createSessionContext("task_dup");
+    session.callLog.push(
+      { toolName: "file-read", args: { path: "a.ts" }, taskId: "task_dup", status: "succeeded" },
+      // Same read again — a duplicate.
+      { toolName: "file-read", args: { path: "a.ts" }, taskId: "task_dup", status: "succeeded" },
+      // Distinct read — not a duplicate.
+      { toolName: "file-read", args: { path: "b.ts" }, taskId: "task_dup", status: "succeeded" },
+      { toolName: "file-search", args: { pattern: "x", path: "src" }, taskId: "task_dup", status: "succeeded" },
+      // Same search, keys in a different order — still a duplicate.
+      { toolName: "file-search", args: { path: "src", pattern: "x" }, taskId: "task_dup", status: "succeeded" },
+      // Recall probes are excluded from discovery, so their repeat does not count.
+      { toolName: "session-search", args: { query: "y" }, taskId: "task_dup", status: "succeeded" },
+      { toolName: "session-search", args: { query: "y" }, taskId: "task_dup", status: "succeeded" },
+    );
+    let summary: Record<string, unknown> | undefined;
+    const ctx = createRunContext({
+      taskId: "task_dup",
+      session,
+      result: { text: "done", toolCalls: [] },
+      debug: (event, fields) => {
+        if (event === "lifecycle.summary") summary = fields;
+      },
+    });
+
+    phaseFinalize(ctx);
+
+    expect(summary?.duplicate_discovery_calls).toBe(2);
+  });
+
   test("lifecycle.summary debug event has all catalog display fields", () => {
     const debugEvents: Array<{ event: string; fields: Record<string, unknown> }> = [];
     const ctx = createRunContext({

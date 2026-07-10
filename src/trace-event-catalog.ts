@@ -153,6 +153,7 @@ export const TRACE_EVENT_CATALOG: Record<TraceEventName, TraceEventDefinition> =
     { key: "memory_search_calls", label: "memory_search" },
     { key: "session_search_calls", label: "session_search" },
     { key: "pre_write_discovery_calls", label: "pre_write_discovery" },
+    { key: "duplicate_discovery_calls", label: "dup_discovery" },
     { key: "budget_exhausted_count", label: "budget_exhausted" },
     "has_error",
   ]),
