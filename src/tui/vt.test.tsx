@@ -2,14 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { ansi } from "./styles";
-import { renderCapture } from "./test-utils";
+import { frameWrites, renderCapture } from "./test-utils";
 import { assertTranscriptIntegrity, replayTerminal, TranscriptIntegrityError, transcriptLines } from "./vt";
-
-/** Drop the unmount-cleanup writes (cursor-show onward) so only frames remain. */
-function frameWrites(writes: string[]): string[] {
-  const cleanup = writes.findIndex((write) => write.includes(ansi.cursorShow));
-  return cleanup >= 0 ? writes.slice(0, cleanup) : writes;
-}
 
 describe("replayTerminal", () => {
   test("keeps lines that scroll off the top in scrollback", () => {

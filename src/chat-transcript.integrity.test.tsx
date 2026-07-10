@@ -1,0 +1,75 @@
+import { describe, expect, test } from "bun:test";
+import type React from "react";
+import { type ChatRow, createRow } from "./chat-contract";
+import { ChatTranscript } from "./chat-transcript";
+import { assertCursorAccounting, frameWrites, renderScript } from "./tui/test-utils";
+import { assertTranscriptIntegrity, replayTerminal, transcriptLines } from "./tui/vt";
+
+const COLUMNS = 40;
+// contentWidth = COLUMNS - 2 (marker box). A contentWidth-wide line plus its
+// 2-col marker fills the row exactly, parking a pending wrap render.ts must defuse.
+const CONTENT_WIDTH = COLUMNS - 2;
+const CJK = "日本語のテスト"; // width-2 graphemes — exercises real column arithmetic
+
+// A rich, tricky rowset: a wrapping CJK line, a line that fills the row exactly,
+// a tool part with a padded diff bar, a header that wraps at narrow width, and
+// plain prose. Each vector (wide-char erase, pending-wrap \r, diff-bar padding,
+// narrow header wrap) is present in one transcript.
+const ROWS: ChatRow[] = [
+  createRow("user", "run the analysis on the report"),
+  createRow("assistant", `解析結果: ${CJK}${CJK}${CJK}`),
+  createRow("assistant", "X".repeat(CONTENT_WIDTH)),
+  createRow("tool", {
+    parts: [
+      { kind: "tool-header", labelKey: "tool.label.file_read", detail: "src/report.ts" },
+      { kind: "diff", marker: "add", lineNumber: 1, text: "const value = computeExpensiveThing(input, options)" },
+      { kind: "diff", marker: "remove", lineNumber: 2, text: "let value = 1" },
+    ],
+  }),
+  createRow("assistant", "and that is the final summary line of the reply body"),
+];
+
+function transcriptOf(rows: ChatRow[]): React.JSX.Element {
+  return <ChatTranscript rows={rows} pendingFrame={0} />;
+}
+
+/** Render the full rowset in one frame at a viewport tall enough to hold it all;
+ *  its committed+visible transcript is the ground truth every other render must
+ *  reproduce line-for-line. */
+async function oracleTranscript(): Promise<string[]> {
+  const frames = await renderScript([transcriptOf(ROWS)], { columns: COLUMNS, rows: 200 });
+  return transcriptLines(replayTerminal(frameWrites(frames.flat()), 200, COLUMNS));
+}
+
+describe("ChatTranscript transcript integrity", () => {
+  test("the oracle transcript is non-trivial and carries every tricky vector", async () => {
+    const expected = await oracleTranscript();
+    // Guards against a vacuous pass: the transcript must actually contain the CJK
+    // line, the diff content, and a line filling the row exactly.
+    expect(expected.some((line) => line.includes(CJK))).toBe(true);
+    // The diff bar truncates its content to the width budget, so match the prefix.
+    expect(expected.some((line) => line.includes("+const value"))).toBe(true);
+    expect(expected.some((line) => Bun.stringWidth(line) === COLUMNS)).toBe(true);
+  });
+
+  test("streaming rows through an overflowing viewport loses and duplicates nothing", async () => {
+    const expected = await oracleTranscript();
+    // Grow the transcript one row per frame at a short viewport so the top rows
+    // overflow into scrollback — the frozen-prefix path that produced the loss bug.
+    const script = ROWS.map((_, i) => transcriptOf(ROWS.slice(0, i + 1)));
+    const frames = await renderScript(script, { columns: COLUMNS, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, COLUMNS);
+    // Every line the tall oracle shows survives exactly once, in order, across the
+    // scrollback boundary — no drop, duplicate, or column-splice.
+    assertTranscriptIntegrity(vt, expected);
+  });
+
+  test("cursor-up distance matches the prior live region on every frame", async () => {
+    // Tall viewport → no overflow, so each frame is a pure active re-render and the
+    // emitted cursorUp(n) must equal the physical height of the previous frame's
+    // live region, measured by the width-aware VT and render's own physicalRowCount.
+    const script = ROWS.map((_, i) => transcriptOf(ROWS.slice(0, i + 1)));
+    const frames = await renderScript(script, { columns: COLUMNS, rows: 40 });
+    assertCursorAccounting(frames, COLUMNS);
+  });
+});
