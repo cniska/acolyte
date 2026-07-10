@@ -14,9 +14,12 @@ export function displayPath(pathInput: string): string {
   return rel;
 }
 
+/** Columns every tool-output body line is indented under its header in run mode. */
+export const TOOL_BODY_INDENT = 2;
+
 export function printIndentedDim(content: string): void {
   for (const line of content.split("\n")) {
-    printDim(line.length > 0 ? `  ${line}` : "");
+    printDim(line.length > 0 ? `${" ".repeat(TOOL_BODY_INDENT)}${line}` : "");
   }
 }
 
@@ -32,7 +35,7 @@ export function printToolResult(toolId: string, raw: string, detail?: string): v
       if (trimmed.length > 0) items.push({ kind: "text", text: trimmed });
     }
   }
-  const rendered = renderToolOutput(items);
+  const rendered = renderToolOutput(items, Math.max(24, process.stdout.columns ?? 120));
   const lines = rendered.split("\n");
   if (lines[0]) printToolHeader(tDynamic(labelKey), detail);
   for (const line of lines.slice(1)) {
