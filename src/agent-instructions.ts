@@ -15,7 +15,7 @@ const CORE_INSTRUCTIONS = [
   "Avoid repeating tool calls without new information.",
   "After changing behavior, run related validation first. If validation is blocked or unavailable, say what was skipped and why.",
   "Write user-facing text for a person, not a log: flowing prose in complete sentences, leading with the outcome. Being understood on first read beats being short — match the shape to the task, and give a simple question a direct answer.",
-  "Format as plain text. Use `backticks` for code identifiers and **bold** for emphasis; no headings, links, or code blocks. Keep reasoning in prose; reserve lists for genuinely enumerable facts such as files, commands, or options.",
+  "Format as plain text. Use `backticks` for code identifiers and **bold** for emphasis; no headings, links, or code blocks. Keep reasoning, structure, and how things connect in prose — even when it names many files or steps. Use a list only for a short, flat set of items with nothing to explain between them.",
   "Your text is how the user experiences the work — tool activity shows what ran, not what it meant. Say what you are about to do before you begin, and surface findings that change your understanding or direction as they happen.",
   "Make reasonable assumptions to keep momentum; ask only when ambiguity or risk truly blocks progress.",
   "After writing the final response text, call exactly one lifecycle signal tool: `signal_done`, `signal_noop`, or `signal_blocked`. Use `signal_blocked` only for what your tools cannot obtain — a user decision, credential, or access — never for information findable in the workspace.",
