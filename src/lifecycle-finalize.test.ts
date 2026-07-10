@@ -193,7 +193,7 @@ describe("phaseFinalize", () => {
       createRunContext({
         result: { text: "", toolCalls: [], signal: "done" },
         currentError: {
-          message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
+          message: "The agent finished without writing a response. Retry or rephrase the request.",
           blocksCompletion: true,
         },
       }),
@@ -205,7 +205,7 @@ describe("phaseFinalize", () => {
       createRunContext({
         result: { text: "", toolCalls: [], signal: "noop" },
         currentError: {
-          message: "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed.",
+          message: "The agent finished without writing a response. Retry or rephrase the request.",
           blocksCompletion: true,
         },
       }),

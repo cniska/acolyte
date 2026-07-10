@@ -1,13 +1,12 @@
 import type { LifecycleSignal } from "./agent-contract";
 import type { ToolCallRecord } from "./tool-contract";
 
-export type CompletionBlockReason = "broken-handoff" | "missing-validation-after-write" | "empty-answer";
-
-export type CompletionBlock = {
-  reason: CompletionBlockReason;
-  message: string;
-  path: string;
-};
+// Facts only — never prose. Each audience (model retry-nudge, user error row) renders
+// its own text from these facts, so `currentError.message` stays user-audience by contract.
+export type CompletionBlock =
+  | { reason: "broken-handoff"; path: string; command: string; exitCode: number }
+  | { reason: "missing-validation-after-write"; path: string }
+  | { reason: "empty-answer"; path: string; signal: "done" | "noop" };
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]);
 
@@ -24,12 +23,8 @@ export function findCompletionBlock(input: {
   if (input.signal === "done") {
     const brokenHandoff = findBrokenHandoff(input.callLog, input.runnerToolSet);
     if (brokenHandoff) {
-      const label = brokenHandoff.command ? `\`${brokenHandoff.command}\`` : `\`${brokenHandoff.toolName}\``;
-      return {
-        reason: "broken-handoff",
-        path: brokenHandoff.command ?? brokenHandoff.toolName,
-        message: `Cannot finish yet: the last ${label} run failed (exit code ${brokenHandoff.exitCode}). Diagnose the failure and fix it, or call \`signal_blocked\` if recovery is genuinely impossible.`,
-      };
+      const command = brokenHandoff.command ?? brokenHandoff.toolName;
+      return { reason: "broken-handoff", path: command, command, exitCode: brokenHandoff.exitCode };
     }
 
     const lastWrite = findLastSourceWrite(input.callLog, input.writeToolSet);
@@ -40,11 +35,7 @@ export function findCompletionBlock(input: {
         (entry) => isGreenRunner(entry, input.runnerToolSet) && runnerTargets(entry, relatedPaths),
       );
       if (!validated) {
-        return {
-          reason: "missing-validation-after-write",
-          path: lastWrite.path,
-          message: `Cannot finish yet: \`${lastWrite.path}\` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.`,
-        };
+        return { reason: "missing-validation-after-write", path: lastWrite.path };
       }
     }
   }
@@ -52,14 +43,7 @@ export function findCompletionBlock(input: {
   // Both signals carry the model's own words — a `done` is the final response,
   // a `noop` is why no changes were needed. An empty answer is not a completion.
   if (input.finalText.trim().length === 0) {
-    return {
-      reason: "empty-answer",
-      path: "",
-      message:
-        input.signal === "noop"
-          ? "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed."
-          : "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
-    };
+    return { reason: "empty-answer", path: "", signal: input.signal };
   }
 
   return undefined;

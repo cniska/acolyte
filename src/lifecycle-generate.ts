@@ -15,6 +15,7 @@ import {
   errorKindFromCategory,
   parseError,
 } from "./error-handling";
+import { t } from "./i18n";
 import { findCompletionBlock } from "./lifecycle-completion";
 import {
   type GenerateOptions,
@@ -227,7 +228,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
             return { messages: renderFinishPolicyMessages(decision), toolChoice: "required" };
           case "missing-signal-block":
             ctx.currentError = {
-              message: decision.message,
+              message: t("lifecycle.completion.missing_signal"),
               code: decision.code,
               category: "other",
               blocksCompletion: true,

@@ -26,12 +26,7 @@ describe("generate finish policy", () => {
       role: "user",
       content: [{ type: "text", text: expect.stringContaining('type="missing-signal"') }],
     });
-    expect(block).toEqual({
-      kind: "missing-signal-block",
-      message:
-        "Cannot finish yet: final responses must call exactly one lifecycle signal tool (`signal_done`, `signal_noop`, or `signal_blocked`).",
-      code: LIFECYCLE_ERROR_CODES.unknown,
-    });
+    expect(block).toEqual({ kind: "missing-signal-block", code: LIFECYCLE_ERROR_CODES.unknown });
     expect(renderFinishPolicyMessages(block)).toEqual([]);
   });
 
@@ -45,7 +40,6 @@ describe("generate finish policy", () => {
     const state = createFinishPolicyState();
     const completionBlock = {
       reason: "missing-validation-after-write" as const,
-      message: "Cannot finish yet.",
       path: "src/app.ts",
     };
 
@@ -66,11 +60,7 @@ describe("generate finish policy", () => {
   test("empty-answer rejection asks for a final response, not validation", () => {
     const rendered = renderFinishPolicyMessages({
       kind: "completion-rejected-continue",
-      block: {
-        reason: "empty-answer",
-        message: "Cannot finish yet: you called `signal_done` without writing a final response to the user.",
-        path: "",
-      },
+      block: { reason: "empty-answer", path: "", signal: "done" },
     });
     const text = JSON.stringify(rendered);
 
@@ -81,16 +71,13 @@ describe("generate finish policy", () => {
   test("empty-answer follow-up is signal-agnostic (does not hardcode signal_done for a noop)", () => {
     const rendered = renderFinishPolicyMessages({
       kind: "completion-rejected-continue",
-      block: {
-        reason: "empty-answer",
-        message: "Cannot finish yet: you called `signal_noop` without telling the user why no changes were needed.",
-        path: "",
-      },
+      block: { reason: "empty-answer", path: "", signal: "noop" },
     });
     const text = JSON.stringify(rendered);
 
     expect(text).toContain("Write your final response");
-    // The follow-up must not reintroduce a `signal_done`-specific instruction for a noop block.
+    // The model-facing text must be the noop variant and must not name `signal_done`.
+    expect(text).toContain("signal_noop");
     expect(text).not.toContain("signal_done");
   });
 
@@ -101,7 +88,6 @@ describe("generate finish policy", () => {
     const state = createFinishPolicyState();
     const completionBlock = {
       reason: "missing-validation-after-write" as const,
-      message: "Cannot finish yet.",
       path: "src/app.ts",
     };
 

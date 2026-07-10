@@ -1,9 +1,10 @@
 import type { LifecycleSignal } from "./agent-contract";
 import { ensureRealTokenEncoder } from "./agent-input";
+import { unreachable } from "./assert";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
-import { findCompletionBlock } from "./lifecycle-completion";
+import { type CompletionBlock, findCompletionBlock } from "./lifecycle-completion";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { attachLifecycleEffectHandlers } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
@@ -178,6 +179,21 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   );
 }
 
+// User-audience prose rendered from block facts. Kept out of lifecycle-completion (facts
+// only) and distinct from the model-facing retry nudge — the two audiences never share text.
+function userFacingCompletionMessage(block: CompletionBlock): string {
+  switch (block.reason) {
+    case "empty-answer":
+      return t("lifecycle.completion.empty_answer");
+    case "broken-handoff":
+      return t("lifecycle.completion.broken_handoff", { command: block.command, exitCode: block.exitCode });
+    case "missing-validation-after-write":
+      return t("lifecycle.completion.missing_validation", { path: block.path });
+    default:
+      return unreachable(block);
+  }
+}
+
 function acceptResult(ctx: RunContext): void {
   const completionBlock = findCompletionBlock({
     signal: ctx.result?.signal,
@@ -189,7 +205,7 @@ function acceptResult(ctx: RunContext): void {
   if (completionBlock) {
     ctx.acceptedSignal = undefined;
     ctx.currentError = {
-      message: completionBlock.message,
+      message: userFacingCompletionMessage(completionBlock),
       code: LIFECYCLE_ERROR_CODES.unknown,
       category: "other",
       blocksCompletion: true,

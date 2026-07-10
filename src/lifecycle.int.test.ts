@@ -403,7 +403,9 @@ exit 1
 
     expect(turnCount).toBe(3);
     expect(reply.state).toBe("awaiting-input");
-    expect(reply.error).toContain("changed and no later validation targeted it");
+    // User-audience terminal error — never the model-facing "Run a related test…" nudge.
+    expect(reply.error).toContain("finished without validating its changes");
+    expect(reply.error).not.toContain("Run a related test");
   });
 
   test("runControl yield skips result acceptance", async () => {

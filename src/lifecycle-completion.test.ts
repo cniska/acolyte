@@ -19,12 +19,15 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
       runnerToolSet,
     });
 
-    expect(block?.reason).toBe("broken-handoff");
-    expect(block?.message).toContain("exit code 1");
-    expect(block?.message).toContain("bun test src/app.test.ts");
+    expect(block).toEqual({
+      reason: "broken-handoff",
+      path: "bun test src/app.test.ts",
+      command: "bun test src/app.test.ts",
+      exitCode: 1,
+    });
   });
 
-  test("includes tool name in message when no command arg", () => {
+  test("carries the tool name as command when no command arg", () => {
     const block = findCompletionBlock({
       signal: "done",
       callLog: [{ ...record("shell-run", {}), exitCode: 2 }],
@@ -33,9 +36,7 @@ describe("findCompletionBlock — broken-handoff (G1)", () => {
       runnerToolSet,
     });
 
-    expect(block?.reason).toBe("broken-handoff");
-    expect(block?.message).toContain("shell-run");
-    expect(block?.message).toContain("exit code 2");
+    expect(block).toEqual({ reason: "broken-handoff", path: "shell-run", command: "shell-run", exitCode: 2 });
   });
 
   test("allows done when the most recent runner succeeded", () => {
@@ -103,12 +104,7 @@ describe("findCompletionBlock", () => {
       runnerToolSet,
     });
 
-    expect(block).toEqual({
-      reason: "missing-validation-after-write",
-      path: "src/app.ts",
-      message:
-        "Cannot finish yet: `src/app.ts` changed and no later validation targeted it. Run a related test or command, or say why validation is blocked.",
-    });
+    expect(block).toEqual({ reason: "missing-validation-after-write", path: "src/app.ts" });
   });
 
   test("allows done when a successful runner targets the test companion", () => {
@@ -220,8 +216,7 @@ describe("findCompletionBlock — empty-answer", () => {
       runnerToolSet,
     });
 
-    expect(block?.reason).toBe("empty-answer");
-    expect(block?.message).toContain("signal_done");
+    expect(block).toEqual({ reason: "empty-answer", path: "", signal: "done" });
   });
 
   test("does not fire when the done wrote a final response", () => {
@@ -262,8 +257,7 @@ describe("findCompletionBlock — empty-answer (noop)", () => {
       runnerToolSet,
     });
 
-    expect(block?.reason).toBe("empty-answer");
-    expect(block?.message).toContain("signal_noop");
+    expect(block).toEqual({ reason: "empty-answer", path: "", signal: "noop" });
   });
 
   test("allows a noop that carries the model's own words", () => {
