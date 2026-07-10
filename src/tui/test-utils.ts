@@ -54,10 +54,15 @@ function mockTty(columns: number, rows: number): { writes: string[]; restore: ()
     writes.push(data);
     return true;
   }) as typeof process.stdout.write;
+  // render.ts drops synchronized-output markers under TMUX; force them on so the
+  // captured frames are identical whether or not the test host runs inside tmux.
+  const savedTmux = process.env.TMUX;
+  delete process.env.TMUX;
   const restore = () => {
     process.stdout.write = saved.write;
     for (const key of ["isTTY", "columns", "rows"] as const)
       if (saved[key]) Object.defineProperty(process.stdout, key, saved[key]);
+    if (savedTmux !== undefined) process.env.TMUX = savedTmux;
   };
   return { writes, restore };
 }
@@ -87,8 +92,8 @@ export function frameWrites(writes: string[]): string[] {
   return cleanup >= 0 ? writes.slice(0, cleanup) : writes;
 }
 
-/** Force the reconciler to commit all pending work to the DOM, then drain the
- *  event loop so any scheduler-deferred commit lands too. */
+/** The macrotask between the two flushes lets a scheduler-deferred commit land,
+ *  which a single synchronous flush misses on repeated mounts. */
 async function settleReconciler(): Promise<void> {
   reconciler.flushSyncWork();
   reconciler.flushPassiveEffects();
@@ -129,9 +134,10 @@ export async function renderScript(
     return script[i] ?? null;
   }
   const frames: string[][] = [];
+  let app: { flush(): void; unmount(): void; waitUntilExit(): Promise<void> } | null = null;
   try {
     const { render } = await import("./render");
-    const app = render(h(Driver));
+    app = render(h(Driver));
     await settleReconciler();
     app.flush();
     frames.push(writes.splice(0));
@@ -143,7 +149,11 @@ export async function renderScript(
     }
     app.unmount();
     await app.waitUntilExit();
+    app = null;
   } finally {
+    // Unmount on an early throw too, so a failed run can't leave the global
+    // onCommit sink installed for the next test.
+    app?.unmount();
     restore();
   }
   return frames;
@@ -210,17 +220,28 @@ function parseActiveFrame(writes: string[]): { cursorUp: number; live: string } 
  * Precondition: no frame overflows into scrollback (the emitted distance then
  * covers only the bottom slice, not the written content). Drive with a viewport
  * tall enough to hold the content; scrollback preservation is covered separately
- * by `assertTranscriptIntegrity`.
+ * by `assertTranscriptIntegrity`. Pass `rows` to make that precondition
+ * self-checking — an overflowing frame then fails with a clear message instead of
+ * a confusing cursor mismatch.
  */
-export function assertCursorAccounting(frames: string[][], columns: number): void {
+export function assertCursorAccounting(frames: string[][], columns: number, rows?: number): void {
   let prevLive: string | null = null;
   frames.forEach((frame, i) => {
     const parsed = parseActiveFrame(frame);
-    if (!parsed) return; // unchanged commit — nothing re-rendered this frame
+    if (!parsed) return;
     if (prevLive === null) {
       if (parsed.cursorUp !== 0) throw new CursorAccountingError(i, parsed.cursorUp, 0, 0);
     } else {
       const oracleRow = replayTerminal([prevLive], CURSOR_ACCOUNTING_VT_ROWS, columns).row;
+      // A non-overflowing live region spans at most `rows - 1` physical rows, so its
+      // top-row index is at most `rows - 2`. Anything taller scrolled — the invariant
+      // no longer holds and the measurement would be meaningless.
+      if (rows !== undefined && oracleRow >= rows - 1) {
+        throw new Error(
+          `assertCursorAccounting precondition violated at frame ${i}: prior live region spans ` +
+            `${oracleRow + 1} rows, which overflows the ${rows}-row viewport. Use a taller viewport.`,
+        );
+      }
       const renderRow = physicalRowCount(prevLive.replace(/\r/g, ""), columns);
       if (parsed.cursorUp !== oracleRow || parsed.cursorUp !== renderRow) {
         throw new CursorAccountingError(i, parsed.cursorUp, oracleRow, renderRow);

@@ -70,6 +70,14 @@ describe("ChatTranscript transcript integrity", () => {
     // live region, measured by the width-aware VT and render's own physicalRowCount.
     const script = ROWS.map((_, i) => transcriptOf(ROWS.slice(0, i + 1)));
     const frames = await renderScript(script, { columns: COLUMNS, rows: 40 });
-    assertCursorAccounting(frames, COLUMNS);
+    assertCursorAccounting(frames, COLUMNS, 40);
+  });
+
+  test("cursor-accounting refuses to measure an overflowing viewport", async () => {
+    // The invariant only holds without scrollback; the `rows` guard must reject a
+    // viewport too short to hold the content rather than silently measure garbage.
+    const script = ROWS.map((_, i) => transcriptOf(ROWS.slice(0, i + 1)));
+    const frames = await renderScript(script, { columns: COLUMNS, rows: 6 });
+    expect(() => assertCursorAccounting(frames, COLUMNS, 6)).toThrow(/precondition violated/);
   });
 });
