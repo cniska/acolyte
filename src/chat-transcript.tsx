@@ -71,6 +71,7 @@ function renderToolPart(
   index: number,
   lineNumWidth: number,
   toolContentWidth: number,
+  diffIndent: string,
 ): React.ReactNode {
   if (part.kind === "diff") {
     const num = String(part.lineNumber).padStart(lineNumWidth);
@@ -78,7 +79,7 @@ function renderToolPart(
     const marker = part.marker === "add" ? "+" : part.marker === "remove" ? "-" : " ";
     // Cut the content to the display budget (indent + gutter prefix + 1-col marker) before
     // padding, so the colored bar still fills the width but the line never overflows and wraps.
-    const budget = Math.max(0, toolContentWidth - TOOL_LINE_INDENT - prefix.length - 1);
+    const budget = Math.max(0, toolContentWidth - TOOL_LINE_INDENT - diffIndent.length - prefix.length - 1);
     const content = truncateToWidth(part.text, budget);
     const padWidth = Math.max(0, budget - Bun.stringWidth(content));
     const padded = content + " ".repeat(padWidth);
@@ -87,7 +88,7 @@ function renderToolPart(
       const fg = part.marker === "add" ? palette.diffAddText : palette.diffRemoveText;
       return (
         <Text key={`tool-${index}`}>
-          {"\n  "}
+          {`\n  ${diffIndent}`}
           <Text backgroundColor={bg}>
             <Text color={fg}>
               {prefix}
@@ -100,7 +101,7 @@ function renderToolPart(
     }
     return (
       <Text key={`tool-${index}`}>
-        {"\n  "}
+        {`\n  ${diffIndent}`}
         <Text dimColor>{prefix} </Text>
         <Text color={palette.text}>{content}</Text>
       </Text>
@@ -126,6 +127,7 @@ function renderToolPart(
         </Text>
       );
     }
+    const indent = part.kind === "truncated" ? diffIndent : "";
     const display =
       part.kind === "truncated"
         ? `${"⋮".padStart(lineNumWidth)}  ${text.slice(2)}`
@@ -133,7 +135,7 @@ function renderToolPart(
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor>{truncateToWidth(` ${display}`, toolContentWidth - TOOL_LINE_INDENT)}</Text>
+        <Text dimColor>{truncateToWidth(`${indent} ${display}`, toolContentWidth - TOOL_LINE_INDENT)}</Text>
       </Text>
     );
   }
@@ -179,10 +181,14 @@ function renderToolOutput(parts: ToolOutputPart[], toolContentWidth: number): Re
     (max, part) => (part.kind === "diff" ? Math.max(max, String(part.lineNumber).length) : max),
     0,
   );
+  // Multi-file edits interleave per-file sub-headers (text) with diff lines; nest the
+  // diffs 2 columns under their sub-header, mirroring the CLI's 2-col nest (tool-output-render
+  // `hasFileHeaders`). The absolute column still differs by chat's leading-space gutter.
+  const diffIndent = lineNumWidth > 0 && rest.some((part) => part.kind === "text") ? "  " : "";
   return (
     <>
       {renderHeader(first)}
-      {rest.map((part, i) => renderToolPart(part, i, lineNumWidth, toolContentWidth))}
+      {rest.map((part, i) => renderToolPart(part, i, lineNumWidth, toolContentWidth, diffIndent))}
     </>
   );
 }
