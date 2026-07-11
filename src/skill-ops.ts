@@ -159,11 +159,6 @@ function mergeSkills(bundled: SkillMeta[], project: SkillMeta[]): SkillMeta[] {
   return merged;
 }
 
-export async function listSkills(cwd = process.cwd()): Promise<SkillMeta[]> {
-  const { skills: project } = await scanSkills(cwd);
-  return mergeSkills(loadBundledSkills().skills, project);
-}
-
 let cachedSkills: SkillMeta[] | null = null;
 let cachedSkillDiagnostics: SkillLoadDiagnostics = createEmptySkillLoadDiagnostics();
 

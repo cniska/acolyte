@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
-import { appendPromotedItems, applyPromotion, usePromotion } from "./chat-promotion";
+import { appendPromotedItems, usePromotion } from "./chat-promotion";
 import { createSession } from "./test-utils";
 import { renderHook, wait } from "./tui/test-utils";
 
@@ -20,18 +20,6 @@ describe("promotion pure helpers", () => {
     const current = [{ id: "a", kind: "user" as const, content: "hello" }];
     const same = [{ id: "a", kind: "user" as const, content: "hello" }];
     expect(appendPromotedItems(current, same)).toBe(current);
-  });
-
-  test("applyPromotion splits live rows into promoted and surviving", () => {
-    const promoted: never[] = [];
-    const captured = [
-      { id: "row_1", kind: "user" as const, content: "hello" },
-      { id: "row_2", kind: "assistant" as const, content: "hi" },
-    ];
-    const live = [...captured, { id: "row_3", kind: "system" as const, content: "output" }];
-    const { nextPromoted, nextLive } = applyPromotion(promoted, captured, live);
-    expect(nextPromoted).toEqual(captured);
-    expect(nextLive).toEqual([{ id: "row_3", kind: "system", content: "output" }]);
   });
 });
 

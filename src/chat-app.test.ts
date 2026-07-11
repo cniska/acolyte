@@ -6,7 +6,7 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendPromotedItems, applyPromotion } from "./chat-promotion";
+import { appendPromotedItems } from "./chat-promotion";
 import { toRows } from "./chat-session";
 import { createSession } from "./test-utils";
 
@@ -69,19 +69,6 @@ describe("chat-ui helpers", () => {
       { id: "row_2", kind: "user", content: "hello" },
       { id: "row_3", kind: "assistant", content: "hi" },
     ]);
-  });
-
-  test("applyPromotion removes captured rows and preserves concurrently added rows", () => {
-    const promoted: never[] = [];
-    const captured = [
-      { id: "row_1", kind: "user" as const, content: "hello" },
-      { id: "row_2", kind: "assistant" as const, content: "hi" },
-    ];
-    // Simulate concurrent addition: live state has captured rows + a new one added during promotion
-    const live = [...captured, { id: "row_3", kind: "system" as const, content: "/usage output" }];
-    const { nextPromoted, nextLive } = applyPromotion(promoted, captured, live);
-    expect(nextPromoted).toEqual(captured);
-    expect(nextLive).toEqual([{ id: "row_3", kind: "system", content: "/usage output" }]);
   });
 
   test("appendPromotedItems ignores duplicate row ids", () => {

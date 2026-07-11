@@ -2,18 +2,21 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
-import { listSkills, readSkillInstructions } from "./skill-ops";
+import { loadSkills, readSkillInstructions, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
-afterEach(cleanupDirs);
+afterEach(() => {
+  resetSkillCache();
+  cleanupDirs();
+});
 
 const BUNDLED_COUNT = BUNDLED_SKILLS.length;
 
 describe("skills loader", () => {
   test("returns only bundled skills when no project skills exist", async () => {
     const dir = createDir("acolyte-skills-empty-");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     expect(skills).toHaveLength(BUNDLED_COUNT);
     expect(skills.every((s) => s.source === "bundled")).toBe(true);
   });
@@ -21,7 +24,7 @@ describe("skills loader", () => {
   test("reads name/description from SKILL.md frontmatter", async () => {
     const dir = createDir("acolyte-skills-one-");
     writeSkill(dir, "demo", "---\nname: demo\ndescription: Demo description\n---", "# Demo");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     expect(skills).toHaveLength(BUNDLED_COUNT + 1);
     const demo = skills.find((s) => s.name === "demo");
     expect(demo?.name).toBe("demo");
@@ -34,7 +37,7 @@ describe("skills loader", () => {
     const skillDir = join(dir, ".agents", "skills", "helper");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "---\nname: helper\ndescription: Helper skill\n---\n# Help", "utf8");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     const helper = skills.find((s) => s.name === "helper");
     expect(helper).toBeDefined();
     expect(helper?.source).toBe("project");
@@ -48,7 +51,7 @@ describe("skills loader", () => {
     const agentDir = join(dir, ".agents", "skills", "demo");
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(join(agentDir, "SKILL.md"), "---\nname: demo\ndescription: From .agents/skills/\n---", "utf8");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     const demo = skills.find((s) => s.name === "demo");
     expect(demo?.description).toBe("From .agents/skills/");
   });
@@ -57,7 +60,7 @@ describe("skills loader", () => {
     const dir = createDir("acolyte-skills-invalid-");
     writeSkill(dir, "Bad-Name", "---\nname: Bad-Name\ndescription: Invalid\n---");
     writeSkill(dir, "good", "---\nname: good\ndescription: Valid\n---");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     const projectSkills = skills.filter((s) => s.source === "project");
     expect(projectSkills).toHaveLength(1);
     expect(projectSkills[0]?.name).toBe("good");
@@ -66,14 +69,14 @@ describe("skills loader", () => {
   test("skips skills where name mismatches directory", async () => {
     const dir = createDir("acolyte-skills-mismatch-");
     writeSkill(dir, "foo", "---\nname: bar\ndescription: Mismatched\n---");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     expect(skills.filter((s) => s.source === "project")).toHaveLength(0);
   });
 
   test("project skill overrides bundled skill with same name", async () => {
     const dir = createDir("acolyte-skills-override-");
     writeSkill(dir, "build", "---\nname: build\ndescription: Custom build\n---", "# Custom");
-    const skills = await listSkills(dir);
+    const skills = await loadSkills(dir);
     const build = skills.find((s) => s.name === "build");
     expect(build?.source).toBe("project");
     expect(build?.description).toBe("Custom build");

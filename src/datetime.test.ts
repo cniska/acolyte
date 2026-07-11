@@ -1,23 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { formatDuration, formatRelativeTime, isIsoDateTimeString, nowIso, parseSince } from "./datetime";
-
-describe("isIsoDateTimeString", () => {
-  test("accepts valid ISO strings", () => {
-    expect(isIsoDateTimeString("2026-03-21T12:00:00Z")).toBe(true);
-    expect(isIsoDateTimeString("2026-03-21T12:00:00.000Z")).toBe(true);
-  });
-
-  test("rejects invalid values", () => {
-    expect(isIsoDateTimeString("not a date")).toBe(false);
-    expect(isIsoDateTimeString("")).toBe(false);
-    expect(isIsoDateTimeString(42)).toBe(false);
-    expect(isIsoDateTimeString(null)).toBe(false);
-  });
-});
+import { formatDuration, formatRelativeTime, nowIso, parseSince } from "./datetime";
 
 describe("nowIso", () => {
-  test("returns a valid ISO string", () => {
-    expect(isIsoDateTimeString(nowIso())).toBe(true);
+  test("returns a canonical ISO string", () => {
+    const iso = nowIso();
+    expect(new Date(iso).toISOString()).toBe(iso);
   });
 });
 

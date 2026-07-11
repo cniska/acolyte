@@ -24,15 +24,6 @@ export function ghInstalled(): boolean {
   return ghInstalledCache;
 }
 
-export async function ghAvailable(workspace: string): Promise<boolean> {
-  try {
-    const { code } = await runCommand(["gh", "auth", "status"], workspace);
-    return code === 0;
-  } catch {
-    return false;
-  }
-}
-
 export async function ghPrView(workspace: string): Promise<PrInfo | null> {
   try {
     const { code, stdout } = await runCommand(["gh", "pr", "view", "--json", "number,state,title,url"], workspace);

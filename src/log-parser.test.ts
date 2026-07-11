@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { listTasks, matchesTaskId, parseLog } from "./log-parser";
+import { listTasks, parseLog } from "./log-parser";
 
 describe("parseLog", () => {
   test("parses timestamp from first token", () => {
@@ -46,23 +46,6 @@ describe("parseLog", () => {
   test("returns undefined for missing field", () => {
     const [entry] = parseLog("2026-03-19T10:00:00Z level=info");
     expect(entry.fields.missing).toBeUndefined();
-  });
-});
-
-describe("matchesTaskId", () => {
-  test("matches exact task_id", () => {
-    const [entry] = parseLog("2026-03-19T10:00:00Z task_id=task_1");
-    expect(matchesTaskId(entry, "task_1")).toBe(true);
-  });
-
-  test("does not match prefix", () => {
-    const [entry] = parseLog("2026-03-19T10:00:00Z task_id=task_12");
-    expect(matchesTaskId(entry, "task_1")).toBe(false);
-  });
-
-  test("does not match when no task_id", () => {
-    const [entry] = parseLog("2026-03-19T10:00:00Z level=info");
-    expect(matchesTaskId(entry, "task_1")).toBe(false);
   });
 });
 

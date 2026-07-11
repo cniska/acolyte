@@ -41,16 +41,6 @@ export function readCredentialsSync(env?: Env): Credentials {
   }
 }
 
-export async function readCredentials(env?: Env): Promise<Credentials> {
-  const path = credentialsPath(env);
-  if (!existsSync(path)) return {};
-  try {
-    return parseCredentials(await readFile(path, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
 export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
   const path = credentialsPath(env);
   let content = "";
