@@ -66,7 +66,6 @@ describe("rpc protocol schema", () => {
         memory: "file (2 entries)",
         tasks_total: 3,
         tasks_running: 1,
-        tasks_detached: 0,
         rpc_queue_length: 2,
       },
     });

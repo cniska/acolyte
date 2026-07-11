@@ -21,7 +21,7 @@ const POLL_INTERVAL_MS = 700;
 export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInput): Promise<boolean> {
   try {
     const task = await input.client.taskStatus({ taskId: input.remoteTaskId });
-    if (!task || (task.state !== "running" && task.state !== "detached")) return false;
+    if (task?.state !== "running") return false;
   } catch {
     return false;
   }
@@ -39,7 +39,7 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
           return;
         }
         const next = await input.client.taskStatus({ taskId: input.remoteTaskId });
-        if (!next || next.state === "running" || next.state === "detached") continue;
+        if (!next || next.state === "running") continue;
         if (next.state === "failed") {
           input.setRows((current) => [
             ...current,

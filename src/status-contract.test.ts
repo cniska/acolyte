@@ -12,7 +12,6 @@ describe("parseStatusFields", () => {
       service: "acolyte",
       tasks_total: 0,
       tasks_running: 0,
-      tasks_detached: 0,
       rpc_queue_length: 0,
     });
     expect(fields).not.toBeNull();

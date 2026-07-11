@@ -11,7 +11,6 @@ export const statusPayloadSchema = z
     service: z.string(),
     tasks_total: z.number().int().min(0),
     tasks_running: z.number().int().min(0),
-    tasks_detached: z.number().int().min(0),
     rpc_queue_length: z.number().int().min(0),
   })
   .catchall(z.union([z.boolean(), z.string(), z.number(), z.array(z.string())]));

@@ -228,7 +228,6 @@ export const EN_MESSAGES = {
   "status.label.providers": "Providers",
   "status.label.rpc_queue_length": "Queue length",
   "status.label.service": "Service",
-  "status.label.tasks_detached": "Tasks detached",
   "status.label.tasks_running": "Tasks running",
   "status.label.tasks_total": "Tasks total",
   "tool.content.no_matches": "No matches.",

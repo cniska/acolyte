@@ -2,15 +2,7 @@ import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 
-export const taskStateSchema = z.enum([
-  "accepted",
-  "queued",
-  "running",
-  "detached",
-  "completed",
-  "failed",
-  "cancelled",
-]);
+export const taskStateSchema = z.enum(["accepted", "queued", "running", "completed", "failed", "cancelled"]);
 export const taskTransitionReasonSchema = z.enum([
   "chat_accepted",
   "chat_started",

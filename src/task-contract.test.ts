@@ -6,7 +6,6 @@ describe("task state contract", () => {
     expect(taskStateSchema.safeParse("accepted").success).toBe(true);
     expect(taskStateSchema.safeParse("queued").success).toBe(true);
     expect(taskStateSchema.safeParse("running").success).toBe(true);
-    expect(taskStateSchema.safeParse("detached").success).toBe(true);
     expect(taskStateSchema.safeParse("completed").success).toBe(true);
     expect(taskStateSchema.safeParse("failed").success).toBe(true);
     expect(taskStateSchema.safeParse("cancelled").success).toBe(true);
@@ -54,7 +53,6 @@ describe("task state contract", () => {
     expect(isTerminalTaskState("accepted")).toBe(false);
     expect(isTerminalTaskState("queued")).toBe(false);
     expect(isTerminalTaskState("running")).toBe(false);
-    expect(isTerminalTaskState("detached")).toBe(false);
     expect(isTerminalTaskState("completed")).toBe(true);
     expect(isTerminalTaskState("failed")).toBe(true);
     expect(isTerminalTaskState("cancelled")).toBe(true);

@@ -14,7 +14,6 @@ const STATUS_KEY_LABEL_MAP: Record<string, string> = {
   providers: t("status.label.providers"),
   rpc_queue_length: t("status.label.rpc_queue_length"),
   service: t("status.label.service"),
-  tasks_detached: t("status.label.tasks_detached"),
   tasks_running: t("status.label.tasks_running"),
   tasks_total: t("status.label.tasks_total"),
 };
