@@ -1,7 +1,6 @@
 import { basename } from "node:path";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
-import { resolveHomeDir } from "./paths";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */
@@ -21,14 +20,6 @@ export const SHORTCUT_ITEMS = [
   { key: "/skills", description: slashCommandHelp("/skills") },
   { key: "/exit", description: slashCommandHelp("/exit") },
 ] as const;
-
-export function shownCwd(): string {
-  const cwd = process.cwd();
-  const home = resolveHomeDir();
-  if (cwd === home) return "~";
-  if (cwd.startsWith(`${home}/`)) return `~${cwd.slice(home.length)}`;
-  return cwd;
-}
 
 export type GitStatus = {
   /** Repo name (main working-tree root basename); null outside a git repo. */

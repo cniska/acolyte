@@ -12,14 +12,6 @@ export function createToolError(code: string, message: string, kind?: ErrorKind)
   return new ToolError(code, message, kind);
 }
 
-export function encodeToolError(code: string, message: string): string {
-  return `[${code}] ${message}`;
-}
-
-export function hasToolErrorCode(message: string, code: string): boolean {
-  return message.includes(`[${code}]`);
-}
-
 export function extractToolErrorCode(message: string): string | undefined {
   const match = message.match(/\[([A-Z0-9_]+)\]/);
   return match?.[1];
