@@ -92,15 +92,7 @@ export function frameWrites(writes: string[]): string[] {
   return cleanup >= 0 ? writes.slice(0, cleanup) : writes;
 }
 
-/** The macrotask between the two flushes lets a scheduler-deferred commit land,
- *  which a single synchronous flush misses on repeated mounts. */
-async function settleReconciler(): Promise<void> {
-  reconciler.flushSyncWork();
-  reconciler.flushPassiveEffects();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  reconciler.flushSyncWork();
-  reconciler.flushPassiveEffects();
-}
+const STEP_DRAIN_ATTEMPTS = 200;
 
 /**
  * Deterministic frame driver: render each node in `script` as a discrete frame,
@@ -137,19 +129,31 @@ export async function renderScript(
   let app: { flush(): void; unmount(): void; waitUntilExit(): Promise<void> } | null = null;
   try {
     const { render } = await import("./render");
-    app = render(h(Driver));
-    await settleReconciler();
-    app.flush();
-    frames.push(writes.splice(0));
+    const instance = render(h(Driver));
+    app = instance;
+    // Advance to the next frame by forcing the reconciler to commit and the
+    // renderer to flush, then wait until this step's write actually lands.
+    // React may commit on a microtask/macrotask, and coverage instrumentation
+    // slows that past a single drain — so loop the flush until the frame emits
+    // rather than guessing a fixed delay (the source of prior flakiness).
+    const flushFrame = async (): Promise<string[]> => {
+      const before = writes.length;
+      for (let attempt = 0; attempt < STEP_DRAIN_ATTEMPTS && writes.length === before; attempt++) {
+        reconciler.flushSyncWork();
+        reconciler.flushPassiveEffects();
+        instance.flush();
+        if (writes.length === before) await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      return writes.splice(0);
+    };
+    frames.push(await flushFrame());
     for (let i = 1; i < script.length; i++) {
       store.advance();
-      await settleReconciler();
-      app.flush();
-      frames.push(writes.splice(0));
+      frames.push(await flushFrame());
     }
-    app.unmount();
-    await app.waitUntilExit();
     app = null;
+    instance.unmount();
+    await instance.waitUntilExit();
   } finally {
     // Unmount on an early throw too, so a failed run can't leave the global
     // onCommit sink installed for the next test.
