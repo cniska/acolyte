@@ -53,7 +53,7 @@ export function diffSummaryParts(path: string, rawResult: string, labelKey: stri
   const { files, added, removed } = summarizeUnifiedDiff(rawResult);
   const touchedFiles = files > 0 ? files : 1;
   const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
-  return [{ kind: "edit-header", labelKey, path: displayPath, files: touchedFiles, added, removed }];
+  return [{ kind: "edit-header", labelKey, path: displayPath, added, removed }];
 }
 
 function mapHeadTailParts<T>(

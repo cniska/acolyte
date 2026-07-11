@@ -106,7 +106,7 @@ describe("chat-message-handler-stream", () => {
     state.onOutput({
       toolCallId: "call_1",
       toolName: "file-edit",
-      content: { kind: "edit-header", labelKey: "tool.label.file_edit", path: "a.ts", files: 1, added: 1, removed: 0 },
+      content: { kind: "edit-header", labelKey: "tool.label.file_edit", path: "a.ts", added: 1, removed: 0 },
     });
     state.onOutput({ toolCallId: "call_1", toolName: "file-edit", content: { kind: "text", text: "line A" } });
     state.onOutput({ toolCallId: "call_1", toolName: "file-edit", content: { kind: "text", text: "line A" } });
