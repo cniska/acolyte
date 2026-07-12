@@ -34,7 +34,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 
 - Gate: run `/review` (multi-dimension, not `/code-review`) before opening, and fix all findings first.
 - Title: `type(scope): description`, under 50 characters, no trailing period.
-- Body follows `.github/pull_request_template.md`: brief motivation (omit when obvious), then a flat summary bullet list. Cut anything a reviewer would infer from the diff — mechanical steps, refactors in service of the change, renames.
+- Body follows `.github/pull_request_template.md`: brief motivation (omit when obvious), then a flat summary bullet list. Cut anything a reviewer would infer from the diff — mechanical steps, refactors and deletions in service of the change, test moves, renames.
 - End with `Fixes #N` when an issue matches the work.
 - Fold related changes into one PR; keep genuinely unrelated work separate.
 - Never push or open a PR without explicit approval.
