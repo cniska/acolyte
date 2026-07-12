@@ -1,3 +1,4 @@
+import agentsMd from "../docs/skills/agents-md.md" with { type: "text" };
 import architectureReviewMd from "../docs/skills/architecture-review.md" with { type: "text" };
 import buildMd from "../docs/skills/build.md" with { type: "text" };
 import correctnessReviewMd from "../docs/skills/correctness-review.md" with { type: "text" };
@@ -20,6 +21,7 @@ export interface BundledSkill {
 }
 
 export const BUNDLED_SKILLS: readonly BundledSkill[] = [
+  { name: "agents-md", content: agentsMd },
   { name: "architecture-review", content: architectureReviewMd },
   { name: "build", content: buildMd },
   { name: "correctness-review", content: correctnessReviewMd },

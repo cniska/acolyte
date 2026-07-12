@@ -27,6 +27,7 @@ These are specialized for Acolyte from the tool-agnostic set at [cniska/skills](
 | | [test-review](test-review.md) | Coverage gaps, edge cases, test quality |
 | | [security-review](security-review.md) | Trust boundaries, execution safety, concrete attack paths only |
 | | [doc-review](doc-review.md) | Drift detection, terminology, outdated names |
+| **Meta** | [agents-md](agents-md.md) | Create or update AGENTS.md project rules |
 
 ## Principles
 
