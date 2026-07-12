@@ -86,6 +86,8 @@ function compactSummary(fields: Record<string, string>): string {
   if (fields.read_calls && fields.read_calls !== "0") breakdown.push(`read=${fields.read_calls}`);
   if (fields.search_calls && fields.search_calls !== "0") breakdown.push(`search=${fields.search_calls}`);
   if (fields.write_calls && fields.write_calls !== "0") breakdown.push(`write=${fields.write_calls}`);
+  if (fields.duplicate_discovery_calls && fields.duplicate_discovery_calls !== "0")
+    breakdown.push(`dup=${fields.duplicate_discovery_calls}`);
   if (breakdown.length > 0) parts[parts.length - 1] += ` (${breakdown.join(" ")})`;
   if (fields.budget_exhausted_count && fields.budget_exhausted_count !== "0")
     parts.push(`budget_exhausted=${fields.budget_exhausted_count}`);
