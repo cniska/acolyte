@@ -50,6 +50,8 @@ function isAnthropicBaseUrlValid(anthropicBaseUrl?: string): boolean {
   }
 }
 
+// Unknown prefixes fall back to Vercel: its AI Gateway is the multi-provider entry point that
+// fronts many upstream models behind one OpenAI-compatible API.
 export function providerFromModel(model: string): Provider {
   const trimmedModel = model.trim();
   const normalizedModel = trimmedModel.toLowerCase();
