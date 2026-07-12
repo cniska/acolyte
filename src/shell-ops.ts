@@ -134,13 +134,13 @@ function skipEscape(input: string, i: number): number {
   const next = input[i + 1];
   if (next === undefined) return -1;
   if (next === "[") {
-    // CSI: parameter/intermediate bytes then a final byte 0x40-0x7e. A C0 control can't appear
-    // inside a valid CSI, so treat one as an aborted/truncated sequence and hand the byte back
-    // to the scanner rather than swallowing it and the text after it.
+    // CSI: parameter/intermediate bytes (0x20-0x3f) then a final byte (0x40-0x7e). Any byte
+    // outside 0x20-0x7e can't appear in a valid CSI, so treat it as an aborted/truncated
+    // sequence and hand it back to the scanner rather than swallowing it and the text after it.
     for (let j = i + 2; j < input.length; j++) {
       const code = input.charCodeAt(j);
-      if (code < 0x20) return j;
-      if (code >= 0x40 && code <= 0x7e) return j + 1;
+      if (code < 0x20 || code > 0x7e) return j;
+      if (code >= 0x40) return j + 1;
     }
     return -1;
   }

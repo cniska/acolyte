@@ -117,6 +117,16 @@ describe("createControlSequenceScrubber", () => {
     expect(scrubOnce("\x1b[1\nkept")).toBe("\nkept");
   });
 
+  test("aborts a malformed CSI on an out-of-range byte", () => {
+    expect(scrubOnce("\x1b[1日done")).toBe("日done");
+  });
+
+  test("carries an OSC whose ST terminator is split across chunks", () => {
+    const scrubber = createControlSequenceScrubber();
+    expect(scrubber.push("\x1b]0;title\x1b")).toBe("");
+    expect(scrubber.push("\\rest")).toBe("rest");
+  });
+
   test("carries a CSI sequence split across chunks", () => {
     const scrubber = createControlSequenceScrubber();
     expect(scrubber.push("\x1b[")).toBe("");
