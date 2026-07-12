@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
-import { parseExitCode, runShellCommand } from "./shell-ops";
+import { createControlSequenceScrubber, parseExitCode, runShellCommand } from "./shell-ops";
+
+function scrubOnce(text: string): string {
+  const scrubber = createControlSequenceScrubber();
+  return scrubber.push(text) + scrubber.flush();
+}
 
 const WORKSPACE = resolve(process.cwd());
 
@@ -78,5 +83,72 @@ describe("parseExitCode", () => {
 
   test("returns undefined for malformed exit code", () => {
     expect(parseExitCode("exit_code=abc")).toBeUndefined();
+  });
+});
+
+describe("createControlSequenceScrubber", () => {
+  test("strips the bun screen-clear sequence", () => {
+    expect(scrubOnce("\x1b[2J\x1b[3J\x1b[Hdone")).toBe("done");
+  });
+
+  test("strips SGR color", () => {
+    expect(scrubOnce("\x1b[32m✓ pass\x1b[39m")).toBe("✓ pass");
+  });
+
+  test("strips OSC clipboard and title sequences", () => {
+    expect(scrubOnce("\x1b]52;c;Zm9v\x07keep")).toBe("keep");
+    expect(scrubOnce("\x1b]0;title\x1b\\keep")).toBe("keep");
+  });
+
+  test("drops lone control chars but keeps tab and newline", () => {
+    expect(scrubOnce("a\x00b\x07c\td\ne")).toBe("abc\td\ne");
+  });
+
+  test("preserves unicode and plain text", () => {
+    expect(scrubOnce("✓ 20 pass — café 日本語")).toBe("✓ 20 pass — café 日本語");
+  });
+
+  test("folds CRLF and lone CR to newlines", () => {
+    expect(scrubOnce("a\r\nb")).toBe("a\nb");
+    expect(scrubOnce("10%\r20%\r30%")).toBe("10%\n20%\n30%");
+  });
+
+  test("carries a CSI sequence split across chunks", () => {
+    const scrubber = createControlSequenceScrubber();
+    expect(scrubber.push("\x1b[")).toBe("");
+    expect(scrubber.push("2Jhi")).toBe("hi");
+  });
+
+  test("carries an OSC sequence split across chunks", () => {
+    const scrubber = createControlSequenceScrubber();
+    expect(scrubber.push("\x1b]0;ti")).toBe("");
+    expect(scrubber.push("tle\x07x")).toBe("x");
+  });
+
+  test("carries a trailing CR across chunks and folds a following LF", () => {
+    const scrubber = createControlSequenceScrubber();
+    expect(scrubber.push("x\r")).toBe("x");
+    expect(scrubber.push("\ny")).toBe("\ny");
+  });
+
+  test("flushes a carried CR as newline and drops an incomplete escape", () => {
+    const withCr = createControlSequenceScrubber();
+    expect(withCr.push("x\r")).toBe("x");
+    expect(withCr.flush()).toBe("\n");
+    const withEsc = createControlSequenceScrubber();
+    expect(withEsc.push("a\x1b[")).toBe("a");
+    expect(withEsc.flush()).toBe("");
+  });
+});
+
+describe("runShellCommand output scrubbing", () => {
+  test("strips control sequences from captured stdout", async () => {
+    const result = await runShellCommand(WORKSPACE, {
+      cmd: "bun",
+      args: ["-e", "process.stdout.write('\\u001b[2Jclean output')"],
+    });
+    expect(result).toContain("clean output");
+    expect(result).not.toContain("[2J");
+    expect(result).not.toContain("\x1b");
   });
 });

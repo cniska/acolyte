@@ -120,6 +120,102 @@ function createRestrictedEnv(): Record<string, string> {
   return env;
 }
 
+function isStrippableControlChar(code: number): boolean {
+  // Keep LF and TAB; drop the other C0 controls, DEL, and C1 (0x80-0x9f).
+  if (code === 0x0a || code === 0x09) return false;
+  if (code < 0x20) return true;
+  if (code === 0x7f) return true;
+  return code >= 0x80 && code <= 0x9f;
+}
+
+// Index past a complete ESC sequence starting at `i` (input[i] === ESC), or -1 if it runs to
+// the end of the buffer unterminated (so the caller carries it into the next chunk).
+function skipEscape(input: string, i: number): number {
+  const next = input[i + 1];
+  if (next === undefined) return -1;
+  if (next === "[") {
+    // CSI: parameter bytes then a final byte 0x40-0x7e.
+    for (let j = i + 2; j < input.length; j++) {
+      const code = input.charCodeAt(j);
+      if (code >= 0x40 && code <= 0x7e) return j + 1;
+    }
+    return -1;
+  }
+  if (next === "]" || next === "P" || next === "_" || next === "^" || next === "X") {
+    // OSC / DCS / APC / PM / SOS: string terminated by BEL or ST (ESC \).
+    for (let j = i + 2; j < input.length; j++) {
+      if (input[j] === "\x07") return j + 1;
+      if (input[j] === "\x1b") {
+        if (input[j + 1] === undefined) return -1;
+        if (input[j + 1] === "\\") return j + 2;
+      }
+    }
+    return -1;
+  }
+  if (next === "(" || next === ")" || next === "*" || next === "+") {
+    // Charset designator: ESC ( <one byte>.
+    return input[i + 2] === undefined ? -1 : i + 3;
+  }
+  return i + 2; // Other single-byte escapes (ESC 7, ESC M, ...).
+}
+
+// Subprocess stdout is arbitrary bytes — build/test tools emit VT control sequences (screen
+// clears, cursor moves, OSC title/hyperlink/clipboard, color). Those bytes are data in
+// Acolyte's transcript, not commands: left raw they wipe the screen in run mode (`ui.ts`
+// writes straight to the TTY) and pollute the model-facing result and the session record.
+// Scrub at capture so all three sinks are clean. Stateful because a CSI/OSC sequence or a CR
+// can straddle a chunk boundary — the unresolved tail is carried into the next push.
+export function createControlSequenceScrubber(): { push(text: string): string; flush(): string } {
+  let carry = "";
+  const push = (text: string): string => {
+    const input = carry + text;
+    carry = "";
+    let out = "";
+    let i = 0;
+    while (i < input.length) {
+      const code = input.charCodeAt(i);
+      if (code === 0x1b) {
+        const end = skipEscape(input, i);
+        if (end === -1) {
+          carry = input.slice(i);
+          return out;
+        }
+        i = end;
+        continue;
+      }
+      if (code === 0x0d) {
+        // Fold CRLF and lone CR to LF so progress-bar rewrites become separate lines.
+        if (i === input.length - 1) {
+          carry = "\r";
+          return out;
+        }
+        if (input[i + 1] === "\n") {
+          i += 1;
+          continue;
+        }
+        out += "\n";
+        i += 1;
+        continue;
+      }
+      if (isStrippableControlChar(code)) {
+        i += 1;
+        continue;
+      }
+      out += input[i];
+      i += 1;
+    }
+    return out;
+  };
+  const flush = (): string => {
+    // A carried CR at EOF becomes a final newline; a carried incomplete escape sequence is
+    // dropped — it was a control sequence, never printable content.
+    const rest = carry === "\r" ? "\n" : "";
+    carry = "";
+    return rest;
+  };
+  return { push, flush };
+}
+
 async function readStreamText(
   stream: ReadableStream<Uint8Array> | null | undefined,
   streamName: "stdout" | "stderr",
@@ -129,25 +225,27 @@ async function readStreamText(
   if (!stream) return "";
   const reader = stream.getReader();
   const decoder = new TextDecoder();
+  const scrubber = createControlSequenceScrubber();
   let combined = "";
   const onAbort = (): void => {
     reader.cancel().catch(() => {});
   };
   signal?.addEventListener("abort", onAbort, { once: true });
+  const emit = (text: string): void => {
+    if (!text) return;
+    combined += text;
+    onChunk?.({ stream: streamName, text });
+  };
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       const text = decoder.decode(value, { stream: true });
       if (!text) continue;
-      combined += text;
-      onChunk?.({ stream: streamName, text });
+      emit(scrubber.push(text));
     }
-    const tail = decoder.decode();
-    if (tail) {
-      combined += tail;
-      onChunk?.({ stream: streamName, text: tail });
-    }
+    emit(scrubber.push(decoder.decode()));
+    emit(scrubber.flush());
   } catch {
     // Stream cancelled by abort signal — return what we have.
   } finally {
