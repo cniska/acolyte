@@ -10,14 +10,27 @@ interface StyleStack {
   inverse?: boolean;
 }
 
-/** Strip C0 control chars and ESC from text to prevent terminal escape injection. */
+/**
+ * Strip control sequences from foreign text to prevent terminal escape injection — the
+ * renderer's last-line backstop for any content it doesn't own (assistant text, web fetches,
+ * tool output the capture layer missed). Skips whole ESC sequences (not just the ESC byte, or
+ * a stray `[2J` body renders) and drops C0 controls except LF and TAB.
+ */
 function sanitizeText(text: string): string {
   let out = "";
-  for (let i = 0; i < text.length; i++) {
+  let i = 0;
+  while (i < text.length) {
     const code = text.charCodeAt(i);
-    if (code === 0x1b) continue;
-    if (code < 0x20 && code !== 0x0a && code !== 0x09) continue;
+    if (code === 0x1b) {
+      i = skipEscapeSequence(text, i + 1);
+      continue;
+    }
+    if (code < 0x20 && code !== 0x0a && code !== 0x09) {
+      i += 1;
+      continue;
+    }
     out += text[i];
+    i += 1;
   }
   return out;
 }

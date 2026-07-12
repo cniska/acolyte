@@ -194,12 +194,13 @@ describe("serialize", () => {
   });
 
   describe("text sanitization", () => {
-    test("strips ESC byte from escape sequences", () => {
-      expect(renderPlain(<Text>{"\x1b[2Jhello"}</Text>)).toBe("[2Jhello");
+    test("strips whole CSI escape sequences", () => {
+      expect(renderPlain(<Text>{"\x1b[2J\x1b[3J\x1b[Hhello"}</Text>)).toBe("hello");
+      expect(renderPlain(<Text>{"\x1b[32mgreen\x1b[39m"}</Text>)).toBe("green");
     });
 
-    test("strips ESC byte from OSC sequences", () => {
-      expect(renderPlain(<Text>{"\x1b]0;evil title\x07world"}</Text>)).toBe("]0;evil titleworld");
+    test("strips whole OSC sequences", () => {
+      expect(renderPlain(<Text>{"\x1b]0;evil title\x07world"}</Text>)).toBe("world");
     });
 
     test("preserves newlines and tabs", () => {
