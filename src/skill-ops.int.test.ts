@@ -85,7 +85,14 @@ describe("skills loader", () => {
   test("renamed review family resolves and invokes as bundled skills", async () => {
     const dir = createDir("acolyte-skills-taxonomy-");
     await loadSkills(dir);
-    for (const name of ["architecture-review", "security-review", "style-review", "test-review", "doc-review"]) {
+    for (const name of [
+      "correctness-review",
+      "architecture-review",
+      "security-review",
+      "style-review",
+      "test-review",
+      "doc-review",
+    ]) {
       expect(findSkillByName(name)?.source).toBe("bundled");
       const body = await readSkillInstructions(`bundled://${name}`);
       expect(body.startsWith("---")).toBe(false);

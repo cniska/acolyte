@@ -21,6 +21,7 @@ These are specialized for Acolyte from the tool-agnostic set at [cniska/skills](
 | | [git](git.md) | Atomic commits, clean history, rewrite before pushing |
 | | [deprecation](deprecation.md) | Build replacement first, migrate consumers, remove completely |
 | **Review** | [review](review.md) | Run all review dimensions, severity labels, fix-all policy |
+| | [correctness-review](correctness-review.md) | Logic bugs, edge cases, broken contracts |
 | | [style-review](style-review.md) | Local conventions, naming, control flow, readability |
 | | [architecture-review](architecture-review.md) | Boundaries, indirection pressure, contract integrity |
 | | [test-review](test-review.md) | Coverage gaps, edge cases, test quality |

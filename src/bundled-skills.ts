@@ -1,5 +1,6 @@
 import architectureReviewMd from "../docs/skills/architecture-review.md" with { type: "text" };
 import buildMd from "../docs/skills/build.md" with { type: "text" };
+import correctnessReviewMd from "../docs/skills/correctness-review.md" with { type: "text" };
 import debugMd from "../docs/skills/debug.md" with { type: "text" };
 import deprecationMd from "../docs/skills/deprecation.md" with { type: "text" };
 import designMd from "../docs/skills/design.md" with { type: "text" };
@@ -21,6 +22,7 @@ export interface BundledSkill {
 export const BUNDLED_SKILLS: readonly BundledSkill[] = [
   { name: "architecture-review", content: architectureReviewMd },
   { name: "build", content: buildMd },
+  { name: "correctness-review", content: correctnessReviewMd },
   { name: "debug", content: debugMd },
   { name: "deprecation", content: deprecationMd },
   { name: "design", content: designMd },

@@ -1,21 +1,23 @@
 ---
 name: review
-description: Run all review skills against the current branch diff. Use when reviewing a feature branch before merge.
+description: Run all review dimensions against a diff or a path. Use when reviewing a feature branch before merge, reviewing someone else's PR, or auditing a file path.
 ---
 
 # Review
 
 Run all review dimensions against the current branch and produce one unified review. Approve when a change improves overall code health, even if it isn't perfect.
 
+Three modes: **Self** (no argument) — current branch diff against `main`; **PR** (URL or number) — someone else's PR; **Path** (file or directory) — full-file audit of code already on `main`.
+
 ## Scope
 
-Review only what changed on the current branch against `main`, but read enough surrounding code and docs to understand conventions and boundaries.
+**Self / PR:** review only the diff, but read enough surrounding code and docs to understand conventions and boundaries. **Path:** review the enumerated files in full — there is no diff.
 
 Do not duplicate the same issue across categories.
 
 ## Change sizing
 
-Before reviewing, check the diff size:
+Self and PR modes only — Path has no diff. Before reviewing, check the diff size:
 
 - ~100 lines: good, reviewable in one pass.
 - ~300 lines: acceptable if one logical change.
@@ -25,22 +27,36 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 ## Workflow
 
-1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
-2. If no commits ahead of `main`, report that and stop.
-3. Read changed files in full, plus any project-level convention docs.
-4. **Review tests first** — they reveal intent and coverage gaps.
-5. Run each review dimension by loading its skill: `style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`.
-6. Merge findings: deduplicate, keep strongest framing per root issue.
-7. Label every finding by severity:
+### Self (no argument)
 
-| Label | Meaning | Action |
-|-------|---------|--------|
-| *(unmarked)* | Must fix | Address before merge |
-| **Critical:** | Blocks merge | Security, data loss, broken functionality |
-| **Nit:** | Optional | Style preference, minor improvement |
-| **Consider:** | Suggestion | Worth thinking about, not required |
+1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`. If no commits ahead of `main`, report and stop.
+2. Read changed files in full, plus any project-level convention docs. **Review tests first** — they reveal intent and coverage gaps.
+3. Run the six dimension passes — load each skill (`correctness-review`, `style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`) and apply its criteria to the diff, one pass per dimension. If a skill fails to load, say so in that category's output rather than improvising.
+4. Merge findings: deduplicate, keep strongest framing per root issue.
+5. Label every finding by severity (see below). Fix all findings by default — each as its own subject-scoped commit.
 
-8. Order by merge relevance: must-fix → should-fix → optional.
+### PR (URL or number)
+
+1. `gh pr view <N>` for metadata; `gh pr diff <N>` for the diff. Read repo conventions — `AGENTS.md`.
+2. Run the six dimension passes (as in Self step 3). Filter relentlessly — only findings with evidence.
+
+### Path (file or directory)
+
+1. Enumerate files; skip generated content, lockfiles, `node_modules/`.
+2. Read conventions. Run the six dimension passes (as in Self step 3) over the full files.
+
+## Severity
+
+Label every finding explicitly — an unlabeled finding is ambiguous. This scale is canonical; dimension skills map their labels onto it.
+
+| Label | Meaning |
+|-------|---------|
+| **Critical:** | Blocks merge — security, data loss, broken functionality |
+| **Fix:** | A real defect or convention violation; address before merge |
+| **Consider:** | Worth thinking about, not required |
+| **Nit:** | Style preference, minor improvement |
+
+Order output Critical → Fix → Consider → Nit. In the summary table, Consider and Nit both count as optional.
 
 ## Review checks
 
@@ -63,11 +79,22 @@ Every dependency is a liability.
 
 ## Fix policy
 
-Default to fixing all findings — including trivial ones. Small issues left unfixed accumulate into tech debt. If a finding is worth reporting, it's worth fixing before merge.
+- **Self:** fix all findings by default — including trivial ones — each as its own subject-scoped commit. Small issues left unfixed accumulate into tech debt.
+- **PR:** never commit to someone else's branch. Deliver findings as a review (`gh pr review`), or a comment block if asked.
+- **Path:** report findings; fix only when the user asks.
 
 ## Output
 
-One section per review dimension (`style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
+One section per review dimension (Correctness, Style, Architecture, Documentation, Security, Tests), noting dimensions with no findings. Always end with this summary table — one row per dimension, counts of findings per severity (Consider and Nit both count as Optional):
+
+| Category | Critical | Fix | Optional |
+|----------|----------|-----|----------|
+| Correctness | 0 | 0 | 0 |
+| Style | 0 | 0 | 0 |
+| Architecture | 0 | 0 | 0 |
+| Documentation | 0 | 0 | 0 |
+| Security | 0 | 0 | 0 |
+| Tests | 0 | 0 | 0 |
 
 ## Red flags
 

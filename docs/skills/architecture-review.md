@@ -3,7 +3,7 @@ name: architecture-review
 description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
 ---
 
-# Architecture
+# Architecture Review
 
 Review architecture quality, design consistency, extension seams, and pattern adherence.
 
@@ -24,7 +24,7 @@ Default: if a layer carries no policy, invariants, or boundary isolation, remove
 
 ### 2. Extension blockers
 
-- hard-coded behavior where a policy/config seam is expected
+- hard-coded behavior where project docs or an existing sibling seam establish a policy/config point
 - new features requiring edits across many unrelated modules
 - private coupling preventing additive providers or plugins
 - extension seams with no current use adding maintenance cost
@@ -61,9 +61,12 @@ Only report issues with concrete evidence in code, contracts, or dependency flow
 
 ## Output
 
-For each finding: **severity**, **impacted files**, **violated pattern**, **evidence**, **fix direction**.
+For each finding: **label** (Critical / Fix / Consider / Nit — see `review`), **impacted files**, **violated pattern**, **evidence**, **fix direction**.
 
-Then: **Confirmed issues** | **Open questions** | **Optional refactors**.
+- Bad: "Consider: UserService is doing a lot; could be more decoupled." (taste, no contract, no evidence)
+- Good: **Fix** — `src/api/client.ts` imports `src/auth/session.ts` which imports it back (runtime cycle), violating the api→auth dependency direction in `docs/architecture.md`. Move `TokenStore` into `auth`.
+
+Group as **Confirmed issues** | **Open questions** | **Optional refactors** (max 3, one line each; omit if empty). "No architectural findings" is a valid, complete result.
 
 ## Red flags
 
