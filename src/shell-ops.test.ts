@@ -113,6 +113,10 @@ describe("createControlSequenceScrubber", () => {
     expect(scrubOnce("10%\r20%\r30%")).toBe("10%\n20%\n30%");
   });
 
+  test("aborts a malformed CSI on a control byte instead of swallowing text", () => {
+    expect(scrubOnce("\x1b[1\nkept")).toBe("\nkept");
+  });
+
   test("carries a CSI sequence split across chunks", () => {
     const scrubber = createControlSequenceScrubber();
     expect(scrubber.push("\x1b[")).toBe("");
