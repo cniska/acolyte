@@ -156,6 +156,11 @@ export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
 }
 
 function commitMemory(ctx: RunContext, input: LifecycleInput): void {
+  // Don't distill a turn whose completion the harness withheld: its text carries claims we
+  // just judged unsubstantiated (a "Done." over a failing handoff, an unvalidated summary).
+  // A model-emitted `blocked` signal is a finished turn and does not set this — it still
+  // commits. The true facts re-distill on the completing follow-up turn either way.
+  if (ctx.currentError?.blocksCompletion) return;
   const output = ctx.result?.text;
   if (!output) return;
   const messages = [

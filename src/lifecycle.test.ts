@@ -84,6 +84,86 @@ describe("runLifecycle", () => {
 
     expect(Number(response.output)).toBeGreaterThan(5);
   });
+
+  test("does not distill a turn whose completion was withheld", async () => {
+    // A terminally blocked completion (blocksCompletion) carries claims the harness judged
+    // unsubstantiated — committing them to memory records anti-facts. The true facts
+    // re-distill on the completing follow-up turn.
+    const events: Array<{ event: string }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
+        ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
+        ctx.currentError = {
+          message: "The agent finished without validating its changes to `src/app.ts`.",
+          code: "unknown",
+          category: "other",
+          blocksCompletion: true,
+        };
+      }),
+    });
+
+    await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(false);
+  });
+
+  test("distills a finished turn that carries a non-blocking error", async () => {
+    // A `blocked` signal is a finished turn (agent genuinely needs input) whose reason is
+    // worth remembering — it sets no `blocksCompletion` error, so it still commits.
+    const events: Array<{ event: string }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+        ctx.result = {
+          text: "Blocked: I need the API key.",
+          toolCalls: [],
+          signal: "blocked",
+          signalReason: "need key",
+        };
+      }),
+    });
+
+    await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(true);
+  });
+
+  test("distills a turn whose error does not block completion", async () => {
+    // Discriminates the predicate: only `blocksCompletion` gates the commit, not any error.
+    // A non-blocking error left on a turn that still produced real text must not skip the
+    // commit — a guard of `if (ctx.currentError)` would wrongly suppress this.
+    const events: Array<{ event: string }> = [];
+    const deps = createLifecycleDeps({
+      phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
+        ctx.result = { text: "Hit a transient tool error, but here is the answer.", toolCalls: [], signal: "done" };
+        ctx.currentError = { message: "transient tool error", code: "unknown", category: "other" };
+      }),
+    });
+
+    await runLifecycle(
+      createLifecycleInput({
+        soulPrompt: "SOUL",
+        workspace: process.cwd(),
+        onDebug: (entry) => events.push(entry),
+      }),
+      deps,
+    );
+
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(true);
+  });
 });
 
 describe("scheduleMemoryCommit", () => {
