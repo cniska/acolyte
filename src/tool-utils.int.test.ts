@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
+import { devNull } from "node:os";
 import { join } from "node:path";
 import { gitLog, gitShow } from "./git-ops";
 import { tempDir, testUuid } from "./test-utils";
@@ -13,8 +14,14 @@ afterAll(async () => {
   await Promise.all(tempDirs.map(async (d) => rm(d, { recursive: true, force: true })));
 });
 
+// Point global and system git config at nothing so these tests never inherit the developer's
+// ~/.gitconfig. Commit signing in particular needs an SSH/GPG agent the sandboxed tool shell
+// can't reach (SSH_AUTH_SOCK is stripped), so an inherited `commit.gpgsign` made the tests fail
+// wherever signing was on — the same failure the agent hits running verify in-app.
+const ISOLATED_GIT_CONFIG = { GIT_CONFIG_GLOBAL: devNull, GIT_CONFIG_SYSTEM: devNull };
+
 async function runGit(dirPath: string, args: string[]): Promise<string> {
-  const { code, stdout, stderr } = await runCommand(["git", ...args], dirPath);
+  const { code, stdout, stderr } = await runCommand(["git", ...args], dirPath, ISOLATED_GIT_CONFIG);
   if (code !== 0) throw new Error(stderr.trim() || stdout.trim() || `git ${args.join(" ")} failed`);
   return stdout.trim();
 }
@@ -40,7 +47,7 @@ describe("gitLog", () => {
     await writeFile(join(dirPath, "b.txt"), "b\n", "utf8");
     await runGit(dirPath, ["add", "b.txt"]);
     await runGit(dirPath, ["commit", "-m", "second"]);
-    const log = await gitLog(dirPath, { limit: 2 });
+    const log = await gitLog(dirPath, { limit: 2 }, ISOLATED_GIT_CONFIG);
     const lines = log.split("\n").filter((line) => line.trim().length > 0);
     expect(lines.length).toBe(2);
     expect(lines[0]).toContain("second");
@@ -57,7 +64,7 @@ describe("gitShow", () => {
     await writeFile(join(dirPath, "a.txt"), "a changed\n", "utf8");
     await runGit(dirPath, ["add", "a.txt"]);
     await runGit(dirPath, ["commit", "-m", "second"]);
-    const output = await gitShow(dirPath, { ref: "HEAD", contextLines: 0 });
+    const output = await gitShow(dirPath, { ref: "HEAD", contextLines: 0 }, ISOLATED_GIT_CONFIG);
     expect(output).toContain("second");
     expect(output).toContain("diff --git a/a.txt b/a.txt");
     expect(output).toContain("+a changed");

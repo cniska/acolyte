@@ -18,14 +18,18 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
   return stdout.trim();
 }
 
-export async function gitLog(workspace: string, options?: { path?: string; limit?: number }): Promise<string> {
+export async function gitLog(
+  workspace: string,
+  options?: { path?: string; limit?: number },
+  envOverride?: Record<string, string>,
+): Promise<string> {
   const limit = Math.max(1, Math.min(50, options?.limit ?? 10));
   const args = ["git", "log", "--oneline", "--decorate", `-n`, String(limit)];
   if (options?.path) {
     ensurePathWithinSandbox(options.path, workspace);
     args.push("--", options.path);
   }
-  const { code, stdout, stderr } = await runCommand(args, workspace);
+  const { code, stdout, stderr } = await runCommand(args, workspace, envOverride);
   if (code !== 0) throw new Error(stderr.trim() || "git log failed");
   return stdout.trim();
 }
@@ -33,6 +37,7 @@ export async function gitLog(workspace: string, options?: { path?: string; limit
 export async function gitShow(
   workspace: string,
   options?: { ref?: string; path?: string; contextLines?: number },
+  envOverride?: Record<string, string>,
 ): Promise<string> {
   const contextLines = Math.max(0, Math.min(20, options?.contextLines ?? 3));
   const ref = options?.ref?.trim() ? options.ref.trim() : "HEAD";
@@ -41,7 +46,7 @@ export async function gitShow(
     ensurePathWithinSandbox(options.path, workspace);
     args.push("--", options.path);
   }
-  const { code, stdout, stderr } = await runCommand(args, workspace);
+  const { code, stdout, stderr } = await runCommand(args, workspace, envOverride);
   if (code !== 0) throw new Error(stderr.trim() || "git show failed");
   return stdout.trim();
 }
