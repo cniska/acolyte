@@ -202,7 +202,7 @@ export function render(node: ReactNode): RenderInstance {
       const overflowLines = liveLines.slice(0, splitIdx);
       frozenLineCount += splitIdx;
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
-      syncWrite(erase + overflowLines.join("\n") + "\n" + liveLines.slice(splitIdx).join("\n"));
+      syncWrite(`${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
     } else {
       syncWrite(erase + liveLines.join("\n"));
     }
