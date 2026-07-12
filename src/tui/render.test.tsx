@@ -3,7 +3,7 @@ import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
-import { renderCapture } from "./test-utils";
+import { frameWrites, renderCapture, renderScript } from "./test-utils";
 import { replayTerminal } from "./vt";
 
 function withMockedStdout(
@@ -298,6 +298,36 @@ describe("render", () => {
     // HEADER must appear exactly once — never duplicated by forceRedraw.
     const headerCount = allOutput.split("HEADER").length - 1;
     expect(headerCount).toBe(1);
+  });
+
+  test("promoting an overflowed turn to static does not duplicate scrollback", async () => {
+    // A chat turn whose active region overflows the viewport (top rows freeze into
+    // scrollback), then completes and moves into <tui-static> — the exact promotion
+    // path. The static flush erases only the live tail, so any frozen line it
+    // re-emits would duplicate: it already scrolled off, un-erasable. Driven on the
+    // deterministic flush() seam (renderScript) — real timers race the throttle and
+    // can skip the overflow frame, silently vacating the pin.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const lineNodes = LINES.map((line) => <tui-text key={line}>{line}</tui-text>);
+    const script = [
+      // Live turn overflows: top rows freeze into scrollback.
+      <tui-box key="active" flexDirection="column">
+        {lineNodes}
+        <tui-text>input</tui-text>
+      </tui-box>,
+      // Turn completes: same rows promote into <tui-static>.
+      <tui-box key="promoted" flexDirection="column">
+        <tui-static>{lineNodes}</tui-static>
+        <tui-text>input</tui-text>
+      </tui-box>,
+    ];
+    const frames = await renderScript(script, { columns: 20, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, 20);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (const line of LINES) {
+      const count = transcript.filter((row) => row.includes(line)).length;
+      expect(count).toBe(1);
+    }
   });
 
   test("overflow erase and repaint are atomic within one syncWrite", async () => {

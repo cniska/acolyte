@@ -152,12 +152,22 @@ export function render(node: ReactNode): RenderInstance {
 
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
-      let buf = eraseSequence();
       let appendedStatic = "";
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      buf += appendedStatic;
+      // When an overflowing active turn is promoted to static, its top lines are
+      // already frozen in scrollback — they scrolled off and eraseSequence() can
+      // only reach the live tail, so re-emitting them duplicates. Adopt the frozen
+      // prefix: write only the delta below it. A rendering mismatch (prefix no
+      // longer matches) falls back to the full write, no worse than before.
+      if (frozenLineCount > 0) {
+        const frozenPrefix = `${frozenScrollbackText}\n`;
+        if (appendedStatic.startsWith(frozenPrefix)) {
+          appendedStatic = appendedStatic.slice(frozenPrefix.length);
+        }
+      }
+      const buf = eraseSequence() + appendedStatic;
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenScrollbackText = "";
