@@ -199,9 +199,10 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       // OpenAI-only: forcing tool choice grammar-constrains decoding so GPT can't emit the
-      // signal call as text into the answer. Anthropic/Google map forced choice to a prose-
-      // suppressing prefill (and 400 under extended thinking), so they stay "auto" and lean on
-      // the missing-signal retry as the backstop.
+      // signal call as text. Anthropic/Google map forced choice to a prose-suppressing prefill
+      // (400 under thinking), and gateway-routed GPT classifies as "vercel" (one provider string
+      // for every family, so can't force without breaking gateway Anthropic) — all stay "auto"
+      // and lean on the missing-signal retry as backstop.
       toolChoice: provider === "openai" ? "required" : "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
@@ -262,9 +263,8 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               path: decision.block.path,
               action: "continue",
             });
-            // Empty-answer recovery needs prose before the signal, so the reopened step must
-            // not inherit the OpenAI "required" default (forcing a bare re-signal would just
-            // re-trip the empty-answer gate).
+            // Reopens need room to write prose or run validation before re-signaling, so drop
+            // the OpenAI "required" default to "auto" — forcing a bare re-signal re-trips the gate.
             return { messages: renderFinishPolicyMessages(decision), toolChoice: "auto" };
           case "completion-block":
             ctx.currentError = {
