@@ -34,6 +34,7 @@ const noopRateLimiter: RateLimiter = {
 function scriptedModel(
   turns: LanguageModelV4StreamPart[][],
   promptCapture: LanguageModelV4Message[][],
+  argsCapture?: Array<Record<string, unknown>>,
 ): LanguageModelV4 {
   let call = 0;
   return {
@@ -41,8 +42,9 @@ function scriptedModel(
     provider: "test",
     modelId: "test-model",
     supportedUrls: {},
-    async doStream(args: { prompt: LanguageModelV4Message[] }) {
+    async doStream(args: { prompt: LanguageModelV4Message[]; toolChoice?: unknown }) {
       promptCapture.push(args.prompt.map((m) => ({ ...m })));
+      argsCapture?.push(args);
       const parts = turns[call] ?? [];
       call += 1;
       return {
@@ -751,5 +753,82 @@ describe("phaseGenerate", () => {
     expect(ctx.currentError?.message).not.toContain("you called");
     expect(resolveSignal(ctx)).toBeUndefined();
     expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
+  });
+
+  // Provider-scoped toolChoice: OpenAI forces every step (grammar constraint against the
+  // signal-as-text leak); the empty-answer retry drops back to "auto" (prose before signal);
+  // Anthropic never forces (a prefill would suppress prose / 400 under thinking).
+  async function captureToolChoice(input: {
+    model: string;
+    turns: LanguageModelV4StreamPart[][];
+    callLog?: ToolCallRecord[];
+  }): Promise<Array<{ type: unknown } | undefined>> {
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
+    if (input.callLog) session.callLog.push(...input.callLog);
+    const argsCapture: Array<Record<string, unknown>> = [];
+    const model = scriptedModel(input.turns, [], argsCapture);
+    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
+    const ctx = createRunContext({
+      request: { model: input.model, message: "test", history: [] },
+      model: input.model,
+      session,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: signalTools,
+        stream: agentStream,
+      },
+    });
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+    return argsCapture.map((a) => a.toolChoice as { type: unknown } | undefined);
+  }
+
+  const cleanDone: LanguageModelV4StreamPart[] = [
+    { type: "text-start", id: "t" },
+    { type: "text-delta", id: "t", delta: "Done." },
+    { type: "text-end", id: "t" },
+    { type: "tool-call", toolCallId: "tc", toolName: "signal_done", input: "{}" },
+    finishPart("tool-calls"),
+  ];
+
+  test("forces toolChoice on every step for OpenAI models", async () => {
+    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [cleanDone] });
+    expect(choices[0]).toEqual({ type: "required" });
+  });
+
+  test("keeps toolChoice auto for non-OpenAI models (prose-suppression / thinking-400 guard)", async () => {
+    const choices = await captureToolChoice({ model: "anthropic/claude-opus-4-8", turns: [cleanDone] });
+    expect(choices.every((c) => c?.type === "auto")).toBe(true);
+  });
+
+  test("empty-answer reopen drops back to auto on OpenAI, then default resumes", async () => {
+    const emptyDone: LanguageModelV4StreamPart[] = [
+      { type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" },
+      finishPart("tool-calls"),
+    ];
+    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [emptyDone, cleanDone] });
+    // Step 1 forced; reopened empty-answer retry uses auto so the model can write prose.
+    expect(choices[0]).toEqual({ type: "required" });
+    expect(choices[1]).toEqual({ type: "auto" });
+  });
+
+  test("missing-signal retry inherits the required default on OpenAI (O7 backstop preserved)", async () => {
+    const bareText: LanguageModelV4StreamPart[] = [
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "answer, no signal" },
+      { type: "text-end", id: "t1" },
+      finishPart("stop"),
+    ];
+    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [bareText, cleanDone] });
+    expect(choices[0]).toEqual({ type: "required" });
+    expect(choices[1]).toEqual({ type: "required" });
   });
 });
