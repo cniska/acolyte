@@ -198,7 +198,12 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const reasoning = ctx.reasoning;
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
-      toolChoice: "auto",
+      // OpenAI-only: forcing tool choice grammar-constrains decoding so GPT can't emit the
+      // signal call as text. Anthropic/Google map forced choice to a prose-suppressing prefill
+      // (400 under thinking), and gateway-routed GPT classifies as "vercel" (one provider string
+      // for every family, so can't force without breaking gateway Anthropic) — all stay "auto"
+      // and lean on the missing-signal retry as backstop.
+      toolChoice: provider === "openai" ? "required" : "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
         const reminders = collectReminders({
@@ -238,9 +243,10 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         switch (decision.kind) {
           case "missing-signal-continue":
             ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            // Force the retry step to use toolChoice:"required" so the Responses API
-            // grammar-constrains decoding — prevents GPT-5.x from emitting the call as text.
-            return { messages: renderFinishPolicyMessages(decision), toolChoice: "required" };
+            // No per-step override: the run-level default already forces tool choice on
+            // OpenAI (the grammar constraint) and keeps it "auto" elsewhere (where forcing
+            // suppresses prose and 400s under extended thinking).
+            return renderFinishPolicyMessages(decision);
           case "missing-signal-block":
             ctx.currentError = {
               message: t("lifecycle.completion.missing_signal"),
@@ -257,7 +263,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               path: decision.block.path,
               action: "continue",
             });
-            break;
+            // Reopens need room to write prose or run validation before re-signaling, so drop
+            // the OpenAI "required" default to "auto" — forcing a bare re-signal re-trips the gate.
+            return { messages: renderFinishPolicyMessages(decision), toolChoice: "auto" };
           case "completion-block":
             ctx.currentError = {
               message: userFacingCompletionMessage(decision.block),
