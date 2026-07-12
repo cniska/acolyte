@@ -29,7 +29,7 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 ### Self (no argument)
 
-1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`. If no commits ahead of `main`, report and stop.
+1. Determine diff scope with `git-log` and `git-diff`: `git log main..HEAD --oneline`, `git diff main...HEAD --stat`. If no commits ahead of `main`, report and stop.
 2. Read changed files in full, plus any project-level convention docs. **Review tests first** — they reveal intent and coverage gaps.
 3. Run the six dimension passes — load each skill (`correctness-review`, `style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`) and apply its criteria to the diff, one pass per dimension. If a skill fails to load, say so in that category's output rather than improvising.
 4. Merge findings: deduplicate, keep strongest framing per root issue.
@@ -37,7 +37,7 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 ### PR (URL or number)
 
-1. `gh pr view <N>` for metadata; `gh pr diff <N>` for the diff. Read repo conventions — `AGENTS.md`.
+1. `gh-pr-view` for metadata; `shell-run` `gh pr diff <N>` for the diff. Read repo conventions — `AGENTS.md`.
 2. Run the six dimension passes (as in Self step 3). Filter relentlessly — only findings with evidence.
 
 ### Path (file or directory)
@@ -66,6 +66,8 @@ Look for these patterns in every review:
 - shared contracts that blur distinct intent where separate variants or schemas would be clearer
 - escape hatches, bypass flags, and special-case options that are broader than the behavior they enable
 - updated implementation that leaves stale references behind in tests or docs
+
+When a finding reveals a durable project convention, record it with `memory-add` so later work inherits it.
 
 ## Dependency review
 

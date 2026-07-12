@@ -39,6 +39,11 @@ Follow established project conventions consistently. When no convention exists, 
 4. **Review for misuse.** Can a caller get into a bad state by passing valid-looking but wrong data? Add discriminants or branded types where confusion is likely.
 5. **Check extensibility.** Can this be extended without modifying existing consumers?
 
+## See also
+
+- `architecture-review` for boundary and contract-integrity checks
+- `deprecation` for the Hyrum's Law cost of changing an exposed surface
+
 ## Red flags
 
 - Interfaces that require callers to know implementation details

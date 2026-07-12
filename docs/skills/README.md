@@ -47,5 +47,6 @@ These show up across multiple skills and form the shared engineering philosophy.
 | Chesterton's Fence | Understand before removing | simplify |
 | Hyrum's Law | All observable behavior becomes a commitment | design, deprecation |
 | Code as liability | Less code serving the same purpose is better | deprecation |
+| Source over memory | Verify framework behavior in primary docs before implementation | build |
 | Save-point pattern | Commit early when exploring uncertain changes | git |
 | Evidence threshold | Concrete references, not speculation | review skills |

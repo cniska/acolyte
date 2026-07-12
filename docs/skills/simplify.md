@@ -13,7 +13,7 @@ Do not simplify code you don't understand yet, code that is already clean, or co
 
 ### 1. Understand before touching (Chesterton's Fence)
 
-Before changing or removing anything, understand why it exists. Check git blame, read the context, understand the reason. Then decide if the reason still applies.
+Before changing or removing anything, understand why it exists. Check the history (`git-log`/`git-show`, or `shell-run` for `git blame`), read the context, understand the reason. Then decide if the reason still applies.
 
 ### 2. Identify opportunities
 
@@ -27,11 +27,16 @@ Before changing or removing anything, understand why it exists. Check git blame,
 
 ### 3. Apply incrementally
 
-One simplification at a time. Run tests after each change. If tests fail, revert and reconsider. Separate refactoring from feature work.
+One simplification at a time. Run tests (`test-run`) after each change. If tests fail, revert with `undo-restore` and reconsider. Separate refactoring from feature work.
 
 ### 4. Verify
 
 All existing tests must pass without modification — if tests needed updating, you likely changed behavior. The diff should be clean with no unrelated changes mixed in.
+
+## See also
+
+- `style-review` for the naming and readability conventions to simplify toward
+- `deprecation` when the simplest version of the code is no code at all
 
 ## Red flags
 

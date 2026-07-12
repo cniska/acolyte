@@ -27,11 +27,11 @@ Anything larger needs further decomposition. Slice vertically (complete paths th
 
 Aligned means the user has explicitly agreed to a concrete proposal — not merely heard it. If you haven't gotten a confirming response, you're not aligned yet.
 
-Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | **Validation** | **Open questions**.
+Summarize what was agreed: **Outcome** | **Decisions made** | **Change list** | **Validation** | **Open questions**. Record decisions that should outlast the session with `memory-add`.
 
 Split into phases if the work is large. Each phase independently valuable and verifiable. Reference concrete files.
 
-For non-trivial plans, track agreed steps in a checklist as the conversation progresses. When planning is done, the checklist is ready — hand it to the user and stop. Execution starts only when the user says so (typically via `build`).
+For non-trivial plans, track agreed steps in a checklist (`checklist-create`) as the conversation progresses. When planning is done, the checklist is ready — hand it to the user and stop. Execution starts only when the user says so (typically via `build`).
 
 ## See also
 

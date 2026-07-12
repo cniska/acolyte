@@ -28,7 +28,7 @@ If you own the infrastructure being deprecated, you are responsible for migratin
 ## Workflow
 
 1. **Build the replacement first.** Never deprecate without a working alternative.
-2. **Identify all consumers.** Grep for usages, check imports, trace call paths.
+2. **Identify all consumers.** Find usages with `file-search` and `code-scan`, check imports, trace call paths.
 3. **Migrate incrementally.** Move consumers one at a time, verify each migration.
 4. **Verify zero usage.** Confirm no remaining references before removing.
 5. **Remove completely.** Delete code, tests, documentation, configuration. No commented-out remnants.
@@ -41,6 +41,11 @@ Code with no owner but active dependents. Signs:
 - Outdated dependencies
 
 Either assign an owner and maintain it, or deprecate it with a migration plan. Zombie code cannot remain suspended.
+
+## See also
+
+- `simplify` for reducing complexity in code worth keeping
+- `design` for the Hyrum's Law surface that makes removal hard
 
 ## Red flags
 

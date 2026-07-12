@@ -36,6 +36,8 @@ Separate refactoring from feature work. Separate formatting from behavior change
 - Land PRs with the repo's configured merge method. When none is set, default to squash — keeps history linear, one merge commit per PR.
 - After a PR merges, prune the branch locally and on the remote, then `git fetch --prune` to clear stale tracking refs.
 
+The git toolkit covers `git-status`/`git-add`/`git-commit`/`git-diff`/`git-log`/`git-show`. Branching, pushing, rebasing, amending, and history rewriting have no dedicated tool — run them through `shell-run`.
+
 ## Save-point pattern
 
 When exploring uncertain changes, commit early with a clear message. If the approach doesn't work out, you can revert cleanly. Uncommitted work can't be reverted — only lost.
