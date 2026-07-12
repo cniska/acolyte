@@ -1,11 +1,11 @@
 ---
-name: style
+name: style-review
 description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
 ---
 
-# Style
+# Style Review
 
-Review code quality consistency, coding patterns, and style drift.
+Review naming, coding patterns, and style consistency against the codebase's existing conventions.
 
 ## Scope
 
@@ -41,12 +41,12 @@ Check where the codebase already has a clear local pattern:
 - no unused params, dead branches, or ad-hoc fallbacks
 - keep style aligned with nearby code
 - abstractions must earn their complexity — if a wrapper adds no value, inline it
-- no premature file splitting — keep related code in one file until size or complexity justifies separation
+- avoid nested ternaries for branching logic; use explicit conditionals, maps, or helpers when multiple cases affect readability
 - prefer clarity over cleverness: dense one-liners that require a mental pause should be simplified
 
 ## Evidence threshold
 
-Only flag issues with a clear local convention or documented repo-wide pattern. Do not enforce generic style-guide preferences.
+Sections 1 and 3 require evidence of a local convention — cite the nearby code that establishes it. Sections 2 and 4 are default checks that apply without repo evidence, but cap them at **Consider** unless a documented convention elevates them. Never report a default check as must-fix.
 
 ## Workflow
 
@@ -57,9 +57,12 @@ Only flag issues with a clear local convention or documented repo-wide pattern. 
 
 ## Output
 
-For each finding: **severity**, **file**, **violated convention**, **evidence**, **fix direction**.
+For each finding: **label** (Critical / Fix / Consider / Nit — see `review`), **file**, **violated convention**, **evidence** (cite both the offending line and the code that establishes the convention), **fix direction**.
 
-Then: **Must-fix** | **Optional polish** | **Open questions** (if needed).
+- Bad: "`getUserData` — inconsistent, should be `fetchUserData`." (no evidence)
+- Good: **Fix** — `src/api/user.ts:12` `getUserData` breaks the fetch-prefix convention (9 of 10 siblings in `src/api/` use `fetch*`). Rename to `fetchUserData`.
+
+Order Critical → Fix → Consider → Nit. If nothing clears the threshold, report "No style findings" — don't pad.
 
 ## Red flags
 
