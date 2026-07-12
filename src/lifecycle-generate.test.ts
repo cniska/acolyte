@@ -10,8 +10,8 @@ import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
 import { createSignalToolkit } from "./signal-toolkit";
 import { createRunContext } from "./test-utils";
-import type { ToolDefinition } from "./tool-contract";
-import { WRITE_TOOL_SET } from "./tool-registry";
+import type { ToolCallRecord, ToolDefinition } from "./tool-contract";
+import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
 const noopRateLimiter: RateLimiter = {
@@ -641,5 +641,115 @@ describe("phaseGenerate", () => {
     expect(debugEvents.find((e) => e.event.startsWith("lifecycle.self_review"))).toBeUndefined();
     expect(ctx.currentError).toBeUndefined();
     expect(ctx.result?.signal).toBe("done");
+  });
+
+  // The completion gate is enforced once, in-stream: a block that survives its one retry
+  // sets a user-audience `ctx.currentError` from the final `answerText`. These migrated from
+  // lifecycle.test.ts, which exercised a duplicate post-hoc gate (now removed).
+  function textSignalTurns(text: string, signalTool: string): LanguageModelV4StreamPart[][] {
+    const step = (delta: string, id: string): LanguageModelV4StreamPart[] =>
+      delta.length > 0
+        ? [
+            { type: "text-start", id },
+            { type: "text-delta", id, delta },
+            { type: "text-end", id },
+            { type: "tool-call", toolCallId: `tc_${id}`, toolName: signalTool, input: "{}" },
+            finishPart("tool-calls"),
+          ]
+        : [{ type: "tool-call", toolCallId: `tc_${id}`, toolName: signalTool, input: "{}" }, finishPart("tool-calls")];
+    // Two identical attempts: the first spends the retry, the second is terminally gated.
+    return [step(text, "t_1"), step(text, "t_2")];
+  }
+
+  async function runTerminalGate(input: {
+    turns: LanguageModelV4StreamPart[][];
+    callLog?: ToolCallRecord[];
+  }): Promise<{ ctx: RunContext; debugEvents: LifecycleDebugEvent[] }> {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const signalTools = createSignalToolkit({
+      workspace: process.cwd(),
+      session,
+      onOutput: () => {},
+      onChecklist: () => {},
+    }) as unknown as Record<string, ToolDefinition>;
+    if (input.callLog) session.callLog.push(...input.callLog);
+    const model = scriptedModel(input.turns, []);
+    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      session,
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "sys",
+        model: model as unknown as RunContext["agent"]["model"],
+        tools: signalTools,
+        stream: agentStream,
+      },
+    });
+    await phaseGenerate(ctx, { timeoutMs: 5000 });
+    return { ctx, debugEvents };
+  }
+
+  test("terminally gates a done after source writes without later validation", async () => {
+    const { ctx, debugEvents } = await runTerminalGate({
+      turns: textSignalTurns("Done.", "signal_done"),
+      callLog: [{ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" }],
+    });
+
+    expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
+    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
+    expect(ctx.currentError?.message).toBe("The agent finished without validating its changes to `src/app.ts`.");
+    expect(ctx.currentError?.message).not.toContain("Run a related test");
+    expect(resolveSignal(ctx)).toBeUndefined();
+    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
+      "missing-validation-after-write",
+    );
+  });
+
+  test("terminally gates a done when the last runner failed (broken-handoff)", async () => {
+    const { ctx, debugEvents } = await runTerminalGate({
+      turns: textSignalTurns("Done.", "signal_done"),
+      callLog: [{ toolName: "test-run", args: { command: "bun test src/app.test.ts" }, status: "failed", exitCode: 1 }],
+    });
+
+    expect(RUNNER_TOOL_SET.has("test-run")).toBe(true);
+    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
+    expect(ctx.currentError?.message).toContain("exit 1");
+    expect(ctx.currentError?.message).toContain("bun test src/app.test.ts");
+    // The terminal error is user-audience: never the model-facing retry nudge.
+    expect(ctx.currentError?.message).not.toContain("Diagnose the failure");
+    expect(resolveSignal(ctx)).toBeUndefined();
+    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("broken-handoff");
+  });
+
+  test("terminally gates a done that wrote no final answer (empty-answer)", async () => {
+    const { ctx, debugEvents } = await runTerminalGate({ turns: textSignalTurns("", "signal_done") });
+
+    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
+    // Regression (dogfood 2026-07-10): the terminal error must be user-audience, never the
+    // model-facing "you called `signal_done`…" retry nudge that used to leak into the transcript.
+    expect(ctx.currentError?.message).toBe(
+      "The agent finished without writing a response. Retry or rephrase the request.",
+    );
+    expect(ctx.currentError?.message).not.toContain("you called");
+    expect(resolveSignal(ctx)).toBeUndefined();
+    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
+  });
+
+  test("terminally gates a noop that gave no reason (empty-answer)", async () => {
+    const { ctx, debugEvents } = await runTerminalGate({ turns: textSignalTurns("", "signal_noop") });
+
+    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
+    // Same user-audience message as the empty done — the done/noop split lives only in the
+    // model-facing nudge, never in the user's error row.
+    expect(ctx.currentError?.message).toBe(
+      "The agent finished without writing a response. Retry or rephrase the request.",
+    );
+    expect(ctx.currentError?.message).not.toContain("you called");
+    expect(resolveSignal(ctx)).toBeUndefined();
+    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
   });
 });

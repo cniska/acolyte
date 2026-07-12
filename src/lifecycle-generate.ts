@@ -16,7 +16,7 @@ import {
   parseError,
 } from "./error-handling";
 import { t } from "./i18n";
-import { findCompletionBlock } from "./lifecycle-completion";
+import { type CompletionBlock, findCompletionBlock } from "./lifecycle-completion";
 import {
   type GenerateOptions,
   type LifecycleError,
@@ -113,6 +113,21 @@ export function createRunAgent(input: {
     instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt),
     tools: input.tools as Record<string, ToolDefinition>,
   });
+}
+
+// User-audience prose rendered from block facts. Kept out of lifecycle-completion (facts
+// only) and distinct from the model-facing retry nudge — the two audiences never share text.
+function userFacingCompletionMessage(block: CompletionBlock): string {
+  switch (block.reason) {
+    case "empty-answer":
+      return t("lifecycle.completion.empty_answer");
+    case "broken-handoff":
+      return t("lifecycle.completion.broken_handoff", { command: block.command, exitCode: block.exitCode });
+    case "missing-validation-after-write":
+      return t("lifecycle.completion.missing_validation", { path: block.path });
+    default:
+      return unreachable(block);
+  }
 }
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
@@ -241,6 +256,20 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               reason: decision.block.reason,
               path: decision.block.path,
               action: "continue",
+            });
+            break;
+          case "completion-block":
+            ctx.currentError = {
+              message: userFacingCompletionMessage(decision.block),
+              code: LIFECYCLE_ERROR_CODES.unknown,
+              category: "other",
+              blocksCompletion: true,
+            };
+            ctx.debug("lifecycle.signal.rejected", {
+              signal: signal ?? null,
+              reason: decision.block.reason,
+              path: decision.block.path,
+              action: "block",
             });
             break;
           case "none":

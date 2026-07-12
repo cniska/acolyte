@@ -3,7 +3,6 @@ import type { ChatResponse } from "./api";
 import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
 import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
-import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 
 describe("runLifecycle", () => {
   test("orchestrates phases", async () => {
@@ -86,159 +85,84 @@ describe("runLifecycle", () => {
     expect(Number(response.output)).toBeGreaterThan(5);
   });
 
-  test("rejects done after source writes without later validation", async () => {
-    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+  test("does not distill a turn whose completion was withheld", async () => {
+    // A terminally blocked completion (blocksCompletion) carries claims the harness judged
+    // unsubstantiated — committing them to memory records anti-facts. The true facts
+    // re-distill on the completing follow-up turn.
+    const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
-      phaseGenerate: mock(async (ctx) => {
-        ctx.session.callLog.push({
-          toolName: "file-edit",
-          args: { path: "src/app.ts" },
-          taskId: ctx.taskId,
-          status: "succeeded",
-        });
+      phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
         ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
-      }),
-      phaseFinalize: mock((ctx): ChatResponse => {
-        const error = ctx.currentError?.message;
-        return {
-          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
-          model: ctx.model,
-          output: error ?? ctx.result?.text ?? "",
-          ...(error ? { error } : {}),
+        ctx.currentError = {
+          message: "The agent finished without validating its changes to `src/app.ts`.",
+          code: "unknown",
+          category: "other",
+          blocksCompletion: true,
         };
       }),
     });
 
-    const response = await runLifecycle(
+    await runLifecycle(
       createLifecycleInput({
         soulPrompt: "SOUL",
         workspace: process.cwd(),
-        taskId: "task_test",
         onDebug: (entry) => events.push(entry),
       }),
       deps,
     );
 
-    expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
-    expect(response.state).toBe("awaiting-input");
-    expect(response.error).toBe("The agent finished without validating its changes to `src/app.ts`.");
-    expect(response.error).not.toContain("Run a related test");
-    expect(events.find((entry) => entry.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
-      "missing-validation-after-write",
-    );
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(false);
   });
 
-  test("rejects done when the last runner failed (broken-handoff gate)", async () => {
-    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+  test("distills a finished turn that carries a non-blocking error", async () => {
+    // A `blocked` signal is a finished turn (agent genuinely needs input) whose reason is
+    // worth remembering — it sets no `blocksCompletion` error, so it still commits.
+    const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
-      phaseGenerate: mock(async (ctx) => {
-        ctx.session.callLog.push({
-          toolName: "test-run",
-          args: { command: "bun test src/app.test.ts" },
-          taskId: ctx.taskId,
-          status: "failed",
-          exitCode: 1,
-        });
-        ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
-      }),
-      phaseFinalize: mock((ctx): ChatResponse => {
-        const error = ctx.currentError?.message;
-        return {
-          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
-          model: ctx.model,
-          output: error ?? ctx.result?.text ?? "",
-          ...(error ? { error } : {}),
+      phaseGenerate: mock(async (ctx: { result?: unknown }) => {
+        ctx.result = {
+          text: "Blocked: I need the API key.",
+          toolCalls: [],
+          signal: "blocked",
+          signalReason: "need key",
         };
       }),
     });
 
-    const response = await runLifecycle(
+    await runLifecycle(
       createLifecycleInput({
         soulPrompt: "SOUL",
         workspace: process.cwd(),
-        taskId: "task_test",
         onDebug: (entry) => events.push(entry),
       }),
       deps,
     );
 
-    expect(RUNNER_TOOL_SET.has("test-run")).toBe(true);
-    expect(response.state).toBe("awaiting-input");
-    expect(response.error).toContain("exit 1");
-    expect(response.error).toContain("bun test src/app.test.ts");
-    // The terminal error is user-audience: never the model-facing retry nudge.
-    expect(response.error).not.toContain("Diagnose the failure");
-    expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("broken-handoff");
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(true);
   });
 
-  test("rejects a done that wrote no final answer (empty-answer gate)", async () => {
-    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+  test("distills a turn whose error does not block completion", async () => {
+    // Discriminates the predicate: only `blocksCompletion` gates the commit, not any error.
+    // A non-blocking error left on a turn that still produced real text must not skip the
+    // commit — a guard of `if (ctx.currentError)` would wrongly suppress this.
+    const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
-      phaseGenerate: mock(async (ctx) => {
-        ctx.result = { text: "", toolCalls: [], signal: "done" };
-      }),
-      phaseFinalize: mock((ctx): ChatResponse => {
-        const error = ctx.currentError?.message;
-        return {
-          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
-          model: ctx.model,
-          output: error ?? ctx.result?.text ?? "",
-          ...(error ? { error } : {}),
-        };
+      phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
+        ctx.result = { text: "Hit a transient tool error, but here is the answer.", toolCalls: [], signal: "done" };
+        ctx.currentError = { message: "transient tool error", code: "unknown", category: "other" };
       }),
     });
 
-    const response = await runLifecycle(
+    await runLifecycle(
       createLifecycleInput({
         soulPrompt: "SOUL",
         workspace: process.cwd(),
-        taskId: "task_test",
         onDebug: (entry) => events.push(entry),
       }),
       deps,
     );
 
-    expect(response.state).toBe("awaiting-input");
-    // Regression (dogfood 2026-07-10): the terminal error must be user-audience, never the
-    // model-facing "you called `signal_done`…" retry nudge that used to leak into the transcript.
-    expect(response.error).toBe("The agent finished without writing a response. Retry or rephrase the request.");
-    expect(response.error).not.toContain("you called");
-    expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
-  });
-
-  test("rejects a noop that gave no reason (empty-answer gate)", async () => {
-    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
-    const deps = createLifecycleDeps({
-      phaseGenerate: mock(async (ctx) => {
-        ctx.result = { text: "", toolCalls: [], signal: "noop" };
-      }),
-      phaseFinalize: mock((ctx): ChatResponse => {
-        const error = ctx.currentError?.message;
-        return {
-          state: ctx.currentError?.blocksCompletion ? "awaiting-input" : "done",
-          model: ctx.model,
-          output: error ?? ctx.result?.text ?? "",
-          ...(error ? { error } : {}),
-        };
-      }),
-    });
-
-    const response = await runLifecycle(
-      createLifecycleInput({
-        soulPrompt: "SOUL",
-        workspace: process.cwd(),
-        taskId: "task_test",
-        onDebug: (entry) => events.push(entry),
-      }),
-      deps,
-    );
-
-    expect(response.state).toBe("awaiting-input");
-    // Same user-audience message as the empty done — the done/noop split lives only in the
-    // model-facing nudge, never in the user's error row.
-    expect(response.error).toBe("The agent finished without writing a response. Retry or rephrase the request.");
-    expect(response.error).not.toContain("you called");
-    expect(events.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
+    expect(events.some((e) => e.event === "lifecycle.memory.commit_scheduled")).toBe(true);
   });
 });
 
