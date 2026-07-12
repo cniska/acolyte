@@ -16,8 +16,6 @@ const SAFE_ENV_KEYS = [
   "TMP",
   "CI",
   "NO_COLOR",
-  "FORCE_COLOR",
-  "COLORTERM",
   "ComSpec",
   "PATHEXT",
   "SystemRoot",
