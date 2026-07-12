@@ -95,7 +95,7 @@ describe("skill-activate", () => {
     expect(input.session.activeSkills?.map((s) => s.name)).toEqual(["build", "git"]);
   });
 
-  test("emits tool-header output per activated skill", async () => {
+  test("emits one tool-header row listing all activated skills", async () => {
     const dir = createDir("acolyte-skill-activate-output-");
     await loadSkills(dir);
     const outputs: OutputEvent[] = [];
@@ -103,9 +103,21 @@ describe("skill-activate", () => {
     const toolkit = createSkillToolkit(input);
     await toolkit.activateSkill.execute({ names: ["build", "git"] }, "call-output");
     const headers = outputs.filter((o) => (o.content as { kind: string }).kind === "tool-header");
-    expect(headers).toHaveLength(2);
-    expect((headers[0]?.content as { detail: string }).detail).toBe("build");
-    expect((headers[1]?.content as { detail: string }).detail).toBe("git");
+    expect(headers).toHaveLength(1);
+    expect((headers[0]?.content as { detail: string }).detail).toBe("build, git");
+  });
+
+  test("activates nothing when any skill in the batch is unresolved", async () => {
+    const dir = createDir("acolyte-skill-activate-partial-");
+    await loadSkills(dir);
+    const outputs: OutputEvent[] = [];
+    const input = createToolkitInput(dir, outputs);
+    const toolkit = createSkillToolkit(input);
+    await expect(toolkit.activateSkill.execute({ names: ["build", "nonexistent"] }, "call-partial")).rejects.toThrow(
+      'skill not found: "nonexistent"',
+    );
+    expect(input.session.activeSkills ?? []).toHaveLength(0);
+    expect(outputs.filter((o) => (o.content as { kind: string }).kind === "tool-header")).toHaveLength(0);
   });
 
   test("substitutes arguments in instructions", async () => {

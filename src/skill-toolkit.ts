@@ -31,15 +31,22 @@ function createActivateSkillTool(input: ToolkitInput) {
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "skill-activate", toolCallId, toolInput, async (callId) => {
-        const activated: { name: string; source: SkillSource; instructions: string }[] = [];
-        for (const skillName of toolInput.names) {
+        const skills = toolInput.names.map((skillName) => {
           const skill = findSkillByName(skillName);
           if (!skill) throw new Error(`skill not found: "${skillName}"`);
-          input.onOutput({
-            toolName: "skill-activate",
-            content: { kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skill.name },
-            toolCallId: callId,
-          });
+          return skill;
+        });
+        input.onOutput({
+          toolName: "skill-activate",
+          content: {
+            kind: "tool-header",
+            labelKey: toolLabelKey("skill-activate"),
+            detail: skills.map((s) => s.name).join(", "),
+          },
+          toolCallId: callId,
+        });
+        const activated: { name: string; source: SkillSource; instructions: string }[] = [];
+        for (const skill of skills) {
           const instructions = await readSkillInstructions(skill.path, toolInput.args);
           addActiveSkill(input.session, { name: skill.name, instructions });
           activated.push({ name: skill.name, source: skill.source, instructions });
