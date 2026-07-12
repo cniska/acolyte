@@ -7,7 +7,7 @@ description: Design a feature or behavior change through dialogue. Use when aske
 
 Design a feature or behavior change through dialogue.
 
-If an issue number is given, fetch it with `gh issue view $ARGUMENTS` and use it as the starting point.
+If an issue number is given, fetch it via `shell-run` (`gh issue view $ARGUMENTS`) and use it as the starting point.
 
 Have a design conversation about this task. Read the relevant code, share what you find, say what you think, and let the user shape the direction. The plan emerges from the dialogue — do not build it in isolation.
 
