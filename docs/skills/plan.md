@@ -11,6 +11,8 @@ If an issue number is given, fetch it with `gh issue view $ARGUMENTS` and use it
 
 Have a design conversation about this task. Read the relevant code, share what you find, say what you think, and let the user shape the direction. The plan emerges from the dialogue — do not build it in isolation.
 
+Ask questions one at a time, each with your recommended answer grounded in the code, and resolve dependencies in order.
+
 If a question can be answered by reading the code, read the code instead of asking.
 
 Ground every recommendation in current code, docs, and project rules.

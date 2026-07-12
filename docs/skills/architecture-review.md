@@ -1,5 +1,5 @@
 ---
-name: architecture
+name: architecture-review
 description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
 ---
 

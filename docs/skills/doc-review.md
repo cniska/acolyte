@@ -1,5 +1,5 @@
 ---
-name: docs
+name: doc-review
 description: Review docs for drift, missing updates, and terminology changes. Use when code changes should be reflected in documentation.
 ---
 

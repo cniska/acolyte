@@ -1,5 +1,5 @@
 ---
-name: style
+name: style-review
 description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
 ---
 

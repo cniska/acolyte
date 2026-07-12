@@ -25,14 +25,13 @@ Refactoring mixed with feature work is two changes. Flag it.
 
 ## Workflow
 
-1. If the branch was built in a long session, run `handoff` before review so the review starts from a compact branch summary and fresh code reads.
-2. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
-3. If no commits ahead of `main`, report that and stop.
-4. Read changed files in full, plus any project-level convention docs.
-5. **Review tests first** — they reveal intent and coverage gaps.
-6. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
-7. Merge findings: deduplicate, keep strongest framing per root issue.
-8. Label every finding by severity:
+1. Determine diff scope: `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
+2. If no commits ahead of `main`, report that and stop.
+3. Read changed files in full, plus any project-level convention docs.
+4. **Review tests first** — they reveal intent and coverage gaps.
+5. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
+6. Merge findings: deduplicate, keep strongest framing per root issue.
+7. Label every finding by severity:
 
 | Label | Meaning | Action |
 |-------|---------|--------|
@@ -41,7 +40,7 @@ Refactoring mixed with feature work is two changes. Flag it.
 | **Nit:** | Optional | Style preference, minor improvement |
 | **Consider:** | Suggestion | Worth thinking about, not required |
 
-9. Order by merge relevance: must-fix → should-fix → optional.
+8. Order by merge relevance: must-fix → should-fix → optional.
 
 ## Review checks
 

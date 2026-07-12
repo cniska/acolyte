@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
-import { loadSkills, readSkillInstructions, resetSkillCache } from "./skill-ops";
+import { findSkillByName, loadSkills, readSkillInstructions, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -80,6 +80,17 @@ describe("skills loader", () => {
     const build = skills.find((s) => s.name === "build");
     expect(build?.source).toBe("project");
     expect(build?.description).toBe("Custom build");
+  });
+
+  test("renamed review family resolves and invokes as bundled skills", async () => {
+    const dir = createDir("acolyte-skills-taxonomy-");
+    await loadSkills(dir);
+    for (const name of ["architecture-review", "security-review", "style-review", "test-review", "doc-review"]) {
+      expect(findSkillByName(name)?.source).toBe("bundled");
+      const body = await readSkillInstructions(`bundled://${name}`);
+      expect(body.startsWith("---")).toBe(false);
+      expect(body.length).toBeGreaterThan(0);
+    }
   });
 });
 

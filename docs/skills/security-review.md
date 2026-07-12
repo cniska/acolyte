@@ -1,5 +1,5 @@
 ---
-name: security
+name: security-review
 description: Review security risks, trust boundaries, and unsafe defaults. Use when reviewing security posture or assessing risk before release.
 ---
 
