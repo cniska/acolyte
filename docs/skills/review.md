@@ -29,7 +29,7 @@ Refactoring mixed with feature work is two changes. Flag it.
 2. If no commits ahead of `main`, report that and stop.
 3. Read changed files in full, plus any project-level convention docs.
 4. **Review tests first** — they reveal intent and coverage gaps.
-5. Run each review dimension: **Style**, **Architecture**, **Docs**, **Security**, **Tests**. Load the corresponding skill for each dimension when possible.
+5. Run each review dimension by loading its skill: `style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`.
 6. Merge findings: deduplicate, keep strongest framing per root issue.
 7. Label every finding by severity:
 
@@ -67,7 +67,7 @@ Default to fixing all findings — including trivial ones. Small issues left unf
 
 ## Output
 
-One section per review dimension (Style, Architecture, Documentation, Security, Tests), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
+One section per review dimension (`style-review`, `architecture-review`, `doc-review`, `security-review`, `test-review`), then a summary table: `category | must-fix | should-fix | optional`. Note categories with no findings.
 
 ## Red flags
 
