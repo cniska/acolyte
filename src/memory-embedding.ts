@@ -40,14 +40,14 @@ function createEmbeddingModel(qualifiedModel: string) {
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
       });
-      return openai.textEmbeddingModel(modelId);
+      return openai.embeddingModel(modelId);
     }
     case "google": {
       const google = createGoogleGenerativeAI({
         apiKey: providerCreds.apiKey,
         ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
       });
-      return google.textEmbeddingModel(modelId);
+      return google.embeddingModel(modelId);
     }
     case "vercel": {
       const vercel = createOpenAI({
@@ -57,7 +57,7 @@ function createEmbeddingModel(qualifiedModel: string) {
       const gatewayModelId = qualifiedModel.startsWith("vercel/")
         ? qualifiedModel.slice("vercel/".length)
         : qualifiedModel;
-      return vercel.textEmbeddingModel(gatewayModelId);
+      return vercel.embeddingModel(gatewayModelId);
     }
     default:
       return null;
