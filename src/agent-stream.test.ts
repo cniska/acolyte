@@ -281,6 +281,48 @@ describe("onBeforeNextCall hook", () => {
     expect(secondPrompt).toContainEqual({ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] });
   });
 
+  test("the final onBeforeFinish sees the same answerText that getFullOutput returns", async () => {
+    // Divergence pin: the in-stream completion gate reads `answerText`, and it is the sole
+    // enforcement of the retry-spent block. If result assembly ever stopped returning
+    // `text: answerText`, the gate would judge different text than the run resolves to — the
+    // exact self-review shape that killed a valid done. Pin the equality here.
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Premature." },
+        { type: "text-end", id: "t_1" },
+        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Validated answer." },
+        { type: "text-end", id: "t_2" },
+        { type: "tool-call", toolCallId: "tc_signal_2", toolName: "signal_done", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+
+    const seenAnswerText: string[] = [];
+    let rejected = false;
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: ({ answerText }) => {
+        seenAnswerText.push(answerText);
+        if (rejected) return [];
+        rejected = true;
+        return [{ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] }];
+      },
+    });
+    const output = await getFullOutput();
+
+    expect(seenAnswerText).toHaveLength(2);
+    expect(seenAnswerText[seenAnswerText.length - 1]).toBe(output.text);
+    expect(output.text).toBe("Validated answer.");
+  });
+
   test("returns the answer when a nudged text step is followed by a bare signal", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [

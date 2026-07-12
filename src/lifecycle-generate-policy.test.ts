@@ -54,7 +54,11 @@ describe("generate finish policy", () => {
     expect(renderFinishPolicyMessages(first)[0]).toMatchObject({
       content: [{ type: "text", text: expect.stringContaining("signal_done") }],
     });
-    expect(second).toEqual({ kind: "none" });
+    // Retry spent with the block still standing: enforcement is terminal in-stream, not a
+    // post-hoc re-check. No model-facing prose leaks — the user-audience message is rendered
+    // by the caller from the returned block.
+    expect(second).toEqual({ kind: "completion-block", block: completionBlock });
+    expect(renderFinishPolicyMessages(second)).toEqual([]);
   });
 
   test("empty-answer rejection asks for a final response, not validation", () => {

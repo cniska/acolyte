@@ -34,7 +34,8 @@ export type FinishPolicyDecision =
   | { kind: "none" }
   | { kind: "missing-signal-continue"; message: string }
   | { kind: "missing-signal-block"; code: typeof LIFECYCLE_ERROR_CODES.unknown }
-  | { kind: "completion-rejected-continue"; block: CompletionBlock };
+  | { kind: "completion-rejected-continue"; block: CompletionBlock }
+  | { kind: "completion-block"; block: CompletionBlock };
 
 export function createFinishPolicyState(): FinishPolicyState {
   return {
@@ -56,13 +57,19 @@ export function decideFinish(input: {
     return { kind: "missing-signal-block", code: LIFECYCLE_ERROR_CODES.unknown };
   }
 
-  if (input.completionBlock && !input.state.completionRetryUsed) {
-    input.state.completionRetryUsed = true;
-    // Re-opening the loop is a fresh sub-turn: the model must signal again after
-    // validating, so restore its one-shot missing-signal retry — otherwise a prose
-    // reply to this prompt blocks with a spent budget (the self-review-era bug).
-    input.state.missingSignalRetryUsed = false;
-    return { kind: "completion-rejected-continue", block: input.completionBlock };
+  if (input.completionBlock) {
+    if (!input.state.completionRetryUsed) {
+      input.state.completionRetryUsed = true;
+      // Re-opening the loop is a fresh sub-turn: the model must signal again after
+      // validating, so restore its one-shot missing-signal retry — otherwise a prose
+      // reply to this prompt blocks with a spent budget (the self-review-era bug).
+      input.state.missingSignalRetryUsed = false;
+      return { kind: "completion-rejected-continue", block: input.completionBlock };
+    }
+    // Retry spent, block still standing: this is terminal. The in-stream gate owns
+    // enforcement (mirroring missing-signal-block), so the caller renders the
+    // user-audience message from the block — no post-hoc re-check downstream.
+    return { kind: "completion-block", block: input.completionBlock };
   }
 
   return { kind: "none" };
@@ -104,6 +111,7 @@ export function renderFinishPolicyMessages(decision: FinishPolicyDecision): Lang
       ];
     }
     case "missing-signal-block":
+    case "completion-block":
     case "none":
       return [];
     default:

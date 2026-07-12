@@ -1,10 +1,8 @@
 import type { LifecycleSignal } from "./agent-contract";
 import { ensureRealTokenEncoder } from "./agent-input";
-import { unreachable } from "./assert";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
-import { type CompletionBlock, findCompletionBlock } from "./lifecycle-completion";
 import type { LifecycleEventName, LifecycleInput, RunContext, ToolOutputEvent } from "./lifecycle-contract";
 import { attachLifecycleEffectHandlers } from "./lifecycle-effects";
 import { phaseFinalize } from "./lifecycle-finalize";
@@ -17,7 +15,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutput } from "./tool-output-render";
-import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -179,45 +177,10 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   );
 }
 
-// User-audience prose rendered from block facts. Kept out of lifecycle-completion (facts
-// only) and distinct from the model-facing retry nudge — the two audiences never share text.
-function userFacingCompletionMessage(block: CompletionBlock): string {
-  switch (block.reason) {
-    case "empty-answer":
-      return t("lifecycle.completion.empty_answer");
-    case "broken-handoff":
-      return t("lifecycle.completion.broken_handoff", { command: block.command, exitCode: block.exitCode });
-    case "missing-validation-after-write":
-      return t("lifecycle.completion.missing_validation", { path: block.path });
-    default:
-      return unreachable(block);
-  }
-}
-
+// The completion gate is enforced once, in-stream (lifecycle-generate `onBeforeFinish`): a
+// block surviving its retry sets a user-audience `ctx.currentError`, which `resolveSignal`
+// already treats as a reason to withhold the signal. Nothing to re-check here.
 function acceptResult(ctx: RunContext): void {
-  const completionBlock = findCompletionBlock({
-    signal: ctx.result?.signal,
-    finalText: ctx.result?.text ?? "",
-    callLog: scopedCallLog(ctx.session, ctx.taskId),
-    writeToolSet: WRITE_TOOL_SET,
-    runnerToolSet: RUNNER_TOOL_SET,
-  });
-  if (completionBlock) {
-    ctx.acceptedSignal = undefined;
-    ctx.currentError = {
-      message: userFacingCompletionMessage(completionBlock),
-      code: LIFECYCLE_ERROR_CODES.unknown,
-      category: "other",
-      blocksCompletion: true,
-    };
-    ctx.debug("lifecycle.signal.rejected", {
-      signal: ctx.result?.signal ?? null,
-      reason: completionBlock.reason,
-      path: completionBlock.path,
-    });
-    return;
-  }
-
   const lifecycleSignal = resolveSignal(ctx);
   if (lifecycleSignal) {
     ctx.acceptedSignal = lifecycleSignal;
