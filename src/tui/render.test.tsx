@@ -1,10 +1,43 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
+import { reconciler } from "./reconciler";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
 import { frameWrites, renderCapture, renderScript } from "./test-utils";
 import { replayTerminal } from "./vt";
+
+/** Mock process.stdin as a TTY so render() installs its focus-in handler.
+ *  Returns `emit` to feed raw bytes and `restore` to put the real stdin back. */
+function mockStdinTty(): { emit: (data: string) => void; restore: () => void } {
+  const stdin = process.stdin;
+  const savedIsTTY = Object.getOwnPropertyDescriptor(stdin, "isTTY");
+  const savedSetRawMode = (stdin as { setRawMode?: unknown }).setRawMode;
+  Object.defineProperty(stdin, "isTTY", { value: true, configurable: true });
+  (stdin as { setRawMode: (m: boolean) => void }).setRawMode = () => {};
+  return {
+    emit: (data: string) => {
+      stdin.emit("data", Buffer.from(data));
+    },
+    restore: () => {
+      if (savedIsTTY) Object.defineProperty(stdin, "isTTY", savedIsTTY);
+      else delete (stdin as { isTTY?: boolean }).isTTY;
+      (stdin as { setRawMode?: unknown }).setRawMode = savedSetRawMode;
+    },
+  };
+}
+
+/** Force React to commit and the renderer to flush until a write lands — the
+ *  deterministic seam renderScript uses, inlined for tests that also inject stdin. */
+async function drainFrame(flush: () => void, writes: string[]): Promise<void> {
+  const before = writes.length;
+  for (let attempt = 0; attempt < 200 && writes.length === before; attempt++) {
+    reconciler.flushSyncWork();
+    reconciler.flushPassiveEffects();
+    flush();
+    if (writes.length === before) await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
@@ -327,6 +360,42 @@ describe("render", () => {
     for (const line of LINES) {
       const count = transcript.filter((row) => row.includes(line)).length;
       expect(count).toBe(1);
+    }
+  });
+
+  test("focus-in redraw does not duplicate frozen scrollback", async () => {
+    // Focus-in (\x1b[I) triggers forceRedraw. Once the active region has overflowed
+    // into scrollback, a from-scratch repaint re-emits the frozen top rows the erase
+    // can no longer reach — duplication. forceRedraw must repaint only the live tail.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          const app = render(
+            <tui-box flexDirection="column">
+              {LINES.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+              <tui-text>input</tui-text>
+            </tui-box>,
+          );
+          await drainFrame(() => app.flush(), captured); // initial commit → top rows freeze
+          stdin.emit("\x1b[I"); // focus-in → forceRedraw, synchronous commit
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 6 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 6, 20);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
     }
   });
 

@@ -135,11 +135,11 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Repaint the active region on focus-in. */
+  /** Repaint the active region on focus-in. Frozen scrollback is left intact —
+   *  it physically scrolled off and the erase can't reach it, so re-emitting would
+   *  duplicate. Clearing lastActive forces a repaint of the live tail only. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    frozenLineCount = 0;
-    frozenScrollbackText = "";
     lastActive = "";
     commitRender();
   }
