@@ -25,6 +25,7 @@ These must always hold. Break them and the system breaks.
 1. Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
 2. When behavior and tests diverge: fix the implementation. Update expectations only if explicitly requested.
 3. Commit only when explicitly requested.
+4. Do a branch's work in its own git worktree so parallel branches never clobber each other's tree. Create one with `wt <branch>` (makes the branch + worktree under `.claude/worktrees/<branch>`, runs `scripts/worktree-setup.sh`, opens a tmux window); `wt ls` lists, `cd "$(wt path <branch>)"` enters, `wt rm <branch>` removes after merge. Keep the primary `main` checkout for direct-to-`main` changes only.
 
 ## Commits
 
