@@ -7,6 +7,10 @@ description: Manage commits, branches, and change history. Use when committing, 
 
 Commits are save points, branches are sandboxes, history is documentation. Treat them accordingly.
 
+## Commit messages
+
+[Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): subject`. Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `build`, `ci`, `perf`. Single-line subject, aim for ~50 characters and never over 72. Do not put issue references or links in the subject (`(#123)`, `Fixes #123`) — those belong in the PR body. Defer to the repo's `AGENTS.md` or contributing guide if it overrides this.
+
 ## Commit discipline
 
 - **Commit after each successful slice.** Don't accumulate work — a commit is a save point you can return to.
@@ -29,6 +33,8 @@ Separate refactoring from feature work. Separate formatting from behavior change
 - Rewrite local history before pushing — amend, rebase, squash to keep history clean. Commit noise should never become permanent.
 - Never amend commits already pushed to remote.
 - Use `--force-with-lease` over `--force`.
+- Land PRs with the repo's configured merge method. When none is set, default to squash — keeps history linear, one merge commit per PR.
+- After a PR merges, prune the branch locally and on the remote, then `git fetch --prune` to clear stale tracking refs.
 
 ## Save-point pattern
 
