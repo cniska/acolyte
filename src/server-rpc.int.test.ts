@@ -357,7 +357,6 @@ describe("server rpc websocket queue", () => {
         expect(status.rpc_queue_length).toBe(1);
         expect(status.tasks_total).toBe(2);
         expect(status.tasks_running).toBe(1);
-        expect(typeof status.tasks_detached).toBe("number");
 
         ws.send(
           JSON.stringify({

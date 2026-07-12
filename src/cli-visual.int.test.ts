@@ -59,7 +59,6 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 service: "http://localhost:6767",
                 tasks_total: 0,
                 tasks_running: 0,
-                tasks_detached: 0,
                 rpc_queue_length: 0,
               },
             }),
@@ -282,7 +281,6 @@ describe("cli visual regression", () => {
           Service:            http://localhost:6767
           Tasks total:        0
           Tasks running:      0
-          Tasks detached:     0
           Queue length:       0
         `),
         );

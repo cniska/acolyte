@@ -21,18 +21,6 @@ export function appendPromotedItems(current: PromotedItem[], next: readonly Prom
   return appended.length > 0 ? [...current, ...appended] : current;
 }
 
-export function applyPromotion(
-  promoted: PromotedItem[],
-  toPromote: ChatRow[],
-  live: ChatRow[],
-): { nextPromoted: PromotedItem[]; nextLive: ChatRow[] } {
-  const promotedIds = new Set(toPromote.map((row) => row.id));
-  return {
-    nextPromoted: appendPromotedItems(promoted, toPromote),
-    nextLive: live.filter((row) => !promotedIds.has(row.id)),
-  };
-}
-
 export function isHeaderItem(item: PromotedItem): item is HeaderItem {
   return "kind" in item && item.kind === "header";
 }

@@ -16,8 +16,6 @@ type TranslationVarsFor<K extends TranslationKey> = [ExtractTemplateVars<(typeof
 
 type TranslationArgs<K extends TranslationKey> = [TranslationVarsFor<K>] extends [never] ? [] : [TranslationVarsFor<K>];
 
-export type Translator = <K extends TranslationKey>(key: K, ...args: TranslationArgs<K>) => string;
-
 function interpolate(template: string, vars?: Record<string, TranslationValue>): string {
   if (!vars) return template;
   return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_match, name: string) => {
@@ -32,11 +30,6 @@ function translate(templates: Record<string, string>, key: string, vars?: Record
     if (oneKey in templates) return interpolate(templates[oneKey], vars);
   }
   return interpolate(templates[key] ?? key, vars);
-}
-
-export function createTranslator(locale: TranslationLocale): Translator {
-  const templates = TRANSLATIONS[locale] ?? TRANSLATIONS.en;
-  return (key, ...args) => translate(templates, key, args[0] as Record<string, TranslationValue> | undefined);
 }
 
 let activeLocale: TranslationLocale = "en";

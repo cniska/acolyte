@@ -98,7 +98,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     service: `http://localhost:${PORT}`,
     tasks_total: taskSummary.total,
     tasks_running: taskSummary.running,
-    tasks_detached: taskSummary.detached,
     rpc_queue_length: getRpcQueuedTaskCount(),
     ...resourceDiagnostics,
     ...(appConfig.features.cloudSync && cloudUser ? { cloud_user: cloudUser } : {}),

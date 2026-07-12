@@ -2,7 +2,6 @@ import {
   type CreateResult,
   createResultSchema,
   type IssueInfo,
-  issueInfoSchema,
   issueListSchema,
   type PrInfo,
   prInfoSchema,
@@ -23,15 +22,6 @@ export function ghInstalled(): boolean {
     ghInstalledCache = false;
   }
   return ghInstalledCache;
-}
-
-export async function ghAvailable(workspace: string): Promise<boolean> {
-  try {
-    const { code } = await runCommand(["gh", "auth", "status"], workspace);
-    return code === 0;
-  } catch {
-    return false;
-  }
 }
 
 export async function ghPrView(workspace: string): Promise<PrInfo | null> {
@@ -79,19 +69,6 @@ export async function ghIssueCreate(workspace: string, input: IssueCreateInput):
   const match = url.match(/\/issues\/(\d+)$/);
   const number = match ? Number.parseInt(match[1], 10) : 0;
   return createResultSchema.parse({ number, url });
-}
-
-export async function ghIssueView(workspace: string, number: number): Promise<IssueInfo | null> {
-  try {
-    const { code, stdout } = await runCommand(
-      ["gh", "issue", "view", String(number), "--json", "number,state,title"],
-      workspace,
-    );
-    if (code !== 0) return null;
-    return issueInfoSchema.parse(JSON.parse(stdout.trim()));
-  } catch {
-    return null;
-  }
 }
 
 export async function ghIssueList(

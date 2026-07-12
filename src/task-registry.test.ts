@@ -45,26 +45,16 @@ describe("task registry", () => {
     expect(registry.get("task_1")?.state).toBe("completed");
   });
 
-  test("allows detached and resumed transitions", () => {
-    const registry = new TaskRegistry();
-    expect(registry.transitionTask("task_2", { state: "running" }).ok).toBe(true);
-    expect(registry.transitionTask("task_2", { state: "detached" }).ok).toBe(true);
-    expect(registry.transitionTask("task_2", { state: "running" }).ok).toBe(true);
-    expect(registry.get("task_2")?.state).toBe("running");
-  });
-
   test("reports per-state summary counts", () => {
     const registry = new TaskRegistry();
     expect(registry.transitionTask("task_running", { state: "running" }).ok).toBe(true);
-    expect(registry.transitionTask("task_detached", { state: "detached" }).ok).toBe(true);
     expect(registry.transitionTask("task_completed", { state: "completed" }).ok).toBe(true);
     expect(registry.transitionTask("task_failed", { state: "failed" }).ok).toBe(true);
     expect(registry.transitionTask("task_cancelled", { state: "cancelled" }).ok).toBe(true);
 
     expect(registry.summary()).toEqual({
-      total: 5,
+      total: 4,
       running: 1,
-      detached: 1,
       completed: 1,
       failed: 1,
       cancelled: 1,
@@ -92,8 +82,7 @@ describe("task registry", () => {
 describe("task transition rules", () => {
   test("enforces transition allowlist", () => {
     expect(canTransitionTaskState("running", "completed")).toBe(true);
-    expect(canTransitionTaskState("running", "detached")).toBe(true);
     expect(canTransitionTaskState("completed", "running")).toBe(false);
-    expect(canTransitionTaskState("failed", "detached")).toBe(false);
+    expect(canTransitionTaskState("failed", "running")).toBe(false);
   });
 });

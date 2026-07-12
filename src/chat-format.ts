@@ -1,5 +1,3 @@
-import { t } from "./i18n";
-
 export const COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH = 20;
 
 export function formatCompactNumber(n: number): string {
@@ -8,10 +6,6 @@ export function formatCompactNumber(n: number): string {
   const rounded = Math.round(k * 10) / 10;
   if (rounded < 100) return `${rounded.toFixed(1)}k`;
   return `${Math.round(k)}k`;
-}
-
-export function formatTokenCount(tokens: number): string {
-  return t("unit.token", { count: formatCompactNumber(tokens) });
 }
 
 export function commandOutputColWidth(sections: [string, string][][]): number {

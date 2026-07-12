@@ -98,6 +98,5 @@ export const editCodeRenameEditSchema = z.object({
 
 export const editCodeEditSchema = z.discriminatedUnion("op", [editCodeReplaceEditSchema, editCodeRenameEditSchema]);
 
-export type EditCodeReplaceEdit = z.infer<typeof editCodeReplaceEditSchema>;
 export type EditCodeRenameEdit = z.infer<typeof editCodeRenameEditSchema>;
 export type EditCodeEdit = z.infer<typeof editCodeEditSchema>;

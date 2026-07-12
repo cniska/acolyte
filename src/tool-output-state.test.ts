@@ -40,7 +40,6 @@ describe("createToolOutputState", () => {
       kind: "edit-header",
       labelKey: "tool.label.file_edit",
       path: "notes.ts",
-      files: 1,
       added: 1,
       removed: 1,
     });

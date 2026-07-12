@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import {
-  decodeTokenSubject,
-  readCredentials,
-  readCredentialsSync,
-  removeCredential,
-  writeCredential,
-} from "./credentials";
+import { decodeTokenSubject, readCredentialsSync, removeCredential, writeCredential } from "./credentials";
 import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
@@ -23,10 +17,10 @@ describe("credentials", () => {
     expect(readCredentialsSync({ HOME: "/nonexistent" })).toEqual({});
   });
 
-  test("writeCredential creates file and readCredentials reads it", async () => {
+  test("writeCredential creates file and readCredentialsSync reads it", async () => {
     const env = { HOME: createTempHome() };
     await writeCredential("cloudToken", "tok_abc123", env);
-    const creds = await readCredentials(env);
+    const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudToken: "tok_abc123" });
   });
 
@@ -34,7 +28,7 @@ describe("credentials", () => {
     const env = { HOME: createTempHome() };
     await writeCredential("cloudUrl", "https://cloud.example.com", env);
     await writeCredential("cloudToken", "tok_abc123", env);
-    const creds = await readCredentials(env);
+    const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudUrl: "https://cloud.example.com", cloudToken: "tok_abc123" });
   });
 
@@ -42,7 +36,7 @@ describe("credentials", () => {
     const env = { HOME: createTempHome() };
     await writeCredential("cloudToken", "old", env);
     await writeCredential("cloudToken", "new", env);
-    const creds = await readCredentials(env);
+    const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudToken: "new" });
   });
 
@@ -51,7 +45,7 @@ describe("credentials", () => {
     await writeCredential("cloudUrl", "https://cloud.example.com", env);
     await writeCredential("cloudToken", "tok_abc123", env);
     await removeCredential("cloudToken", env);
-    const creds = await readCredentials(env);
+    const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudUrl: "https://cloud.example.com" });
   });
 
@@ -96,7 +90,7 @@ describe("credentials", () => {
     mkdirSync(dir, { recursive: true });
     const { writeFile } = await import("node:fs/promises");
     await writeFile(join(dir, "credentials"), "# comment\n\nACOLYTE_CLOUD_TOKEN=tok\n", "utf8");
-    const creds = await readCredentials(env);
+    const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudToken: "tok" });
   });
 });

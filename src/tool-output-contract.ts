@@ -26,7 +26,6 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
     kind: z.literal("edit-header"),
     labelKey: z.string().trim().min(1),
     path: z.string().trim().min(1),
-    files: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
     removed: z.number().int().nonnegative(),
   }),

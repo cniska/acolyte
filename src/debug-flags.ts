@@ -25,10 +25,6 @@ export function matchesDebugFlag(flags: Set<string>, flag: string): boolean {
   return false;
 }
 
-export function isDebugFlagEnabled(flag: string): boolean {
-  return matchesDebugFlag(DEBUG_FLAGS, flag);
-}
-
 function normalizeTag(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }

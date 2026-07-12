@@ -35,10 +35,6 @@ export function parseLog(raw: string): LogLine[] {
     .map(parseLine);
 }
 
-export function matchesTaskId(line: LogLine, taskId: string): boolean {
-  return line.taskId === taskId;
-}
-
 export type TaskSummary = {
   taskId: string;
   timestamp: string;

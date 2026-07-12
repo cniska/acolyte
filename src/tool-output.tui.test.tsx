@@ -127,7 +127,7 @@ const CASES: ToolCase[] = [
   {
     name: "edit-header with diff lines",
     parts: [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 1 },
       { kind: "diff", lineNumber: 9, marker: "context", text: "const x = 1;" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
@@ -148,7 +148,7 @@ const CASES: ToolCase[] = [
   {
     name: "diff context gaps show ellipsis without line count",
     parts: [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 1 },
       { kind: "diff", lineNumber: 1, marker: "context", text: "const a = 1;" },
       { kind: "truncated" },
       { kind: "diff", lineNumber: 10, marker: "remove", text: "const y = 2;" },
@@ -175,7 +175,7 @@ const CASES: ToolCase[] = [
   {
     name: "multi-file edit-header with per-file sub-headers",
     parts: [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "14 files", files: 14, added: 28, removed: 28 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "14 files", added: 28, removed: 28 },
       { kind: "text", text: "src/short-id.ts (+1 -1)" },
       { kind: "diff", lineNumber: 2, marker: "remove", text: "export function generateId(size = 8): string {" },
       { kind: "diff", lineNumber: 2, marker: "add", text: "export function generateId(size = 8): string {" },
@@ -205,7 +205,7 @@ const CASES: ToolCase[] = [
   {
     name: "single-file edit has no per-file sub-header",
     parts: [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 1 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 1 },
       { kind: "diff", lineNumber: 2, marker: "remove", text: "old" },
       { kind: "diff", lineNumber: 2, marker: "add", text: "new" },
     ],
@@ -541,7 +541,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
 
   test("truncates a long body line to the given width, leaving the header intact", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
     const [header, body] = renderToolOutput(items, 20).split("\n");
@@ -552,7 +552,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
 
   test("omitting the width leaves long lines unwrapped (default path unchanged)", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
     expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n  1 +${"X".repeat(60)}`);
@@ -568,7 +568,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
 
   test("truncates a long diff line to the terminal width instead of wrapping", () => {
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", files: 1, added: 1, removed: 0 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(80) },
     ];
     const out = renderChat(items, 40); // terminal width 40 → line must fit, not wrap
@@ -582,7 +582,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     // The per-file sub-header adds a 2-col diffIndent; the extra indent must come out of the
     // content budget so a nested diff/truncated line still fits and never wraps at narrow width.
     const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "9 files", files: 9, added: 9, removed: 9 },
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "9 files", added: 9, removed: 9 },
       { kind: "text", text: "src/some/really/long/module.ts (+1 -1)" },
       { kind: "diff", lineNumber: 200, marker: "add", text: "X".repeat(80) },
       { kind: "truncated", count: 3, unit: "lines" },

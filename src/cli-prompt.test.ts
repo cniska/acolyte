@@ -137,7 +137,6 @@ describe("cli-prompt", () => {
       kind: "edit-header",
       labelKey: "tool.edit_code.header",
       path: "src/foo.ts",
-      files: 1,
       added: 2,
       removed: 1,
     };

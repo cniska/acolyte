@@ -8,8 +8,7 @@ type TaskPatch = {
 const ALLOWED_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
   accepted: ["queued", "running", "cancelled"],
   queued: ["running", "cancelled"],
-  running: ["detached", "completed", "failed", "cancelled"],
-  detached: ["running", "completed", "failed", "cancelled"],
+  running: ["completed", "failed", "cancelled"],
   completed: [],
   failed: [],
   cancelled: [],
@@ -58,19 +57,16 @@ export class TaskRegistry {
   summary(): {
     total: number;
     running: number;
-    detached: number;
     completed: number;
     failed: number;
     cancelled: number;
   } {
     let running = 0;
-    let detached = 0;
     let completed = 0;
     let failed = 0;
     let cancelled = 0;
     for (const task of this.store.values()) {
       if (task.state === "running") running += 1;
-      if (task.state === "detached") detached += 1;
       if (task.state === "completed") completed += 1;
       if (task.state === "failed") failed += 1;
       if (task.state === "cancelled") cancelled += 1;
@@ -78,7 +74,6 @@ export class TaskRegistry {
     return {
       total: this.store.size(),
       running,
-      detached,
       completed,
       failed,
       cancelled,

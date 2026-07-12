@@ -6,9 +6,7 @@ import { createId } from "./short-id";
 import { toolOutputPartSchema } from "./tool-output-contract";
 
 export const roleSchema = z.enum(["system", "user", "assistant"]);
-export type Role = z.infer<typeof roleSchema>;
 export const messageKindSchema = z.enum(["text", "tool_payload", "status"]);
-export type MessageKind = z.infer<typeof messageKindSchema>;
 export const messageIdSchema = domainIdSchema("msg");
 export type MessageId = z.infer<typeof messageIdSchema>;
 
@@ -33,7 +31,6 @@ export const chatRowStyleSchema = z.object({
 export type ChatRowStyle = z.infer<typeof chatRowStyleSchema>;
 
 export const chatRowIdSchema = domainIdSchema("row");
-export type ChatRowId = z.infer<typeof chatRowIdSchema>;
 
 export const toolOutputSchema = z.object({
   parts: z.array(toolOutputPartSchema),
