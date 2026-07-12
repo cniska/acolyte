@@ -24,9 +24,11 @@ const GIT_ENV_KEYS = [
 export async function runCommand(
   cmd: string[],
   workspace: string,
+  envOverride?: Record<string, string>,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const env = { ...process.env };
   for (const key of GIT_ENV_KEYS) delete env[key];
+  if (envOverride) Object.assign(env, envOverride);
   const proc = Bun.spawn({
     cmd,
     cwd: workspace,
