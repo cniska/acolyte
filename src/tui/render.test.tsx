@@ -1,10 +1,84 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { createElement as h, useEffect, useState } from "react";
+import { reconciler } from "./reconciler";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
-import { renderCapture } from "./test-utils";
+import { frameWrites, renderCapture, renderScript } from "./test-utils";
 import { replayTerminal } from "./vt";
+
+/** Mock process.stdin as a TTY so render() installs its focus-in handler.
+ *  Returns `emit` to feed raw bytes and `restore` to put the real stdin back. */
+function mockStdinTty(): { emit: (data: string) => void; restore: () => void } {
+  const stdin = process.stdin;
+  const savedIsTTY = Object.getOwnPropertyDescriptor(stdin, "isTTY");
+  const savedSetRawMode = (stdin as { setRawMode?: unknown }).setRawMode;
+  Object.defineProperty(stdin, "isTTY", { value: true, configurable: true });
+  (stdin as { setRawMode: (m: boolean) => void }).setRawMode = () => {};
+  return {
+    emit: (data: string) => {
+      stdin.emit("data", Buffer.from(data));
+    },
+    restore: () => {
+      if (savedIsTTY) Object.defineProperty(stdin, "isTTY", savedIsTTY);
+      else delete (stdin as { isTTY?: boolean }).isTTY;
+      (stdin as { setRawMode?: unknown }).setRawMode = savedSetRawMode;
+    },
+  };
+}
+
+/** Force React to commit and the renderer to flush until a write lands — the
+ *  deterministic seam renderScript uses, inlined for tests that also inject stdin. */
+async function drainFrame(flush: () => void, writes: string[]): Promise<void> {
+  const before = writes.length;
+  for (let attempt = 0; attempt < 200 && writes.length === before; attempt++) {
+    reconciler.flushSyncWork();
+    reconciler.flushPassiveEffects();
+    flush();
+    if (writes.length === before) await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+/** The cursorUp distances (`ESC[nA`) emitted across a set of writes. */
+function cursorUpCounts(writes: string[]): number[] {
+  const counts: number[] = [];
+  const joined = writes.join("");
+  // fromCharCode(27) is ESC — keeps the control char out of a regex literal (lint).
+  const re = new RegExp(`${String.fromCharCode(27)}\\[(\\d+)A`, "g");
+  let m: RegExpExecArray | null = re.exec(joined);
+  while (m !== null) {
+    counts.push(Number(m[1]));
+    m = re.exec(joined);
+  }
+  return counts;
+}
+
+/** Render `node` at `from` dimensions, commit, then resize to `to` and let the
+ *  debounce fire. Returns the writes belonging to the resize repaint only. */
+async function captureResize(
+  node: React.ReactNode,
+  from: { columns: number; rows: number },
+  to: { columns: number; rows: number },
+): Promise<string[]> {
+  let splitIdx = 0;
+  const all = await withMockedStdout(async (writes) => {
+    const { render } = await import("./render");
+    const app = render(node);
+    await drainFrame(() => app.flush(), writes); // initial frame at `from`
+    splitIdx = writes.length;
+    Object.defineProperty(process.stdout, "columns", { value: to.columns, configurable: true });
+    Object.defineProperty(process.stdout, "rows", { value: to.rows, configurable: true });
+    process.stdout.emit("resize");
+    // Poll until the debounced (16ms) resize commit lands rather than sleeping a
+    // fixed span — a starved CI can push the timer past any constant.
+    for (let attempt = 0; attempt < 300 && writes.length === splitIdx; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2));
+    }
+    app.unmount();
+    await app.waitUntilExit();
+  }, from);
+  return frameWrites(all.slice(splitIdx));
+}
 
 function withMockedStdout(
   fn: (writes: string[]) => void | Promise<void>,
@@ -300,6 +374,158 @@ describe("render", () => {
     expect(headerCount).toBe(1);
   });
 
+  test("promoting an overflowed turn to static does not duplicate scrollback", async () => {
+    // A chat turn whose active region overflows the viewport (top rows freeze into
+    // scrollback), then completes and moves into <tui-static> — the exact promotion
+    // path. The static flush erases only the live tail, so any frozen line it
+    // re-emits would duplicate: it already scrolled off, un-erasable. Driven on the
+    // deterministic flush() seam (renderScript) — real timers race the throttle and
+    // can skip the overflow frame, silently vacating the pin.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const lineNodes = LINES.map((line) => <tui-text key={line}>{line}</tui-text>);
+    const script = [
+      <tui-box key="active" flexDirection="column">
+        {lineNodes}
+        <tui-text>input</tui-text>
+      </tui-box>,
+      <tui-box key="promoted" flexDirection="column">
+        <tui-static>{lineNodes}</tui-static>
+        <tui-text>input</tui-text>
+      </tui-box>,
+    ];
+    const frames = await renderScript(script, { columns: 20, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, 20);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (const line of LINES) {
+      const count = transcript.filter((row) => row.includes(line)).length;
+      expect(count).toBe(1);
+    }
+  });
+
+  test("focus-in redraw does not duplicate frozen scrollback", async () => {
+    // Focus-in (\x1b[I) triggers forceRedraw. Once the active region has overflowed
+    // into scrollback, a from-scratch repaint re-emits the frozen top rows the erase
+    // can no longer reach — duplication. forceRedraw must repaint only the live tail.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          const app = render(
+            <tui-box flexDirection="column">
+              {LINES.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+              <tui-text>input</tui-text>
+            </tui-box>,
+          );
+          await drainFrame(() => app.flush(), captured); // initial commit → top rows freeze
+          stdin.emit("\x1b[I"); // focus-in → forceRedraw, synchronous commit
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 6 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 6, 20);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
+  test("width resize skips the erase and does not re-emit frozen scrollback", async () => {
+    // A width change may reflow the tail, so the stored erase count is unsafe.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const resize = await captureResize(
+      <tui-box flexDirection="column">
+        {LINES.map((line) => (
+          <tui-text key={line}>{line}</tui-text>
+        ))}
+        <tui-text>input</tui-text>
+      </tui-box>,
+      { columns: 20, rows: 6 },
+      { columns: 30, rows: 6 },
+    );
+    const joined = resize.join("");
+    expect(cursorUpCounts(resize)).toEqual([]);
+    expect(joined).not.toContain(ansi.eraseDown);
+    expect(joined).not.toContain("L1"); // L1 is the frozen top — must not reappear
+  });
+
+  test("height-only resize still erases the live tail", async () => {
+    // Width unchanged → no reflow → the stored erase count stays valid.
+    const resize = await captureResize(
+      <tui-box flexDirection="column">
+        <tui-text>alpha</tui-text>
+        <tui-text>beta</tui-text>
+      </tui-box>,
+      { columns: 20, rows: 10 },
+      { columns: 20, rows: 8 },
+    );
+    expect(cursorUpCounts(resize).length).toBeGreaterThan(0);
+    expect(resize.join("")).toContain(ansi.eraseDown);
+  });
+
+  test("height-shrink resize clamps the erase to the viewport, keeping frozen", async () => {
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const resize = await captureResize(
+      <tui-box flexDirection="column">
+        {LINES.map((line) => (
+          <tui-text key={line}>{line}</tui-text>
+        ))}
+        <tui-text>input</tui-text>
+      </tui-box>,
+      { columns: 20, rows: 6 },
+      { columns: 20, rows: 4 },
+    );
+    // Erase distance can never exceed the new viewport's top row (rows - 1 = 3),
+    // else cursor-up reaches through the top into frozen history.
+    expect(cursorUpCounts(resize).every((n) => n <= 3)).toBe(true);
+    expect(resize.join("")).not.toContain("L1"); // L1 is the frozen top — must not reappear
+  });
+
+  test("width change before the resize debounce skips the erase (loss guard)", async () => {
+    // A streaming commit can land after stdout.columns changed but before the
+    // 16ms resize debounce fires. The geometry guard lives in commitRender, so
+    // even this state-driven commit must skip the now-invalid erase.
+    const setText: { current: (value: string) => void } = { current: () => {} };
+    await withMockedStdout(
+      async (writes) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const [text, setTextState] = useState("one");
+          setText.current = setTextState;
+          // Multi-line so lastActiveLineCount > 0 — without the guard the "two"
+          // commit would erase (cursorUp), which is exactly what must be skipped.
+          return (
+            <tui-box flexDirection="column">
+              <tui-text>alpha</tui-text>
+              <tui-text>beta</tui-text>
+              <tui-text>{text}</tui-text>
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), writes);
+        const before = writes.length;
+        Object.defineProperty(process.stdout, "columns", { value: 40, configurable: true });
+        setText.current("two"); // drives a commit directly, not via the resize debounce
+        await drainFrame(() => app.flush(), writes);
+        const frame = writes.slice(before);
+        expect(frame.join("")).toContain("two");
+        expect(cursorUpCounts(frame)).toEqual([]);
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+  });
+
   test("overflow erase and repaint are atomic within one syncWrite", async () => {
     const writes = await withMockedStdout(
       async () => {
@@ -538,42 +764,6 @@ describe("render", () => {
     const joined = visible.join("\n");
     expect(joined).toContain("B".repeat(20));
     expect(joined).not.toContain("A".repeat(20));
-  });
-
-  test("resize resets lastActiveLineCount so post-resize render does not use stale erase geometry", async () => {
-    const writes = await withMockedStdout(
-      async () => {
-        const { render } = await import("./render");
-
-        function App(): React.JSX.Element {
-          return (
-            <tui-box flexDirection="column">
-              <tui-text>resize line 1</tui-text>
-              <tui-text>resize line 2</tui-text>
-              <tui-text>resize line 3</tui-text>
-            </tui-box>
-          );
-        }
-
-        const app = render(<App />);
-        // Let initial render settle — lastActiveLineCount is now > 0.
-        await new Promise((r) => setTimeout(r, 50));
-        process.stdout.emit("resize");
-        // Wait for 16ms debounce + throttle window.
-        await new Promise((r) => setTimeout(r, 80));
-        app.unmount();
-      },
-      { columns: 80, rows: 24 },
-    );
-
-    const frameWrites = extractFrameWrites(writes);
-    const contentWrites = frameWrites.filter((w) => w.includes("resize line 1"));
-    // Initial render + post-resize render.
-    expect(contentWrites.length).toBeGreaterThanOrEqual(2);
-    // Post-resize: lastActiveLineCount was reset to 0, so eraseSequence() returns "".
-    // The post-resize write must not contain a cursor-up erase for the old row count.
-    const postResizeWrite = contentWrites[contentWrites.length - 1] ?? "";
-    expect(postResizeWrite).not.toContain(ansi.cursorUp(2));
   });
 
   test("overflow after static flush is tracked so re-render does not re-emit frozen overflow lines", async () => {

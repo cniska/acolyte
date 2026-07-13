@@ -38,6 +38,8 @@ export function render(node: ReactNode): RenderInstance {
   const useKittyProtocol = stdout.isTTY && KITTY_TERMINALS.includes(termProgram);
   let lastActive = "";
   let lastActiveLineCount = 0;
+  // A change since the last frame means the terminal may have reflowed the tail.
+  let lastRenderColumns = stdout.columns ?? DEFAULT_COLUMNS;
   let flushedStaticCount = 0;
   // Lines from the active region that have already been written to scrollback.
   // Lets us emit only the delta on subsequent frames instead of re-emitting.
@@ -90,10 +92,9 @@ export function render(node: ReactNode): RenderInstance {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
-      frozenLineCount = 0;
-      frozenScrollbackText = "";
+      // Frozen state and erase geometry are reconciled in commitRender, which
+      // must own it anyway to catch a streaming commit landing mid-resize.
       lastActive = "";
-      lastActiveLineCount = 0;
       commitRender();
     }, 16);
   };
@@ -135,11 +136,11 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
-  /** Repaint the active region on focus-in. */
+  /** Repaint the active region on focus-in. Frozen scrollback is left intact —
+   *  it physically scrolled off and the erase can't reach it, so re-emitting would
+   *  duplicate. Clearing lastActive forces a repaint of the live tail only. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    frozenLineCount = 0;
-    frozenScrollbackText = "";
     lastActive = "";
     commitRender();
   }
@@ -150,14 +151,35 @@ export function render(node: ReactNode): RenderInstance {
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const maxLiveRows = (stdout.rows ?? 24) - 1;
 
+    // Erasing with a stale count is transcript loss. On a width change the terminal
+    // may reflow the tail, so cursor-up would overshoot into promoted scrollback —
+    // skip the erase (a stale tail copy is merely cosmetic). On a height shrink,
+    // clamp so cursor-up can't reach through the viewport top into frozen history.
+    if (cols !== lastRenderColumns) {
+      lastActiveLineCount = 0;
+      lastRenderColumns = cols;
+    } else if (lastActiveLineCount > maxLiveRows) {
+      lastActiveLineCount = maxLiveRows;
+    }
+
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
-      let buf = eraseSequence();
       let appendedStatic = "";
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      buf += appendedStatic;
+      // When an overflowing active turn is promoted to static, its top lines are
+      // already frozen in scrollback — they scrolled off and eraseSequence() can
+      // only reach the live tail, so re-emitting them duplicates. Adopt the frozen
+      // prefix: write only the delta below it. A rendering mismatch (prefix no
+      // longer matches) falls back to the full write, no worse than before.
+      if (frozenLineCount > 0) {
+        const frozenPrefix = `${frozenScrollbackText}\n`;
+        if (appendedStatic.startsWith(frozenPrefix)) {
+          appendedStatic = appendedStatic.slice(frozenPrefix.length);
+        }
+      }
+      const buf = eraseSequence() + appendedStatic;
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenScrollbackText = "";

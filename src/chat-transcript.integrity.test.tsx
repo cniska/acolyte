@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
 import { type ChatRow, createRow } from "./chat-contract";
-import { ChatTranscript } from "./chat-transcript";
+import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { Box, Static, Text } from "./tui";
 import { assertCursorAccounting, frameWrites, renderScript } from "./tui/test-utils";
 import { assertTranscriptIntegrity, replayTerminal, transcriptLines } from "./tui/vt";
 
@@ -61,6 +62,34 @@ describe("ChatTranscript transcript integrity", () => {
     const vt = replayTerminal(frameWrites(frames.flat()), 6, COLUMNS);
     // Every line the tall oracle shows survives exactly once, in order, across the
     // scrollback boundary — no drop, duplicate, or column-splice.
+    assertTranscriptIntegrity(vt, expected);
+  });
+
+  test("promoting an overflowed turn to <Static> duplicates nothing", async () => {
+    // Mirror chat-app's split: completed rows live in <Static> (write-once
+    // scrollback), the in-progress turn re-renders live via ChatTranscript. The
+    // duplication bug: the turn overflows into scrollback while active, then
+    // promotes to <Static> — the static flush re-emits its already-frozen top.
+    const contentWidth = Math.max(24, COLUMNS - 2);
+    const chatLike = (promoted: ChatRow[], active: ChatRow[]): React.JSX.Element => (
+      <Box flexDirection="column">
+        <Static items={promoted}>
+          {(item: ChatRow) => (
+            <Box key={item.id} flexDirection="column">
+              <Text> </Text>
+              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={contentWidth} />
+            </Box>
+          )}
+        </Static>
+        <ChatTranscript rows={active} pendingFrame={0} />
+      </Box>
+    );
+    // Ground truth: the fully-promoted turn rendered once in a tall viewport.
+    const oracleFrames = await renderScript([chatLike(ROWS, [])], { columns: COLUMNS, rows: 200 });
+    const expected = transcriptLines(replayTerminal(frameWrites(oracleFrames.flat()), 200, COLUMNS));
+    // Live turn overflows a short viewport, then promotes to <Static>.
+    const frames = await renderScript([chatLike([], ROWS), chatLike(ROWS, [])], { columns: COLUMNS, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, COLUMNS);
     assertTranscriptIntegrity(vt, expected);
   });
 
