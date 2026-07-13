@@ -69,7 +69,11 @@ async function captureResize(
     Object.defineProperty(process.stdout, "columns", { value: to.columns, configurable: true });
     Object.defineProperty(process.stdout, "rows", { value: to.rows, configurable: true });
     process.stdout.emit("resize");
-    await new Promise((resolve) => setTimeout(resolve, 40)); // > 16ms debounce
+    // Poll until the debounced (16ms) resize commit lands rather than sleeping a
+    // fixed span — a starved CI can push the timer past any constant.
+    for (let attempt = 0; attempt < 300 && writes.length === splitIdx; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2));
+    }
     app.unmount();
     await app.waitUntilExit();
   }, from);
