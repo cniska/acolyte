@@ -1,109 +1,111 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import type { StreamChunk } from "./agent-contract";
-import { COMPACTED_OUTPUT, compactPriorToolResults, createAgentStream } from "./agent-stream";
+import { createAgentStream } from "./agent-stream";
 import type { RateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
-describe("compactPriorToolResults", () => {
-  function toolMsg(results: Array<{ id: string; name: string; value: string }>): LanguageModelV4Message {
+describe("tool results are retained verbatim across steps", () => {
+  const noopRateLimiter: RateLimiter = {
+    async beforeCall() {},
+    onResponse() {},
+    onError() {
+      return { shouldRetry: false, delayMs: 0 };
+    },
+    reset() {},
+    state() {
+      return {
+        requestsRemaining: undefined,
+        tokensRemaining: undefined,
+        requestsResetMs: undefined,
+        tokensResetMs: undefined,
+      };
+    },
+  };
+
+  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
     return {
-      role: "tool",
-      content: results.map((r) => ({
-        type: "tool-result" as const,
-        toolCallId: r.id,
-        toolName: r.name,
-        output: { type: "text" as const, value: r.value },
-      })),
+      type: "finish",
+      finishReason: { unified: reason, raw: reason },
+      usage: {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      },
     };
   }
 
-  test("replaces tool result output with compact marker", () => {
-    const messages: LanguageModelV4Message[] = [
-      { role: "system", content: "you are helpful" },
-      { role: "user", content: [{ type: "text", text: "search for foo" }] },
-      toolMsg([{ id: "tc_1", name: "file-search", value: "hit:\n".repeat(500) }]),
-    ];
-    compactPriorToolResults(messages);
-    const tool = messages[2];
-    expect(tool.role).toBe("tool");
-    if (tool.role !== "tool") throw new Error("unexpected");
-    const part = tool.content[0];
-    expect(part.type).toBe("tool-result");
-    if (part.type !== "tool-result") throw new Error("unexpected");
-    expect(part.output).toEqual(COMPACTED_OUTPUT);
-    expect(part.toolCallId).toBe("tc_1");
-    expect(part.toolName).toBe("file-search");
-  });
+  function scriptedModel(
+    turns: LanguageModelV4StreamPart[][],
+    promptCapture: LanguageModelV4Message[][],
+  ): LanguageModelV4 {
+    let call = 0;
+    return {
+      specificationVersion: "v3",
+      provider: "test",
+      modelId: "test-model",
+      supportedUrls: {},
+      async doStream(args: { prompt: LanguageModelV4Message[] } & Record<string, unknown>) {
+        promptCapture.push(args.prompt.map((m) => ({ ...m })));
+        const parts = turns[call] ?? [];
+        call += 1;
+        return {
+          stream: new ReadableStream<LanguageModelV4StreamPart>({
+            start(controller) {
+              for (const part of parts) controller.enqueue(part);
+              controller.close();
+            },
+          }),
+        };
+      },
+    } as unknown as LanguageModelV4;
+  }
 
-  test("skips non-tool messages", () => {
-    const systemContent = "you are helpful";
-    const messages: LanguageModelV4Message[] = [
-      { role: "system", content: systemContent },
-      { role: "user", content: [{ type: "text", text: "hello" }] },
-    ];
-    compactPriorToolResults(messages);
-    expect(messages[0]).toEqual({ role: "system", content: systemContent });
-    expect(messages[1]).toEqual({ role: "user", content: [{ type: "text", text: "hello" }] });
-  });
+  function markerTool(marker: string): ToolDefinition {
+    let call = 0;
+    return {
+      id: "run-cmd",
+      toolkit: "test",
+      category: "execute",
+      description: "run",
+      instruction: "run",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        call += 1;
+        // Per-call marker so the positive assertion pins the step-1 result specifically,
+        // independent of the placeholder string the old compaction used.
+        return { result: { kind: "run-cmd", marker: `${marker}-${call}` } };
+      },
+    };
+  }
 
-  test("compacts multiple tool messages", () => {
-    const messages: LanguageModelV4Message[] = [
-      { role: "system", content: "sys" },
-      toolMsg([{ id: "tc_1", name: "file-search", value: "hit1" }]),
-      toolMsg([{ id: "tc_2", name: "file-search", value: "hit2" }]),
+  test("a step-1 tool result is still visible verbatim at the step-3 model call", async () => {
+    // Regression for the removed microcompaction: it rewrote every prior non-file-read
+    // tool result to "[previous tool result]" after one step, so the model re-ran
+    // commands (verify/test) whose output it could no longer see.
+    const marker = "RUN-OUTPUT-MARKER";
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "run-cmd", input: "{}" }, finishPart("tool-calls")],
+      [{ type: "tool-call", toolCallId: "tc_2", toolName: "run-cmd", input: "{}" }, finishPart("tool-calls")],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
     ];
-    compactPriorToolResults(messages);
-    for (const msg of messages.filter((m) => m.role === "tool")) {
-      if (msg.role !== "tool") continue;
-      for (const part of msg.content) {
-        if (part.type !== "tool-result") continue;
-        expect(part.output).toEqual(COMPACTED_OUTPUT);
-      }
-    }
-  });
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { "run-cmd": markerTool(marker) }, noopRateLimiter);
+    const { getFullOutput } = await stream("run verify", {});
+    await getFullOutput();
 
-  test("preserves file-read results across compaction", () => {
-    const fileContent = "File: src/foo.ts\n1: const x = 1;\n2: const y = 2;\n";
-    const messages: LanguageModelV4Message[] = [
-      toolMsg([{ id: "tc_1", name: "file-read", value: fileContent }]),
-      toolMsg([{ id: "tc_2", name: "file-search", value: "hits" }]),
-    ];
-    compactPriorToolResults(messages);
-    if (messages[0].role !== "tool") throw new Error("unexpected");
-    const readPart = messages[0].content[0];
-    if (readPart.type !== "tool-result") throw new Error("unexpected");
-    expect(readPart.output).toEqual({ type: "text", value: fileContent });
-    if (messages[1].role !== "tool") throw new Error("unexpected");
-    const searchPart = messages[1].content[0];
-    if (searchPart.type !== "tool-result") throw new Error("unexpected");
-    expect(searchPart.output).toEqual(COMPACTED_OUTPUT);
-  });
-
-  test("compacts multiple results within a single tool message", () => {
-    const messages: LanguageModelV4Message[] = [
-      toolMsg([
-        { id: "tc_1", name: "file-search", value: "content1" },
-        { id: "tc_2", name: "shell-exec", value: "output2" },
-      ]),
-    ];
-    compactPriorToolResults(messages);
-    if (messages[0].role !== "tool") throw new Error("unexpected");
-    expect(messages[0].content).toHaveLength(2);
-    for (const part of messages[0].content) {
-      if (part.type !== "tool-result") continue;
-      expect(part.output).toEqual(COMPACTED_OUTPUT);
-    }
-  });
-
-  test("is idempotent", () => {
-    const messages: LanguageModelV4Message[] = [toolMsg([{ id: "tc_1", name: "file-search", value: "content" }])];
-    compactPriorToolResults(messages);
-    compactPriorToolResults(messages);
-    if (messages[0].role !== "tool") throw new Error("unexpected");
-    const part = messages[0].content[0];
-    if (part.type !== "tool-result") throw new Error("unexpected");
-    expect(part.output).toEqual(COMPACTED_OUTPUT);
+    expect(promptCapture.length).toBe(3);
+    const thirdPrompt = JSON.stringify(promptCapture[2]);
+    expect(thirdPrompt).toContain(`${marker}-1`);
+    expect(thirdPrompt).toContain(`${marker}-2`);
+    expect(thirdPrompt).not.toContain("[previous tool result]");
   });
 });
 

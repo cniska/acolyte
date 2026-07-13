@@ -40,13 +40,8 @@ If the model still cannot recover, finalize returns an awaiting-input response w
 
 - before each model call, `agent-stream.ts` estimates the composed prompt size (system + messages + tools) and compares it against `SessionFlags.preCallInputTokenLimit` (defaulted from `MAX_CONTEXT_TOKENS`)
 - overflow throws `E_BUDGET_EXHAUSTED` with a composition breakdown (system, tools, messages tokens)
-- sessions are bounded by context pressure per call, not by cumulative tokens across calls; microcompaction keeps prior iterations lean
-
-## Microcompaction
-
-- between model calls, prior tool results in the message history are replaced with a short marker so they stop consuming input tokens on re-send
-- `file-read` results are preserved intact so the model can still reference file contents when producing later edits
-- implemented in `compactPriorToolResults()` in `agent-stream.ts`
+- sessions are bounded by context pressure per call, not by cumulative tokens across calls
+- prior tool results persist verbatim across steps within a turn; each result is capped individually via `truncateMiddle(raw, MAX_TOOL_RESULT_CHARS)` at write time, and the per-call budget check above is the backstop for cumulative growth
 
 ## Run control
 

@@ -272,7 +272,6 @@ export function createAgentStream(
           }
         }
 
-        compactPriorToolResults(messages);
         messages.push({ role: "assistant", content: assistantContent });
         messages.push({ role: "tool", content: toolResultParts });
 
@@ -401,22 +400,6 @@ function emitStreamPart(
         payload: { error: part.error, message },
       });
       break;
-    }
-  }
-}
-
-export const COMPACTED_OUTPUT = { type: "text" as const, value: "[previous tool result]" };
-
-const PRESERVE_TOOL_RESULTS = new Set<string>(["file-read"]);
-
-export function compactPriorToolResults(messages: LanguageModelV4Message[]): void {
-  for (const message of messages) {
-    if (message.role !== "tool") continue;
-    for (let i = 0; i < message.content.length; i++) {
-      const part = message.content[i];
-      if (part.type !== "tool-result") continue;
-      if (PRESERVE_TOOL_RESULTS.has(part.toolName)) continue;
-      message.content[i] = { ...part, output: COMPACTED_OUTPUT };
     }
   }
 }
