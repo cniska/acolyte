@@ -795,49 +795,23 @@ describe("editCode", () => {
     expect(content).not.toContain("sum(");
   });
 
-  test("replaces in Python files", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-py-");
-    const filePath = join(workspace, "file.py");
-    await writeFile(filePath, 'print("hello")\nprint("world")\n', "utf8");
+  test.each([
+    ["Python", "file.py", 'print("hello")\n'],
+    ["Rust", "file.rs", 'fn main() { println!("hello"); }\n'],
+    ["Go", "file.go", 'package main\n\nfunc main() {\n\tprintln("hello")\n}\n'],
+  ])("rejects %s files as unsupported without crashing", async (_lang, name, source) => {
+    const workspace = dirs.createDir("acolyte-test-ast-unsupported-");
+    const filePath = join(workspace, name);
+    await writeFile(filePath, source, "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      { path: filePath, edits: [{ op: "replace", rule: "print($ARG)", replacement: "log($ARG)" }] },
-      "call_29",
-    );
-    expect(result.result.matches).toBe(2);
-    const content = await readFile(filePath, "utf8");
-    expect(content).toContain('log("hello")');
-    expect(content).not.toContain("print");
-  });
-
-  test("replaces in Rust files", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-rs-");
-    const filePath = join(workspace, "file.rs");
-    await writeFile(filePath, 'println!("hello");\nprintln!("world");\n', "utf8");
-    const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      { path: filePath, edits: [{ op: "replace", rule: "println!($ARGS)", replacement: "eprintln!($ARGS)" }] },
-      "call_30",
-    );
-    expect(result.result.matches).toBe(2);
-    const content = await readFile(filePath, "utf8");
-    expect(content).toContain("eprintln!");
-    expect(content).not.toMatch(/(?<!e)println!/);
-  });
-
-  test("replaces in Go files", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-go-");
-    const filePath = join(workspace, "file.go");
-    await writeFile(filePath, 'package main\n\nfunc main() {\n\tprintln("hello")\n\tprintln("world")\n}\n', "utf8");
-    const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      { path: filePath, edits: [{ op: "replace", rule: "println($ARG)", replacement: "print($ARG)" }] },
-      "call_31",
-    );
-    expect(result.result.matches).toBe(2);
-    const content = await readFile(filePath, "utf8");
-    expect(content).toContain("print(");
-    expect(content).not.toContain("println(");
+    await expect(
+      tools.editCode.execute(
+        { path: filePath, edits: [{ op: "replace", rule: "print($ARG)", replacement: "log($ARG)" }] },
+        "call_29",
+      ),
+    ).rejects.toMatchObject({
+      code: TOOL_ERROR_CODES.editCodeUnsupportedFile,
+    });
   });
 
   test("includes affectedSymbols in result", async () => {

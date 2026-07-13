@@ -16,36 +16,6 @@ import { createToolError } from "./tool-error";
 import { createDiff, displayPathForDiff, IGNORED_DIRS } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
-let dynamicLangsRegistered = false;
-
-async function ensureDynamicLanguages(): Promise<void> {
-  if (dynamicLangsRegistered) return;
-  const langs: Record<string, unknown> = {};
-  try {
-    const { default: python } = await import("@ast-grep/lang-python");
-    langs.python = python;
-  } catch {
-    /* optional */
-  }
-  try {
-    const { default: rust } = await import("@ast-grep/lang-rust");
-    langs.rust = rust;
-  } catch {
-    /* optional */
-  }
-  try {
-    const { default: go } = await import("@ast-grep/lang-go");
-    langs.go = go;
-  } catch {
-    /* optional */
-  }
-  if (Object.keys(langs).length > 0) {
-    // biome-ignore lint/suspicious/noExplicitAny: ast-grep dynamic language API has loose types
-    napi.registerDynamicLanguage(langs as any);
-  }
-  dynamicLangsRegistered = true;
-}
-
 const LANGUAGE_MAP: Record<string, string> = {
   ".ts": "TypeScript",
   ".tsx": "Tsx",
@@ -53,10 +23,6 @@ const LANGUAGE_MAP: Record<string, string> = {
   ".jsx": "JavaScript",
   ".html": "Html",
   ".css": "Css",
-  ".py": "python",
-  ".pyi": "python",
-  ".rs": "rust",
-  ".go": "go",
 };
 
 function languageFromPath(filePath: string): string | undefined {
@@ -400,7 +366,6 @@ async function editCodeFile(
 ): Promise<EditCodeFileResult> {
   const langName = languageFromPath(absPath);
   if (!langName) return null;
-  await ensureDynamicLanguages();
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   const original = await readFile(absPath, "utf8");
   let current = original;
@@ -584,7 +549,6 @@ export async function scanCode(input: {
 }): Promise<ScanCodeResult> {
   const maxResults = input.maxResults ?? 50;
   const patterns = Array.isArray(input.pattern) ? input.pattern : [input.pattern];
-  await ensureDynamicLanguages();
 
   const results: ScanCodePatternResult[] = patterns.map((pattern) => ({ pattern, matches: [] }));
 
