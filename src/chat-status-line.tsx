@@ -4,7 +4,8 @@ import { formatCompactNumber } from "./chat-format";
 import type { PrInfo, PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import { Text } from "./tui";
+import { Box, Text } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 export type StatusLineState = {
   /** Repo name (git root basename), or the cwd basename outside a git repo. */
@@ -20,8 +21,8 @@ export type StatusLineState = {
   inputTokens: number;
   outputTokens: number;
   pr: PrInfo | null;
+  skills: readonly string[];
 };
-
 export function prColor(state: PrState): string {
   switch (state) {
     case "open":
@@ -63,7 +64,7 @@ export function statusTokenTotals(
 }
 
 export function StatusLine(state: StatusLineState): React.ReactNode {
-  const { repo, worktree, branch, model, effort, inputTokens, outputTokens, pr } = state;
+  const { repo, worktree, branch, model, effort, inputTokens, outputTokens, pr, skills } = state;
   const segments: React.ReactNode[] = [];
 
   // Location: repo · worktree · branch, folded left to right (a name already shown
@@ -107,7 +108,7 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
     );
   }
 
-  return (
+  const left = (
     <Text>
       {"  "}
       {segments.map((segment, index) => (
@@ -118,5 +119,16 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
         </Text>
       ))}
     </Text>
+  );
+
+  const skillSegment = skills.length > 0 ? skills.join(" · ") : null;
+  if (!skillSegment) return left;
+
+  return (
+    <Box justifyContent="space-between" width={process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH}>
+      {left}
+      {/* leading space keeps a separator when a narrow width floors the space-between gap to 0 */}
+      <Text color={palette.dim}>{` ${skillSegment}`}</Text>
+    </Box>
   );
 }

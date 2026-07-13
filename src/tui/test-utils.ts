@@ -22,6 +22,7 @@ export function withTerminalWidth(width: number, run: () => string): string {
     return run();
   } finally {
     if (descriptor) Object.defineProperty(process.stdout, "columns", descriptor);
+    else delete (process.stdout as { columns?: number }).columns;
   }
 }
 
@@ -62,6 +63,7 @@ function mockTty(columns: number, rows: number): { writes: string[]; restore: ()
     process.stdout.write = saved.write;
     for (const key of ["isTTY", "columns", "rows"] as const)
       if (saved[key]) Object.defineProperty(process.stdout, key, saved[key]);
+      else delete (process.stdout as unknown as Record<string, unknown>)[key];
     if (savedTmux !== undefined) process.env.TMUX = savedTmux;
   };
   return { writes, restore };
