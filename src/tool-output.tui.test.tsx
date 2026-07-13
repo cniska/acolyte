@@ -4,7 +4,8 @@ import { ChatTranscript } from "./chat-transcript";
 import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { renderToolOutput } from "./tool-output-render";
-import { renderPlain } from "./tui/test-utils";
+import { renderToString } from "./tui/index";
+import { renderPlain, withTerminalWidth } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
   const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
@@ -593,5 +594,27 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         expect(Bun.stringWidth(line)).toBeLessThanOrEqual(columns);
       }
     }
+  });
+
+  test("renders stderr in the same style as stdout, without a red channel flag", () => {
+    const row: ChatRow = {
+      id: "r1",
+      kind: "tool",
+      content: {
+        parts: [
+          { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun run build" },
+          { kind: "shell-output", stream: "stdout", text: "identical line" },
+          { kind: "shell-output", stream: "stderr", text: "identical line" },
+        ],
+      },
+    };
+    const output = withTerminalWidth(96, () => renderToString(<ChatTranscript rows={[row]} pendingFrame={0} />));
+    // stderr is just another output channel — it must not be painted red (SGR 31).
+    expect(output).not.toContain("\x1b[31m");
+    // Identical text on the two channels renders byte-for-byte the same, proving
+    // stderr shares stdout's dim styling rather than a channel-specific color.
+    const contentLines = output.split("\n").filter((line) => line.includes("identical line"));
+    expect(contentLines).toHaveLength(2);
+    expect(contentLines[0]).toBe(contentLines[1]);
   });
 });

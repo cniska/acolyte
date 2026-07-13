@@ -111,9 +111,7 @@ function renderToolPart(
     return (
       <Text key={`tool-${index}`}>
         {"\n  "}
-        <Text dimColor color={part.stream === "stderr" ? palette.red : undefined}>
-          {truncateToWidth(part.text, toolContentWidth - TOOL_LINE_INDENT)}
-        </Text>
+        <Text dimColor>{truncateToWidth(part.text, toolContentWidth - TOOL_LINE_INDENT)}</Text>
       </Text>
     );
   }
