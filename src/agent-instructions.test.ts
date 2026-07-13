@@ -20,7 +20,7 @@ describe("createInstructions", () => {
       ["Being understood on first read", "match the shape to the task"],
       ["Keep reasoning, structure, and how things connect in prose", "even when it names many files"],
       ["Use a list only", "short, flat set", "nothing to explain between them"],
-      ["Say what you are about to do", "surface findings"],
+      ["Before your first tool call", "briefly state what you are about to do", "short updates at key moments"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
       ["Questions about the codebase", "Search and read files immediately", "never ask"],
       ["Available skills are listed each turn", "skill-activate"],
