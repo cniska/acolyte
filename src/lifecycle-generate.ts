@@ -25,7 +25,7 @@ import {
 } from "./lifecycle-contract";
 import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
-import { providerFromModel } from "./provider-config";
+import { forcesToolChoice, providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
@@ -198,12 +198,12 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const reasoning = ctx.reasoning;
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
-      // OpenAI-only: forcing tool choice grammar-constrains decoding so GPT can't emit the
-      // signal call as text. Anthropic/Google map forced choice to a prose-suppressing prefill
-      // (400 under thinking), and gateway-routed GPT classifies as "vercel" (one provider string
-      // for every family, so can't force without breaking gateway Anthropic) — all stay "auto"
-      // and lean on the missing-signal retry as backstop.
-      toolChoice: provider === "openai" ? "required" : "auto",
+      // OpenAI/harmony family: forcing tool choice grammar-constrains decoding so GPT can't emit
+      // the signal call as text. forcesToolChoice sees through the Vercel gateway prefix, so
+      // gateway-routed GPT (vercel/openai/...) is forced too while gateway Anthropic is not.
+      // Anthropic/Google map forced choice to a prose-suppressing prefill (400 under thinking),
+      // so they stay "auto" and lean on the missing-signal retry as backstop.
+      toolChoice: forcesToolChoice(ctx.model) ? "required" : "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
         const reminders = collectReminders({
@@ -243,9 +243,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         switch (decision.kind) {
           case "missing-signal-continue":
             ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            // No per-step override: the run-level default already forces tool choice on
-            // OpenAI (the grammar constraint) and keeps it "auto" elsewhere (where forcing
-            // suppresses prose and 400s under extended thinking).
+            // No per-step override: the run-level default already forces tool choice for the
+            // OpenAI/harmony family (the grammar constraint) and keeps it "auto" elsewhere
+            // (where forcing suppresses prose and 400s under extended thinking).
             return renderFinishPolicyMessages(decision);
           case "missing-signal-block":
             ctx.currentError = {
