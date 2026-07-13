@@ -174,6 +174,43 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
+  test("forces tool choice for gateway-routed GPT but not gateway Anthropic", async () => {
+    // Regression for the #303 gap: gateway GPT classifies as "vercel", yet the harmony signal
+    // call must stay grammar-constrained or it leaks as text and degenerates into garbage tokens.
+    async function capturedToolChoice(model: string): Promise<unknown> {
+      let capturedOptions: StreamOptions | undefined;
+      const ctx = createRunContext({
+        model,
+        agent: {
+          id: "test-agent",
+          name: "test-agent",
+          instructions: "",
+          model: {} as RunContext["agent"]["model"],
+          tools: {},
+          async stream(_prompt, options) {
+            capturedOptions = options;
+            return {
+              fullStream: new ReadableStream({
+                start(controller) {
+                  controller.close();
+                },
+              }),
+              async getFullOutput() {
+                return { text: "done", toolCalls: [] };
+              },
+            };
+          },
+        },
+      });
+      await phaseGenerate(ctx, { timeoutMs: 1000 });
+      return capturedOptions?.toolChoice;
+    }
+
+    expect(await capturedToolChoice("vercel/openai/gpt-5.2")).toBe("required");
+    expect(await capturedToolChoice("openai/gpt-5.2")).toBe("required");
+    expect(await capturedToolChoice("vercel/anthropic/claude-sonnet-4")).toBe("auto");
+  });
+
   test("a no-match search does not gate a later done", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({

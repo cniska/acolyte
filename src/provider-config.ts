@@ -70,6 +70,30 @@ export function providerFromModel(model: string): Provider {
   return "vercel";
 }
 
+// The model family (creator), seen through the Vercel gateway's transport prefix:
+// native `openai/gpt-5.2` and gateway-routed `vercel/openai/gpt-5.2` both resolve to "openai".
+// providerFromModel conflates transport (which SDK/endpoint) with family (which behavior);
+// this names the family so family-conditional logic doesn't re-parse the gateway id by hand.
+// Gateway creators Acolyte doesn't model first-class (xai, mistral, ...) collapse to "vercel".
+export function modelCreator(model: string): Provider {
+  const provider = providerFromModel(model);
+  if (provider !== "vercel") return provider;
+  const gatewayId = model
+    .trim()
+    .toLowerCase()
+    .replace(/^vercel\//, "");
+  const creatorPrefix = gatewayId.split("/", 1)[0] ?? "";
+  const parsed = providerSchema.safeParse(creatorPrefix);
+  return parsed.success ? parsed.data : "vercel";
+}
+
+// Whether to grammar-constrain decoding with toolChoice: "required". True for the OpenAI/harmony
+// family (native or gateway-routed), where forcing stops the signal call from leaking as text.
+// Anthropic/Google map forced choice to a prose-suppressing prefill that 400s under thinking.
+export function forcesToolChoice(model: string): boolean {
+  return modelCreator(model) === "openai";
+}
+
 export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
 
 export const DEFAULT_REASONING = "medium";
