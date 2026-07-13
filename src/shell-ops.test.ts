@@ -25,6 +25,29 @@ describe("runShellCommand", () => {
     });
   });
 
+  test("does not forward FORCE_COLOR or COLORTERM into the subprocess", async () => {
+    const originalForceColor = process.env.FORCE_COLOR;
+    const originalColorTerm = process.env.COLORTERM;
+
+    try {
+      process.env.FORCE_COLOR = "1";
+      process.env.COLORTERM = "truecolor";
+
+      // `runShellCommand` pipes stdout/stderr; `env` prints to stdout.
+      const stdout = await runShellCommand(WORKSPACE, { cmd: "env" });
+
+      expect(stdout).toContain("PATH=");
+      expect(stdout).not.toContain("FORCE_COLOR=");
+      expect(stdout).not.toContain("COLORTERM=");
+    } finally {
+      if (originalForceColor === undefined) delete process.env.FORCE_COLOR;
+      else process.env.FORCE_COLOR = originalForceColor;
+
+      if (originalColorTerm === undefined) delete process.env.COLORTERM;
+      else process.env.COLORTERM = originalColorTerm;
+    }
+  });
+
   test("rejects empty command", async () => {
     await expect(runShellCommand(WORKSPACE, { cmd: "" })).rejects.toThrow("Command cannot be empty");
   });
