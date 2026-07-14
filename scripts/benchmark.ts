@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const WORKDIR = "/tmp/acolyte-benchmarks";
@@ -266,17 +266,11 @@ function countDepsGo(dir: string): { runtime: number; dev: number } {
 
 // --- git helpers ---
 
-function cloneOrUpdate(name: string, url: string): void {
+function cloneSnapshot(name: string, url: string): void {
   const dir = join(WORKDIR, name);
-  if (existsSync(join(dir, ".git"))) {
-    console.log(`  Updating ${name}...`);
-    try {
-      execSync(`git -C ${dir} pull --ff-only --quiet`, { stdio: "ignore" });
-    } catch {}
-  } else {
-    console.log(`  Cloning ${name}...`);
-    execSync(`git clone --depth 1 --quiet ${url} ${dir}`, { stdio: "ignore" });
-  }
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`  Cloning ${name}...`);
+  execSync(`git clone --depth 1 --quiet ${url} ${dir}`, { stdio: "ignore" });
 }
 
 function getCreatedDate(repoPath: string): string {
@@ -288,12 +282,16 @@ function getCreatedDate(repoPath: string): string {
   }
 }
 
+function getRevision(dir: string): string {
+  return execSync(`git -C ${dir} rev-parse --short=12 HEAD`, { encoding: "utf8" }).trim();
+}
+
 // --- main ---
 
 execSync(`mkdir -p ${WORKDIR}`);
 
-console.log("=== Cloning / updating repos ===");
-for (const p of PROJECTS) cloneOrUpdate(p.name, p.url);
+console.log("=== Cloning fresh origin snapshots ===");
+for (const p of PROJECTS) cloneSnapshot(p.name, p.url);
 
 console.log("\n=== Extracting metrics ===\n");
 
@@ -321,6 +319,10 @@ for (const p of PROJECTS) {
       sourceRaw = findSourceGo(dir);
       testRaw = findTestGo(dir);
       break;
+  }
+
+  if (sourceRaw.length === 0) {
+    throw new Error(`${p.name}: no source files found in ${dir}`);
   }
 
   const src = readFiles(sourceRaw);
@@ -364,6 +366,7 @@ for (const p of PROJECTS) {
   console.log(`  Files > 500:      ${filesOver500} (${filesOver500Pct}%)`);
   console.log(`  Largest file:     ${largestFile.lines}`);
   console.log(`  Barrel files:     ${barrelFiles}`);
+  console.log(`  Revision:         ${getRevision(dir)}`);
   console.log(`  Initial commit:   ${initialCommit}`);
   console.log(`  Dependencies:     ${deps.runtime} runtime + ${deps.dev} dev = ${deps.runtime + deps.dev} total`);
   console.log(`  Test files:       ${test.fileCount}`);
@@ -395,7 +398,9 @@ for (const p of PROJECTS) {
     console.log(`  FIXME|HACK /1k:       ${per1k(fixme, src.lineCount)}  (${fixme} total)`);
     console.log(`  Comments /1k:         ${per1k(comments, src.lineCount)}  (${comments} total)`);
     console.log(`  .safeParse /1k:       ${per1k(safeParse, src.lineCount)}  (${safeParse} total)`);
-    console.log(`  schema validations /1k: ${per1k(schemaValidations, src.lineCount)}  (${schemaValidations} total)`);
+    console.log(
+      `  parse/validation calls /1k: ${per1k(schemaValidations, src.lineCount)}  (${schemaValidations} total)`,
+    );
     console.log(`  external imports /1k: ${per1k(externalImports, src.lineCount)}  (${externalImports} total)`);
     console.log(`  try {} /1k:           ${per1k(tryBlocks, src.lineCount)}  (${tryBlocks} total)`);
     console.log(`  .catch() /1k:         ${per1k(catchCalls, src.lineCount)}  (${catchCalls} total)`);
