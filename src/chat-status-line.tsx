@@ -124,10 +124,10 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
   if (!skillSegment) return left;
 
   return (
-    <Box justifyContent="space-between" width="terminal">
+    <Box flexWrap="wrap" justifyContent="space-between" width="terminal">
       {left}
-      {/* leading space keeps a separator when a narrow width floors the space-between gap to 0 */}
-      <Text color={palette.dim}>{` ${skillSegment}`}</Text>
+      {/* leading inset separates a full row and aligns a stacked row with the status */}
+      <Text color={palette.dim}>{`  ${skillSegment}`}</Text>
     </Box>
   );
 }

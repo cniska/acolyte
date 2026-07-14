@@ -88,10 +88,9 @@ describe("StatusLine", () => {
     expect(out).toBe(`  acolyte · main · gpt-5.2 medium${" ".repeat(14)}build · debug`);
   });
 
-  test("keeps a separator before skills when the width is too narrow to justify", () => {
+  test("stacks skills below the status when the terminal is too narrow", () => {
     const out = renderPlain(<StatusLine {...BASE} skills={["build", "debug"]} />, 40);
-    expect(out).toBe("  acolyte · main · gpt-5.2 medium build · debug");
-    expect(out).not.toContain("mediumbuild");
+    expect(out).toBe("  acolyte · main · gpt-5.2 medium\n  build · debug");
   });
 
   test("falls back to the default width when the terminal width is unknown (non-TTY)", () => {
