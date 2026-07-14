@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createElement as reactCreateElement, useState } from "react";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { createElement } from "./tui/dom";
 import { setOnCommit } from "./tui/host-config";
 import { reconciler } from "./tui/reconciler";
@@ -42,7 +43,7 @@ describe("streaming renders", () => {
     const ref: Ref<(fn: (prev: string[]) => string[]) => void> = { current: () => {} };
     const commits: string[] = [];
     const root = createElement("tui-root", {});
-    setOnCommit(() => commits.push(serialize(root)));
+    setOnCommit(() => commits.push(serialize(root, DEFAULT_TERMINAL_WIDTH)));
 
     function App() {
       const [rows, setRows] = useState<string[]>([]);

@@ -119,7 +119,7 @@ function padLine(line: string, width: number): string {
  * the render loop flush them once to scrollback and only re-render the
  * active (non-static) portion of the tree.
  */
-function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[]): string {
+function serializeNode(node: TuiNode, inherited: StyleStack, terminalWidth: number, staticAcc?: string[]): string {
   if (node.kind === "text") {
     const text = sanitizeText(node.value);
     if (text.length === 0) return "";
@@ -132,24 +132,24 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
   const el = node;
 
   if (el.type === "tui-virtual") {
-    return el.children.map((child) => serializeNode(child, inherited, staticAcc)).join("");
+    return el.children.map((child) => serializeNode(child, inherited, terminalWidth, staticAcc)).join("");
   }
 
   if (el.type === "tui-text") {
     const style = mergeStyle(inherited, el.props);
-    return el.children.map((child) => serializeNode(child, style, staticAcc)).join("");
+    return el.children.map((child) => serializeNode(child, style, terminalWidth, staticAcc)).join("");
   }
 
   if (el.type === "tui-static") {
     if (staticAcc) {
       // Collect each virtual child separately for incremental flushing.
       for (const child of el.children) {
-        staticAcc.push(serializeNode(child, inherited));
+        staticAcc.push(serializeNode(child, inherited, terminalWidth));
       }
       return "";
     }
     // No accumulator — render inline (used by serialize / renderToString).
-    return el.children.map((child) => serializeNode(child, inherited)).join("\n");
+    return el.children.map((child) => serializeNode(child, inherited, terminalWidth)).join("\n");
   }
 
   if (el.type === "tui-box") {
@@ -157,10 +157,12 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
     const isColumn = el.props.flexDirection === "column";
 
     if (isColumn) {
-      const parts = el.children.map((child) => serializeNode(child, style, staticAcc)).filter((p) => p.length > 0);
+      const parts = el.children
+        .map((child) => serializeNode(child, style, terminalWidth, staticAcc))
+        .filter((p) => p.length > 0);
       let joined = parts.join("\n");
       if (el.props.width !== undefined) {
-        const w = el.props.width;
+        const w = el.props.width === "terminal" ? terminalWidth : el.props.width;
         joined = joined
           .split("\n")
           .map((line) => padLine(line, w))
@@ -170,8 +172,8 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
     }
 
     // Row direction: concatenate children horizontally.
-    const childOutputs = el.children.map((child) => serializeNode(child, style, staticAcc));
-    const boxWidth = el.props.width;
+    const childOutputs = el.children.map((child) => serializeNode(child, style, terminalWidth, staticAcc));
+    const boxWidth = el.props.width === "terminal" ? terminalWidth : el.props.width;
     const justify = el.props.justifyContent;
     const wrap = el.props.flexWrap === "wrap";
 
@@ -218,7 +220,7 @@ function serializeNode(node: TuiNode, inherited: StyleStack, staticAcc?: string[
 
   // Root — render children as column
   return el.children
-    .map((child) => serializeNode(child, inherited, staticAcc))
+    .map((child) => serializeNode(child, inherited, terminalWidth, staticAcc))
     .filter((p) => p.length > 0)
     .join("\n");
 }
@@ -291,9 +293,9 @@ function joinRow(childOutputs: string[], boxWidth?: number): string {
   return result;
 }
 
-export function serialize(root: TuiElement): string {
+export function serialize(root: TuiElement, terminalWidth: number): string {
   const emptyStyle: StyleStack = {};
-  return serializeNode(root, emptyStyle);
+  return serializeNode(root, emptyStyle, terminalWidth);
 }
 
 /**
@@ -302,9 +304,9 @@ export function serialize(root: TuiElement): string {
  * `staticItems` instead of rendered inline, so the render loop can flush them
  * once to scrollback and only re-draw the active portion each frame.
  */
-export function serializeSplit(root: TuiElement): { staticItems: string[]; active: string } {
+export function serializeSplit(root: TuiElement, terminalWidth: number): { staticItems: string[]; active: string } {
   const emptyStyle: StyleStack = {};
   const staticItems: string[] = [];
-  const active = serializeNode(root, emptyStyle, staticItems);
+  const active = serializeNode(root, emptyStyle, terminalWidth, staticItems);
   return { staticItems, active };
 }

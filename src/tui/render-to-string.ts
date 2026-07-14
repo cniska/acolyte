@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DEFAULT_TERMINAL_WIDTH } from "./constants";
 import { createElement } from "./dom";
 import { reconciler } from "./reconciler";
 import { serialize } from "./serialize";
@@ -21,5 +22,5 @@ export function renderToString(node: ReactNode): string {
   );
   reconciler.updateContainerSync(node, container, null, () => {});
   reconciler.flushSyncWork();
-  return serialize(root);
+  return serialize(root, process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH);
 }

@@ -5,7 +5,6 @@ import type { PrInfo, PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import { Box, Text } from "./tui";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 export type StatusLineState = {
   /** Repo name (git root basename), or the cwd basename outside a git repo. */
@@ -125,7 +124,7 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
   if (!skillSegment) return left;
 
   return (
-    <Box justifyContent="space-between" width={process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH}>
+    <Box justifyContent="space-between" width="terminal">
       {left}
       {/* leading space keeps a separator when a narrow width floors the space-between gap to 0 */}
       <Text color={palette.dim}>{` ${skillSegment}`}</Text>
