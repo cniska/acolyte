@@ -26,7 +26,6 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Cloud Sync | Feature that syncs memory and sessions to a hosted cloud API for portable agent identity across machines |
 | CloudClient | HTTP client that implements `MemoryStore` and `SessionStore` against the cloud API |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
-| Directive | Model-to-host structured annotation emitted via `@` prefix (e.g. `@observe project`) |
 | Distill | Memory source that extracts observations from conversations at project, user, or session scope |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
 | Effect | Lifecycle-owned side-effect applied per-tool-result via callback (format, lint) |
@@ -45,9 +44,9 @@ Naming conventions and core terms used across Acolyte code and docs.
 | Memory Toolkit | On-demand tools (`memory-search`, `memory-add`, `memory-remove`) the model invokes to access memory at runtime |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
-| Observation | Memory record kind for facts extracted from conversations via `@observe` directives |
+| Observation | Memory record kind for facts extracted from conversations via `memory-observe` tool calls |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
-| Provider | Model backend selected for a request (`openai`, `anthropic`, `gemini`, or `openai-compatible`) |
+| Provider | Model backend selected for a request (`openai`, `anthropic`, `google`, or `vercel`) |
 | Record | Persisted entity object stored by a persistence backend |
 | Registry | Composition layer that wires implementations into an agent-facing surface under shared contracts |
 | Resource ID | Typed cross-session identity key used for memory and execution scoping |

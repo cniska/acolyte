@@ -8,14 +8,13 @@ A task is a state-machined unit of work tied to a single chat request.
 accepted → queued → running → completed|failed|cancelled
 ```
 
-Seven states total:
+Six states total:
 
 | State | Terminal | Description |
 |-------|----------|-------------|
 | `accepted` | no | request validated, `task_id` assigned |
 | `queued` | no | waiting under queue policy |
 | `running` | no | actively executing lifecycle |
-| `detached` | no | temporarily suspended, can resume |
 | `completed` | yes | finished successfully |
 | `failed` | yes | encountered an error |
 | `cancelled` | yes | aborted by client or connection close |
@@ -27,8 +26,7 @@ Valid transitions (anything else is rejected):
 ```text
 accepted  → queued, running, cancelled
 queued    → running, cancelled
-running   → detached, completed, failed, cancelled
-detached  → running, completed, failed, cancelled
+running   → completed, failed, cancelled
 ```
 
 Terminal states allow no further transitions. Idempotent transitions (same state → same state) are always valid.

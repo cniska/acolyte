@@ -76,7 +76,7 @@ Memory records are embedded at write time using the provider embedding API. At q
 
 Both the local SQLite and cloud backends use this hybrid scoring. The cloud path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
 
-When observations have topic tags (assigned via `@topic` in the distiller), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
+When observations have topic tags (assigned through the `topic` field of `memory-observe`), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
 
 Weights and thresholds are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`, `topicThreshold`, `minTopicFilterSize`).
 

@@ -1,6 +1,6 @@
 # src/
 
-Flat directory, ~200 modules, no nesting.
+Mostly flat directory, with limited subdirectories for cohesive subsystems.
 
 ## Why flat
 
@@ -37,7 +37,7 @@ Files are named `<domain>-<concern>.ts`. The domain prefix groups related module
 | `rpc-*` | WebSocket RPC protocol | `rpc-protocol.ts` |
 | `task-*` | Background task queue and registry | `task-queue.ts` |
 | `error-*` | Error codes, contracts, serialization | `error-contract.ts` |
-| `skill-*` | Skill loading and activation | `skills.ts` |
+| `skill-*` | Skill loading and activation | `skill-ops.ts` |
 | `cloud-*` | Cloud API client | `cloud-client.ts` |
 
 ## File suffixes

@@ -111,7 +111,7 @@ Test types include:
 
 - unit (`*.test.ts`)
 - integration (`*.int.test.ts`)
-- TUI visual regression (`*.tui.test.ts`)
+- TUI visual regression (`*.tui.test.tsx`)
 - performance (`*.perf.test.ts`)
 
 ## Module cohesion
