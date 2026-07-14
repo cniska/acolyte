@@ -8,6 +8,8 @@ Acolyte's engineering discipline. Each skill encodes a workflow the agent can ac
 
 These are specialized for Acolyte from the tool-agnostic set at [cniska/skills](https://github.com/cniska/skills), which carries the same workflow for any agent.
 
+Multiple skills can be active in one session. The agent can load one or more in a single call, and the active set is shown in the status line.
+
 ## Skills
 
 | Phase | Skill | Description |

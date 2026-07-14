@@ -23,15 +23,15 @@ This methodology requires a comparable public source repository. Claude Code, Cu
 
 | Project | Revision | Language | Description | Source lines | Files | Dependencies |
 |---|---|---|---|---|---|---|
-| **Acolyte** | `178136ee6418` | TypeScript | Terminal coding agent with lifecycle, effects, and AST code tools | 30,294 | 249 | 10 + 6 |
-| OpenCode | `cb8be9ba1217` | TypeScript | Open-source AI coding agent (TUI/web/desktop) | 409,049 | 2,287 | 222 + 110 |
-| Codex | `325cf161940c` | Rust | Terminal AI coding agent from OpenAI | 867,770 | 2,144 | 289 + 81 |
-| Crush | `4721e53c30a0` | Go | Terminal AI coding agent from Charm with Bubble Tea TUI | 83,525 | 334 | 72 + 0 |
-| Aider | `5dc9490bb35f` | Python | AI pair programming in your terminal | 25,958 | 105 | 35 + 17 |
-| Goose | `2ecb8c089487` | Rust | Extensible AI agent from Block with MCP integration | 196,264 | 425 | 157 + 22 |
-| Qwen Code | `515a83110af5` | TypeScript | Terminal AI coding agent from Alibaba | 953,849 | 3,193 | 219 + 134 |
-| Plandex | `e2d772072efa` | Go | AI coding agent for large multi-file tasks in the terminal | 74,573 | 333 | 54 + 0 |
-| Mistral Vibe | `30792a4cac2c` | Python | Terminal AI coding agent from Mistral | 64,104 | 378 | 96 + 16 |
+| **Acolyte** | `178136ee6418` | TypeScript | Terminal coding agent with transparent execution and memory | 30,294 | 249 | 10 + 6 |
+| OpenCode | `cb8be9ba1217` | TypeScript | Open-source coding agent with TUI, web, and desktop clients | 409,049 | 2,287 | 222 + 110 |
+| Codex | `325cf161940c` | Rust | Terminal coding agent from OpenAI | 867,770 | 2,144 | 289 + 81 |
+| Crush | `4721e53c30a0` | Go | Terminal coding agent from Charm with Bubble Tea TUI | 83,525 | 334 | 72 + 0 |
+| Aider | `5dc9490bb35f` | Python | Pair-programming agent for the terminal | 25,958 | 105 | 35 + 17 |
+| Goose | `2ecb8c089487` | Rust | Extensible coding agent from Block with MCP integration | 196,264 | 425 | 157 + 22 |
+| Qwen Code | `515a83110af5` | TypeScript | Terminal coding agent from Alibaba | 953,849 | 3,193 | 219 + 134 |
+| Plandex | `e2d772072efa` | Go | Terminal coding agent for large multi-file tasks | 74,573 | 333 | 54 + 0 |
+| Mistral Vibe | `30792a4cac2c` | Python | Terminal coding agent from Mistral | 64,104 | 378 | 96 + 16 |
 
 ## Dependency surface area
 

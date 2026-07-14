@@ -6,38 +6,38 @@ See [Why Acolyte](./why-acolyte.md) for a summary.
 
 Projects compared: [OpenCode](https://github.com/anomalyco/opencode), [Codex](https://github.com/openai/codex), [Crush](https://github.com/charmbracelet/crush), [Aider](https://github.com/Aider-AI/aider), [Goose](https://github.com/block/goose), [Qwen Code](https://github.com/QwenLM/qwen-code), [Plandex](https://github.com/plandex-ai/plandex), [Mistral Vibe](https://github.com/mistralai/mistral-vibe).
 
+The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope. An em dash means the capability was not documented in the reviewed source; it does not prove absence.
+
 ## Feature overview
 
 | Capability | Acolyte | OpenCode | Codex | Crush | Aider | Goose | Qwen Code | Plandex | Mistral Vibe |
 |---|---|---|---|---|---|---|---|---|---|
-| Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Daemon architecture | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Lifecycle pipeline | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Lifecycle effects | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Workspace detection | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Workspace sandboxing | ✓ | partial | ✓ | ✗ | ✗ | partial | ✓ | ✗ | ✗ |
-| Observable execution | ✓ | partial | partial | partial | partial | partial | partial | partial | partial |
-| SKILL.md support | ✓ | partial | ✓ | ✓ | ✗ | ✗ | ✓ | ✗ | ✓ |
+| Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Client/server mode | ✓ | ✓ | partial | ✓ | — | ✓ | ✓ | ✓ | partial |
+| Workspace boundary or sandbox | ✓ | partial | ✓ | partial | — | partial | ✓ | ✓ | partial |
+| Agent Skills (`SKILL.md`) | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | — | ✓ |
+
+Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, and permission gates so their presence can be compared without claiming identical isolation.
 
 ## Architecture
 
 | Project | Architecture | Deployment model |
 |---|---|---|
-| **Acolyte** | Headless daemon + typed RPC clients | daemon |
-| OpenCode | HTTP/WebSocket server + TUI/desktop clients | daemon |
-| Codex | Rust CLI with optional Node.js wrapper | single-process |
-| Crush | Go CLI with Bubble Tea TUI | single-process |
-| Aider | Pure CLI process | single-process |
-| Goose | Single-process with MCP extensions | single-process |
-| Qwen Code | CLI (Gemini CLI fork) + IDE extensions | single-process |
-| Plandex | Go CLI agent with long-running planner | single-process |
-| Mistral Vibe | Python CLI with Devstral models | single-process |
+| **Acolyte** | Headless daemon + typed RPC clients | persistent local daemon |
+| OpenCode | HTTP/WebSocket server + TUI, web, and desktop clients | client/server |
+| Codex | Rust CLI, SDKs, app-server, and experimental app-server daemon | CLI + optional server |
+| Crush | Go CLI with Bubble Tea TUI and shared workspace server | CLI + client/server |
+| Aider | Python CLI | single process |
+| Goose | ACP agent server with TUI, desktop, and editor clients | CLI + client/server |
+| Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
+| Plandex | CLI with self-hostable or cloud server | client/server |
+| Mistral Vibe | Python CLI with ACP integration | CLI + ACP |
 
-Acolyte runs as a headless daemon. The CLI, future editor plugins, and third-party clients all connect over the same typed RPC protocol.
+Acolyte runs as a headless daemon. The CLI and third-party clients connect over the same typed RPC protocol. Editor integrations can use that protocol without embedding a separate agent runtime.
 
-Every chat request becomes a task with a state machine (`accepted → queued → running → completed | failed | cancelled`). Tasks are durable entities with stable IDs and explicit state transitions. The RPC protocol exposes task transitions so clients can show real-time progress.
+Every chat request becomes a task with a state machine (`accepted → queued → running → completed | failed | cancelled`). Tasks have stable IDs and explicit state transitions while retained by the in-memory task store. Sessions, rather than tasks, provide continuity across requests. The RPC protocol exposes task transitions so clients can show real-time progress.
 
-The TUI is a custom React terminal renderer built on `react-reconciler`. Most competing CLIs use `prompt-toolkit` (Aider), Bubble Tea (Crush), or custom TUI frameworks (OpenCode).
+The TUI is a custom React terminal renderer built on `react-reconciler`.
 
 ## Lifecycle pipeline
 
@@ -54,28 +54,19 @@ resolve → prepare → generate → finalize
 
 The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces per-turn and total tool-call limits to prevent runaway loops.
 
-Most other agents use flat tool loops or implicit state machines. Goose comes closest with `prepare → generate → categorize → execute`, but the phases are orchestrated inside a single streaming loop.
+The distinction is not that other agents lack a loop. Acolyte makes its lifecycle phases, completion signals, and post-tool effects explicit contracts with independent tests.
 
 ## Workspace detection
 
 Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, and test command. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
 
-| Project | Detection approach |
-|---|---|
-| **Acolyte** | Auto-detect from config files (biome.json, ruff.toml, Cargo.toml, go.mod, etc.) |
-| Aider | User-configured per-language lint commands (`--lint-cmd`) |
-| Others | No workspace detection |
+Aider supports user-configured per-language lint commands through `--lint-cmd`. Other projects expose different project-context and command-discovery mechanisms, so the comparison is not a binary capability test.
 
 ## Workspace sandboxing
 
 Acolyte enforces a workspace sandbox that prevents tool operations outside the resolved workspace root. All file paths are validated against the sandbox boundary using `realpath`-based resolution before any read, write, or delete operation.
 
-| Project | Sandboxing approach |
-|---|---|
-| **Acolyte** | Path validation against resolved workspace root |
-| Codex | Network-disabled sandbox with writable directory restrictions |
-| Qwen Code | Path validation for shell and skills |
-| Others | No sandboxing |
+Codex provides operating-system sandbox policies with writable-directory restrictions. Qwen Code supports container sandboxes. Plandex stages changes in a cumulative diff sandbox, while several other projects use approval or trust gates. These approaches cover different threats and should not be read as equivalent to Acolyte's path boundary.
 
 ## Observability
 
@@ -90,45 +81,36 @@ timestamp=... task_id=task_abc123 event=lifecycle.eval.decision effect=lint acti
 timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 search=1 write=1
 ```
 
-Most other agents expose only console logs or partial traces.
+Acolyte keeps the trace format local and queryable by task ID. This is separate from provider telemetry and does not require an external tracing service.
 
 ## Skills and extensibility
 
-Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/` and are invoked via slash commands.
+Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/` and can be activated by the agent or through slash commands. Multiple skills can remain active in the same session.
 
-OpenCode, Crush, Qwen Code, and Mistral Vibe also implement the SKILL.md standard. Goose uses MCP-based extensions instead.
+OpenCode, Codex, Crush, Goose, Qwen Code, and Mistral Vibe also support Agent Skills. Goose loads skills through its Summon extension and continues to use MCP for executable extensions.
 
-Core systems expose minimal, well-defined extension points: lifecycle policies, tool registration, memory strategies, skill metadata, and configuration layers. The surface is intentionally narrow — Acolyte is an opinionated product, not a general-purpose agent framework.
+Core systems expose minimal, well-defined extension points: lifecycle policies, tool registration, memory strategies, skill metadata, and configuration layers. The surface is intentionally narrow; Acolyte is an opinionated product, not a general-purpose agent framework.
 
 ## Memory
 
 How each agent retains knowledge across sessions.
 
-| Project | Approach |
-|---|---|
-| **Acolyte** | Context distillation to 3-tier persistent memory with semantic recall |
-| Goose | Session search via MCP |
-| Aider | Repository map + chat restore |
-| Plandex | Session-based planning memory |
-| Others | No cross-session memory |
+Acolyte stores memory in three scopes: session, project, and user. Memory is recalled on demand rather than injected into every prompt. A post-generation distiller can extract observations automatically, while explicit tools let the agent search, add, and remove entries. Retrieval combines semantic similarity with token overlap.
 
-Acolyte uses **context distillation** (`ingest → normalize → select → inject → commit`) rather than compaction. Facts extracted from conversations persist across sessions in three tiers: session, project, and user. At query time, entries are ranked by semantic similarity using provider embeddings and cosine similarity.
+Goose offers a memory extension, Aider combines repository maps with chat restore, and Plandex retains plan and conversation state. These mechanisms solve different context problems and are not direct substitutes for Acolyte's scoped memory.
 
 ## Context budgeting
 
 How each agent manages the token window when context grows large.
 
-| Project | Token budgeting |
-|---|---|
-| **Acolyte** | Proactive budgeting with token measurement |
-| OpenCode | LLM compaction |
-| Aider | Repo map ranking |
-| Goose | Summarization fallback |
-| Plandex | Conversation summarization on token limit |
-| Others | Conversation truncation |
+Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken): system prompt reservation, priority-based allocation, bounded tool payloads, and visible truncation notices.
 
-Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken): system prompt reservation, priority-based context allocation, age-based tool compaction, and visible truncation notices.
+OpenCode and Mistral Vibe support compaction, Aider ranks repository-map context, and Plandex summarizes long-running conversations. Acolyte's distinction is that allocation happens before prompt assembly rather than only after the context window is under pressure.
 
 ## Code quality
 
-See [Benchmarks](./benchmarks.md) for full measured comparisons. Across the benchmarked projects, Acolyte leads on type safety, dependency footprint, and module size — reflecting architectural choices around minimal dependencies, clear boundaries, and independently testable modules.
+See [Benchmarks](./benchmarks.md) for the measured source comparison. At the recorded snapshot, Acolyte has the lowest counted dependency total and smallest average module size. It also has the lowest measured `any` escape density among the TypeScript projects.
+
+Reviewed against the revisions recorded in [Benchmarks](./benchmarks.md).
+
+Updated 14 July 2026.
