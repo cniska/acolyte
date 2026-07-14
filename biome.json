@@ -4,7 +4,7 @@
     "includes": [
       "**",
       "!**/.git",
-      "!**/.claude/worktrees",
+      "!.claude/worktrees",
       "!**/node_modules",
       "!**/dist",
       "!**/build",
