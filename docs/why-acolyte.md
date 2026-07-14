@@ -1,6 +1,6 @@
 # Why Acolyte?
 
-> **TL;DR** Acolyte is an open-source, terminal-first AI coding agent built for reliable agent behavior: it trusts the model to make good decisions, runs automatic post-write effects, and preserves context across sessions. It runs as a headless daemon, supports any LLM provider, and gives you full control. A 4-phase lifecycle pipeline, post-write format/lint effects, context distillation, and real token budgeting built in. These are things most open-source agents don't have, and closed-source agents don't let you touch.
+Acolyte is an open-source, terminal-first AI coding agent built for reliable, observable execution, provider choice, and developer control.
 
 ## Why open source?
 
@@ -33,7 +33,7 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 
 ### Lifecycle pipeline
 
-Every request flows through five explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget and token ceiling inlined into tool execution prevent runaway loops, and tool results are truncated at the serialization boundary to bound context growth.
+Every request flows through four explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget and token ceiling inlined into tool execution prevent runaway loops, and tool results are truncated at the serialization boundary to bound context growth.
 
 ### Memory
 

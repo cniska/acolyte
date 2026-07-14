@@ -1,6 +1,6 @@
 # Workspace
 
-Defines how Acolyte resolves, scopes, and enforces workspace behavior.
+Acolyte resolves one workspace per request, detects its ecosystem and commands, and constrains tool access to the validated workspace boundary.
 
 ## Workspace root
 

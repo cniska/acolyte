@@ -1,6 +1,6 @@
 # Architecture
 
-System map of Acolyte's runtime flow, module boundaries, and extension points.
+Acolyte runs as a headless daemon with typed RPC clients, explicit lifecycle phases, observable effects, scoped tools, and persistent memory.
 
 ## First-class concepts
 

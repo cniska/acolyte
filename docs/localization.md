@@ -1,6 +1,6 @@
 # Localization
 
-How Acolyte separates translatable user-facing copy from language-neutral protocol contracts.
+Acolyte keeps user-facing copy translatable while protocol methods, payload keys, tool IDs, and machine-readable values remain stable.
 
 ## Goal
 

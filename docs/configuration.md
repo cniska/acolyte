@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration is loaded from user scope and project scope, with project values overriding user values.
+Acolyte merges user and project configuration for models, providers, localization, logging, memory, lifecycle behavior, and feature flags.
 
 Paths (see [Paths](paths.md) for platform-specific details):
 - User: config dir + `config.toml`

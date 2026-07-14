@@ -1,6 +1,6 @@
 # Sessions
 
-A session tracks chat context and message history across requests.
+Acolyte sessions persist conversation history, model selection, token usage, and active-session state across requests through pluggable storage.
 
 ## Model
 

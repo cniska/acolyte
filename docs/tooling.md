@@ -1,6 +1,6 @@
 # Tooling
 
-Tool execution is layered and contract-driven:
+Acolyte routes every tool call through a layered execution path that enforces budgets, shapes errors, caches eligible results, and records execution.
 
 ```text
 lifecycle → budget → cache → toolkit → registry

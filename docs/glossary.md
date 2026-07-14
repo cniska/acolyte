@@ -1,6 +1,6 @@
 # Glossary
 
-Naming conventions and core terms used across Acolyte code and docs.
+This glossary defines the naming conventions and runtime terms used across Acolyte's lifecycle, tools, memory, protocol, storage, and TUI.
 
 ## Naming conventions
 

@@ -1,6 +1,6 @@
 # Protocol
 
-Transport-facing contract and invariants between Acolyte client and server.
+Acolyte defines a versioned transport contract for requests, ordered event streams, task state, errors, authentication, and final responses.
 
 ## Goal
 

@@ -1,5 +1,7 @@
 # Memory
 
+Acolyte preserves durable context across sessions with on-demand retrieval, scoped observations, semantic recall, and background distillation.
+
 ## Goal
 
 Memory should be invisible and reliable: carry forward important context without user-facing compaction workflows.

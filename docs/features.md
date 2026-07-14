@@ -1,6 +1,6 @@
 # Features
 
-Shipped, user-visible capabilities.
+Acolyte combines a terminal-first client, headless daemon, lifecycle effects, persistent memory, and typed tools in one open-source coding agent.
 
 ## CLI
 

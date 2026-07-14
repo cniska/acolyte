@@ -1,6 +1,6 @@
 # TUI Renderer
 
-Custom React reconciler for terminal rendering. Replaces Ink with a minimal, zero-dependency renderer tailored to Acolyte's needs.
+Acolyte uses a custom React terminal renderer with its own reconciler, layout, input handling, scrollback, and synchronized output pipeline.
 
 ## Why custom
 

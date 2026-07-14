@@ -1,6 +1,6 @@
 # Benchmarks
 
-Code quality metrics for Acolyte and other open-source AI agents, derived from **static source analysis** — no subjective scoring.
+These benchmarks compare Acolyte with eight open-source coding agents using reproducible static source analysis and normalized code-quality metrics.
 
 For feature and architecture comparisons, see [Comparison](./comparison.md).
 

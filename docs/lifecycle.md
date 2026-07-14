@@ -1,6 +1,6 @@
 # Lifecycle
 
-Lifecycle executes one request through a single-pass phase sequence:
+Acolyte executes each request through four explicit phases, with tool effects, completion signals, and budget checks applied inside a single generation loop.
 
 ```text
 resolve → prepare → generate → finalize

@@ -1,6 +1,6 @@
 # Errors
 
-Error handling in Acolyte is split by boundary, not bundled into one module.
+Acolyte uses shared error contracts and coded runtime errors so tools, lifecycle code, transports, and the model can handle failures consistently.
 
 ## Contract model
 

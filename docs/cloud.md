@@ -1,6 +1,6 @@
 # Cloud
 
-Cloud gives Acolyte portable agent identity — the same memory and sessions across machines.
+Acolyte Cloud is an opt-in storage backend that carries memory and sessions across machines through an authenticated, self-hostable API.
 
 ## Goal
 

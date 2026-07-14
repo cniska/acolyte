@@ -1,6 +1,6 @@
 # Comparison
 
-Detailed feature comparison between Acolyte and other open-source terminal coding agents.
+Compare Acolyte with eight open-source terminal coding agents across architecture, lifecycle behavior, tooling, observability, and extensibility.
 
 See [Why Acolyte](./why-acolyte.md) for a summary.
 

@@ -1,6 +1,6 @@
 # CLI
 
-The CLI is the primary interface for working with Acolyte.
+The Acolyte CLI provides interactive chat, one-shot runs, session and memory management, configuration, tracing, direct tools, and server control.
 
 ## Commands
 

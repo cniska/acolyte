@@ -1,6 +1,6 @@
 # Tasks
 
-A task is a state-machined unit of work tied to a single chat request.
+Each Acolyte chat request becomes a tracked task with explicit states, validated transitions, queue policy, cancellation, and observable progress.
 
 ## Lifecycle
 

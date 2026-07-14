@@ -2,6 +2,8 @@
 
 Developer documentation for Acolyte, a terminal-first AI coding agent. Reliable by default, observable, and open source.
 
+Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle phases, and tool contracts. Each piece has a defined boundary and a typed interface. The documentation below explains how these concepts fit together and how the system behaves during execution.
+
 ## Overview
 
 - [Features](./features.md) — shipped, user-visible capabilities

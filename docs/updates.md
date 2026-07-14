@@ -1,6 +1,6 @@
 # Updates
 
-How Acolyte handles versioning, updates, and breaking changes.
+Acolyte manages automatic binary updates, protocol compatibility, database migrations, semantic versioning, feature flags, and releases.
 
 ## Auto-update
 

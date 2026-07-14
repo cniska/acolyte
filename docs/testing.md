@@ -1,6 +1,6 @@
 # Testing
 
-Use the smallest test type that gives strong confidence.
+Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots, and performance baselines so each failure has a clear boundary.
 
 ## Test types
 
