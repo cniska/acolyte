@@ -102,7 +102,9 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
     segments.push(
       <Text>
         <Text color={palette.dim}>PR </Text>
-        <Text color={prColor(pr.state)}>#{pr.number}</Text>
+        <Text color={prColor(pr.state)} dimColor>
+          #{pr.number}
+        </Text>
       </Text>,
     );
   }

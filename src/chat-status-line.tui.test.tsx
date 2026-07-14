@@ -3,6 +3,7 @@ import { prColor, StatusLine, type StatusLineState, statusTokenTotals } from "./
 import { renderToString } from "./tui";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { stripAnsi } from "./tui/serialize";
+import { ansi, colorToFg } from "./tui/styles";
 import { renderPlain, trimRightLines } from "./tui/test-utils";
 
 function entry(inputTokens: number, outputTokens: number) {
@@ -81,6 +82,15 @@ describe("StatusLine", () => {
   test("renders the PR number at the end", () => {
     const out = render({ pr: { number: 281, state: "open", title: "x", url: "https://example.test/pr/281" } });
     expect(out).toBe("  acolyte · main · gpt-5.2 medium · PR #281");
+  });
+
+  test("dims the PR state color", () => {
+    const out = renderToString(
+      <StatusLine {...BASE} pr={{ number: 281, state: "open", title: "x", url: "https://example.test/pr/281" }} />,
+    );
+    const dimGreen = `${ansi.dim}${colorToFg("green")}`;
+    expect(out).toContain(`${dimGreen}#${ansi.reset}`);
+    expect(out).toContain(`${dimGreen}281${ansi.reset}`);
   });
 
   test("right-justifies active skills against the terminal width", () => {
