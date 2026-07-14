@@ -586,6 +586,23 @@ describe("render", () => {
     expect(resizeTestWrites.length).toBeGreaterThanOrEqual(2);
   });
 
+  test("terminal-width boxes resolve their width again on resize", async () => {
+    for (const [from, to] of [
+      [80, 60],
+      [60, 80],
+    ] as const) {
+      const writes = await captureResize(
+        <tui-box justifyContent="space-between" width="terminal">
+          <tui-text>left</tui-text>
+          <tui-text>right</tui-text>
+        </tui-box>,
+        { columns: from, rows: 24 },
+        { columns: to, rows: 24 },
+      );
+      expect(writes.join("")).toContain(`left${" ".repeat(to - 9)}right`);
+    }
+  });
+
   test("syncWrite skips BSU/ESU when TMUX is set", async () => {
     const savedTmux = process.env.TMUX;
     process.env.TMUX = "/tmp/tmux-1000/default,12345,0";

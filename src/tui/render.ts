@@ -147,8 +147,8 @@ export function render(node: ReactNode): RenderInstance {
 
   function commitRender() {
     if (exited) return;
-    const { staticItems, active } = serializeSplit(root);
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
+    const { staticItems, active } = serializeSplit(root, cols);
     const maxLiveRows = (stdout.rows ?? 24) - 1;
 
     // Erasing with a stale count is transcript loss. On a width change the terminal

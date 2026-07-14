@@ -4,7 +4,7 @@ import { formatCompactNumber } from "./chat-format";
 import type { PrInfo, PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import { Text } from "./tui";
+import { Box, Text } from "./tui";
 
 export type StatusLineState = {
   /** Repo name (git root basename), or the cwd basename outside a git repo. */
@@ -20,8 +20,8 @@ export type StatusLineState = {
   inputTokens: number;
   outputTokens: number;
   pr: PrInfo | null;
+  skills: readonly string[];
 };
-
 export function prColor(state: PrState): string {
   switch (state) {
     case "open":
@@ -63,7 +63,7 @@ export function statusTokenTotals(
 }
 
 export function StatusLine(state: StatusLineState): React.ReactNode {
-  const { repo, worktree, branch, model, effort, inputTokens, outputTokens, pr } = state;
+  const { repo, worktree, branch, model, effort, inputTokens, outputTokens, pr, skills } = state;
   const segments: React.ReactNode[] = [];
 
   // Location: repo · worktree · branch, folded left to right (a name already shown
@@ -102,12 +102,14 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
     segments.push(
       <Text>
         <Text color={palette.dim}>PR </Text>
-        <Text color={prColor(pr.state)}>#{pr.number}</Text>
+        <Text color={prColor(pr.state)} dimColor>
+          #{pr.number}
+        </Text>
       </Text>,
     );
   }
 
-  return (
+  const left = (
     <Text>
       {"  "}
       {segments.map((segment, index) => (
@@ -118,5 +120,16 @@ export function StatusLine(state: StatusLineState): React.ReactNode {
         </Text>
       ))}
     </Text>
+  );
+
+  const skillSegment = skills.length > 0 ? skills.join(" · ") : null;
+  if (!skillSegment) return left;
+
+  return (
+    <Box flexWrap="wrap" justifyContent="space-between" width="terminal">
+      {left}
+      {/* leading inset separates a full row and aligns a stacked row with the status */}
+      <Text color={palette.dim}>{`  ${skillSegment}`}</Text>
+    </Box>
   );
 }

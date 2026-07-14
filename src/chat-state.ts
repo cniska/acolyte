@@ -154,6 +154,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     inputTokens: tokenTotals.inputTokens,
     outputTokens: tokenTotals.outputTokens,
     pr,
+    skills: currentSession.activeSkills?.map((s) => s.name) ?? [],
   };
 
   useMountEffect(() => {

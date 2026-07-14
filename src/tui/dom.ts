@@ -5,7 +5,7 @@ export interface TuiProps {
   flexDirection?: "row" | "column";
   justifyContent?: "flex-start" | "flex-end" | "space-between";
   flexWrap?: "nowrap" | "wrap";
-  width?: number;
+  width?: number | "terminal";
   // Text
   color?: string;
   dimColor?: boolean;

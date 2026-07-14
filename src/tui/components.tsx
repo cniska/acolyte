@@ -4,7 +4,7 @@ type BoxProps = {
   flexDirection?: "row" | "column";
   justifyContent?: "flex-start" | "flex-end" | "space-between";
   flexWrap?: "nowrap" | "wrap";
-  width?: number;
+  width?: number | "terminal";
   children?: React.ReactNode;
   key?: React.Key;
 };

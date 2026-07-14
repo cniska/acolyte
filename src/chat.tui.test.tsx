@@ -19,6 +19,7 @@ const DEFAULT_STATUS_LINE = {
   inputTokens: 0,
   outputTokens: 0,
   pr: null,
+  skills: [],
 } as const;
 
 const noopCursorLine = () => {};

@@ -16,7 +16,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output
-- live status line with location, model, token, and PR segments
+- live status line with location, model, token, skill, and PR segments
 - auto-update on startup with progress UI
 - update flags to force or skip auto-update (`--update`, `--no-update`)
 - XDG Base Directory support on Linux

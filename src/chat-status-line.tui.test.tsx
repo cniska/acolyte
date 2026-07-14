@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { prColor, StatusLine, type StatusLineState, statusTokenTotals } from "./chat-status-line";
-import { renderPlain } from "./tui/test-utils";
+import { renderToString } from "./tui";
+import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
+import { stripAnsi } from "./tui/serialize";
+import { ansi, colorToFg } from "./tui/styles";
+import { renderPlain, trimRightLines } from "./tui/test-utils";
 
 function entry(inputTokens: number, outputTokens: number) {
   return { usage: { inputTokens, outputTokens } };
@@ -35,6 +39,7 @@ const BASE: StatusLineState = {
   inputTokens: 0,
   outputTokens: 0,
   pr: null,
+  skills: [],
 };
 
 function render(overrides: Partial<StatusLineState> = {}): string {
@@ -77,6 +82,45 @@ describe("StatusLine", () => {
   test("renders the PR number at the end", () => {
     const out = render({ pr: { number: 281, state: "open", title: "x", url: "https://example.test/pr/281" } });
     expect(out).toBe("  acolyte · main · gpt-5.2 medium · PR #281");
+  });
+
+  test("dims the PR state color", () => {
+    const out = renderToString(
+      <StatusLine {...BASE} pr={{ number: 281, state: "open", title: "x", url: "https://example.test/pr/281" }} />,
+    );
+    const dimGreen = `${ansi.dim}${colorToFg("green")}`;
+    expect(out).toContain(`${dimGreen}#${ansi.reset}`);
+    expect(out).toContain(`${dimGreen}281${ansi.reset}`);
+  });
+
+  test("right-justifies active skills against the terminal width", () => {
+    const out = renderPlain(<StatusLine {...BASE} skills={["build", "debug"]} />, 60);
+    expect(out).toBe(`  acolyte · main · gpt-5.2 medium${" ".repeat(14)}build · debug`);
+  });
+
+  test("stacks skills below the status when the terminal is too narrow", () => {
+    const out = renderPlain(<StatusLine {...BASE} skills={["build", "debug"]} />, 40);
+    expect(out).toBe("  acolyte · main · gpt-5.2 medium\n  build · debug");
+  });
+
+  test("falls back to the default width when the terminal width is unknown (non-TTY)", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(process.stdout, "columns");
+    delete (process.stdout as { columns?: number }).columns;
+    try {
+      const out = trimRightLines(
+        stripAnsi(renderToString(<StatusLine {...BASE} skills={["build", "debug"]} />)),
+      ).trimEnd();
+      expect(out).toBe(
+        renderPlain(<StatusLine {...BASE} skills={["build", "debug"]} />, DEFAULT_TERMINAL_WIDTH).trimEnd(),
+      );
+      expect(out).not.toContain("mediumbuild");
+    } finally {
+      if (descriptor) Object.defineProperty(process.stdout, "columns", descriptor);
+    }
+  });
+
+  test("renders no trailing padding when there are no active skills", () => {
+    expect(render({ skills: [] })).toBe("  acolyte · main · gpt-5.2 medium");
   });
 
   test("omits effort when absent", () => {
