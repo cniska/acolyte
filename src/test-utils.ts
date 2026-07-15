@@ -8,6 +8,7 @@ import type { CommandContext } from "./chat-commands-contract";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
+import { toRows } from "./chat-session";
 import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
@@ -299,7 +300,6 @@ export function createMessageHandlerHarness(overrides?: {
   session?: Session;
   sessionState?: SessionState;
   tokenUsage?: SessionTokenUsageEntry[];
-  toRows?: (messages: ChatMessage[]) => ChatRow[];
 }): MessageHandlerHarness {
   const rows: ChatRow[] = [];
   const allRows: ChatRow[] = [];
@@ -328,7 +328,6 @@ export function createMessageHandlerHarness(overrides?: {
     setCurrentSession: (next) => {
       calls.setCurrentSessionIds.push(next.id);
     },
-    toRows: overrides?.toRows ?? (() => []),
     setRows: (updater) => {
       const next = updater(rows);
       rows.splice(0, rows.length, ...next);
@@ -384,6 +383,17 @@ export function createMessageHandlerHarness(overrides?: {
       calls.promotedSnapshots.push(snapshot);
       rows.splice(0, rows.length);
     },
+    // Eager promotion records what moved; setRows removes them from the active mirror,
+    // matching the real setPromotedRows/setRows split.
+    promoteRows: (promoted) => {
+      calls.promotedSnapshots.push([...promoted]);
+    },
+    resumeTranscript: (resumed) => {
+      const seed = resumed.transcript ?? toRows(resumed.messages);
+      calls.promotedSnapshots.push([...seed]);
+      for (const row of seed) if (!allRows.includes(row)) allRows.push(row);
+      rows.splice(0, rows.length);
+    },
     clearTranscript: () => {
       rows.splice(0, rows.length);
     },
@@ -395,7 +405,7 @@ export type PickerHandlerSpies = {
   rows: ChatRow[];
   pickerValues: unknown[];
   currentSessions: Session[];
-  rowsDirectSets: ChatRow[][];
+  resumedSessions: Session[];
   assistantTurnTexts: string[];
   persistCalls: number;
 };
@@ -408,7 +418,7 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     rows: [],
     pickerValues: [],
     currentSessions: [],
-    rowsDirectSets: [],
+    resumedSessions: [],
     assistantTurnTexts: [],
     persistCalls: 0,
   };
@@ -423,9 +433,6 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
       spies.rows.length = 0;
       spies.rows.push(...next);
     },
-    setRowsDirect: (next) => {
-      spies.rowsDirectSets.push(next);
-    },
     setPicker: (next) => {
       spies.pickerValues.push(next);
     },
@@ -434,11 +441,14 @@ export function createPickerHandlerHarness(overrides?: Partial<CreatePickerHandl
     persist: async () => {
       spies.persistCalls++;
     },
-    toRows: () => [],
     nowIso: () => "2026-02-20T00:00:00.000Z",
     activateSkill: async () => true,
     startAssistantTurn: async (text) => {
       spies.assistantTurnTexts.push(text);
+    },
+    resumeTranscript: (session) => {
+      spies.resumedSessions.push(session);
+      spies.rows.length = 0;
     },
     clearTranscript: () => {},
     ...overrides,
@@ -450,6 +460,7 @@ export type CommandContextSpies = {
   rows: ChatRow[];
   openedModel: boolean;
   currentSessionIds: string[];
+  resumedSessionIds: string[];
   tokenUsageSets: SessionTokenUsageEntry[][];
   persistCalls: number;
 };
@@ -559,6 +570,7 @@ export function createCommandContext(
     rows: [],
     openedModel: false,
     currentSessionIds: [],
+    resumedSessionIds: [],
     tokenUsageSets: [],
     persistCalls: 0,
   };
@@ -574,7 +586,6 @@ export function createCommandContext(
     setTokenUsage: (updater) => {
       spies.tokenUsageSets.push(updater([]));
     },
-    toRows: (messages) => messages.map((m) => ({ id: m.id, kind: m.role, content: m.content })),
     setRows: (updater) => {
       spies.rows = updater(spies.rows);
     },
@@ -588,6 +599,10 @@ export function createCommandContext(
     openResumePanel: () => {},
     openModelPanel: () => {
       spies.openedModel = true;
+    },
+    resumeTranscript: (session) => {
+      spies.resumedSessionIds.push(session.id);
+      spies.rows = [];
     },
     clearTranscript: () => {
       spies.rows = [];

@@ -1,6 +1,5 @@
 import { setModel } from "./app-config";
 import { unreachable } from "./assert";
-import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
@@ -16,16 +15,15 @@ export type CreatePickerHandlersInput = {
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setRowsDirect: (next: ChatRow[]) => void;
   setPicker: (next: PickerState | null) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
-  toRows: (messages: ChatMessage[]) => ChatRow[];
   nowIso: () => string;
   persistConfig?: (key: string, value: string, scope: "project") => Promise<void>;
   activateSkill: (skillName: string, args: string) => Promise<boolean>;
   startAssistantTurn: (userText: string) => Promise<void>;
+  resumeTranscript: (session: Session) => void;
   clearTranscript: (sessionId?: string) => void;
 };
 
@@ -131,8 +129,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
           input.sessionState.activeSessionId = selected.id;
           input.setCurrentSession(selected);
           input.setTokenUsage?.(() => selected.tokenUsage);
-          input.clearTranscript(selected.id);
-          input.setRowsDirect(input.toRows(selected.messages));
+          input.resumeTranscript(selected);
           await input.persist();
         }
         input.setPicker(null);

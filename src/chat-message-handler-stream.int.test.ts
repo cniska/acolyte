@@ -249,7 +249,6 @@ describe("chat message handler stream behavior", () => {
       }),
       session,
       sessionState,
-      toRows: (messages) => messages.map((msg) => ({ id: msg.id, kind: msg.role, content: msg.content })),
     });
 
     await handleMessage("first");
@@ -506,7 +505,6 @@ describe("chat message handler stream behavior", () => {
         setCurrentSession: (next) => {
           currentSession = next;
         },
-        toRows: (messages) => messages.map((msg) => ({ id: msg.id, kind: msg.role, content: msg.content })),
         setRows,
         setShowHelp: () => {},
         setValue: () => {},
@@ -527,6 +525,9 @@ describe("chat message handler stream behavior", () => {
         createMessage,
         nowIso: () => "2026-02-20T00:00:00.000Z",
         setInterrupt: () => {},
+        resumeTranscript: () => {
+          rows.splice(0, rows.length);
+        },
         clearTranscript: () => {
           rows.splice(0, rows.length);
         },

@@ -253,16 +253,16 @@ describe("chat message handler", () => {
     expect(promoted.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
-  test("commits the authoritative reply.output, not the streamed partial", async () => {
+  test("keeps the streamed prose as the authoritative transcript", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
-          input.onEvent({ type: "text-delta", text: "partial " });
+          input.onEvent({ type: "text-delta", text: "the complete streamed answer." });
           return {
             state: "done" as const,
             model: "gpt-5-mini",
-            output: "partial plus the complete authoritative answer.",
+            output: "the complete streamed answer.",
           };
         },
       }),
@@ -272,7 +272,26 @@ describe("chat message handler", () => {
 
     const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
     expect(assistantRows).toHaveLength(1);
-    expect(assistantRows[0]?.content).toBe("partial plus the complete authoritative answer.");
+    expect(assistantRows[0]?.content).toBe("the complete streamed answer.");
+  });
+
+  test("falls back to reply.output when the stream emits no prose", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async () => ({
+          state: "done" as const,
+          model: "gpt-5-mini",
+          output: "answer delivered without deltas.",
+        }),
+      }),
+    });
+
+    await handleMessage("tell me about this project");
+
+    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    expect(assistantRows).toHaveLength(1);
+    expect(assistantRows[0]?.content).toBe("answer delivered without deltas.");
   });
 
   test("clears running usage in the same commit as the token entry, before stop-pending", async () => {
@@ -324,6 +343,41 @@ describe("chat message handler", () => {
     expect(assistantRows[0]?.content).toBe("The complete answer.");
   });
 
+  test("preserves prose/tool interleaving instead of collapsing prose to the end", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "Let me check the file." });
+          input.onEvent({ type: "tool-call", toolCallId: "call_1", toolName: "file-edit", args: { path: "a.rs" } });
+          input.onEvent({
+            type: "tool-output",
+            toolCallId: "call_1",
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "a.rs" },
+          });
+          input.onEvent({ type: "text-delta", text: "Done editing." });
+          return { state: "done" as const, model: "gpt-5-mini", output: "Let me check the file.\nDone editing." };
+        },
+      }),
+    });
+
+    await handleMessage("edit a.rs");
+
+    const promoted = calls.promotedSnapshots.flat();
+    const kinds = promoted.map((row) => row.kind);
+    const firstProse = kinds.indexOf("assistant");
+    const toolIdx = kinds.indexOf("tool");
+    const lastProse = kinds.lastIndexOf("assistant");
+    // Prose that streamed before the tool call stays before it; a second prose row
+    // follows. The old drop-and-recommit collapsed both into one bubble after the tool.
+    expect(firstProse).toBeGreaterThanOrEqual(0);
+    expect(toolIdx).toBeGreaterThan(firstProse);
+    expect(lastProse).toBeGreaterThan(toolIdx);
+    const proseContents = promoted.filter((row) => row.kind === "assistant").map((row) => row.content);
+    expect(proseContents).toEqual(["Let me check the file.", "Done editing."]);
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness();
     await handleMessage("?");
@@ -361,7 +415,6 @@ describe("chat message handler", () => {
       sessionState,
       currentSession: session,
       setCurrentSession: () => {},
-      toRows: () => [],
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
@@ -389,6 +442,7 @@ describe("chat message handler", () => {
         interruptRegistered = handler !== null;
         if (handler) interruptHandler = handler;
       },
+      resumeTranscript: () => {},
       clearTranscript: () => {},
     });
 
@@ -442,7 +496,6 @@ describe("chat message handler", () => {
       sessionState,
       currentSession: session,
       setCurrentSession: () => {},
-      toRows: () => [],
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
@@ -470,6 +523,7 @@ describe("chat message handler", () => {
         interruptRegistered = handler !== null;
         if (handler) interruptHandler = handler;
       },
+      resumeTranscript: () => {},
       clearTranscript: () => {},
     });
 
@@ -592,7 +646,6 @@ describe("chat message handler", () => {
       sessionState,
       currentSession: session,
       setCurrentSession: () => {},
-      toRows: () => [],
       setRows: (updater) => {
         updater([]);
       },
@@ -619,6 +672,7 @@ describe("chat message handler", () => {
       setInterrupt: (handler) => {
         interruptHandler = handler;
       },
+      resumeTranscript: () => {},
       clearTranscript: () => {},
     });
 
@@ -642,8 +696,7 @@ describe("chat message handler", () => {
 
     await handleMessage("hello");
 
-    expect(calls.promotedSnapshots).toHaveLength(1);
-    const promoted = calls.promotedSnapshots[0] ?? [];
+    const promoted = calls.promotedSnapshots.flat();
     expect(promoted.some((r) => r.kind === "user")).toBe(true);
     expect(promoted.some((r) => r.kind === "assistant")).toBe(true);
   });
@@ -668,8 +721,7 @@ describe("chat message handler", () => {
 
     await handleMessage("edit a file");
 
-    expect(calls.promotedSnapshots).toHaveLength(1);
-    const promoted = calls.promotedSnapshots[0] ?? [];
+    const promoted = calls.promotedSnapshots.flat();
     expect(promoted.some((r) => r.kind === "tool")).toBe(true);
   });
 
@@ -689,6 +741,63 @@ describe("chat message handler", () => {
 
     const promoted = calls.promotedSnapshots[0] ?? [];
     expect(promoted.some((r) => r.kind === "assistant" && r.content === "No changes needed.")).toBe(true);
+  });
+
+  test("eagerly promotes finalized rows mid-turn, before the turn completes", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "Checking the file." });
+          input.onEvent({ type: "tool-call", toolCallId: "c1", toolName: "file-edit", args: { path: "a.rs" } });
+          input.onEvent({
+            type: "tool-output",
+            toolCallId: "c1",
+            toolName: "file-edit",
+            content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "a.rs" },
+          });
+          input.onEvent({ type: "tool-result", toolCallId: "c1", toolName: "file-edit" });
+          input.onEvent({ type: "text-delta", text: "Done." });
+          return { state: "done" as const, model: "gpt-5-mini", output: "Checking the file.\nDone." };
+        },
+      }),
+    });
+
+    await handleMessage("edit a.rs");
+
+    // Promotion happens incrementally: the first prose row and the resolved tool row
+    // move to scrollback while the turn is still streaming, not in one turn-end batch.
+    expect(calls.promotedSnapshots.length).toBeGreaterThan(1);
+    const firstBatch = calls.promotedSnapshots[0] ?? [];
+    expect(firstBatch.some((r) => r.kind === "assistant" && r.content === "Checking the file.")).toBe(true);
+    // Every row still lands in scrollback exactly once across the incremental batches.
+    const promoted = calls.promotedSnapshots.flat();
+    const proseContents = promoted.filter((r) => r.kind === "assistant").map((r) => r.content);
+    expect(proseContents).toEqual(["Checking the file.", "Done."]);
+    expect(promoted.filter((r) => r.kind === "tool")).toHaveLength(1);
+    const ids = promoted.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("de-duplicates a repeated progress notice even after it is promoted", async () => {
+    const { handleMessage, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "error", errorMessage: "rate limited, retrying" });
+          input.onEvent({ type: "error", errorMessage: "rate limited, retrying" });
+          input.onEvent({ type: "text-delta", text: "ok" });
+          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+        },
+      }),
+    });
+
+    await handleMessage("go");
+
+    const notices = calls.promotedSnapshots
+      .flat()
+      .filter((r) => r.kind === "system" && r.content === "rate limited, retrying");
+    expect(notices).toHaveLength(1);
   });
 
   test("promote clears dynamic rows", async () => {
@@ -753,7 +862,6 @@ describe("chat message handler", () => {
       sessionState,
       currentSession: session,
       setCurrentSession: () => {},
-      toRows: () => [],
       setRows: (updater) => {
         rows.splice(0, rows.length, ...updater(rows));
       },
@@ -785,6 +893,7 @@ describe("chat message handler", () => {
         promotedSnapshots.push([...rows]);
         rows.splice(0, rows.length);
       },
+      resumeTranscript: () => {},
       clearTranscript: () => {},
     });
 

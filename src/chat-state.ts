@@ -12,8 +12,8 @@ import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { type PromotedItem, usePromotion } from "./chat-promotion";
-import { createMessage, toRows } from "./chat-session";
+import { currentSegment, type PromotedItem, usePromotion } from "./chat-promotion";
+import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
@@ -131,12 +131,23 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [git, setGit] = useState<GitStatus | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
-  const { promotedRows, promote, clearTranscript } = usePromotion({
+  const { promotedRows, promote, promoteRows, resumeTranscript, clearTranscript } = usePromotion({
     version: props.version,
     session,
     currentSessionId: currentSession.id,
     setRows,
   });
+
+  // Keep the persisted display projection in sync with what's on screen so a resumed
+  // session renders byte-exactly what streamed. The log spans every session opened this
+  // process, so project only the current segment (the tail after its header) and write
+  // it only when the segment belongs to the current session — a switch that hasn't
+  // opened its segment yet must never inherit the outgoing session's rows. Disk
+  // persistence is owned by the handler's turn-boundary persist() and the exit persist.
+  useSyncEffect(() => {
+    const segment = currentSegment(promotedRows);
+    if (segment.sessionId === currentSession.id) currentSession.transcript = segment.rows;
+  }, [promotedRows, currentSession]);
 
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
@@ -206,15 +217,14 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setCurrentSession: updateSession,
     setTokenUsage,
     setRows,
-    setRowsDirect: setRows,
     setPicker,
     setShowHelp,
     setValue,
     persist,
-    toRows,
     nowIso,
     activateSkill,
     startAssistantTurn: (userText) => startAssistantTurn(userText),
+    resumeTranscript,
     clearTranscript,
   });
 
@@ -223,7 +233,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     sessionState,
     currentSession,
     setCurrentSession: updateSession,
-    toRows,
     setRows,
     setShowHelp,
     setValue,
@@ -258,6 +267,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       interruptRef.current = handler;
     },
     promote,
+    promoteRows,
+    resumeTranscript,
     clearTranscript,
   });
   handleSubmitRef.current = handleSubmit;

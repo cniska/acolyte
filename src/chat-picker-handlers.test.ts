@@ -34,7 +34,7 @@ describe("chat picker handlers", () => {
     await handlers.handlePickerSelect({ kind: "resume", items: [first, second], index: 1, scrollOffset: 0 });
     expect(sessionState.activeSessionId).toBe(second.id);
     expect(spies.currentSessions).toEqual([second]);
-    expect(spies.rowsDirectSets.at(-1)).toEqual([]);
+    expect(spies.resumedSessions.at(-1)).toBe(second);
     expect(spies.pickerValues.at(-1)).toBeNull();
   });
 

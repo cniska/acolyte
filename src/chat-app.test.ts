@@ -73,7 +73,7 @@ describe("chat-ui helpers", () => {
 
   test("appendPromotedItems ignores duplicate row ids", () => {
     const initial = [
-      { id: "header_sess_demo", kind: "header" as const, lines: [] },
+      { id: "header_sess_demo", kind: "header" as const, sessionId: "sess_demo", lines: [] },
       { id: "row_1", kind: "user" as const, content: "hello" },
     ];
     const next = [
@@ -82,7 +82,7 @@ describe("chat-ui helpers", () => {
     ];
 
     expect(appendPromotedItems(initial, next)).toEqual([
-      { id: "header_sess_demo", kind: "header", lines: [] },
+      { id: "header_sess_demo", kind: "header", sessionId: "sess_demo", lines: [] },
       { id: "row_1", kind: "user", content: "hello" },
       { id: "row_2", kind: "assistant", content: "hi" },
     ]);

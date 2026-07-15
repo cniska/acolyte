@@ -61,8 +61,7 @@ async function handleResume(ctx: CommandContext): Promise<CommandResult> {
   ctx.sessionState.activeSessionId = target.id;
   ctx.setCurrentSession(target);
   ctx.setTokenUsage?.(() => target.tokenUsage);
-  ctx.clearTranscript(target.id);
-  ctx.setRows(() => ctx.toRows(target.messages));
+  ctx.resumeTranscript(target);
   ctx.setShowHelp(() => false);
   await ctx.persist();
   return { stop: true, userText: text };

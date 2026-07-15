@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { type ChatMessage, type MessageId, messageIdSchema, messageSchema } from "./chat-contract";
+import {
+  type ChatMessage,
+  type ChatRow,
+  chatRowSchema,
+  type MessageId,
+  messageIdSchema,
+  messageSchema,
+} from "./chat-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { type ActiveSkill, activeSkillSchema } from "./skill-contract";
@@ -54,6 +61,9 @@ export const sessionSchema = z.object({
   workspaceBranch: z.string().min(1).optional(),
   activeSkills: z.array(activeSkillSchema).optional(),
   messages: z.array(messageSchema),
+  // Display projection (interleaved prose/tool rows) for live/resume parity. Optional:
+  // its absence marks a pre-parity session, which resumes from `messages` (collapsed).
+  transcript: z.array(chatRowSchema).optional(),
   tokenUsage: z.array(sessionTokenUsageEntrySchema),
 });
 
@@ -68,6 +78,7 @@ export interface Session {
   workspaceBranch?: string;
   activeSkills?: ActiveSkill[];
   messages: ChatMessage[];
+  transcript?: ChatRow[];
   tokenUsage: SessionTokenUsageEntry[];
 }
 
