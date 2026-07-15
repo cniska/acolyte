@@ -164,4 +164,77 @@ describe("runChat call-site", () => {
     expect(stdout.join("")).not.toMatch(/level=debug/);
     expect(stdout.join("")).not.toContain("runChat.sink.check");
   });
+
+  test("persists the final turn's transcript on clean exit", async () => {
+    const home = dirs.createDir("acolyte-runchat-persist-");
+    const saved = {
+      home: process.env.HOME,
+      xdgState: process.env.XDG_STATE_HOME,
+      isTTY: Object.getOwnPropertyDescriptor(process.stdout, "isTTY"),
+      write: process.stdout.write,
+    };
+    process.env.HOME = home;
+    delete process.env.XDG_STATE_HOME;
+    delete process.env.ACOLYTE_DEBUG;
+    mkdirSync(stateDir(), { recursive: true });
+    Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
+    process.stdout.write = (() => true) as typeof process.stdout.write;
+
+    const sessionId = sessionIdSchema.parse("sess_persistexit") as SessionId;
+    const now = new Date().toISOString();
+    const session: Session = {
+      id: sessionId,
+      createdAt: now,
+      updatedAt: now,
+      model: "test-model",
+      title: "Test",
+      messages: [],
+      tokenUsage: [],
+    };
+    const sessionState: SessionState = { sessions: [session], activeSessionId: sessionId };
+
+    // Model the real timing: turn-boundary persist runs while the transcript is
+    // still stale, then the sync effect settles before the user exits.
+    const persistedTranscripts: number[] = [];
+    const finalRow = { id: "row_final", kind: "assistant" as const, content: "the last answer" };
+    const persist = async (): Promise<void> => {
+      persistedTranscripts.push((session.transcript ?? []).length);
+    };
+
+    try {
+      setLogSink(null);
+      await runChat(
+        {
+          client: {
+            replyStream: async () => {
+              throw new Error("not called");
+            },
+            status: async () => ({}),
+            taskStatus: async () => null,
+          },
+          session,
+          sessionState,
+          persist,
+          version: "0.0.0-test",
+        },
+        async (app) => {
+          await persist();
+          session.transcript = [finalRow];
+          app.unmount();
+        },
+      );
+    } finally {
+      process.stdout.write = saved.write;
+      if (saved.isTTY) Object.defineProperty(process.stdout, "isTTY", saved.isTTY);
+      if (saved.home === undefined) delete process.env.HOME;
+      else process.env.HOME = saved.home;
+      if (saved.xdgState === undefined) delete process.env.XDG_STATE_HOME;
+      else process.env.XDG_STATE_HOME = saved.xdgState;
+      setLogSink(() => {});
+    }
+
+    expect(persistedTranscripts.at(0)).toBe(0);
+    expect(persistedTranscripts.at(-1)).toBe(1);
+    expect(persistedTranscripts.length).toBeGreaterThan(1);
+  });
 });

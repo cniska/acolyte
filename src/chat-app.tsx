@@ -106,12 +106,17 @@ export function installClientLogSink(): void {
 export async function runChat(
   props: ChatAppProps,
   onMount?: (app: { flush: () => void; unmount: () => void }) => void,
+  onFatalError?: (error: unknown) => void,
 ): Promise<void> {
   installClientLogSink();
-  const app = render(<ChatApp {...props} />);
+  const app = render(<ChatApp {...props} />, { onFatalError });
   try {
     onMount?.(app);
     await app.waitUntilExit();
+    // The last turn's turn-boundary persist ran before its transcript row
+    // committed; catch it up here. Signal/fatal exits process.exit before this
+    // resumes, so it stays clean-exit-only.
+    await props.persist();
   } finally {
     setLogSink(null);
   }

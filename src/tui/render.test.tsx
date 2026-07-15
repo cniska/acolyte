@@ -150,6 +150,33 @@ function OverflowShrinkApp(props: { onUnmount: () => void }): React.JSX.Element 
 }
 
 describe("render", () => {
+  test("installs process-level fatal handlers only when onFatalError is given", async () => {
+    const before = {
+      uncaught: process.listenerCount("uncaughtException"),
+      rejection: process.listenerCount("unhandledRejection"),
+    };
+
+    await withMockedStdout(async () => {
+      const { render } = await import("./render");
+      // No callback (the default tests use) must never add a process-exiting handler,
+      // or a stray rejection anywhere in the suite would kill the runner.
+      const bare = render(h("tui-text", null, "x"));
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection);
+      bare.unmount();
+      await bare.waitUntilExit();
+
+      const guarded = render(h("tui-text", null, "x"), { onFatalError: () => {} });
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught + 1);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection + 1);
+      guarded.unmount();
+      await guarded.waitUntilExit();
+      // Cleanup removes them — no global handler survives an unmounted render.
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection);
+    });
+  });
+
   test("commitRender wraps output in sync markers", async () => {
     const writes = await withMockedStdout(async () => {
       const { render } = await import("./render");
@@ -435,6 +462,145 @@ describe("render", () => {
       }
     } finally {
       stdin.restore();
+    }
+  });
+
+  test("focus-in after a width resize erases the stale tail copy", async () => {
+    // A width-change repaint must skip its erase (reflow makes the stored count
+    // unsafe), leaving a stale copy of the tail above the new one. When every tail
+    // line fits both widths the copy's height is reflow-invariant, so the next
+    // same-width erase (here: focus-in) must reclaim it instead of erasing only
+    // the newest copy and letting stale blocks accumulate.
+    const LINES = ["alpha", "beta", "input"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          const app = render(
+            <tui-box flexDirection="column">
+              {LINES.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>,
+          );
+          await drainFrame(() => app.flush(), captured);
+          const before = captured.length;
+          Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true });
+          process.stdout.emit("resize");
+          for (let attempt = 0; attempt < 300 && captured.length === before; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 2));
+          }
+          stdin.emit("\x1b[I"); // focus-in → forceRedraw, synchronous commit
+          stdin.emit("\x1b[I"); // repeat redraws must stay stable, not re-append
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 12 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 12, 30);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
+  test("a live line taller than the viewport is erased before its repaint", async () => {
+    // The last live line is never frozen (it may still be streaming), so it owns the
+    // tail alone. When it outgrows the viewport the split loop breaks before adding
+    // its height, and a stored erase distance of 0 would repaint it below its own
+    // stale copy — the whole line twice.
+    const ROWS = 10;
+    const COLS = 40;
+    const tall = "x".repeat(COLS * (ROWS + 3));
+    const frames = await renderScript(
+      [
+        <tui-box key="a" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+        </tui-box>,
+        <tui-box key="b" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+          <tui-text>after</tui-text>
+        </tui-box>,
+      ],
+      { columns: COLS, rows: ROWS },
+    );
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
+    // The repaint reclaims every row still on screen; only the rows that genuinely
+    // scrolled off the top survive as a stale prefix.
+    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+  });
+
+  test("an edit above the fold repaints the tail without duplicating scrollback", async () => {
+    // A long-open turn overflows the viewport, freezing its top rows into scrollback.
+    // When a row above the fold then changes in place (a tool row going running->done),
+    // the frozen prefix stops matching. Re-emitting the whole region would paint a
+    // second copy of every scrolled row; only the unreachable tail may go stale.
+    const ROWS = 10;
+    const COLS = 40;
+    const build = (key: string, marker: string) => {
+      const lines = Array.from({ length: 30 }, (_, i) => (i === 2 ? `tool ${marker}` : `row-${i}`));
+      return (
+        <tui-box key={key} flexDirection="column">
+          {lines.map((line) => (
+            <tui-text key={line}>{line}</tui-text>
+          ))}
+        </tui-box>
+      );
+    };
+    const frames = await renderScript([build("a", "running"), build("b", "done")], { columns: COLS, rows: ROWS });
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (let i = 0; i < 30; i++) {
+      if (i === 2) continue; // the tool row, not a "row-N" label
+      expect(transcript.filter((row) => row.trim() === `row-${i}`).length).toBe(1);
+    }
+  });
+
+  test("width-change debt does not erase overflow frozen in the same paint", async () => {
+    // A width change arms stale-tail debt (the reflowed copy stranded above the new
+    // tail, repaid on the next same-width erase). If that same paint also freezes
+    // overflow into scrollback, the stale copy is pushed out of eraseSequence()'s
+    // reach — repaying the debt would then cursor-up through the frozen tail and
+    // wipe committed transcript. The debt must be dropped when overflow froze.
+    const setLines: { current: (value: string[]) => void } = { current: () => {} };
+    const many = Array.from({ length: 12 }, (_, i) => `line-${i}`);
+    const writes = await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const [lines, setLinesState] = useState(["prompt", "input"]);
+          setLines.current = setLinesState;
+          return (
+            <tui-box flexDirection="column">
+              {lines.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf); // frame A: 2-line tail at 20 cols
+        Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true });
+        setLines.current(many); // frame B: width change + overflow freeze, arms debt
+        await drainFrame(() => app.flush(), buf);
+        setLines.current([...many, "line-12"]); // frame C: erase must not reach the frozen tail
+        await drainFrame(() => app.flush(), buf);
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 8 },
+    );
+
+    const vt = replayTerminal(frameWrites(writes), 8, 30);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (let i = 0; i <= 12; i++) {
+      expect(transcript.filter((row) => row.trim() === `line-${i}`).length).toBe(1);
     }
   });
 

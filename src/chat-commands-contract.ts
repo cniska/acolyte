@@ -17,7 +17,6 @@ export type CommandContext = {
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setTokenUsage?: (updater: (current: SessionTokenUsageEntry[]) => SessionTokenUsageEntry[]) => void;
-  toRows: (messages: Session["messages"]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowHelp: (updater: (current: boolean) => boolean) => void;
   setValue: (next: string) => void;
@@ -29,6 +28,7 @@ export type CommandContext = {
   persistModelConfig?: (key: string, value: string, scope: ConfigScope) => Promise<void>;
   activateSkill?: (skillName: string, args: string) => Promise<boolean>;
   startAssistantTurn?: (userText: string) => Promise<void>;
+  resumeTranscript: (session: Session) => void;
   clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: {

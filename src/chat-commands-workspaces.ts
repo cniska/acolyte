@@ -136,7 +136,6 @@ async function handleNew(ctx: CommandContext, parsed: ParsedCommand): Promise<Co
   ctx.setCurrentSession(next);
   ctx.setTokenUsage?.(() => []);
   ctx.clearTranscript(next.id);
-  ctx.setRows(() => ctx.toRows(next.messages));
   ctx.setShowHelp(() => false);
   await ctx.persist();
   ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.created", { name }))]);
@@ -164,8 +163,7 @@ async function handleSwitch(ctx: CommandContext, parsed: ParsedCommand): Promise
   ctx.sessionState.activeSessionId = target.id;
   ctx.setCurrentSession(target);
   ctx.setTokenUsage?.(() => target.tokenUsage);
-  ctx.clearTranscript(target.id);
-  ctx.setRows(() => ctx.toRows(target.messages));
+  ctx.resumeTranscript(target);
   ctx.setShowHelp(() => false);
   await ctx.persist();
   ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.switched", { name: name.data }))]);

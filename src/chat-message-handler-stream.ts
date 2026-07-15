@@ -34,6 +34,7 @@ const STREAM_FLUSH_MS = 50;
 
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  promoteRows?: (rows: readonly ChatRow[]) => void;
 }): MessageStreamState {
   // --- agent streaming state ---
   let activeRowId: string | null = null;
@@ -44,10 +45,18 @@ export function createMessageStreamState(input: {
 
   // --- tool output state ---
   const toolRowIdByCallId = new Map<string, string>();
+  // Tool rows still streaming output (no result yet) — mutable, so they block
+  // promotion of everything below them until resolved.
+  const pendingToolRowIds = new Set<string>();
   const toolOutput = createToolOutputState();
 
   // --- checklist state ---
   const checklistRowIdByGroupId = new Map<string, string>();
+
+  // Signature of the last row appended, when it was a progress notice — lets a repeat
+  // notice dedupe even after the prior one was promoted out of the active region.
+  // Cleared whenever any other row is appended, so only adjacent repeats collapse.
+  let lastNoticeKey: string | null = null;
 
   function cancelFlushTimer(): void {
     if (flushTimer) {
@@ -56,12 +65,31 @@ export function createMessageStreamState(input: {
     }
   }
 
+  // Move the longest contiguous prefix of finalized rows into write-once scrollback.
+  // A row is still mutable — and blocks the prefix — while it is the live prose row,
+  // an unresolved tool row, or a checklist row (which is removed, not promoted, at
+  // finalize). Static renders above the whole active region, so promoting anything
+  // but a front-anchored prefix would reorder the transcript.
+  function promoteFinalizedPrefix(): void {
+    if (!input.promoteRows) return;
+    const checklistRowIds = new Set(checklistRowIdByGroupId.values());
+    const blocked = (id: string): boolean => id === activeRowId || pendingToolRowIds.has(id) || checklistRowIds.has(id);
+    input.setRows((current) => {
+      let n = 0;
+      while (n < current.length && !blocked(current[n]?.id ?? "")) n++;
+      if (n === 0) return current;
+      input.promoteRows?.(current.slice(0, n));
+      return current.slice(n);
+    });
+  }
+
   function flush(): void {
     cancelFlushTimer();
     // Leading whitespace stripped every call so `content` is a pure function of
     // agentContent (no mutation), keeping the updater idempotent.
     const content = agentContent.replace(/^\s+/, "");
     if (content.length === 0) return;
+    lastNoticeKey = null;
     // Row identity is assigned OUTSIDE the updater: React may invoke a setRows
     // updater more than once (StrictMode) or after sealAgentRow/finalize reset
     // the closure, so the updater must be a pure function of `current` only —
@@ -122,6 +150,7 @@ export function createMessageStreamState(input: {
 
     onToolCall: () => {
       sealAgentRow();
+      promoteFinalizedPrefix();
     },
 
     onOutput: (entry) => {
@@ -138,6 +167,8 @@ export function createMessageStreamState(input: {
         agentContent = "";
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
+        pendingToolRowIds.add(rowId);
+        lastNoticeKey = null;
         // Decide (and track) any fallback assistant row OUTSIDE the updater, for
         // the same pure-updater reason as flush().
         const fallbackAssistantId =
@@ -154,6 +185,7 @@ export function createMessageStreamState(input: {
           }
           return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
+        promoteFinalizedPrefix();
         return;
       }
       // Existing tool call: update in place.
@@ -177,6 +209,7 @@ export function createMessageStreamState(input: {
         toolRowIdByCallId.delete(entry.toolCallId);
         toolOutput.delete(entry.toolCallId);
         if (!rowId) return;
+        pendingToolRowIds.delete(rowId);
         input.setRows((current) => current.filter((row) => row.id !== rowId));
         return;
       }
@@ -186,6 +219,10 @@ export function createMessageStreamState(input: {
       input.setRows((current) =>
         current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, marker: markerColor } } : row)),
       );
+      // The marker is now final, so the row is immutable: promote it (and any prefix
+      // it was blocking) into write-once scrollback.
+      pendingToolRowIds.delete(rowId);
+      promoteFinalizedPrefix();
     },
 
     onChecklist: (entry) => {
@@ -195,7 +232,9 @@ export function createMessageStreamState(input: {
         sealAgentRow();
         const rowId = `row_${createId()}`;
         checklistRowIdByGroupId.set(entry.groupId, rowId);
+        lastNoticeKey = null;
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
+        promoteFinalizedPrefix();
         return;
       }
       input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
@@ -205,21 +244,23 @@ export function createMessageStreamState(input: {
       // Flush buffered prose first so it renders before the notice, not after the
       // pending flush timer fires (which would invert their order).
       sealAgentRow();
-      input.setRows((current) => {
-        const last = current[current.length - 1];
-        if (last?.style?.text === palette.error && last.content === error) return current;
-        return [...current, createRow("system", error, { dim: true, text: palette.error })];
-      });
+      const key = `error:${error}`;
+      if (key !== lastNoticeKey) {
+        input.setRows((current) => [...current, createRow("system", error, { dim: true, text: palette.error })]);
+        lastNoticeKey = key;
+      }
+      promoteFinalizedPrefix();
     },
 
     onProgressNotice: (notice) => {
       sealAgentRow();
       const color = notice.level === "error" ? palette.error : palette.yellow;
-      input.setRows((current) => {
-        const last = current[current.length - 1];
-        if (last?.style?.text === color && last.content === notice.message) return current;
-        return [...current, createRow("system", notice.message, { dim: true, text: color })];
-      });
+      const key = `${color}:${notice.message}`;
+      if (key !== lastNoticeKey) {
+        input.setRows((current) => [...current, createRow("system", notice.message, { dim: true, text: color })]);
+        lastNoticeKey = key;
+      }
+      promoteFinalizedPrefix();
     },
 
     streamedText: () => agentContent,

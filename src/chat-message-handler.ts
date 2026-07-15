@@ -25,7 +25,6 @@ type CreateMessageHandlerInput = {
   sessionState: SessionState;
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
-  toRows: (messages: ChatMessage[]) => ChatRow[];
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
@@ -49,6 +48,8 @@ type CreateMessageHandlerInput = {
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
   promote?: () => void;
+  promoteRows?: (rows: readonly ChatRow[]) => void;
+  resumeTranscript: (session: Session) => void;
   clearTranscript: (sessionId?: string) => void;
 };
 
@@ -98,6 +99,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const runningToolCallIds = new Set<string>();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
+      promoteRows: input.promoteRows,
     });
 
     await input.persist();
@@ -176,12 +178,19 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       } else {
         input.setPendingState(null);
       }
-      // Honor finalize()'s replacement contract: drop the transient streamed
-      // rows and commit the authoritative answer (reply.output) exactly once, so
-      // the transcript never depends on a streamed row surviving a re-render.
-      const finalRows =
-        assistantMessage.content.trim().length > 0 ? [createRow("assistant", assistantMessage.content)] : [];
-      input.setRows((current) => [...current.filter((row) => !streamedRowIds.has(row.id)), ...finalRows, ...turn.rows]);
+      // The streamed rows are the authoritative display transcript: they carry the
+      // turn's true interleaving (prose, tool, prose) and are already committed to the
+      // screen. reply.output is the same prose reassembled for model history, so
+      // re-committing it here only reshuffles prose below the tool rows and re-emits
+      // content that may have scrolled into append-only scrollback — a duplicate.
+      // Keep the streamed rows and append this turn's status/error rows. Only when no
+      // prose streamed (a provider that returns output without deltas) fall back to a
+      // bubble so the answer still shows.
+      const fallbackRows =
+        streamedRowIds.size === 0 && assistantMessage.content.trim().length > 0
+          ? [createRow("assistant", assistantMessage.content)]
+          : [];
+      input.setRows((current) => [...current, ...fallbackRows, ...turn.rows]);
       if (!turn.awaitingInput) input.promote?.();
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
@@ -325,7 +334,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       currentSession: input.currentSession,
       setCurrentSession: input.setCurrentSession,
       setTokenUsage: input.setTokenUsage,
-      toRows: (messages) => input.toRows(messages),
       setRows: input.setRows,
       setShowHelp: input.setShowHelp,
       setValue: input.setValue,
@@ -337,6 +345,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       openResumePanel: input.openResumePanel,
       openModelPanel: input.openModelPanel,
       tokenUsage: input.tokenUsage,
+      resumeTranscript: input.resumeTranscript,
       clearTranscript: input.clearTranscript,
     });
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });

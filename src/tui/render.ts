@@ -30,7 +30,18 @@ type RenderInstance = {
   flush: () => void;
 };
 
-export function render(node: ReactNode): RenderInstance {
+type RenderOptions = {
+  /** Policy for an otherwise-unhandled error. Passing it opts into process-level
+   *  `uncaughtException`/`unhandledRejection` handlers that restore the terminal
+   *  before invoking this — so error text never lands on a live TUI. Callers that
+   *  omit it (tests) install nothing. The callback owns printing and process exit;
+   *  since `process.exit` skips `finally`, it must also run any crash-critical
+   *  teardown (e.g. releasing the session lock). */
+  onFatalError?: (error: unknown) => void;
+};
+
+export function render(node: ReactNode, options: RenderOptions = {}): RenderInstance {
+  const { onFatalError } = options;
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
@@ -38,6 +49,13 @@ export function render(node: ReactNode): RenderInstance {
   const useKittyProtocol = stdout.isTTY && KITTY_TERMINALS.includes(termProgram);
   let lastActive = "";
   let lastActiveLineCount = 0;
+  let paintForced = false;
+  // Rows of a stale tail copy left by a width-change repaint (which must skip its
+  // erase). Repaid by the next same-width erase so the copy doesn't dangle forever.
+  let staleTailRows = 0;
+  // Debt armed by the width guard but not yet owed: the first paint at the new
+  // width is the one that strands the copy, so only that paint activates it.
+  let pendingStaleRows = 0;
   // A change since the last frame means the terminal may have reflowed the tail.
   let lastRenderColumns = stdout.columns ?? DEFAULT_COLUMNS;
   let flushedStaticCount = 0;
@@ -94,7 +112,7 @@ export function render(node: ReactNode): RenderInstance {
       resizeTimer = null;
       // Frozen state and erase geometry are reconciled in commitRender, which
       // must own it anyway to catch a streaming commit landing mid-resize.
-      lastActive = "";
+      paintForced = true;
       commitRender();
     }, 16);
   };
@@ -108,8 +126,9 @@ export function render(node: ReactNode): RenderInstance {
   }
 
   function eraseSequence(): string {
-    if (!stdout.isTTY || lastActiveLineCount <= 0) return "";
-    return `${ansi.cursorUp(lastActiveLineCount)}\r${ansi.eraseDown}`;
+    const distance = lastActiveLineCount + staleTailRows;
+    if (!stdout.isTTY || distance <= 0) return "";
+    return `${ansi.cursorUp(distance)}\r${ansi.eraseDown}`;
   }
 
   function linePhysRows(line: string, cols: number): number {
@@ -138,10 +157,10 @@ export function render(node: ReactNode): RenderInstance {
 
   /** Repaint the active region on focus-in. Frozen scrollback is left intact —
    *  it physically scrolled off and the erase can't reach it, so re-emitting would
-   *  duplicate. Clearing lastActive forces a repaint of the live tail only. */
+   *  duplicate. The forced flag repaints the live tail only. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    lastActive = "";
+    paintForced = true;
     commitRender();
   }
 
@@ -150,16 +169,28 @@ export function render(node: ReactNode): RenderInstance {
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const { staticItems, active } = serializeSplit(root, cols);
     const maxLiveRows = (stdout.rows ?? 24) - 1;
+    const forced = paintForced;
+    paintForced = false;
 
     // Erasing with a stale count is transcript loss. On a width change the terminal
     // may reflow the tail, so cursor-up would overshoot into promoted scrollback —
-    // skip the erase (a stale tail copy is merely cosmetic). On a height shrink,
-    // clamp so cursor-up can't reach through the viewport top into frozen history.
+    // skip the erase. Terminals only reflow soft-wrapped rows and every row we write
+    // is hard-broken, so when each previous tail line fits both widths its height is
+    // reflow-invariant and the skipped distance stays exact: carry it as debt and
+    // repay it on the next same-width erase instead of leaving the copy dangling.
+    // On a height shrink, clamp so cursor-up can't reach through the viewport top
+    // into frozen history.
     if (cols !== lastRenderColumns) {
+      const minCols = Math.min(cols, lastRenderColumns);
+      const prevTail = lastActive.split("\n").slice(frozenLineCount);
+      pendingStaleRows =
+        lastActiveLineCount > 0 && prevTail.every((line) => stripAnsiLength(line) <= minCols) ? lastActiveLineCount : 0;
+      staleTailRows = 0;
       lastActiveLineCount = 0;
       lastRenderColumns = cols;
-    } else if (lastActiveLineCount > maxLiveRows) {
-      lastActiveLineCount = maxLiveRows;
+    } else {
+      if (lastActiveLineCount + staleTailRows > maxLiveRows) staleTailRows = 0;
+      if (lastActiveLineCount > maxLiveRows) lastActiveLineCount = maxLiveRows;
     }
 
     // Flush any new static items (write-once scrollback).
@@ -186,21 +217,42 @@ export function render(node: ReactNode): RenderInstance {
       syncWrite(buf);
       lastActive = "";
       lastActiveLineCount = 0;
+      // Any stale copy now sits above the flushed static lines — unreachable.
+      staleTailRows = 0;
+      pendingStaleRows = 0;
     }
 
     // Only re-render the active region if it changed.
-    if (active === lastActive) return;
+    if (active === lastActive && !forced) return;
 
     const allLines = active.split("\n");
 
-    // If frozen lines no longer match the current active prefix (non-append-only
-    // change), invalidate the frozen state so we repaint from scratch.
+    // Frozen lines scrolled into append-only scrollback; eraseSequence() cannot reach
+    // them. When the frozen prefix no longer matches — an edit above the fold, or a
+    // wholesale replacement — those lines are stale but immutable, so re-emitting them
+    // just paints a second copy below the first. Rebase the frozen boundary on the
+    // current content's fold and repaint the reachable tail alone: content that now
+    // fits the viewport repaints in full, content that still overflows keeps a stale
+    // (never duplicated) prefix in scrollback.
     if (frozenLineCount > 0 && allLines.slice(0, frozenLineCount).join("\n") !== frozenScrollbackText) {
-      frozenLineCount = 0;
-      frozenScrollbackText = "";
+      let rows = 0;
+      let fold = 0;
+      for (let i = allLines.length - 1; i >= 0; i--) {
+        const lineRows = linePhysRows(allLines[i] ?? "", cols);
+        if (rows + lineRows > maxLiveRows) {
+          fold = i + 1;
+          break;
+        }
+        rows += lineRows;
+      }
+      // Keep the last line live — it may still be streaming, and the split loop below
+      // needs a non-empty tail to anchor the erase distance.
+      frozenLineCount = Math.min(fold, allLines.length - 1);
+      frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
     }
 
     const erase = eraseSequence();
+    staleTailRows = 0;
     const liveLines = allLines.slice(frozenLineCount);
 
     let physRows = 0;
@@ -213,9 +265,12 @@ export function render(node: ReactNode): RenderInstance {
       }
       physRows += rows;
     }
-    // Never freeze the last live line — it may still be streaming.
+    // Never freeze the last live line — it may still be streaming. It then owns the
+    // tail alone, so its height is the erase distance even when it overruns the
+    // viewport (the clamp on the next paint caps the reach at what stayed visible).
     if (splitIdx > 0 && splitIdx === liveLines.length) {
       splitIdx = liveLines.length - 1;
+      physRows = linePhysRows(liveLines[splitIdx] ?? "", cols);
     }
 
     if (splitIdx > 0) {
@@ -230,6 +285,12 @@ export function render(node: ReactNode): RenderInstance {
     }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
+    // A paint that froze overflow into scrollback pushed the stale copy above the
+    // now-committed rows, out of eraseSequence()'s reach — repaying the debt would
+    // cursor-up through the frozen tail and wipe it, so drop it (as the static
+    // flush does).
+    staleTailRows = splitIdx > 0 ? 0 : pendingStaleRows;
+    pendingStaleRows = 0;
   }
 
   const RENDER_THROTTLE_MS = 32;
@@ -261,7 +322,7 @@ export function render(node: ReactNode): RenderInstance {
     null,
     "",
     (error: Error) => {
-      console.error(error);
+      onFatal(error);
     },
     () => {},
     () => {},
@@ -286,6 +347,8 @@ export function render(node: ReactNode): RenderInstance {
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
     process.removeListener("exit", onExit);
+    process.removeListener("uncaughtException", onFatal);
+    process.removeListener("unhandledRejection", onFatal);
     if (stdin.isTTY) {
       stdin.removeListener("data", onStdinData);
       stdin.setRawMode(false);
@@ -318,9 +381,20 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
+  // Restore the terminal before the error reaches the app's policy, so no error text
+  // ever lands on a live TUI. exit() is idempotent, so a later 'exit' fire is a no-op.
+  function onFatal(error: unknown) {
+    exit();
+    onFatalError?.(error);
+  }
+
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
   process.on("exit", onExit);
+  if (onFatalError) {
+    process.on("uncaughtException", onFatal);
+    process.on("unhandledRejection", onFatal);
+  }
 
   return {
     waitUntilExit: () => exitPromise,
