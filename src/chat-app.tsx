@@ -113,6 +113,10 @@ export async function runChat(
   try {
     onMount?.(app);
     await app.waitUntilExit();
+    // The last turn's turn-boundary persist ran before its transcript row
+    // committed; catch it up here. Signal/fatal exits process.exit before this
+    // resumes, so it stays clean-exit-only.
+    await props.persist();
   } finally {
     setLogSink(null);
   }
