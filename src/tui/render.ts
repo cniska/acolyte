@@ -30,7 +30,18 @@ type RenderInstance = {
   flush: () => void;
 };
 
-export function render(node: ReactNode): RenderInstance {
+type RenderOptions = {
+  /** Policy for an otherwise-unhandled error. Passing it opts into process-level
+   *  `uncaughtException`/`unhandledRejection` handlers that restore the terminal
+   *  before invoking this — so error text never lands on a live TUI. Callers that
+   *  omit it (tests) install nothing. The callback owns printing and process exit;
+   *  since `process.exit` skips `finally`, it must also run any crash-critical
+   *  teardown (e.g. releasing the session lock). */
+  onFatalError?: (error: unknown) => void;
+};
+
+export function render(node: ReactNode, options: RenderOptions = {}): RenderInstance {
+  const { onFatalError } = options;
   const root = createElement("tui-root", {});
   const stdout = process.stdout;
   const stdin = process.stdin;
@@ -216,11 +227,28 @@ export function render(node: ReactNode): RenderInstance {
 
     const allLines = active.split("\n");
 
-    // If frozen lines no longer match the current active prefix (non-append-only
-    // change), invalidate the frozen state so we repaint from scratch.
+    // Frozen lines scrolled into append-only scrollback; eraseSequence() cannot reach
+    // them. When the frozen prefix no longer matches — an edit above the fold, or a
+    // wholesale replacement — those lines are stale but immutable, so re-emitting them
+    // just paints a second copy below the first. Rebase the frozen boundary on the
+    // current content's fold and repaint the reachable tail alone: content that now
+    // fits the viewport repaints in full, content that still overflows keeps a stale
+    // (never duplicated) prefix in scrollback.
     if (frozenLineCount > 0 && allLines.slice(0, frozenLineCount).join("\n") !== frozenScrollbackText) {
-      frozenLineCount = 0;
-      frozenScrollbackText = "";
+      let rows = 0;
+      let fold = 0;
+      for (let i = allLines.length - 1; i >= 0; i--) {
+        const lineRows = linePhysRows(allLines[i] ?? "", cols);
+        if (rows + lineRows > maxLiveRows) {
+          fold = i + 1;
+          break;
+        }
+        rows += lineRows;
+      }
+      // Keep the last line live — it may still be streaming, and the split loop below
+      // needs a non-empty tail to anchor the erase distance.
+      frozenLineCount = Math.min(fold, allLines.length - 1);
+      frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
     }
 
     const erase = eraseSequence();
@@ -237,9 +265,12 @@ export function render(node: ReactNode): RenderInstance {
       }
       physRows += rows;
     }
-    // Never freeze the last live line — it may still be streaming.
+    // Never freeze the last live line — it may still be streaming. It then owns the
+    // tail alone, so its height is the erase distance even when it overruns the
+    // viewport (the clamp on the next paint caps the reach at what stayed visible).
     if (splitIdx > 0 && splitIdx === liveLines.length) {
       splitIdx = liveLines.length - 1;
+      physRows = linePhysRows(liveLines[splitIdx] ?? "", cols);
     }
 
     if (splitIdx > 0) {
@@ -287,7 +318,7 @@ export function render(node: ReactNode): RenderInstance {
     null,
     "",
     (error: Error) => {
-      console.error(error);
+      onFatal(error);
     },
     () => {},
     () => {},
@@ -312,6 +343,8 @@ export function render(node: ReactNode): RenderInstance {
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);
     process.removeListener("exit", onExit);
+    process.removeListener("uncaughtException", onFatal);
+    process.removeListener("unhandledRejection", onFatal);
     if (stdin.isTTY) {
       stdin.removeListener("data", onStdinData);
       stdin.setRawMode(false);
@@ -344,9 +377,20 @@ export function render(node: ReactNode): RenderInstance {
     }
   }
 
+  // Restore the terminal before the error reaches the app's policy, so no error text
+  // ever lands on a live TUI. exit() is idempotent, so a later 'exit' fire is a no-op.
+  function onFatal(error: unknown) {
+    exit();
+    onFatalError?.(error);
+  }
+
   process.on("SIGINT", onSignal);
   process.on("SIGTERM", onSignal);
   process.on("exit", onExit);
+  if (onFatalError) {
+    process.on("uncaughtException", onFatal);
+    process.on("unhandledRejection", onFatal);
+  }
 
   return {
     waitUntilExit: () => exitPromise,

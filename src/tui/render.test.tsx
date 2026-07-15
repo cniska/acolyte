@@ -150,6 +150,33 @@ function OverflowShrinkApp(props: { onUnmount: () => void }): React.JSX.Element 
 }
 
 describe("render", () => {
+  test("installs process-level fatal handlers only when onFatalError is given", async () => {
+    const before = {
+      uncaught: process.listenerCount("uncaughtException"),
+      rejection: process.listenerCount("unhandledRejection"),
+    };
+
+    await withMockedStdout(async () => {
+      const { render } = await import("./render");
+      // No callback (the default tests use) must never add a process-exiting handler,
+      // or a stray rejection anywhere in the suite would kill the runner.
+      const bare = render(h("tui-text", null, "x"));
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection);
+      bare.unmount();
+      await bare.waitUntilExit();
+
+      const guarded = render(h("tui-text", null, "x"), { onFatalError: () => {} });
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught + 1);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection + 1);
+      guarded.unmount();
+      await guarded.waitUntilExit();
+      // Cleanup removes them — no global handler survives an unmounted render.
+      expect(process.listenerCount("uncaughtException")).toBe(before.uncaught);
+      expect(process.listenerCount("unhandledRejection")).toBe(before.rejection);
+    });
+  });
+
   test("commitRender wraps output in sync markers", async () => {
     const writes = await withMockedStdout(async () => {
       const { render } = await import("./render");
@@ -479,6 +506,59 @@ describe("render", () => {
       }
     } finally {
       stdin.restore();
+    }
+  });
+
+  test("a live line taller than the viewport is erased before its repaint", async () => {
+    // The last live line is never frozen (it may still be streaming), so it owns the
+    // tail alone. When it outgrows the viewport the split loop breaks before adding
+    // its height, and a stored erase distance of 0 would repaint it below its own
+    // stale copy — the whole line twice.
+    const ROWS = 10;
+    const COLS = 40;
+    const tall = "x".repeat(COLS * (ROWS + 3));
+    const frames = await renderScript(
+      [
+        <tui-box key="a" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+        </tui-box>,
+        <tui-box key="b" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+          <tui-text>after</tui-text>
+        </tui-box>,
+      ],
+      { columns: COLS, rows: ROWS },
+    );
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
+    // The repaint reclaims every row still on screen; only the rows that genuinely
+    // scrolled off the top survive as a stale prefix.
+    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+  });
+
+  test("an edit above the fold repaints the tail without duplicating scrollback", async () => {
+    // A long-open turn overflows the viewport, freezing its top rows into scrollback.
+    // When a row above the fold then changes in place (a tool row going running->done),
+    // the frozen prefix stops matching. Re-emitting the whole region would paint a
+    // second copy of every scrolled row; only the unreachable tail may go stale.
+    const ROWS = 10;
+    const COLS = 40;
+    const build = (key: string, marker: string) => {
+      const lines = Array.from({ length: 30 }, (_, i) => (i === 2 ? `tool ${marker}` : `row-${i}`));
+      return (
+        <tui-box key={key} flexDirection="column">
+          {lines.map((line) => (
+            <tui-text key={line}>{line}</tui-text>
+          ))}
+        </tui-box>
+      );
+    };
+    const frames = await renderScript([build("a", "running"), build("b", "done")], { columns: COLS, rows: ROWS });
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (let i = 0; i < 30; i++) {
+      if (i === 2) continue; // the tool row, not a "row-N" label
+      expect(transcript.filter((row) => row.trim() === `row-${i}`).length).toBe(1);
     }
   });
 

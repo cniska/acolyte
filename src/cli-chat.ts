@@ -107,16 +107,28 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     activeSession = next;
   };
 
+  // Runs after the renderer has restored the terminal, so the error prints cleanly.
+  // process.exit skips the finally below, so release the session lock here too.
+  const onFatalError = (error: unknown): void => {
+    releaseSessionLock(session.id);
+    printError(error instanceof Error ? (error.stack ?? error.message) : String(error));
+    process.exit(1);
+  };
+
   try {
     if (output.isTTY) clearScreen();
-    await runChat({
-      client,
-      session,
-      sessionState: state,
-      persist,
-      onSessionChange,
-      version: CLI_VERSION,
-    });
+    await runChat(
+      {
+        client,
+        session,
+        sessionState: state,
+        persist,
+        onSessionChange,
+        version: CLI_VERSION,
+      },
+      undefined,
+      onFatalError,
+    );
     if (output.isTTY) clearScreen();
     const resumeId = state.activeSessionId ?? session.id;
     printDim(t("chat.resume.with_command", { command: formatResumeCommand(resumeId) }));
