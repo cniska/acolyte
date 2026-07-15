@@ -438,6 +438,50 @@ describe("render", () => {
     }
   });
 
+  test("focus-in after a width resize erases the stale tail copy", async () => {
+    // A width-change repaint must skip its erase (reflow makes the stored count
+    // unsafe), leaving a stale copy of the tail above the new one. When every tail
+    // line fits both widths the copy's height is reflow-invariant, so the next
+    // same-width erase (here: focus-in) must reclaim it instead of erasing only
+    // the newest copy and letting stale blocks accumulate.
+    const LINES = ["alpha", "beta", "input"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          const app = render(
+            <tui-box flexDirection="column">
+              {LINES.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>,
+          );
+          await drainFrame(() => app.flush(), captured);
+          const before = captured.length;
+          Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true });
+          process.stdout.emit("resize");
+          for (let attempt = 0; attempt < 300 && captured.length === before; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 2));
+          }
+          stdin.emit("\x1b[I"); // focus-in → forceRedraw, synchronous commit
+          stdin.emit("\x1b[I"); // repeat redraws must stay stable, not re-append
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 12 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 12, 30);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
   test("width resize skips the erase and does not re-emit frozen scrollback", async () => {
     // A width change may reflow the tail, so the stored erase count is unsafe.
     const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];

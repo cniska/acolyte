@@ -38,6 +38,13 @@ export function render(node: ReactNode): RenderInstance {
   const useKittyProtocol = stdout.isTTY && KITTY_TERMINALS.includes(termProgram);
   let lastActive = "";
   let lastActiveLineCount = 0;
+  let paintForced = false;
+  // Rows of a stale tail copy left by a width-change repaint (which must skip its
+  // erase). Repaid by the next same-width erase so the copy doesn't dangle forever.
+  let staleTailRows = 0;
+  // Debt armed by the width guard but not yet owed: the first paint at the new
+  // width is the one that strands the copy, so only that paint activates it.
+  let pendingStaleRows = 0;
   // A change since the last frame means the terminal may have reflowed the tail.
   let lastRenderColumns = stdout.columns ?? DEFAULT_COLUMNS;
   let flushedStaticCount = 0;
@@ -94,7 +101,7 @@ export function render(node: ReactNode): RenderInstance {
       resizeTimer = null;
       // Frozen state and erase geometry are reconciled in commitRender, which
       // must own it anyway to catch a streaming commit landing mid-resize.
-      lastActive = "";
+      paintForced = true;
       commitRender();
     }, 16);
   };
@@ -108,8 +115,9 @@ export function render(node: ReactNode): RenderInstance {
   }
 
   function eraseSequence(): string {
-    if (!stdout.isTTY || lastActiveLineCount <= 0) return "";
-    return `${ansi.cursorUp(lastActiveLineCount)}\r${ansi.eraseDown}`;
+    const distance = lastActiveLineCount + staleTailRows;
+    if (!stdout.isTTY || distance <= 0) return "";
+    return `${ansi.cursorUp(distance)}\r${ansi.eraseDown}`;
   }
 
   function linePhysRows(line: string, cols: number): number {
@@ -138,10 +146,10 @@ export function render(node: ReactNode): RenderInstance {
 
   /** Repaint the active region on focus-in. Frozen scrollback is left intact —
    *  it physically scrolled off and the erase can't reach it, so re-emitting would
-   *  duplicate. Clearing lastActive forces a repaint of the live tail only. */
+   *  duplicate. The forced flag repaints the live tail only. */
   function forceRedraw() {
     if (exited || !stdout.isTTY) return;
-    lastActive = "";
+    paintForced = true;
     commitRender();
   }
 
@@ -150,16 +158,28 @@ export function render(node: ReactNode): RenderInstance {
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const { staticItems, active } = serializeSplit(root, cols);
     const maxLiveRows = (stdout.rows ?? 24) - 1;
+    const forced = paintForced;
+    paintForced = false;
 
     // Erasing with a stale count is transcript loss. On a width change the terminal
     // may reflow the tail, so cursor-up would overshoot into promoted scrollback —
-    // skip the erase (a stale tail copy is merely cosmetic). On a height shrink,
-    // clamp so cursor-up can't reach through the viewport top into frozen history.
+    // skip the erase. Terminals only reflow soft-wrapped rows and every row we write
+    // is hard-broken, so when each previous tail line fits both widths its height is
+    // reflow-invariant and the skipped distance stays exact: carry it as debt and
+    // repay it on the next same-width erase instead of leaving the copy dangling.
+    // On a height shrink, clamp so cursor-up can't reach through the viewport top
+    // into frozen history.
     if (cols !== lastRenderColumns) {
+      const minCols = Math.min(cols, lastRenderColumns);
+      const prevTail = lastActive.split("\n").slice(frozenLineCount);
+      pendingStaleRows =
+        lastActiveLineCount > 0 && prevTail.every((line) => stripAnsiLength(line) <= minCols) ? lastActiveLineCount : 0;
+      staleTailRows = 0;
       lastActiveLineCount = 0;
       lastRenderColumns = cols;
-    } else if (lastActiveLineCount > maxLiveRows) {
-      lastActiveLineCount = maxLiveRows;
+    } else {
+      if (lastActiveLineCount + staleTailRows > maxLiveRows) staleTailRows = 0;
+      if (lastActiveLineCount > maxLiveRows) lastActiveLineCount = maxLiveRows;
     }
 
     // Flush any new static items (write-once scrollback).
@@ -186,10 +206,13 @@ export function render(node: ReactNode): RenderInstance {
       syncWrite(buf);
       lastActive = "";
       lastActiveLineCount = 0;
+      // Any stale copy now sits above the flushed static lines — unreachable.
+      staleTailRows = 0;
+      pendingStaleRows = 0;
     }
 
     // Only re-render the active region if it changed.
-    if (active === lastActive) return;
+    if (active === lastActive && !forced) return;
 
     const allLines = active.split("\n");
 
@@ -201,6 +224,7 @@ export function render(node: ReactNode): RenderInstance {
     }
 
     const erase = eraseSequence();
+    staleTailRows = 0;
     const liveLines = allLines.slice(frozenLineCount);
 
     let physRows = 0;
@@ -230,6 +254,8 @@ export function render(node: ReactNode): RenderInstance {
     }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
+    staleTailRows = pendingStaleRows;
+    pendingStaleRows = 0;
   }
 
   const RENDER_THROTTLE_MS = 32;
