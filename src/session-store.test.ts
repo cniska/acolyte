@@ -89,6 +89,43 @@ describe("storage", () => {
     expect(normalized.sessions[0]?.tokenUsage[0]?.promptBreakdown?.skillTokens).toBe(0);
   });
 
+  const validSession = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    createdAt: "2026-02-24T00:00:00.000Z",
+    updatedAt: "2026-02-24T00:00:00.000Z",
+    model: "gpt-5-mini",
+    title: "New Session",
+    messages: [],
+    tokenUsage: [],
+    ...extra,
+  });
+
+  test("parseSessionState salvages a session with a corrupt transcript instead of dropping it", () => {
+    const normalized = parseSessionState({
+      activeSessionId: "sess_1",
+      sessions: [validSession("sess_1", { transcript: [{ id: "row_1", kind: "not-a-kind", content: "x" }] })],
+    });
+
+    expect(normalized.sessions).toHaveLength(1);
+    expect(normalized.sessions[0]?.id).toBe("sess_1");
+    expect(normalized.sessions[0]?.transcript).toBeUndefined();
+  });
+
+  test("parseSessionState keeps healthy sessions when a sibling is unsalvageable", () => {
+    const normalized = parseSessionState({
+      activeSessionId: "sess_good",
+      sessions: [
+        validSession("sess_good"),
+        { id: "sess_bad", model: "gpt-5-mini" }, // missing required fields, no transcript to strip
+        validSession("sess_good2", { transcript: [{ id: "row_x", kind: "assistant", content: "hi" }] }),
+      ],
+    });
+
+    const ids = normalized.sessions.map((s) => s.id);
+    expect(ids).toEqual(["sess_good", "sess_good2"]);
+    expect(normalized.activeSessionId).toBe("sess_good");
+  });
+
   test("parseSessionState defaults missing message kind to text", () => {
     const normalized = parseSessionState({
       activeSessionId: "sess_1",

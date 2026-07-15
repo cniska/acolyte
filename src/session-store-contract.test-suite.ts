@@ -77,6 +77,18 @@ export function sessionStoreContractTests(
       expect(all).toHaveLength(1);
     });
 
+    test("concurrent saveSession calls neither crash nor lose updates", async () => {
+      const s = await getStore();
+      const sessions = Array.from({ length: 12 }, (_, i) => makeSession({ id: `sess_conc${i}` }));
+      // Fired together: without serialized writes these race the rename and clobber
+      // each other's read-modify-write, dropping sessions or throwing ENOENT.
+      await Promise.all(sessions.map((session) => s.saveSession(session)));
+      const listed = await s.listSessions();
+      for (const session of sessions) {
+        expect(listed.some((x) => x.id === session.id)).toBe(true);
+      }
+    });
+
     test("saveSession persists messages as JSONB", async () => {
       const s = await getStore();
       const session = makeSession({
