@@ -285,7 +285,11 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
-    staleTailRows = pendingStaleRows;
+    // A paint that froze overflow into scrollback pushed the stale copy above the
+    // now-committed rows, out of eraseSequence()'s reach — repaying the debt would
+    // cursor-up through the frozen tail and wipe it, so drop it (as the static
+    // flush does).
+    staleTailRows = splitIdx > 0 ? 0 : pendingStaleRows;
     pendingStaleRows = 0;
   }
 

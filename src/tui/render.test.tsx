@@ -562,6 +562,48 @@ describe("render", () => {
     }
   });
 
+  test("width-change debt does not erase overflow frozen in the same paint", async () => {
+    // A width change arms stale-tail debt (the reflowed copy stranded above the new
+    // tail, repaid on the next same-width erase). If that same paint also freezes
+    // overflow into scrollback, the stale copy is pushed out of eraseSequence()'s
+    // reach — repaying the debt would then cursor-up through the frozen tail and
+    // wipe committed transcript. The debt must be dropped when overflow froze.
+    const setLines: { current: (value: string[]) => void } = { current: () => {} };
+    const many = Array.from({ length: 12 }, (_, i) => `line-${i}`);
+    const writes = await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const [lines, setLinesState] = useState(["prompt", "input"]);
+          setLines.current = setLinesState;
+          return (
+            <tui-box flexDirection="column">
+              {lines.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf); // frame A: 2-line tail at 20 cols
+        Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true });
+        setLines.current(many); // frame B: width change + overflow freeze, arms debt
+        await drainFrame(() => app.flush(), buf);
+        setLines.current([...many, "line-12"]); // frame C: erase must not reach the frozen tail
+        await drainFrame(() => app.flush(), buf);
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 8 },
+    );
+
+    const vt = replayTerminal(frameWrites(writes), 8, 30);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (let i = 0; i <= 12; i++) {
+      expect(transcript.filter((row) => row.trim() === `line-${i}`).length).toBe(1);
+    }
+  });
+
   test("width resize skips the erase and does not re-emit frozen scrollback", async () => {
     // A width change may reflow the tail, so the stored erase count is unsafe.
     const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
