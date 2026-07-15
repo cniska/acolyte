@@ -509,6 +509,57 @@ describe("render", () => {
     }
   });
 
+  test("consecutive width resizes do not strand accumulating stale tail copies", async () => {
+    // Each width-change repaint skips its erase and strands a copy of the tail. The
+    // debt survives only one transition, so a run of resizes (a slow drag, or an
+    // idle tab whose pane keeps reflowing) before any same-width erase would orphan
+    // every copy but the last — the input panel stacking on screen. The debt must
+    // accumulate so one later same-width erase (focus-in here) reclaims them all.
+    // A committed static line sits above the live region: an erase that overshoots
+    // the strands (the transcript-loss direction) would eat it and drop its count.
+    const COMMITTED = "committed";
+    const LINES = ["border-top", "input", "border-bot", "status"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          const app = render(
+            <tui-box flexDirection="column">
+              <tui-static>
+                <tui-text key={COMMITTED}>{COMMITTED}</tui-text>
+              </tui-static>
+              {LINES.map((line) => (
+                <tui-text key={line}>{line}</tui-text>
+              ))}
+            </tui-box>,
+          );
+          await drainFrame(() => app.flush(), captured);
+          for (const width of [38, 36, 34]) {
+            const before = captured.length;
+            Object.defineProperty(process.stdout, "columns", { value: width, configurable: true });
+            process.stdout.emit("resize");
+            for (let attempt = 0; attempt < 300 && captured.length === before; attempt++) {
+              await new Promise((resolve) => setTimeout(resolve, 2));
+            }
+          }
+          stdin.emit("\x1b[I"); // same-width redraw must reclaim every stranded copy
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 40, rows: 20 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 20, 34);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of [COMMITTED, ...LINES]) {
+        expect(transcript.filter((row) => row.trim() === line).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
   test("a live line taller than the viewport is erased before its repaint", async () => {
     // The last live line is never frozen (it may still be streaming), so it owns the
     // tail alone. When it outgrows the viewport the split loop breaks before adding

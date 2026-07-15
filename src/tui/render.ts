@@ -50,12 +50,14 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   let lastActive = "";
   let lastActiveLineCount = 0;
   let paintForced = false;
-  // Rows of a stale tail copy left by a width-change repaint (which must skip its
-  // erase). Repaid by the next same-width erase so the copy doesn't dangle forever.
-  let staleTailRows = 0;
+  // Lines of stale tail copies left by width-change repaints (which must skip their
+  // erase). Reclaimed by the next same-width erase so the copies don't dangle. Kept
+  // as text, not a count, so consecutive width changes can revalidate that every
+  // stranded row still fits the new width before carrying the combined distance.
+  let staleTail: string[] = [];
   // Debt armed by the width guard but not yet owed: the first paint at the new
   // width is the one that strands the copy, so only that paint activates it.
-  let pendingStaleRows = 0;
+  let pendingStaleTail: string[] = [];
   // A change since the last frame means the terminal may have reflowed the tail.
   let lastRenderColumns = stdout.columns ?? DEFAULT_COLUMNS;
   let flushedStaticCount = 0;
@@ -126,7 +128,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   }
 
   function eraseSequence(): string {
-    const distance = lastActiveLineCount + staleTailRows;
+    const distance = lastActiveLineCount + staleTail.length;
     if (!stdout.isTTY || distance <= 0) return "";
     return `${ansi.cursorUp(distance)}\r${ansi.eraseDown}`;
   }
@@ -182,14 +184,23 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     // into frozen history.
     if (cols !== lastRenderColumns) {
       const minCols = Math.min(cols, lastRenderColumns);
+      // The skipped-erase paint strands this tail's rows above the new one (all but
+      // the last, which the new first line overwrites) on top of any copies already
+      // stranded by earlier width changes. One later erase can reclaim them all only
+      // if every row still occupies a single line at both widths, so carry the combined
+      // set when they all fit; otherwise the distance would be wrong and we abandon it.
       const prevTail = lastActive.split("\n").slice(frozenLineCount);
-      pendingStaleRows =
-        lastActiveLineCount > 0 && prevTail.every((line) => stripAnsiLength(line) <= minCols) ? lastActiveLineCount : 0;
-      staleTailRows = 0;
+      const stranded = [...staleTail, ...prevTail.slice(0, -1)];
+      // Validate the whole prevTail, including its overwritten last line: if that line
+      // is over-width it soft-wraps, so its reflow moves the cursor by an uncounted
+      // amount and the carried distance stops being exact — abandon rather than guess.
+      const fits = (line: string) => stripAnsiLength(line) <= minCols;
+      pendingStaleTail = staleTail.every(fits) && prevTail.every(fits) ? stranded : [];
+      staleTail = [];
       lastActiveLineCount = 0;
       lastRenderColumns = cols;
     } else {
-      if (lastActiveLineCount + staleTailRows > maxLiveRows) staleTailRows = 0;
+      if (lastActiveLineCount + staleTail.length > maxLiveRows) staleTail = [];
       if (lastActiveLineCount > maxLiveRows) lastActiveLineCount = maxLiveRows;
     }
 
@@ -218,8 +229,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       lastActive = "";
       lastActiveLineCount = 0;
       // Any stale copy now sits above the flushed static lines — unreachable.
-      staleTailRows = 0;
-      pendingStaleRows = 0;
+      staleTail = [];
+      pendingStaleTail = [];
     }
 
     // Only re-render the active region if it changed.
@@ -252,7 +263,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     }
 
     const erase = eraseSequence();
-    staleTailRows = 0;
+    staleTail = [];
     const liveLines = allLines.slice(frozenLineCount);
 
     let physRows = 0;
@@ -289,8 +300,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     // now-committed rows, out of eraseSequence()'s reach — repaying the debt would
     // cursor-up through the frozen tail and wipe it, so drop it (as the static
     // flush does).
-    staleTailRows = splitIdx > 0 ? 0 : pendingStaleRows;
-    pendingStaleRows = 0;
+    staleTail = splitIdx > 0 ? [] : pendingStaleTail;
+    pendingStaleTail = [];
   }
 
   const RENDER_THROTTLE_MS = 32;
