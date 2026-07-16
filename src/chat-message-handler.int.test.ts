@@ -817,20 +817,73 @@ describe("chat message handler", () => {
     expect(rows).toHaveLength(0);
   });
 
-  test("promote is not called for awaiting-input turns", async () => {
+  test("awaiting-input promotes the block reason into the durable transcript", async () => {
+    const { handleMessage, rows, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        // signal_blocked with no prose: the reason arrives via output, nothing streams.
+        replyStream: async () => ({
+          state: "awaiting-input" as const,
+          model: "gpt-5-mini",
+          output: "Which credential should I use?",
+        }),
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("set up the deploy");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "assistant" && r.content === "Which credential should I use?")).toBe(true);
+    expect(rows).toHaveLength(0);
+    expect(session.messages.some((m) => m.role === "assistant" && m.content === "Which credential should I use?")).toBe(
+      true,
+    );
+  });
+
+  test("awaiting-input from a blocking error promotes the reason without inventing prose", async () => {
+    const { handleMessage, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        replyStream: async () => ({
+          state: "awaiting-input" as const,
+          model: "gpt-5-mini",
+          output: "",
+          error: "completion blocked: missing signal",
+        }),
+        status: async () => ({}),
+      }),
+    });
+
+    await handleMessage("do the thing");
+
+    expect(calls.promotedSnapshots).toHaveLength(1);
+    const promoted = calls.promotedSnapshots[0] ?? [];
+    expect(promoted.some((r) => r.kind === "system" && r.content === "completion blocked: missing signal")).toBe(true);
+    expect(promoted.some((r) => r.kind === "assistant")).toBe(false);
+    expect(session.messages.some((m) => m.role === "assistant")).toBe(false);
+  });
+
+  test("answering a blocked turn in-process does not duplicate the reason row", async () => {
+    let call = 0;
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
-        replyStream: async (input) => {
-          input.onEvent({ type: "text-delta", text: "What input?" });
-          return { state: "awaiting-input" as const, model: "gpt-5-mini", output: "What input?" };
+        replyStream: async () => {
+          call += 1;
+          return call === 1
+            ? { state: "awaiting-input" as const, model: "gpt-5-mini", output: "Which credential should I use?" }
+            : { state: "done" as const, model: "gpt-5-mini", output: "Deployed." };
         },
         status: async () => ({}),
       }),
     });
 
-    await handleMessage("ask me for some input");
+    await handleMessage("set up the deploy");
+    await handleMessage("use the CI token");
 
-    expect(calls.promotedSnapshots).toHaveLength(0);
+    const promoted = calls.promotedSnapshots.flat();
+    expect(
+      promoted.filter((r) => r.kind === "assistant" && r.content === "Which credential should I use?"),
+    ).toHaveLength(1);
   });
 
   test("promote is called after abort with interrupted row", async () => {
