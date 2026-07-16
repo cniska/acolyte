@@ -103,7 +103,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     });
 
     await input.persist();
-    let cleanup: "full" | "turn-only" | "none" = "full";
+    let cleanup: "full" | "none" = "full";
 
     try {
       const suggestions: string[] = [];
@@ -170,14 +170,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // Clear the pending indicator in the same synchronous block as
       // adding the worked/status rows so React batches them into one
       // commit — avoids a frame where both "Working" and "Worked" show.
-      // For awaiting-input, keep the indicator alive and tell the
-      // finally block to skip pending cleanup.
-      if (turn.awaitingInput) {
-        cleanup = "turn-only";
-        input.setPendingState({ kind: "awaiting-input" });
-      } else {
-        input.setPendingState(null);
-      }
+      input.setPendingState(null);
       // The streamed rows are the authoritative display transcript: they carry the
       // turn's true interleaving (prose, tool, prose) and are already committed to the
       // screen. reply.output is the same prose reassembled for model history, so

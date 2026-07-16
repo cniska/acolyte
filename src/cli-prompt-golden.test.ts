@@ -25,14 +25,11 @@ function session(): Session {
   };
 }
 
-function client(
-  events: StreamEvent[],
-  reply: { state: "done" | "awaiting-input"; output: string; error?: string },
-): Client {
+function client(events: StreamEvent[], reply: { output: string; error?: string }): Client {
   return {
     replyStream: async (input) => {
       for (const event of events) input.onEvent(event);
-      return { ...reply, model: "gpt-5-mini", toolCalls: reply.state === "done" ? ["file-read"] : [] };
+      return { ...reply, model: "gpt-5-mini", toolCalls: reply.error ? [] : ["file-read"] };
     },
     status: async () => ({}),
     taskStatus: async () => null,
@@ -47,10 +44,7 @@ function capture(prompt: string, c: Client): Promise<string> {
 
 describe("cli-prompt golden output (output-path fold safety net)", () => {
   test("streamed answer", async () => {
-    const out = await capture(
-      "hi",
-      client([{ type: "text-delta", text: "Hello there." }], { state: "done", output: "Hello there." }),
-    );
+    const out = await capture("hi", client([{ type: "text-delta", text: "Hello there." }], { output: "Hello there." }));
     expect(out).toBe("❯ hi\n• Hello there.");
   });
 
@@ -75,7 +69,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       },
       { type: "notice", level: "warn", message: "trace sink is dark" },
     ];
-    const out = await capture("check config", client(events, { state: "done", output: "Updated the config." }));
+    const out = await capture("check config", client(events, { output: "Updated the config." }));
     // The final answer ("Updated the config.") diverges from the streamed preview ("Let
     // me check the config.") and now appears in full — previously it was dropped.
     expect(out).toBe(
@@ -87,7 +81,6 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     const out = await capture(
       "fix",
       client([{ type: "text-delta", text: "Trying the edit." }], {
-        state: "awaiting-input",
         output: "",
         error: "Cannot finish yet: validation missing",
       }),
@@ -107,7 +100,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
             content: { kind: "tool-header", labelKey: "tool.memory_search.header" },
           },
         ],
-        { state: "done", output: "Done." },
+        { output: "Done." },
       ),
     );
     expect(out).toBe("❯ search\n\n• Done.");
@@ -125,7 +118,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
           { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
           { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
         ],
-        { state: "done", output: "Done." },
+        { output: "Done." },
       ),
     );
     expect(out).toBe("❯ run\n• Steps (0/2)\n  ○ read\n  ○ edit\n• Steps (1/2)\n  ● read\n  ○ edit\n\n\n• Done.");

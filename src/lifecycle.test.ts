@@ -17,7 +17,7 @@ describe("runLifecycle", () => {
     expect(deps.createRunAgent).toHaveBeenCalledTimes(1);
     expect(deps.phaseGenerate).toHaveBeenCalledTimes(1);
     expect(deps.phaseFinalize).toHaveBeenCalledTimes(1);
-    expect(response).toEqual({ state: "done", model: "gpt-5-mini", output: "Generated output" });
+    expect(response).toEqual({ model: "gpt-5-mini", output: "Generated output" });
   });
 
   test("threads reasoning and temperature from input into the run context", async () => {
@@ -39,7 +39,6 @@ describe("runLifecycle", () => {
     const deps = createLifecycleDeps({
       phaseFinalize: mock(
         (ctx: { promptUsage: { memoryTokens: number } }): ChatResponse => ({
-          state: "done",
           model: "gpt-5-mini",
           output: String(ctx.promptUsage.memoryTokens),
         }),
@@ -66,7 +65,6 @@ describe("runLifecycle", () => {
       }),
       phaseFinalize: mock(
         (ctx: { promptUsage: { memoryTokens: number } }): ChatResponse => ({
-          state: "done",
           model: "gpt-5-mini",
           output: String(ctx.promptUsage.memoryTokens),
         }),
@@ -312,7 +310,6 @@ describe("runLifecycle yield", () => {
       }),
       phaseFinalize: mock(
         (ctx: { result?: { text: string } }): ChatResponse => ({
-          state: "done",
           model: "gpt-5-mini",
           output: ctx.result?.text ?? "",
         }),

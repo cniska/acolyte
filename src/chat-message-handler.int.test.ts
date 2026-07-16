@@ -143,7 +143,7 @@ describe("chat message handler", () => {
       client: createClient({
         replyStream: async (input) => {
           requestedModel = input.request.model;
-          return { state: "done" as const, model: input.request.model, output: "ok" };
+          return { model: input.request.model, output: "ok" };
         },
       }),
     });
@@ -155,13 +155,12 @@ describe("chat message handler", () => {
 
   test("keeps create-edit-delete tool output visible across submits", async () => {
     const replies = [
-      { state: "done" as const, model: "gpt-5-mini", output: "Created sum.rs." },
+      { model: "gpt-5-mini", output: "Created sum.rs." },
       {
-        state: "done" as const,
         model: "gpt-5-mini",
         output: "Updated sum.rs for three args.",
       },
-      { state: "done" as const, model: "gpt-5-mini", output: "Removed sum.rs." },
+      { model: "gpt-5-mini", output: "Removed sum.rs." },
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
@@ -217,7 +216,7 @@ describe("chat message handler", () => {
           for (const event of events) {
             input.onEvent(event);
           }
-          return replies[turn] ?? { state: "done" as const, model: "gpt-5-mini", output: "done" };
+          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
         },
       }),
     });
@@ -260,7 +259,6 @@ describe("chat message handler", () => {
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "the complete streamed answer." });
           return {
-            state: "done" as const,
             model: "gpt-5-mini",
             output: "the complete streamed answer.",
           };
@@ -280,7 +278,6 @@ describe("chat message handler", () => {
       client: createClient({
         status: async () => ({}),
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "answer delivered without deltas.",
         }),
@@ -303,7 +300,7 @@ describe("chat message handler", () => {
         status: async () => ({}),
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "answer" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "answer" };
+          return { model: "gpt-5-mini", output: "answer" };
         },
       }),
     });
@@ -327,7 +324,6 @@ describe("chat message handler", () => {
           input.onEvent({ type: "text-delta", text: "The complete answer." });
           input.onEvent({ type: "tool-call", toolCallId: "sig_1", toolName: "signal_done", args: {} });
           return {
-            state: "done" as const,
             model: "gpt-5-mini",
             output: "The complete answer.",
             toolCalls: ["signal_done"],
@@ -357,7 +353,7 @@ describe("chat message handler", () => {
             content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "a.rs" },
           });
           input.onEvent({ type: "text-delta", text: "Done editing." });
-          return { state: "done" as const, model: "gpt-5-mini", output: "Let me check the file.\nDone editing." };
+          return { model: "gpt-5-mini", output: "Let me check the file.\nDone editing." };
         },
       }),
     });
@@ -489,7 +485,7 @@ describe("chat message handler", () => {
             });
           }
           input.onEvent({ type: "text-delta", text: "Second answer." });
-          return { state: "done" as const, model: "gpt-5-mini", output: "Second answer." };
+          return { model: "gpt-5-mini", output: "Second answer." };
         },
         status: async () => ({}),
       }),
@@ -557,7 +553,7 @@ describe("chat message handler", () => {
         replyStream: async (input) => {
           replyCalls += 1;
           input.onEvent({ type: "text-delta", text: "ok" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+          return { model: "gpt-5-mini", output: "ok" };
         },
         status: async () => ({}),
       }),
@@ -583,7 +579,7 @@ describe("chat message handler", () => {
           replyStream: async (input) => {
             replyCalls += 1;
             input.onEvent({ type: "text-delta", text: "ok" });
-            return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+            return { model: "gpt-5-mini", output: "ok" };
           },
           status: async () => ({}),
         }),
@@ -609,7 +605,7 @@ describe("chat message handler", () => {
           replyCount++;
           await Bun.sleep(10);
           input.onEvent({ type: "text-delta", text: "ok" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+          return { model: "gpt-5-mini", output: "ok" };
         },
         status: async () => ({}),
       }),
@@ -688,7 +684,7 @@ describe("chat message handler", () => {
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "done" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
       }),
@@ -713,7 +709,7 @@ describe("chat message handler", () => {
             content: { kind: "tool-header", labelKey: "tool.label.file_edit", detail: "test.ts" },
           });
           input.onEvent({ type: "text-delta", text: "edited" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "edited" };
+          return { model: "gpt-5-mini", output: "edited" };
         },
         status: async () => ({}),
       }),
@@ -729,7 +725,6 @@ describe("chat message handler", () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "No changes needed.",
         }),
@@ -758,7 +753,7 @@ describe("chat message handler", () => {
           });
           input.onEvent({ type: "tool-result", toolCallId: "c1", toolName: "file-edit" });
           input.onEvent({ type: "text-delta", text: "Done." });
-          return { state: "done" as const, model: "gpt-5-mini", output: "Checking the file.\nDone." };
+          return { model: "gpt-5-mini", output: "Checking the file.\nDone." };
         },
       }),
     });
@@ -787,7 +782,7 @@ describe("chat message handler", () => {
           input.onEvent({ type: "error", errorMessage: "rate limited, retrying" });
           input.onEvent({ type: "error", errorMessage: "rate limited, retrying" });
           input.onEvent({ type: "text-delta", text: "ok" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "ok" };
+          return { model: "gpt-5-mini", output: "ok" };
         },
       }),
     });
@@ -805,7 +800,7 @@ describe("chat message handler", () => {
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "done" });
-          return { state: "done" as const, model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", output: "done" };
         },
         status: async () => ({}),
       }),
@@ -817,12 +812,11 @@ describe("chat message handler", () => {
     expect(rows).toHaveLength(0);
   });
 
-  test("awaiting-input promotes the block reason into the durable transcript", async () => {
+  test("a blocked question promotes the reason into the durable transcript", async () => {
     const { handleMessage, rows, session, calls } = createMessageHandlerHarness({
       client: createClient({
         // signal_blocked with no prose: the reason arrives via output, nothing streams.
         replyStream: async () => ({
-          state: "awaiting-input" as const,
           model: "gpt-5-mini",
           output: "Which credential should I use?",
         }),
@@ -841,11 +835,10 @@ describe("chat message handler", () => {
     );
   });
 
-  test("awaiting-input from a blocking error promotes the reason without inventing prose", async () => {
+  test("a blocking error renders as an error row with no prompt or invented prose", async () => {
     const { handleMessage, session, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async () => ({
-          state: "awaiting-input" as const,
           model: "gpt-5-mini",
           output: "",
           error: "completion blocked: missing signal",
@@ -861,6 +854,8 @@ describe("chat message handler", () => {
     expect(promoted.some((r) => r.kind === "system" && r.content === "completion blocked: missing signal")).toBe(true);
     expect(promoted.some((r) => r.kind === "assistant")).toBe(false);
     expect(session.messages.some((m) => m.role === "assistant")).toBe(false);
+    expect(calls.pendingStates.at(-1)).toBeNull();
+    expect(calls.pendingTransitions.at(-1)).toBe(false);
   });
 
   test("answering a blocked turn in-process does not duplicate the reason row", async () => {
@@ -870,8 +865,8 @@ describe("chat message handler", () => {
         replyStream: async () => {
           call += 1;
           return call === 1
-            ? { state: "awaiting-input" as const, model: "gpt-5-mini", output: "Which credential should I use?" }
-            : { state: "done" as const, model: "gpt-5-mini", output: "Deployed." };
+            ? { model: "gpt-5-mini", output: "Which credential should I use?" }
+            : { model: "gpt-5-mini", output: "Deployed." };
         },
         status: async () => ({}),
       }),
@@ -962,12 +957,12 @@ describe("chat message handler", () => {
     expect(promoted.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
   });
 
-  test("awaiting-input preserves pending state after turn completes", async () => {
+  test("a blocked question ends the turn with no pending indicator", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "What input?" });
-          return { state: "awaiting-input" as const, model: "gpt-5-mini", output: "What input?" };
+          return { model: "gpt-5-mini", output: "What input?" };
         },
         status: async () => ({}),
       }),
@@ -975,8 +970,7 @@ describe("chat message handler", () => {
 
     await handleMessage("ask me for some input");
 
-    const last = calls.pendingStates[calls.pendingStates.length - 1];
-    expect(last).toEqual({ kind: "awaiting-input" });
-    expect(calls.pendingTransitions.at(-1)).toBe(true);
+    expect(calls.pendingStates.at(-1)).toBeNull();
+    expect(calls.pendingTransitions.at(-1)).toBe(false);
   });
 });

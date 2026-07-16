@@ -117,7 +117,6 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
   activeSkills?: ActiveSkill[];
-  awaitingInput: boolean;
 }> {
   const reply = await params.client.replyStream({
     request: {
@@ -149,25 +148,22 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
     modelCalls: reply.modelCalls,
   };
-  const awaitingInput = reply.state === "awaiting-input";
-  if (!awaitingInput) {
-    const durationMs = Date.now() - params.pendingStartedAt;
-    if (durationMs >= 300) {
-      const duration = formatDuration(durationMs);
-      const toolCount = reply.toolCalls?.length ?? 0;
-      const { inputTokens, outputTokens } = tokenEntry.usage;
-      const details: string[] = [];
-      if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
-      if (inputTokens + outputTokens > 0)
-        details.push(
-          t("unit.token.arrows", {
-            input: formatCompactNumber(inputTokens),
-            output: formatCompactNumber(outputTokens),
-          }),
-        );
-      const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-      rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
-    }
+  const durationMs = Date.now() - params.pendingStartedAt;
+  if (durationMs >= 300) {
+    const duration = formatDuration(durationMs);
+    const toolCount = reply.toolCalls?.length ?? 0;
+    const { inputTokens, outputTokens } = tokenEntry.usage;
+    const details: string[] = [];
+    if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
+    if (inputTokens + outputTokens > 0)
+      details.push(
+        t("unit.token.arrows", {
+          input: formatCompactNumber(inputTokens),
+          output: formatCompactNumber(outputTokens),
+        }),
+      );
+    const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
+    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
   }
 
   return {
@@ -175,6 +171,5 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     tokenEntry,
     rows,
     activeSkills: reply.activeSkills,
-    awaitingInput,
   };
 }

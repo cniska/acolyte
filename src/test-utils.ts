@@ -260,7 +260,7 @@ export function createClient(overrides?: {
           input.onEvent(event);
         }
       }
-      return { model: "gpt-5-mini", output: "ok", state: "done" as const };
+      return { model: "gpt-5-mini", output: "ok" };
     });
   return {
     replyStream,
@@ -505,7 +505,6 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
     }),
     phaseFinalize: mock(
       (ctx: { result?: { text: string } }): ChatResponse => ({
-        state: "done",
         model: "gpt-5-mini",
         output: ctx.result?.text ?? "",
       }),

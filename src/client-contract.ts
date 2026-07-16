@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type ChatRequest, type ChatResponse, chatResponseStateSchema } from "./api";
+import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
@@ -17,7 +17,6 @@ export const pendingStateSchema = z.discriminatedUnion("kind", [
     kind: z.literal("running"),
     toolCalls: z.number().int().nonnegative().optional(),
   }),
-  z.object({ kind: z.literal("awaiting-input") }),
 ]);
 export type PendingState = z.infer<typeof pendingStateSchema>;
 
@@ -125,7 +124,6 @@ export function parseStreamEvent(raw: unknown): StreamEvent | null {
 const chatResponseSchema = z.object({
   output: z.string(),
   model: z.string().min(1),
-  state: chatResponseStateSchema.catch("done"),
   usage: tokenUsageSchema.optional(),
   promptBreakdown: promptBreakdownSchema.optional(),
   toolCalls: z.array(z.string()).optional(),

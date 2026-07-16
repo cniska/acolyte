@@ -276,8 +276,8 @@ describe("chat-message-handler-stream", () => {
 
     state.finalize();
 
-    // Simulate message handler appending status row (awaiting-input)
-    setRows((current) => [...current, { id: "status_1", kind: "status", content: "Waiting for your reply" }]);
+    // Simulate message handler appending a status row after the turn
+    setRows((current) => [...current, { id: "status_1", kind: "status", content: "Worked 3s" }]);
 
     // The streamed assistant text must still be present
     const assistantRow = rows.find((r) => r.kind === "assistant");
