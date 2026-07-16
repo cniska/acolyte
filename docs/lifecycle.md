@@ -11,7 +11,7 @@ resolve → prepare → generate → finalize
 - **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
 - **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a lifecycle signal tool (`signal_done`, `signal_noop`, `signal_blocked`)
-- **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal maps to `ChatResponseState = "awaiting-input"`
+- **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal ends the turn normally with the model's question as `output`
 
 ## Generation loop feedback
 
@@ -20,7 +20,7 @@ Generation owns one model/tool loop. Effects apply inline during tool execution.
 - unresolved tool errors are sent back once so the model can inspect evidence and retry instead of falsely finalizing
 - missing post-write validation is sent back once so the model can run focused validation or explicitly block
 
-If the model still cannot recover, finalize returns an awaiting-input response with the unresolved error.
+If the model still cannot recover, finalize returns the unresolved error on `error`, which the client renders as an error row.
 
 ## Effects
 

@@ -167,7 +167,6 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("update x to 3");
-    expect(reply.state).toBe("done");
     expect(reply.error).toBeUndefined();
     expect(reply.output).toContain("Updated x to 3.");
   });
@@ -197,7 +196,6 @@ describe("lifecycle integration", () => {
     // recovery turn, and the model's own next decision (here, a done) is accepted directly.
     expect(turnCount).toBe(2);
     expect(secondTurnBody).not.toContain("tool-error-recovery");
-    expect(reply.state).toBe("done");
     expect(reply.output).toContain("No matches found");
   });
 
@@ -210,7 +208,7 @@ describe("lifecycle integration", () => {
     expect(reply.output).toContain("Nothing to do.");
   });
 
-  test("signal_blocked returns awaiting-input state", async () => {
+  test("signal_blocked ends the run with the question as output and no error", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
@@ -234,7 +232,8 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("update x to 3");
-    expect(reply.state).toBe("awaiting-input");
+    expect(reply.output).toContain("Cannot proceed.");
+    expect(reply.error).toBeUndefined();
   });
 
   test("signal_blocked uses tool reason when final text is empty", async () => {
@@ -245,8 +244,8 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("deploy");
-    expect(reply.state).toBe("awaiting-input");
     expect(reply.output).toBe("Missing deployment environment. I will deploy once it is provided.");
+    expect(reply.error).toBeUndefined();
   });
 
   test("rejects duplicate lifecycle signal tools", async () => {
@@ -275,7 +274,6 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("finish");
-    expect(reply.state).toBe("done");
     expect(reply.error).toContain("more than one lifecycle signal tool");
   });
 
@@ -305,7 +303,6 @@ describe("lifecycle integration", () => {
     });
 
     const reply = await run("read and finish");
-    expect(reply.state).toBe("done");
     expect(reply.error).toContain("must be the only tool call");
     expect(reply.toolCalls).toEqual([]);
   });
@@ -402,7 +399,6 @@ exit 1
     );
 
     expect(turnCount).toBe(3);
-    expect(reply.state).toBe("awaiting-input");
     // User-audience terminal error — never the model-facing "Run a related test…" nudge.
     expect(reply.error).toContain("finished without validating its changes");
     expect(reply.error).not.toContain("Run a related test");
@@ -521,7 +517,6 @@ exit 1
 
     const reply = await run("update x to 4");
     expect(turnCount).toBe(4);
-    expect(reply.state).toBe("done");
     expect(reply.error).toBeUndefined();
     expect(reply.output).toContain("Here is the summary of what changed.");
     expect(reply.output).not.toContain("Running the tests once more.");

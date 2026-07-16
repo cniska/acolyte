@@ -123,7 +123,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
         }),
@@ -154,7 +153,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           activeSkills: skills,
@@ -182,7 +180,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           toolCalls: ["file-read"],
@@ -210,7 +207,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "The answer is 42.",
           toolCalls: ["signal_done"],
@@ -238,7 +234,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "Reading the file.",
           toolCalls: ["file-read", "signal_done"],
@@ -266,7 +261,6 @@ describe("chat turn helpers", () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
-          state: "done" as const,
           model: "gpt-5-mini",
           output: "done",
           toolCalls: ["file-read", "signal_done"],

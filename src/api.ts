@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { ChatMessage } from "./chat-contract";
 import type { ResourceId } from "./resource-id";
 import type { PromptBreakdown, SessionId, TokenUsage } from "./session-contract";
@@ -16,11 +15,7 @@ export interface ChatRequest {
   readonly workspace?: string;
 }
 
-export const chatResponseStateSchema = z.enum(["done", "awaiting-input"]);
-export type ChatResponseState = z.infer<typeof chatResponseStateSchema>;
-
 export interface ChatResponse {
-  state: ChatResponseState;
   output: string;
   model: string;
   usage?: TokenUsage;

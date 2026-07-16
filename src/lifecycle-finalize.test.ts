@@ -96,7 +96,7 @@ describe("phaseFinalize", () => {
     expect(response.promptBreakdown?.usedTokens).toBe(80);
   });
 
-  test("sets state to awaiting-input when signal is blocked", () => {
+  test("ends a blocked signal with the question as output and no error", () => {
     const ctx = createRunContext({
       result: {
         text: "Which environment should I deploy to?",
@@ -107,8 +107,8 @@ describe("phaseFinalize", () => {
       acceptedSignal: "blocked",
     });
     const response = phaseFinalize(ctx);
-    expect(response.state).toBe("awaiting-input");
     expect(response.output).toBe("Which environment should I deploy to?");
+    expect(response.error).toBeUndefined();
   });
 
   test("uses blocked signal reason when final text is empty", () => {
@@ -122,17 +122,8 @@ describe("phaseFinalize", () => {
       acceptedSignal: "blocked",
     });
     const response = phaseFinalize(ctx);
-    expect(response.state).toBe("awaiting-input");
     expect(response.output).toBe("Missing deployment environment. I will deploy once it is provided.");
-  });
-
-  test("sets state to done when signal is done", () => {
-    const ctx = createRunContext({
-      result: { text: "Done.", toolCalls: [], signal: "done" },
-      acceptedSignal: "done",
-    });
-    const response = phaseFinalize(ctx);
-    expect(response.state).toBe("done");
+    expect(response.error).toBeUndefined();
   });
 
   test("counts recall probes separately and keeps them out of search/discovery", () => {
@@ -262,7 +253,6 @@ describe("phaseFinalize", () => {
 
     const response = phaseFinalize(ctx);
 
-    expect(response.state).toBe("done");
     expect(response.output).toBe("I updated the tests.");
     expect(response.error).toBeUndefined();
   });
@@ -279,7 +269,6 @@ describe("phaseFinalize", () => {
 
     const response = phaseFinalize(ctx);
 
-    expect(response.state).toBe("awaiting-input");
     expect(response.output).toBe("I updated the file.");
     expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
   });
@@ -292,19 +281,18 @@ describe("phaseFinalize", () => {
 
     const response = phaseFinalize(ctx);
 
-    expect(response.state).toBe("awaiting-input");
     // The error row is authoritative; no placeholder output to render beside it.
     expect(response.output).toBe("");
     expect(response.error).toBe("Cannot finish yet: validation missing");
   });
 
-  test("does not use an unaccepted blocked signal for response state", () => {
+  test("passes a non-blocking error through an unaccepted blocked signal", () => {
     const ctx = createRunContext({
       currentError: { message: "tool failed", category: "other" },
       result: { text: "Cannot proceed.", toolCalls: [], signal: "blocked" },
     });
     const response = phaseFinalize(ctx);
-    expect(response.state).toBe("done");
+    expect(response.output).toBe("Cannot proceed.");
     expect(response.error).toBe("tool failed");
   });
 

@@ -115,7 +115,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   });
 
   return {
-    state: blockingError || ctx.acceptedSignal === "blocked" ? "awaiting-input" : "done",
     model: ctx.model,
     output,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),

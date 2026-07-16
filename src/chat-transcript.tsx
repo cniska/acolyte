@@ -24,7 +24,6 @@ const MARKERS: Record<ChatRow["kind"], string> = {
 };
 
 const PENDING_MARKER_COLORS: Record<PendingState["kind"], string> = {
-  "awaiting-input": palette.brand,
   queued: palette.queued,
   accepted: palette.accepted,
   running: palette.running,
@@ -245,7 +244,7 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     kind === "running" && typeof pendingStartedAt === "number"
       ? Math.max(0, Math.floor((Date.now() - pendingStartedAt) / 1000))
       : 0;
-  const isAnimated = kind === "running" || kind === "awaiting-input";
+  const isAnimated = kind === "running";
   const blinkOn = Math.abs(pendingFrame) % pulsePeriod < pulsePeriod / 2;
   const marker = isAnimated && !blinkOn ? " " : "•";
   const markerColor = kind ? PENDING_MARKER_COLORS[kind] : "";
@@ -271,9 +270,6 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
     }
     if (pendingState.kind === "accepted") {
       return t("rpc.status.accepted");
-    }
-    if (pendingState.kind === "awaiting-input") {
-      return t("chat.awaiting_input");
     }
     return "";
   })();
