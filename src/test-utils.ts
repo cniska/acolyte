@@ -260,7 +260,11 @@ export function createClient(overrides?: {
           input.onEvent(event);
         }
       }
-      return { model: "gpt-5-mini", output: "ok" };
+      return {
+        model: "gpt-5-mini",
+        output: "ok",
+        outputStreamed: events?.some((event) => event.type === "text-delta" && event.text.trim().length > 0) ?? false,
+      };
     });
   return {
     replyStream,
@@ -501,12 +505,13 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
       },
     })),
     phaseGenerate: mock(async (ctx: { result?: unknown }) => {
-      ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+      ctx.result = { text: "Generated output", textStreamed: true, toolCalls: [], signal: "done" };
     }),
     phaseFinalize: mock(
       (ctx: { result?: { text: string } }): ChatResponse => ({
         model: "gpt-5-mini",
         output: ctx.result?.text ?? "",
+        outputStreamed: (ctx.result?.text ?? "").trim().length > 0,
       }),
     ),
     ...overrides,

@@ -12,6 +12,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
   const reply = {
     model: "gpt-5-mini",
     output: "Transport parity ok.",
+    outputStreamed: false,
   };
   const server = Bun.serve({
     port: 0,

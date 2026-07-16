@@ -312,6 +312,7 @@ export function createAgentStream(
       streamController.close();
       return {
         text: answerText,
+        textStreamed: answerText.trim().length > 0,
         toolCalls: allToolCalls,
         ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
         ...(lifecycleSignalReason ? { signalReason: lifecycleSignalReason } : {}),

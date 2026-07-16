@@ -148,7 +148,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         createMessage: input.createMessage,
       });
       const assistantMessage = turn.assistantMessage;
-      const streamedRowIds = new Set(streamState.finalize());
+      streamState.finalize();
 
       if (turn.activeSkills?.length) {
         input.currentSession.activeSkills = turn.activeSkills;
@@ -176,11 +176,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // screen. reply.output is the same prose reassembled for model history, so
       // re-committing it here only reshuffles prose below the tool rows and re-emits
       // content that may have scrolled into append-only scrollback — a duplicate.
-      // Keep the streamed rows and append this turn's status/error rows. Only when no
-      // prose streamed (a provider that returns output without deltas) fall back to a
-      // bubble so the answer still shows.
+      // Keep the streamed rows and append this turn's status/error rows. When `output`
+      // was not streamed as deltas — a provider that returns output without them, or a
+      // signal reason the model delivered via the tool argument (a blocked/done turn whose
+      // only prose was narration) — fall back to a bubble so the answer still shows.
       const fallbackRows =
-        streamedRowIds.size === 0 && assistantMessage.content.trim().length > 0
+        !turn.outputStreamed && assistantMessage.content.trim().length > 0
           ? [createRow("assistant", assistantMessage.content)]
           : [];
       input.setRows((current) => [...current, ...fallbackRows, ...turn.rows]);

@@ -117,6 +117,10 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
+    // `output` was streamed iff it carries the model's streamed answer text. A signal reason,
+    // a neutral fallback, or a host-synthesized notice (yield/stopped) is in `output` but never
+    // reached the client as deltas, so the client must render it rather than assume it is shown.
+    outputStreamed: ctx.result?.textStreamed ?? false,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,

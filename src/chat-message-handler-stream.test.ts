@@ -53,16 +53,15 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("finalize returns pending row id and clears state", async () => {
+  test("finalize seals the streamed row and clears buffered state", async () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
     state.onDelta("hello");
-    // Force flush via timer
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(1);
-    const rowId = state.finalize();
-    expect(rowId).toBeTruthy();
+    state.finalize();
+    expect(rows).toHaveLength(1);
     expect(state.streamedText()).toBe("");
     state.dispose();
   });
@@ -135,11 +134,10 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("finalize keeps tool rows and returns only agent row ids", async () => {
+  test("finalize keeps streamed prose and tool rows committed", async () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    // Simulate: agent text → tool call → more agent text
     state.onDelta("thinking...");
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(1);
@@ -157,28 +155,12 @@ describe("chat-message-handler-stream", () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(rows).toHaveLength(3);
 
-    const streamingIds = state.finalize();
-    // finalize should return only agent row ids, not tool row ids
-    const toolRows = rows.filter((r) => r.kind === "tool");
-    expect(toolRows).toHaveLength(1);
-    for (const toolRow of toolRows) {
-      expect(streamingIds).not.toContain(toolRow.id);
-    }
-
-    // Simulate handler replacement: content rows at streaming position, status at end
-    const removeSet = new Set(streamingIds);
-    const contentRows: ChatRow[] = [{ id: "final_assistant", kind: "assistant", content: "done" }];
-    const statusRows: ChatRow[] = [{ id: "final_status", kind: "status", content: "Worked 5s" }];
-    const filtered = rows.filter((row) => !removeSet.has(row.id));
-    const insertIndex = rows.findIndex((row) => removeSet.has(row.id));
-    if (insertIndex >= 0) filtered.splice(insertIndex, 0, ...contentRows);
-    else filtered.push(...contentRows);
-    filtered.push(...statusRows);
-
-    // Tool rows should appear BEFORE the status row
-    const toolIndex = filtered.findIndex((r) => r.kind === "tool");
-    const statusIndex = filtered.findIndex((r) => r.kind === "status");
-    expect(toolIndex).toBeLessThan(statusIndex);
+    state.finalize();
+    expect(rows).toHaveLength(3);
+    expect(rows.filter((r) => r.kind === "tool")).toHaveLength(1);
+    expect(rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["thinking...", "done now"]);
+    expect(state.streamedText()).toBe("");
+    state.dispose();
   });
 
   test("onToolCall flushes pending text before tool output arrives", () => {
@@ -325,11 +307,9 @@ describe("chat-message-handler-stream", () => {
     const h = createStrictHarness();
     const state = createMessageStreamState({ setRows: h.setRows });
     state.onDelta("Tail that must not vanish.");
-    const ids = state.finalize(); // enqueues flush, then resets the closure — before render
+    state.finalize(); // enqueues flush, then resets the closure — before render
     h.render();
     expect(h.rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["Tail that must not vanish."]);
-    // finalize()'s returned ids must reference rows that actually committed.
-    for (const id of ids) expect(h.rows.some((r) => r.id === id)).toBe(true);
     state.dispose();
   });
 

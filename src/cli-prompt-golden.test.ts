@@ -29,7 +29,12 @@ function client(events: StreamEvent[], reply: { output: string; error?: string }
   return {
     replyStream: async (input) => {
       for (const event of events) input.onEvent(event);
-      return { ...reply, model: "gpt-5-mini", toolCalls: reply.error ? [] : ["file-read"] };
+      return {
+        ...reply,
+        model: "gpt-5-mini",
+        toolCalls: reply.error ? [] : ["file-read"],
+        outputStreamed: events.some((event) => event.type === "text-delta" && event.text.trim().length > 0),
+      };
     },
     status: async () => ({}),
     taskStatus: async () => null,

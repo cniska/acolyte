@@ -30,7 +30,7 @@ describe("chat message handler stream behavior", () => {
             content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "echo hi" },
           });
           input.onEvent({ type: "text-delta", text: "done" });
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: true, output: "done" };
         },
         status: async () => ({}),
       }),
@@ -53,6 +53,7 @@ describe("chat message handler stream behavior", () => {
       client: createClient({
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
           toolCalls: ["shell-run"],
         }),
@@ -84,7 +85,7 @@ describe("chat message handler stream behavior", () => {
             isError: false,
           });
           input.onEvent({ type: "text-delta", text: "No matches found." });
-          return { model: "gpt-5-mini", output: "No matches found." };
+          return { model: "gpt-5-mini", outputStreamed: true, output: "No matches found." };
         },
       }),
     });
@@ -149,7 +150,7 @@ describe("chat message handler stream behavior", () => {
           callCount += 1;
           if (callCount === 1) throw new Error("Remote server stream timed out after 120000ms");
           input.onEvent({ type: "text-delta", text: "ok" });
-          return { model: "gpt-5-mini", output: "ok" };
+          return { model: "gpt-5-mini", outputStreamed: true, output: "ok" };
         },
       }),
     });
@@ -275,7 +276,7 @@ describe("chat message handler stream behavior", () => {
             type: "text-delta",
             text: "This is a long streamed answer that should not be truncated at finalize.",
           });
-          return { model: "gpt-5-mini", output: finalOutput };
+          return { model: "gpt-5-mini", outputStreamed: true, output: finalOutput };
         },
       }),
     });
@@ -306,7 +307,7 @@ describe("chat message handler stream behavior", () => {
             errorCode: "E_GUARD_BLOCKED",
             error: { code: "E_GUARD_BLOCKED", category: "budget-exhausted" },
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -349,7 +350,7 @@ describe("chat message handler stream behavior", () => {
             toolName: "file-edit",
             content: { kind: "diff", lineNumber: 2, marker: "add", text: "export const b = 2;" },
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -374,8 +375,8 @@ describe("chat message handler stream behavior", () => {
 
   test("does not merge tool rows across separate user turns", async () => {
     const replies = [
-      { model: "gpt-5-mini", output: "first done" },
-      { model: "gpt-5-mini", output: "second done" },
+      { model: "gpt-5-mini", outputStreamed: false, output: "first done" },
+      { model: "gpt-5-mini", outputStreamed: false, output: "second done" },
     ];
     const eventsByTurn: StreamEvent[][] = [
       [
@@ -419,7 +420,7 @@ describe("chat message handler stream behavior", () => {
           for (const event of events) {
             input.onEvent(event);
           }
-          return replies[turn] ?? { model: "gpt-5-mini", output: "done" };
+          return replies[turn] ?? { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -443,6 +444,7 @@ describe("chat message handler stream behavior", () => {
         status: async () => ({}),
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
           usage: {
             inputTokens: 12,
@@ -480,7 +482,7 @@ describe("chat message handler stream behavior", () => {
         replyCount += 1;
         input.onEvent({ type: "status", state: { kind: "running" } });
         input.onEvent({ type: "text-delta", text: `reply-${replyCount}` });
-        return { model: "gpt-5-mini", output: `reply-${replyCount}` };
+        return { model: "gpt-5-mini", outputStreamed: true, output: `reply-${replyCount}` };
       },
     });
 
@@ -578,7 +580,7 @@ describe("chat message handler stream behavior", () => {
             toolCallId: "call_1",
             toolName: "shell-run",
           });
-          return { model: "gpt-5-mini", output: "I will run the command." };
+          return { model: "gpt-5-mini", outputStreamed: true, output: "I will run the command." };
         },
         status: async () => ({}),
       }),
@@ -645,7 +647,7 @@ describe("chat message handler stream behavior", () => {
             toolCallId: "call_B",
             toolName: "code-edit",
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
         status: async () => ({}),
       }),

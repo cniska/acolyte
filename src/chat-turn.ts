@@ -116,6 +116,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   assistantMessage: ChatMessage;
   tokenEntry: SessionTokenUsageEntry;
   rows: ChatRow[];
+  outputStreamed: boolean;
   activeSkills?: ActiveSkill[];
 }> {
   const reply = await params.client.replyStream({
@@ -170,6 +171,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
     assistantMessage,
     tokenEntry,
     rows,
+    outputStreamed: reply.outputStreamed,
     activeSkills: reply.activeSkills,
   };
 }

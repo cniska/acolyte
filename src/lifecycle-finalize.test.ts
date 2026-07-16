@@ -10,6 +10,7 @@ describe("ChatResponse error field", () => {
     const response = parseChatResponse({
       output: "No output from model.",
       model: "gpt-5-mini",
+      outputStreamed: false,
       error: "Your credit balance is too low",
     });
     expect(response).not.toBeNull();
@@ -20,6 +21,7 @@ describe("ChatResponse error field", () => {
     const response = parseChatResponse({
       output: "Hello",
       model: "gpt-5-mini",
+      outputStreamed: false,
     });
     expect(response).not.toBeNull();
     expect(response?.error).toBeUndefined();
@@ -29,6 +31,7 @@ describe("ChatResponse error field", () => {
     const response = parseChatResponse({
       output: "Hello",
       model: "gpt-5-mini",
+      outputStreamed: false,
       error: 42,
     });
     expect(response).toBeNull();
@@ -124,6 +127,38 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
     expect(response.output).toBe("Missing deployment environment. I will deploy once it is provided.");
     expect(response.error).toBeUndefined();
+  });
+
+  test("marks a streamed answer outputStreamed so the client does not re-render it", () => {
+    const ctx = createRunContext({
+      result: { text: "All done.", textStreamed: true, toolCalls: [], signal: "done" },
+      acceptedSignal: "done",
+    });
+    expect(phaseFinalize(ctx).outputStreamed).toBe(true);
+  });
+
+  test("marks host-synthesized output (never streamed) outputStreamed=false so the client renders it", () => {
+    // Mirrors the yield/stopped paths (lifecycle.ts): result.text is a host notice injected
+    // after the stream ended, so textStreamed stays false and the client must show it.
+    const ctx = createRunContext({
+      result: { text: "Yielding to a newer pending message.", toolCalls: [] },
+    });
+    const response = phaseFinalize(ctx);
+    expect(response.output).toBe("Yielding to a newer pending message.");
+    expect(response.outputStreamed).toBe(false);
+  });
+
+  test("marks a blocked reason (delivered via signal, not streamed) outputStreamed=false", () => {
+    const ctx = createRunContext({
+      result: {
+        text: "",
+        toolCalls: [],
+        signal: "blocked",
+        signalReason: "Which environment should I deploy to?",
+      },
+      acceptedSignal: "blocked",
+    });
+    expect(phaseFinalize(ctx).outputStreamed).toBe(false);
   });
 
   test("counts recall probes separately and keeps them out of search/discovery", () => {
@@ -321,6 +356,7 @@ describe("parseChatResponse activeSkills", () => {
     const response = parseChatResponse({
       output: "Hello",
       model: "gpt-5-mini",
+      outputStreamed: false,
       activeSkills: skills,
     });
     expect(response?.activeSkills).toEqual(skills);
@@ -330,6 +366,7 @@ describe("parseChatResponse activeSkills", () => {
     const response = parseChatResponse({
       output: "Hello",
       model: "gpt-5-mini",
+      outputStreamed: false,
     });
     expect(response?.activeSkills).toBeUndefined();
   });

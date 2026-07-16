@@ -25,8 +25,8 @@ export type MessageStreamState = {
   onProgressError: (error: string) => void;
   onProgressNotice: (notice: { message: string; level: "warn" | "error"; source?: string }) => void;
   streamedText: () => string;
-  /** Flush remaining content and return IDs of all streaming agent rows (for replacement by final turn rows). */
-  finalize: () => string[];
+  /** Flush remaining buffered prose and detach: seal the live agent row and drop unresolved checklist rows. */
+  finalize: () => void;
   dispose: () => void;
 };
 
@@ -40,7 +40,7 @@ export function createMessageStreamState(input: {
   let activeRowId: string | null = null;
   let agentContent = "";
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Every agent row ID we've created. Collected at finalize for caller to remove. */
+  /** Every agent row ID we've created, so dispose() can remove them on the error path. */
   const agentRowIds: string[] = [];
 
   // --- tool output state ---
@@ -272,9 +272,7 @@ export function createMessageStreamState(input: {
       if (checklistIds.size > 0) {
         input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
       }
-      const ids = [...agentRowIds];
       agentRowIds.length = 0;
-      return ids;
     },
 
     dispose: () => {
