@@ -29,6 +29,17 @@ else
   echo "no primary .env to link (skipping)"
 fi
 
+# docs/notes/ holds gitignored private notes (plan, design records) — link the
+# primary's so a worktree sees the same notes instead of an empty folder.
+step "docs/notes — link from the primary checkout"
+if [ -n "${primary:-}" ] && [ "$primary" != "$root" ] && [ -d "$primary/docs/notes" ] && [ ! -e "$root/docs/notes" ]; then
+  ln -s "$primary/docs/notes" "$root/docs/notes" && echo "linked docs/notes -> $primary/docs/notes"
+elif [ -e "$root/docs/notes" ]; then
+  echo "docs/notes already present"
+else
+  echo "no primary docs/notes to link (skipping)"
+fi
+
 if [ "$rc" -eq 0 ]; then
   echo "worktree-setup: done"
 else
