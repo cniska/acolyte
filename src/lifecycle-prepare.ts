@@ -54,6 +54,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   }
 
   if (input.request.activeSkills?.length) {
+    session.activeSkills = [...input.request.activeSkills];
     input.debug("lifecycle.skill.context", {
       skill_names: input.request.activeSkills.map((s) => s.name),
     });
