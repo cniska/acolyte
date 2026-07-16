@@ -56,7 +56,9 @@ describe("rpc websocket lifecycle", () => {
             event: { type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: { path: "a.ts" } },
           }),
         );
-        queueMicrotask(() => sendMessage({ type: "chat.done", reply: { output: "done", model: "gpt-5-mini" } }));
+        queueMicrotask(() =>
+          sendMessage({ type: "chat.done", reply: { output: "done", model: "gpt-5-mini", outputStreamed: false } }),
+        );
       }
 
       close(): void {

@@ -23,7 +23,7 @@ describe("checklist integration", () => {
             ],
           });
           snapshot = [...rows];
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -68,7 +68,7 @@ describe("checklist integration", () => {
             ],
           });
           snapshot = [...rows];
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -103,7 +103,7 @@ describe("checklist integration", () => {
             items: [{ id: "b1", label: "step B1", status: "pending", order: 0 }],
           });
           snapshot = [...rows];
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -142,7 +142,7 @@ describe("checklist integration", () => {
             content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
           });
           snapshot = [...rows];
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -187,7 +187,7 @@ describe("checklist integration", () => {
             toolName: "file-edit",
           });
           snapshot = [...rows];
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });
@@ -212,7 +212,7 @@ describe("checklist integration", () => {
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "done", order: 0 }],
           });
-          return { model: "gpt-5-mini", output: "done" };
+          return { model: "gpt-5-mini", outputStreamed: false, output: "done" };
         },
       }),
     });

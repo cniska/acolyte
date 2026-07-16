@@ -12,6 +12,11 @@ export type ToolCallEntry = {
 export type GenerateResult = {
   /** The model's latest non-blank assistant text; later steps supersede earlier ones. */
   text: string;
+  /** Whether `text` was emitted to the client as streamed deltas. False for host-synthesized
+   *  text (e.g. a yield/stopped notice injected after the stream ended) so the client knows to
+   *  render it rather than assume it is already on screen. Absent counts as false — a result
+   *  built outside the streamer (a host notice) was never streamed. */
+  textStreamed?: boolean;
   toolCalls: ToolCallEntry[];
   signal?: LifecycleSignal;
   signalReason?: string;

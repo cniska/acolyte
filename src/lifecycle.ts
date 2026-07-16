@@ -209,7 +209,7 @@ function acceptResult(ctx: RunContext): void {
       last_error_code: ctx.currentError?.code ?? null,
     });
     if (ctx.result && !ctx.result.text.trim()) {
-      ctx.result = { text: t("lifecycle.stopped_unknown_errors"), toolCalls: [] };
+      ctx.result = { text: t("lifecycle.stopped_unknown_errors"), textStreamed: false, toolCalls: [] };
     }
   }
 }
@@ -323,7 +323,11 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   if (input.runControl?.shouldYield()) {
     ctx.debug("lifecycle.yield", {});
     if (!ctx.result.text.trim()) {
-      ctx.result = { text: "Yielding to a newer pending message.", toolCalls: ctx.result.toolCalls };
+      ctx.result = {
+        text: "Yielding to a newer pending message.",
+        textStreamed: false,
+        toolCalls: ctx.result.toolCalls,
+      };
     }
     return deps.phaseFinalize(ctx);
   }

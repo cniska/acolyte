@@ -124,6 +124,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
         }),
         status: async () => ({}),
@@ -154,6 +155,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
           activeSkills: skills,
         }),
@@ -181,6 +183,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
           toolCalls: ["file-read"],
         }),
@@ -208,6 +211,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "The answer is 42.",
           toolCalls: ["signal_done"],
         }),
@@ -235,6 +239,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "Reading the file.",
           toolCalls: ["file-read", "signal_done"],
         }),
@@ -262,6 +267,7 @@ describe("chat turn helpers", () => {
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
+          outputStreamed: false,
           output: "done",
           toolCalls: ["file-read", "signal_done"],
           usage: { inputTokens: 52000, outputTokens: 586, totalTokens: 52586 },

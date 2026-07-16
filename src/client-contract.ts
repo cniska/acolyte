@@ -123,6 +123,7 @@ export function parseStreamEvent(raw: unknown): StreamEvent | null {
 
 const chatResponseSchema = z.object({
   output: z.string(),
+  outputStreamed: z.boolean(),
   model: z.string().min(1),
   usage: tokenUsageSchema.optional(),
   promptBreakdown: promptBreakdownSchema.optional(),

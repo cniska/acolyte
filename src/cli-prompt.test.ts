@@ -23,7 +23,7 @@ function createStreamingClient(events: StreamEvent[]): Client {
   return {
     replyStream: async (input) => {
       for (const event of events) input.onEvent(event);
-      return { output: "done", model: "gpt-5-mini", toolCalls: ["code-edit"] };
+      return { outputStreamed: false, output: "done", model: "gpt-5-mini", toolCalls: ["code-edit"] };
     },
     status: async () => ({}),
     taskStatus: async () => null,
@@ -55,6 +55,7 @@ describe("cli-prompt", () => {
     const session = createTestSession();
     const client: Client = {
       replyStream: async () => ({
+        outputStreamed: false,
         output: "done",
         model: "gpt-5-mini",
         toolCalls: ["file-read"],
@@ -72,6 +73,7 @@ describe("cli-prompt", () => {
     const session = createTestSession();
     const client: Client = {
       replyStream: async () => ({
+        outputStreamed: false,
         output: "file-edit failed: Find text matched 2 locations",
         model: "gpt-5-mini",
         error: "file-edit failed: Find text matched 2 locations",
@@ -169,7 +171,7 @@ describe("cli-prompt", () => {
     const client: Client = {
       replyStream: async (input) => {
         input.onEvent({ type: "text-delta", text: "Hello there.\n" });
-        return { output: "Hello there.", model: "gpt-5-mini", toolCalls: [] };
+        return { outputStreamed: false, output: "Hello there.", model: "gpt-5-mini", toolCalls: [] };
       },
       status: async () => ({}),
       taskStatus: async () => null,
