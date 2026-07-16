@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
+import { addActiveSkill } from "./chat-skill-activator";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -83,6 +84,62 @@ describe("phasePrepare", () => {
     expect(drop?.fields?.tokens_idle_at_drop).toBeGreaterThan(0);
     expect(drop?.fields?.kept_history_tokens).toBeGreaterThan(0);
     expect(drop?.fields?.missing_turns).toBe(2);
+  });
+
+  test("seeds session activeSkills from the request", () => {
+    const activeSkills = [{ name: "build", instructions: "slice it" }];
+    const prepared = phasePrepare({
+      request: { model: "gpt-5-mini", message: "go", history: [], activeSkills },
+      workspace: undefined,
+      taskId: "task_seed",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    expect(prepared.session.activeSkills).toEqual(activeSkills);
+    expect(prepared.session.activeSkills).not.toBe(activeSkills);
+  });
+
+  test("activating a skill merges onto the seeded set instead of dropping it", () => {
+    const prepared = phasePrepare({
+      request: {
+        model: "gpt-5-mini",
+        message: "go",
+        history: [],
+        activeSkills: [{ name: "build", instructions: "slice it" }],
+      },
+      workspace: undefined,
+      taskId: "task_merge",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    addActiveSkill(prepared.session, { name: "tdd", instructions: "red green" });
+    expect(prepared.session.activeSkills?.map((s) => s.name)).toEqual(["build", "tdd"]);
+  });
+
+  test("leaves session activeSkills unset when the request has none", () => {
+    const prepared = phasePrepare({
+      request: { model: "gpt-5-mini", message: "go", history: [] },
+      workspace: undefined,
+      taskId: "task_noskills",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onChecklist: () => {},
+      mcpListings: [],
+    });
+    expect(prepared.session.activeSkills).toBeUndefined();
   });
 
   test("does not emit lifecycle.window.drop when history fits the window", () => {
