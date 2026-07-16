@@ -28,6 +28,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
@@ -46,6 +47,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     const withRules = phasePrepare({
@@ -59,6 +61,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     expect(withRules.promptUsage.systemPromptTokens).toBeGreaterThan(base.promptUsage.systemPromptTokens);
@@ -76,6 +79,7 @@ describe("phasePrepare", () => {
       debug: (event, fields) => events.push({ event, fields }),
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     const drop = events.find((e) => e.event === "lifecycle.window.drop");
@@ -98,6 +102,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     expect(prepared.session.activeSkills).toEqual(activeSkills);
@@ -120,6 +125,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     addActiveSkill(prepared.session, { name: "tdd", instructions: "red green" });
@@ -137,6 +143,7 @@ describe("phasePrepare", () => {
       debug: () => {},
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     expect(prepared.session.activeSkills).toBeUndefined();
@@ -154,6 +161,7 @@ describe("phasePrepare", () => {
       debug: (event) => events.push(event),
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
       mcpListings: [],
     });
     expect(events).not.toContain("lifecycle.window.drop");

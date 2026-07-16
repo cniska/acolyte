@@ -297,6 +297,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onChecklist: (event) => {
       emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
     },
+    onSkillActivated: (skill) => {
+      emit({ type: "skill-activated", skill });
+    },
     mcpListings,
   });
 

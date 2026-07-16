@@ -378,6 +378,22 @@ describe("chat message handler", () => {
     expect(proseContents).toEqual(["Let me check the file.", "Done editing."]);
   });
 
+  test("a skill activated mid-turn updates the session live", async () => {
+    const { handleMessage, session } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "skill-activated", skill: { name: "build", instructions: "slice it" } });
+          return { model: "gpt-5-mini", outputStreamed: true, output: "on it" };
+        },
+      }),
+    });
+
+    await handleMessage("use the build skill");
+
+    expect(session.activeSkills?.map((s) => s.name)).toEqual(["build"]);
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness();
     await handleMessage("?");

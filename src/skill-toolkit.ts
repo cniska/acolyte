@@ -49,6 +49,7 @@ function createActivateSkillTool(input: ToolkitInput) {
         for (const skill of skills) {
           const instructions = await readSkillInstructions(skill.path, toolInput.args);
           addActiveSkill(input.session, { name: skill.name, instructions });
+          input.onSkillActivated({ name: skill.name, instructions });
           activated.push({ name: skill.name, source: skill.source, instructions });
         }
         return { kind: "skill-activate" as const, activated };

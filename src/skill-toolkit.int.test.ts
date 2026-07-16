@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ActiveSkill } from "./skill-contract";
 import { loadSkills, resetSkillCache } from "./skill-ops";
 import { createSkillToolkit } from "./skill-toolkit";
 import { tempDir } from "./test-utils";
@@ -13,12 +14,13 @@ const { createDir, cleanupDirs } = tempDir();
 
 type OutputEvent = { toolName: string; content: unknown; toolCallId?: string };
 
-function createToolkitInput(workspace: string, outputs?: OutputEvent[]): ToolkitInput {
+function createToolkitInput(workspace: string, outputs?: OutputEvent[], activations?: ActiveSkill[]): ToolkitInput {
   return {
     workspace,
     session: createSessionContext(),
     onOutput: (event) => outputs?.push(event),
     onChecklist: () => {},
+    onSkillActivated: (skill) => activations?.push(skill),
   };
 }
 
@@ -46,6 +48,17 @@ describe("skill-activate", () => {
     expect(result.activated[0]?.source).toBe("bundled");
     expect(result.activated[0]?.instructions.length).toBeGreaterThan(0);
     expect(input.session.activeSkills).toEqual([{ name: "build", instructions: result.activated[0]?.instructions }]);
+  });
+
+  test("emits onSkillActivated for each activated skill", async () => {
+    const dir = createDir("acolyte-skill-activate-emit-");
+    await loadSkills(dir);
+    const activations: ActiveSkill[] = [];
+    const input = createToolkitInput(dir, undefined, activations);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ names: ["build", "git"] }, "call-emit");
+    expect(activations.map((s) => s.name)).toEqual(["build", "git"]);
+    expect(activations[0]?.instructions.length).toBeGreaterThan(0);
   });
 
   test("activates project skill", async () => {

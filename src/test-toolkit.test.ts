@@ -11,6 +11,7 @@ function createToolkit(testCommand?: { bin: string; args: string[] }) {
     session,
     onOutput: (e) => output.push(e),
     onChecklist: () => {},
+    onSkillActivated: () => {},
   });
   return { toolkit, output };
 }

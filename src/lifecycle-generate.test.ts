@@ -495,6 +495,7 @@ describe("phaseGenerate", () => {
       session,
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
     }) as unknown as Record<string, ToolDefinition>;
 
     // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
@@ -575,6 +576,7 @@ describe("phaseGenerate", () => {
       session,
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
     }) as unknown as Record<string, ToolDefinition>;
     const turns: LanguageModelV4StreamPart[][] = [
       [
@@ -637,6 +639,7 @@ describe("phaseGenerate", () => {
       session,
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
     }) as unknown as Record<string, ToolDefinition>;
 
     const turns: LanguageModelV4StreamPart[][] = [
@@ -711,6 +714,7 @@ describe("phaseGenerate", () => {
       session,
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
     }) as unknown as Record<string, ToolDefinition>;
     if (input.callLog) session.callLog.push(...input.callLog);
     const model = scriptedModel(input.turns, []);
@@ -806,6 +810,7 @@ describe("phaseGenerate", () => {
       session,
       onOutput: () => {},
       onChecklist: () => {},
+      onSkillActivated: () => {},
     }) as unknown as Record<string, ToolDefinition>;
     if (input.callLog) session.callLog.push(...input.callLog);
     const argsCapture: Array<Record<string, unknown>> = [];

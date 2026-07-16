@@ -5,6 +5,7 @@ import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
+import { addActiveSkill } from "./chat-skill-activator";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import {
   appendInputHistory,
@@ -141,6 +142,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             case "tool-call":
               runningToolCallIds.add(event.toolCallId);
               input.setPendingState({ kind: "running", toolCalls: runningToolCallIds.size });
+              break;
+            case "skill-activated":
+              addActiveSkill(input.currentSession, event.skill);
               break;
           }
         },
