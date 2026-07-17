@@ -25,7 +25,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 ## Agent execution
 
 - single-pass lifecycle with `resolve`/`prepare`/`generate`/`finalize` phases
-- explicit completion signals (`done`, `noop`, `blocked`)
+- native `end_turn` completion (turn ends on a step with no tool calls)
 - pre/post-tool-call effect pipeline (auto-install deps, format, lint)
 - Workspace profile detection with auto-detected install, lint, format, and test commands
 - Configurable model reasoning level (low, medium, high) with provider-specific mapping

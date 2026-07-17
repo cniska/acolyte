@@ -157,7 +157,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       if (turn.activeSkills?.length) {
         input.currentSession.activeSkills = turn.activeSkills;
       }
-      // A blocked turn with no model prose has empty output; don't persist a blank
+      // A turn blocked on an empty answer has no model prose; don't persist a blank
       // assistant message — a textless bubble is noise, and the block reason is already
       // shown as the error row in the transcript.
       if (assistantMessage.content.trim().length > 0) {
@@ -182,8 +182,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // content that may have scrolled into append-only scrollback — a duplicate.
       // Keep the streamed rows and append this turn's status/error rows. When `output`
       // was not streamed as deltas — a provider that returns output without them, or a
-      // signal reason the model delivered via the tool argument (a blocked/done turn whose
-      // only prose was narration) — fall back to a bubble so the answer still shows.
+      // host-synthesized notice (a yield/stopped message injected after the stream ended) —
+      // fall back to a bubble so the answer still shows.
       const fallbackRows =
         !turn.outputStreamed && assistantMessage.content.trim().length > 0
           ? [createRow("assistant", assistantMessage.content)]

@@ -25,12 +25,12 @@ import {
 } from "./lifecycle-contract";
 import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
-import { forcesToolChoice, providerFromModel } from "./provider-config";
+import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { RUNNER_TOOL_SET, type Toolset, WRITE_TOOL_SET } from "./tool-registry";
-import { resetTurnStepCount, scopedCallLog } from "./tool-session";
+import { RUNNER_TOOL_SET, type Toolset } from "./tool-registry";
+import { resetTurnStepCount } from "./tool-session";
 
 function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
   const used = ctx.session.flags.turnStepCount;
@@ -121,12 +121,8 @@ function userFacingCompletionMessage(block: CompletionBlock): string {
   switch (block.reason) {
     case "empty-answer":
       return t("lifecycle.completion.empty_answer");
-    case "broken-handoff":
-      return t("lifecycle.completion.broken_handoff", { command: block.command, exitCode: block.exitCode });
-    case "missing-validation-after-write":
-      return t("lifecycle.completion.missing_validation", { path: block.path });
     default:
-      return unreachable(block);
+      return unreachable(block.reason);
   }
 }
 
@@ -163,6 +159,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
       model: ctx.model,
       tool_calls: ctx.result.toolCalls.length,
       text_chars: ctx.result.text.trim().length,
+      finish_reason: ctx.result.finishReason ?? "unknown",
     });
   } catch (error) {
     const message = errorMessage(error);
@@ -198,23 +195,14 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const reasoning = ctx.reasoning;
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
-      // OpenAI/harmony family: forcing tool choice grammar-constrains decoding so GPT can't emit
-      // the signal call as text. forcesToolChoice sees through the Vercel gateway prefix, so
-      // gateway-routed GPT (vercel/openai/...) is forced too while gateway Anthropic is not.
-      // Anthropic/Google map forced choice to a prose-suppressing prefill (400 under thinking),
-      // so they stay "auto" and lean on the missing-signal retry as backstop.
-      toolChoice: forcesToolChoice(ctx.model) ? "required" : "auto",
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       onBeforeNextCall: (messages) => {
         const reminders = collectReminders({
           messages,
           callLog: ctx.session.callLog,
-          writeToolSet: ctx.session.writeTools,
           runnerToolSet: RUNNER_TOOL_SET,
           budget: budgetState(ctx),
           config: {
-            stuckLoopSameFileThreshold: ctx.policy.stuckLoopSameFileThreshold,
-            stuckLoopTurnsBetweenReminders: ctx.policy.stuckLoopTurnsBetweenReminders,
             budgetNudgeThresholds: ctx.policy.budgetNudgeThresholds,
           },
         });
@@ -226,46 +214,13 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         }
         return reminders.map(renderReminder);
       },
-      onBeforeFinish: ({ signal, answerText }) => {
-        const taskLog = scopedCallLog(ctx.session, ctx.taskId);
-        const completionBlock = findCompletionBlock({
-          signal,
-          finalText: answerText,
-          callLog: taskLog,
-          writeToolSet: WRITE_TOOL_SET,
-          runnerToolSet: RUNNER_TOOL_SET,
-        });
-        const decision = decideFinish({
-          state: finishPolicyState,
-          signal,
-          completionBlock,
-        });
+      onBeforeFinish: ({ answerText }) => {
+        const completionBlock = findCompletionBlock({ finalText: answerText });
+        const decision = decideFinish({ state: finishPolicyState, completionBlock });
         switch (decision.kind) {
-          case "missing-signal-continue":
-            ctx.debug("lifecycle.signal.missing", { action: "continue" });
-            // No per-step override: the run-level default already forces tool choice for the
-            // OpenAI/harmony family (the grammar constraint) and keeps it "auto" elsewhere
-            // (where forcing suppresses prose and 400s under extended thinking).
-            return renderFinishPolicyMessages(decision);
-          case "missing-signal-block":
-            ctx.currentError = {
-              message: t("lifecycle.completion.missing_signal"),
-              code: decision.code,
-              category: "other",
-              blocksCompletion: true,
-            };
-            ctx.debug("lifecycle.signal.missing", { action: "block" });
-            break;
           case "completion-rejected-continue":
-            ctx.debug("lifecycle.signal.rejected", {
-              signal: signal ?? null,
-              reason: decision.block.reason,
-              path: decision.block.path,
-              action: "continue",
-            });
-            // Reopens need room to write prose or run validation before re-signaling, so drop
-            // the OpenAI "required" default to "auto" — forcing a bare re-signal re-trips the gate.
-            return { messages: renderFinishPolicyMessages(decision), toolChoice: "auto" };
+            ctx.debug("lifecycle.completion.rejected", { action: "continue" });
+            return renderFinishPolicyMessages(decision);
           case "completion-block":
             ctx.currentError = {
               message: userFacingCompletionMessage(decision.block),
@@ -273,12 +228,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               category: "other",
               blocksCompletion: true,
             };
-            ctx.debug("lifecycle.signal.rejected", {
-              signal: signal ?? null,
-              reason: decision.block.reason,
-              path: decision.block.path,
-              action: "block",
-            });
+            ctx.debug("lifecycle.completion.rejected", { action: "block" });
             break;
           case "none":
             break;

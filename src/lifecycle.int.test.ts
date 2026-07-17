@@ -52,28 +52,6 @@ function run(message: string) {
   return runLifecycle(createLifecycleInput({ request: { model: "gpt-5-mini", message, history: [] }, workspace }));
 }
 
-function createSignalPayload(
-  ctx: FakeProviderRequestContext,
-  signal: "signal_done" | "signal_noop" | "signal_blocked",
-  text: string,
-  args: Record<string, unknown> = {},
-): Record<string, unknown> {
-  const toolName = pickFunctionToolName(ctx.body.tools, signal, [signal]);
-  return createToolCallsPayload(
-    ctx.model,
-    ctx.responseCounter,
-    [
-      {
-        id: `fc_${ctx.responseCounter}`,
-        callId: `call_${ctx.responseCounter}`,
-        name: toolName,
-        args: JSON.stringify(args),
-      },
-    ],
-    text,
-  );
-}
-
 async function writeExecutableScript(name: string, body: string): Promise<string> {
   const path = join(workspace, name);
   await writeFile(path, body, "utf8");
@@ -84,91 +62,6 @@ async function writeExecutableScript(name: string, body: string): Promise<string
 describe("lifecycle integration", () => {
   afterAll(() => {
     if (fake) fake.stop();
-  });
-
-  test("signal_done completion rejection continues to validation", async () => {
-    let turnCount = 0;
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 2;" }],
-            }),
-          },
-        ]);
-      }
-      if (turnCount === 2) {
-        return createSignalPayload(ctx, "signal_done", "Updated x to 2.");
-      }
-      if (turnCount === 3) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({ cmd: "true" }),
-          },
-        ]);
-      }
-      return createSignalPayload(ctx, "signal_done", "Updated x to 2.");
-    });
-
-    const reply = await run("update x to 2");
-    expect(turnCount).toBe(4);
-    expect(reply.output).toContain("Updated x to 2.");
-  });
-
-  test("a prose reply after completion rejection re-opens the loop without blocking", async () => {
-    // Regression (dogfood, residual): the missing-signal one-shot retry is spent, then
-    // signal_done re-opens the loop via completion rejection. A prose reply to that
-    // reminder must get a fresh retry — before the latch reset it hit missing-signal-block
-    // and surfaced "Cannot finish yet" despite a valid signal.
-    let turnCount = 0;
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 3;" }],
-            }),
-          },
-        ]);
-      }
-      if (turnCount === 2) return createMessagePayload(ctx.model, ctx.responseCounter, "Edited the file.");
-      if (turnCount === 3) return createSignalPayload(ctx, "signal_done", "Done.");
-      // Prose reply to the reminder — must not block on the already-spent retry.
-      if (turnCount === 4) return createMessagePayload(ctx.model, ctx.responseCounter, "Running validation next.");
-      if (turnCount === 5) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({ cmd: "true" }),
-          },
-        ]);
-      }
-      return createSignalPayload(ctx, "signal_done", "Updated x to 3.");
-    });
-
-    const reply = await run("update x to 3");
-    expect(reply.error).toBeUndefined();
-    expect(reply.output).toContain("Updated x to 3.");
   });
 
   test("a tool error does not inject a recovery turn before finalization", async () => {
@@ -188,27 +81,27 @@ describe("lifecycle integration", () => {
         ]);
       }
       secondTurnBody = JSON.stringify(ctx.body);
-      return createSignalPayload(ctx, "signal_done", "No matches found; nothing to change.");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "No matches found; nothing to change.");
     });
 
     const reply = await run("find the missing pattern");
     // A no-match search is a normal outcome, not a broken run: the harness injects no
-    // recovery turn, and the model's own next decision (here, a done) is accepted directly.
+    // recovery turn, and the model's own next final response is accepted directly.
     expect(turnCount).toBe(2);
     expect(secondTurnBody).not.toContain("tool-error-recovery");
     expect(reply.output).toContain("No matches found");
   });
 
-  test("signal_noop completes without write tools", async () => {
+  test("a text-only reply completes without write tools", async () => {
     setupFakeProvider((ctx) => {
-      return createSignalPayload(ctx, "signal_noop", "Nothing to do.");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Nothing to do.");
     });
 
     const reply = await run("hello");
     expect(reply.output).toContain("Nothing to do.");
   });
 
-  test("signal_blocked ends the run with the question as output and no error", async () => {
+  test("the model's final prose is the output with no error", async () => {
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
@@ -226,85 +119,16 @@ describe("lifecycle integration", () => {
           },
         ]);
       }
-      return createSignalPayload(ctx, "signal_blocked", "Cannot proceed.", {
-        reason: "Missing deployment environment. I will deploy once it is provided.",
-      });
+      return createMessagePayload(
+        ctx.model,
+        ctx.responseCounter,
+        "Cannot proceed. Missing deployment environment; I will deploy once it is provided.",
+      );
     });
 
     const reply = await run("update x to 3");
     expect(reply.output).toContain("Cannot proceed.");
     expect(reply.error).toBeUndefined();
-  });
-
-  test("signal_blocked uses tool reason when final text is empty", async () => {
-    setupFakeProvider((ctx) => {
-      return createSignalPayload(ctx, "signal_blocked", "", {
-        reason: "Missing deployment environment. I will deploy once it is provided.",
-      });
-    });
-
-    const reply = await run("deploy");
-    expect(reply.output).toBe("Missing deployment environment. I will deploy once it is provided.");
-    expect(reply.error).toBeUndefined();
-  });
-
-  test("rejects duplicate lifecycle signal tools", async () => {
-    setupFakeProvider((ctx) => {
-      const doneName = pickFunctionToolName(ctx.body.tools, "signal_done", ["signal_done"]);
-      const blockedName = pickFunctionToolName(ctx.body.tools, "signal_blocked", ["signal_blocked"]);
-      return createToolCallsPayload(
-        ctx.model,
-        ctx.responseCounter,
-        [
-          {
-            id: `fc_${ctx.responseCounter}_done`,
-            callId: `call_${ctx.responseCounter}_done`,
-            name: doneName,
-            args: "{}",
-          },
-          {
-            id: `fc_${ctx.responseCounter}_blocked`,
-            callId: `call_${ctx.responseCounter}_blocked`,
-            name: blockedName,
-            args: JSON.stringify({ reason: "Missing input." }),
-          },
-        ],
-        "Done.",
-      );
-    });
-
-    const reply = await run("finish");
-    expect(reply.error).toContain("more than one lifecycle signal tool");
-  });
-
-  test("rejects lifecycle signal tools mixed with ordinary tools", async () => {
-    setupFakeProvider((ctx) => {
-      const readName = pickFunctionToolName(ctx.body.tools, "file-read", ["read"]);
-      const doneName = pickFunctionToolName(ctx.body.tools, "signal_done", ["signal_done"]);
-      return createToolCallsPayload(
-        ctx.model,
-        ctx.responseCounter,
-        [
-          {
-            id: `fc_${ctx.responseCounter}_read`,
-            callId: `call_${ctx.responseCounter}_read`,
-            name: readName,
-            args: JSON.stringify({ path: join(workspace, "a.ts") }),
-          },
-          {
-            id: `fc_${ctx.responseCounter}_done`,
-            callId: `call_${ctx.responseCounter}_done`,
-            name: doneName,
-            args: "{}",
-          },
-        ],
-        "Done.",
-      );
-    });
-
-    const reply = await run("read and finish");
-    expect(reply.error).toContain("must be the only tool call");
-    expect(reply.toolCalls).toEqual([]);
   });
 
   test("format effect runs on written files", async () => {
@@ -345,7 +169,7 @@ printf '%s\n' "$@" > "${formatLog}"
           },
         ]);
       }
-      return createSignalPayload(ctx, "signal_done", "Updated x to 6.");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Updated x to 6.");
     });
 
     await runLifecycle(
@@ -360,53 +184,9 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(await readFile(formatLog, "utf8")).toContain(join(workspace, "a.ts"));
   });
 
-  test("lint effect output does not satisfy completion validation", async () => {
-    await writeFile(join(workspace, "a.ts"), "export const x = 1;\n", "utf8");
-    const lintScript = await writeExecutableScript(
-      "lint-effect.sh",
-      `#!/bin/sh
-printf 'src/a.ts:1:1 lint error\n'
-exit 1
-`,
-    );
-
-    let turnCount = 0;
-    setupFakeProvider((ctx) => {
-      turnCount += 1;
-      if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 7;" }],
-            }),
-          },
-        ]);
-      }
-      return createSignalPayload(ctx, "signal_done", "Updated x to 7.");
-    });
-
-    const reply = await runLifecycle(
-      createLifecycleInput({
-        request: { model: "gpt-5-mini", message: "update x to 7", history: [] },
-        workspace,
-        lifecyclePolicy: { lintCommand: { bin: "/bin/sh", args: [lintScript, "$FILES"] } },
-      }),
-    );
-
-    expect(turnCount).toBe(3);
-    // User-audience terminal error — never the model-facing "Run a related test…" nudge.
-    expect(reply.error).toContain("finished without validating its changes");
-    expect(reply.error).not.toContain("Run a related test");
-  });
-
   test("runControl yield skips result acceptance", async () => {
     setupFakeProvider((ctx) => {
-      return createSignalPayload(ctx, "signal_done", "Hello there.");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Hello there.");
     });
 
     const debugEvents: string[] = [];
@@ -425,7 +205,7 @@ exit 1
 
   test("runControl yield replaces empty output", async () => {
     setupFakeProvider((ctx) => {
-      return createSignalPayload(ctx, "signal_done", "  ");
+      return createMessagePayload(ctx.model, ctx.responseCounter, "  ");
     });
 
     const reply = await runLifecycle(
@@ -451,7 +231,7 @@ exit 1
           return { ok: true };
         });
 
-        (ctx as { result?: unknown }).result = { text: "done", toolCalls: [], signal: "done" };
+        (ctx as { result?: unknown }).result = { text: "done", toolCalls: [] };
       }),
     });
 
@@ -471,31 +251,15 @@ exit 1
     expect(checkpoints[0]?.paths).toEqual(["a.txt"]);
   });
 
-  test("mid-turn narration does not overwrite the final response", async () => {
+  test("mid-turn narration does not become the final response", async () => {
     // Regression: the narration cadence lets the model write short lines during tool work.
-    // A trailing narration line in a working step must not become the user's final response,
-    // and must not let the empty-answer gate wave through a signal that carried no text.
+    // A narration line riding along a tool-calling step must not become the user's final
+    // response — only the terminating no-tool-call step's text does.
     let turnCount = 0;
     setupFakeProvider((ctx) => {
       turnCount += 1;
+      // A working step with a narration line riding along.
       if (turnCount === 1) {
-        const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
-        return createToolCallsPayload(ctx.model, ctx.responseCounter, [
-          {
-            id: `fc_${ctx.responseCounter}`,
-            callId: `call_${ctx.responseCounter}`,
-            name: toolName,
-            args: JSON.stringify({
-              path: join(workspace, "a.ts"),
-              edits: [{ find: "export const x = 1;", replace: "export const x = 4;" }],
-            }),
-          },
-        ]);
-      }
-      // A done with a proper summary — rejected because the write is not yet validated.
-      if (turnCount === 2) return createSignalPayload(ctx, "signal_done", "Here is the summary of what changed.");
-      // Validation, with a narration line riding along in the same working step.
-      if (turnCount === 3) {
         const toolName = pickFunctionToolName(ctx.body.tools, "shell-run", ["shell"]);
         return createToolCallsPayload(
           ctx.model,
@@ -511,12 +275,12 @@ exit 1
           "Running the tests once more.",
         );
       }
-      // The final signal carries no text; the earlier summary must stand.
-      return createSignalPayload(ctx, "signal_done", "");
+      // The terminating step carries the real final response.
+      return createMessagePayload(ctx.model, ctx.responseCounter, "Here is the summary of what changed.");
     });
 
     const reply = await run("update x to 4");
-    expect(turnCount).toBe(4);
+    expect(turnCount).toBe(2);
     expect(reply.error).toBeUndefined();
     expect(reply.output).toContain("Here is the summary of what changed.");
     expect(reply.output).not.toContain("Running the tests once more.");

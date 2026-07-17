@@ -319,18 +319,17 @@ describe("chat message handler", () => {
     expect(calls.runningUsageSets.at(-1)).toBeNull();
   });
 
-  test("signal turn: streamed answer is not duplicated by the authoritative commit", async () => {
+  test("completion turn: streamed answer is not duplicated by the authoritative commit", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "The complete answer." });
-          input.onEvent({ type: "tool-call", toolCallId: "sig_1", toolName: "signal_done", args: {} });
           return {
             model: "gpt-5-mini",
             outputStreamed: true,
             output: "The complete answer.",
-            toolCalls: ["signal_done"],
+            toolCalls: [],
           };
         },
       }),
@@ -836,7 +835,7 @@ describe("chat message handler", () => {
   test("a blocked question promotes the reason into the durable transcript", async () => {
     const { handleMessage, rows, session, calls } = createMessageHandlerHarness({
       client: createClient({
-        // signal_blocked with no prose: the reason arrives via output, nothing streams.
+        // A blocked turn with no streamed prose: the reason arrives via output, nothing streams.
         replyStream: async () => ({
           model: "gpt-5-mini",
           outputStreamed: false,
@@ -864,7 +863,7 @@ describe("chat message handler", () => {
           model: "gpt-5-mini",
           outputStreamed: false,
           output: "",
-          error: "completion blocked: missing signal",
+          error: "completion blocked: empty answer",
         }),
         status: async () => ({}),
       }),
@@ -874,7 +873,7 @@ describe("chat message handler", () => {
 
     expect(calls.promotedSnapshots).toHaveLength(1);
     const promoted = calls.promotedSnapshots[0] ?? [];
-    expect(promoted.some((r) => r.kind === "system" && r.content === "completion blocked: missing signal")).toBe(true);
+    expect(promoted.some((r) => r.kind === "system" && r.content === "completion blocked: empty answer")).toBe(true);
     expect(promoted.some((r) => r.kind === "assistant")).toBe(false);
     expect(session.messages.some((m) => m.role === "assistant")).toBe(false);
     expect(calls.pendingStates.at(-1)).toBeNull();
@@ -885,8 +884,8 @@ describe("chat message handler", () => {
     const reason = "Which layer should the rate limit live in — the RPC accept loop or per-session?";
     const { handleMessage, session, calls } = createMessageHandlerHarness({
       client: createClient({
-        // Mirrors a real signal_blocked turn: the model runs tools, streams NO prose, then
-        // blocks. The reason arrives via output only, never as a text-delta.
+        // Mirrors a real blocked turn: the model runs tools, streams NO prose, then ends its
+        // turn with the reason as output only, never as a text-delta.
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "\n" });
           input.onEvent({ type: "reasoning", text: "Considering where the limit belongs." });

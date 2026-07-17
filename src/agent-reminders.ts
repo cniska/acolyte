@@ -1,12 +1,7 @@
 import type { LanguageModelV4Message } from "@ai-sdk/provider";
-import {
-  BUDGET_NUDGE_THRESHOLDS,
-  STUCK_LOOP_SAME_FILE_THRESHOLD,
-  STUCK_LOOP_TURNS_BETWEEN_REMINDERS,
-} from "./lifecycle-constants";
+import { BUDGET_NUDGE_THRESHOLDS } from "./lifecycle-constants";
 import type { ToolCallRecord } from "./tool-contract";
 
-export type StuckLoopReminder = { type: "stuck-loop"; path: string; editCount: number };
 export type BudgetPressureReminder = {
   type: "budget-pressure";
   thresholdPct: number;
@@ -22,37 +17,22 @@ export type PostFailureReminder = {
   exitCode: number;
 };
 
-export type Reminder = StuckLoopReminder | BudgetPressureReminder | PostFailureReminder;
+export type Reminder = BudgetPressureReminder | PostFailureReminder;
 
 export type CollectInput = {
   messages: readonly LanguageModelV4Message[];
   callLog: readonly ToolCallRecord[];
-  writeToolSet: ReadonlySet<string>;
   runnerToolSet: ReadonlySet<string>;
   budget?: { used: number; limit: number };
   config?: RemindersConfig;
 };
 
 export type RemindersConfig = {
-  stuckLoopSameFileThreshold?: number;
-  stuckLoopTurnsBetweenReminders?: number;
   budgetNudgeThresholds?: readonly number[];
 };
 
 export function collectReminders(input: CollectInput): Reminder[] {
-  return [...detectStuckLoop(input), ...detectBudgetPressure(input), ...detectPostFailure(input)];
-}
-
-export function detectStuckLoop(input: CollectInput): StuckLoopReminder[] {
-  const threshold = input.config?.stuckLoopSameFileThreshold ?? STUCK_LOOP_SAME_FILE_THRESHOLD;
-  const turnsBetween = input.config?.stuckLoopTurnsBetweenReminders ?? STUCK_LOOP_TURNS_BETWEEN_REMINDERS;
-
-  const stuckLoop = findStuckLoop(input.callLog, input.writeToolSet, input.runnerToolSet);
-  if (!stuckLoop || stuckLoop.editCount < threshold) return [];
-
-  if (turnsSinceLastReminder(input.messages, "stuck-loop") < turnsBetween) return [];
-
-  return [{ type: "stuck-loop", path: stuckLoop.path, editCount: stuckLoop.editCount }];
+  return [...detectBudgetPressure(input), ...detectPostFailure(input)];
 }
 
 export function detectBudgetPressure(input: CollectInput): BudgetPressureReminder[] {
@@ -106,8 +86,6 @@ export function budgetPressureTag(thresholdPct: number): string {
 
 export function reminderTag(reminder: Reminder): string {
   switch (reminder.type) {
-    case "stuck-loop":
-      return reminder.type;
     case "budget-pressure":
       return budgetPressureTag(reminder.thresholdPct);
     case "post-failure":
@@ -127,26 +105,6 @@ export function turnsSinceLastReminder(messages: readonly LanguageModelV4Message
     }
   }
   return Number.POSITIVE_INFINITY;
-}
-
-function findStuckLoop(
-  callLog: readonly ToolCallRecord[],
-  writeToolSet: ReadonlySet<string>,
-  runnerToolSet: ReadonlySet<string>,
-): { path: string; editCount: number } | undefined {
-  let targetPath: string | undefined;
-  let editCount = 0;
-  for (let i = callLog.length - 1; i >= 0; i--) {
-    const entry = callLog[i];
-    if (isGreenRunner(entry, runnerToolSet)) break;
-    if (!writeToolSet.has(entry.toolName)) continue;
-    const path = entry.args.path;
-    if (typeof path !== "string" || path.length === 0) continue;
-    if (!targetPath) targetPath = path;
-    if (path !== targetPath) break;
-    editCount += 1;
-  }
-  return targetPath ? { path: targetPath, editCount } : undefined;
 }
 
 function isGreenRunner(entry: ToolCallRecord, runnerToolSet: ReadonlySet<string>): boolean {

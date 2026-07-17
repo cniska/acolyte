@@ -1,6 +1,6 @@
 # Lifecycle
 
-Acolyte executes each request through four explicit phases, with tool effects, completion signals, and budget checks applied inside a single generation loop.
+Acolyte executes each request through four explicit phases, with tool effects, native completion, and budget checks applied inside a single generation loop.
 
 ```text
 resolve → prepare → generate → finalize
@@ -10,8 +10,8 @@ resolve → prepare → generate → finalize
 
 - **resolve**: pick model and policy
 - **prepare**: build base agent input, tools, session context, and policy state
-- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a lifecycle signal tool (`signal_done`, `signal_noop`, `signal_blocked`)
-- **finalize**: accept lifecycle signal, emit final response and summary events; a `blocked` signal ends the turn normally with the model's question as `output`
+- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
+- **finalize**: accept the terminal step, emit final response and summary events
 
 ## Generation loop feedback
 
@@ -33,7 +33,7 @@ If the model still cannot recover, finalize returns the unresolved error on `err
 
 - `checkStepBudget()` is inlined into tool execution and enforces per-turn and total tool-call limits
 - when the budget is exhausted, the tool call is blocked with a `budgetExhausted` error code
-- lifecycle signal tools skip the step counter so the model can still terminate after using the available ordinary tool-call budget
+- a no-tool-call step ends the turn and is never counted against the budget, so the model can always terminate
 - this is the only pre-tool policy check; there is no guard abstraction
 
 ## Per-call input budget
@@ -59,18 +59,17 @@ If the model still cannot recover, finalize returns the unresolved error on `err
 
 ## Key files
 
-- `src/lifecycle.ts` — main orchestrator that coordinates all phases, including signal acceptance and state validation
+- `src/lifecycle.ts` — main orchestrator that coordinates all phases, including terminal-step acceptance and state validation
 - `src/lifecycle-resolve.ts` — initial model resolution for the request
 - `src/lifecycle-prepare.ts` — preparation phase including input validation and token estimation
 - `src/lifecycle-generate.ts` — generation phase with agent creation and tool-call loop
-- `src/signal-toolkit.ts` — lifecycle signal tools exposed to the model
 - `src/lifecycle-finalize.ts` — finalization phase including token accounting and tool statistics
 - `src/lifecycle-contract.ts` — type definitions for lifecycle events, inputs, and runtime contexts
 - `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
 - `src/lifecycle-constants.ts` — configuration constants for step limits, timeouts, and thresholds
 - `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
-- `src/agent-contract.ts` — agent interface, stream types (`StreamChunk`, `GenerateResult`, `LifecycleSignal`)
+- `src/agent-contract.ts` — agent interface, stream types (`StreamChunk`, `GenerateResult`)
 - `src/workspace-profile.ts` — workspace profile resolution, caching, and instruction generation
 - `src/workspace-contract.ts` — workspace profile and command types
 - `src/workspace-detectors.ts` — ecosystem detectors for TypeScript, Python, Go, Rust

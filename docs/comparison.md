@@ -50,11 +50,11 @@ resolve → prepare → generate → finalize
 - **resolve**: pick model and policy
 - **prepare**: wire tools and session context
 - **generate**: run the model with tool calls, effects apply per-tool-result
-- **finalize**: accept lifecycle signal, persist results, emit the response
+- **finalize**: accept the terminal step, persist results, emit the response
 
 The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces per-turn and total tool-call limits to prevent runaway loops.
 
-The distinction is not that other agents lack a loop. Acolyte makes its lifecycle phases, completion signals, and post-tool effects explicit contracts with independent tests.
+The distinction is not that other agents lack a loop. Acolyte makes its lifecycle phases, native completion, and post-tool effects explicit contracts with independent tests.
 
 ## Workspace detection
 

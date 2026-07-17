@@ -182,22 +182,6 @@ describe("onBeforeNextCall hook", () => {
     };
   }
 
-  function signalDoneTool(): ToolDefinition {
-    return {
-      id: "signal_done",
-      toolkit: "signal",
-      category: "meta",
-      description: "done",
-      instruction: "done",
-      inputSchema: {},
-      // biome-ignore lint/suspicious/noExplicitAny: test stub
-      outputSchema: { parse: (v: unknown) => v } as any,
-      async execute() {
-        return { result: { kind: "lifecycle-signal", signal: "done" } };
-      },
-    };
-  }
-
   test("injects returned messages into the next model prompt", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [
@@ -238,25 +222,25 @@ describe("onBeforeNextCall hook", () => {
   });
 
   test("continues when onBeforeFinish rejects a completion attempt", async () => {
+    // Native contract: a completion is a no-tool-call step. A rejection reopens the loop; on the
+    // reopen the just-written assistant text is pushed so the nudge has context.
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Premature." },
         { type: "text-end", id: "t_1" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
       [
         { type: "text-start", id: "t_2" },
         { type: "text-delta", id: "t_2", delta: "Validated." },
         { type: "text-end", id: "t_2" },
-        { type: "tool-call", toolCallId: "tc_signal_2", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
     ];
     const model = scriptedModel(turns, promptCapture);
-    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
 
     let rejected = false;
     const { getFullOutput } = await stream("hi", {
@@ -269,44 +253,33 @@ describe("onBeforeNextCall hook", () => {
     const output = await getFullOutput();
 
     expect(output.text).toBe("Validated.");
-    expect(output.signal).toBe("done");
-    expect(output.toolCalls.map((call) => call.toolName)).toEqual(["signal_done", "signal_done"]);
     expect(promptCapture).toHaveLength(2);
     const secondPrompt = promptCapture[1];
-    expect(secondPrompt).toContainEqual({
-      role: "assistant",
-      content: [
-        { type: "text", text: "Premature." },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: {} },
-      ],
-    });
+    expect(secondPrompt).toContainEqual({ role: "assistant", content: [{ type: "text", text: "Premature." }] });
     expect(secondPrompt).toContainEqual({ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] });
   });
 
   test("the final onBeforeFinish sees the same answerText that getFullOutput returns", async () => {
     // Divergence pin: the in-stream completion gate reads `answerText`, and it is the sole
     // enforcement of the retry-spent block. If result assembly ever stopped returning
-    // `text: answerText`, the gate would judge different text than the run resolves to — the
-    // exact self-review shape that killed a valid done. Pin the equality here.
+    // `text: answerText`, the gate would judge different text than the run resolves to.
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Premature." },
         { type: "text-end", id: "t_1" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
       [
         { type: "text-start", id: "t_2" },
         { type: "text-delta", id: "t_2", delta: "Validated answer." },
         { type: "text-end", id: "t_2" },
-        { type: "tool-call", toolCallId: "tc_signal_2", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
     ];
     const model = scriptedModel(turns, promptCapture);
-    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
 
     const seenAnswerText: string[] = [];
     let rejected = false;
@@ -325,38 +298,27 @@ describe("onBeforeNextCall hook", () => {
     expect(output.text).toBe("Validated answer.");
   });
 
-  test("returns the answer when a nudged text step is followed by a bare signal", async () => {
+  test("a turn with tool work terminates via the no-tool-call step", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "The answer is 42." },
         { type: "text-end", id: "t_1" },
         finishPart("stop"),
       ],
-      [
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
-      ],
     ];
     const model = scriptedModel(turns, promptCapture);
-    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
-
-    let nudged = false;
-    const { getFullOutput } = await stream("hi", {
-      onBeforeFinish: () => {
-        if (nudged) return [];
-        nudged = true;
-        return [{ role: "user", content: [{ type: "text", text: "<<signal to finish>>" }] }];
-      },
-    });
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", {});
     const output = await getFullOutput();
 
     expect(output.text).toBe("The answer is 42.");
-    expect(output.signal).toBe("done");
+    expect(output.toolCalls.map((call) => call.toolName)).toEqual(["noop"]);
   });
 
-  test("the final answer supersedes earlier tool-step narration", async () => {
+  test("narration on a tool-calling step never becomes the answer", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [
       [
@@ -370,38 +332,57 @@ describe("onBeforeNextCall hook", () => {
         { type: "text-start", id: "t_2" },
         { type: "text-delta", id: "t_2", delta: "x is 2." },
         { type: "text-end", id: "t_2" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
     ];
     const model = scriptedModel(turns, promptCapture);
-    const stream = createAgentStream(
-      model,
-      "sys",
-      { noop: echoTool(), signal_done: signalDoneTool() },
-      noopRateLimiter,
-    );
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
     const { getFullOutput } = await stream("hi", {});
     const output = await getFullOutput();
 
     expect(output.text).toBe("x is 2.");
   });
 
-  test("a bare signal with no text yields empty result text", async () => {
+  test("a no-tool-call step with no text yields empty result text", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
-    const turns: LanguageModelV4StreamPart[][] = [
-      [
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
-      ],
-    ];
+    const turns: LanguageModelV4StreamPart[][] = [[finishPart("stop")]];
     const model = scriptedModel(turns, promptCapture);
-    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
     const { getFullOutput } = await stream("hi", {});
     const output = await getFullOutput();
 
     expect(output.text).toBe("");
-    expect(output.signal).toBe("done");
+  });
+
+  test("a degenerate tool-calling step with a non-tool-calls finish reason runs the backstop", async () => {
+    // The model emitted tool calls but finished with "stop" — terminate and run onBeforeFinish
+    // rather than silently breaking or looping forever.
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "narration" },
+        { type: "text-end", id: "t_1" },
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+
+    let sawFinish = false;
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: () => {
+        sawFinish = true;
+        return [];
+      },
+    });
+    const output = await getFullOutput();
+
+    expect(sawFinish).toBe(true);
+    expect(output.toolCalls.map((call) => call.toolName)).toEqual(["noop"]);
+    // Text alongside tool calls is narration, not the answer.
+    expect(output.text).toBe("");
   });
 
   test("passes the reasoning level through to the model as a call option", async () => {
@@ -452,99 +433,23 @@ describe("onBeforeNextCall hook", () => {
     });
   });
 
-  test("onBeforeFinish toolChoice override is used for the retry step", async () => {
+  test("the model call always uses auto tool choice", async () => {
     const argsCapture: Array<Record<string, unknown>> = [];
     const turns: LanguageModelV4StreamPart[][] = [
-      // Step 1: no tool call (simulates GPT-5.x leaking function call as text).
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "oops" },
+        { type: "text-delta", id: "t_1", delta: "done" },
         { type: "text-end", id: "t_1" },
         finishPart("stop"),
       ],
-      // Step 2: proper tool call on retry.
-      [{ type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" }, finishPart("tool-calls")],
     ];
     const model = scriptedModel(turns, [], argsCapture);
-    const stream = createAgentStream(model, "sys", { signal_done: signalDoneTool() }, noopRateLimiter);
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+    await stream("hi", {}).then(({ getFullOutput }) => getFullOutput());
 
-    let nudged = false;
-    await stream("hi", {
-      onBeforeFinish: () => {
-        if (nudged) return [];
-        nudged = true;
-        return {
-          messages: [{ role: "user", content: [{ type: "text", text: "<<call a signal tool>>" }] }],
-          toolChoice: "required",
-        };
-      },
-    }).then(({ getFullOutput }) => getFullOutput());
-
-    // Step 1 uses default "auto" toolChoice.
     expect(argsCapture[0]?.toolChoice).toEqual({ type: "auto" });
-    // Step 2 uses "required" toolChoice from the onBeforeFinish override.
-    expect(argsCapture[1]?.toolChoice).toEqual({ type: "required" });
-  });
-
-  test("toolChoice override survives a rate-limit retry of the same step", async () => {
-    // The retry step is served only after one retryable doStream failure; the override
-    // must persist across the rate-limit retry, not fall back to "auto".
-    const retryOnceLimiter: RateLimiter = { ...noopRateLimiter, onError: () => ({ shouldRetry: true, delayMs: 0 }) };
-    const argsCapture: Array<Record<string, unknown>> = [];
-    const step2 = [
-      { type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" },
-      finishPart("tool-calls"),
-    ] satisfies LanguageModelV4StreamPart[];
-    const step1 = [
-      { type: "text-start", id: "t_1" },
-      { type: "text-delta", id: "t_1", delta: "oops" },
-      { type: "text-end", id: "t_1" },
-      finishPart("stop"),
-    ] satisfies LanguageModelV4StreamPart[];
-
-    let call = 0;
-    const model = {
-      specificationVersion: "v3",
-      provider: "test",
-      modelId: "test-model",
-      supportedUrls: {},
-      async doStream(args: Record<string, unknown>) {
-        call += 1;
-        argsCapture.push(args);
-        if (call === 2) throw new Error("rate limited"); // first attempt of the required-retry step
-        const parts = call === 1 ? step1 : step2;
-        return {
-          stream: new ReadableStream<LanguageModelV4StreamPart>({
-            start(controller) {
-              for (const part of parts) controller.enqueue(part);
-              controller.close();
-            },
-          }),
-        };
-      },
-    } as unknown as LanguageModelV4;
-
-    let nudged = false;
-    await createAgentStream(
-      model,
-      "sys",
-      { signal_done: signalDoneTool() },
-      retryOnceLimiter,
-    )("hi", {
-      onBeforeFinish: () => {
-        if (nudged) return [];
-        nudged = true;
-        return {
-          messages: [{ role: "user", content: [{ type: "text", text: "<<signal>>" }] }],
-          toolChoice: "required",
-        };
-      },
-    }).then(({ getFullOutput }) => getFullOutput());
-
-    // call 1 = step 1 (auto); call 2 = required attempt that throws; call 3 = required retry that succeeds.
-    expect(argsCapture[0]?.toolChoice).toEqual({ type: "auto" });
-    expect(argsCapture[1]?.toolChoice).toEqual({ type: "required" });
-    expect(argsCapture[2]?.toolChoice).toEqual({ type: "required" });
+    expect(argsCapture[1]?.toolChoice).toEqual({ type: "auto" });
   });
 
   test("emits cache and reasoning token counts from the finish part", async () => {

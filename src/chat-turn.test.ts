@@ -206,14 +206,14 @@ describe("chat turn helpers", () => {
     expect(turn.assistantMessage.kind).toBe("tool_payload");
   });
 
-  test("runAssistantTurn does not mark a signal-only reply as tool_payload", async () => {
+  test("runAssistantTurn does not mark a text-only reply as tool_payload", async () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
           outputStreamed: false,
           output: "The answer is 42.",
-          toolCalls: ["signal_done"],
+          toolCalls: [],
         }),
         status: async () => ({}),
         taskStatus: async () => null,
@@ -234,14 +234,14 @@ describe("chat turn helpers", () => {
     expect(turn.assistantMessage.kind).toBeUndefined();
   });
 
-  test("runAssistantTurn keeps tool_payload when a real tool is mixed with a signal", async () => {
+  test("runAssistantTurn marks a reply with tool calls as tool_payload", async () => {
     const turn = await runAssistantTurn({
       client: {
         replyStream: async () => ({
           model: "gpt-5-mini",
           outputStreamed: false,
           output: "Reading the file.",
-          toolCalls: ["file-read", "signal_done"],
+          toolCalls: ["file-read"],
         }),
         status: async () => ({}),
         taskStatus: async () => null,
@@ -269,7 +269,7 @@ describe("chat turn helpers", () => {
           model: "gpt-5-mini",
           outputStreamed: false,
           output: "done",
-          toolCalls: ["file-read", "signal_done"],
+          toolCalls: ["file-read", "file-edit"],
           usage: { inputTokens: 52000, outputTokens: 586, totalTokens: 52586 },
         }),
         status: async () => ({}),

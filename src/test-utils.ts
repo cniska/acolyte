@@ -505,7 +505,7 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
       },
     })),
     phaseGenerate: mock(async (ctx: { result?: unknown }) => {
-      ctx.result = { text: "Generated output", textStreamed: true, toolCalls: [], signal: "done" };
+      ctx.result = { text: "Generated output", textStreamed: true, toolCalls: [] };
     }),
     phaseFinalize: mock(
       (ctx: { result?: { text: string } }): ChatResponse => ({

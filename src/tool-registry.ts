@@ -9,7 +9,6 @@ import { bindMcpTools, type McpToolListing } from "./mcp-client";
 import { createMemoryToolkit } from "./memory-toolkit";
 import { createSessionToolkit } from "./session-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
-import { createSignalToolkit } from "./signal-toolkit";
 import { createSkillToolkit } from "./skill-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
@@ -39,7 +38,6 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createGitToolkit> &
   ReturnType<typeof createChecklistToolkit> &
   ReturnType<typeof createSessionToolkit> &
-  ReturnType<typeof createSignalToolkit> &
   ReturnType<typeof createMemoryToolkit> &
   ReturnType<typeof createSkillToolkit> &
   ReturnType<typeof createUndoToolkit>;
@@ -69,10 +67,6 @@ export const TOOLKIT_REGISTRY: {
   {
     id: "session",
     createToolkit: (input) => createSessionToolkit(input),
-  },
-  {
-    id: "signal",
-    createToolkit: (input) => createSignalToolkit(input),
   },
   {
     id: "memory",

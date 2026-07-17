@@ -1,12 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  forcesToolChoice,
-  formatModel,
-  isProviderAvailable,
-  modelCreator,
-  normalizeModel,
-  providerFromModel,
-} from "./provider-config";
+import { formatModel, isProviderAvailable, normalizeModel, providerFromModel } from "./provider-config";
 
 describe("provider config", () => {
   test("normalizeModel prefixes unqualified model ids", () => {
@@ -42,31 +35,6 @@ describe("provider config", () => {
     expect(providerFromModel("vercel/anthropic/claude-sonnet-4")).toBe("vercel");
     expect(providerFromModel("xai/grok-4.1")).toBe("vercel");
     expect(providerFromModel("mistral/mistral-large")).toBe("vercel");
-  });
-
-  test("modelCreator sees through the Vercel gateway to the model family", () => {
-    expect(modelCreator("openai/gpt-5.2")).toBe("openai");
-    expect(modelCreator("vercel/openai/gpt-5.2")).toBe("openai");
-    expect(modelCreator("vercel/anthropic/claude-sonnet-4")).toBe("anthropic");
-    expect(modelCreator("gpt-5.2")).toBe("openai");
-    expect(modelCreator("claude-sonnet-4-6")).toBe("anthropic");
-    expect(modelCreator("google/gemini-2.5-pro")).toBe("google");
-    expect(modelCreator("xai/grok-4.1")).toBe("vercel");
-  });
-
-  test("forcesToolChoice forces the OpenAI/harmony family, native or gateway-routed", () => {
-    // Regression for the #303 gap: gateway-routed GPT classifies as "vercel" but must still
-    // be forced, or signal_done leaks as text and degenerates into garbage tokens.
-    expect(forcesToolChoice("vercel/openai/gpt-5.2")).toBe(true);
-    expect(forcesToolChoice("openai/gpt-5.2")).toBe(true);
-    expect(forcesToolChoice("gpt-5.2")).toBe(true);
-    // Gateway Anthropic must stay auto: forced choice becomes a prefill that 400s under thinking.
-    expect(forcesToolChoice("vercel/anthropic/claude-sonnet-4")).toBe(false);
-    expect(forcesToolChoice("claude-sonnet-4-6")).toBe(false);
-    expect(forcesToolChoice("google/gemini-2.5-pro")).toBe(false);
-    expect(forcesToolChoice("vercel/google/gemini-2.5-pro")).toBe(false);
-    // Gateway families Acolyte doesn't model first-class must not be force-decoded.
-    expect(forcesToolChoice("xai/grok-4.1")).toBe(false);
   });
 
   test("isProviderAvailable validates credential requirements", () => {

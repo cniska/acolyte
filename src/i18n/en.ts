@@ -204,11 +204,6 @@ export const EN_MESSAGES = {
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
   "lifecycle.completion.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
-  "lifecycle.completion.broken_handoff":
-    "The agent stopped while its last command was still failing (`{command}`, exit {exitCode}).",
-  "lifecycle.completion.missing_validation": "The agent finished without validating its changes to `{path}`.",
-  "lifecycle.completion.missing_signal":
-    "The agent finished without confirming completion. Retry or rephrase the request.",
   "lifecycle.stopped_unknown_errors":
     "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
   "rpc.status.accepted": "Accepted by server…",

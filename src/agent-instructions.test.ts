@@ -24,9 +24,6 @@ describe("createInstructions", () => {
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
       ["Questions about the codebase", "Search and read files immediately", "never ask"],
       ["Available skills are listed each turn", "skill-activate"],
-      ["signal_done"],
-      ["signal_noop"],
-      ["signal_blocked", "cannot obtain", "never for information findable in the workspace"],
     ]);
   });
 

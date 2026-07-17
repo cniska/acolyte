@@ -1,5 +1,4 @@
 import type { LanguageModelV4, LanguageModelV4Message, SharedV4ProviderOptions } from "@ai-sdk/provider";
-import { z } from "zod";
 import type { ReasoningLevel } from "./config-contract";
 import type { ToolDefinition } from "./tool-contract";
 
@@ -18,27 +17,9 @@ export type GenerateResult = {
    *  built outside the streamer (a host notice) was never streamed. */
   textStreamed?: boolean;
   toolCalls: ToolCallEntry[];
-  signal?: LifecycleSignal;
-  signalReason?: string;
+  /** The unified finish reason of the terminating model step, surfaced for trace observability. */
+  finishReason?: string;
 };
-
-const lifecycleSignalSchema = z.enum(["done", "noop", "blocked"]);
-export type LifecycleSignal = z.infer<typeof lifecycleSignalSchema>;
-
-export const lifecycleSignalToolNameSchema = z.enum(["signal_done", "signal_noop", "signal_blocked"]);
-export type LifecycleSignalToolName = z.infer<typeof lifecycleSignalToolNameSchema>;
-
-const signalToolToSignal: Record<LifecycleSignalToolName, LifecycleSignal> = {
-  signal_done: "done",
-  signal_noop: "noop",
-  signal_blocked: "blocked",
-};
-
-export function signalForToolName(toolName: string): LifecycleSignal | undefined {
-  const parsed = lifecycleSignalToolNameSchema.safeParse(toolName);
-  if (!parsed.success) return undefined;
-  return signalToolToSignal[parsed.data];
-}
 
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
@@ -76,12 +57,9 @@ export type Agent = {
   stream(prompt: string, options: StreamOptions): Promise<StreamOutput>;
 };
 
-export type OnBeforeFinishResult =
-  | LanguageModelV4Message[]
-  | { messages: LanguageModelV4Message[]; toolChoice?: "auto" | "required" | "none" };
+export type OnBeforeFinishResult = LanguageModelV4Message[];
 
 export type StreamOptions = {
-  toolChoice?: "auto" | "none" | "required";
   temperature?: number;
   reasoning?: ReasoningLevel;
   providerOptions?: SharedV4ProviderOptions;
@@ -91,7 +69,6 @@ export type StreamOptions = {
     messages: readonly LanguageModelV4Message[];
     text: string;
     answerText: string;
-    signal?: LifecycleSignal;
   }) => OnBeforeFinishResult;
 };
 

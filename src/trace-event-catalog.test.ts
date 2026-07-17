@@ -11,7 +11,7 @@ describe("trace event catalog", () => {
     expect(traceEventNameSchema.options).toContain("lifecycle.start");
     expect(isCatalogTraceEvent("lifecycle.start")).toBe(true);
     expect(traceEventDisplayFields("lifecycle.summary")).toContain("model_calls");
-    expect(traceEventDisplayFields("lifecycle.signal.rejected")).toContain("reason");
+    expect(traceEventDisplayFields("lifecycle.completion.rejected")).toContain("action");
   });
 
   test("validates known event fields and preserves additional scalar fields", () => {
