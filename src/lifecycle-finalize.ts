@@ -105,7 +105,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     duplicate_discovery_calls: duplicateDiscoveryCalls,
     lifecycle_signal: ctx.acceptedSignal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
-    active_skills: ctx.request.activeSkills?.map((s) => s.name) ?? null,
+    active_skills: ctx.session.activeSkills?.map((s) => s.name) ?? null,
     last_error_code: ctx.currentError?.code ?? null,
     last_error_category: ctx.currentError?.category ?? null,
     timeout_error_count: ctx.errorStats.timeout,
