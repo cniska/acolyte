@@ -4,7 +4,7 @@ import { invariant } from "./assert";
 import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { promptBreakdownSchema, tokenCountSchema, tokenUsageSchema } from "./session-contract";
-import { activeSkillsSchema } from "./skill-contract";
+import { activeSkillSchema, activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
@@ -60,6 +60,10 @@ const checklistEventSchema = z.object({
   groupTitle: z.string().min(1),
   items: z.array(checklistItemSchema),
 });
+const skillActivatedEventSchema = z.object({
+  type: z.literal("skill-activated"),
+  skill: activeSkillSchema,
+});
 const errorEventSchema = z.object({
   type: z.literal("error"),
   errorMessage: z.string(),
@@ -84,6 +88,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   streamUsageEventSchema,
   statusEventSchema,
   checklistEventSchema,
+  skillActivatedEventSchema,
   errorEventSchema,
   noticeEventSchema,
 ]);

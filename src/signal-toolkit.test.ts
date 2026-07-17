@@ -11,6 +11,7 @@ function toolkit() {
     session: createSessionContext("task_signal"),
     onOutput: noop,
     onChecklist: noop,
+    onSkillActivated: noop,
   });
 }
 
@@ -56,6 +57,7 @@ describe("signal tools", () => {
       session,
       onOutput: noop,
       onChecklist: noop,
+      onSkillActivated: noop,
     });
 
     const result = await tools.signalDone.execute({}, "call_done");

@@ -24,12 +24,15 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
 
 export type ChecklistListener = (event: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
 
+export type SkillActivatedListener = (skill: ActiveSkill) => void;
+
 export type ToolkitInput = {
   workspace: string;
   session: SessionContext;
   sessionId?: string;
   onOutput: ToolOutputListener;
   onChecklist: ChecklistListener;
+  onSkillActivated: SkillActivatedListener;
 };
 
 export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };

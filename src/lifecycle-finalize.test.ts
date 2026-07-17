@@ -348,6 +348,27 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
     expect(response.activeSkills).toBeUndefined();
   });
+
+  test("summary active_skills reflects the end-of-turn session set, not the request", () => {
+    const events: { event: string; fields?: Record<string, unknown> }[] = [];
+    const ctx = createRunContext({
+      request: {
+        model: "gpt-5-mini",
+        message: "test",
+        history: [],
+        activeSkills: [{ name: "build", instructions: "x" }],
+      },
+      result: { text: "Done.", toolCalls: [] },
+      debug: (event, fields) => events.push({ event, fields }),
+    });
+    ctx.session.activeSkills = [
+      { name: "build", instructions: "x" },
+      { name: "tdd", instructions: "y" },
+    ];
+    phaseFinalize(ctx);
+    const summary = events.find((e) => e.event === "lifecycle.summary");
+    expect(summary?.fields?.active_skills).toEqual(["build", "tdd"]);
+  });
 });
 
 describe("parseChatResponse activeSkills", () => {

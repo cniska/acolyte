@@ -14,7 +14,14 @@ import { createSkillToolkit } from "./skill-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
-import type { ChecklistListener, SessionContext, ToolCategory, ToolDefinition, ToolkitInput } from "./tool-contract";
+import type {
+  ChecklistListener,
+  SessionContext,
+  SkillActivatedListener,
+  ToolCategory,
+  ToolDefinition,
+  ToolkitInput,
+} from "./tool-contract";
 import type { ToolOutputListener } from "./tool-output-format";
 import { createSessionContext } from "./tool-session";
 import { createUndoToolkit } from "./undo-toolkit";
@@ -103,17 +110,22 @@ export const TOOLKIT_REGISTRY: {
 
 const noopOutput: ToolOutputListener = () => {};
 const noopChecklist: ChecklistListener = () => {};
+const noopSkillActivated: SkillActivatedListener = () => {};
 
 function collectTools(
   workspace: string,
   session: SessionContext,
   onOutput: ToolOutputListener = noopOutput,
   onChecklist: ChecklistListener = noopChecklist,
+  onSkillActivated: SkillActivatedListener = noopSkillActivated,
   sessionId?: string,
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
-    Object.assign(combined, toolkit.createToolkit({ workspace, session, sessionId, onOutput, onChecklist }));
+    Object.assign(
+      combined,
+      toolkit.createToolkit({ workspace, session, sessionId, onOutput, onChecklist, onSkillActivated }),
+    );
   }
   return combined;
 }
@@ -162,6 +174,7 @@ export function toolsForAgent(options?: {
   workspace?: string;
   onOutput?: ToolOutputListener;
   onChecklist?: ChecklistListener;
+  onSkillActivated?: SkillActivatedListener;
   taskId?: string;
   sessionId?: string;
   mcpListings?: McpToolListing[];
@@ -172,7 +185,14 @@ export function toolsForAgent(options?: {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
   session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
-  const base = collectTools(workspace, session, options?.onOutput, options?.onChecklist, options?.sessionId);
+  const base = collectTools(
+    workspace,
+    session,
+    options?.onOutput,
+    options?.onChecklist,
+    options?.onSkillActivated,
+    options?.sessionId,
+  );
   if (options?.mcpListings?.length) {
     const nativeIds = new Set(Object.keys(base));
     Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));

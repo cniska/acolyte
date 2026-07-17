@@ -22,6 +22,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     workspace: input.workspace,
     onOutput: input.onOutput,
     onChecklist: input.onChecklist,
+    onSkillActivated: input.onSkillActivated,
     taskId: input.taskId,
     sessionId: input.request.sessionId,
     mcpListings: input.mcpListings,

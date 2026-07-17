@@ -8,7 +8,7 @@ import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
-import type { ChecklistListener, SessionContext } from "./tool-contract";
+import type { ChecklistListener, SessionContext, SkillActivatedListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
 
@@ -69,6 +69,7 @@ export type PhasePrepareInput = {
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
   onChecklist: ChecklistListener;
+  onSkillActivated: SkillActivatedListener;
   mcpListings: McpToolListing[];
 };
 export type PhasePrepareResult = {
