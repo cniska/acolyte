@@ -70,9 +70,9 @@ Codex provides operating-system sandbox policies with writable-directory restric
 
 ## Observability
 
-Every lifecycle event emits structured debug logs describing tool calls, effect decisions, and task state transitions.
+Each request emits ordered, task-scoped events for task state, workspace resolution, lifecycle phases, tool calls and results, cache decisions, budget blocks, effects, memory commits, and its final summary.
 
-The `acolyte trace` command converts daemon logs into timelines:
+Events are written locally to logfmt and SQLite. The `acolyte trace` command queries SQLite to list recent tasks or render one task's compact tool timeline and summary:
 
 ```
 timestamp=... task_id=task_abc123 event=lifecycle.tool.call tool=file-edit path=src/foo.ts
@@ -81,7 +81,7 @@ timestamp=... task_id=task_abc123 event=lifecycle.eval.decision effect=lint acti
 timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 search=1 write=1
 ```
 
-Acolyte keeps the trace format local and queryable by task ID. This is separate from provider telemetry and does not require an external tracing service.
+`acolyte trace task <id> --verbose` includes tool output and cache events; `--json` returns raw event lines. The trace stays local and queryable by task ID, and Acolyte does not include a product telemetry client. This is separate from provider telemetry and external tracing services. See [Observability](./observability.md) for the full event model.
 
 ## Skills and extensibility
 
@@ -103,9 +103,9 @@ Goose offers a memory extension, Aider combines repository maps with chat restor
 
 How each agent manages the token window when context grows large.
 
-Acolyte budgets context **before assembly** using [tiktoken](https://github.com/openai/tiktoken): system prompt reservation, priority-based allocation, bounded tool payloads, and visible truncation notices.
+Acolyte budgets context **before assembly** and maintains a bounded running context window. It reserves known prompt costs, keeps recent conversation within the remaining budget, and caps tool results individually. When earlier conversation falls outside the window, the model receives an explicit gap notice and can retrieve it with `session-search`. Durable session, project, and user context remains available through on-demand `memory-search`, not upfront prompt injection.
 
-OpenCode and Mistral Vibe support compaction, Aider ranks repository-map context, and Plandex summarizes long-running conversations. Acolyte's distinction is that allocation happens before prompt assembly rather than only after the context window is under pressure.
+OpenCode and Mistral Vibe support compaction, Aider ranks repository-map context, and Plandex summarizes long-running conversations. Acolyte keeps its live window bounded and retrieves earlier or durable context on demand rather than compacting the conversation into a replacement summary. Each completed request also reports input, output, total, and prompt-breakdown token counts. See [Context Budgeting](./context-budgeting.md) for the runtime behavior.
 
 ## Code quality
 

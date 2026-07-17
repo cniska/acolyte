@@ -32,6 +32,10 @@ For `shell-run`, Acolyte executes argv (`cmd` + `args`) without shell evaluation
 
 No special temp-root exception exists in sandbox enforcement.
 
+## Execution policy
+
+Acolyte has no per-tool approval layer. Once a task begins, tools can work within the validated workspace boundary; attempts to cross it return structured sandbox errors.
+
 ## Sandbox violations
 
 Boundary violations are returned as structured tool errors:

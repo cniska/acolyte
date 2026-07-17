@@ -17,6 +17,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 - [Architecture](./architecture.md) — headless daemon with typed RPC connecting CLI, editors, and custom clients
 - [Workspace](./workspace.md) — workspace root resolution, sandboxing, and profile behavior
 - [Lifecycle](./lifecycle.md) — how each task flows through resolve, prepare, generate, and finalize
+- [Observability](./observability.md) — local task traces, structured events, and lifecycle summaries
 - [Errors](./errors.md) — error contracts and runtime classes
 
 ## Runtime
@@ -27,6 +28,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 - [Tasks](./tasks.md) — task lifecycle, queue policy, and state transitions
 - [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
 - [Cloud](./cloud.md) — portable agent identity via cloud-hosted memory and sessions
+- [Context budgeting](./context-budgeting.md) — per-call prompt planning, bounded payloads, and usage breakdowns
 
 ## Development
 
@@ -36,7 +38,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 ## Reference
 
 - [CLI](./cli.md) — commands for chat, run, server, memory, config, logs, and trace
-- [Configuration](./configuration.md) — settings for models, providers, memory, permissions, and runtime behavior
+- [Configuration](./configuration.md) — settings for models, providers, memory, and runtime behavior
 - [Protocol](./protocol.md) — transport-facing contract between client and server
 - [Localization](./localization.md) — translatable copy separated from protocol contracts
 - [Updates](./updates.md) — versioning, auto-update, and breaking change policy
