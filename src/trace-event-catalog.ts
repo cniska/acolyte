@@ -40,7 +40,7 @@ export const traceEventNameSchema = z.enum([
   "lifecycle.effect.install",
   "lifecycle.eval.decision",
   "lifecycle.eval.skipped",
-  "lifecycle.reminders.injected",
+  "lifecycle.budget_notice.injected",
   "lifecycle.memory.commit_scheduled",
   "lifecycle.memory.commit_done",
   "lifecycle.memory.commit_failed",
@@ -129,7 +129,7 @@ export const TRACE_EVENT_CATALOG: Record<TraceEventName, TraceEventDefinition> =
   "lifecycle.effect.install": defineEvent(["package_manager", "command", "status"]),
   "lifecycle.eval.decision": defineEvent(["effect", "action"]),
   "lifecycle.eval.skipped": defineEvent(["reason"]),
-  "lifecycle.reminders.injected": defineEvent(["count", "tags"]),
+  "lifecycle.budget_notice.injected": defineEvent(["count", "limit"]),
   "lifecycle.memory.commit_scheduled": defineEvent(["queue_key", "session_id", "message_count", "output_chars"]),
   "lifecycle.memory.commit_done": defineEvent([
     "queue_key",

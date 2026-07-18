@@ -1,11 +1,10 @@
-import { MAX_TOTAL_STEPS, MAX_TURN_STEPS, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
+import { MAX_TOOL_CALLS_PER_REQUEST, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { SessionContext, ToolCallRecord, ToolCallStatus } from "./tool-contract";
 
 export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
   return {
     callLog: [],
     taskId,
-    flags: {},
     writeTools,
     toolTimeoutMs: TOOL_TIMEOUT_MS,
   };
@@ -17,24 +16,11 @@ export function scopedCallLog(session: Pick<SessionContext, "callLog" | "taskId"
   return session.callLog.filter((entry) => entry.taskId === id);
 }
 
-export function resetTurnStepCount(session: SessionContext, limit?: number): void {
-  session.flags.turnStepCount = 0;
-  if (limit !== undefined) session.flags.turnStepLimit = limit;
-}
-
 export function checkStepBudget(session: SessionContext): string | undefined {
-  const turnLimit = session.flags.turnStepLimit ?? MAX_TURN_STEPS;
-  const turnCount = session.flags.turnStepCount ?? 0;
-  const totalLimit = session.flags.totalStepLimit ?? MAX_TOTAL_STEPS;
-  const totalCount = session.callLog.length;
-
-  if (totalCount >= totalLimit) {
-    return `Total step budget exhausted (${totalLimit} tool calls). Commit what you have.`;
+  const limit = session.maxToolCallsPerRequest ?? MAX_TOOL_CALLS_PER_REQUEST;
+  if (session.callLog.length >= limit) {
+    return `Request tool-call limit reached (${limit}).`;
   }
-  if (turnCount >= turnLimit) {
-    return `Turn step budget exhausted (${turnLimit} tool calls). Wrap up current phase.`;
-  }
-  session.flags.turnStepCount = turnCount + 1;
   return undefined;
 }
 

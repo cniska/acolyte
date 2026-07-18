@@ -1,6 +1,6 @@
 import type { LanguageModelV4FinishReason, LanguageModelV4Message } from "@ai-sdk/provider";
 import { z } from "zod";
-import { wrapInSystemReminder } from "./agent-reminders-render";
+import { wrapInSystemReminder } from "./agent-reminders";
 import { unreachable } from "./assert";
 
 type UnifiedFinishReason = LanguageModelV4FinishReason["unified"];

@@ -54,7 +54,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
-| Step Budget | Per-turn and total tool-call limit inlined into tool execution to prevent runaway loops |
+| Step Budget | Per-turn tool-call limit inlined into tool execution to prevent runaway loops |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
 | TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |

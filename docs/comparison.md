@@ -52,7 +52,7 @@ resolve → prepare → generate → finalize
 - **generate**: run the model with tool calls, effects apply per-tool-result
 - **finalize**: accept the terminal step, persist results, emit the response
 
-The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces per-turn and total tool-call limits to prevent runaway loops.
+The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces one per-turn tool-call limit to prevent runaway loops.
 
 The distinction is not that other agents lack a loop. Acolyte makes its lifecycle phases, native completion, and post-tool effects explicit contracts with independent tests.
 

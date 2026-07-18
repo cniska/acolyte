@@ -209,9 +209,10 @@ function attachToolOutputHandler(ctx: RunContext) {
 
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
-  let policy = deps.createLifecyclePolicy(input.lifecyclePolicy);
 
   await ensureRealTokenEncoder();
+
+  let policy = deps.createLifecyclePolicy(input.lifecyclePolicy);
 
   const profile = resolveWorkspaceProfile(input.workspace);
   if (profile.installCommand || profile.formatCommand || profile.lintCommand) {
@@ -287,12 +288,11 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   });
   ctxRef = ctx;
   attachToolOutputHandler(ctx);
-  ctx.session.flags.totalStepLimit = policy.totalMaxSteps;
+  ctx.session.maxToolCallsPerRequest = policy.maxToolCallsPerRequest;
   if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 
   ctx.debug("lifecycle.start", { task_id: input.taskId ?? null, model });
   await deps.phaseGenerate(ctx, {
-    turnLimit: policy.turnMaxSteps,
     timeoutMs: policy.stepTimeoutMs,
   });
 
