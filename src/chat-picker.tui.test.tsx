@@ -47,6 +47,79 @@ describe("chat picker visual regression", () => {
     );
   });
 
+  test("clips skill label and description to terminal width", () => {
+    const out = renderInputPanelWithPicker(
+      {
+        kind: "skills",
+        items: [
+          {
+            name: "improve-codebase-architecture",
+            description: "Find deepening opportunities in a codebase, informed by domain language and ADRs",
+            path: "bundled://improve",
+            source: "bundled" as const,
+          },
+          {
+            name: "build",
+            description: "Implement features incrementally through vertical slices",
+            path: "bundled://build",
+            source: "bundled" as const,
+          },
+        ],
+        index: 0,
+      },
+      40,
+    );
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────
+      Skills
+
+      › improve-codebase-ar… Find deepening o…
+        build                Implement featur…
+
+      Enter to select · Esc to close
+      ────────────────────────────────────────
+    `),
+    );
+  });
+
+  test("clips resume title but keeps the timestamp at narrow width", () => {
+    const realNow = Date.now;
+    Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
+    try {
+      const out = renderInputPanelWithPicker(
+        {
+          kind: "resume",
+          items: [
+            createSession({
+              id: "sess_active",
+              title: "A very long session title that needs clipping at narrow widths for sure",
+              updatedAt: "2026-03-02T00:00:00.000Z",
+            }),
+            createSession({ id: "sess_prev", title: "Short", updatedAt: "2026-03-02T00:00:00.000Z" }),
+          ],
+          index: 1,
+          scrollOffset: 0,
+        },
+        40,
+      );
+      expect(out).toBe(
+        dedent(`
+        ────────────────────────────────────────
+        Resume Session
+
+          ● sess_active  A very long …  just now
+        ›   sess_prev    Short          just now
+
+        Enter to resume · Esc to close
+        ────────────────────────────────────────
+      `),
+      );
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
   test("renders resume picker", () => {
     const realNow = Date.now;
     Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();

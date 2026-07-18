@@ -160,7 +160,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           <Text>{pickerLabel(picker)}</Text>
         )}
         <Text> </Text>
-        {renderPickerItems(picker, activeSessionId, brandColor)}
+        {renderPickerItems(picker, activeSessionId, brandColor, termWidth)}
         <Text> </Text>
         <Text dimColor>{pickerHint(picker)}</Text>
         <Text color={brandColor} dimColor>
