@@ -15,7 +15,7 @@ CLI → daemon (RPC) → lifecycle → model + tools
 
 | Subsystem | Key concepts | Docs |
 |-----------|-------------|------|
-| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends with `signal_done`, `signal_noop`, or `signal_blocked` | `docs/lifecycle.md` |
+| Lifecycle | Single-pass: resolve → prepare → generate → finalize. Effects apply per-tool-result. Model ends the turn with a native `end_turn` (a step with no tool calls); that step's text is the final response | `docs/lifecycle.md` |
 | Tools | `runTool`: budget → cache → toolkit → registry. Toolkits cover file, code, undo, session, signal, memory, skill, test, checklist, gh, git, web, and shell | `docs/tooling.md` |
 | Sessions | Persistent conversation context, history, model selection, and token usage | `docs/sessions.md` |
 | Tasks | State machine: accepted → queued → running → completed\|failed\|cancelled | `docs/tasks.md` |
