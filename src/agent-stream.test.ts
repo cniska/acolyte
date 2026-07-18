@@ -298,6 +298,38 @@ describe("onBeforeNextCall hook", () => {
     expect(output.text).toBe("Validated answer.");
   });
 
+  test("an empty-answer reopen does not seed the retry call with an empty text block", async () => {
+    // Providers (Anthropic) reject empty text content blocks. The empty-answer backstop reopens
+    // on a blank no-tool-call step, so it must not push that blank stepText — otherwise the sole
+    // completion backstop 400s on the retry instead of nudging the model to answer.
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [finishPart("stop")],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Validated answer." },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    let rejected = false;
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: () => {
+        if (rejected) return [];
+        rejected = true;
+        return [{ role: "user", content: [{ type: "text", text: "<<finish-rejected>>" }] }];
+      },
+    });
+    const output = await getFullOutput();
+
+    expect(output.text).toBe("Validated answer.");
+    expect(promptCapture.length).toBe(2);
+    expect(JSON.stringify(promptCapture[1])).not.toContain('"text":""');
+  });
+
   test("a turn with tool work terminates via the no-tool-call step", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const turns: LanguageModelV4StreamPart[][] = [

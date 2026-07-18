@@ -231,7 +231,9 @@ export function createAgentStream(
           if (extras.length > 0) {
             // On a no-tool-call step the assistant text has not been pushed yet; push it so the
             // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
-            if (pendingToolCalls.length === 0) {
+            // An empty-answer reopen has blank stepText; skip the empty text block (providers
+            // reject it) so the sole completion backstop can actually retry.
+            if (pendingToolCalls.length === 0 && stepText.length > 0) {
               messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             }
             for (const msg of extras) messages.push(msg);
