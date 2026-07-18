@@ -182,24 +182,24 @@ describe("collectReminders", () => {
 
 describe("turnsSinceLastReminder", () => {
   test("returns Infinity when no matching reminder exists", () => {
-    expect(turnsSinceLastReminder([], "stuck-loop")).toBe(Number.POSITIVE_INFINITY);
+    expect(turnsSinceLastReminder([], "budget-pressure-80")).toBe(Number.POSITIVE_INFINITY);
   });
 
   test("counts assistant turns since a matching reminder", () => {
     const messages: LanguageModelV4Message[] = [
-      userReminderMessage("stuck-loop"),
+      userReminderMessage("budget-pressure-80"),
       { role: "assistant", content: [{ type: "text", text: "a" }] },
       { role: "assistant", content: [{ type: "text", text: "b" }] },
     ];
-    expect(turnsSinceLastReminder(messages, "stuck-loop")).toBe(2);
+    expect(turnsSinceLastReminder(messages, "budget-pressure-80")).toBe(2);
   });
 
   test("ignores reminders of a different type", () => {
     const messages: LanguageModelV4Message[] = [
-      userReminderMessage("budget-pressure"),
+      userReminderMessage("budget-pressure-80"),
       { role: "assistant", content: [{ type: "text", text: "a" }] },
     ];
-    expect(turnsSinceLastReminder(messages, "stuck-loop")).toBe(Number.POSITIVE_INFINITY);
+    expect(turnsSinceLastReminder(messages, "budget-pressure-90")).toBe(Number.POSITIVE_INFINITY);
   });
 });
 
