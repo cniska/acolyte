@@ -556,7 +556,7 @@ describe("phaseGenerate", () => {
     );
     expect(ctx.currentError?.message).not.toContain("you ended your turn");
     expect(debugEvents.filter((e) => e.event === "lifecycle.completion.rejected").map((e) => e.fields?.action)).toEqual(
-      ["continue", "block"],
+      ["reopen", "error"],
     );
   });
 

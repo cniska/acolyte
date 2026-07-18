@@ -1,4 +1,9 @@
-import type { LanguageModelV4, LanguageModelV4Message, SharedV4ProviderOptions } from "@ai-sdk/provider";
+import type {
+  LanguageModelV4,
+  LanguageModelV4FinishReason,
+  LanguageModelV4Message,
+  SharedV4ProviderOptions,
+} from "@ai-sdk/provider";
 import type { ReasoningLevel } from "./config-contract";
 import type { ToolDefinition } from "./tool-contract";
 
@@ -18,7 +23,7 @@ export type GenerateResult = {
   textStreamed?: boolean;
   toolCalls: ToolCallEntry[];
   /** The unified finish reason of the terminating model step, surfaced for trace observability. */
-  finishReason?: string;
+  finishReason?: LanguageModelV4FinishReason["unified"];
 };
 
 export type TextDeltaPayload = { text?: string };
@@ -69,6 +74,7 @@ export type StreamOptions = {
     messages: readonly LanguageModelV4Message[];
     text: string;
     answerText: string;
+    finishReason?: LanguageModelV4FinishReason["unified"];
   }) => OnBeforeFinishResult;
 };
 

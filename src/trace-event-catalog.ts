@@ -121,7 +121,7 @@ export const TRACE_EVENT_CATALOG: Record<TraceEventName, TraceEventDefinition> =
   "lifecycle.tool.output": defineEvent(["tool"]),
   "lifecycle.tool.hook_failed": defineEvent(["tool", "hook", "error"]),
   "lifecycle.budget": defineEvent(["tool", "action", "detail"]),
-  "lifecycle.completion.rejected": defineEvent(["action"]),
+  "lifecycle.completion.rejected": defineEvent(["action", "reason"]),
   "lifecycle.skill.context": defineEvent(["skill_name", "instruction_chars"]),
   "lifecycle.effect.format": defineEvent(["files"]),
   "lifecycle.effect.lint": defineEvent(["files"]),

@@ -50,6 +50,10 @@ export function createAgentStream(
 
     // No "commit on stop" rule, so a nudge/rejection continue can never lose the answer.
     let answerText = "";
+    // Segments carried across `length` (truncation) reopens: the answer was cut off mid-output,
+    // so each continuation appends rather than replaces. Never reset — an earlier truncated
+    // segment stays part of the answer even if a later reopen is for a different reason.
+    let truncatedPrefix = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
@@ -140,8 +144,8 @@ export function createAgentStream(
 
         const stepText = stepTextParts.join("");
         // Text alongside tool calls is narration, not the final response. Only a pure
-        // no-tool-call step carries the answer.
-        if (stepText.trim().length > 0 && pendingToolCalls.length === 0) answerText = stepText;
+        // no-tool-call step carries the answer; prepend any prefix carried from a truncation.
+        if (pendingToolCalls.length === 0) answerText = truncatedPrefix + stepText;
 
         if (pendingToolCalls.length > 0) {
           const assistantContent: Array<
@@ -227,15 +231,20 @@ export function createAgentStream(
           pendingToolCalls.length === 0 || (finishReason !== undefined && finishReason.unified !== "tool-calls");
 
         if (isTerminalStep) {
-          const extras = options.onBeforeFinish?.({ messages, text: stepText, answerText }) ?? [];
+          const extras =
+            options.onBeforeFinish?.({ messages, text: stepText, answerText, finishReason: finishReason?.unified }) ??
+            [];
           if (extras.length > 0) {
             // On a no-tool-call step the assistant text has not been pushed yet; push it so the
             // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
             // An empty-answer reopen has blank stepText; skip the empty text block (providers
-            // reject it) so the sole completion backstop can actually retry.
+            // reject it) so the completion backstop can actually retry.
             if (pendingToolCalls.length === 0 && stepText.length > 0) {
               messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             }
+            // A truncated no-tool-call step is a fragment of the answer; carry it so the
+            // continuation appends to it rather than the assembled answer losing the prefix.
+            if (pendingToolCalls.length === 0 && finishReason?.unified === "length") truncatedPrefix += stepText;
             for (const msg of extras) messages.push(msg);
             continue;
           }

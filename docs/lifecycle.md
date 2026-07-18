@@ -13,14 +13,15 @@ resolve → prepare → generate → finalize
 - **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
 - **finalize**: accept the terminal step, emit final response and summary events
 
-## Generation loop feedback
+## Terminal-step classification
 
-Generation owns one model/tool loop. Effects apply inline during tool execution. Before the model is allowed to finalize, lifecycle feedback may inject one extra user message when hard evidence contradicts completion:
+The model completes by emitting a no-tool-call step whose text is the final response. Before finalizing, `lifecycle-completion.ts` classifies that step by its provider `finishReason` and answer text:
 
-- unresolved tool errors are sent back once so the model can inspect evidence and retry instead of falsely finalizing
-- missing post-write validation is sent back once so the model can run focused validation or explicitly block
+- **accept** — a normal finish (`stop`, or any unrecognized reason) with text: finalize.
+- **incomplete** — the turn never finished: blank text (`empty-answer`) or a `length` cutoff (`truncated`). Reopen once with a model-facing nudge; each reason gets its own single reopen, and a second occurrence errors.
+- **failed** — retrying cannot help: `content-filter` or a provider `error`. Error immediately.
 
-If the model still cannot recover, finalize returns the unresolved error on `error`, which the client renders as an error row.
+`length` is classified before the blank check, since a length cutoff can leave the text empty when the token budget went to reasoning. A truncated continuation appends to the prior fragment so the assembled answer is whole. On any error verdict the host synthesizes the user-facing message (the model's last step cannot be the answer) and still surfaces any partial text alongside the error row.
 
 ## Effects
 

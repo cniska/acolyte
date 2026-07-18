@@ -203,7 +203,11 @@ export const EN_MESSAGES = {
   "error.prompt.request_failed": "Request failed. Retry and check server logs if it keeps failing.",
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
-  "lifecycle.completion.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
+  "lifecycle.finish.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
+  "lifecycle.finish.truncated":
+    "The response hit the output-token limit and was cut off. Raise the limit or ask for less.",
+  "lifecycle.finish.content_filter": "The response was stopped by a content filter.",
+  "lifecycle.finish.provider_error": "The response ended with a provider error. Try again.",
   "lifecycle.stopped_unknown_errors":
     "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
   "rpc.status.accepted": "Accepted by server…",
