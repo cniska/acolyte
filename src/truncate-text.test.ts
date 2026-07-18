@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { truncateMiddle, truncateText, truncateToWidth } from "./truncate-text";
+import { truncateMiddle, truncateMiddleToWidth, truncateText, truncateToWidth } from "./truncate-text";
 
 describe("truncateText", () => {
   test("returns input unchanged when within limit", () => {
@@ -110,5 +110,39 @@ describe("truncateToWidth", () => {
 
   test("handles empty string", () => {
     expect(truncateToWidth("", 10)).toBe("");
+  });
+});
+
+describe("truncateMiddleToWidth", () => {
+  test("returns input unchanged when within width", () => {
+    expect(truncateMiddleToWidth("module.ts", 20)).toBe("module.ts");
+  });
+
+  test("keeps head and tail around a single ellipsis", () => {
+    const out = truncateMiddleToWidth("abcdefghij", 7);
+    expect(out).toBe("abc…hij");
+    expect(Bun.stringWidth(out)).toBe(7);
+  });
+
+  test("favors the tail so trailing filenames survive", () => {
+    const out = truncateMiddleToWidth("bun test src/really/long/path/module.test.ts", 40);
+    expect(out).toContain("…");
+    expect(out.endsWith("module.test.ts")).toBe(true);
+    expect(Bun.stringWidth(out)).toBeLessThanOrEqual(40);
+  });
+
+  test("degrades to a bare ellipsis at width 1", () => {
+    expect(truncateMiddleToWidth("abc", 1)).toBe("…");
+  });
+
+  test("returns empty string for non-positive width", () => {
+    expect(truncateMiddleToWidth("abc", 0)).toBe("");
+  });
+
+  test("counts wide (CJK) characters by display width near the joint", () => {
+    const out = truncateMiddleToWidth("一二三四五六", 7);
+    expect(Bun.stringWidth(out)).toBeLessThanOrEqual(7);
+    expect(out).not.toContain("�");
+    expect(out).toContain("…");
   });
 });

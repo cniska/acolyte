@@ -1,122 +1,22 @@
-import { t, tDynamic } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { truncateToWidth } from "./truncate-text";
+import { fitLine, inlineSegments, type LayoutLine, layoutToolOutput, resolveHeader } from "./tool-output-layout";
 
-export type ResolvedHeader = { label: string; detail?: string; meta?: Record<string, unknown> };
-
-export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
-  switch (content.kind) {
-    case "tool-header": {
-      const label = tDynamic(content.labelKey);
-      const detail = content.detail && content.detail !== "." ? content.detail : undefined;
-      return { label, detail };
-    }
-    case "file-header": {
-      const label = tDynamic(content.labelKey);
-      const detail =
-        content.count === 1 && content.targets.length === 1
-          ? content.targets[0]
-          : t("unit.file", { count: content.count });
-      return { label, detail };
-    }
-    case "scope-header": {
-      const label = tDynamic(content.labelKey);
-      const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
-      const detail =
-        content.patterns.length === 1
-          ? `${content.patterns[0]}${scopeSuffix}`
-          : `${t("unit.pattern", { count: content.patterns.length })}${scopeSuffix}`;
-      return { label, detail };
-    }
-    case "edit-header": {
-      const label = tDynamic(content.labelKey);
-      const path = content.path === "." ? undefined : content.path;
-      return { label, detail: path, meta: { added: content.added, removed: content.removed } };
-    }
-    default:
-      return null;
-  }
+function serializeLine(line: LayoutLine, width?: number): string {
+  const fitted = fitLine(line, width);
+  return " ".repeat(fitted.indent) + fitted.segments.map((segment) => segment.text).join("");
 }
 
-function formatMeta(meta: Record<string, unknown>): string {
-  if ("added" in meta && "removed" in meta) return `(+${meta.added} -${meta.removed})`;
-  return "";
-}
-
-function formatHeader(header: ResolvedHeader): string {
-  const parts = [header.label];
-  if (header.detail) parts.push(header.detail);
-  if (header.meta) parts.push(formatMeta(header.meta));
-  return parts.join(" ");
-}
-
-const TRUNCATED_UNIT_KEYS: Record<string, string> = {
-  lines: "unit.line",
-  matches: "unit.match",
-  files: "unit.file",
-};
-
-function formatTruncated(count: number | undefined, unit: string | undefined): string {
-  if (!count) return "…";
-  const text = tDynamic(TRUNCATED_UNIT_KEYS[unit ?? ""] ?? "unit.more", { count });
-  return `… +${text}`;
-}
-
-function renderPart(content: ToolOutputPart): string {
-  const header = resolveHeader(content);
-  if (header) return formatHeader(header);
-
-  switch (content.kind) {
-    case "text":
-      return content.text;
-    case "diff":
-      return `${content.lineNumber} ${content.marker === "add" ? "+" : content.marker === "remove" ? "-" : " "}${content.text}`;
-    case "shell-output":
-      return `${content.stream === "stdout" ? "out" : "err"} | ${content.text}`;
-    case "no-output":
-      return t("tool.content.no_output");
-    case "truncated":
-      return formatTruncated(content.count, content.unit);
-    default:
-      return "";
-  }
-}
-
-function renderDiffLine(item: Extract<ToolOutputPart, { kind: "diff" }>, numWidth: number): string {
-  const num = String(item.lineNumber).padStart(numWidth);
-  const prefix = item.marker === "add" ? "+" : item.marker === "remove" ? "-" : " ";
-  return `${num} ${prefix}${item.text}`;
-}
-
-function renderList(items: ToolOutputPart[], width?: number): string {
-  const first = items[0];
-  if (!first) return "";
-  const header = renderPart(first);
-  const body = items.slice(1);
-  if (body.length === 0) return header;
-  const numWidth = body.reduce(
-    (max, item) => (item.kind === "diff" ? Math.max(max, String(item.lineNumber).length) : max),
-    0,
-  );
-  const hasFileHeaders = numWidth > 0 && body.some((item) => item.kind === "text");
-  const diffIndent = hasFileHeaders ? "  " : "";
-  const lines = body.map((item) => {
-    if (item.kind === "diff") return `${diffIndent}${renderDiffLine(item, numWidth)}`;
-    if (item.kind === "truncated" && numWidth > 0) {
-      const suffix = renderPart(item).slice(2);
-      return suffix ? `${diffIndent}${"⋮".padStart(numWidth)} ${suffix}` : `${diffIndent}${"⋮".padStart(numWidth)}`;
-    }
-    return renderPart(item);
-  });
-  // Truncate each assembled body line (indent + gutter + content) at the display width so
-  // preview lines never wrap; the gutter sits at line start, so alignment is preserved.
-  // The header is left intact (long paths want middle-truncation, a separate concern).
-  const bodyLines = lines.map((line) => (width === undefined ? `  ${line}` : truncateToWidth(`  ${line}`, width)));
-  return `${header}\n${bodyLines.join("\n")}`;
+function serializePart(part: ToolOutputPart): string {
+  return inlineSegments(part)
+    .map((segment) => segment.text)
+    .join("");
 }
 
 export function renderToolOutput(content: ToolOutputPart | ToolOutputPart[], width?: number): string {
-  return Array.isArray(content) ? renderList(content, width) : renderPart(content);
+  if (!Array.isArray(content)) return serializePart(content);
+  return layoutToolOutput(content)
+    .map((line) => serializeLine(line, width))
+    .join("\n");
 }
 
 export type ToolOutputUpdate = {
@@ -134,7 +34,7 @@ export function createToolOutputState(): {
   return {
     push(entry) {
       const items = contentByCallId.get(entry.toolCallId) ?? [];
-      const incoming = renderPart(entry.content);
+      const incoming = serializePart(entry.content);
       if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
       lastRenderedByCallId.set(entry.toolCallId, incoming);
       items.push(entry.content);

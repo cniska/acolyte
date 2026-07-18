@@ -2,7 +2,6 @@ import { z } from "zod";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { emitParts, webSearchSummaryParts } from "./tool-output-format";
-import { truncateText } from "./truncate-text";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -31,7 +30,7 @@ function createWebSearchTool(input: ToolkitInput) {
           content: {
             kind: "tool-header",
             labelKey: "tool.label.web_search",
-            detail: `"${truncateText(toolInput.query)}"`,
+            detail: `"${toolInput.query}"`,
           },
           toolCallId: callId,
         });

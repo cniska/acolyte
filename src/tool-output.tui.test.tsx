@@ -14,12 +14,12 @@ function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
 
 /**
  * One case, two expected strings. The CLI (`renderToolOutput`) and chat
- * (`ChatTranscript`) blocks are intentionally different renderers of the same
- * `ToolOutputPart[]` — the CLI is markerless with `out |`/`err |` stream
- * prefixes, chat prepends a `• ` marker and re-implements the gutter math. This
- * shared table drives both from one input so a case can never be present in one
- * block and silently missing from the other; a new case that omits `cli` or
- * `chat` is a type error, not a coverage gap.
+ * (`ChatTranscript`) blocks are two serializers over the same shared layout
+ * (`tool-output-layout.ts`); they diverge only where intended — the CLI is
+ * markerless and keeps `out |`/`err |` stream prefixes, chat prepends a `• `
+ * marker and colors the diff band. This shared table drives both from one input
+ * so a case can never be present in one block and silently missing from the
+ * other; a new case that omits `cli` or `chat` is a type error, not a gap.
  */
 interface ToolCase {
   name: string;
@@ -135,9 +135,9 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-         9  const x = 1;
-        10 -const y = 2;
-        10 +const y = 3;
+          9  const x = 1;
+         10 -const y = 2;
+         10 +const y = 3;
     `),
     chat: dedent(`
       • Edit notes.ts (+1 -1)
@@ -158,11 +158,11 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-         1  const a = 1;
-         ⋮
-        10 -const y = 2;
-        10 +const y = 3;
-        11  const b = 4;
+          1  const a = 1;
+          ⋮
+         10 -const y = 2;
+         10 +const y = 3;
+         11  const b = 4;
     `),
     chat: dedent(`
       • Edit notes.ts (+1 -1)
@@ -171,6 +171,27 @@ const CASES: ToolCase[] = [
            10 -const y = 2;
            10 +const y = 3;
            11  const b = 4;
+    `),
+  },
+  {
+    name: "diff gap with a line count shows the count beside the ellipsis",
+    parts: [
+      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 1 },
+      { kind: "diff", lineNumber: 1, marker: "context", text: "const a = 1;" },
+      { kind: "truncated", count: 3, unit: "lines" },
+      { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
+    ],
+    cli: dedent(`
+      Edit notes.ts (+1 -1)
+          1  const a = 1;
+          ⋮  +3 lines
+         10 +const y = 3;
+    `),
+    chat: dedent(`
+      • Edit notes.ts (+1 -1)
+            1  const a = 1;
+            ⋮  +3 lines
+           10 +const y = 3;
     `),
   },
   {
@@ -187,11 +208,11 @@ const CASES: ToolCase[] = [
     cli: dedent(`
       Edit 14 files (+28 -28)
         src/short-id.ts (+1 -1)
-          2 -export function generateId(size = 8): string {
-          2 +export function generateId(size = 8): string {
+           2 -export function generateId(size = 8): string {
+           2 +export function generateId(size = 8): string {
         src/chat-contract.ts (+2 -2)
-          4 -import { generateId } from "./short-id";
-          4 +import { generateId } from "./short-id";
+           4 -import { generateId } from "./short-id";
+           4 +import { generateId } from "./short-id";
     `),
     chat: dedent(`
       • Edit 14 files (+28 -28)
@@ -212,8 +233,8 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-        2 -old
-        2 +new
+         2 -old
+         2 +new
     `),
     chat: dedent(`
       • Edit notes.ts (+1 -1)
@@ -540,15 +561,29 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
     expect(renderToolOutput([])).toBe("");
   });
 
-  test("truncates a long body line to the given width, leaving the header intact", () => {
+  test("truncates a long body line to the given width", () => {
     const items: ToolOutputPart[] = [
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
-    const [header, body] = renderToolOutput(items, 20).split("\n");
-    expect(header).toBe("Edit notes.ts (+1 -0)"); // header is never truncated
-    expect(body).toBe(`  1 +${"X".repeat(14)}…`);
+    const [, body] = renderToolOutput(items, 20).split("\n");
+    expect(body).toBe(`   1 +${"X".repeat(13)}…`);
     expect(Bun.stringWidth(body)).toBe(20);
+  });
+
+  test("middle-truncates a long header at width, keeping the tail filename (F8)", () => {
+    const items: ToolOutputPart[] = [
+      {
+        kind: "tool-header",
+        labelKey: "tool.label.shell_run",
+        detail: "bun test src/some/really/long/path/module.test.ts",
+      },
+    ];
+    const [header] = renderToolOutput(items, 40).split("\n");
+    expect(header.startsWith("Run ")).toBe(true);
+    expect(header.endsWith("module.test.ts")).toBe(true);
+    expect(header).toContain("…");
+    expect(Bun.stringWidth(header)).toBeLessThanOrEqual(40);
   });
 
   test("omitting the width leaves long lines unwrapped (default path unchanged)", () => {
@@ -556,7 +591,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
-    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n  1 +${"X".repeat(60)}`);
+    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n   1 +${"X".repeat(60)}`);
   });
 });
 
