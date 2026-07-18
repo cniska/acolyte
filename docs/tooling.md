@@ -20,7 +20,6 @@ lifecycle → budget → cache → toolkit → registry
 | `code` | AST-aware code scanning and editing |
 | `undo` | Revert file edits |
 | `session` | Search current session history |
-| `signal` | Complete lifecycle turns |
 | `memory` | Persistent cross-session knowledge |
 | `skill` | Skill activation |
 | `test` | Run workspace tests |
