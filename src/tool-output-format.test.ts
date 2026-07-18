@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resultChunkParts, textHeadTailParts, toolLabelKey } from "./tool-output-format";
+import { resultChunkParts, textHeadTailParts, toolLabelKey, webSearchSummaryParts } from "./tool-output-format";
 import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryStats } from "./tool-output-parse";
 
 describe("textHeadTailParts", () => {
@@ -45,6 +45,28 @@ describe("resultChunkParts", () => {
     // 3 text + 1 truncated
     expect(parts).toHaveLength(4);
     expect(parts[3]).toEqual({ kind: "truncated", count: 7, unit: "lines" });
+  });
+});
+
+describe("webSearchSummaryParts", () => {
+  test("summarizes a single result as a localized count", () => {
+    const raw = ["1. Bun runtime docs", "   https://bun.sh/docs", "   Fast all-in-one JavaScript runtime."].join("\n");
+    expect(webSearchSummaryParts(raw)).toEqual([{ kind: "text", text: "1 result" }]);
+  });
+
+  test("summarizes no results as a zero count", () => {
+    expect(webSearchSummaryParts("No web results found for: missing query")).toEqual([
+      { kind: "text", text: "0 results" },
+    ]);
+  });
+
+  test("counts every result regardless of how many exist", () => {
+    const raw = Array.from({ length: 7 }, (_, i) => `${i + 1}. Result ${i + 1}\n   https://r${i + 1}.test`).join("\n");
+    expect(webSearchSummaryParts(raw)).toEqual([{ kind: "text", text: "7 results" }]);
+  });
+
+  test("summarizes blank output as a zero count", () => {
+    expect(webSearchSummaryParts("   \n  \n")).toEqual([{ kind: "text", text: "0 results" }]);
   });
 });
 

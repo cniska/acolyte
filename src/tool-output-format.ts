@@ -134,6 +134,11 @@ export function findSummaryParts(filePaths: string[], patterns: string[], labelK
   ];
 }
 
+export function webSearchSummaryParts(result: string): ToolOutputPart[] {
+  const count = result.split("\n").filter((line) => /^\d+\.\s+\S/.test(line.trimEnd())).length;
+  return [{ kind: "text", text: t("unit.result", { count }) }];
+}
+
 function toDisplayPath(path: string, workspace?: string): string {
   const trimmed = path.trim().replace(/\\/g, "/");
   if (trimmed.startsWith("./")) return trimmed.slice(2);
