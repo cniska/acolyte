@@ -85,7 +85,7 @@ resolve → prepare → generate → finalize
 - **generate:** run model + tool calls (one pass, effects applied per-tool-result)
 - **finalize:** accept the terminal step, persist outputs, emit final response
 
-- **model-host protocol:** model completes with a native `end_turn` (a step with no tool calls); that step's text is the final response, backstopped only by the empty-answer gate
+- **model-host protocol:** model completes with a native `end_turn` (a step with no tool calls); that step's text is the final response, backstopped by finish-reason classification (incomplete finishes reopen once then error; unrecoverable finishes error immediately)
 - **host/model boundary:** host provides runtime structure; model decides how to complete the task
 - **scheduling:** yield checks happen between lifecycle decisions, never mid-step
 - **details:** see [Lifecycle](./lifecycle.md)
