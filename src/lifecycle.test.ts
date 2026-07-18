@@ -25,7 +25,7 @@ describe("runLifecycle", () => {
     const deps = createLifecycleDeps({
       phaseGenerate: mock(async (ctx: { reasoning?: string; temperature?: number; result?: unknown }) => {
         captured = { reasoning: ctx.reasoning, temperature: ctx.temperature };
-        ctx.result = { text: "ok", toolCalls: [], signal: "done" };
+        ctx.result = { text: "ok", toolCalls: [] };
       }),
     });
 
@@ -62,7 +62,7 @@ describe("runLifecycle", () => {
     const deps = createLifecycleDeps({
       phaseGenerate: mock(async (ctx: { promptUsage: { memoryTokens: number }; result?: unknown }) => {
         ctx.promptUsage.memoryTokens = 5;
-        ctx.result = { text: "Generated output", toolCalls: [], signal: "done" };
+        ctx.result = { text: "Generated output", toolCalls: [] };
       }),
       phaseFinalize: mock(
         (ctx: { promptUsage: { memoryTokens: number } }): ChatResponse => ({
@@ -92,7 +92,7 @@ describe("runLifecycle", () => {
     const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
       phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
-        ctx.result = { text: "Done.", toolCalls: [], signal: "done" };
+        ctx.result = { text: "Done.", toolCalls: [] };
         ctx.currentError = {
           message: "The agent finished without validating its changes to `src/app.ts`.",
           code: "unknown",
@@ -115,16 +115,14 @@ describe("runLifecycle", () => {
   });
 
   test("distills a finished turn that carries a non-blocking error", async () => {
-    // A `blocked` signal is a finished turn (agent genuinely needs input) whose reason is
-    // worth remembering — it sets no `blocksCompletion` error, so it still commits.
+    // A finished turn that ends with the model's own prose (e.g. explaining it needs input)
+    // sets no `blocksCompletion` error, so it still commits.
     const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
       phaseGenerate: mock(async (ctx: { result?: unknown }) => {
         ctx.result = {
           text: "Blocked: I need the API key.",
           toolCalls: [],
-          signal: "blocked",
-          signalReason: "need key",
         };
       }),
     });
@@ -148,7 +146,7 @@ describe("runLifecycle", () => {
     const events: Array<{ event: string }> = [];
     const deps = createLifecycleDeps({
       phaseGenerate: mock(async (ctx: { result?: unknown; currentError?: unknown }) => {
-        ctx.result = { text: "Hit a transient tool error, but here is the answer.", toolCalls: [], signal: "done" };
+        ctx.result = { text: "Hit a transient tool error, but here is the answer.", toolCalls: [] };
         ctx.currentError = { message: "transient tool error", code: "unknown", category: "other" };
       }),
     });

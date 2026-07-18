@@ -20,23 +20,12 @@ function toolCallKey(toolName: string, args: Record<string, unknown>): string {
   return `${toolName}\u0000${canonical(args)}`;
 }
 
-function signalOutput(ctx: RunContext): string {
-  if (ctx.acceptedSignal === "blocked") {
-    return ctx.result?.signalReason?.trim() ?? "";
-  }
-
-  // `done` and `noop` both carry the model's own final text, and the completion
-  // block rejects an empty one — so an empty finish surfaces honestly
-  // (no_response_after_tools / no_output), never a fabricated "Done." or canned
-  // "No changes needed.".
-  return "";
-}
-
 export function phaseFinalize(ctx: RunContext): ChatResponse {
   const blockingError = ctx.currentError?.blocksCompletion === true;
   // A blocking error is surfaced through `error` alone; `output` keeps the model's own
-  // text (or a neutral fallback) so the reason is never rendered twice.
-  const rawOutput = (ctx.result?.text ?? "").trim() || signalOutput(ctx);
+  // text (or a neutral fallback) so the reason is never rendered twice. An empty finish
+  // surfaces honestly (no_response_after_tools / no_output), never a fabricated response.
+  const rawOutput = (ctx.result?.text ?? "").trim();
   const output =
     rawOutput.length > 0
       ? rawOutput
@@ -103,7 +92,6 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     session_search_calls: sessionSearchCalls,
     pre_write_discovery_calls: preWriteDiscoveryCalls,
     duplicate_discovery_calls: duplicateDiscoveryCalls,
-    lifecycle_signal: ctx.acceptedSignal ?? null,
     budget_blocked: ctx.errorStats["budget-exhausted"] > 0,
     active_skills: ctx.session.activeSkills?.map((s) => s.name) ?? null,
     last_error_code: ctx.currentError?.code ?? null,
@@ -117,9 +105,9 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   return {
     model: ctx.model,
     output,
-    // `output` was streamed iff it carries the model's streamed answer text. A signal reason,
-    // a neutral fallback, or a host-synthesized notice (yield/stopped) is in `output` but never
-    // reached the client as deltas, so the client must render it rather than assume it is shown.
+    // `output` was streamed iff it carries the model's streamed answer text. A neutral fallback
+    // or a host-synthesized notice (yield/stopped) is in `output` but never reached the client as
+    // deltas, so the client must render it rather than assume it is shown.
     outputStreamed: ctx.result?.textStreamed ?? false,
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),

@@ -243,7 +243,7 @@ describe("chat-message-handler-stream", () => {
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
-    // Simulate: tool calls, then text response, then finalize (blocked signal)
+    // Simulate: tool calls, then text response, then finalize
     state.onToolCall();
     state.onOutput({
       toolCallId: "call_1",

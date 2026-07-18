@@ -33,9 +33,6 @@ describe("toolsets", () => {
       "scanCode",
       "searchFiles",
       "sessionSearch",
-      "signalBlocked",
-      "signalDone",
-      "signalNoop",
       "updateChecklist",
       "webFetch",
       "webSearch",
@@ -118,9 +115,6 @@ describe("localization baseline", () => {
     const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
     const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
-    const signalDoneInstruction = toolDefinitionsById.signal_done?.instruction ?? "";
-    const signalNoopInstruction = toolDefinitionsById.signal_noop?.instruction ?? "";
-    const signalBlockedInstruction = toolDefinitionsById.signal_blocked?.instruction ?? "";
 
     expectIntent(readInstruction, [
       ["file-read", "before", "file-edit", "code-edit"],
@@ -165,8 +159,5 @@ describe("localization baseline", () => {
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
     expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
-    expectIntent(signalDoneInstruction, [["signal_done"], ["requested work", "complete"]]);
-    expectIntent(signalNoopInstruction, [["signal_noop"], ["no changes", "needed"]]);
-    expectIntent(signalBlockedInstruction, [["signal_blocked"], ["blocked"], ["reason"], ["missing"]]);
   });
 });

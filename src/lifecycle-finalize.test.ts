@@ -99,40 +99,18 @@ describe("phaseFinalize", () => {
     expect(response.promptBreakdown?.usedTokens).toBe(80);
   });
 
-  test("ends a blocked signal with the question as output and no error", () => {
+  test("surfaces the model's final text as output with no error", () => {
     const ctx = createRunContext({
-      result: {
-        text: "Which environment should I deploy to?",
-        toolCalls: [],
-        signal: "blocked",
-        signalReason: "Missing deployment environment. I will deploy once it is provided.",
-      },
-      acceptedSignal: "blocked",
+      result: { text: "Which environment should I deploy to?", toolCalls: [] },
     });
     const response = phaseFinalize(ctx);
     expect(response.output).toBe("Which environment should I deploy to?");
     expect(response.error).toBeUndefined();
   });
 
-  test("uses blocked signal reason when final text is empty", () => {
-    const ctx = createRunContext({
-      result: {
-        text: "",
-        toolCalls: [],
-        signal: "blocked",
-        signalReason: "Missing deployment environment. I will deploy once it is provided.",
-      },
-      acceptedSignal: "blocked",
-    });
-    const response = phaseFinalize(ctx);
-    expect(response.output).toBe("Missing deployment environment. I will deploy once it is provided.");
-    expect(response.error).toBeUndefined();
-  });
-
   test("marks a streamed answer outputStreamed so the client does not re-render it", () => {
     const ctx = createRunContext({
-      result: { text: "All done.", textStreamed: true, toolCalls: [], signal: "done" },
-      acceptedSignal: "done",
+      result: { text: "All done.", textStreamed: true, toolCalls: [] },
     });
     expect(phaseFinalize(ctx).outputStreamed).toBe(true);
   });
@@ -146,19 +124,6 @@ describe("phaseFinalize", () => {
     const response = phaseFinalize(ctx);
     expect(response.output).toBe("Yielding to a newer pending message.");
     expect(response.outputStreamed).toBe(false);
-  });
-
-  test("marks a blocked reason (delivered via signal, not streamed) outputStreamed=false", () => {
-    const ctx = createRunContext({
-      result: {
-        text: "",
-        toolCalls: [],
-        signal: "blocked",
-        signalReason: "Which environment should I deploy to?",
-      },
-      acceptedSignal: "blocked",
-    });
-    expect(phaseFinalize(ctx).outputStreamed).toBe(false);
   });
 
   test("counts recall probes separately and keeps them out of search/discovery", () => {
@@ -242,48 +207,34 @@ describe("phaseFinalize", () => {
     expect(summary.fields.budget_exhausted_count).toBe(2);
   });
 
-  test("an empty done or noop is blocked and surfaces no fabricated text", () => {
-    // Real path: acceptResult rejects an empty done, clearing acceptedSignal and
-    // setting a blocking error, so finalize emits no output — the error row carries it.
-    const done = phaseFinalize(
+  test("an empty final response is blocked and surfaces no fabricated text", () => {
+    // Real path: the empty-answer gate rejects a blank final response and sets a blocking
+    // error, so finalize emits no output — the error row carries it.
+    const blocked = phaseFinalize(
       createRunContext({
-        result: { text: "", toolCalls: [], signal: "done" },
+        result: { text: "", toolCalls: [] },
         currentError: {
           message: "The agent finished without writing a response. Retry or rephrase the request.",
           blocksCompletion: true,
         },
       }),
     );
-    expect(done.output).toBe("");
+    expect(blocked.output).toBe("");
 
-    // An empty noop is blocked the same way — no canned "No changes needed.".
-    const noop = phaseFinalize(
+    // A turn that carries the model's own words keeps them as the output.
+    const withText = phaseFinalize(
       createRunContext({
-        result: { text: "", toolCalls: [], signal: "noop" },
-        currentError: {
-          message: "The agent finished without writing a response. Retry or rephrase the request.",
-          blocksCompletion: true,
-        },
+        result: { text: "Already consistent; nothing to change.", toolCalls: [] },
       }),
     );
-    expect(noop.output).toBe("");
-
-    // A noop that carries the model's own words keeps them as the output.
-    const noopWithText = phaseFinalize(
-      createRunContext({
-        result: { text: "Already consistent; nothing to change.", toolCalls: [], signal: "noop" },
-        acceptedSignal: "noop",
-      }),
-    );
-    expect(noopWithText.output).toBe("Already consistent; nothing to change.");
+    expect(withText.output).toBe("Already consistent; nothing to change.");
   });
 
-  test("a tool error alone does not block a done at finalize", () => {
+  test("a tool error alone does not block a completed turn at finalize", () => {
     // Tool errors no longer populate ctx.currentError; only a run-level (blocksCompletion)
-    // error blocks. A done that carries model text completes cleanly.
+    // error blocks. A turn that carries model text completes cleanly.
     const ctx = createRunContext({
-      result: { text: "I updated the tests.", toolCalls: [], signal: "done" },
-      acceptedSignal: "done",
+      result: { text: "I updated the tests.", toolCalls: [] },
     });
 
     const response = phaseFinalize(ctx);
@@ -292,26 +243,26 @@ describe("phaseFinalize", () => {
     expect(response.error).toBeUndefined();
   });
 
-  test("blocks done output when completion evidence is missing", () => {
+  test("keeps the model's final text as output beside a blocking error", () => {
     const ctx = createRunContext({
       currentError: {
-        message: "Cannot finish yet: `src/app.ts` changed after the last successful validation.",
+        message: "The agent finished without writing a response. Retry or rephrase the request.",
         category: "other",
         blocksCompletion: true,
       },
-      result: { text: "I updated the file.", toolCalls: [], signal: "done" },
+      result: { text: "I updated the file.", toolCalls: [] },
     });
 
     const response = phaseFinalize(ctx);
 
     expect(response.output).toBe("I updated the file.");
-    expect(response.error).toBe("Cannot finish yet: `src/app.ts` changed after the last successful validation.");
+    expect(response.error).toBe("The agent finished without writing a response. Retry or rephrase the request.");
   });
 
   test("blocking error with no model text emits empty output, not a fallback bubble", () => {
     const ctx = createRunContext({
       currentError: { message: "Cannot finish yet: validation missing", category: "other", blocksCompletion: true },
-      result: { text: "", toolCalls: [], signal: "done" },
+      result: { text: "", toolCalls: [] },
     });
 
     const response = phaseFinalize(ctx);
@@ -321,10 +272,10 @@ describe("phaseFinalize", () => {
     expect(response.error).toBe("Cannot finish yet: validation missing");
   });
 
-  test("passes a non-blocking error through an unaccepted blocked signal", () => {
+  test("passes a non-blocking error through with the model's final text", () => {
     const ctx = createRunContext({
       currentError: { message: "tool failed", category: "other" },
-      result: { text: "Cannot proceed.", toolCalls: [], signal: "blocked" },
+      result: { text: "Cannot proceed.", toolCalls: [] },
     });
     const response = phaseFinalize(ctx);
     expect(response.output).toBe("Cannot proceed.");

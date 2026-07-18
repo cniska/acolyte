@@ -4,14 +4,11 @@ import type { StreamOptions } from "./agent-contract";
 import { createAgentStream } from "./agent-stream";
 import type { StreamEvent } from "./client-contract";
 import { TOOL_ERROR_CODES } from "./error-contract";
-import { resolveSignal } from "./lifecycle";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
-import { createSignalToolkit } from "./signal-toolkit";
 import { createRunContext } from "./test-utils";
-import type { ToolCallRecord, ToolDefinition } from "./tool-contract";
-import { RUNNER_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { WRITE_TOOL_SET } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
 const noopRateLimiter: RateLimiter = {
@@ -174,44 +171,7 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
-  test("forces tool choice for gateway-routed GPT but not gateway Anthropic", async () => {
-    // Regression for the #303 gap: gateway GPT classifies as "vercel", yet the harmony signal
-    // call must stay grammar-constrained or it leaks as text and degenerates into garbage tokens.
-    async function capturedToolChoice(model: string): Promise<unknown> {
-      let capturedOptions: StreamOptions | undefined;
-      const ctx = createRunContext({
-        model,
-        agent: {
-          id: "test-agent",
-          name: "test-agent",
-          instructions: "",
-          model: {} as RunContext["agent"]["model"],
-          tools: {},
-          async stream(_prompt, options) {
-            capturedOptions = options;
-            return {
-              fullStream: new ReadableStream({
-                start(controller) {
-                  controller.close();
-                },
-              }),
-              async getFullOutput() {
-                return { text: "done", toolCalls: [] };
-              },
-            };
-          },
-        },
-      });
-      await phaseGenerate(ctx, { timeoutMs: 1000 });
-      return capturedOptions?.toolChoice;
-    }
-
-    expect(await capturedToolChoice("vercel/openai/gpt-5.2")).toBe("required");
-    expect(await capturedToolChoice("openai/gpt-5.2")).toBe("required");
-    expect(await capturedToolChoice("vercel/anthropic/claude-sonnet-4")).toBe("auto");
-  });
-
-  test("a no-match search does not gate a later done", async () => {
+  test("a no-match search does not gate the turn", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
@@ -245,7 +205,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "No TODOs found.", toolCalls: [], signal: "done" as const };
+              return { text: "No TODOs found.", toolCalls: [] };
             },
           };
         },
@@ -255,9 +215,8 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     // A no-match search is a normal result, not a broken run: it neither sets a
-    // run-level error nor injects a recovery turn, so a valid done still completes.
+    // run-level error nor injects a recovery turn.
     expect(ctx.currentError).toBeUndefined();
-    expect(resolveSignal(ctx)).toBe("done");
     expect(debugEvents.some((event) => event.event === "lifecycle.tool_error.recovery")).toBe(false);
   });
 
@@ -300,7 +259,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
+              return { text: "Done.", toolCalls: [] };
             },
           };
         },
@@ -349,7 +308,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
+              return { text: "Done.", toolCalls: [] };
             },
           };
         },
@@ -359,10 +318,9 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     // A nonzero exit is marked failed for the UI/trace but is not a run-level error:
-    // it must not populate ctx.currentError nor gate a subsequent done (a red exit is
-    // often the answer — e.g. "diagnose why this test fails").
+    // it must not populate ctx.currentError (a red exit is often the answer — e.g.
+    // "diagnose why this test fails").
     expect(ctx.currentError).toBeUndefined();
-    expect(resolveSignal(ctx)).toBe("done");
     const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
     expect(traceResult?.fields).toMatchObject({ tool: "test-run", is_error: true });
   });
@@ -391,8 +349,7 @@ describe("phaseGenerate", () => {
 
     expect(ctx.currentError?.message).toBe("invalid_api_key");
     expect(ctx.currentError?.source).toBe("generate");
-    // A run-level (generate) error still gates completion, unlike a tool error.
-    expect(resolveSignal(ctx)).toBeUndefined();
+    // A run-level (generate) error blocks completion, unlike a tool error.
   });
 
   test("accounts memory recall tokens from memory-search results", async () => {
@@ -430,7 +387,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
+              return { text: "Done.", toolCalls: [] };
             },
           };
         },
@@ -474,7 +431,7 @@ describe("phaseGenerate", () => {
               },
             }),
             async getFullOutput() {
-              return { text: "Done.", toolCalls: [], signal: "done" as const };
+              return { text: "Done.", toolCalls: [] };
             },
           };
         },
@@ -486,47 +443,39 @@ describe("phaseGenerate", () => {
     expect(ctx.promptUsage.memoryTokens).toBe(0);
   });
 
+  const noopTool = {
+    id: "noop",
+    toolkit: "test",
+    category: "execute" as const,
+    description: "noop",
+    instruction: "noop",
+    inputSchema: {},
+    // biome-ignore lint/suspicious/noExplicitAny: test stub
+    outputSchema: { parse: (v: unknown) => v } as any,
+    async execute() {
+      return { result: { kind: "noop" } };
+    },
+  };
+
   test("injects post-failure reminder when the last runner in callLog failed", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-      onSkillActivated: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
 
-    // Turn 1: tool call (triggers onBeforeNextCall before turn 2)
-    // Turn 2: done signal
+    // Turn 1: tool call (triggers onBeforeNextCall before turn 2).
+    // Turn 2: native no-tool-call final response.
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Done." },
         { type: "text-end", id: "t_1" },
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
+        finishPart("stop"),
       ],
     ];
 
-    const noopTool = {
-      id: "noop",
-      toolkit: "test",
-      category: "execute" as const,
-      description: "noop",
-      instruction: "noop",
-      inputSchema: {},
-      // biome-ignore lint/suspicious/noExplicitAny: test stub
-      outputSchema: { parse: (v: unknown) => v } as any,
-      async execute() {
-        return { result: { kind: "noop" } };
-      },
-    };
-
     const model = scriptedModel(turns, promptCapture);
-    const tools = { noop: noopTool, ...signalTools };
+    const tools = { noop: noopTool };
     const agentStream = createAgentStream(model, "sys", tools, noopRateLimiter);
 
     const ctx = createRunContext({
@@ -543,7 +492,7 @@ describe("phaseGenerate", () => {
       },
     });
 
-    // Pre-populate callLog with a failed runner — R5 should fire before turn 2
+    // Pre-populate callLog with a failed runner — the post-failure reminder fires before turn 2.
     ctx.session.callLog.push({
       toolName: "test-run",
       args: { command: "bun test src/app.test.ts" },
@@ -553,7 +502,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 5000 });
 
-    // The second model prompt should contain the post-failure system reminder
     const secondPrompt = promptCapture[1] ?? [];
     const injectedText = secondPrompt
       .filter((m) => m.role === "user")
@@ -567,33 +515,24 @@ describe("phaseGenerate", () => {
     expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
   });
 
-  test("blocks completion when the model never calls a signal tool", async () => {
+  test("empty-answer: tool work then a blank final response is nudged once, then blocks", async () => {
+    // Regression (dogfood): a turn that does tool work then ends its turn with no final
+    // response gets one nudge; if it ends blank again, the completion gate errors the run
+    // rather than surfacing an empty answer.
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-      onSkillActivated: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
+
     const turns: LanguageModelV4StreamPart[][] = [
-      [
-        { type: "text-start", id: "t_1" },
-        { type: "text-delta", id: "t_1", delta: "Done." },
-        { type: "text-end", id: "t_1" },
-        finishPart("stop"),
-      ],
-      [
-        { type: "text-start", id: "t_2" },
-        { type: "text-delta", id: "t_2", delta: "Still done." },
-        { type: "text-end", id: "t_2" },
-        finishPart("stop"),
-      ],
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+      [finishPart("stop")],
+      [finishPart("stop")],
     ];
+
     const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
+    const tools = { noop: noopTool };
+    const agentStream = createAgentStream(model, "sys", tools, noopRateLimiter);
+
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
@@ -603,63 +542,42 @@ describe("phaseGenerate", () => {
         name: "test-agent",
         instructions: "sys",
         model: model as unknown as RunContext["agent"]["model"],
-        tools: signalTools,
+        tools,
         stream: agentStream,
       },
     });
 
     await phaseGenerate(ctx, { timeoutMs: 5000 });
 
-    expect(promptCapture).toHaveLength(2);
-    expect(promptCapture[1]).toContainEqual({
-      role: "user",
-      content: [
-        {
-          type: "text",
-          text: expect.stringContaining('type="missing-signal"'),
-        },
-      ],
-    });
     expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
-    expect(ctx.result).toMatchObject({ text: "Still done.", toolCalls: [] });
-    expect(debugEvents.filter((e) => e.event === "lifecycle.signal.missing").map((e) => e.fields?.action)).toEqual([
-      "continue",
-      "block",
-    ]);
+    // The terminal error is user-audience, never the model-facing "you ended your turn…" nudge.
+    expect(ctx.currentError?.message).toBe(
+      "The agent finished without writing a response. Retry or rephrase the request.",
+    );
+    expect(ctx.currentError?.message).not.toContain("you ended your turn");
+    expect(debugEvents.filter((e) => e.event === "lifecycle.completion.rejected").map((e) => e.fields?.action)).toEqual(
+      ["continue", "block"],
+    );
   });
 
-  test("a missing signal followed by a valid done completes without error", async () => {
-    // Regression (dogfood): the model answers without signalling, gets one nudge, then
-    // calls signal_done — this must complete cleanly, not re-open the loop and block.
+  test("a written final response after tool work completes cleanly", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-      onSkillActivated: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
 
     const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Added the alias." },
         { type: "text-end", id: "t_1" },
         finishPart("stop"),
       ],
-      [
-        { type: "tool-call", toolCallId: "tc_signal_1", toolName: "signal_done", input: "{}" },
-        finishPart("tool-calls"),
-      ],
     ];
 
     const model = scriptedModel(turns, promptCapture);
-    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
-
-    session.callLog.push({ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" });
-    session.callLog.push({ toolName: "test-run", args: { command: "bun test" }, status: "succeeded" });
+    const tools = { noop: noopTool };
+    const agentStream = createAgentStream(model, "sys", tools, noopRateLimiter);
 
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "Add a -v alias.", history: [] },
@@ -670,207 +588,15 @@ describe("phaseGenerate", () => {
         name: "test-agent",
         instructions: "sys",
         model: model as unknown as RunContext["agent"]["model"],
-        tools: signalTools,
+        tools,
         stream: agentStream,
       },
     });
 
     await phaseGenerate(ctx, { timeoutMs: 5000 });
 
-    expect(debugEvents.filter((e) => e.event === "lifecycle.signal.missing").map((e) => e.fields?.action)).toEqual([
-      "continue",
-    ]);
-    expect(debugEvents.find((e) => e.event.startsWith("lifecycle.self_review"))).toBeUndefined();
     expect(ctx.currentError).toBeUndefined();
-    expect(ctx.result?.signal).toBe("done");
-  });
-
-  // The completion gate is enforced once, in-stream: a block that survives its one retry
-  // sets a user-audience `ctx.currentError` from the final `answerText`. These migrated from
-  // lifecycle.test.ts, which exercised a duplicate post-hoc gate (now removed).
-  function textSignalTurns(text: string, signalTool: string): LanguageModelV4StreamPart[][] {
-    const step = (delta: string, id: string): LanguageModelV4StreamPart[] =>
-      delta.length > 0
-        ? [
-            { type: "text-start", id },
-            { type: "text-delta", id, delta },
-            { type: "text-end", id },
-            { type: "tool-call", toolCallId: `tc_${id}`, toolName: signalTool, input: "{}" },
-            finishPart("tool-calls"),
-          ]
-        : [{ type: "tool-call", toolCallId: `tc_${id}`, toolName: signalTool, input: "{}" }, finishPart("tool-calls")];
-    // Two identical attempts: the first spends the retry, the second is terminally gated.
-    return [step(text, "t_1"), step(text, "t_2")];
-  }
-
-  async function runTerminalGate(input: {
-    turns: LanguageModelV4StreamPart[][];
-    callLog?: ToolCallRecord[];
-  }): Promise<{ ctx: RunContext; debugEvents: LifecycleDebugEvent[] }> {
-    const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-      onSkillActivated: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
-    if (input.callLog) session.callLog.push(...input.callLog);
-    const model = scriptedModel(input.turns, []);
-    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
-    const ctx = createRunContext({
-      request: { model: "gpt-5-mini", message: "test", history: [] },
-      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
-      session,
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "sys",
-        model: model as unknown as RunContext["agent"]["model"],
-        tools: signalTools,
-        stream: agentStream,
-      },
-    });
-    await phaseGenerate(ctx, { timeoutMs: 5000 });
-    return { ctx, debugEvents };
-  }
-
-  test("terminally gates a done after source writes without later validation", async () => {
-    const { ctx, debugEvents } = await runTerminalGate({
-      turns: textSignalTurns("Done.", "signal_done"),
-      callLog: [{ toolName: "file-edit", args: { path: "src/app.ts" }, status: "succeeded" }],
-    });
-
-    expect(WRITE_TOOL_SET.has("file-edit")).toBe(true);
-    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
-    expect(ctx.currentError?.message).toBe("The agent finished without validating its changes to `src/app.ts`.");
-    expect(ctx.currentError?.message).not.toContain("Run a related test");
-    expect(resolveSignal(ctx)).toBeUndefined();
-    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe(
-      "missing-validation-after-write",
-    );
-  });
-
-  test("terminally gates a done when the last runner failed (broken-handoff)", async () => {
-    const { ctx, debugEvents } = await runTerminalGate({
-      turns: textSignalTurns("Done.", "signal_done"),
-      callLog: [{ toolName: "test-run", args: { command: "bun test src/app.test.ts" }, status: "failed", exitCode: 1 }],
-    });
-
-    expect(RUNNER_TOOL_SET.has("test-run")).toBe(true);
-    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
-    expect(ctx.currentError?.message).toContain("exit 1");
-    expect(ctx.currentError?.message).toContain("bun test src/app.test.ts");
-    // The terminal error is user-audience: never the model-facing retry nudge.
-    expect(ctx.currentError?.message).not.toContain("Diagnose the failure");
-    expect(resolveSignal(ctx)).toBeUndefined();
-    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("broken-handoff");
-  });
-
-  test("terminally gates a done that wrote no final answer (empty-answer)", async () => {
-    const { ctx, debugEvents } = await runTerminalGate({ turns: textSignalTurns("", "signal_done") });
-
-    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
-    // Regression (dogfood 2026-07-10): the terminal error must be user-audience, never the
-    // model-facing "you called `signal_done`…" retry nudge that used to leak into the transcript.
-    expect(ctx.currentError?.message).toBe(
-      "The agent finished without writing a response. Retry or rephrase the request.",
-    );
-    expect(ctx.currentError?.message).not.toContain("you called");
-    expect(resolveSignal(ctx)).toBeUndefined();
-    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
-  });
-
-  test("terminally gates a noop that gave no reason (empty-answer)", async () => {
-    const { ctx, debugEvents } = await runTerminalGate({ turns: textSignalTurns("", "signal_noop") });
-
-    expect(ctx.currentError).toMatchObject({ blocksCompletion: true });
-    // Same user-audience message as the empty done — the done/noop split lives only in the
-    // model-facing nudge, never in the user's error row.
-    expect(ctx.currentError?.message).toBe(
-      "The agent finished without writing a response. Retry or rephrase the request.",
-    );
-    expect(ctx.currentError?.message).not.toContain("you called");
-    expect(resolveSignal(ctx)).toBeUndefined();
-    expect(debugEvents.find((e) => e.event === "lifecycle.signal.rejected")?.fields?.reason).toBe("empty-answer");
-  });
-
-  // Provider-scoped toolChoice: OpenAI forces every step (grammar constraint against the
-  // signal-as-text leak); the empty-answer retry drops back to "auto" (prose before signal);
-  // Anthropic never forces (a prefill would suppress prose / 400 under thinking).
-  async function captureToolChoice(input: {
-    model: string;
-    turns: LanguageModelV4StreamPart[][];
-    callLog?: ToolCallRecord[];
-  }): Promise<Array<{ type: unknown } | undefined>> {
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
-    const signalTools = createSignalToolkit({
-      workspace: process.cwd(),
-      session,
-      onOutput: () => {},
-      onChecklist: () => {},
-      onSkillActivated: () => {},
-    }) as unknown as Record<string, ToolDefinition>;
-    if (input.callLog) session.callLog.push(...input.callLog);
-    const argsCapture: Array<Record<string, unknown>> = [];
-    const model = scriptedModel(input.turns, [], argsCapture);
-    const agentStream = createAgentStream(model, "sys", signalTools, noopRateLimiter);
-    const ctx = createRunContext({
-      request: { model: input.model, message: "test", history: [] },
-      model: input.model,
-      session,
-      agent: {
-        id: "test-agent",
-        name: "test-agent",
-        instructions: "sys",
-        model: model as unknown as RunContext["agent"]["model"],
-        tools: signalTools,
-        stream: agentStream,
-      },
-    });
-    await phaseGenerate(ctx, { timeoutMs: 5000 });
-    return argsCapture.map((a) => a.toolChoice as { type: unknown } | undefined);
-  }
-
-  const cleanDone: LanguageModelV4StreamPart[] = [
-    { type: "text-start", id: "t" },
-    { type: "text-delta", id: "t", delta: "Done." },
-    { type: "text-end", id: "t" },
-    { type: "tool-call", toolCallId: "tc", toolName: "signal_done", input: "{}" },
-    finishPart("tool-calls"),
-  ];
-
-  test("forces toolChoice on every step for OpenAI models", async () => {
-    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [cleanDone] });
-    expect(choices[0]).toEqual({ type: "required" });
-  });
-
-  test("keeps toolChoice auto for non-OpenAI models (prose-suppression / thinking-400 guard)", async () => {
-    const choices = await captureToolChoice({ model: "anthropic/claude-opus-4-8", turns: [cleanDone] });
-    expect(choices.every((c) => c?.type === "auto")).toBe(true);
-  });
-
-  test("empty-answer reopen drops back to auto on OpenAI, then default resumes", async () => {
-    const emptyDone: LanguageModelV4StreamPart[] = [
-      { type: "tool-call", toolCallId: "tc_1", toolName: "signal_done", input: "{}" },
-      finishPart("tool-calls"),
-    ];
-    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [emptyDone, cleanDone] });
-    // Step 1 forced; reopened empty-answer retry uses auto so the model can write prose.
-    expect(choices[0]).toEqual({ type: "required" });
-    expect(choices[1]).toEqual({ type: "auto" });
-  });
-
-  test("missing-signal retry inherits the required default on OpenAI (O7 backstop preserved)", async () => {
-    const bareText: LanguageModelV4StreamPart[] = [
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", delta: "answer, no signal" },
-      { type: "text-end", id: "t1" },
-      finishPart("stop"),
-    ];
-    const choices = await captureToolChoice({ model: "gpt-5-mini", turns: [bareText, cleanDone] });
-    expect(choices[0]).toEqual({ type: "required" });
-    expect(choices[1]).toEqual({ type: "required" });
+    expect(ctx.result?.text).toBe("Added the alias.");
+    expect(debugEvents.some((e) => e.event === "lifecycle.completion.rejected")).toBe(false);
   });
 });

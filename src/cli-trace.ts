@@ -145,11 +145,6 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
         kind: "separator",
         text: `── stopped (${line.fields.reason ?? ""}) ──`,
       });
-      continue;
-    }
-
-    if (event === "lifecycle.signal.accepted" && line.fields.signal !== "done") {
-      rows.push({ kind: "separator", text: `signal ${line.fields.signal ?? "?"}` });
     }
   }
 
@@ -254,7 +249,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
         tasks.map((task) => ({
           task_id: task.taskId,
           model: task.model ?? "unknown",
-          status: task.hasError ? "error" : task.lifecycleSignal === "blocked" ? "blocked" : "ok",
+          status: task.hasError ? "error" : "ok",
           time: formatRelativeTime(task.timestamp),
         })),
         {

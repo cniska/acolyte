@@ -18,10 +18,9 @@ export interface ChatRequest {
 export interface ChatResponse {
   output: string;
   /** Whether `output` was already streamed to the client as text deltas. False when
-   *  `output` is signal-sourced (a `signal_blocked`/`signal_done` reason the model
-   *  delivered via the tool argument, never as prose) — the client must render it as a
-   *  bubble so it still shows; true means it is already on screen and re-rendering would
-   *  duplicate. */
+   *  `output` is a host-synthesized notice (a neutral fallback or a yield/stopped message
+   *  injected after the stream ended) — the client must render it as a bubble so it still
+   *  shows; true means it is already on screen and re-rendering would duplicate. */
   outputStreamed: boolean;
   model: string;
   usage?: TokenUsage;

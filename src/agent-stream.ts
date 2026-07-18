@@ -9,16 +9,7 @@ import type {
   LanguageModelV4ToolResultPart,
   SharedV4ProviderOptions,
 } from "@ai-sdk/provider";
-import type {
-  Agent,
-  GenerateResult,
-  LifecycleSignal,
-  StreamChunk,
-  StreamOptions,
-  StreamOutput,
-  ToolCallEntry,
-} from "./agent-contract";
-import { signalForToolName } from "./agent-contract";
+import type { Agent, GenerateResult, StreamChunk, StreamOptions, StreamOutput, ToolCallEntry } from "./agent-contract";
 import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
@@ -69,10 +60,7 @@ export function createAgentStream(
     });
 
     const resultPromise = (async (): Promise<GenerateResult> => {
-      let lifecycleSignal: LifecycleSignal | undefined;
-      let lifecycleSignalReason: string | undefined;
       let finishReason: LanguageModelV4FinishReason | undefined;
-      let stepToolChoice: "auto" | "required" | "none" | undefined;
       while (true) {
         loopIteration++;
         if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
@@ -99,7 +87,6 @@ export function createAgentStream(
           }
         }
 
-        const resolvedToolChoice = stepToolChoice ?? options.toolChoice;
         await rateLimiter.beforeCall();
         let streamResult: Awaited<ReturnType<typeof model.doStream>>;
         try {
@@ -107,17 +94,11 @@ export function createAgentStream(
             prompt: messages,
             temperature: options.temperature,
             tools: functionTools.length > 0 ? functionTools : undefined,
-            toolChoice: resolvedToolChoice
-              ? { type: resolvedToolChoice }
-              : functionTools.length > 0
-                ? { type: "auto" }
-                : undefined,
+            toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
             ...(options.reasoning ? { reasoning: options.reasoning } : {}),
             ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
           });
           rateLimiter.reset();
-          // Reset only after a successful call so a rate-limit retry (continue) reuses the override.
-          stepToolChoice = undefined;
         } catch (error) {
           const recovery = rateLimiter.onError(error);
           if (recovery.shouldRetry) {
@@ -158,145 +139,108 @@ export function createAgentStream(
         }
 
         const stepText = stepTextParts.join("");
-        // Text emitted alongside working tool calls is narration ("Running the tests once
-        // more."), not the final response — only a signal-bearing step or a pure-text step
-        // carries the answer. Without this guard a trailing narration line overwrites a good
-        // summary written before a completion-rejection reopen, and the empty-answer gate
-        // waves it through as the user's final response.
-        const isWorkingStep = pendingToolCalls.some((tc) => !signalForToolName(tc.toolName));
-        if (stepText.trim().length > 0 && !isWorkingStep) answerText = stepText;
+        // Text alongside tool calls is narration, not the final response. Only a pure
+        // no-tool-call step carries the answer.
+        if (stepText.trim().length > 0 && pendingToolCalls.length === 0) answerText = stepText;
 
-        if (pendingToolCalls.length === 0) {
-          const finishResult =
-            options.onBeforeFinish?.({
-              messages,
-              text: stepText,
-              answerText,
-              ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
-            }) ?? [];
-          const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
-          if (extras.length > 0) {
-            if (!Array.isArray(finishResult) && finishResult.toolChoice) {
-              stepToolChoice = finishResult.toolChoice;
-            }
-            messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
-            for (const msg of extras) messages.push(msg);
-            lifecycleSignal = undefined;
-            lifecycleSignalReason = undefined;
-            continue;
-          }
-          break;
-        }
-
-        const signalToolCalls = pendingToolCalls.filter((tc) => signalForToolName(tc.toolName));
-        if (signalToolCalls.length > 1) {
-          throw new Error("Model response included more than one lifecycle signal tool.");
-        }
-        if (signalToolCalls.length > 0 && pendingToolCalls.length !== 1) {
-          throw new Error("Lifecycle signal tool must be the only tool call in its model response.");
-        }
-        const assistantContent: Array<
-          LanguageModelV4ReasoningPart | LanguageModelV4TextPart | LanguageModelV4ToolCallPart
-        > = [
-          ...reasoningContentParts(reasoningBlocks),
-          ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
-          ...pendingToolCalls.map((tc) => ({
-            type: "tool-call" as const,
-            toolCallId: tc.toolCallId,
-            toolName: tc.toolName,
-            input: safeParseJSON(tc.input),
-          })),
-        ];
-
-        const toolResultParts: LanguageModelV4ToolResultPart[] = [];
-        for (const tc of pendingToolCalls) {
-          allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
-          const tool = toolsByName.get(tc.toolName);
-          if (!tool) {
-            const error = `Unknown tool: ${tc.toolName}`;
-            streamController.enqueue({
-              type: "tool-error",
-              payload: { error, message: error, toolName: tc.toolName, toolCallId: tc.toolCallId },
-            });
-            toolResultParts.push({
-              type: "tool-result",
+        if (pendingToolCalls.length > 0) {
+          const assistantContent: Array<
+            LanguageModelV4ReasoningPart | LanguageModelV4TextPart | LanguageModelV4ToolCallPart
+          > = [
+            ...reasoningContentParts(reasoningBlocks),
+            ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
+            ...pendingToolCalls.map((tc) => ({
+              type: "tool-call" as const,
               toolCallId: tc.toolCallId,
               toolName: tc.toolName,
-              output: { type: "text", value: JSON.stringify({ error }) },
-            });
-            continue;
-          }
+              input: safeParseJSON(tc.input),
+            })),
+          ];
 
-          try {
-            const args = JSON.parse(tc.input);
-            const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
-            const signal = signalForToolName(tc.toolName);
-            if (signal) {
-              lifecycleSignal = signal;
-              lifecycleSignalReason = signalReasonFromResult(result);
-            }
-            streamController.enqueue({
-              type: "tool-result",
-              payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
-            });
-            const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
-            const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
-            toolResultParts.push({
-              type: "tool-result",
-              toolCallId: tc.toolCallId,
-              toolName: tc.toolName,
-              output: { type: "text", value: outputValue },
-            });
-          } catch (error) {
-            const serializedError = serializeToolError(error);
-            const message = serializedError.error.message;
-            const code = serializedError.error.code;
-            const kind = serializedError.error.kind;
-            streamController.enqueue({
-              type: "tool-error",
-              payload: {
-                error: serializedError.error,
-                message,
-                code,
-                kind,
-                toolName: tc.toolName,
+          const toolResultParts: LanguageModelV4ToolResultPart[] = [];
+          for (const tc of pendingToolCalls) {
+            allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
+            const tool = toolsByName.get(tc.toolName);
+            if (!tool) {
+              const error = `Unknown tool: ${tc.toolName}`;
+              streamController.enqueue({
+                type: "tool-error",
+                payload: { error, message: error, toolName: tc.toolName, toolCallId: tc.toolCallId },
+              });
+              toolResultParts.push({
+                type: "tool-result",
                 toolCallId: tc.toolCallId,
-              },
-            });
-            toolResultParts.push({
-              type: "tool-result",
-              toolCallId: tc.toolCallId,
-              toolName: tc.toolName,
-              output: { type: "text", value: JSON.stringify(serializedError) },
-            });
+                toolName: tc.toolName,
+                output: { type: "text", value: JSON.stringify({ error }) },
+              });
+              continue;
+            }
+
+            try {
+              const args = JSON.parse(tc.input);
+              const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
+              streamController.enqueue({
+                type: "tool-result",
+                payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
+              });
+              const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
+              const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
+              toolResultParts.push({
+                type: "tool-result",
+                toolCallId: tc.toolCallId,
+                toolName: tc.toolName,
+                output: { type: "text", value: outputValue },
+              });
+            } catch (error) {
+              const serializedError = serializeToolError(error);
+              const message = serializedError.error.message;
+              const code = serializedError.error.code;
+              const kind = serializedError.error.kind;
+              streamController.enqueue({
+                type: "tool-error",
+                payload: {
+                  error: serializedError.error,
+                  message,
+                  code,
+                  kind,
+                  toolName: tc.toolName,
+                  toolCallId: tc.toolCallId,
+                },
+              });
+              toolResultParts.push({
+                type: "tool-result",
+                toolCallId: tc.toolCallId,
+                toolName: tc.toolName,
+                output: { type: "text", value: JSON.stringify(serializedError) },
+              });
+            }
           }
+
+          messages.push({ role: "assistant", content: assistantContent });
+          messages.push({ role: "tool", content: toolResultParts });
         }
 
-        messages.push({ role: "assistant", content: assistantContent });
-        messages.push({ role: "tool", content: toolResultParts });
+        // A step is terminal when the model emitted no tool calls (native end_turn) OR it
+        // emitted tool calls but finished with a non-tool-calls reason (degenerate; terminate
+        // rather than loop).
+        const isTerminalStep =
+          pendingToolCalls.length === 0 || (finishReason !== undefined && finishReason.unified !== "tool-calls");
 
-        if (lifecycleSignal) {
-          const finishResult =
-            options.onBeforeFinish?.({
-              messages,
-              text: stepText,
-              answerText,
-              signal: lifecycleSignal,
-            }) ?? [];
-          const extras = Array.isArray(finishResult) ? finishResult : finishResult.messages;
+        if (isTerminalStep) {
+          const extras = options.onBeforeFinish?.({ messages, text: stepText, answerText }) ?? [];
           if (extras.length > 0) {
-            if (!Array.isArray(finishResult) && finishResult.toolChoice) {
-              stepToolChoice = finishResult.toolChoice;
+            // On a no-tool-call step the assistant text has not been pushed yet; push it so the
+            // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
+            // An empty-answer reopen has blank stepText; skip the empty text block (providers
+            // reject it) so the sole completion backstop can actually retry.
+            if (pendingToolCalls.length === 0 && stepText.length > 0) {
+              messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
             }
             for (const msg of extras) messages.push(msg);
-            lifecycleSignal = undefined;
-            lifecycleSignalReason = undefined;
             continue;
           }
           break;
         }
-
-        if (finishReason?.unified !== "tool-calls" && finishReason !== undefined) break;
 
         const extras = options.onBeforeNextCall?.(messages) ?? [];
         for (const msg of extras) messages.push(msg);
@@ -307,15 +251,13 @@ export function createAgentStream(
         total_tool_calls: allToolCalls.length,
         text_length: answerText.length,
         finish_reason: finishReason?.unified ?? "unknown",
-        signal: lifecycleSignal ?? null,
       });
       streamController.close();
       return {
         text: answerText,
         textStreamed: answerText.trim().length > 0,
         toolCalls: allToolCalls,
-        ...(lifecycleSignal ? { signal: lifecycleSignal } : {}),
-        ...(lifecycleSignalReason ? { signalReason: lifecycleSignalReason } : {}),
+        ...(finishReason ? { finishReason: finishReason.unified } : {}),
       };
     })().catch((error) => {
       try {
@@ -328,12 +270,6 @@ export function createAgentStream(
 
     return { fullStream, getFullOutput: () => resultPromise };
   };
-}
-
-function signalReasonFromResult(result: unknown): string | undefined {
-  if (!result || typeof result !== "object" || !("reason" in result)) return undefined;
-  const reason = (result as { reason?: unknown }).reason;
-  return typeof reason === "string" && reason.trim().length > 0 ? reason.trim() : undefined;
 }
 
 type ReasoningBlock = { text: string; providerOptions?: SharedV4ProviderOptions };

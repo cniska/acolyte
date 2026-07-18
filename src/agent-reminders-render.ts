@@ -14,12 +14,6 @@ export function renderReminder(reminder: Reminder): LanguageModelV4Message {
 
 function reminderText(reminder: Reminder): string {
   switch (reminder.type) {
-    case "stuck-loop":
-      return [
-        `You have edited \`${sanitizePath(reminder.path)}\` ${reminder.editCount} times without a passing test. Stop editing.`,
-        "Re-read the file from scratch and state the failure mode in one sentence before the next edit.",
-        "Consider whether the test design itself is the problem.",
-      ].join(" ");
     case "budget-pressure":
       return budgetPressureText(reminder.variant, reminder.thresholdPct, reminder.used, reminder.limit);
     case "post-failure":

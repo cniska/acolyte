@@ -35,7 +35,6 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Host | Runtime environment around the model that provides tools, lifecycle structure, and memory |
 | Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
-| Lifecycle Signal | Model-to-host control signal emitted by a signal tool at generation completion (`done`, `noop`, `blocked`) |
 | Lifecycle State | Internal task-scoped runtime state used during the lifecycle pass |
 | Memory Distiller | Extracts and commits observations from conversations after each request |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |

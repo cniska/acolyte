@@ -15,7 +15,7 @@ These must always hold. Break them and the system breaks.
 
 1. All tools go through `runTool` in `tool-execution.ts` — never call a tool function directly.
 2. Every RPC payload, model response, and config value is validated through Zod before entering the type system.
-3. Completion is signaled with a lifecycle signal tool (`signal_done` / `signal_noop` / `signal_blocked`), not inline text. A signal tool must be the only tool call in its response, and only one may appear. Signal tools are exempt from the step budget.
+3. A turn completes on the native `end_turn` contract: the model ends its turn by emitting a step with no tool calls, and that step's text is the final response. The only completion backstop is the empty-answer gate (a no-tool-call step with blank text is rejected once, then errors).
 4. TUI state updaters must use functional form (`setState(prev => ...)`) when reading current state — stale closure reads cause race conditions.
 5. Error handling must follow `docs/errors.md`.
 6. Run `bun run verify` before every commit.

@@ -1,4 +1,3 @@
-import type { LifecycleSignal } from "./agent-contract";
 import { ensureRealTokenEncoder } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
@@ -16,7 +15,6 @@ import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller
 import { createInMemoryTaskQueue } from "./task-queue";
 import { renderToolOutput } from "./tool-output-render";
 import { WRITE_TOOL_SET } from "./tool-registry";
-import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
@@ -144,22 +142,10 @@ function createRunContext(
   return ctx;
 }
 
-export function resolveSignal(ctx: RunContext): LifecycleSignal | undefined {
-  const signal = ctx.result?.signal;
-  if (!signal) return undefined;
-  if (ctx.currentError) return undefined;
-  if (signal === "blocked" && !ctx.result?.signalReason?.trim()) return undefined;
-  if (signal === "noop" && scopedCallLog(ctx.session, ctx.taskId).some((e) => WRITE_TOOL_SET.has(e.toolName)))
-    return undefined;
-  if (signal === "done" || signal === "noop" || signal === "blocked") return signal;
-  return undefined;
-}
-
 function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   // Don't distill a turn whose completion the harness withheld: its text carries claims we
-  // just judged unsubstantiated (a "Done." over a failing handoff, an unvalidated summary).
-  // A model-emitted `blocked` signal is a finished turn and does not set this — it still
-  // commits. The true facts re-distill on the completing follow-up turn either way.
+  // just judged unsubstantiated (an unvalidated summary over an empty final response). The
+  // true facts re-distill on the completing follow-up turn either way.
   if (ctx.currentError?.blocksCompletion) return;
   const output = ctx.result?.text;
   if (!output) return;
@@ -182,22 +168,10 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   );
 }
 
-// The completion gate is enforced once, in-stream (lifecycle-generate `onBeforeFinish`): a
-// block surviving its retry sets a user-audience `ctx.currentError`, which `resolveSignal`
-// already treats as a reason to withhold the signal. Nothing to re-check here.
+// The completion gate is enforced once, in-stream (lifecycle-generate `onBeforeFinish`): an
+// empty-answer block surviving its retry sets a user-audience `ctx.currentError` with
+// `blocksCompletion`. Nothing to re-check here.
 function acceptResult(ctx: RunContext): void {
-  const lifecycleSignal = resolveSignal(ctx);
-  if (lifecycleSignal) {
-    ctx.acceptedSignal = lifecycleSignal;
-    ctx.currentError = undefined;
-    ctx.debug("lifecycle.signal.accepted", {
-      signal: lifecycleSignal,
-      tool_calls: ctx.result?.toolCalls.length ?? 0,
-    });
-  } else {
-    ctx.acceptedSignal = undefined;
-  }
-
   const errorBudgetExhausted =
     ctx.currentError?.code === LIFECYCLE_ERROR_CODES.unknown &&
     ctx.errorStats.other >= ctx.policy.maxUnknownErrorsPerRequest;

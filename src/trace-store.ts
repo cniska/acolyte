@@ -63,7 +63,6 @@ type TaskRow = {
   timestamp: string;
   model: string | null;
   has_error: number;
-  lifecycle_signal: string | null;
 };
 
 function rowToLogLine(row: TraceRow): LogLine {
@@ -98,7 +97,6 @@ function taskRowToSummary(row: TaskRow): TaskSummary {
     model: row.model ?? undefined,
     event: undefined,
     hasError: row.has_error === 1,
-    lifecycleSignal: row.lifecycle_signal ?? undefined,
   };
 }
 
@@ -119,8 +117,7 @@ const LIST_TASKS_SQL = `
     e.task_id,
     MIN(e.timestamp) AS timestamp,
     (SELECT json_extract(e2.fields_json, '$.model') FROM trace_events e2 WHERE e2.task_id = e.task_id AND e2.event = 'lifecycle.start' LIMIT 1) AS model,
-    MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') IN ('true', 1) THEN 1 ELSE 0 END) AS has_error,
-    (SELECT json_extract(e3.fields_json, '$.lifecycle_signal') FROM trace_events e3 WHERE e3.task_id = e.task_id AND e3.event = 'lifecycle.summary' LIMIT 1) AS lifecycle_signal
+    MAX(CASE WHEN e.event = 'lifecycle.summary' AND json_extract(e.fields_json, '$.has_error') IN ('true', 1) THEN 1 ELSE 0 END) AS has_error
   FROM trace_events e
   WHERE e.task_id IS NOT NULL
   GROUP BY e.task_id

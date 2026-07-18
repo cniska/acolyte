@@ -1,4 +1,4 @@
-import type { Agent, GenerateResult, LifecycleSignal } from "./agent-contract";
+import type { Agent, GenerateResult } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ReasoningLevel } from "./config-contract";
@@ -140,7 +140,6 @@ export type RunContext = {
   currentError?: LifecycleError;
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
-  acceptedSignal?: LifecycleSignal;
   toolCallStartedAt: Map<string, ToolCallStart>;
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   reasoning?: ReasoningLevel;

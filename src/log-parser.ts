@@ -41,7 +41,6 @@ export type TaskSummary = {
   model: string | undefined;
   event: string | undefined;
   hasError: boolean;
-  lifecycleSignal?: string;
 };
 
 export function listTasks(lines: LogLine[]): TaskSummary[] {
@@ -63,7 +62,6 @@ export function listTasks(lines: LogLine[]): TaskSummary[] {
       if (!entry.model && line.fields.model) entry.model = line.fields.model;
       if (line.fields.event === "lifecycle.summary") {
         entry.hasError = line.fields.has_error === "true";
-        if (line.fields.lifecycle_signal) entry.lifecycleSignal = line.fields.lifecycle_signal;
       }
     }
   }

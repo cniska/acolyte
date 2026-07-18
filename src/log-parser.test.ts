@@ -50,20 +50,15 @@ describe("parseLog", () => {
 });
 
 describe("listTasks", () => {
-  test("extracts lifecycle_signal from summary event", () => {
+  test("extracts hasError from the summary event", () => {
     const lines = parseLog(
       [
         "2026-03-19T10:00:00Z task_id=task_1 event=lifecycle.start model=gpt-5-mini",
-        "2026-03-19T10:00:01Z task_id=task_1 event=lifecycle.summary has_error=false lifecycle_signal=blocked",
+        "2026-03-19T10:00:01Z task_id=task_1 event=lifecycle.summary has_error=true",
       ].join("\n"),
     );
     const tasks = listTasks(lines);
-    expect(tasks[0]?.lifecycleSignal).toBe("blocked");
-  });
-
-  test("lifecycleSignal is undefined when not in summary", () => {
-    const lines = parseLog("2026-03-19T10:00:00Z task_id=task_1 event=lifecycle.start model=gpt-5-mini");
-    const tasks = listTasks(lines);
-    expect(tasks[0]?.lifecycleSignal).toBeUndefined();
+    expect(tasks[0]?.hasError).toBe(true);
+    expect(tasks[0]?.model).toBe("gpt-5-mini");
   });
 });
