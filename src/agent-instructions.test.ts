@@ -13,17 +13,16 @@ describe("createInstructions", () => {
       ["asks for explanation or planning only", "answer directly"],
       ["smallest", "root-cause", "matches local conventions"],
       ["unrelated or speculative detours"],
-      ["avoid repeating tool calls", "new information"],
       ["changing behavior", "run related validation first"],
       ["validation is blocked or unavailable", "skipped", "why"],
       ["flowing prose", "leading with the outcome"],
-      ["Being understood on first read", "match the shape to the task"],
+      ["match the shape to the task", "direct answer"],
       ["Keep reasoning, structure, and how things connect in prose", "even when it names many files"],
       ["Use a list only", "short, flat set", "nothing to explain between them"],
       ["Before your first tool call", "briefly state what you are about to do", "short updates at key moments"],
       ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
-      ["Questions about the codebase", "Search and read files immediately", "never ask"],
-      ["Available skills are listed each turn", "skill-activate"],
+      ["Search and read files immediately", "never ask"],
+      ["references something you cannot see", "session-search"],
     ]);
   });
 
@@ -61,6 +60,16 @@ describe("createInstructions", () => {
     expect(out).not.toContain("If the user names the files to change");
     expect(out).not.toContain("work one named file at a time");
     expect(out).not.toContain("once every requested file has the requested bounded change, stop");
+  });
+
+  test("does not duplicate soul or toolkit guidance in core bullets", () => {
+    const out = createInstructions("Soul.");
+    expect(out).not.toContain("Avoid repeating tool calls");
+    expect(out).not.toContain("do not forget it");
+    expect(out).not.toContain("load one when its use matches the task");
+    expect(out).not.toContain("Being understood on first read beats being short");
+    expect(out).not.toContain("Questions about the codebase are answered by reading it");
+    expect(out).not.toContain("just to double-check the result");
   });
 
   test("does not claim skills auto-activate", () => {
