@@ -113,6 +113,41 @@ function padLine(line: string, width: number): string {
   return line;
 }
 
+const clipSegmenter = new Intl.Segmenter();
+
+/**
+ * ANSI-safe end-clip: cut a single line so its visible width never exceeds `width`
+ * columns, preserving escape sequences (zero width) and re-emitting `ansi.reset` so no
+ * open style leaks past the cut. Reserves one column for the `…` marker. End-clip only —
+ * middle-truncation stays a layout concern where the IR knows which span is elastic.
+ */
+export function clipLine(line: string, width: number): string {
+  if (width <= 0) return "";
+  if (stripAnsiLength(line) <= width) return line;
+  const budget = width - 1;
+  let out = "";
+  let used = 0;
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] === "\x1b") {
+      const end = skipEscapeSequence(line, i + 1);
+      out += line.slice(i, end);
+      i = end;
+      continue;
+    }
+    let j = i;
+    while (j < line.length && line[j] !== "\x1b") j++;
+    for (const { segment } of clipSegmenter.segment(line.slice(i, j))) {
+      const w = Bun.stringWidth(segment);
+      if (used + w > budget) return `${out}…${ansi.reset}`;
+      out += segment;
+      used += w;
+    }
+    i = j;
+  }
+  return `${out}…${ansi.reset}`;
+}
+
 /**
  * Serialize a node to string. When `staticAcc` is provided, `tui-static`
  * children are collected into it instead of rendered inline — this lets
@@ -154,68 +189,17 @@ function serializeNode(node: TuiNode, inherited: StyleStack, terminalWidth: numb
 
   if (el.type === "tui-box") {
     const style = mergeStyle(inherited, el.props);
-    const isColumn = el.props.flexDirection === "column";
-
-    if (isColumn) {
-      const parts = el.children
-        .map((child) => serializeNode(child, style, terminalWidth, staticAcc))
-        .filter((p) => p.length > 0);
-      let joined = parts.join("\n");
-      if (el.props.width !== undefined) {
-        const w = el.props.width === "terminal" ? terminalWidth : el.props.width;
-        joined = joined
+    const content = serializeBox(el, style, terminalWidth, staticAcc);
+    if (el.props.overflow === "truncate") {
+      const boxWidth = el.props.width === "terminal" ? terminalWidth : el.props.width;
+      if (boxWidth !== undefined) {
+        return content
           .split("\n")
-          .map((line) => padLine(line, w))
+          .map((line) => padLine(clipLine(line, boxWidth), boxWidth))
           .join("\n");
       }
-      return joined;
     }
-
-    // Row direction: concatenate children horizontally.
-    const childOutputs = el.children.map((child) => serializeNode(child, style, terminalWidth, staticAcc));
-    const boxWidth = el.props.width === "terminal" ? terminalWidth : el.props.width;
-    const justify = el.props.justifyContent;
-    const wrap = el.props.flexWrap === "wrap";
-
-    if (wrap && boxWidth !== undefined) {
-      const childWidths = childOutputs.map((o) => stripAnsiLength(o.split("\n")[0] ?? ""));
-      const totalWidth = childWidths.reduce((a, b) => a + b, 0);
-      if (totalWidth > boxWidth) {
-        // Group children into rows that fit within boxWidth.
-        const rows: string[][] = [[]];
-        let rowWidth = 0;
-        for (let i = 0; i < childOutputs.length; i++) {
-          const w = childWidths[i] ?? 0;
-          if ((rows[rows.length - 1]?.length ?? 0) > 0 && rowWidth + w > boxWidth) {
-            rows.push([]);
-            rowWidth = 0;
-          }
-          rows[rows.length - 1]?.push(childOutputs[i] ?? "");
-          rowWidth += w;
-        }
-        // Apply justifyContent to each row, fall back to joinRow for single-item rows.
-        const renderedRows = rows.map((row) => {
-          if (justify === "space-between" && row.length >= 2) {
-            return joinRowSpaceBetween(row, boxWidth);
-          }
-          return joinRow(row, boxWidth);
-        });
-        return renderedRows.join("\n");
-      }
-    }
-
-    if (justify === "space-between" && boxWidth !== undefined && childOutputs.length >= 2) {
-      return joinRowSpaceBetween(childOutputs, boxWidth);
-    }
-
-    if (justify === "flex-end" && boxWidth !== undefined) {
-      const content = childOutputs.join("");
-      const visible = stripAnsiLength(content);
-      if (visible < boxWidth) return " ".repeat(boxWidth - visible) + content;
-      return content;
-    }
-
-    return joinRow(childOutputs, boxWidth);
+    return content;
   }
 
   // Root — render children as column
@@ -223,6 +207,68 @@ function serializeNode(node: TuiNode, inherited: StyleStack, terminalWidth: numb
     .map((child) => serializeNode(child, inherited, terminalWidth, staticAcc))
     .filter((p) => p.length > 0)
     .join("\n");
+}
+
+function serializeBox(el: TuiElement, style: StyleStack, terminalWidth: number, staticAcc?: string[]): string {
+  const isColumn = el.props.flexDirection === "column";
+
+  if (isColumn) {
+    const parts = el.children
+      .map((child) => serializeNode(child, style, terminalWidth, staticAcc))
+      .filter((p) => p.length > 0);
+    let joined = parts.join("\n");
+    if (el.props.width !== undefined) {
+      const w = el.props.width === "terminal" ? terminalWidth : el.props.width;
+      joined = joined
+        .split("\n")
+        .map((line) => padLine(line, w))
+        .join("\n");
+    }
+    return joined;
+  }
+
+  const childOutputs = el.children.map((child) => serializeNode(child, style, terminalWidth, staticAcc));
+  const boxWidth = el.props.width === "terminal" ? terminalWidth : el.props.width;
+  const justify = el.props.justifyContent;
+  const wrap = el.props.flexWrap === "wrap";
+
+  if (wrap && boxWidth !== undefined) {
+    const childWidths = childOutputs.map((o) => stripAnsiLength(o.split("\n")[0] ?? ""));
+    const totalWidth = childWidths.reduce((a, b) => a + b, 0);
+    if (totalWidth > boxWidth) {
+      const rows: string[][] = [[]];
+      let rowWidth = 0;
+      for (let i = 0; i < childOutputs.length; i++) {
+        const w = childWidths[i] ?? 0;
+        if ((rows[rows.length - 1]?.length ?? 0) > 0 && rowWidth + w > boxWidth) {
+          rows.push([]);
+          rowWidth = 0;
+        }
+        rows[rows.length - 1]?.push(childOutputs[i] ?? "");
+        rowWidth += w;
+      }
+      const renderedRows = rows.map((row) => {
+        if (justify === "space-between" && row.length >= 2) {
+          return joinRowSpaceBetween(row, boxWidth);
+        }
+        return joinRow(row, boxWidth);
+      });
+      return renderedRows.join("\n");
+    }
+  }
+
+  if (justify === "space-between" && boxWidth !== undefined && childOutputs.length >= 2) {
+    return joinRowSpaceBetween(childOutputs, boxWidth);
+  }
+
+  if (justify === "flex-end" && boxWidth !== undefined) {
+    const content = childOutputs.join("");
+    const visible = stripAnsiLength(content);
+    if (visible < boxWidth) return " ".repeat(boxWidth - visible) + content;
+    return content;
+  }
+
+  return joinRow(childOutputs, boxWidth);
 }
 
 /** Join children with space distributed evenly between them. */
