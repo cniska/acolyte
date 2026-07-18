@@ -1,59 +1,11 @@
 import { z } from "zod";
-import { t } from "./i18n";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { emitParts, resultChunkParts } from "./tool-output-format";
+import { emitParts, webSearchSummaryParts } from "./tool-output-format";
 import { truncateText } from "./truncate-text";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
-
-export function webSearchStreamRows(result: string, query?: string): string {
-  const normalizeQuery = (value: string, maxChars = 120): string => {
-    const single = value.replace(/\s+/g, " ").trim();
-    if (single.length <= maxChars) return single.replace(/\]/g, "\\]");
-    return `${single.slice(0, maxChars - 1).trimEnd()}…`.replace(/\]/g, "\\]");
-  };
-  const lines = result
-    .split("\n")
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return "";
-
-  const noResultsMatch = lines[0]?.match(/^No web results found for:\s*(.+)$/i);
-  if (noResultsMatch?.[1]) {
-    return [`query=${JSON.stringify(normalizeQuery(noResultsMatch[1]))} results=0`, "(No output)"].join("\n");
-  }
-
-  const effectiveQuery = query ?? "search";
-  const out: string[] = [];
-  const entries: Array<{ rank: number; url?: string }> = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? "";
-    const titleMatch = line.match(/^(\d+)\.\s+(.+)$/);
-    if (!titleMatch?.[1] || !titleMatch?.[2]) continue;
-    const rank = Number.parseInt(titleMatch[1], 10);
-    const title = titleMatch[2].trim();
-    let url: string | undefined;
-    const next = lines[i + 1]?.trim();
-    if (next && /^https?:\/\//i.test(next)) {
-      url = next;
-      i++;
-    }
-    if (!url && title.startsWith("http")) url = title;
-    entries.push({ rank: Number.isFinite(rank) ? rank : entries.length + 1, url });
-  }
-
-  out.push(`query=${JSON.stringify(normalizeQuery(effectiveQuery))} results=${entries.length}`);
-  const visible = entries.slice(0, WEB_SEARCH_MAX_RESULTS);
-  for (const entry of visible)
-    out.push(`result rank=${entry.rank}${entry.url ? ` url=${JSON.stringify(entry.url)}` : ""}`);
-  if (entries.length > WEB_SEARCH_MAX_RESULTS)
-    out.push(`… +${t("unit.result", { count: entries.length - WEB_SEARCH_MAX_RESULTS })}`);
-  if (entries.length === 0) out.push("(No output)");
-  return out.join("\n");
-}
 
 function createWebSearchTool(input: ToolkitInput) {
   return createTool({
@@ -84,9 +36,7 @@ function createWebSearchTool(input: ToolkitInput) {
           toolCallId: callId,
         });
         const result = await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS);
-        const previewRows = webSearchStreamRows(result, toolInput.query);
-        const previewParts = resultChunkParts(previewRows, 80);
-        emitParts(previewParts, "web-search", input.onOutput, callId);
+        emitParts(webSearchSummaryParts(result), "web-search", input.onOutput, callId);
         return { kind: "web-search" as const, query: toolInput.query, output: result };
       });
     },
