@@ -6,10 +6,10 @@
  *   bun scripts/show-prompt.ts [workspace]
  */
 import { createInstructions } from "../src/agent-instructions";
-import { loadSystemPrompt } from "../src/soul";
+import { loadSoulPrompt } from "../src/soul";
 
 const workspace = process.argv[2] ?? process.cwd();
-const soulPrompt = loadSystemPrompt();
+const soulPrompt = loadSoulPrompt();
 const full = createInstructions(soulPrompt, workspace);
 
 console.log(full);
