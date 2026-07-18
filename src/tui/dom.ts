@@ -6,6 +6,7 @@ export interface TuiProps {
   justifyContent?: "flex-start" | "flex-end" | "space-between";
   flexWrap?: "nowrap" | "wrap";
   width?: number | "terminal";
+  overflow?: "visible" | "truncate";
   // Text
   color?: string;
   dimColor?: boolean;

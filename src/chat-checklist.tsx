@@ -38,7 +38,7 @@ export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
             <Box width={2}>
               <Text>{"  "}</Text>
             </Box>
-            <Box width={contentWidth}>
+            <Box width={contentWidth} overflow="truncate">
               {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
             </Box>
           </Box>

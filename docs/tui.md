@@ -10,7 +10,7 @@ Ink is general-purpose and brings layout complexity (Yoga), dep weight, and beha
 
 Three components, intentionally minimal:
 
-- **`Box`** — flex container. Props: `flexDirection`, `justifyContent`, `flexWrap`, `width`.
+- **`Box`** — flex container. Props: `flexDirection`, `justifyContent`, `flexWrap`, `width`, `overflow` (`visible` default, or `truncate` to clip lines to the box width at render).
 - **`Text`** — styled text span. Props: `color`, `dimColor`, `backgroundColor`, `bold`, `underline`, `inverse`.
 - **`Static`** — write-once scrollback region. Rendered items are flushed to terminal scrollback and never re-rendered.
 
@@ -71,7 +71,7 @@ Use `@path` in chat input to attach file or directory context:
 - **Layout rules are a product contract.** Add tests before adding layout semantics.
 - **No "Ink, but homegrown."** If a feature doesn't materially help Acolyte's UX, don't add it.
 - **Centralized input handling.** Terminal key parsing gets fragile fast — keep it in one place.
-- **Terminal edge cases.** Wide glyphs, combining characters, ANSI length vs display width all need care. `stripAnsiLength` and `padLine` in `serialize.ts` handle width calculations.
+- **Terminal edge cases.** Wide glyphs, combining characters, ANSI length vs display width all need care. `stripAnsiLength`, `padLine`, and `clipLine` in `serialize.ts` handle width calculations.
 
 ## Testing
 

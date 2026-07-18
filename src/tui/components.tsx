@@ -5,6 +5,7 @@ type BoxProps = {
   justifyContent?: "flex-start" | "flex-end" | "space-between";
   flexWrap?: "nowrap" | "wrap";
   width?: number | "terminal";
+  overflow?: "visible" | "truncate";
   children?: React.ReactNode;
   key?: React.Key;
 };
@@ -32,6 +33,7 @@ export function Box(props: BoxProps): React.ReactElement {
       justifyContent={props.justifyContent}
       flexWrap={props.flexWrap}
       width={props.width}
+      overflow={props.overflow}
     >
       {props.children}
     </tui-box>

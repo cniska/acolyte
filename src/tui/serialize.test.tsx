@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Box, Text } from "./components";
 import { renderToString } from "./render-to-string";
-import { stripAnsiLength } from "./serialize";
+import { clipLine, stripAnsi, stripAnsiLength } from "./serialize";
 import { renderPlain } from "./test-utils";
 
 describe("serialize", () => {
@@ -190,6 +190,154 @@ describe("serialize", () => {
 
     test("counts CJK with ANSI codes correctly", () => {
       expect(stripAnsiLength("\x1b[1mこんにちは\x1b[0m")).toBe(10);
+    });
+  });
+
+  describe("clipLine", () => {
+    const RESET = "\x1b[0m";
+
+    test("leaves lines that fit unchanged", () => {
+      expect(clipLine("hello", 5)).toBe("hello");
+      expect(clipLine("hi", 10)).toBe("hi");
+      expect(clipLine("\x1b[1mhello\x1b[0m", 5)).toBe("\x1b[1mhello\x1b[0m");
+    });
+
+    test("clips over-width plain text and appends an ellipsis", () => {
+      expect(clipLine("hello world", 5)).toBe(`hell…${RESET}`);
+    });
+
+    test("reserves exactly one column for the ellipsis", () => {
+      expect(stripAnsiLength(clipLine("abcdefgh", 4))).toBe(4);
+      expect(clipLine("abcdefgh", 4)).toBe(`abc…${RESET}`);
+    });
+
+    test("returns empty for non-positive width", () => {
+      expect(clipLine("hello", 0)).toBe("");
+      expect(clipLine("hello", -3)).toBe("");
+    });
+
+    test("width of one yields just the ellipsis", () => {
+      expect(clipLine("hello", 1)).toBe(`…${RESET}`);
+    });
+
+    test("preserves escape sequences before the cut and closes with reset", () => {
+      const out = clipLine("\x1b[31mred text here\x1b[0m", 5);
+      expect(out.startsWith("\x1b[31m")).toBe(true);
+      expect(out.endsWith(RESET)).toBe(true);
+      expect(stripAnsiLength(out)).toBe(5);
+    });
+
+    test("does not split a wide grapheme across the boundary", () => {
+      expect(stripAnsiLength(clipLine("aあ", 2))).toBeLessThanOrEqual(2);
+      expect(clipLine("aあ", 2)).toBe(`a…${RESET}`);
+      expect(stripAnsiLength(clipLine("ああ", 3))).toBeLessThanOrEqual(3);
+    });
+
+    // Property tests: invariants must hold across many generated inputs.
+    const alphabet = ["a", "z", " ", "あ", "😀", "\x1b[1m", "\x1b[0m", "\x1b[31m", "\t"];
+    function nextSeed(s: number): number {
+      return (s * 1664525 + 1013904223) >>> 0;
+    }
+    function generate(seed: number): { line: string; width: number } {
+      let s = nextSeed(seed);
+      const len = s % 24;
+      let line = "";
+      for (let i = 0; i < len; i++) {
+        s = nextSeed(s);
+        line += alphabet[s % alphabet.length];
+      }
+      s = nextSeed(s);
+      return { line, width: s % 20 };
+    }
+
+    test("visible width never exceeds the target", () => {
+      for (let seed = 0; seed < 500; seed++) {
+        const { line, width } = generate(seed);
+        expect(stripAnsiLength(clipLine(line, width))).toBeLessThanOrEqual(Math.max(0, width));
+      }
+    });
+
+    test("clipped output always closes any open style with a reset", () => {
+      for (let seed = 0; seed < 500; seed++) {
+        const { line, width } = generate(seed);
+        const out = clipLine(line, width);
+        if (width > 0 && stripAnsiLength(line) > width) {
+          expect(out.endsWith(RESET)).toBe(true);
+        }
+      }
+    });
+
+    test("stripped output never contains a partial escape (ESC byte)", () => {
+      for (let seed = 0; seed < 500; seed++) {
+        const { line, width } = generate(seed);
+        expect(stripAnsi(clipLine(line, width))).not.toContain("\x1b");
+      }
+    });
+  });
+
+  describe("box overflow", () => {
+    test("truncate clips a column line to the box width", () => {
+      const out = renderPlain(
+        <Box flexDirection="column" width={6} overflow="truncate">
+          <Text>hello world</Text>
+        </Box>,
+      );
+      expect(out).toBe("hello…");
+    });
+
+    test("visible default keeps the full line", () => {
+      const out = renderPlain(
+        <Box flexDirection="column" width={6}>
+          <Text>hello world</Text>
+        </Box>,
+      );
+      expect(out).toBe("hello world");
+    });
+
+    test("truncate still pads a short line to the box width", () => {
+      const out = renderToString(
+        <Box flexDirection="column" width={6} overflow="truncate">
+          <Text>hi</Text>
+        </Box>,
+      );
+      expect(out).toBe("hi    ");
+    });
+
+    test("truncate clips a row line to the box width", () => {
+      const out = renderPlain(
+        <Box width={4} overflow="truncate">
+          <Text>abcdef</Text>
+        </Box>,
+      );
+      expect(out).toBe("abc…");
+    });
+
+    test("truncate clips space-between rows to the box width", () => {
+      const raw = renderToString(
+        <Box justifyContent="space-between" width={8} overflow="truncate">
+          <Text>aaaaa</Text>
+          <Text>bbbbb</Text>
+        </Box>,
+      );
+      expect(stripAnsiLength(raw)).toBe(8);
+    });
+
+    test("truncate clips flex-end rows to the box width", () => {
+      const raw = renderToString(
+        <Box justifyContent="flex-end" width={6} overflow="truncate">
+          <Text>abcdefghij</Text>
+        </Box>,
+      );
+      expect(stripAnsiLength(raw)).toBe(6);
+    });
+
+    test("truncate re-pads a wide-grapheme cut to full box width", () => {
+      const raw = renderToString(
+        <Box flexDirection="column" width={4} overflow="truncate">
+          <Text>ab漢漢</Text>
+        </Box>,
+      );
+      expect(stripAnsiLength(raw)).toBe(4);
     });
   });
 

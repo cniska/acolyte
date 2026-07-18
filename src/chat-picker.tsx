@@ -5,7 +5,7 @@ import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skill-contract";
-import { truncateText } from "./truncate-text";
+import { truncateToWidth } from "./truncate-text";
 import { Box, Text } from "./tui";
 
 export type ModelPickerItem = {
@@ -38,9 +38,9 @@ function renderPickerRows(
   return items.map((item, index) => {
     const selected = index === selectedIndex;
     return (
-      <Box key={item.key}>
+      <Box key={item.key} width="terminal" overflow="truncate">
         <Text>{selected ? "› " : "  "}</Text>
-        <Box width={labelWidth}>
+        <Box width={labelWidth} overflow="truncate">
           <Text color={selected ? brandColor : undefined}>{item.label}</Text>
         </Box>
         {item.detail ? (
@@ -93,14 +93,15 @@ export function renderPickerItems(
   picker: PickerState,
   activeSessionId: string | undefined,
   brandColor: string,
+  termWidth: number,
 ): React.ReactNode {
   switch (picker.kind) {
     case "skills": {
       return renderPickerRows(
         picker.items.map((skill) => ({
           key: skill.path,
-          label: truncateText(skill.name, PICKER_LABEL_WIDTH),
-          detail: truncateText(skill.description, 72),
+          label: skill.name,
+          detail: skill.description,
         })),
         picker.index,
         brandColor,
@@ -123,10 +124,17 @@ export function renderPickerItems(
       );
     }
     case "resume": {
-      const rows = picker.items.map((item) => [
-        `${item.id === activeSessionId ? "●" : " "} ${item.id}`,
-        truncateText(item.title || t("chat.session.default_title"), 40),
-        formatRelativeTime(item.updatedAt),
+      const idCells = picker.items.map((item) => `${item.id === activeSessionId ? "●" : " "} ${item.id}`);
+      const timeCells = picker.items.map((item) => formatRelativeTime(item.updatedAt));
+      const idWidth = Math.max(0, ...idCells.map((cell) => cell.length));
+      const timeWidth = Math.max(0, ...timeCells.map((cell) => cell.length));
+      const gap = 2;
+      const prefixWidth = 2;
+      const titleBudget = Math.max(1, termWidth - prefixWidth - idWidth - gap - timeWidth - gap);
+      const rows = picker.items.map((item, i) => [
+        idCells[i] ?? "",
+        truncateToWidth(item.title || t("chat.session.default_title"), titleBudget),
+        timeCells[i] ?? "",
       ]);
       const formattedRows = alignCols(rows);
       const visible = formattedRows.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
@@ -134,10 +142,10 @@ export function renderPickerItems(
       return visible.map((line, index) => {
         const selected = index === picker.index - picker.scrollOffset;
         return (
-          <Text key={visibleItems[index]?.id ?? `${index}`}>
-            {selected ? "› " : "  "}
+          <Box key={visibleItems[index]?.id ?? `${index}`} width="terminal" overflow="truncate">
+            <Text>{selected ? "› " : "  "}</Text>
             <Text color={selected ? brandColor : undefined}>{line}</Text>
-          </Text>
+          </Box>
         );
       });
     }

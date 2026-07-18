@@ -4,13 +4,29 @@ import type { PickerState } from "./chat-picker";
 import { palette } from "./palette";
 import { createSession, dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
-import { renderPlain } from "./tui/test-utils";
+import { renderToString } from "./tui/render-to-string";
+import { stripAnsiLength } from "./tui/serialize";
+import { renderPlain, withTerminalWidth } from "./tui/test-utils";
 
 function renderInputPanelWithPicker(picker: PickerState, columns = DEFAULT_TERMINAL_WIDTH): string {
   return renderPlain(
     <ChatInputPanel picker={picker} activeSessionId="sess_active" brandColor={palette.brand} onCursorLine={() => {}} />,
     columns,
   );
+}
+
+function pickerRowWidths(picker: PickerState, columns: number): number[] {
+  const raw = withTerminalWidth(columns, () =>
+    renderToString(
+      <ChatInputPanel
+        picker={picker}
+        activeSessionId="sess_active"
+        brandColor={palette.brand}
+        onCursorLine={() => {}}
+      />,
+    ),
+  );
+  return raw.split("\n").map((line) => stripAnsiLength(line));
 }
 
 describe("chat picker visual regression", () => {
@@ -47,6 +63,79 @@ describe("chat picker visual regression", () => {
     );
   });
 
+  test("clips skill label and description to terminal width", () => {
+    const out = renderInputPanelWithPicker(
+      {
+        kind: "skills",
+        items: [
+          {
+            name: "improve-codebase-architecture",
+            description: "Find deepening opportunities in a codebase, informed by domain language and ADRs",
+            path: "bundled://improve",
+            source: "bundled" as const,
+          },
+          {
+            name: "build",
+            description: "Implement features incrementally through vertical slices",
+            path: "bundled://build",
+            source: "bundled" as const,
+          },
+        ],
+        index: 0,
+      },
+      40,
+    );
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────
+      Skills
+
+      › improve-codebase-ar… Find deepening o…
+        build                Implement featur…
+
+      Enter to select · Esc to close
+      ────────────────────────────────────────
+    `),
+    );
+  });
+
+  test("clips resume title but keeps the timestamp at narrow width", () => {
+    const realNow = Date.now;
+    Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
+    try {
+      const out = renderInputPanelWithPicker(
+        {
+          kind: "resume",
+          items: [
+            createSession({
+              id: "sess_active",
+              title: "A very long session title that needs clipping at narrow widths for sure",
+              updatedAt: "2026-03-02T00:00:00.000Z",
+            }),
+            createSession({ id: "sess_prev", title: "Short", updatedAt: "2026-03-02T00:00:00.000Z" }),
+          ],
+          index: 1,
+          scrollOffset: 0,
+        },
+        40,
+      );
+      expect(out).toBe(
+        dedent(`
+        ────────────────────────────────────────
+        Resume Session
+
+          ● sess_active  A very long …  just now
+        ›   sess_prev    Short          just now
+
+        Enter to resume · Esc to close
+        ────────────────────────────────────────
+      `),
+      );
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
   test("renders resume picker", () => {
     const realNow = Date.now;
     Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
@@ -76,5 +165,28 @@ describe("chat picker visual regression", () => {
     } finally {
       Date.now = realNow;
     }
+  });
+
+  test("clips overflowing picker rows to exactly the terminal width", () => {
+    const widths = pickerRowWidths(
+      {
+        kind: "skills",
+        items: [
+          {
+            name: "improve-codebase-architecture",
+            description: "Find deepening opportunities in a codebase, informed by domain language and ADRs",
+            path: "bundled://improve",
+            source: "bundled" as const,
+          },
+        ],
+        index: 0,
+      },
+      40,
+    );
+    for (const width of widths) {
+      expect(width).toBeLessThanOrEqual(40);
+    }
+    // The overflowing skill row is clipped up to the full terminal width, not left short.
+    expect(Math.max(...widths)).toBe(40);
   });
 });

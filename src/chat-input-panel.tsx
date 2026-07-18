@@ -84,9 +84,9 @@ function renderInputPanelContent(input: {
   let suggestions: React.ReactNode = null;
   if (atQuery !== null && atSuggestions.length > 0) {
     suggestions = atSuggestions.map((item) => (
-      <Text key={`at-suggestion-${item}`} color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}>
-        {`  ${item}`}
-      </Text>
+      <Box key={`at-suggestion-${item}`} width="terminal" overflow="truncate">
+        <Text color={item === atSuggestions[atSuggestionIndex] ? brandColor : undefined}>{`  ${item}`}</Text>
+      </Box>
     ));
   } else if (atQuery !== null) {
     suggestions = <Text dimColor> {t("chat.at_ref.no_matches")}</Text>;
@@ -97,7 +97,7 @@ function renderInputPanelContent(input: {
     suggestions = (
       <>
         {slashSuggestions.map((item, index) => (
-          <Box key={`slash-suggestion-${item}`}>
+          <Box key={`slash-suggestion-${item}`} width="terminal" overflow="truncate">
             <Text color={index === selectedIndex ? brandColor : undefined} dimColor={index !== selectedIndex}>
               {"  "}
             </Text>
@@ -160,7 +160,7 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
           <Text>{pickerLabel(picker)}</Text>
         )}
         <Text> </Text>
-        {renderPickerItems(picker, activeSessionId, brandColor)}
+        {renderPickerItems(picker, activeSessionId, brandColor, termWidth)}
         <Text> </Text>
         <Text dimColor>{pickerHint(picker)}</Text>
         <Text color={brandColor} dimColor>
