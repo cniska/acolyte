@@ -37,7 +37,7 @@ describe("checklist TUI rendering", () => {
       expected(`
         Build pipeline (1/3)
           ● lint
-          ◐ test
+          ⊙ test
           ○ deploy
       `),
     );
@@ -61,7 +61,7 @@ describe("checklist TUI rendering", () => {
       expected(`
         Steps (1/4)
           ● done step
-          ◐ active step
+          ⊙ active step
           ○ waiting step
           ◉ broken step
       `),
@@ -85,7 +85,7 @@ describe("checklist TUI rendering", () => {
       expected(`
         Steps (1/3)
           ● first
-          ◐ second
+          ⊙ second
           ○ third
       `),
     );

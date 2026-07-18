@@ -4,7 +4,7 @@ import { checklistMarker, checklistProgress } from "./checklist-contract";
 describe("checklistMarker", () => {
   test("returns correct markers", () => {
     expect(checklistMarker("pending")).toBe("○");
-    expect(checklistMarker("in_progress")).toBe("◐");
+    expect(checklistMarker("in_progress")).toBe("⊙");
     expect(checklistMarker("done")).toBe("●");
     expect(checklistMarker("failed")).toBe("◉");
   });

@@ -15,7 +15,7 @@ describe("formatChecklist", () => {
     expect(result.header).toBe("Build (1/3)");
     expect(result.items).toEqual([
       { id: "s1", marker: "●", label: "lint" },
-      { id: "s2", marker: "◐", label: "test" },
+      { id: "s2", marker: "⊙", label: "test" },
       { id: "s3", marker: "○", label: "deploy" },
     ]);
   });

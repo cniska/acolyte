@@ -22,7 +22,7 @@ export type ChecklistOutput = z.infer<typeof checklistOutputSchema>;
 
 const STATUS_MARKERS: Record<ChecklistItemStatus, string> = {
   pending: "○",
-  in_progress: "◐",
+  in_progress: "⊙",
   done: "●",
   failed: "◉",
 };
