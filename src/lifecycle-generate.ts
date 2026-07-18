@@ -16,14 +16,18 @@ import {
   parseError,
 } from "./error-handling";
 import { t } from "./i18n";
-import { type CompletionBlock, findCompletionBlock } from "./lifecycle-completion";
+import {
+  createFinishPolicyState,
+  decideFinish,
+  type FinishErrorReason,
+  renderReopenMessages,
+} from "./lifecycle-completion";
 import {
   type GenerateOptions,
   type LifecycleError,
   promptUsageTotalTokens,
   type RunContext,
 } from "./lifecycle-contract";
-import { createFinishPolicyState, decideFinish, renderFinishPolicyMessages } from "./lifecycle-generate-policy";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
@@ -115,14 +119,20 @@ export function createRunAgent(input: {
   });
 }
 
-// User-audience prose rendered from block facts. Kept out of lifecycle-completion (facts
-// only) and distinct from the model-facing retry nudge — the two audiences never share text.
-function userFacingCompletionMessage(block: CompletionBlock): string {
-  switch (block.reason) {
+// User-audience prose for an error verdict, where the model's last message cannot be the answer
+// (blank, a fragment, or filter-mangled). Distinct sink from the model-facing reopen nudge.
+function finishErrorMessage(reason: FinishErrorReason): string {
+  switch (reason) {
     case "empty-answer":
-      return t("lifecycle.completion.empty_answer");
+      return t("lifecycle.finish.empty_answer");
+    case "truncated":
+      return t("lifecycle.finish.truncated");
+    case "content-filter":
+      return t("lifecycle.finish.content_filter");
+    case "provider-error":
+      return t("lifecycle.finish.provider_error");
     default:
-      return unreachable(block.reason);
+      return unreachable(reason);
   }
 }
 
@@ -214,28 +224,27 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         }
         return reminders.map(renderReminder);
       },
-      onBeforeFinish: ({ answerText }) => {
-        const completionBlock = findCompletionBlock({ finalText: answerText });
-        const decision = decideFinish({ state: finishPolicyState, completionBlock });
+      onBeforeFinish: ({ answerText, finishReason }) => {
+        const decision = decideFinish({ state: finishPolicyState, step: { finalText: answerText, finishReason } });
         switch (decision.kind) {
-          case "completion-rejected-continue":
-            ctx.debug("lifecycle.completion.rejected", { action: "continue" });
-            return renderFinishPolicyMessages(decision);
-          case "completion-block":
+          case "reopen":
+            ctx.debug("lifecycle.completion.rejected", { action: "continue", reason: decision.reason });
+            break;
+          case "error":
             ctx.currentError = {
-              message: userFacingCompletionMessage(decision.block),
+              message: finishErrorMessage(decision.reason),
               code: LIFECYCLE_ERROR_CODES.unknown,
               category: "other",
               blocksCompletion: true,
             };
-            ctx.debug("lifecycle.completion.rejected", { action: "block" });
+            ctx.debug("lifecycle.completion.rejected", { action: "block", reason: decision.reason });
             break;
-          case "none":
+          case "finish":
             break;
           default:
             unreachable(decision);
         }
-        return renderFinishPolicyMessages(decision);
+        return renderReopenMessages(decision);
       },
       ...(typeof temperature === "number" ? { temperature } : {}),
       ...(reasoning ? { reasoning } : {}),

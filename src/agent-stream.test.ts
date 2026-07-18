@@ -23,7 +23,7 @@ describe("tool results are retained verbatim across steps", () => {
     },
   };
 
-  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
+  function finishPart(reason: "tool-calls" | "stop" | "length"): LanguageModelV4StreamPart {
     return {
       type: "finish",
       finishReason: { unified: reason, raw: reason },
@@ -127,7 +127,7 @@ describe("onBeforeNextCall hook", () => {
     },
   };
 
-  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
+  function finishPart(reason: "tool-calls" | "stop" | "length"): LanguageModelV4StreamPart {
     return {
       type: "finish",
       finishReason: { unified: reason, raw: reason },
@@ -415,6 +415,64 @@ describe("onBeforeNextCall hook", () => {
     expect(output.toolCalls.map((call) => call.toolName)).toEqual(["noop"]);
     // Text alongside tool calls is narration, not the answer.
     expect(output.text).toBe("");
+  });
+
+  test("a truncated answer is stitched across a continuation, not replaced by the tail", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "First half " },
+        { type: "text-end", id: "t_1" },
+        finishPart("length"),
+      ],
+      [
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "second half." },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: ({ finishReason }) =>
+        finishReason === "length" ? [{ role: "user", content: [{ type: "text", text: "<<continue>>" }] }] : [],
+    });
+    const output = await getFullOutput();
+
+    expect(output.text).toBe("First half second half.");
+    expect(promptCapture[1]).toContainEqual({ role: "assistant", content: [{ type: "text", text: "First half " }] });
+  });
+
+  test("a length cutoff mid-tool-call surfaces as truncated, not empty-answer", async () => {
+    const promptCapture: LanguageModelV4Message[][] = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("length")],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Answer." },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, promptCapture);
+    const stream = createAgentStream(model, "sys", { noop: echoTool() }, noopRateLimiter);
+
+    const seen: Array<{ finishReason?: string; answerText: string }> = [];
+    const { getFullOutput } = await stream("hi", {
+      onBeforeFinish: ({ finishReason, answerText }) => {
+        seen.push({ finishReason, answerText });
+        return finishReason === "length" ? [{ role: "user", content: [{ type: "text", text: "<<continue>>" }] }] : [];
+      },
+    });
+    const output = await getFullOutput();
+
+    // The gate sees a length cutoff with blank answer text — enough to classify it truncated
+    // rather than empty-answer — and the tool-step narration never pollutes the stitched answer.
+    expect(seen[0]).toEqual({ finishReason: "length", answerText: "" });
+    expect(output.text).toBe("Answer.");
   });
 
   test("passes the reasoning level through to the model as a call option", async () => {
