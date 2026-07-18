@@ -228,7 +228,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         const decision = decideFinish({ state: finishPolicyState, step: { finalText: answerText, finishReason } });
         switch (decision.kind) {
           case "reopen":
-            ctx.debug("lifecycle.completion.rejected", { action: "continue", reason: decision.reason });
+            ctx.debug("lifecycle.completion.rejected", { action: "reopen", reason: decision.reason });
             break;
           case "error":
             ctx.currentError = {
@@ -237,7 +237,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
               category: "other",
               blocksCompletion: true,
             };
-            ctx.debug("lifecycle.completion.rejected", { action: "block", reason: decision.reason });
+            ctx.debug("lifecycle.completion.rejected", { action: "error", reason: decision.reason });
             break;
           case "finish":
             break;
