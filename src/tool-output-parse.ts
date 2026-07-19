@@ -1,20 +1,14 @@
 import type { ToolOutputPart } from "./tool-output-contract";
 
 export type UnifiedDiffSummary = {
-  files: number;
   added: number;
   removed: number;
 };
 
 export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
-  let files = 0;
   let added = 0;
   let removed = 0;
   for (const line of rawResult.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      files += 1;
-      continue;
-    }
     if (line.startsWith("+++ ") || line.startsWith("--- ")) continue;
     if (line.startsWith("+")) {
       added += 1;
@@ -22,7 +16,7 @@ export function summarizeUnifiedDiff(rawResult: string): UnifiedDiffSummary {
     }
     if (line.startsWith("-")) removed += 1;
   }
-  return { files, added, removed };
+  return { added, removed };
 }
 
 export function findResultPaths(result: string): string[] {

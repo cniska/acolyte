@@ -172,7 +172,6 @@ function createEditFileTool(input: ToolkitInput) {
   const outputSchema = z.object({
     kind: z.literal("file-edit"),
     path: z.string().min(1),
-    files: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
     removed: z.number().int().nonnegative(),
     output: z.string(),
@@ -222,7 +221,6 @@ function createEditFileTool(input: ToolkitInput) {
         return {
           kind: "file-edit" as const,
           path: toolInput.path,
-          files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
           removed: totals.removed,
           output: rawResult,
@@ -247,7 +245,6 @@ function createCreateFileTool(input: ToolkitInput) {
     outputSchema: z.object({
       kind: z.literal("file-create"),
       path: z.string().min(1),
-      files: z.number().int().nonnegative(),
       added: z.number().int().nonnegative(),
       removed: z.number().int().nonnegative(),
       output: z.string(),
@@ -268,7 +265,6 @@ function createCreateFileTool(input: ToolkitInput) {
         return {
           kind: "file-create" as const,
           path: toolInput.path,
-          files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
           removed: totals.removed,
           output: rawResult,

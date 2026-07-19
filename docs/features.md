@@ -42,7 +42,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 
 - find/search/read files with gitignore awareness
 - edit/create/delete files
-- AST-based structural code editing with workspace-wide scope
+- AST-based structural code editing
 - git status/diff/log/show/add/commit
 - GitHub CLI integration for PR and issue management (view/create/edit), auto-enabled when `gh` is installed
 - on-demand session search across conversation history
