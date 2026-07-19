@@ -11,6 +11,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Change detection: gate the expensive lanes so a docs-only commit spends no
+  # verify or compile minutes. `main` has no required checks, so a skipped lane
+  # never blocks a merge.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'bunfig.toml'
+              - 'biome.json'
+              - '.github/workflows/ci.yml'
+
   pr-title:
     name: PR title
     if: github.event_name == 'pull_request'
@@ -24,6 +48,8 @@ jobs:
 
   verify:
     name: Verify
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -66,19 +92,21 @@ jobs:
           name: coverage
           path: coverage
 
+  # linux-x64 builds on every code change; darwin-arm64 runs on macOS runners,
+  # which bill at ~10x, so it is kept off the PR loop and built only on push to
+  # main -- the mac binary is still proven before release without paying 10x on
+  # every PR iteration.
   compile:
     name: Compile (${{ matrix.target }})
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: linux-x64
-            runner: ubuntu-latest
-          - target: darwin-arm64
-            runner: macos-latest
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"target":"linux-x64","runner":"ubuntu-latest"},{"target":"darwin-arm64","runner":"macos-latest"}]' || '[{"target":"linux-x64","runner":"ubuntu-latest"}]') }}
 
     steps:
       - name: Checkout
