@@ -31,11 +31,14 @@ export type MessageStreamState = {
 };
 
 // The live prose row is paced, not coalesced: a rate-limited provider delivers text in
-// bursts, so instead of publishing each burst in one jump we drip it into the row over a
-// bounded horizon. The tick cadence matches the renderer's paint throttle; a burst drains
-// over DRAIN_HORIZON_MS, and MIN_DRIP_CHARS keeps a trickle moving so short tails still flow.
+// bursts, so instead of publishing each burst in one jump each tick reveals a fixed fraction
+// (STREAM_TICK_MS / DRIP_TIME_CONSTANT_MS) of the *remaining* backlog. That decays the burst
+// exponentially — fast while a lot is pending, gentle as it empties — which self-adjusts to
+// arrival rate (deltas keep appending mid-drain). The tick cadence matches the renderer's paint
+// throttle, so ~63% reveals within one time constant; MIN_DRIP_CHARS floors the per-tick reveal
+// so the short tail finishes promptly instead of trailing ever-smaller slices.
 const STREAM_TICK_MS = 32;
-const DRAIN_HORIZON_MS = 250;
+const DRIP_TIME_CONSTANT_MS = 250;
 const MIN_DRIP_CHARS = 8;
 
 export function createMessageStreamState(input: {
@@ -89,13 +92,13 @@ export function createMessageStreamState(input: {
     if (!tickTimer) tickTimer = setTimeout(tick, STREAM_TICK_MS);
   }
 
-  // Move one slice of the backlog into the live row and repaint. The slice is sized to drain
-  // any burst over DRAIN_HORIZON_MS; splitting on code points keeps surrogate pairs whole.
+  // Reveal one slice of the backlog and repaint. `Array.from` slices on code points, so a
+  // surrogate pair is never cut mid-character.
   function tick(): void {
     tickTimer = null;
     if (pendingText.length === 0) return;
     const codePoints = Array.from(pendingText);
-    const n = Math.max(MIN_DRIP_CHARS, Math.ceil((codePoints.length * STREAM_TICK_MS) / DRAIN_HORIZON_MS));
+    const n = Math.max(MIN_DRIP_CHARS, Math.ceil((codePoints.length * STREAM_TICK_MS) / DRIP_TIME_CONSTANT_MS));
     agentContent += codePoints.slice(0, n).join("");
     pendingText = codePoints.slice(n).join("");
     flush();
