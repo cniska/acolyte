@@ -70,7 +70,7 @@ export function providerFromModel(model: string): Provider {
   return "vercel";
 }
 
-export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
+export type ProviderCredentials = { apiKey?: string; baseUrl?: string; oauth?: boolean };
 
 export const DEFAULT_REASONING = "medium";
 
@@ -78,6 +78,7 @@ export function isProviderAvailable(provider: Provider, credentials: ProviderCre
   if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);
   if (provider === "google") return Boolean(credentials.apiKey);
   if (provider === "vercel") return Boolean(credentials.apiKey);
+  if (credentials.oauth) return true;
   if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
   return Boolean(credentials.apiKey);
 }

@@ -324,6 +324,12 @@ function emitStreamPart(
       controller.enqueue({ type: "reasoning-delta", payload: { text: part.delta } });
       break;
     }
+    case "reasoning-end": {
+      const block = reasoningBlocks.get(part.id) ?? { text: "" };
+      if (part.providerMetadata) block.providerOptions = { ...block.providerOptions, ...part.providerMetadata };
+      reasoningBlocks.set(part.id, block);
+      break;
+    }
     case "tool-call":
       pendingToolCalls.push({
         toolCallId: part.toolCallId,

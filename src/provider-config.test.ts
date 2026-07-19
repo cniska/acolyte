@@ -41,6 +41,7 @@ describe("provider config", () => {
     expect(isProviderAvailable("openai", { baseUrl: "https://api.openai.com/v1" })).toBe(false);
     expect(isProviderAvailable("openai", { apiKey: "sk-openai", baseUrl: "https://api.openai.com/v1" })).toBe(true);
     expect(isProviderAvailable("openai", { baseUrl: "http://localhost:11434/v1" })).toBe(true);
+    expect(isProviderAvailable("openai", { oauth: true })).toBe(true);
     expect(isProviderAvailable("anthropic", { baseUrl: "https://api.anthropic.com/v1" })).toBe(false);
     expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com/v1" })).toBe(true);
     expect(isProviderAvailable("anthropic", { apiKey: "sk-ant", baseUrl: "https://api.anthropic.com" })).toBe(false);

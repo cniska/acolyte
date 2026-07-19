@@ -1,8 +1,43 @@
 import { describe, expect, test } from "bun:test";
-import type { LanguageModelV4Message } from "@ai-sdk/provider";
+import type { LanguageModelV4, LanguageModelV4CallOptions, LanguageModelV4Message } from "@ai-sdk/provider";
 import type { ProviderCredentialsMap } from "./agent-model";
-import { createModel } from "./model-factory";
+import { createModel, usesOpenAiSubscription, withUnstoredResponses } from "./model-factory";
 import { sharedRateLimiter } from "./rate-limiter";
+
+describe("withUnstoredResponses", () => {
+  function fakeModel(record: (options: LanguageModelV4CallOptions) => void): LanguageModelV4 {
+    return {
+      specificationVersion: "v4",
+      provider: "openai.responses",
+      modelId: "gpt-5.5",
+      supportedUrls: {},
+      doGenerate: async () => ({}),
+      doStream: async (options: LanguageModelV4CallOptions) => {
+        record(options);
+        return {};
+      },
+    } as unknown as LanguageModelV4;
+  }
+
+  test("injects store:false while preserving other provider options", async () => {
+    let seen: LanguageModelV4CallOptions | undefined;
+    const model = withUnstoredResponses(fakeModel((o) => (seen = o)));
+    await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] as LanguageModelV4Message[],
+      providerOptions: { openai: { promptCacheKey: "k" } },
+    });
+    expect(seen?.providerOptions?.openai).toMatchObject({ store: false, promptCacheKey: "k" });
+  });
+});
+
+describe("usesOpenAiSubscription", () => {
+  // Positive routing (a served model with oauth) is covered in openai-subscription-models.int.test.ts,
+  // where discovery populates the served set. Here we cover the oauth gate, which short-circuits first.
+  test("never uses the subscription backend without a subscription", () => {
+    expect(usesOpenAiSubscription("gpt-5.5", { apiKey: "sk" })).toBe(false);
+    expect(usesOpenAiSubscription("gpt-5.5", {})).toBe(false);
+  });
+});
 
 describe("createModel anthropic reasoning", () => {
   function minimalStreamResponse(): Response {
