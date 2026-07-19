@@ -19,6 +19,11 @@ main() {
     *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
   esac
 
+  case "${platform}-${arch}" in
+    linux-x64|darwin-arm64) ;;
+    *) echo "No prebuilt binary for ${platform}-${arch}. Build from source with Bun (see README)." >&2; exit 1 ;;
+  esac
+
   if [ "$platform" = "linux" ]; then
     INSTALL_DIR="${HOME}/.local/bin"
   else
