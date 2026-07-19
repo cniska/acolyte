@@ -125,7 +125,7 @@ export function inlineSegments(part: ToolOutputPart): LayoutSegment[] {
   }
 }
 
-function bodyLine(part: ToolOutputPart, numWidth: number, diffIndent: number): LayoutLine {
+function bodyLine(part: ToolOutputPart, numWidth: number): LayoutLine {
   switch (part.kind) {
     case "diff": {
       const num = String(part.lineNumber).padStart(numWidth);
@@ -134,7 +134,7 @@ function bodyLine(part: ToolOutputPart, numWidth: number, diffIndent: number): L
         part.marker === "add" ? "diff-add" : part.marker === "remove" ? "diff-remove" : undefined;
       return {
         kind: "body",
-        indent: 2 + diffIndent,
+        indent: 2,
         segments: [
           { role: "diff-gutter", text: ` ${num} ${marker}` },
           { role: "diff-text", text: part.text },
@@ -148,7 +148,7 @@ function bodyLine(part: ToolOutputPart, numWidth: number, diffIndent: number): L
         const gutter = ` ${"⋮".padStart(numWidth)}`;
         const segments: LayoutSegment[] = [{ role: "diff-gutter", text: suffix === "…" ? gutter : `${gutter}  ` }];
         if (suffix !== "…") segments.push({ role: "dim", text: suffix.slice(2) });
-        return { kind: "body", indent: 2 + diffIndent, segments };
+        return { kind: "body", indent: 2, segments };
       }
       return { kind: "body", indent: 2, segments: [{ role: "dim", text: truncatedText(part.count, part.unit) }] };
     }
@@ -182,9 +182,8 @@ export function layoutToolOutput(parts: ToolOutputPart[]): LayoutLine[] {
     (max, part) => (part.kind === "diff" ? Math.max(max, String(part.lineNumber).length) : max),
     0,
   );
-  const diffIndent = numWidth > 0 && rest.some((part) => part.kind === "text") ? 2 : 0;
   const headerLine: LayoutLine = { kind: "header", indent: 0, segments: inlineSegments(first) };
-  return [headerLine, ...rest.map((part) => bodyLine(part, numWidth, diffIndent))];
+  return [headerLine, ...rest.map((part) => bodyLine(part, numWidth))];
 }
 
 export function segmentsWidth(segments: LayoutSegment[]): number {

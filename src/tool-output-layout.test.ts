@@ -10,12 +10,6 @@ const DIFF_PARTS: ToolOutputPart[] = [
   { kind: "truncated", count: 3, unit: "lines" },
 ];
 
-const NESTED_PARTS: ToolOutputPart[] = [
-  { kind: "edit-header", labelKey: "tool.label.file_edit", path: "9 files", added: 9, removed: 9 },
-  { kind: "text", text: "src/some/really/long/module.ts (+1 -1)" },
-  { kind: "diff", lineNumber: 200, marker: "add", text: "Y".repeat(80) },
-];
-
 const SHELL_PARTS: ToolOutputPart[] = [
   { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun test src/really/long/path/module.test.ts" },
   { kind: "shell-output", stream: "stdout", text: "Z".repeat(80) },
@@ -27,12 +21,6 @@ describe("layoutToolOutput", () => {
     const [, context, , add] = layoutToolOutput(DIFF_PARTS);
     expect(context?.segments[0]?.text).toBe("   9  ");
     expect(add?.segments[0]?.text).toBe(" 100 +");
-  });
-
-  test("nests diff lines under per-file sub-headers", () => {
-    const [, subHeader, diff] = layoutToolOutput(NESTED_PARTS);
-    expect(subHeader?.indent).toBe(2);
-    expect(diff?.indent).toBe(4);
   });
 
   test("marks add/remove lines with a fill and leaves context unfilled", () => {
@@ -50,7 +38,7 @@ describe("layoutToolOutput", () => {
 });
 
 describe("fitLine width invariant", () => {
-  const scenarios = [DIFF_PARTS, NESTED_PARTS, SHELL_PARTS];
+  const scenarios = [DIFF_PARTS, SHELL_PARTS];
   for (const width of [12, 20, 30, 40, 96]) {
     test(`every fitted line fits ${width} columns`, () => {
       for (const parts of scenarios) {

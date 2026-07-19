@@ -195,36 +195,6 @@ const CASES: ToolCase[] = [
     `),
   },
   {
-    name: "multi-file edit-header with per-file sub-headers",
-    parts: [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "14 files", added: 28, removed: 28 },
-      { kind: "text", text: "src/short-id.ts (+1 -1)" },
-      { kind: "diff", lineNumber: 2, marker: "remove", text: "export function generateId(size = 8): string {" },
-      { kind: "diff", lineNumber: 2, marker: "add", text: "export function generateId(size = 8): string {" },
-      { kind: "text", text: "src/chat-contract.ts (+2 -2)" },
-      { kind: "diff", lineNumber: 4, marker: "remove", text: 'import { generateId } from "./short-id";' },
-      { kind: "diff", lineNumber: 4, marker: "add", text: 'import { generateId } from "./short-id";' },
-    ],
-    cli: dedent(`
-      Edit 14 files (+28 -28)
-        src/short-id.ts (+1 -1)
-           2 -export function generateId(size = 8): string {
-           2 +export function generateId(size = 8): string {
-        src/chat-contract.ts (+2 -2)
-           4 -import { generateId } from "./short-id";
-           4 +import { generateId } from "./short-id";
-    `),
-    chat: dedent(`
-      • Edit 14 files (+28 -28)
-          src/short-id.ts (+1 -1)
-             2 -export function generateId(size = 8): string {
-             2 +export function generateId(size = 8): string {
-          src/chat-contract.ts (+2 -2)
-             4 -import { generateId } from "./short-id";
-             4 +import { generateId } from "./short-id";
-    `),
-  },
-  {
     name: "single-file edit has no per-file sub-header",
     parts: [
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 1 },
@@ -612,23 +582,6 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(diffLine.endsWith("…")).toBe(true); // content was cut, not wrapped
     expect(Bun.stringWidth(diffLine)).toBeLessThanOrEqual(40);
     expect(out).toContain("• Edit notes.ts (+1 -0)");
-  });
-
-  test("nested multi-file diff lines never exceed the terminal width", () => {
-    // The per-file sub-header adds a 2-col diffIndent; the extra indent must come out of the
-    // content budget so a nested diff/truncated line still fits and never wraps at narrow width.
-    const items: ToolOutputPart[] = [
-      { kind: "edit-header", labelKey: "tool.label.file_edit", path: "9 files", added: 9, removed: 9 },
-      { kind: "text", text: "src/some/really/long/module.ts (+1 -1)" },
-      { kind: "diff", lineNumber: 200, marker: "add", text: "X".repeat(80) },
-      { kind: "truncated", count: 3, unit: "lines" },
-      { kind: "diff", lineNumber: 2, marker: "remove", text: "Y".repeat(80) },
-    ];
-    for (const columns of [30, 40, 60, 96]) {
-      for (const line of renderChat(items, columns).split("\n")) {
-        expect(Bun.stringWidth(line)).toBeLessThanOrEqual(columns);
-      }
-    }
   });
 
   test("renders stderr in the same style as stdout, without a red channel flag", () => {

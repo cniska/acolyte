@@ -101,31 +101,10 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
   let oldLine = 0;
   let newLine = 0;
   let inHunk = false;
-  let fileCount = 0;
-  let pendingFilePath: string | null = null;
-  let fileParts: ToolOutputPart[] = [];
-  let fileAdded = 0;
-  let fileRemoved = 0;
-
-  const flushFile = (): void => {
-    if (!pendingFilePath || (fileAdded === 0 && fileRemoved === 0)) {
-      fileParts = [];
-      return;
-    }
-    rendered.push({ kind: "text", text: `${pendingFilePath} (+${fileAdded} -${fileRemoved})` });
-    for (const part of fileParts) rendered.push(part);
-    fileParts = [];
-  };
 
   for (const line of lines) {
     if (line.startsWith("diff --git ")) {
-      flushFile();
-      fileCount += 1;
       inHunk = false;
-      fileAdded = 0;
-      fileRemoved = 0;
-      const pathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
-      pendingFilePath = pathMatch?.[1] ?? line.slice("diff --git ".length);
       continue;
     }
     if (line.startsWith("--- ") || line.startsWith("+++ ")) continue;
@@ -140,25 +119,22 @@ export function numberedUnifiedDiffLines(rawResult: string): ToolOutputPart[] {
     }
     if (!inHunk) continue;
     if (line.startsWith("+")) {
-      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
-      fileAdded += 1;
+      rendered.push({ kind: "diff", lineNumber: newLine, marker: "add", text: line.slice(1) });
       newLine += 1;
       continue;
     }
     if (line.startsWith("-")) {
-      fileParts.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
-      fileRemoved += 1;
+      rendered.push({ kind: "diff", lineNumber: oldLine, marker: "remove", text: line.slice(1) });
       oldLine += 1;
       continue;
     }
     if (line.startsWith(" ")) {
-      fileParts.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
+      rendered.push({ kind: "diff", lineNumber: newLine, marker: "context", text: line.slice(1) });
       oldLine += 1;
       newLine += 1;
     }
   }
-  flushFile();
-  return fileCount <= 1 ? rendered.filter((part) => part.kind !== "text") : rendered;
+  return rendered;
 }
 
 function escapeControlChars(value: string): string {
