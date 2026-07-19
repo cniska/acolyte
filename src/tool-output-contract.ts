@@ -2,11 +2,15 @@ import { z } from "zod";
 
 export const toolOutputDiffMarkerSchema = z.enum(["add", "remove", "context"]);
 
+export const toolHeaderStateSchema = z.enum(["on", "off"]);
+export type ToolHeaderState = z.infer<typeof toolHeaderStateSchema>;
+
 export const toolOutputPartSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("tool-header"),
     labelKey: z.string().trim().min(1),
     detail: z.string().optional(),
+    state: toolHeaderStateSchema.optional(),
   }),
   z.object({ kind: z.literal("text"), text: z.string().trim().min(1) }),
   z.object({

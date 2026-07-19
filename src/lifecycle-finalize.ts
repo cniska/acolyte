@@ -112,7 +112,7 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
     ...(ctx.currentError ? { error: ctx.currentError.message } : {}),
     toolCalls: callLog.map((entry) => entry.toolName),
     modelCalls: ctx.modelCallCount,
-    ...(ctx.session.activeSkills?.length ? { activeSkills: ctx.session.activeSkills } : {}),
+    activeSkills: ctx.session.activeSkills ?? [],
     usage: {
       inputTokens,
       outputTokens,

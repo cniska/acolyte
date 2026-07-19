@@ -9,6 +9,10 @@ export function addActiveSkill(target: { activeSkills?: ActiveSkill[] }, skill: 
   target.activeSkills = [...skills.filter((s) => s.name !== skill.name), skill];
 }
 
+export function removeActiveSkill(target: { activeSkills?: ActiveSkill[] }, name: string): void {
+  target.activeSkills = (target.activeSkills ?? []).filter((s) => s.name !== name);
+}
+
 type CreateSkillActivatorInput = {
   currentSession: Session;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
@@ -18,7 +22,7 @@ type CreateSkillActivatorInput = {
 
 export function skillActivationRow(skillName: string): ChatRow {
   return createRow("tool", {
-    parts: [{ kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skillName }],
+    parts: [{ kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skillName, state: "on" }],
   });
 }
 

@@ -9,18 +9,25 @@ import type { ToolkitInput } from "./tool-contract";
 import { createSessionContext } from "./tool-session";
 
 type SkillActivateResult = { kind: string; activated: { name: string; source: string; instructions: string }[] };
+type SkillDeactivateResult = { kind: string; deactivated: string[] };
 
 const { createDir, cleanupDirs } = tempDir();
 
 type OutputEvent = { toolName: string; content: unknown; toolCallId?: string };
 
-function createToolkitInput(workspace: string, outputs?: OutputEvent[], activations?: ActiveSkill[]): ToolkitInput {
+function createToolkitInput(
+  workspace: string,
+  outputs?: OutputEvent[],
+  activations?: ActiveSkill[],
+  deactivations?: string[],
+): ToolkitInput {
   return {
     workspace,
     session: createSessionContext(),
     onOutput: (event) => outputs?.push(event),
     onChecklist: () => {},
     onSkillActivated: (skill) => activations?.push(skill),
+    onSkillDeactivated: (name) => deactivations?.push(name),
   };
 }
 
@@ -142,5 +149,64 @@ describe("skill-activate", () => {
       result: SkillActivateResult;
     };
     expect(result.activated[0]?.instructions).toContain("Hello world!");
+  });
+});
+
+describe("skill-deactivate", () => {
+  test("removes a skill from session.activeSkills and returns its name", async () => {
+    const dir = createDir("acolyte-skill-deactivate-");
+    await loadSkills(dir);
+    const input = createToolkitInput(dir);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ names: ["build", "git"] }, "call-act");
+    const { result } = (await toolkit.deactivateSkill.execute({ names: ["build"] }, "call-deact")) as {
+      result: SkillDeactivateResult;
+    };
+    expect(result.kind).toBe("skill-deactivate");
+    expect(result.deactivated).toEqual(["build"]);
+    expect(input.session.activeSkills?.map((s) => s.name)).toEqual(["git"]);
+  });
+
+  test("fires onSkillDeactivated for each deactivated skill", async () => {
+    const dir = createDir("acolyte-skill-deactivate-emit-");
+    await loadSkills(dir);
+    const deactivations: string[] = [];
+    const input = createToolkitInput(dir, undefined, undefined, deactivations);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ names: ["build", "git"] }, "call-act");
+    await toolkit.deactivateSkill.execute({ names: ["build", "git"] }, "call-deact");
+    expect(deactivations).toEqual(["build", "git"]);
+    expect(input.session.activeSkills ?? []).toHaveLength(0);
+  });
+
+  test("emits one tool-header row listing all deactivated skills", async () => {
+    const dir = createDir("acolyte-skill-deactivate-output-");
+    await loadSkills(dir);
+    const outputs: OutputEvent[] = [];
+    const input = createToolkitInput(dir, outputs);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ names: ["build", "git"] }, "call-act");
+    outputs.length = 0;
+    await toolkit.deactivateSkill.execute({ names: ["build", "git"] }, "call-deact");
+    const headers = outputs.filter((o) => (o.content as { kind: string }).kind === "tool-header");
+    expect(headers).toHaveLength(1);
+    expect((headers[0]?.content as { detail: string }).detail).toBe("build, git");
+  });
+
+  test("deactivates nothing when any skill in the batch is not active", async () => {
+    const dir = createDir("acolyte-skill-deactivate-partial-");
+    await loadSkills(dir);
+    const outputs: OutputEvent[] = [];
+    const deactivations: string[] = [];
+    const input = createToolkitInput(dir, outputs, undefined, deactivations);
+    const toolkit = createSkillToolkit(input);
+    await toolkit.activateSkill.execute({ names: ["build"] }, "call-act");
+    outputs.length = 0;
+    await expect(toolkit.deactivateSkill.execute({ names: ["build", "git"] }, "call-deact")).rejects.toThrow(
+      'skill not active: "git"',
+    );
+    expect(input.session.activeSkills?.map((s) => s.name)).toEqual(["build"]);
+    expect(deactivations).toHaveLength(0);
+    expect(outputs.filter((o) => (o.content as { kind: string }).kind === "tool-header")).toHaveLength(0);
   });
 });

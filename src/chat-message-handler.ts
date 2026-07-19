@@ -5,7 +5,7 @@ import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
-import { addActiveSkill } from "./chat-skill-activator";
+import { addActiveSkill, removeActiveSkill } from "./chat-skill-activator";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import {
   appendInputHistory,
@@ -146,6 +146,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             case "skill-activated":
               addActiveSkill(input.currentSession, event.skill);
               break;
+            case "skill-deactivated":
+              removeActiveSkill(input.currentSession, event.name);
+              break;
           }
         },
         pendingStartedAt,
@@ -154,7 +157,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       const assistantMessage = turn.assistantMessage;
       streamState.finalize();
 
-      if (turn.activeSkills?.length) {
+      if (turn.activeSkills) {
         input.currentSession.activeSkills = turn.activeSkills;
       }
       // A turn blocked on an empty answer has no model prose; don't persist a blank

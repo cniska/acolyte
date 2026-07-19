@@ -11,6 +11,7 @@ describe("toolsets", () => {
       "activateSkill",
       "createChecklist",
       "createFile",
+      "deactivateSkill",
       "deleteFile",
       "editCode",
       "editFile",

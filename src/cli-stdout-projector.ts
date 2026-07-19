@@ -5,7 +5,7 @@ import { formatChecklist } from "./checklist-format";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
 import { palette } from "./palette";
 import { renderToolOutput } from "./tool-output-render";
-import { printDim, printError, printOutput, printWarning, streamText } from "./ui";
+import { printDim, printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
 
 /**
  * Projects the row model (fed by MessageStreamState.onEvent) onto append-only stdout,
@@ -84,7 +84,8 @@ export function createStdoutRowProjector(): {
       }
       return;
     }
-    printDim(`${rowMarker(row).glyph} ${rendered.split("\n")[0] ?? ""}`);
+    const marker = rowMarker(row);
+    printMarkerLine(marker.glyph, marker.color, rendered.split("\n")[0] ?? "");
     if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
     hasPrintedProgress = true;
   }

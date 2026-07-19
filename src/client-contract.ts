@@ -64,6 +64,10 @@ const skillActivatedEventSchema = z.object({
   type: z.literal("skill-activated"),
   skill: activeSkillSchema,
 });
+const skillDeactivatedEventSchema = z.object({
+  type: z.literal("skill-deactivated"),
+  name: z.string().min(1),
+});
 const errorEventSchema = z.object({
   type: z.literal("error"),
   errorMessage: z.string(),
@@ -89,6 +93,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   statusEventSchema,
   checklistEventSchema,
   skillActivatedEventSchema,
+  skillDeactivatedEventSchema,
   errorEventSchema,
   noticeEventSchema,
 ]);

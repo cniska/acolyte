@@ -69,6 +69,37 @@ describe("cli-prompt", () => {
     expect(session.messages[session.messages.length - 1]?.kind).toBe("tool_payload");
   });
 
+  test("commits an empty activeSkills snapshot from the reply, clearing the session set", async () => {
+    const session: Session = { ...createTestSession(), activeSkills: [{ name: "build", instructions: "slice it" }] };
+    const client: Client = {
+      replyStream: async () => ({ outputStreamed: false, output: "done", model: "gpt-5-mini", activeSkills: [] }),
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    await runPromptAndCapture("drop the build skill", session, client);
+
+    expect(session.activeSkills).toEqual([]);
+  });
+
+  test("commits a populated activeSkills snapshot from the reply", async () => {
+    const session = createTestSession();
+    const client: Client = {
+      replyStream: async () => ({
+        outputStreamed: false,
+        output: "done",
+        model: "gpt-5-mini",
+        activeSkills: [{ name: "build", instructions: "slice it" }],
+      }),
+      status: async () => ({}),
+      taskStatus: async () => null,
+    };
+
+    await runPromptAndCapture("use the build skill", session, client);
+
+    expect(session.activeSkills?.map((s) => s.name)).toEqual(["build"]);
+  });
+
   test("handlePrompt returns failure when final reply has error", async () => {
     const session = createTestSession();
     const client: Client = {

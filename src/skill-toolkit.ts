@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { addActiveSkill } from "./chat-skill-activator";
+import { addActiveSkill, removeActiveSkill } from "./chat-skill-activator";
 import { type SkillSource, skillSourceSchema } from "./skill-contract";
 import { findSkillByName, readSkillInstructions } from "./skill-ops";
 import type { ToolkitInput } from "./tool-contract";
@@ -42,6 +42,7 @@ function createActivateSkillTool(input: ToolkitInput) {
             kind: "tool-header",
             labelKey: toolLabelKey("skill-activate"),
             detail: skills.map((s) => s.name).join(", "),
+            state: "on",
           },
           toolCallId: callId,
         });
@@ -58,8 +59,51 @@ function createActivateSkillTool(input: ToolkitInput) {
   });
 }
 
+function createDeactivateSkillTool(input: ToolkitInput) {
+  return createTool({
+    id: "skill-deactivate",
+    toolkit: "skill",
+    category: "meta",
+    description: "Deactivate one or more active skills by name when their guidance no longer applies.",
+    instruction: "Use `skill-deactivate` with one or more active skill names to drop their guidance from context.",
+    inputSchema: z.object({
+      names: z.array(z.string().min(1)).min(1),
+    }),
+    outputSchema: z.object({
+      kind: z.literal("skill-deactivate"),
+      deactivated: z.array(z.string().min(1)),
+    }),
+    execute: async (toolInput, toolCallId) => {
+      return runTool(input.session, "skill-deactivate", toolCallId, toolInput, async (callId) => {
+        for (const name of toolInput.names) {
+          const active = input.session.activeSkills?.some((s) => s.name === name);
+          if (!active) throw new Error(`skill not active: "${name}"`);
+        }
+        input.onOutput({
+          toolName: "skill-deactivate",
+          content: {
+            kind: "tool-header",
+            labelKey: toolLabelKey("skill-deactivate"),
+            detail: toolInput.names.join(", "),
+            state: "off",
+          },
+          toolCallId: callId,
+        });
+        const deactivated: string[] = [];
+        for (const name of toolInput.names) {
+          removeActiveSkill(input.session, name);
+          input.onSkillDeactivated(name);
+          deactivated.push(name);
+        }
+        return { kind: "skill-deactivate" as const, deactivated };
+      });
+    },
+  });
+}
+
 export function createSkillToolkit(input: ToolkitInput) {
   return {
     activateSkill: createActivateSkillTool(input),
+    deactivateSkill: createDeactivateSkillTool(input),
   };
 }
