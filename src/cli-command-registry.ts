@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { hasHelpFlag, parseFlag } from "./cli-args";
+import { authMode } from "./cli-auth";
 import { startCallbackServer } from "./cli-callback-server";
 import { attachFileToSession, chatModeWithOptions } from "./cli-chat";
 import { configMode } from "./cli-config";
@@ -27,7 +28,10 @@ import { removeCredential, writeCredential } from "./credentials";
 import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
+import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oauth-store";
 import { openBrowser } from "./open-browser";
+import { exchangeCode } from "./openai-oauth";
+import { startOAuthCallbackServer } from "./openai-oauth-server";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -108,6 +112,29 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         commandError,
         commandHelp,
         writeFile,
+      }),
+  },
+  auth: {
+    help: {
+      command: "auth [provider]",
+      usage: "acolyte auth [openai] [--logout]",
+      description: t("cli.help.desc.auth"),
+      examples: ["acolyte auth", "acolyte auth openai", "acolyte auth openai --logout"],
+    },
+    handler: (args) =>
+      authMode(args, {
+        hasHelpFlag,
+        printDim,
+        printError,
+        openBrowser,
+        createState: createId,
+        startCallbackServer: startOAuthCallbackServer,
+        exchangeCode: (input) => exchangeCode(input, globalThis.fetch),
+        writeOAuthTokens,
+        removeOAuthTokens,
+        readOAuthTokens: readOAuthTokensSync,
+        commandError,
+        commandHelp,
       }),
   },
   ...(appConfig.features.cloudSync
