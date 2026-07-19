@@ -674,61 +674,13 @@ describe("editCode", () => {
     });
   });
 
-  test("applies edits across directory", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-dir-");
+  test("rejects a directory path", async () => {
+    const workspace = dirs.createDir("acolyte-test-ast-dir-reject-");
     await writeFile(join(workspace, "a.ts"), "const x = oldName();\n", "utf8");
-    await writeFile(join(workspace, "b.ts"), "const y = oldName();\n", "utf8");
     const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      { path: workspace, edits: [{ op: "rename", from: "oldName", to: "newName" }] },
-      "call_22",
-    );
-    expect(result.result.matches).toBe(2);
-    expect(result.result.output).toContain("a.ts");
-    expect(result.result.output).toContain("b.ts");
-    const aContent = await readFile(join(workspace, "a.ts"), "utf8");
-    const bContent = await readFile(join(workspace, "b.ts"), "utf8");
-    expect(aContent).toContain("newName");
-    expect(bContent).toContain("newName");
-  });
-
-  test("workspace scope renames across all project files", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-ws-");
-    await writeFile(join(workspace, "lib.ts"), "export function oldName() { return 1; }\n", "utf8");
-    await writeFile(join(workspace, "main.ts"), "import { oldName } from './lib';\noldName();\n", "utf8");
-    const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      {
-        path: join(workspace, "lib.ts"),
-        edits: [{ op: "rename", from: "oldName", to: "newName", scope: "workspace" }],
-      },
-      "call_23",
-    );
-    expect(result.result.matches).toBeGreaterThanOrEqual(3);
-    const libContent = await readFile(join(workspace, "lib.ts"), "utf8");
-    const mainContent = await readFile(join(workspace, "main.ts"), "utf8");
-    expect(libContent).toContain("newName");
-    expect(mainContent).toContain("newName");
-    expect(mainContent).not.toContain("oldName");
-  });
-
-  test("workspace scope replaces across all project files", async () => {
-    const workspace = dirs.createDir("acolyte-test-ast-ws-replace-");
-    await writeFile(join(workspace, "a.ts"), "console.log('hello');\n", "utf8");
-    await writeFile(join(workspace, "b.ts"), "console.log('world');\n", "utf8");
-    const { tools } = toolsForAgent({ workspace });
-    const result = await tools.editCode.execute(
-      {
-        path: join(workspace, "a.ts"),
-        edits: [{ op: "replace", rule: "console.log($ARG)", replacement: "logger.info($ARG)", scope: "workspace" }],
-      },
-      "call_24",
-    );
-    expect(result.result.matches).toBe(2);
-    const aContent = await readFile(join(workspace, "a.ts"), "utf8");
-    const bContent = await readFile(join(workspace, "b.ts"), "utf8");
-    expect(aContent).toContain("logger.info");
-    expect(bContent).toContain("logger.info");
+    await expect(
+      tools.editCode.execute({ path: workspace, edits: [{ op: "rename", from: "oldName", to: "newName" }] }, "call_22"),
+    ).rejects.toThrow(/requires a file/);
   });
 
   test("rejects unsupported non-code files", async () => {

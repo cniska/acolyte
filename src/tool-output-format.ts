@@ -50,10 +50,8 @@ export function emitParts(
 }
 
 export function diffSummaryParts(path: string, rawResult: string, labelKey: string): ToolOutputPart[] {
-  const { files, added, removed } = summarizeUnifiedDiff(rawResult);
-  const touchedFiles = files > 0 ? files : 1;
-  const displayPath = touchedFiles > 1 ? t("unit.file", { count: touchedFiles }) : path;
-  return [{ kind: "edit-header", labelKey, path: displayPath, added, removed }];
+  const { added, removed } = summarizeUnifiedDiff(rawResult);
+  return [{ kind: "edit-header", labelKey, path, added, removed }];
 }
 
 function mapHeadTailParts<T>(

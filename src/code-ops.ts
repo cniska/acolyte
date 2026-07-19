@@ -324,48 +324,15 @@ export type ScanCodeResult = {
   patterns: ScanCodePatternResult[];
 };
 
-async function collectParseableFiles(dirPath: string, maxFiles = 500): Promise<string[]> {
-  const files: string[] = [];
-  const stack = [dirPath];
-  while (stack.length > 0 && files.length < maxFiles) {
-    const dir = stack.pop();
-    if (!dir) break;
-    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
-    for (const entry of entries) {
-      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
-      const abs = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(abs);
-        continue;
-      }
-      if (entry.isFile() && isParseable(abs)) files.push(abs);
-      if (files.length >= maxFiles) break;
-    }
-  }
-  return files;
-}
-
 type EditCodeFileResult = {
   matches: number;
   affectedSymbols: string[];
   diff: string;
-} | null;
+};
 
-async function editCodeFile(
-  absPath: string,
-  workspace: string,
-  edits: EditCodeEdit[],
-  throwOnNoMatch: boolean,
-): Promise<EditCodeFileResult> {
+async function editCodeFile(absPath: string, workspace: string, edits: EditCodeEdit[]): Promise<EditCodeFileResult> {
   const langName = languageFromPath(absPath);
-  if (!langName) return null;
+  invariant(langName, "editCodeFile requires a parseable file; callers must gate on isParseable");
   const langEnum = napi.Lang[langName as keyof typeof napi.Lang];
   const original = await readFile(absPath, "utf8");
   let current = original;
@@ -395,34 +362,25 @@ async function editCodeFile(
       matches = matches.filter((match) => matchIsWithinSymbol(match, symbol));
     }
     if (matches.length === 0) {
-      if (throwOnNoMatch) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editCodeNoMatch,
-          `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-        );
-      }
-      continue;
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+      );
     }
     if (isRenameEdit(edit) && !edit.target && hasRenameModeConflict(matches)) {
-      if (throwOnNoMatch) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editCodeNoMatch,
-          `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
-        );
-      }
-      continue;
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
+      );
     }
     const renameMode = isRenameEdit(edit) ? (requestedRenameMode(edit) ?? resolveRenameMode(matches)) : null;
     if (renameMode === "local") matches = matches.filter(isLocalRenameTarget);
     if (renameMode === "member") matches = matches.filter(isMemberRenameTarget);
     if (matches.length === 0) {
-      if (throwOnNoMatch) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editCodeNoMatch,
-          `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
-        );
-      }
-      continue;
+      throw createToolError(
+        TOOL_ERROR_CODES.editCodeNoMatch,
+        `No AST matches found for ${isRenameEdit(edit) ? "rename target" : "rule"}: ${pattern}${edit.within ? ` within: ${edit.within}` : ""}${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}${isRenameEdit(edit) && edit.target ? ` target: ${edit.target}` : ""}`,
+      );
     }
     totalMatches += matches.length;
     for (const match of matches) {
@@ -463,15 +421,9 @@ async function editCodeFile(
     }
   }
 
-  if (totalMatches === 0) return null;
-
   await writeFile(absPath, current, "utf8");
   const diff = createDiff(displayPathForDiff(absPath, workspace), original, current);
   return { matches: totalMatches, affectedSymbols: Array.from(affectedSymbols), diff };
-}
-
-function hasWorkspaceScope(edits: EditCodeEdit[]): boolean {
-  return edits.some((edit) => edit.scope === "workspace");
 }
 
 export async function editCode(input: {
@@ -479,18 +431,10 @@ export async function editCode(input: {
   path: string;
   edits: EditCodeEdit[];
 }): Promise<EditCodeResult> {
-  if (hasWorkspaceScope(input.edits)) {
-    return editCodeDirectory(input.workspace, input.workspace, input.edits);
-  }
-
   const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const pathStats = await stat(absPath);
 
-  if (pathStats.isDirectory()) {
-    return editCodeDirectory(input.workspace, absPath, input.edits);
-  }
-
-  if (!pathStats.isFile()) throw new Error(`code-edit requires a file or directory path, got: ${input.path}`);
+  if (!pathStats.isFile()) throw new Error(`code-edit requires a file path, got: ${input.path}`);
   if (!isParseable(absPath)) {
     throw createToolError(
       TOOL_ERROR_CODES.editCodeUnsupportedFile,
@@ -498,10 +442,7 @@ export async function editCode(input: {
     );
   }
 
-  const result = await editCodeFile(absPath, input.workspace, input.edits, true);
-  if (!result) {
-    throw createToolError(TOOL_ERROR_CODES.editCodeNoMatch, `No AST matches found in ${input.path}`);
-  }
+  const result = await editCodeFile(absPath, input.workspace, input.edits);
 
   const outputParts = [`path=${absPath}`, `edits=${input.edits.length}`, `matches=${result.matches}`];
   if (result.affectedSymbols.length > 0) outputParts.push(`symbols=${result.affectedSymbols.join(", ")}`);
@@ -514,30 +455,6 @@ export async function editCode(input: {
     output: outputParts.join("\n"),
     affectedSymbols: result.affectedSymbols,
   };
-}
-
-async function editCodeDirectory(workspace: string, dirPath: string, edits: EditCodeEdit[]): Promise<EditCodeResult> {
-  const files = await collectParseableFiles(dirPath);
-  const diffs: string[] = [];
-  let totalMatches = 0;
-  const allAffectedSymbols: string[] = [];
-
-  for (const absFile of files) {
-    const result = await editCodeFile(absFile, workspace, edits, false);
-    if (!result) continue;
-    totalMatches += result.matches;
-    allAffectedSymbols.push(...result.affectedSymbols);
-    diffs.push(result.diff);
-  }
-
-  if (totalMatches === 0) {
-    throw createToolError(TOOL_ERROR_CODES.editCodeNoMatch, `No AST matches found in directory: ${dirPath}`);
-  }
-
-  const diff = diffs.join("\n");
-  const affectedSymbols = Array.from(new Set(allAffectedSymbols));
-  const output = [`path=${dirPath}`, `edits=${edits.length}`, `matches=${totalMatches}`, "", diff].join("\n");
-  return { path: dirPath, edits: edits.length, matches: totalMatches, diff, output, affectedSymbols };
 }
 
 export async function scanCode(input: {

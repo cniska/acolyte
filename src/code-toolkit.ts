@@ -94,7 +94,6 @@ function createEditCodeTool(input: ToolkitInput) {
   const outputSchema = z.object({
     kind: z.literal("code-edit"),
     path: z.string().min(1),
-    files: z.number().int().nonnegative(),
     added: z.number().int().nonnegative(),
     removed: z.number().int().nonnegative(),
     matches: z.number().int().nonnegative(),
@@ -107,13 +106,12 @@ function createEditCodeTool(input: ToolkitInput) {
     toolkit: "code",
     category: "write",
     description:
-      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` may be a file or directory (`.` for workspace-wide). For non-code files use `file-edit`.',
+      'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` is a single code file. For non-code files use `file-edit`.',
     instruction: [
       "Use `code-edit` for AST-aware refactors; use `file-edit` for plain text edits.",
       "Prefer explicit `rename` or `replace` operations.",
       "For ambiguous local/member renames, set `target` to `local` or `member`.",
       "Use `withinSymbol` to keep edits scoped.",
-      "Set `scope` to `workspace` to apply edits across all project files.",
       "Read the target file directly before editing.",
       "If `code-edit` reports no matches, refine scope/rule from current file evidence instead of broadening blindly.",
       "Use the diff preview to confirm bounded changes and stop.",
@@ -138,7 +136,6 @@ function createEditCodeTool(input: ToolkitInput) {
         return {
           kind: "code-edit" as const,
           path: toolInput.path,
-          files: totals.files > 0 ? totals.files : 1,
           added: totals.added,
           removed: totals.removed,
           matches: editResult.matches,
