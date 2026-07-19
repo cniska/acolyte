@@ -37,7 +37,6 @@ describe("prompt cache", () => {
       openai: { promptCacheKey: "cache-key" },
     });
     expect(promptCacheProviderOptions("vercel", "cache-key")).toEqual({
-      gateway: { caching: "auto" },
       openai: { promptCacheKey: "cache-key" },
     });
     expect(promptCacheProviderOptions("google", "cache-key")).toBeUndefined();

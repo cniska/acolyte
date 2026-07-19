@@ -167,7 +167,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(capturedOptions?.providerOptions?.gateway).toEqual({ caching: "auto" });
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 

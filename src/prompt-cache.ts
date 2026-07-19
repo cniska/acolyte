@@ -32,10 +32,9 @@ export function promptCacheProviderOptions(provider: Provider, cacheKey: string)
     case "openai":
       return { openai: { promptCacheKey: cacheKey } };
     case "vercel":
-      return {
-        gateway: { caching: "auto" },
-        openai: { promptCacheKey: cacheKey },
-      };
+      // The @ai-sdk/openai adapter serializes only its own `openai` namespace; gateway caching is
+      // set on the wire by withVercelPromptCacheFetch instead.
+      return { openai: { promptCacheKey: cacheKey } };
     case "anthropic":
     case "google":
       return undefined;
