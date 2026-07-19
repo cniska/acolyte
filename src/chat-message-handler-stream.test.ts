@@ -1,8 +1,11 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, jest, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { palette } from "./palette";
+
+// Larger than any drip horizon, so advancing by it fully reveals the backlog.
+const DRAIN_ALL_MS = 1000;
 
 function createRowsHarness(): {
   rows: ChatRow[];
@@ -16,6 +19,10 @@ function createRowsHarness(): {
 }
 
 describe("chat-message-handler-stream", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test("accumulates agent deltas and exposes via streamedText", () => {
     const { setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
@@ -185,14 +192,15 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("leading newlines are stripped when creating new assistant row", async () => {
+  test("leading newlines are stripped when creating new assistant row", () => {
+    jest.useFakeTimers();
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
     // step-start emits "\n", then real text follows
     state.onDelta("\n");
     state.onDelta("Hello world");
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    jest.advanceTimersByTime(DRAIN_ALL_MS);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.kind).toBe("assistant");
     expect(rows[0]?.content).toBe("Hello world");
@@ -239,7 +247,8 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
-  test("streamed text persists after finalize when status row is appended", async () => {
+  test("streamed text persists after finalize when status row is appended", () => {
+    jest.useFakeTimers();
     const { rows, setRows } = createRowsHarness();
     const state = createMessageStreamState({ setRows });
 
@@ -253,7 +262,7 @@ describe("chat-message-handler-stream", () => {
     state.onToolResult({ toolCallId: "call_1", toolName: "memory-search" });
 
     state.onDelta("Tell me what to build.");
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    jest.advanceTimersByTime(DRAIN_ALL_MS);
     expect(rows.some((r) => r.kind === "assistant" && r.content === "Tell me what to build.")).toBe(true);
 
     state.finalize();
@@ -293,11 +302,12 @@ describe("chat-message-handler-stream", () => {
     return { rows, setRows, render };
   }
 
-  test("streamed answer survives StrictMode double-invocation of the flush updater", async () => {
+  test("streamed answer survives StrictMode double-invocation of the flush updater", () => {
+    jest.useFakeTimers();
     const h = createStrictHarness();
     const state = createMessageStreamState({ setRows: h.setRows });
     state.onDelta("The final answer.");
-    await new Promise((resolve) => setTimeout(resolve, 60)); // flush timer enqueues the updater
+    jest.advanceTimersByTime(DRAIN_ALL_MS); // ticks enqueue the updater
     h.render();
     expect(h.rows.filter((r) => r.kind === "assistant").map((r) => r.content)).toEqual(["The final answer."]);
     state.dispose();
@@ -334,6 +344,52 @@ describe("chat-message-handler-stream", () => {
     state.onProgressNotice({ message: "same", level: "warn" });
     state.onProgressNotice({ message: "same", level: "warn" });
     expect(rows).toHaveLength(1);
+    state.dispose();
+  });
+
+  test("drips a burst incrementally instead of publishing it in one jump", () => {
+    jest.useFakeTimers();
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    // A whole paragraph arrives at once, as a rate-limited provider flushes a buffered burst.
+    const burst = "x".repeat(200);
+    state.onDelta(burst);
+
+    // A couple of ticks in — well under the drain horizon — only part is revealed.
+    jest.advanceTimersByTime(64);
+    const partial = typeof rows[0]?.content === "string" ? rows[0].content : "";
+    expect(partial.length).toBeGreaterThan(0);
+    expect(partial.length).toBeLessThan(burst.length);
+
+    // Draining reveals the rest, intact and in order.
+    jest.advanceTimersByTime(DRAIN_ALL_MS);
+    expect(rows[0]?.content).toBe(burst);
+    state.dispose();
+  });
+
+  test("a tool call mid-drip flushes the full backlog before the tool row", () => {
+    jest.useFakeTimers();
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    const prose = "Reading the file to understand the failure before editing.";
+    state.onDelta(prose);
+    jest.advanceTimersByTime(64); // only a fragment has dripped in
+
+    // The tool call must drain the remaining backlog into the prose row, ordered before the
+    // tool row, with nothing dropped — the onOutput inline-seal bypass would otherwise lose it.
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
+    });
+
+    const assistantIdx = rows.findIndex((r) => r.kind === "assistant");
+    const toolIdx = rows.findIndex((r) => r.kind === "tool");
+    expect(assistantIdx).toBeGreaterThanOrEqual(0);
+    expect(toolIdx).toBeGreaterThan(assistantIdx);
+    expect(rows[assistantIdx]?.content).toBe(prose);
     state.dispose();
   });
 });

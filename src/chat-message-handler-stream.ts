@@ -30,7 +30,13 @@ export type MessageStreamState = {
   dispose: () => void;
 };
 
-const STREAM_FLUSH_MS = 50;
+// The live prose row is paced, not coalesced: a rate-limited provider delivers text in
+// bursts, so instead of publishing each burst in one jump we drip it into the row over a
+// bounded horizon. The tick cadence matches the renderer's paint throttle; a burst drains
+// over DRAIN_HORIZON_MS, and MIN_DRIP_CHARS keeps a trickle moving so short tails still flow.
+const STREAM_TICK_MS = 32;
+const DRAIN_HORIZON_MS = 250;
+const MIN_DRIP_CHARS = 8;
 
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
@@ -39,7 +45,10 @@ export function createMessageStreamState(input: {
   // --- agent streaming state ---
   let activeRowId: string | null = null;
   let agentContent = "";
-  let flushTimer: ReturnType<typeof setTimeout> | null = null;
+  // Text received but not yet revealed. The tick drips it into `agentContent`; every path
+  // that reads `agentContent` as the authoritative prose must drain this first.
+  let pendingText = "";
+  let tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Every agent row ID we've created, so dispose() can remove them on the error path. */
   const agentRowIds: string[] = [];
 
@@ -58,11 +67,39 @@ export function createMessageStreamState(input: {
   // Cleared whenever any other row is appended, so only adjacent repeats collapse.
   let lastNoticeKey: string | null = null;
 
-  function cancelFlushTimer(): void {
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-      flushTimer = null;
+  function cancelTick(): void {
+    if (tickTimer) {
+      clearTimeout(tickTimer);
+      tickTimer = null;
     }
+  }
+
+  // Reveal the whole backlog at once and stop pacing. The single chokepoint every seal/read
+  // path routes through, so dripped-but-unrevealed text can never render after a later row
+  // (reorder) or be lost when the closure resets.
+  function drainBacklog(): void {
+    if (pendingText.length > 0) {
+      agentContent += pendingText;
+      pendingText = "";
+    }
+    cancelTick();
+  }
+
+  function scheduleTick(): void {
+    if (!tickTimer) tickTimer = setTimeout(tick, STREAM_TICK_MS);
+  }
+
+  // Move one slice of the backlog into the live row and repaint. The slice is sized to drain
+  // any burst over DRAIN_HORIZON_MS; splitting on code points keeps surrogate pairs whole.
+  function tick(): void {
+    tickTimer = null;
+    if (pendingText.length === 0) return;
+    const codePoints = Array.from(pendingText);
+    const n = Math.max(MIN_DRIP_CHARS, Math.ceil((codePoints.length * STREAM_TICK_MS) / DRAIN_HORIZON_MS));
+    agentContent += codePoints.slice(0, n).join("");
+    pendingText = codePoints.slice(n).join("");
+    flush();
+    if (pendingText.length > 0) scheduleTick();
   }
 
   // Move the longest contiguous prefix of finalized rows into write-once scrollback.
@@ -84,7 +121,6 @@ export function createMessageStreamState(input: {
   }
 
   function flush(): void {
-    cancelFlushTimer();
     // Leading whitespace stripped every call so `content` is a pure function of
     // agentContent (no mutation), keeping the updater idempotent.
     const content = agentContent.replace(/^\s+/, "");
@@ -107,9 +143,9 @@ export function createMessageStreamState(input: {
     );
   }
 
-  /** Flush pending content and detach from the current agent row. */
+  /** Reveal any backlog, flush, and detach from the current agent row. */
   function sealAgentRow(): void {
-    cancelFlushTimer();
+    drainBacklog();
     flush();
     activeRowId = null;
     agentContent = "";
@@ -144,8 +180,8 @@ export function createMessageStreamState(input: {
 
     onDelta: (delta) => {
       if (delta.length === 0) return;
-      agentContent += delta;
-      if (!flushTimer) flushTimer = setTimeout(flush, STREAM_FLUSH_MS);
+      pendingText += delta;
+      scheduleTick();
     },
 
     onToolCall: () => {
@@ -160,7 +196,8 @@ export function createMessageStreamState(input: {
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
         // New tool call: seal any in-progress agent row and append tool row in one atomic update.
-        cancelFlushTimer();
+        // Drain first so backlog folds into agentContent before it is read as the pending prose.
+        drainBacklog();
         const pendingContent = agentContent;
         const pendingRowId = activeRowId;
         activeRowId = null;
@@ -263,7 +300,7 @@ export function createMessageStreamState(input: {
       promoteFinalizedPrefix();
     },
 
-    streamedText: () => agentContent,
+    streamedText: () => agentContent + pendingText,
 
     finalize: () => {
       sealAgentRow();
@@ -276,13 +313,14 @@ export function createMessageStreamState(input: {
     },
 
     dispose: () => {
-      cancelFlushTimer();
+      cancelTick();
       const checklistIds = new Set(checklistRowIdByGroupId.values());
       checklistRowIdByGroupId.clear();
       const idsToRemove = [...agentRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;
       agentContent = "";
+      pendingText = "";
       agentRowIds.length = 0;
       const removeSet = new Set([...idsToRemove, ...checklistIds]);
       if (removeSet.size > 0) {
