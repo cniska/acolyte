@@ -58,6 +58,7 @@ describe("rpc protocol schema", () => {
       status: {
         ok: true,
         providers: ["openai"],
+        provider_auth: ["openai (api key)"],
         model: "gpt-5-mini",
         active_skill: "review",
         protocol_version: "v1",

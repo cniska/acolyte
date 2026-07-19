@@ -4,7 +4,7 @@ import { createStatusOutput } from "./status-format";
 describe("status format", () => {
   test("maps known fields to labeled pairs", () => {
     const output = createStatusOutput({
-      providers: ["openai"],
+      provider_auth: ["openai (api key)"],
       model: "gpt-5-mini",
       service: "http://localhost:6767",
       memory: "file (8 entries)",
@@ -12,7 +12,7 @@ describe("status format", () => {
 
     expect(output?.header).toBe("Status");
     const pairs = output?.sections[0] ?? [];
-    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
     expect(pairs).toContainEqual(["Service", "http://localhost:6767"]);
     expect(pairs).toContainEqual(["Memory", "file (8 entries)"]);
@@ -24,19 +24,19 @@ describe("status format", () => {
 
   test("joins array values with comma", () => {
     const output = createStatusOutput({
-      providers: ["openai", "anthropic"],
+      provider_auth: ["openai (subscription + api key)", "anthropic (api key)"],
     });
     const pairs = output?.sections[0] ?? [];
-    expect(pairs).toContainEqual(["Providers", "openai, anthropic"]);
+    expect(pairs).toContainEqual(["Providers", "openai (subscription + api key), anthropic (api key)"]);
   });
 
   test("filters out unknown fields", () => {
     const output = createStatusOutput({
-      providers: ["openai"],
+      provider_auth: ["openai (api key)"],
       unknown_internal_field: "some_value",
     });
     const pairs = output?.sections[0] ?? [];
     expect(pairs.every(([k]: [string, string]) => k !== "Unknown internal field")).toBe(true);
-    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
   });
 });

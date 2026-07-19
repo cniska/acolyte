@@ -5,13 +5,13 @@ import { isCommandOutput } from "./chat-contract";
 describe("chat-commands-status", () => {
   test("statusRows returns commandOutput with labeled fields", () => {
     const [row] = statusRows({
-      providers: ["openai"],
+      provider_auth: ["openai (api key)"],
       model: "gpt-5-mini",
     });
     const content = row?.content;
     expect(isCommandOutput(content) && content.header).toBe("Status");
     const pairs = isCommandOutput(content) ? (content.sections[0] ?? []) : [];
-    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
   });
 
