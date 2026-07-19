@@ -4,6 +4,7 @@ import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { commandOutputColWidth, formatCompactNumber } from "./chat-format";
+import { rowMarker } from "./chat-row-marker";
 import { ShimmerText } from "./chat-shimmer";
 import type { PendingState } from "./client-contract";
 import { t } from "./i18n";
@@ -11,15 +12,6 @@ import { palette } from "./palette";
 import { renderToolOutputTui } from "./tool-output-tui";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
-
-const MARKERS: Record<ChatRow["kind"], string> = {
-  user: "❯ ",
-  assistant: "• ",
-  tool: "• ",
-  status: "• ",
-  task: "• ",
-  system: "  ",
-};
 
 const PENDING_MARKER_COLORS: Record<PendingState["kind"], string> = {
   queued: palette.queued,
@@ -66,14 +58,13 @@ type ChatTranscriptRowProps = {
 };
 
 export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatTranscriptRowProps): React.ReactNode {
-  const marker = MARKERS[row.kind];
-  const markerColor = row.style?.marker ?? (row.kind === "assistant" ? palette.text : undefined);
+  const { glyph, color } = rowMarker(row);
   const textColor = row.style?.text;
   const dim = row.style?.dim ?? false;
   return (
     <Box>
       <Box width={2}>
-        <Text color={markerColor}>{marker}</Text>
+        <Text color={color}>{glyph}</Text>
       </Box>
       <Box width={row.kind === "tool" ? toolContentWidth : contentWidth}>
         {isToolOutput(row.content) ? (

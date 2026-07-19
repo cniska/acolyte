@@ -257,7 +257,7 @@ export function createMessageStreamState(input: {
       if (!rowId) return;
       const markerColor = entry.isError ? palette.error : palette.success;
       input.setRows((current) =>
-        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, marker: markerColor } } : row)),
+        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, markerColor } } : row)),
       );
       // The marker is now final, so the row is immutable: promote it (and any prefix
       // it was blocking) into write-once scrollback.

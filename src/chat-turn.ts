@@ -162,7 +162,7 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
         }),
       );
     const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { marker: palette.success, dim: true }));
+    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { markerColor: palette.success, dim: true }));
   }
 
   return {

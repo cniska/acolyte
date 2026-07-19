@@ -473,7 +473,7 @@ describe("chat message handler", () => {
     expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
-    expect(last?.style?.marker).toBe(palette.cancelled);
+    expect(last?.style?.markerColor).toBe(palette.cancelled);
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {

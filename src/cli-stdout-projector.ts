@@ -1,5 +1,6 @@
 import { stdout as output } from "node:process";
 import { type ChatRow, isChecklistOutput, isToolOutput } from "./chat-contract";
+import { rowMarker } from "./chat-row-marker";
 import { formatChecklist } from "./checklist-format";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
 import { palette } from "./palette";
@@ -20,6 +21,7 @@ export function createStdoutRowProjector(): {
   let atLineStart = true;
   let agentStreamStarted = false;
   let agentStreamText = "";
+  let assistantMarker = "";
   let hasPrintedProgress = false;
 
   const emittedAssistant = new Map<string, string>();
@@ -32,7 +34,7 @@ export function createStdoutRowProjector(): {
     let remaining = text;
     while (remaining.length > 0) {
       if (atLineStart) {
-        output.write(agentStreamStarted ? "  " : "• ");
+        output.write(agentStreamStarted ? "  " : `${assistantMarker} `);
         agentStreamStarted = true;
       }
       const newlineIndex = remaining.indexOf("\n");
@@ -48,6 +50,7 @@ export function createStdoutRowProjector(): {
   }
 
   function renderAssistant(row: ChatRow): void {
+    assistantMarker = rowMarker(row).glyph;
     const full = typeof row.content === "string" ? row.content : "";
     const prev = emittedAssistant.get(row.id) ?? "";
     const delta = full.startsWith(prev) ? full.slice(prev.length) : full;
@@ -81,7 +84,7 @@ export function createStdoutRowProjector(): {
       }
       return;
     }
-    printDim(`• ${rendered.split("\n")[0] ?? ""}`);
+    printDim(`${rowMarker(row).glyph} ${rendered.split("\n")[0] ?? ""}`);
     if (rendered.includes("\n")) printIndentedDim(rendered.slice(rendered.indexOf("\n") + 1));
     hasPrintedProgress = true;
   }
@@ -94,7 +97,7 @@ export function createStdoutRowProjector(): {
     const rendered = `${header}\n${items.map((item) => `${item.marker} ${item.label}`).join("\n")}`;
     if (emittedChecklist.get(row.id) === rendered) return;
     emittedChecklist.set(row.id, rendered);
-    printDim(`• ${header}`);
+    printDim(`${rowMarker(row).glyph} ${header}`);
     for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
     hasPrintedProgress = true;
   }

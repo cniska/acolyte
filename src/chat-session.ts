@@ -28,7 +28,7 @@ export function toRows(messages: ChatMessage[]): ChatRow[] {
         id: remapDomainId(message.id, "row"),
         kind: "status",
         content: message.content,
-        style: { marker: palette.success, dim: true },
+        style: { markerColor: palette.success, dim: true },
       });
     }
   }
