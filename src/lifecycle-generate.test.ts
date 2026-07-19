@@ -457,15 +457,27 @@ describe("phaseGenerate", () => {
     },
   };
 
-  test("injects post-failure reminder when the last runner in callLog failed", async () => {
+  function injectedUserText(prompt: LanguageModelV4Message[] | undefined): string {
+    return (prompt ?? [])
+      .filter((m) => m.role === "user")
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+  }
+
+  test("injects the budget notice once when the per-turn call count crosses the threshold", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    session.maxToolCallsPerRequest = 100;
+    // Threshold is ceil(0.9 * 100) = 90; pre-fill the call log to the crossing point.
+    for (let i = 0; i < 90; i++) session.callLog.push({ toolName: "file-read", args: {}, status: "succeeded" });
 
-    // Turn 1: tool call (triggers onBeforeNextCall before turn 2).
-    // Turn 2: native no-tool-call final response.
+    // Turns 1 and 2 each make a tool call (each triggers onBeforeNextCall); turn 3 finishes.
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+      [{ type: "tool-call", toolCallId: "tc_2", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
       [
         { type: "text-start", id: "t_1" },
         { type: "text-delta", id: "t_1", delta: "Done." },
@@ -492,27 +504,16 @@ describe("phaseGenerate", () => {
       },
     });
 
-    // Pre-populate callLog with a failed runner — the post-failure reminder fires before turn 2.
-    ctx.session.callLog.push({
-      toolName: "test-run",
-      args: { command: "bun test src/app.test.ts" },
-      status: "failed",
-      exitCode: 1,
-    });
-
     await phaseGenerate(ctx, { timeoutMs: 5000 });
 
-    const secondPrompt = promptCapture[1] ?? [];
-    const injectedText = secondPrompt
-      .filter((m) => m.role === "user")
-      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
-      .filter((p): p is { type: "text"; text: string } => p.type === "text")
-      .map((p) => p.text)
-      .join("\n");
-
-    expect(injectedText).toContain('type="post-failure');
-    expect(injectedText).toContain("bun test src/app.test.ts");
-    expect(debugEvents.find((e) => e.event === "lifecycle.reminders.injected")).toBeDefined();
+    expect(injectedUserText(promptCapture[1])).toContain('type="budget"');
+    expect(injectedUserText(promptCapture[1])).toContain("Tool execution stops when the limit is reached.");
+    // The notice persists in history, so the final prompt still carries it — but exactly once,
+    // proving the second onBeforeNextCall did not inject a duplicate.
+    const finalPrompt = injectedUserText(promptCapture[2]);
+    expect(finalPrompt.match(/type="budget"/g) ?? []).toHaveLength(1);
+    expect(debugEvents.filter((e) => e.event === "lifecycle.budget_notice.injected")).toHaveLength(1);
+    expect(session.budgetNoticeAnnounced).toBe(true);
   });
 
   test("empty-answer: tool work then a blank final response is nudged once, then blocks", async () => {

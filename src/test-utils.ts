@@ -474,9 +474,8 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
     resolveModel: () => ({ model: "gpt-5-mini", provider: "openai" }),
     createLifecyclePolicy: () => ({
       ...defaultLifecyclePolicy,
-      turnMaxSteps: 3,
       stepTimeoutMs: 1000,
-      totalMaxSteps: 12,
+      maxToolCallsPerRequest: 12,
     }),
     phasePrepare: mock(() => ({
       session: createSessionContext(),

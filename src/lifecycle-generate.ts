@@ -1,8 +1,8 @@
+import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import type { Agent, GenerateResult, StreamChunk } from "./agent-contract";
 import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
-import { collectReminders, reminderTag } from "./agent-reminders";
-import { renderReminder } from "./agent-reminders-render";
+import { renderBudgetNotice } from "./agent-reminders";
 import { createAgent } from "./agent-stream";
 import { unreachable } from "./assert";
 import { errorCode, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -22,6 +22,7 @@ import {
   type FinishErrorReason,
   renderReopenMessages,
 } from "./lifecycle-completion";
+import { BUDGET_NOTICE_FRACTION, MAX_TOOL_CALLS_PER_REQUEST } from "./lifecycle-constants";
 import {
   type GenerateOptions,
   type LifecycleError,
@@ -33,14 +34,15 @@ import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
-import { RUNNER_TOOL_SET, type Toolset } from "./tool-registry";
-import { resetTurnStepCount } from "./tool-session";
+import type { Toolset } from "./tool-registry";
 
-function budgetState(ctx: RunContext): { used: number; limit: number } | undefined {
-  const used = ctx.session.flags.turnStepCount;
-  const limit = ctx.session.flags.turnStepLimit;
-  if (typeof used !== "number" || typeof limit !== "number" || limit <= 0) return undefined;
-  return { used, limit };
+function budgetNotice(ctx: RunContext): LanguageModelV4Message | undefined {
+  if (ctx.session.budgetNoticeAnnounced) return undefined;
+  const limit = ctx.session.maxToolCallsPerRequest ?? MAX_TOOL_CALLS_PER_REQUEST;
+  const count = ctx.session.callLog.length;
+  if (count < Math.ceil(BUDGET_NOTICE_FRACTION * limit)) return undefined;
+  ctx.session.budgetNoticeAnnounced = true;
+  return renderBudgetNotice(count, limit);
 }
 
 type CaptureErrorMeta = {
@@ -138,7 +140,6 @@ function finishErrorMessage(reason: FinishErrorReason): string {
 
 export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Promise<void> {
   ctx.currentError = undefined;
-  resetTurnStepCount(ctx.session, opts.turnLimit);
   const prompt = ctx.baseAgentInput;
   ctx.emit({ type: "status", state: { kind: "running" } });
   ctx.emit({
@@ -148,7 +149,6 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
-    turn_limit: opts.turnLimit ?? null,
   });
 
   try {
@@ -206,23 +206,14 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
-      onBeforeNextCall: (messages) => {
-        const reminders = collectReminders({
-          messages,
-          callLog: ctx.session.callLog,
-          runnerToolSet: RUNNER_TOOL_SET,
-          budget: budgetState(ctx),
-          config: {
-            budgetNudgeThresholds: ctx.policy.budgetNudgeThresholds,
-          },
+      onBeforeNextCall: () => {
+        const notice = budgetNotice(ctx);
+        if (!notice) return [];
+        ctx.debug("lifecycle.budget_notice.injected", {
+          count: ctx.session.callLog.length,
+          limit: ctx.session.maxToolCallsPerRequest ?? MAX_TOOL_CALLS_PER_REQUEST,
         });
-        if (reminders.length > 0) {
-          ctx.debug("lifecycle.reminders.injected", {
-            count: reminders.length,
-            tags: reminders.map(reminderTag),
-          });
-        }
-        return reminders.map(renderReminder);
+        return [notice];
       },
       onBeforeFinish: ({ answerText, finishReason }) => {
         const decision = decideFinish({ state: finishPolicyState, step: { finalText: answerText, finishReason } });

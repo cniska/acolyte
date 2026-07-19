@@ -1,48 +1,40 @@
 import { describe, expect, test } from "bun:test";
 import { hashResultValue } from "./tool-execution";
-import { checkStepBudget, createSessionContext, recordCall, resetTurnStepCount } from "./tool-session";
+import { checkStepBudget, createSessionContext, recordCall } from "./tool-session";
 
 describe("step budget", () => {
-  test("blocks when turn step count reaches turn limit", () => {
+  test("blocks when the per-request call count reaches the limit", () => {
     const session = createSessionContext();
-    session.flags.turnStepLimit = 2;
-    session.flags.turnStepCount = 2;
-    expect(checkStepBudget(session)).toContain("Turn step budget exhausted");
+    session.maxToolCallsPerRequest = 3;
+    for (let i = 0; i < 3; i++) recordCall(session, "file-read", {});
+    expect(checkStepBudget(session)).toContain("Request tool-call limit reached (3)");
   });
 
-  test("blocks when total call log reaches total limit", () => {
+  test("passes while below the limit", () => {
     const session = createSessionContext();
-    session.flags.totalStepLimit = 3;
-    for (let i = 0; i < 3; i++) {
-      recordCall(session, "file-read", {});
-    }
-    expect(checkStepBudget(session)).toContain("Total step budget exhausted");
-  });
-
-  test("increments turn step count on each allowed call", () => {
-    const session = createSessionContext();
-    session.flags.turnStepLimit = 10;
-    session.flags.turnStepCount = 0;
+    session.maxToolCallsPerRequest = 10;
+    for (let i = 0; i < 4; i++) recordCall(session, "file-read", {});
     expect(checkStepBudget(session)).toBeUndefined();
-    expect(session.flags.turnStepCount).toBe(1);
   });
 
-  test("resetTurnStepCount resets counter and optionally sets limit", () => {
+  test("resets per request because the counter is the per-request call log", () => {
     const session = createSessionContext();
-    session.flags.turnStepCount = 42;
-    session.flags.turnStepLimit = 80;
-    resetTurnStepCount(session, 30);
-    expect(session.flags.turnStepCount).toBe(0);
-    expect(session.flags.turnStepLimit).toBe(30);
+    session.maxToolCallsPerRequest = 2;
+    recordCall(session, "file-read", {});
+    recordCall(session, "file-read", {});
+    expect(checkStepBudget(session)).toBeDefined();
+    // A fresh request builds a fresh SessionContext, so the count starts at zero again.
+    expect(checkStepBudget(createSessionContext())).toBeUndefined();
   });
 
-  test("resetTurnStepCount without limit only resets counter", () => {
+  test("exhaustion message carries no imperative tail", () => {
     const session = createSessionContext();
-    session.flags.turnStepCount = 10;
-    session.flags.turnStepLimit = 80;
-    resetTurnStepCount(session);
-    expect(session.flags.turnStepCount).toBe(0);
-    expect(session.flags.turnStepLimit).toBe(80);
+    session.maxToolCallsPerRequest = 1;
+    recordCall(session, "file-read", {});
+    const message = checkStepBudget(session) ?? "";
+    expect(message).toBe("Request tool-call limit reached (1).");
+    expect(message.toLowerCase()).not.toContain("commit");
+    expect(message.toLowerCase()).not.toContain("wrap up");
   });
 });
 

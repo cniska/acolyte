@@ -1,8 +1,6 @@
 import {
-  BUDGET_NUDGE_THRESHOLDS,
-  MAX_CONTEXT_TOKENS,
-  MAX_TOTAL_STEPS,
-  MAX_TURN_STEPS,
+  MAX_CONTEXT_INPUT_TOKENS,
+  MAX_TOOL_CALLS_PER_REQUEST,
   MAX_UNKNOWN_ERRORS_PER_REQUEST,
   STEP_TIMEOUT_MS,
   TOOL_TIMEOUT_MS,
@@ -11,8 +9,7 @@ import type { WorkspaceCommand } from "./workspace-contract";
 
 export type LifecyclePolicy = {
   // Step limits
-  totalMaxSteps: number;
-  turnMaxSteps: number;
+  maxToolCallsPerRequest: number;
   maxUnknownErrorsPerRequest: number;
   // Timeouts
   stepTimeoutMs: number;
@@ -23,18 +20,14 @@ export type LifecyclePolicy = {
   installCommand?: WorkspaceCommand;
   formatCommand?: WorkspaceCommand;
   lintCommand?: WorkspaceCommand;
-  // Agent reminders
-  budgetNudgeThresholds: readonly number[];
 };
 
 export const defaultLifecyclePolicy: LifecyclePolicy = {
-  totalMaxSteps: MAX_TOTAL_STEPS,
-  turnMaxSteps: MAX_TURN_STEPS,
+  maxToolCallsPerRequest: MAX_TOOL_CALLS_PER_REQUEST,
   stepTimeoutMs: STEP_TIMEOUT_MS,
   maxUnknownErrorsPerRequest: MAX_UNKNOWN_ERRORS_PER_REQUEST,
   toolTimeoutMs: TOOL_TIMEOUT_MS,
-  contextMaxTokens: MAX_CONTEXT_TOKENS,
-  budgetNudgeThresholds: BUDGET_NUDGE_THRESHOLDS,
+  contextMaxTokens: MAX_CONTEXT_INPUT_TOKENS,
 };
 
 export function createLifecyclePolicy(override?: Partial<LifecyclePolicy>): LifecyclePolicy {

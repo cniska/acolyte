@@ -61,12 +61,6 @@ export type ToolCallRecord = {
   status: ToolCallStatus;
 };
 
-export type SessionFlags = {
-  turnStepCount?: number;
-  turnStepLimit?: number;
-  totalStepLimit?: number;
-};
-
 export type ToolErrorSummary = { message: string; code?: string; kind?: string };
 
 export type PreToolContext = { toolId: string; toolCallId: string; args: Record<string, unknown> };
@@ -90,7 +84,8 @@ export type EffectOutput = { append?: string };
 export type SessionContext = {
   callLog: ToolCallRecord[];
   taskId?: string;
-  flags: SessionFlags;
+  maxToolCallsPerRequest?: number;
+  budgetNoticeAnnounced?: boolean;
   writeTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
   cache?: ToolCache;
