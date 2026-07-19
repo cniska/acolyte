@@ -37,8 +37,7 @@ export function createModel(
 ): LanguageModelV4 {
   const creds = credentials ?? defaultCredentials();
   const provider = providerFromModel(qualifiedModel);
-  const slash = qualifiedModel.indexOf("/");
-  const modelId = slash >= 0 ? qualifiedModel.slice(slash + 1) : qualifiedModel;
+  const modelId = bareModelId(qualifiedModel);
   const providerCreds = creds[provider] ?? {};
   const fetchFn = createRateLimitFetch(rateLimiter, globalThis.fetch) as typeof globalThis.fetch;
 

@@ -24,8 +24,13 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
+export function bareModelId(qualifiedModel: string): string {
+  const slash = qualifiedModel.indexOf("/");
+  return slash >= 0 ? qualifiedModel.slice(slash + 1) : qualifiedModel;
+}
+
 export function formatModel(model: string, reasoning?: ReasoningLevel): string {
-  const name = (model.indexOf("/") >= 0 ? model.slice(model.indexOf("/") + 1) : model).trim();
+  const name = bareModelId(model).trim();
   if (reasoning && reasoning !== DEFAULT_REASONING) return `${name} (${reasoning})`;
   return name;
 }

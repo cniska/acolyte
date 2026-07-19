@@ -214,17 +214,12 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     return;
   }
 
-  const bareModelId = chatRequest.model.slice(chatRequest.model.indexOf("/") + 1);
+  const modelId = bareModelId(chatRequest.model);
   const openaiCreds = providerCredentials.openai;
   if (modelProvider === "openai" && openaiCreds?.oauth) {
     await ensureSubscriptionModelsLoaded(globalThis.fetch);
   }
-  if (
-    modelProvider === "openai" &&
-    openaiCreds?.oauth &&
-    !openaiCreds.apiKey &&
-    !isOpenAiSubscriptionModel(bareModelId)
-  ) {
+  if (modelProvider === "openai" && openaiCreds?.oauth && !openaiCreds.apiKey && !isOpenAiSubscriptionModel(modelId)) {
     const payload = streamErrorPayload(
       new Error(
         `Model "${chatRequest.model}" is not available on your OpenAI subscription. Set OPENAI_API_KEY to use other OpenAI models.`,
