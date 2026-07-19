@@ -109,7 +109,7 @@ export const TRACE_EVENT_CATALOG: Record<TraceEventName, TraceEventDefinition> =
     "kept_history_tokens",
     "missing_turns",
   ]),
-  "lifecycle.generate.start": defineEvent(["model"]),
+  "lifecycle.generate.start": defineEvent(["model", "auth_route"]),
   "lifecycle.generate.done": defineEvent(["model", "tool_calls", "text_chars", "finish_reason"]),
   "lifecycle.generate.error": defineEvent(["model", "error"]),
   "lifecycle.error": defineEvent(["source", "kind", "code", "category", "tool"]),

@@ -7,13 +7,18 @@ import { unreachable } from "./assert";
 import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
 import { isOpenAiSubscriptionModel } from "./openai-subscription-models";
 import { mergeProviderOptions, withVercelPromptCacheFetch } from "./prompt-cache";
-import { type ProviderCredentials, providerFromModel } from "./provider-config";
+import { type AuthRoute, bareModelId, type ProviderCredentials, providerFromModel } from "./provider-config";
 import { OPENAI_SUBSCRIPTION_BASE_URL } from "./provider-constants";
 import { createRateLimitFetch, type RateLimiter } from "./rate-limiter";
 
 /** A subscription serves only the models it lists; other OpenAI models fall back to the API key. */
 export function usesOpenAiSubscription(modelId: string, credentials: ProviderCredentials): boolean {
   return Boolean(credentials.oauth) && isOpenAiSubscriptionModel(modelId);
+}
+
+export function authRouteForModel(qualifiedModel: string, credentials: ProviderCredentialsMap): AuthRoute {
+  if (providerFromModel(qualifiedModel) !== "openai") return "api_key";
+  return usesOpenAiSubscription(bareModelId(qualifiedModel), credentials.openai ?? {}) ? "subscription" : "api_key";
 }
 
 // The subscription backend is stateless: it rejects store:true and never persists items. The adapter

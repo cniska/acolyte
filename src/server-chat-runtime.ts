@@ -10,9 +10,10 @@ import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
+import { authRouteForModel } from "./model-factory";
 import { ensureSubscriptionModelsLoaded, isOpenAiSubscriptionModel } from "./openai-subscription-models";
 import { loadProjectRulesPrompt } from "./project-rules";
-import { isProviderAvailable, providerFromModel } from "./provider-config";
+import { bareModelId, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
@@ -283,6 +284,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       features: config.features,
       reasoning: config.reasoning,
       temperature: config.temperature,
+      authRoute: authRouteForModel(chatRequest.model, providerCredentials),
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {

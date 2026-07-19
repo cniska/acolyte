@@ -8,6 +8,7 @@ import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
+import type { AuthRoute } from "./provider-config";
 import type { ChecklistListener, SessionContext, SkillActivatedListener } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
@@ -108,6 +109,7 @@ export type LifecycleInput = {
   features: ResolvedFeatureFlags;
   reasoning?: ReasoningLevel;
   temperature?: number;
+  authRoute?: AuthRoute;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;
@@ -144,4 +146,5 @@ export type RunContext = {
   toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
   reasoning?: ReasoningLevel;
   temperature?: number;
+  readonly authRoute?: AuthRoute;
 };

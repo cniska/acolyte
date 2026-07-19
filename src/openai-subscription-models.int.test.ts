@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { usesOpenAiSubscription } from "./model-factory";
+import { authRouteForModel, usesOpenAiSubscription } from "./model-factory";
 import { writeOAuthTokens } from "./oauth-store";
 import type { OAuthTokenSet } from "./oauth-store-contract";
 import {
@@ -73,6 +73,8 @@ describe("fetchSubscriptionModels", () => {
     expect(usesOpenAiSubscription("gpt-5.5", { oauth: true })).toBe(true);
     expect(usesOpenAiSubscription("gpt-5.6-luna", { oauth: true, apiKey: "sk" })).toBe(false);
     expect(usesOpenAiSubscription("gpt-5.5", { apiKey: "sk" })).toBe(false);
+    expect(authRouteForModel("openai/gpt-5.5", { openai: { oauth: true } })).toBe("subscription");
+    expect(authRouteForModel("openai/gpt-5.6-luna", { openai: { oauth: true, apiKey: "sk" } })).toBe("api_key");
   });
 
   test("uses the fallback version when the release lookup fails", async () => {

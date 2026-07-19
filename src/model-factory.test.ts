@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4CallOptions, LanguageModelV4Message } from "@ai-sdk/provider";
 import type { ProviderCredentialsMap } from "./agent-model";
-import { createModel, usesOpenAiSubscription, withUnstoredResponses } from "./model-factory";
+import { authRouteForModel, createModel, usesOpenAiSubscription, withUnstoredResponses } from "./model-factory";
 import { sharedRateLimiter } from "./rate-limiter";
 
 describe("withUnstoredResponses", () => {
@@ -36,6 +36,17 @@ describe("usesOpenAiSubscription", () => {
   test("never uses the subscription backend without a subscription", () => {
     expect(usesOpenAiSubscription("gpt-5.5", { apiKey: "sk" })).toBe(false);
     expect(usesOpenAiSubscription("gpt-5.5", {})).toBe(false);
+  });
+});
+
+describe("authRouteForModel", () => {
+  test("non-openai providers always route via api_key", () => {
+    expect(authRouteForModel("anthropic/claude-opus-4-8", { openai: { oauth: true } })).toBe("api_key");
+  });
+
+  test("openai without a subscription routes via api_key", () => {
+    expect(authRouteForModel("openai/gpt-5.5", { openai: { apiKey: "sk" } })).toBe("api_key");
+    expect(authRouteForModel("openai/gpt-5.5", {})).toBe("api_key");
   });
 });
 

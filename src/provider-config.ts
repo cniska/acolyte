@@ -1,5 +1,9 @@
+import { z } from "zod";
 import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
+
+export const authRouteSchema = z.enum(["subscription", "api_key"]);
+export type AuthRoute = z.infer<typeof authRouteSchema>;
 
 const MODEL_NAME_PREFIX_TO_PROVIDER: Record<string, Provider> = {
   claude: "anthropic",
