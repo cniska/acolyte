@@ -10,6 +10,23 @@ An open-source, terminal-first AI coding agent with a single-pass lifecycle, on-
 
 ![Acolyte CLI](docs/assets/demo.gif)
 
+## Why Acolyte
+
+- **Headless daemon.** One persistent daemon connects the CLI, editors, and custom clients through typed RPC.
+- **Explicit lifecycle.** Four testable phases — `resolve → prepare → generate → finalize` — keep policy, tool effects, and completion rules visible at every step.
+- **On-demand memory.** Scoped memory is retrieved only when needed, keeping durable context out of every prompt.
+- **Autonomy with boundaries.** Works without approval prompts, while the validated workspace boundary keeps tools in scope.
+- **Visible context budgeting.** Each prompt is planned before assembly, with bounded payloads and token use shown in detail.
+- **Observable execution.** Structured logs and local timelines make tool calls, effects, and task progress inspectable.
+- **Multi-provider.** Bring your own model provider, selected at `acolyte init`; the same lifecycle, tools, and boundaries apply across every one.
+- **Agent Skills.** Extend behavior with the [SKILL.md standard](https://agentskills.io), activated by the agent or through slash commands, with multiple skills active in one session.
+
+See [Why Acolyte](docs/why-acolyte.md) and the [Comparison](docs/comparison.md) for how it stacks up against other open-source agents.
+
+## Code quality
+
+Benchmarked against other open-source coding agents, Acolyte carries the fewest runtime dependencies, the smallest average module size, and near-zero `any` escapes — the smallest TypeScript codebase in the comparison. See [Benchmarks](docs/benchmarks.md) for the measured figures and methodology.
+
 ## Install
 
 ```bash
