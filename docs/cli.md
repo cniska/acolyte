@@ -6,6 +6,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 
 - `acolyte`: start interactive chat
 - `acolyte init [provider]`: initialize provider API key
+- `acolyte auth [provider]`: authenticate a provider with a subscription; `--logout` to disconnect
 - `acolyte login`: authenticate with the cloud (feature-flagged: `features.cloudSync`)
 - `acolyte logout`: remove cloud credentials (feature-flagged: `features.cloudSync`)
 - `acolyte resume [id]`: continue a previous session
@@ -29,6 +30,18 @@ All list commands support `--json` for machine-readable output.
 ## Local models
 
 See [Configuration](./configuration.md) for OpenAI-compatible model setup.
+
+## Subscription auth
+
+Authenticate OpenAI with an OpenAI subscription instead of an API key. This is separate from `acolyte login`, which authenticates the cloud sync service.
+
+```bash
+acolyte auth openai            # browser OAuth on a loopback callback (port 1455)
+acolyte auth                   # show which providers are connected
+acolyte auth openai --logout   # disconnect the subscription
+```
+
+See [Configuration](./configuration.md) for how a subscription interacts with an API key.
 
 ## Memory commands
 
