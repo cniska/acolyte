@@ -255,9 +255,17 @@ function countDepsRust(dir: string): { runtime: number; dev: number } {
     let section = "";
     for (const line of text.split("\n")) {
       if (line.startsWith("[")) section = line;
-      else if (section === "[dependencies]" && /^[a-z_-]/.test(line)) {
+      else if (
+        (section === "[dependencies]" ||
+          section === "[workspace.dependencies]" ||
+          /^\[target\..+\.dependencies\]$/.test(section)) &&
+        /^[a-z_-]/.test(line)
+      ) {
         runtime.add(line.split(/[\s=]/)[0]);
-      } else if (section === "[dev-dependencies]" && /^[a-z_-]/.test(line)) {
+      } else if (
+        (section === "[dev-dependencies]" || /^\[target\..+\.dev-dependencies\]$/.test(section)) &&
+        /^[a-z_-]/.test(line)
+      ) {
         dev.add(line.split(/[\s=]/)[0]);
       }
     }

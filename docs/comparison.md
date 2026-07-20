@@ -11,8 +11,8 @@ The overview covers documented, shipped capabilities. “Partial” means the ca
 | Capability | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
 |---|---|---|---|---|---|---|---|---|---|
 | Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| Client/server or editor protocol | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| Workspace boundary or sandbox | ✓ | partial | ✓ | partial | ✓ | ✓ | partial | ✓ | — |
+| Client/server or editor protocol | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Workspace boundary or sandbox | ✓ | partial | ✓ | partial | ✓ | ✓ | partial | ✓ | ✓ |
 | Agent skills | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, permission gates, and editor protocols so their presence can be compared without claiming identical isolation. A dash means the reviewed source did not establish the capability.
@@ -29,7 +29,7 @@ Workspace controls are not equivalent security models. The row groups path bound
 | Reasonix | Go CLI with desktop client, plugins, and ACP integration | local CLI + desktop |
 | Kimchi | TypeScript CLI with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
 | Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
-| Grok Build | Rust terminal harness and TUI | local CLI |
+| Grok Build | Rust terminal harness and TUI with ACP and sandboxing | local CLI + ACP |
 
 Acolyte runs as a headless daemon. The CLI and third-party clients connect over the same typed RPC protocol. Editor integrations can use that protocol without embedding a separate agent runtime.
 
@@ -107,7 +107,7 @@ The other projects use different approaches to compaction, repository-map contex
 
 ## Code quality
 
-See [Benchmarks](./benchmarks.md) for the measured source comparison. At the recorded snapshot, Acolyte has the smallest repository, smallest average module size, fewest runtime dependencies, and highest measured TypeScript validation-call density in the selected peer set.
+See [Benchmarks](./benchmarks.md) for the measured source comparison. At the recorded snapshot, Acolyte has the smallest measured source set, smallest average module size, fewest runtime dependencies, and highest measured TypeScript validation-call density in the selected peer set.
 
 These are static engineering signals. They do not establish task success, model quality, security equivalence, or overall product superiority.
 
