@@ -102,16 +102,16 @@ describe("cli auth", () => {
     const result = await runCliWithInput(home, project, ["auth"], "");
     expect(result.exitCode).toBe(0);
     const out = `${result.stdout}\n${result.stderr}`;
-    expect(out).toContain("anthropic:");
+    expect(out).toContain("anthropic (");
     expect(out).toContain("api key");
-    expect(out).toContain("openai:");
+    expect(out).toContain("openai (");
   }, 15_000);
 
   test("status lists API keys from the environment", async () => {
     const { home, project } = await createTestEnv();
     const result = await runCliWithInput(home, project, ["auth"], "", { OPENAI_API_KEY: "sk-env" });
     expect(result.exitCode).toBe(0);
-    expect(`${result.stdout}\n${result.stderr}`).toContain("openai: api key");
+    expect(`${result.stdout}\n${result.stderr}`).toContain("openai (api key)");
   }, 15_000);
 
   test("--logout removes stored key", async () => {

@@ -163,7 +163,7 @@ export const EN_MESSAGES = {
   "cli.auth.logout.subscription_none": "No {provider} subscription connected.",
   "cli.auth.invalid_provider": "Invalid provider. Use {providers}.",
   "cli.auth.provider.required": "Provider required. Use: acolyte auth <provider>",
-  "cli.auth.status.line": "{provider}: {methods}",
+  "cli.auth.status.line": "{provider} ({methods})",
   "cli.auth.status.none_method": "none",
   "cli.auth.prompt.api_key": "API key: ",
   "cli.auth.prompt.method": "Method [key|subscription]: ",
