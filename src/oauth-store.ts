@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import {
@@ -30,8 +30,11 @@ function readStore(env?: Env): OAuthStore {
 async function writeStore(store: OAuthStore, env?: Env): Promise<void> {
   const path = oauthPath(env);
   await mkdir(configDir(env), { recursive: true });
-  await writeFile(path, JSON.stringify(store, null, 2), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
-  await chmod(path, PRIVATE_FILE_MODE);
+  // Write + rename so a concurrent reader never observes a partially written token file.
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, JSON.stringify(store, null, 2), { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await chmod(tmp, PRIVATE_FILE_MODE);
+  await rename(tmp, path);
 }
 
 export function readOAuthTokensSync(provider: OAuthProvider, env?: Env): OAuthTokenSet | undefined {
