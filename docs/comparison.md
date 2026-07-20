@@ -4,6 +4,8 @@ Compare Acolyte with eight current open-source terminal coding agents across arc
 
 See [Why Acolyte](./why-acolyte.md) for a summary.
 
+Projects compared: [OpenCode](https://github.com/anomalyco/opencode), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Open Interpreter](https://github.com/openinterpreter/openinterpreter), [Reasonix](https://github.com/esengine/DeepSeek-Reasonix), [Kimchi](https://github.com/getkimchi/kimchi), [Qwen Code](https://github.com/QwenLM/qwen-code), and [Grok Build](https://github.com/xai-org/grok-build).
+
 The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope. An em dash means the capability was not documented in the reviewed source; it does not prove absence.
 
 ## Feature overview
