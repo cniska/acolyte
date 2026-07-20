@@ -1,5 +1,9 @@
+import { z } from "zod";
 import type { ReasoningLevel } from "./config-contract";
 import { type Provider, providerSchema } from "./provider-contract";
+
+export const authRouteSchema = z.enum(["subscription", "api_key"]);
+export type AuthRoute = z.infer<typeof authRouteSchema>;
 
 const MODEL_NAME_PREFIX_TO_PROVIDER: Record<string, Provider> = {
   claude: "anthropic",
@@ -24,8 +28,13 @@ export function normalizeModel(model: string): string {
   return `${prefix}/${model}`;
 }
 
+export function bareModelId(qualifiedModel: string): string {
+  const slash = qualifiedModel.indexOf("/");
+  return slash >= 0 ? qualifiedModel.slice(slash + 1) : qualifiedModel;
+}
+
 export function formatModel(model: string, reasoning?: ReasoningLevel): string {
-  const name = (model.indexOf("/") >= 0 ? model.slice(model.indexOf("/") + 1) : model).trim();
+  const name = bareModelId(model).trim();
   if (reasoning && reasoning !== DEFAULT_REASONING) return `${name} (${reasoning})`;
   return name;
 }
@@ -70,7 +79,7 @@ export function providerFromModel(model: string): Provider {
   return "vercel";
 }
 
-export type ProviderCredentials = { apiKey?: string; baseUrl?: string };
+export type ProviderCredentials = { apiKey?: string; baseUrl?: string; oauth?: boolean };
 
 export const DEFAULT_REASONING = "medium";
 
@@ -78,6 +87,7 @@ export function isProviderAvailable(provider: Provider, credentials: ProviderCre
   if (provider === "anthropic") return Boolean(credentials.apiKey) && isAnthropicBaseUrlValid(credentials.baseUrl);
   if (provider === "google") return Boolean(credentials.apiKey);
   if (provider === "vercel") return Boolean(credentials.apiKey);
+  if (credentials.oauth) return true;
   if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
   return Boolean(credentials.apiKey);
 }

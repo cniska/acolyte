@@ -37,6 +37,18 @@ acolyte config set model vercel/xai/grok-4.1
 acolyte config set vercelBaseUrl https://custom-gateway.example.com/v1
 ```
 
+## OpenAI subscription
+
+Authenticate OpenAI with an OpenAI subscription instead of an `OPENAI_API_KEY`:
+
+```bash
+acolyte auth openai
+```
+
+This runs a browser OAuth flow (loopback callback on port 1455, required by OpenAI) and stores the tokens in `<configDir>/oauth.json` (mode 0600), separate from the cloud credentials `acolyte login` writes. Tokens refresh automatically.
+
+The models your subscription serves then route through it. Other OpenAI models fall back to `OPENAI_API_KEY` when one is set, or return an error asking for a key. A subscription and an API key can be active at once — `acolyte status` reports the methods in effect — and `acolyte auth openai --logout` removes the subscription.
+
 ## Provider base URLs
 
 Each provider has a configurable base URL with a sensible default:

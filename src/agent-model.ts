@@ -1,11 +1,12 @@
 import { appConfig } from "./app-config";
+import { readOAuthTokensSync } from "./oauth-store";
 import { isProviderAvailable, type ProviderCredentials, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 
 export type ProviderCredentialsMap = Partial<Record<Provider, ProviderCredentials>>;
 
 export const defaultCredentials = (): ProviderCredentialsMap => ({
-  openai: appConfig.openai,
+  openai: { ...appConfig.openai, oauth: readOAuthTokensSync("openai") !== undefined },
   anthropic: appConfig.anthropic,
   google: appConfig.google,
   vercel: appConfig.vercel,

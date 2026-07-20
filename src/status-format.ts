@@ -11,7 +11,7 @@ const STATUS_KEY_LABEL_MAP: Record<string, string> = {
   memory: t("status.label.memory"),
   model: t("status.label.model"),
   protocol_version: t("status.label.protocol_version"),
-  providers: t("status.label.providers"),
+  provider_auth: t("status.label.providers"),
   rpc_queue_length: t("status.label.rpc_queue_length"),
   service: t("status.label.service"),
   tasks_running: t("status.label.tasks_running"),

@@ -3,7 +3,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { defaultCredentials } from "./agent-model";
 import { appConfig } from "./app-config";
 import { log } from "./log";
-import { providerFromModel } from "./provider-config";
+import { bareModelId, providerFromModel } from "./provider-config";
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`);
@@ -30,8 +30,7 @@ export function bufferToEmbedding(buf: Buffer): Float32Array {
 function createEmbeddingModel(qualifiedModel: string) {
   const creds = defaultCredentials();
   const provider = providerFromModel(qualifiedModel);
-  const slash = qualifiedModel.indexOf("/");
-  const modelId = slash >= 0 ? qualifiedModel.slice(slash + 1) : qualifiedModel;
+  const modelId = bareModelId(qualifiedModel);
   const providerCreds = creds[provider] ?? {};
 
   switch (provider) {

@@ -1,8 +1,8 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { defaultCredentials } from "./agent-model";
 import { syncAgentsMdToProjectMemory } from "./agents-memory-sync";
 import type { ChatRequest } from "./api";
-import { appConfig } from "./app-config";
 import { readResolvedConfigSync } from "./config";
 import { createDebugLogger } from "./debug-flags";
 import { createStreamError, errorIdSchema, parseError } from "./error-handling";
@@ -10,8 +10,10 @@ import { field } from "./field";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
+import { authRouteForModel } from "./model-factory";
+import { ensureSubscriptionModelsLoaded, isOpenAiSubscriptionModel } from "./openai-subscription-models";
 import { loadProjectRulesPrompt } from "./project-rules";
-import { isProviderAvailable, providerFromModel } from "./provider-config";
+import { bareModelId, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
@@ -194,24 +196,34 @@ function providerConfigurationHint(provider: Provider): string {
   if (provider === "anthropic") return "Set ANTHROPIC_API_KEY.";
   if (provider === "google") return "Set GOOGLE_API_KEY.";
   if (provider === "vercel") return "Set AI_GATEWAY_API_KEY.";
-  return "Set OPENAI_API_KEY (or use openai-compatible/<model> with a local endpoint).";
+  return "Set OPENAI_API_KEY, or connect a subscription with: acolyte auth openai.";
 }
 
 export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChatHandlers): Promise<void> {
   const requestId = nextErrorId();
   const startedAt = Date.now();
   const modelProvider = providerFromModel(chatRequest.model);
-  const providerCredentials = {
-    openai: appConfig.openai,
-    anthropic: appConfig.anthropic,
-    google: appConfig.google,
-    vercel: appConfig.vercel,
-  };
+  const providerCredentials = defaultCredentials();
   const providerReady = isProviderAvailable(modelProvider, providerCredentials[modelProvider] ?? {});
   if (!providerReady) {
     const payload = streamErrorPayload(
       new Error(
         `No provider is configured for model "${chatRequest.model}". ${providerConfigurationHint(modelProvider)}`,
+      ),
+    );
+    handlers.onError(payload);
+    return;
+  }
+
+  const modelId = bareModelId(chatRequest.model);
+  const openaiCreds = providerCredentials.openai;
+  if (modelProvider === "openai" && openaiCreds?.oauth) {
+    await ensureSubscriptionModelsLoaded(globalThis.fetch);
+  }
+  if (modelProvider === "openai" && openaiCreds?.oauth && !openaiCreds.apiKey && !isOpenAiSubscriptionModel(modelId)) {
+    const payload = streamErrorPayload(
+      new Error(
+        `Model "${chatRequest.model}" is not available on your OpenAI subscription. Set OPENAI_API_KEY to use other OpenAI models.`,
       ),
     );
     handlers.onError(payload);
@@ -272,6 +284,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       features: config.features,
       reasoning: config.reasoning,
       temperature: config.temperature,
+      authRoute: authRouteForModel(chatRequest.model, providerCredentials),
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {

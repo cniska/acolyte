@@ -16,7 +16,7 @@ describe("chat slash command visual regression", () => {
     const { handleMessage, allRows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
-          providers: ["openai"],
+          provider_auth: ["openai (api key)"],
           model: "gpt-5-mini",
         }),
       }),
@@ -30,7 +30,7 @@ describe("chat slash command visual regression", () => {
 
           Status
 
-          Providers:          openai
+          Providers:          openai (api key)
           Model:              gpt-5-mini
     `),
     );

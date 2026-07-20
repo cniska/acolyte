@@ -5,6 +5,7 @@ import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
 import { errorToLogFields, log } from "./log";
 import { closeAllMcpSessions } from "./mcp-session";
+import { readOAuthTokensSync } from "./oauth-store";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import type { Provider } from "./provider-contract";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
@@ -82,9 +83,19 @@ function transitionTaskState(
 
 async function createStatusPayload(): Promise<StatusPayload> {
   const providers: Provider[] = [];
-  if (OPENAI_API_KEY) providers.push("openai");
-  if (appConfig.anthropic.apiKey) providers.push("anthropic");
-  if (appConfig.google.apiKey) providers.push("google");
+  const providerAuth: string[] = [];
+  const addProvider = (provider: Provider, methods: string[]) => {
+    if (methods.length === 0) return;
+    providers.push(provider);
+    providerAuth.push(`${provider} (${methods.join(" + ")})`);
+  };
+  // Both can be in effect at once: the subscription serves the gpt-5 family, the key serves the rest.
+  const openaiMethods: string[] = [];
+  if (readOAuthTokensSync("openai") !== undefined) openaiMethods.push(t("status.provider_auth.subscription"));
+  if (OPENAI_API_KEY) openaiMethods.push(t("status.provider_auth.api_key"));
+  addProvider("openai", openaiMethods);
+  addProvider("anthropic", appConfig.anthropic.apiKey ? [t("status.provider_auth.api_key")] : []);
+  addProvider("google", appConfig.google.apiKey ? [t("status.provider_auth.api_key")] : []);
   const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
@@ -92,6 +103,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
   return {
     ok: true,
     providers,
+    provider_auth: providerAuth,
     model,
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),

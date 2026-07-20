@@ -86,7 +86,7 @@ describe("chat message handler", () => {
     const { handleMessage, allRows, calls } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({
-          providers: ["openai"],
+          provider_auth: ["openai (api key)"],
           model: "gpt-5-mini",
         }),
       }),
@@ -103,7 +103,7 @@ describe("chat message handler", () => {
     const statusContent = systemRow?.content as { header: string; sections: [string, string][][] };
     expect(statusContent?.header).toBe("Status");
     const pairs = statusContent?.sections[0] ?? [];
-    expect(pairs).toContainEqual(["Providers", "openai"]);
+    expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
   });
 

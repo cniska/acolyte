@@ -6,6 +6,7 @@ describe("parseStatusFields", () => {
     const fields = parseStatusFields({
       ok: true,
       providers: ["openai"],
+      provider_auth: ["openai (api key)"],
       model: "gpt-5-mini",
       protocol_version: "1",
       capabilities: "chat",
@@ -15,7 +16,7 @@ describe("parseStatusFields", () => {
       rpc_queue_length: 0,
     });
     expect(fields).not.toBeNull();
-    expect(fields?.providers).toEqual(["openai"]);
+    expect(fields?.provider_auth).toEqual(["openai (api key)"]);
     expect(fields?.model).toBe("gpt-5-mini");
     expect(fields).not.toHaveProperty("ok");
   });

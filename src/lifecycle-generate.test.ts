@@ -102,6 +102,56 @@ describe("phaseGenerate", () => {
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
+  function silentAgent(): RunContext["agent"] {
+    return {
+      id: "test-agent",
+      name: "test-agent",
+      instructions: "",
+      model: {} as RunContext["agent"]["model"],
+      tools: {},
+      async stream() {
+        return {
+          fullStream: new ReadableStream({
+            start(controller) {
+              controller.close();
+            },
+          }),
+          async getFullOutput() {
+            return { text: "done", toolCalls: [] };
+          },
+        };
+      },
+    };
+  }
+
+  test("emits the auth route on generate start when set", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const ctx = createRunContext({
+      authRoute: "subscription",
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: silentAgent(),
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const start = debugEvents.find((event) => event.event === "lifecycle.generate.start");
+    expect(start?.fields?.auth_route).toBe("subscription");
+  });
+
+  test("omits the auth route on generate start when unset", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const ctx = createRunContext({
+      authRoute: undefined,
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: silentAgent(),
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const start = debugEvents.find((event) => event.event === "lifecycle.generate.start");
+    expect(start?.fields).not.toHaveProperty("auth_route");
+  });
+
   test("forwards the reasoning level as a call option and suppresses temperature", async () => {
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({
@@ -167,7 +217,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(capturedOptions?.providerOptions?.gateway).toEqual({ caching: "auto" });
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 

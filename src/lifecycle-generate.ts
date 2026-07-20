@@ -149,6 +149,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
+    ...(ctx.authRoute ? { auth_route: ctx.authRoute } : {}),
   });
 
   try {

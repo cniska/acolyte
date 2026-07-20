@@ -123,6 +123,7 @@ function createRunContext(
     toolOutputHandler: null,
     reasoning: input.reasoning,
     temperature: input.temperature,
+    authRoute: input.authRoute,
   };
 
   session.featureFlags = ctx.features;

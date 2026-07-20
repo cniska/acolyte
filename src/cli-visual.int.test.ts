@@ -54,6 +54,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
               status: {
                 ok: true,
                 providers: ["openai"],
+                provider_auth: ["openai (api key)"],
                 model: "gpt-5-mini",
                 protocol_version: PROTOCOL_VERSION,
                 capabilities: "stream.sse, error.structured",
@@ -106,6 +107,7 @@ describe("cli visual regression", () => {
 
         Commands
           init [provider]        initialize provider API key
+          auth [provider]        authenticate a provider with a subscription
           resume [id]            resume previous session
           run <prompt>           run a single prompt
           history                show recent sessions
@@ -275,7 +277,7 @@ describe("cli visual regression", () => {
         const out = await run(["status"]);
         expect(out).toBe(
           dedent(`
-          Providers:          openai
+          Providers:          openai (api key)
           Model:              gpt-5-mini
           Protocol version:   ${PROTOCOL_VERSION}
           Capabilities:       stream.sse, error.structured
