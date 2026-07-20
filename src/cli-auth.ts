@@ -2,11 +2,20 @@ import { CodedError } from "./coded-error";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
 import type { OAuthProvider, OAuthTokenSet } from "./oauth-store-contract";
+import { oauthProviderSchema } from "./oauth-store-contract";
 import { buildAuthorizeUrl, createPkce } from "./openai-oauth";
 import type { OAuthCallbackServer, OAuthServerErrorKind } from "./openai-oauth-server";
+import {
+  type Provider,
+  type ProviderApiEnvKey,
+  providerApiEnvKeyByProvider,
+  providerSchema,
+} from "./provider-contract";
 
 type AuthModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
+  prompt: (question: string) => string | null;
+  promptHidden: (question: string) => Promise<string | undefined>;
   printDim: (message: string) => void;
   printError: (message: string) => void;
   openBrowser: (url: string) => void;
@@ -16,14 +25,64 @@ type AuthModeDeps = {
   writeOAuthTokens: (provider: OAuthProvider, tokens: OAuthTokenSet) => Promise<void>;
   removeOAuthTokens: (provider: OAuthProvider) => Promise<void>;
   readOAuthTokens: (provider: OAuthProvider) => OAuthTokenSet | undefined;
+  readProviderApiKeys: () => Partial<Record<ProviderApiEnvKey, string>>;
+  writeProviderApiKey: (envKey: ProviderApiEnvKey, value: string) => Promise<void>;
+  removeProviderApiKey: (envKey: ProviderApiEnvKey) => Promise<void>;
+  credentialsPath: () => string;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
 
-const SUPPORTED_PROVIDERS: OAuthProvider[] = ["openai"];
+type AuthMethod = "key" | "subscription";
 
-function isSupportedProvider(value: string): value is OAuthProvider {
-  return (SUPPORTED_PROVIDERS as string[]).includes(value);
+type ParsedAuthArgs = {
+  provider?: string;
+  logout: boolean;
+  key: boolean;
+  subscription: boolean;
+  extra: boolean;
+};
+
+const PROVIDERS = providerSchema.options;
+const PROVIDER_LIST = PROVIDERS.join("|");
+
+function parseProvider(value: string | undefined): Provider | null {
+  if (!value || value.trim().length === 0) return null;
+  const parsed = providerSchema.safeParse(value.trim().toLowerCase());
+  return parsed.success ? parsed.data : null;
+}
+
+function supportsSubscription(provider: Provider): provider is OAuthProvider {
+  return oauthProviderSchema.safeParse(provider).success;
+}
+
+function parseAuthArgs(args: string[]): ParsedAuthArgs {
+  let logout = false;
+  let key = false;
+  let subscription = false;
+  const positional: string[] = [];
+  for (const token of args) {
+    if (token === "--logout") {
+      logout = true;
+      continue;
+    }
+    if (token === "--key") {
+      key = true;
+      continue;
+    }
+    if (token === "--subscription") {
+      subscription = true;
+      continue;
+    }
+    positional.push(token);
+  }
+  return {
+    provider: positional[0],
+    logout,
+    key,
+    subscription,
+    extra: positional.length > 1,
+  };
 }
 
 function authErrorMessage(error: unknown): string {
@@ -33,7 +92,51 @@ function authErrorMessage(error: unknown): string {
   return t("cli.auth.failed", { reason: errorMessage(error) });
 }
 
-async function loginOpenAI(deps: AuthModeDeps): Promise<void> {
+function methodLabels(methods: string[]): string {
+  if (methods.length === 0) return t("cli.auth.status.none_method");
+  return methods.join(" + ");
+}
+
+function printStatus(deps: AuthModeDeps): void {
+  const keys = deps.readProviderApiKeys();
+  const apiKeyLabel = t("status.provider_auth.api_key");
+  const subscriptionLabel = t("status.provider_auth.subscription");
+  for (const provider of PROVIDERS) {
+    const methods: string[] = [];
+    if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
+      methods.push(subscriptionLabel);
+    }
+    if (keys[providerApiEnvKeyByProvider[provider]]) methods.push(apiKeyLabel);
+    deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(methods) }));
+  }
+}
+
+async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void> {
+  const envKey = providerApiEnvKeyByProvider[provider];
+  if (deps.readProviderApiKeys()[envKey]) {
+    const answer = deps.prompt(t("cli.auth.override.confirm", { envKey }))?.trim().toLowerCase();
+    if (answer !== "y" && answer !== "yes") {
+      deps.printDim(t("cli.auth.override.cancelled"));
+      return;
+    }
+  }
+  const apiKey = await deps.promptHidden(t("cli.auth.prompt.api_key"));
+  if (!apiKey) {
+    deps.printError(t("cli.auth.api_key.empty", { envKey }));
+    process.exitCode = 1;
+    return;
+  }
+  await deps.writeProviderApiKey(envKey, apiKey);
+  deps.printDim(t("cli.auth.saved", { envKey, path: deps.credentialsPath() }));
+}
+
+async function loginSubscription(provider: OAuthProvider, deps: AuthModeDeps): Promise<void> {
+  if (provider !== "openai") {
+    deps.printError(t("cli.auth.subscription.unsupported", { provider }));
+    process.exitCode = 1;
+    return;
+  }
+
   const pkce = createPkce();
   const state = deps.createState();
 
@@ -55,7 +158,7 @@ async function loginOpenAI(deps: AuthModeDeps): Promise<void> {
   try {
     const { code } = await server.result;
     const tokens = await deps.exchangeCode({ code, verifier: pkce.verifier });
-    await deps.writeOAuthTokens("openai", tokens);
+    await deps.writeOAuthTokens(provider, tokens);
     deps.printDim(t("cli.auth.success"));
   } catch (error) {
     void server.stop();
@@ -64,13 +167,53 @@ async function loginOpenAI(deps: AuthModeDeps): Promise<void> {
   }
 }
 
-function printStatus(deps: AuthModeDeps): void {
-  const connected = SUPPORTED_PROVIDERS.filter((provider) => deps.readOAuthTokens(provider) !== undefined);
-  if (connected.length === 0) {
-    deps.printDim(t("cli.auth.status.none"));
+async function logoutProvider(provider: Provider, deps: AuthModeDeps): Promise<void> {
+  const envKey = providerApiEnvKeyByProvider[provider];
+  const hadKey = Boolean(deps.readProviderApiKeys()[envKey]);
+  const hadSubscription = supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined;
+  if (!hadKey && !hadSubscription) {
+    deps.printDim(t("cli.auth.logout_none", { provider }));
     return;
   }
-  for (const provider of connected) deps.printDim(t("cli.auth.status.connected", { provider }));
+  if (hadKey) await deps.removeProviderApiKey(envKey);
+  if (hadSubscription && supportsSubscription(provider)) await deps.removeOAuthTokens(provider);
+  deps.printDim(t("cli.auth.logout", { provider }));
+}
+
+function parseMethodChoice(raw: string | null | undefined): AuthMethod | null {
+  const value = raw?.trim().toLowerCase() ?? "";
+  if (value === "key" || value === "k" || value === "api" || value === "api_key" || value === "api-key") return "key";
+  if (value === "subscription" || value === "s" || value === "oauth") return "subscription";
+  return null;
+}
+
+async function resolveMethod(
+  provider: Provider,
+  parsed: ParsedAuthArgs,
+  deps: AuthModeDeps,
+): Promise<AuthMethod | null> {
+  if (parsed.key && parsed.subscription) {
+    deps.printError(t("cli.auth.method.conflict"));
+    process.exitCode = 1;
+    return null;
+  }
+  if (parsed.subscription) {
+    if (!supportsSubscription(provider)) {
+      deps.printError(t("cli.auth.subscription.unsupported", { provider }));
+      process.exitCode = 1;
+      return null;
+    }
+    return "subscription";
+  }
+  if (parsed.key || !supportsSubscription(provider)) return "key";
+
+  const choice = parseMethodChoice(deps.prompt(t("cli.auth.prompt.method")));
+  if (!choice) {
+    deps.printError(t("cli.auth.method.invalid"));
+    process.exitCode = 1;
+    return null;
+  }
+  return choice;
 }
 
 export async function authMode(args: string[], deps: AuthModeDeps): Promise<void> {
@@ -79,27 +222,46 @@ export async function authMode(args: string[], deps: AuthModeDeps): Promise<void
     return;
   }
 
-  const provider = args[0];
-  if (provider === undefined) {
+  const parsed = parseAuthArgs(args);
+  if (parsed.extra) {
+    deps.commandError("auth");
+    return;
+  }
+
+  if (parsed.provider === undefined) {
+    if (parsed.logout || parsed.key || parsed.subscription) {
+      deps.commandError("auth", t("cli.auth.provider.required"));
+      process.exitCode = 1;
+      return;
+    }
     printStatus(deps);
     return;
   }
 
-  if (!isSupportedProvider(provider)) {
-    deps.commandError("auth", t("cli.auth.invalid_provider", { provider }));
+  const provider = parseProvider(parsed.provider);
+  if (!provider) {
+    deps.printError(t("cli.auth.invalid_provider", { providers: PROVIDER_LIST }));
     process.exitCode = 1;
     return;
   }
 
-  if (args.includes("--logout")) {
-    if (deps.readOAuthTokens(provider) === undefined) {
-      deps.printDim(t("cli.auth.logout_none", { provider }));
-      return;
-    }
-    await deps.removeOAuthTokens(provider);
-    deps.printDim(t("cli.auth.logout", { provider }));
+  if (parsed.logout) {
+    await logoutProvider(provider, deps);
     return;
   }
 
-  await loginOpenAI(deps);
+  const method = await resolveMethod(provider, parsed, deps);
+  if (!method) return;
+
+  if (method === "subscription") {
+    if (!supportsSubscription(provider)) {
+      deps.printError(t("cli.auth.subscription.unsupported", { provider }));
+      process.exitCode = 1;
+      return;
+    }
+    await loginSubscription(provider, deps);
+    return;
+  }
+
+  await saveApiKey(provider, deps);
 }

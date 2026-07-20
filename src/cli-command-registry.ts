@@ -9,7 +9,6 @@ import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contra
 import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
-import { initMode } from "./cli-init";
 import { loginMode, logoutMode } from "./cli-login";
 import { logsMode } from "./cli-logs";
 import { memoryMode } from "./cli-memory";
@@ -28,6 +27,7 @@ import {
   providerCredentialsPath,
   readProviderApiKeysSync,
   removeCredential,
+  removeProviderApiKey,
   writeCredential,
   writeProviderApiKey,
 } from "./credentials";
@@ -100,37 +100,25 @@ const daemonDeps = {
 };
 
 const COMMAND_REGISTRY: Record<string, CliCommand> = {
-  init: {
-    help: {
-      command: "init [provider]",
-      usage: "acolyte init [vercel|anthropic|google|openai]",
-      description: t("cli.help.desc.init"),
-      examples: ["acolyte init", "acolyte init openai"],
-    },
-    handler: (args) =>
-      initMode(args, {
-        hasHelpFlag,
-        prompt: (message) => prompt(message),
-        promptHidden,
-        printDim,
-        printError,
-        readProviderApiKeys: readProviderApiKeysSync,
-        writeProviderApiKey,
-        credentialsPath: providerCredentialsPath,
-        commandError,
-        commandHelp,
-      }),
-  },
   auth: {
     help: {
       command: "auth [provider]",
-      usage: "acolyte auth [openai] [--logout]",
+      usage: "acolyte auth [vercel|anthropic|google|openai] [--key|--subscription] [--logout]",
       description: t("cli.help.desc.auth"),
-      examples: ["acolyte auth", "acolyte auth openai", "acolyte auth openai --logout"],
+      examples: [
+        "acolyte auth",
+        "acolyte auth openai",
+        "acolyte auth openai --key",
+        "acolyte auth openai --subscription",
+        "acolyte auth vercel --key",
+        "acolyte auth openai --logout",
+      ],
     },
     handler: (args) =>
       authMode(args, {
         hasHelpFlag,
+        prompt: (message) => prompt(message),
+        promptHidden,
         printDim,
         printError,
         openBrowser,
@@ -140,6 +128,10 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         writeOAuthTokens,
         removeOAuthTokens,
         readOAuthTokens: readOAuthTokensSync,
+        readProviderApiKeys: readProviderApiKeysSync,
+        writeProviderApiKey,
+        removeProviderApiKey,
+        credentialsPath: providerCredentialsPath,
         commandError,
         commandHelp,
       }),

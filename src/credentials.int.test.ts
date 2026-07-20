@@ -6,6 +6,7 @@ import {
   readCredentialsSync,
   readProviderApiKeysSync,
   removeCredential,
+  removeProviderApiKey,
   writeCredential,
   writeProviderApiKey,
 } from "./credentials";
@@ -79,6 +80,14 @@ describe("credentials", () => {
     const env = { HOME: createTempHome() };
     await writeProviderApiKey("OPENAI_API_KEY", "sk-openai", env);
     expect(readProviderApiKeysSync(env)).toEqual({ OPENAI_API_KEY: "sk-openai" });
+  });
+
+  test("removeProviderApiKey removes a provider key and keeps siblings", async () => {
+    const env = { HOME: createTempHome() };
+    await writeProviderApiKey("OPENAI_API_KEY", "sk-openai", env);
+    await writeProviderApiKey("ANTHROPIC_API_KEY", "sk-anthropic", env);
+    await removeProviderApiKey("OPENAI_API_KEY", env);
+    expect(readProviderApiKeysSync(env)).toEqual({ ANTHROPIC_API_KEY: "sk-anthropic" });
   });
 
   test("provider keys and cloud credentials share the file without clobbering", async () => {

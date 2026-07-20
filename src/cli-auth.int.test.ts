@@ -41,30 +41,29 @@ async function runCliWithInput(
 }
 
 async function createTestEnv(): Promise<{ home: string; project: string; credentialsPath: string }> {
-  const home = dirs.createDir("acolyte-cli-init-home-");
-  const project = dirs.createDir("acolyte-cli-init-project-");
+  const home = dirs.createDir("acolyte-cli-auth-home-");
+  const project = dirs.createDir("acolyte-cli-auth-project-");
   const dir = configDir({ HOME: home });
   await mkdir(dir, { recursive: true });
   return { home, project, credentialsPath: join(dir, "credentials") };
 }
 
-describe("cli init", () => {
+describe("cli auth", () => {
   test("writes selected provider API key to the global credentials file", async () => {
     const { home, project, credentialsPath } = await createTestEnv();
-    const result = await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
+    const result = await runCliWithInput(home, project, ["auth", "openai", "--key"], "sk-openai-test\n");
 
     expect(result.exitCode).toBe(0);
     expect(`${result.stdout}\n${result.stderr}`).toContain("Saved OPENAI_API_KEY");
 
     const credentials = await readFile(credentialsPath, "utf8");
     expect(credentials).toContain("OPENAI_API_KEY=sk-openai-test");
-    // The key belongs to user identity, not the project checkout.
     expect(readFile(join(project, ".env"), "utf8")).rejects.toThrow();
   }, 15_000);
 
   test("maps vercel to AI_GATEWAY_API_KEY", async () => {
     const { home, project, credentialsPath } = await createTestEnv();
-    const result = await runCliWithInput(home, project, ["init", "vercel"], "vck-test\n");
+    const result = await runCliWithInput(home, project, ["auth", "vercel", "--key"], "vck-test\n");
 
     expect(result.exitCode).toBe(0);
     const credentials = await readFile(credentialsPath, "utf8");
@@ -73,9 +72,9 @@ describe("cli init", () => {
 
   test("declining the override keeps the existing key", async () => {
     const { home, project, credentialsPath } = await createTestEnv();
-    await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
+    await runCliWithInput(home, project, ["auth", "openai", "--key"], "sk-openai-test\n");
 
-    const second = await runCliWithInput(home, project, ["init", "openai"], "n\n");
+    const second = await runCliWithInput(home, project, ["auth", "openai", "--key"], "n\n");
     expect(second.exitCode).toBe(0);
     expect(`${second.stdout}\n${second.stderr}`).toContain("Left the existing key unchanged.");
 
@@ -85,13 +84,34 @@ describe("cli init", () => {
 
   test("confirming the override replaces the existing key", async () => {
     const { home, project, credentialsPath } = await createTestEnv();
-    await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
+    await runCliWithInput(home, project, ["auth", "openai", "--key"], "sk-openai-test\n");
 
-    const second = await runCliWithInput(home, project, ["init", "openai"], "y\nsk-openai-other\n");
+    const second = await runCliWithInput(home, project, ["auth", "openai", "--key"], "y\nsk-openai-other\n");
     expect(second.exitCode).toBe(0);
 
     const credentials = await readFile(credentialsPath, "utf8");
     expect(credentials).toContain("OPENAI_API_KEY=sk-openai-other");
     expect(credentials).not.toContain("OPENAI_API_KEY=sk-openai-test");
+  }, 15_000);
+
+  test("status lists providers", async () => {
+    const { home, project } = await createTestEnv();
+    await runCliWithInput(home, project, ["auth", "anthropic", "--key"], "sk-a\n");
+    const result = await runCliWithInput(home, project, ["auth"], "");
+    expect(result.exitCode).toBe(0);
+    const out = `${result.stdout}\n${result.stderr}`;
+    expect(out).toContain("anthropic:");
+    expect(out).toContain("api key");
+    expect(out).toContain("openai:");
+  }, 15_000);
+
+  test("--logout removes stored key", async () => {
+    const { home, project, credentialsPath } = await createTestEnv();
+    await runCliWithInput(home, project, ["auth", "openai", "--key"], "sk-openai-test\n");
+    const result = await runCliWithInput(home, project, ["auth", "openai", "--logout"], "");
+    expect(result.exitCode).toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("Removed credentials for openai");
+    const credentials = await readFile(credentialsPath, "utf8").catch(() => "");
+    expect(credentials).not.toContain("OPENAI_API_KEY");
   }, 15_000);
 });
