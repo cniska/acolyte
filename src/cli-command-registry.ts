@@ -129,6 +129,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         removeOAuthTokens,
         readOAuthTokens: readOAuthTokensSync,
         readProviderApiKeys: readProviderApiKeysSync,
+        readConfiguredProviderApiKeys: () => ({
+          anthropic: appConfig.anthropic.apiKey,
+          google: appConfig.google.apiKey,
+          openai: appConfig.openai.apiKey,
+          vercel: appConfig.vercel.apiKey,
+        }),
         writeProviderApiKey,
         removeProviderApiKey,
         credentialsPath: providerCredentialsPath,

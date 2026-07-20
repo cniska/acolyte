@@ -26,6 +26,7 @@ function createDeps(overrides: Partial<Parameters<typeof authMode>[1]> = {}) {
     removeOAuthTokens: mock(async () => {}),
     readOAuthTokens: mock(() => undefined),
     readProviderApiKeys: mock(() => ({}) as Partial<Record<ProviderApiEnvKey, string>>),
+    readConfiguredProviderApiKeys: mock(() => ({})),
     writeProviderApiKey: mock(async (envKey: ProviderApiEnvKey, value: string) => {
       writes.push({ envKey, value });
     }),
@@ -57,7 +58,7 @@ describe("authMode", () => {
   test("no args prints status for every provider", async () => {
     const { deps } = createDeps({
       readOAuthTokens: mock((provider: string) => (provider === "openai" ? tokens : undefined)),
-      readProviderApiKeys: mock(() => ({ ANTHROPIC_API_KEY: "sk-a" })),
+      readConfiguredProviderApiKeys: mock(() => ({ anthropic: "sk-a" })),
     });
     await authMode([], deps);
     const messages = (deps.printDim as ReturnType<typeof mock>).mock.calls.map((c) => c[0] as string);
@@ -81,6 +82,13 @@ describe("authMode", () => {
     expect(deps.prompt).not.toHaveBeenCalled();
     expect(writes).toEqual([{ envKey: "ANTHROPIC_API_KEY", value: "sk-new" }]);
     expect(deps.startCallbackServer).not.toHaveBeenCalled();
+  });
+
+  test("status lists an environment-provided API key", async () => {
+    const { deps } = createDeps({ readConfiguredProviderApiKeys: mock(() => ({ openai: "sk-env" })) });
+    await authMode([], deps);
+    const messages = (deps.printDim as ReturnType<typeof mock>).mock.calls.map((c) => c[0] as string);
+    expect(messages.some((m) => m.includes("openai") && m.includes("api key"))).toBe(true);
   });
 
   test("vercel maps to AI_GATEWAY_API_KEY", async () => {

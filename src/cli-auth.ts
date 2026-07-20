@@ -26,6 +26,7 @@ type AuthModeDeps = {
   removeOAuthTokens: (provider: OAuthProvider) => Promise<void>;
   readOAuthTokens: (provider: OAuthProvider) => OAuthTokenSet | undefined;
   readProviderApiKeys: () => Partial<Record<ProviderApiEnvKey, string>>;
+  readConfiguredProviderApiKeys: () => Partial<Record<Provider, string>>;
   writeProviderApiKey: (envKey: ProviderApiEnvKey, value: string) => Promise<void>;
   removeProviderApiKey: (envKey: ProviderApiEnvKey) => Promise<void>;
   credentialsPath: () => string;
@@ -98,7 +99,7 @@ function methodLabels(methods: string[]): string {
 }
 
 function printStatus(deps: AuthModeDeps): void {
-  const keys = deps.readProviderApiKeys();
+  const keys = deps.readConfiguredProviderApiKeys();
   const apiKeyLabel = t("status.provider_auth.api_key");
   const subscriptionLabel = t("status.provider_auth.subscription");
   for (const provider of PROVIDERS) {
@@ -106,7 +107,7 @@ function printStatus(deps: AuthModeDeps): void {
     if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
       methods.push(subscriptionLabel);
     }
-    if (keys[providerApiEnvKeyByProvider[provider]]) methods.push(apiKeyLabel);
+    if (keys[provider]) methods.push(apiKeyLabel);
     deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(methods) }));
   }
 }
