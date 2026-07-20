@@ -1,6 +1,6 @@
 # Comparison
 
-Compare Acolyte with the same eight current open-source terminal coding agents used in [Benchmarks](./benchmarks.md): [OpenCode](https://github.com/anomalyco/opencode), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Open Interpreter](https://github.com/openinterpreter/openinterpreter), [Reasonix](https://github.com/esengine/DeepSeek-Reasonix), [Kimchi](https://github.com/getkimchi/kimchi), [Qwen Code](https://github.com/QwenLM/qwen-code), and [Grok Build](https://github.com/xai-org/grok-build).
+Compare Acolyte with the same eight current open-source terminal coding agents used in the Benchmarks document.
 
 See [Why Acolyte](./why-acolyte.md) for a summary.
 
