@@ -19,7 +19,7 @@ fi
 
 # Minimal, deterministic checks to ensure the compiled CLI starts.
 run_quiet ./acolyte --help
-run_quiet ./acolyte init --help
+run_quiet ./acolyte auth --help
 
 # Optional stronger checks (still offline/deterministic).
 # This exercises tool registry wiring and the ast-grep native addon path.

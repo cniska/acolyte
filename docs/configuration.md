@@ -16,28 +16,33 @@ acolyte config set --project logFormat json
 acolyte config unset openaiBaseUrl
 ```
 
-## Provider API keys
+## Provider auth
 
-`acolyte init` saves a provider key so it applies across every repository:
+`acolyte auth` authenticates providers with an API key or, where supported, a subscription:
 
 ```bash
-acolyte init            # prompts for provider and key
-acolyte init openai     # or name the provider directly
-acolyte init vercel     # stored as AI_GATEWAY_API_KEY
+acolyte auth                         # status for every provider
+acolyte auth openai                  # interactive: key or subscription
+acolyte auth openai --key            # store OPENAI_API_KEY
+acolyte auth openai --subscription   # browser OAuth
+acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
+acolyte auth openai --logout         # remove stored credentials for openai
+acolyte auth openai --logout --key   # remove only OPENAI_API_KEY
+acolyte auth openai --logout --subscription # remove only the subscription
 ```
 
-The key is written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. If a key for that provider is already stored, `init` asks before replacing it.
+API keys are written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. Subscription tokens are stored separately in `<configDir>/oauth.json`. `auth` asks for confirmation before replacing stored credentials.
 
 Acolyte reads each provider key from the environment first, then the credentials file. Any variable in the process environment — exported in your shell, injected by CI, or loaded from a project `.env` — takes precedence over the stored key.
 
-Providers: `anthropic` (`ANTHROPIC_API_KEY`), `google` (`GOOGLE_API_KEY`), `openai` (`OPENAI_API_KEY`), `vercel` (`AI_GATEWAY_API_KEY`). `acolyte status` lists which providers are configured and how they authenticate.
+Providers: `anthropic` (`ANTHROPIC_API_KEY`), `google` (`GOOGLE_API_KEY`), `openai` (`OPENAI_API_KEY`), `vercel` (`AI_GATEWAY_API_KEY`). `acolyte status` and `acolyte auth` list which providers are configured and how they authenticate.
 
 ## Vercel AI Gateway (recommended)
 
 The fastest way to get started. The [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) provides unified access to 20+ providers with a single API key.
 
 ```bash
-acolyte init vercel
+acolyte auth vercel --key
 acolyte config set model anthropic/claude-sonnet-4
 ```
 
@@ -55,15 +60,15 @@ acolyte config set vercelBaseUrl https://custom-gateway.example.com/v1
 
 ## OpenAI subscription
 
-Authenticate OpenAI with an OpenAI subscription instead of an `OPENAI_API_KEY`:
+Authenticate OpenAI with a subscription instead of (or in addition to) an API key:
 
 ```bash
-acolyte auth openai
+acolyte auth openai --subscription
 ```
 
-This runs a browser OAuth flow (loopback callback on port 1455, required by OpenAI) and stores the tokens in `<configDir>/oauth.json` (mode 0600), separate from the cloud credentials `acolyte login` writes. Tokens refresh automatically.
+This runs a browser OAuth flow (loopback callback on port 1455, required by OpenAI) and stores the tokens in `<configDir>/oauth.json` (mode 0600). Tokens refresh automatically.
 
-The models your subscription serves then route through it. Other OpenAI models fall back to `OPENAI_API_KEY` when one is set, or return an error asking for a key. A subscription and an API key can be active at once — `acolyte status` reports the methods in effect — and `acolyte auth openai --logout` removes the subscription.
+The models your subscription serves then route through it. Other OpenAI models fall back to `OPENAI_API_KEY` when one is set, or return an error asking for a key. A subscription and an API key can be active at once — `acolyte status` and `acolyte auth` report the methods in effect — and `acolyte auth openai --logout` removes both the stored key and the subscription for that provider.
 
 ## Provider base URLs
 

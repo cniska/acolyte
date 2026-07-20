@@ -5,8 +5,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 ## Commands
 
 - `acolyte`: start interactive chat
-- `acolyte init [provider]`: initialize provider API key
-- `acolyte auth [provider]`: authenticate a provider with a subscription; `--logout` to disconnect
+- `acolyte auth [provider]`: authenticate a provider (API key or subscription); `--key`, `--subscription`, `--logout`
 - `acolyte login`: authenticate with the cloud (feature-flagged: `features.cloudSync`)
 - `acolyte logout`: remove cloud credentials (feature-flagged: `features.cloudSync`)
 - `acolyte resume [id]`: continue a previous session
@@ -31,14 +30,19 @@ All list commands support `--json` for machine-readable output.
 
 See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 
-## Subscription auth
+## Provider auth
 
-Authenticate OpenAI with an OpenAI subscription instead of an API key. This is separate from `acolyte login`, which authenticates the cloud sync service.
+Authenticate providers with an API key or, where supported, a subscription. This is separate from `acolyte login`, which authenticates the cloud sync service.
 
 ```bash
-acolyte auth openai            # browser OAuth on a loopback callback (port 1455)
-acolyte auth                   # show which providers are connected
-acolyte auth openai --logout   # disconnect the subscription
+acolyte auth                         # status for every provider
+acolyte auth openai                  # interactive: key or subscription
+acolyte auth openai --key            # store OPENAI_API_KEY
+acolyte auth openai --subscription   # browser OAuth (port 1455)
+acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
+acolyte auth openai --logout         # remove stored key and subscription for openai
+acolyte auth openai --logout --key   # remove only the stored API key
+acolyte auth openai --logout --subscription # remove only the subscription
 ```
 
 See [Configuration](./configuration.md) for how a subscription interacts with an API key.

@@ -3,7 +3,7 @@ import { commands } from "./cli-command-registry";
 
 describe("cli-command-registry", () => {
   test("commands table covers all registered subcommands", () => {
-    expect(commands.init).toBeFunction();
+    expect(commands.auth).toBeFunction();
     expect(commands.resume).toBeFunction();
     expect(commands.run).toBeFunction();
     expect(commands.history).toBeFunction();

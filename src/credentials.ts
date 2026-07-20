@@ -82,6 +82,25 @@ export async function writeProviderApiKey(envKey: ProviderApiEnvKey, value: stri
   await upsertCredentialsEntry(envKey, value, env);
 }
 
+export async function removeProviderApiKey(envKey: ProviderApiEnvKey, env?: Env): Promise<void> {
+  const path = credentialsPath(env);
+  let content = "";
+  try {
+    content = await readFile(path, "utf8");
+  } catch {
+    return;
+  }
+  const next = removeDotenvKey(content, envKey);
+  if (next.length === 0) {
+    try {
+      await unlink(path);
+    } catch {}
+    return;
+  }
+  await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await chmod(path, PRIVATE_FILE_MODE);
+}
+
 export function decodeTokenSubject(token: string): string | undefined {
   try {
     const parts = token.split(".");

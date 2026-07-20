@@ -40,10 +40,10 @@ bun run dev
 
 `bun run dev` starts a watch-mode daemon and opens the CLI client. It restarts any local daemon already using the development port, then stops the daemon it started when the client exits.
 
-Provider credentials are not needed to run the test suites. To use the agent against a provider while developing, initialize one once for your user account:
+Provider credentials are not needed to run the test suites. To use the agent against a provider while developing, configure one once for your user account:
 
 ```bash
-bun run src/cli.ts init vercel
+bun run src/cli.ts auth vercel --key
 ```
 
 This stores the key in Acolyte's private global credentials file. Use `openai`, `anthropic`, or `google` instead to configure a direct provider. See [Configuration](docs/configuration.md) for credential precedence, local models, and provider settings.

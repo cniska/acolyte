@@ -44,7 +44,7 @@ describe("cli subcommand help", () => {
   test("all subcommands accept --help", async () => {
     const { home, project } = await createTestEnv();
     const subcommands = [
-      "init",
+      "auth",
       "resume",
       "run",
       "history",

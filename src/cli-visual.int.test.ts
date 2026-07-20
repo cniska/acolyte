@@ -106,8 +106,7 @@ describe("cli visual regression", () => {
           acolyte <COMMAND> [ARGS]
 
         Commands
-          init [provider]        initialize provider API key
-          auth [provider]        authenticate a provider with a subscription
+          auth [provider]        authenticate a provider (API key or subscription)
           resume [id]            resume previous session
           run <prompt>           run a single prompt
           history                show recent sessions
@@ -315,15 +314,21 @@ describe("cli visual regression", () => {
 
   test.each([
     {
-      args: ["init", "help"],
+      args: ["auth", "help"],
       output: dedent(`
-        Usage: acolyte init [vercel|anthropic|google|openai]
+        Usage: acolyte auth [vercel|anthropic|google|openai] [--key|--subscription] [--logout]
         
-        Description: initialize provider API key
+        Description: authenticate a provider (API key or subscription)
         
         Examples:
-          acolyte init
-          acolyte init openai
+          acolyte auth
+          acolyte auth openai
+          acolyte auth openai --key
+          acolyte auth openai --subscription
+          acolyte auth vercel --key
+          acolyte auth openai --logout
+          acolyte auth openai --logout --key
+          acolyte auth openai --logout --subscription
       `),
     },
     {

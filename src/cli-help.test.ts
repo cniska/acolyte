@@ -10,11 +10,11 @@ const runHelp: CliCommandHelp = {
   examples: ['acolyte run "summarize README.md"'],
 };
 
-const initHelp: CliCommandHelp = {
-  command: "init [provider]",
-  usage: "acolyte init [openai|anthropic|google]",
-  description: "set up project configuration",
-  examples: ["acolyte init"],
+const authHelp: CliCommandHelp = {
+  command: "auth [provider]",
+  usage: "acolyte auth [openai|anthropic|google|vercel]",
+  description: "authenticate a provider",
+  examples: ["acolyte auth"],
 };
 
 const toolHelp: CliCommandHelp = {
@@ -26,8 +26,8 @@ const toolHelp: CliCommandHelp = {
 
 describe("cli-help", () => {
   test("createUsageCommandRows excludes tool and includes core commands", () => {
-    const rows = createUsageCommandRows([runHelp, initHelp, toolHelp]);
-    expect(rows.some((row) => row.command.startsWith("init"))).toBe(true);
+    const rows = createUsageCommandRows([runHelp, authHelp, toolHelp]);
+    expect(rows.some((row) => row.command.startsWith("auth"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("run"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("tool"))).toBe(false);
   });
@@ -60,7 +60,7 @@ describe("cli-help", () => {
     const lines: string[] = [];
     printUsage(
       "0.0.0",
-      [runHelp, initHelp],
+      [runHelp, authHelp],
       (line) => lines.push(line),
       (version) => `Acolyte ${version}`,
     );

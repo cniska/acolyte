@@ -96,7 +96,7 @@ main() {
   echo ""
   echo "Acolyte ${tag} installed to ${INSTALL_DIR}/acolyte"
   echo ""
-  echo "Run 'acolyte init' to get started."
+  echo "Run 'acolyte auth' to get started."
 }
 
 main
