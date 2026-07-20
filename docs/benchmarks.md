@@ -1,6 +1,6 @@
 # Benchmarks
 
-These benchmarks compare Acolyte with eight current open-source terminal coding agents using static source counts and normalized pattern counts.
+Static code quality benchmarks compare Acolyte with eight current open-source terminal coding agents using source, dependency, test, and type-safety metrics.
 
 For feature and architecture comparisons, see [Comparison](./comparison.md). Both documents use the same competitor set.
 
