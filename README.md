@@ -1,6 +1,6 @@
 # Acolyte
 
-![CI](https://img.shields.io/github/actions/workflow/status/cniska/acolyte/ci.yml?style=flat&label=ci)](https://github.com/cniska/acolyte/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/cniska/acolyte/ci.yml?style=flat&label=ci)](https://github.com/cniska/acolyte/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/package-json/v/cniska/acolyte?style=flat)](https://github.com/cniska/acolyte)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 [![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat)](https://bun.sh)
@@ -10,7 +10,7 @@ A coding agent you can inspect.
 
 Acolyte is an open-source, terminal-first AI coding agent with an opinionated runtime and explicit extension seams. Its single-pass lifecycle, on-demand memory, and transparent execution make decisions visible and boundaries explicit.
 
-[Opening Acolyte, submitting a prompt, receiving a response with tool calls, exiting, and inspecting the task trace](docs/assets/demo.gif)
+![Opening Acolyte, submitting a prompt, receiving a response with tool calls, exiting, and inspecting the task trace](docs/assets/demo.gif)
 
 ## Runtime model
 
