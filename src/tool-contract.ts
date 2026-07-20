@@ -26,6 +26,8 @@ export type ChecklistListener = (event: { groupId: string; groupTitle: string; i
 
 export type SkillActivatedListener = (skill: ActiveSkill) => void;
 
+export type SkillDeactivatedListener = (name: string) => void;
+
 export type ToolkitInput = {
   workspace: string;
   session: SessionContext;
@@ -33,6 +35,7 @@ export type ToolkitInput = {
   onOutput: ToolOutputListener;
   onChecklist: ChecklistListener;
   onSkillActivated: SkillActivatedListener;
+  onSkillDeactivated: SkillDeactivatedListener;
 };
 
 export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };

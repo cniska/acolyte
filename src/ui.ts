@@ -50,6 +50,12 @@ export function printDim(content: string): void {
   write(`${color.dim(content)}\n`);
 }
 
+/** A dimmed line led by a marker glyph, tinted `glyphColor` (hex) when set — else dim. */
+export function printMarkerLine(glyph: string, glyphColor: string | undefined, rest: string): void {
+  const head = glyphColor ? `${hexToAnsi(glyphColor)}${glyph}\x1b[39m` : color.dim(glyph);
+  write(`${head} ${color.dim(rest)}\n`);
+}
+
 export function printToolHeader(title: string, detail?: string): void {
   const base = color.bold(color.white(title));
   const suffix = detail ? ` ${color.dim(detail)}` : "";

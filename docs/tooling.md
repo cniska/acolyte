@@ -21,7 +21,7 @@ lifecycle → budget → cache → toolkit → registry
 | `undo` | Revert file edits |
 | `session` | Search current session history |
 | `memory` | Persistent cross-session knowledge |
-| `skill` | Skill activation |
+| `skill` | Skill activation and deactivation |
 | `test` | Run workspace tests |
 | `checklist` | Multi-step task tracking |
 | `gh` | GitHub issue and pull request operations |

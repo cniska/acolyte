@@ -23,7 +23,7 @@ export type ChatMessage = z.input<typeof messageSchema>;
 export const chatRowKindSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
 
 export const chatRowStyleSchema = z.object({
-  marker: z.string().optional(),
+  markerColor: z.string().optional(),
   text: z.string().optional(),
   dim: z.boolean().optional(),
 });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isToolOutput } from "./chat-contract";
-import { addActiveSkill, skillActivationRow } from "./chat-skill-activator";
+import { addActiveSkill, removeActiveSkill, skillActivationRow } from "./chat-skill-activator";
 import type { ActiveSkill } from "./skill-contract";
 
 describe("skillActivationRow", () => {
@@ -43,5 +43,34 @@ describe("addActiveSkill", () => {
       { name: "build", instructions: "slice it" },
       { name: "git", instructions: "commit often" },
     ]);
+  });
+});
+
+describe("removeActiveSkill", () => {
+  test("removes the named skill and preserves the others", () => {
+    const target: { activeSkills?: ActiveSkill[] } = {
+      activeSkills: [
+        { name: "build", instructions: "slice it" },
+        { name: "git", instructions: "commit often" },
+      ],
+    };
+    removeActiveSkill(target, "build");
+    expect(target.activeSkills).toEqual([{ name: "git", instructions: "commit often" }]);
+  });
+
+  test("yields an empty array rather than undefined when the last skill is removed", () => {
+    const target: { activeSkills?: ActiveSkill[] } = {
+      activeSkills: [{ name: "build", instructions: "slice it" }],
+    };
+    removeActiveSkill(target, "build");
+    expect(target.activeSkills).toEqual([]);
+  });
+
+  test("is a no-op when the name is not active", () => {
+    const target: { activeSkills?: ActiveSkill[] } = {
+      activeSkills: [{ name: "build", instructions: "slice it" }],
+    };
+    removeActiveSkill(target, "git");
+    expect(target.activeSkills).toEqual([{ name: "build", instructions: "slice it" }]);
   });
 });

@@ -17,6 +17,7 @@ import type {
   ChecklistListener,
   SessionContext,
   SkillActivatedListener,
+  SkillDeactivatedListener,
   ToolCategory,
   ToolDefinition,
   ToolkitInput,
@@ -105,6 +106,7 @@ export const TOOLKIT_REGISTRY: {
 const noopOutput: ToolOutputListener = () => {};
 const noopChecklist: ChecklistListener = () => {};
 const noopSkillActivated: SkillActivatedListener = () => {};
+const noopSkillDeactivated: SkillDeactivatedListener = () => {};
 
 function collectTools(
   workspace: string,
@@ -112,13 +114,22 @@ function collectTools(
   onOutput: ToolOutputListener = noopOutput,
   onChecklist: ChecklistListener = noopChecklist,
   onSkillActivated: SkillActivatedListener = noopSkillActivated,
+  onSkillDeactivated: SkillDeactivatedListener = noopSkillDeactivated,
   sessionId?: string,
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
     Object.assign(
       combined,
-      toolkit.createToolkit({ workspace, session, sessionId, onOutput, onChecklist, onSkillActivated }),
+      toolkit.createToolkit({
+        workspace,
+        session,
+        sessionId,
+        onOutput,
+        onChecklist,
+        onSkillActivated,
+        onSkillDeactivated,
+      }),
     );
   }
   return combined;
@@ -168,6 +179,7 @@ export function toolsForAgent(options?: {
   onOutput?: ToolOutputListener;
   onChecklist?: ChecklistListener;
   onSkillActivated?: SkillActivatedListener;
+  onSkillDeactivated?: SkillDeactivatedListener;
   taskId?: string;
   sessionId?: string;
   mcpListings?: McpToolListing[];
@@ -184,6 +196,7 @@ export function toolsForAgent(options?: {
     options?.onOutput,
     options?.onChecklist,
     options?.onSkillActivated,
+    options?.onSkillDeactivated,
     options?.sessionId,
   );
   if (options?.mcpListings?.length) {

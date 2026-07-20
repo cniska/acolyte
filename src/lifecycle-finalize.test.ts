@@ -292,12 +292,12 @@ describe("phaseFinalize", () => {
     expect(response.activeSkills).toEqual(skills);
   });
 
-  test("omits activeSkills when session has none", () => {
+  test("always emits activeSkills as an empty array when session has none", () => {
     const ctx = createRunContext({
       result: { text: "Done.", toolCalls: [] },
     });
     const response = phaseFinalize(ctx);
-    expect(response.activeSkills).toBeUndefined();
+    expect(response.activeSkills).toEqual([]);
   });
 
   test("summary active_skills reflects the end-of-turn session set, not the request", () => {
@@ -341,5 +341,15 @@ describe("parseChatResponse activeSkills", () => {
       outputStreamed: false,
     });
     expect(response?.activeSkills).toBeUndefined();
+  });
+
+  test("preserves an empty activeSkills array", () => {
+    const response = parseChatResponse({
+      output: "Hello",
+      model: "gpt-5-mini",
+      outputStreamed: false,
+      activeSkills: [],
+    });
+    expect(response?.activeSkills).toEqual([]);
   });
 });

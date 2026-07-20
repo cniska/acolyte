@@ -393,6 +393,68 @@ describe("chat message handler", () => {
     expect(session.activeSkills?.map((s) => s.name)).toEqual(["build"]);
   });
 
+  test("a reply carrying an empty activeSkills set clears the session", async () => {
+    const { handleMessage, session } = createMessageHandlerHarness({
+      session: createSession({ id: "sess_test", activeSkills: [{ name: "build", instructions: "slice it" }] }),
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async () => ({ model: "gpt-5-mini", outputStreamed: true, output: "done", activeSkills: [] }),
+      }),
+    });
+
+    await handleMessage("drop the build skill");
+
+    expect(session.activeSkills).toEqual([]);
+  });
+
+  test("a reply that omits activeSkills leaves the session set untouched", async () => {
+    const { handleMessage, session } = createMessageHandlerHarness({
+      session: createSession({ id: "sess_test", activeSkills: [{ name: "build", instructions: "slice it" }] }),
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async () => ({ model: "gpt-5-mini", outputStreamed: true, output: "done" }),
+      }),
+    });
+
+    await handleMessage("carry on");
+
+    expect(session.activeSkills?.map((s) => s.name)).toEqual(["build"]);
+  });
+
+  test("activate then deactivate within a turn ends with an empty session set", async () => {
+    const { handleMessage, session } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "skill-activated", skill: { name: "build", instructions: "slice it" } });
+          input.onEvent({ type: "skill-deactivated", name: "build" });
+          return { model: "gpt-5-mini", outputStreamed: true, output: "done", activeSkills: [] };
+        },
+      }),
+    });
+
+    await handleMessage("use then drop the build skill");
+
+    expect(session.activeSkills).toEqual([]);
+  });
+
+  test("a deactivation applied mid-turn survives an abort", async () => {
+    const { handleMessage, session } = createMessageHandlerHarness({
+      session: createSession({ id: "sess_test", activeSkills: [{ name: "build", instructions: "slice it" }] }),
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "skill-deactivated", name: "build" });
+          throw Object.assign(new Error("request aborted"), { name: "AbortError" });
+        },
+      }),
+    });
+
+    await handleMessage("drop the build skill then stop");
+
+    expect(session.activeSkills).toEqual([]);
+  });
+
   test("toggles shortcuts on ? input", async () => {
     const { handleMessage, calls } = createMessageHandlerHarness();
     await handleMessage("?");
@@ -473,7 +535,7 @@ describe("chat message handler", () => {
     expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
-    expect(last?.style?.marker).toBe(palette.cancelled);
+    expect(last?.style?.markerColor).toBe(palette.cancelled);
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {

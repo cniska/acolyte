@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { ChatTranscript } from "./chat-transcript";
+import { palette } from "./palette";
 import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { renderToolOutput } from "./tool-output-render";
 import { renderToString } from "./tui/index";
+import { colorToFg } from "./tui/styles";
 import { renderPlain, withTerminalWidth } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
@@ -16,8 +18,8 @@ function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
  * One case, two expected strings. The CLI (`renderToolOutput`) and chat
  * (`ChatTranscript`) blocks are two serializers over the same shared layout
  * (`tool-output-layout.ts`); they diverge only where intended — the CLI is
- * markerless and keeps `out |`/`err |` stream prefixes, chat prepends a `• `
- * marker and colors the diff band. This shared table drives both from one input
+ * markerless and keeps `out |`/`err |` stream prefixes, chat prepends the row
+ * marker glyph and colors the diff band. This shared table drives both from one input
  * so a case can never be present in one block and silently missing from the
  * other; a new case that omits `cli` or `chat` is a type error, not a gap.
  */
@@ -514,9 +516,15 @@ const CASES: ToolCase[] = [
   },
   {
     name: "skill-activate with name",
-    parts: [{ kind: "tool-header", labelKey: "tool.label.skill", detail: "build" }],
+    parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state: "on" }],
     cli: "Skill build",
-    chat: "• Skill build",
+    chat: "◉ Skill build",
+  },
+  {
+    name: "skill-deactivate with name",
+    parts: [{ kind: "tool-header", labelKey: "tool.label.skill_deactivate", detail: "build", state: "off" }],
+    cli: "Skill build",
+    chat: "○ Skill build",
   },
 ];
 
@@ -582,6 +590,22 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(diffLine.endsWith("…")).toBe(true); // content was cut, not wrapped
     expect(Bun.stringWidth(diffLine)).toBeLessThanOrEqual(40);
     expect(out).toContain("• Edit notes.ts (+1 -0)");
+  });
+
+  test("tints the active-skill marker brand and the deactivate marker dim in the width-2 box", () => {
+    const skillRow = (state: "on" | "off"): ChatRow => ({
+      id: "r1",
+      kind: "tool",
+      content: { parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state }] },
+    });
+    const active = withTerminalWidth(96, () =>
+      renderToString(<ChatTranscript rows={[skillRow("on")]} pendingFrame={0} />),
+    );
+    const inactive = withTerminalWidth(96, () =>
+      renderToString(<ChatTranscript rows={[skillRow("off")]} pendingFrame={0} />),
+    );
+    expect(active).toContain(`${colorToFg(palette.brand)}◉`);
+    expect(inactive).toContain(`${colorToFg(palette.dim)}○`);
   });
 
   test("renders stderr in the same style as stdout, without a red channel flag", () => {

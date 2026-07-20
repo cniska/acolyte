@@ -59,6 +59,7 @@ export async function handlePrompt(
     session.messages.push(
       (reply.toolCalls?.length ?? 0) > 0 ? { ...assistantMessage, kind: "tool_payload" } : assistantMessage,
     );
+    if (reply.activeSkills) session.activeSkills = reply.activeSkills;
     session.model = reply.model;
     session.updatedAt = nowIso();
     return true;

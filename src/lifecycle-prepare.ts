@@ -23,6 +23,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     onOutput: input.onOutput,
     onChecklist: input.onChecklist,
     onSkillActivated: input.onSkillActivated,
+    onSkillDeactivated: input.onSkillDeactivated,
     taskId: input.taskId,
     sessionId: input.request.sessionId,
     mcpListings: input.mcpListings,
@@ -54,7 +55,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     });
   }
 
-  if (input.request.activeSkills?.length) {
+  if (input.request.activeSkills) {
     session.activeSkills = [...input.request.activeSkills];
     input.debug("lifecycle.skill.context", {
       skill_names: input.request.activeSkills.map((s) => s.name),

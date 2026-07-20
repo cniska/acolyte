@@ -55,4 +55,14 @@ describe("resolveHeader", () => {
     expect(resolveHeader(DIFF_PARTS[0] as ToolOutputPart)?.label).toBeDefined();
     expect(resolveHeader({ kind: "no-output" })).toBeNull();
   });
+
+  test("ignores tool-header state — the marker is a row-level glyph, not a body segment", () => {
+    const [header] = layoutToolOutput([
+      { kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state: "on" },
+    ]);
+    expect(header?.segments).toEqual([
+      { role: "label", text: "Skill" },
+      { role: "detail", text: " build" },
+    ]);
+  });
 });

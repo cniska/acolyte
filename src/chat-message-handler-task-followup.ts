@@ -43,12 +43,12 @@ export async function startRemoteTaskFollowup(input: StartRemoteTaskFollowupInpu
         if (next.state === "failed") {
           input.setRows((current) => [
             ...current,
-            createRow("task", t("chat.task.followup.failed"), { dim: true, marker: palette.error }),
+            createRow("task", t("chat.task.followup.failed"), { dim: true, markerColor: palette.error }),
           ]);
         } else if (next.state === "cancelled") {
           input.setRows((current) => [
             ...current,
-            createRow("task", t("chat.task.followup.cancelled"), { dim: true, marker: palette.cancelled }),
+            createRow("task", t("chat.task.followup.cancelled"), { dim: true, markerColor: palette.cancelled }),
           ]);
         }
         await input.persist();

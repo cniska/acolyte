@@ -9,7 +9,12 @@ import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { AuthRoute } from "./provider-config";
-import type { ChecklistListener, SessionContext, SkillActivatedListener } from "./tool-contract";
+import type {
+  ChecklistListener,
+  SessionContext,
+  SkillActivatedListener,
+  SkillDeactivatedListener,
+} from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import type { Toolset } from "./tool-registry";
 
@@ -71,6 +76,7 @@ export type PhasePrepareInput = {
   onOutput: (event: ToolOutputEvent) => void;
   onChecklist: ChecklistListener;
   onSkillActivated: SkillActivatedListener;
+  onSkillDeactivated: SkillDeactivatedListener;
   mcpListings: McpToolListing[];
 };
 export type PhasePrepareResult = {

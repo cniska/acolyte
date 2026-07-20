@@ -229,6 +229,7 @@ export function createSession(overrides: Partial<Session> = {}): Session {
     workspace: overrides.workspace,
     workspaceName: overrides.workspaceName,
     workspaceBranch: overrides.workspaceBranch,
+    activeSkills: overrides.activeSkills,
     messages: overrides.messages ?? [],
     tokenUsage: overrides.tokenUsage ?? [],
   };

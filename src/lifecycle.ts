@@ -276,6 +276,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onSkillActivated: (skill) => {
       emit({ type: "skill-activated", skill });
     },
+    onSkillDeactivated: (name) => {
+      emit({ type: "skill-deactivated", name });
+    },
     mcpListings,
   });
 
