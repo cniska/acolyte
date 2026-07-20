@@ -14,7 +14,7 @@ All metrics are extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 - Metrics normalized **per 1k source lines** where applicable
 - Dependencies are direct declarations detected in the included project manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
 - Each project is measured from a fresh shallow clone of its origin's default branch
-- Snapshot revisions and commit dates tie each result to the exact source measured
+- Snapshot revisions tie each result to the exact source measured
 
 These are structural signals, not measures of model quality, runtime correctness, or task success. Repository-wide counts are especially difficult to compare when a project includes multiple clients, products, or bundled applications.
 
