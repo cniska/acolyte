@@ -15,6 +15,7 @@ async function runCliWithInput(
   project: string,
   args: string[],
   input: string,
+  extraEnv: Record<string, string | undefined> = {},
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn({
     cmd: [process.execPath, "run", join(repoRoot, "src/cli.ts"), ...args],
@@ -22,6 +23,7 @@ async function runCliWithInput(
     env: {
       ...process.env,
       ...testEnvForHome(home),
+      ...extraEnv,
       NO_COLOR: "1",
     },
     stdin: "pipe",
@@ -103,6 +105,13 @@ describe("cli auth", () => {
     expect(out).toContain("anthropic:");
     expect(out).toContain("api key");
     expect(out).toContain("openai:");
+  }, 15_000);
+
+  test("status lists API keys from the environment", async () => {
+    const { home, project } = await createTestEnv();
+    const result = await runCliWithInput(home, project, ["auth"], "", { OPENAI_API_KEY: "sk-env" });
+    expect(result.exitCode).toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("openai: api key");
   }, 15_000);
 
   test("--logout removes stored key", async () => {
