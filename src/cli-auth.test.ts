@@ -33,7 +33,7 @@ function createDeps(overrides: Partial<Parameters<typeof authMode>[1]> = {}) {
     removeProviderApiKey: mock(async (envKey: ProviderApiEnvKey) => {
       removes.push(envKey);
     }),
-    credentialsPath: () => "/home/user/.acolyte/credentials",
+    credentialsPath: () => "/home/user/.config/acolyte/credentials",
     commandError: mock((_: string, __?: string) => {}),
     commandHelp: mock((_: string) => {}),
   };

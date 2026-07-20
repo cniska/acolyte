@@ -34,6 +34,6 @@
   "Protocol events: status, reasoning, tool-call, tool-output, tool-result, text-delta, error, done. Every request has exactly one terminal event (done or error).",
   "RPC: WebSocket JSON envelopes with transport request id (rpc_*) and domain task id (task_*). Auth via Bearer token in sec-websocket-protocol.",
 
-  "Config scopes: user (~/.acolyte/config.toml) and project (<cwd>/.acolyte/config.toml). Project overrides user.",
+  "Config scopes: user (~/.config/acolyte/config.toml by default) and project (<cwd>/.acolyte/config.toml). Project overrides user.",
   "Provider support: OpenAI, Anthropic, Google with configurable base URLs. Local models via OpenAI-compatible endpoints (Ollama, vLLM)."
 ]

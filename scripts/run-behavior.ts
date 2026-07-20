@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { stateDir } from "../src/paths";
 import {
   BEHAVIOR_SCENARIO_BY_ID,
   BEHAVIOR_SCENARIO_LIST,
@@ -338,7 +339,7 @@ async function createBehaviorEnvironment(): Promise<BehaviorEnvironment> {
     homeDir: home.homeDir,
     port: home.port,
     env: home.env,
-    daemonLogPath: join(home.homeDir, ".acolyte", "daemons", `${home.port}.log`),
+    daemonLogPath: join(stateDir(home.env), "daemons", `${home.port}.log`),
   };
 }
 

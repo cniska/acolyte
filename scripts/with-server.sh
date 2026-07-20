@@ -9,7 +9,12 @@ fi
 serve_script="$1"
 shift
 
-log_path="${ACOLYTE_SERVER_LOG:-$HOME/.acolyte/daemons/server.log}"
+if [[ "${XDG_STATE_HOME:-}" = /* ]]; then
+  state_home="$XDG_STATE_HOME"
+else
+  state_home="$HOME/.local/state"
+fi
+log_path="${ACOLYTE_SERVER_LOG:-$state_home/acolyte/daemons/server.log}"
 wait_url="${ACOLYTE_SERVER_WAIT_URL:-http://localhost:6767/v1/status}"
 wait_timeout_ms="${ACOLYTE_SERVER_WAIT_TIMEOUT_MS:-10000}"
 restart_server="${ACOLYTE_SERVER_RESTART:-0}"
