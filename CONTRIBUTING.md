@@ -1,40 +1,21 @@
 # Contributing
 
-Minimal workflow for external contributors.
+Contributions are welcome. See [Local development](./README.md#local-development) to run Acolyte locally, then follow this workflow when proposing a change on GitHub.
 
-## Setup
+## Workflow
 
-See the [Quick Start](./README.md#quick-start) for prerequisites and initial setup.
+1. Read [AGENTS.md](AGENTS.md) before changing an unfamiliar subsystem.
+2. Create a branch from `main`.
+3. Keep the change scoped to one intent.
+4. Add or update regression tests when the change carries meaningful regression risk.
+5. Update canonical docs when behavior or contracts change.
 
-After cloning, run `bun install` to install dependencies and activate the pre-push hook:
+## Validation
 
-```bash
-bun install
-```
+Run the [narrow relevant test suite](./README.md#testing) while iterating. Before opening a pull request, run the [full validation](./README.md#testing).
 
-The hook runs `bun run verify` before every push. To format code manually: `bun run format`.
+`bun install` installs the pre-push hook, which runs the same validation before every push.
 
-## Development loop
+## Pull requests
 
-1. Create a branch from `main`.
-2. Make focused changes.
-3. Run targeted checks while iterating:
-
-```bash
-bun run test:unit     # unit tests
-bun run test:int      # integration tests
-bun run test:tui      # visual regression tests
-bun run test:perf     # performance baselines
-```
-
-4. Before opening a PR, run full validation:
-
-```bash
-bun run verify
-```
-
-## Submission expectations
-
-- Keep PRs small and scoped to one intent.
-- Update canonical docs when behavior or contracts change.
-- Include tests for meaningful regression risk.
+Follow the pull request requirements in [AGENTS.md](AGENTS.md). Keep the description focused on the motivation and user-visible outcome; do not include mechanical implementation detail.

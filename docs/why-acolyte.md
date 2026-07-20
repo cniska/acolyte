@@ -14,7 +14,7 @@ Open-source agents like Acolyte exist for the cases where that's not enough:
 - **transparent execution**: every tool call and effect decision is observable in structured logs — no black box
 - **no vendor lock-in**: your sessions, memory, and configuration are local files you own
 
-Acolyte is for developers who want reliable, observable agent behavior, not a black box. Ready to try it? See the [Quick Start](../README.md#quick-start).
+Acolyte is for developers who want reliable, observable agent behavior, not a black box. To run it from source, see [Local development](../README.md#local-development).
 
 ## What makes Acolyte different
 
