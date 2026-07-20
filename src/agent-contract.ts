@@ -4,8 +4,11 @@ import type {
   LanguageModelV4Message,
   SharedV4ProviderOptions,
 } from "@ai-sdk/provider";
+import type { ChecklistItem } from "./checklist-contract";
 import type { ReasoningLevel } from "./config-contract";
+import type { ActiveSkill } from "./skill-contract";
 import type { ToolDefinition } from "./tool-contract";
+import type { ToolOutputPart } from "./tool-output-contract";
 
 export type ToolCallEntry = {
   toolCallId: string;
@@ -51,7 +54,20 @@ export type StreamChunk =
   | { type: "tool-call"; payload: ToolCallPayload }
   | { type: "tool-result"; payload: ToolResultPayload }
   | { type: "tool-error"; payload: ToolErrorPayload }
-  | { type: "model-usage"; payload: ModelUsagePayload };
+  | { type: "model-usage"; payload: ModelUsagePayload }
+  | SideEffectChunk;
+
+// Effects a tool raises mid-execute (output rows, checklists, skill lifecycle). They ride the
+// same ordered `fullStream` as text and tool calls so the transcript order is structurally
+// faithful — a tool can only emit them from inside its `execute`, between its tool-call and
+// tool-result chunks.
+export type SideEffectChunk =
+  | { type: "tool-output"; toolName: string; content: ToolOutputPart; toolCallId?: string }
+  | { type: "checklist"; groupId: string; groupTitle: string; items: ChecklistItem[] }
+  | { type: "skill-activated"; skill: ActiveSkill }
+  | { type: "skill-deactivated"; name: string };
+
+export type SideEffectSink = (chunk: SideEffectChunk) => void;
 
 export type Agent = {
   readonly id: string;
@@ -69,6 +85,9 @@ export type StreamOptions = {
   reasoning?: ReasoningLevel;
   providerOptions?: SharedV4ProviderOptions;
   preCallInputTokenLimit?: number;
+  // Installed for the lifetime of one stream so tool-raised effects enqueue onto `fullStream`;
+  // the streamer calls it with `null` once the stream closes.
+  installSideEffectSink?: (sink: SideEffectSink | null) => void;
   onBeforeNextCall?: (messages: readonly LanguageModelV4Message[]) => LanguageModelV4Message[];
   onBeforeFinish?: (attempt: {
     messages: readonly LanguageModelV4Message[];

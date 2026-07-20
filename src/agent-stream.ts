@@ -62,212 +62,217 @@ export function createAgentStream(
         streamController = controller;
       },
     });
+    options.installSideEffectSink?.((chunk) => streamController.enqueue(chunk));
 
     const resultPromise = (async (): Promise<GenerateResult> => {
       let finishReason: LanguageModelV4FinishReason | undefined;
-      while (true) {
-        loopIteration++;
-        if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
-        log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
-
-        const preCallLimit = options.preCallInputTokenLimit;
-        if (typeof preCallLimit === "number" && preCallLimit > 0) {
-          const size = estimatePromptSize(messages, functionTools);
-          const message = promptBudgetError(size, preCallLimit);
-          if (message) {
-            log.debug("agent-stream.precall.overflow", {
-              iteration: loopIteration,
-              limit: preCallLimit,
-              total: size.total,
-              system: size.system,
-              tools: size.tools,
-              messages: size.messages,
-              message_count: messages.length,
-            });
-            const err = new Error(message) as Error & { code: string; kind: string };
-            err.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
-            err.kind = ERROR_KINDS.budgetExhausted;
-            throw err;
-          }
-        }
-
-        await rateLimiter.beforeCall();
-        let streamResult: Awaited<ReturnType<typeof model.doStream>>;
-        try {
-          streamResult = await model.doStream({
-            prompt: messages,
-            temperature: options.temperature,
-            tools: functionTools.length > 0 ? functionTools : undefined,
-            toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
-            ...(options.reasoning ? { reasoning: options.reasoning } : {}),
-            ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
-          });
-          rateLimiter.reset();
-        } catch (error) {
-          const recovery = rateLimiter.onError(error);
-          if (recovery.shouldRetry) {
-            log.debug("agent-stream.rate_limit.retry", { delay_ms: recovery.delayMs, iteration: loopIteration });
-            await new Promise((resolve) => setTimeout(resolve, recovery.delayMs));
-            continue;
-          }
-          throw error;
-        }
-
-        const pendingToolCalls: Array<{
-          toolCallId: string;
-          toolName: string;
-          input: string;
-        }> = [];
-        finishReason = undefined;
-        const stepTextParts: string[] = [];
-        const reasoningBlocks = new Map<string, ReasoningBlock>();
-
-        const reader = streamResult.stream.getReader();
+      try {
         while (true) {
-          const { done, value: part } = await reader.read();
-          if (done) break;
-          emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, reasoningBlocks);
-          if (part.type === "finish") {
-            finishReason = part.finishReason;
-            streamController.enqueue({
-              type: "model-usage",
-              payload: {
-                inputTokens: part.usage?.inputTokens?.total,
-                outputTokens: part.usage?.outputTokens?.total,
-                cacheReadTokens: part.usage?.inputTokens?.cacheRead,
-                cacheWriteTokens: part.usage?.inputTokens?.cacheWrite,
-                reasoningTokens: part.usage?.outputTokens?.reasoning,
-              },
-            });
+          loopIteration++;
+          if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
+          log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
+
+          const preCallLimit = options.preCallInputTokenLimit;
+          if (typeof preCallLimit === "number" && preCallLimit > 0) {
+            const size = estimatePromptSize(messages, functionTools);
+            const message = promptBudgetError(size, preCallLimit);
+            if (message) {
+              log.debug("agent-stream.precall.overflow", {
+                iteration: loopIteration,
+                limit: preCallLimit,
+                total: size.total,
+                system: size.system,
+                tools: size.tools,
+                messages: size.messages,
+                message_count: messages.length,
+              });
+              const err = new Error(message) as Error & { code: string; kind: string };
+              err.code = LIFECYCLE_ERROR_CODES.budgetExhausted;
+              err.kind = ERROR_KINDS.budgetExhausted;
+              throw err;
+            }
           }
-        }
 
-        const stepText = stepTextParts.join("");
-        // Text alongside tool calls is narration, not the final response. Only a pure
-        // no-tool-call step carries the answer; prepend any prefix carried from a truncation.
-        if (pendingToolCalls.length === 0) answerText = truncatedPrefix + stepText;
-
-        if (pendingToolCalls.length > 0) {
-          const assistantContent: Array<
-            LanguageModelV4ReasoningPart | LanguageModelV4TextPart | LanguageModelV4ToolCallPart
-          > = [
-            ...reasoningContentParts(reasoningBlocks),
-            ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
-            ...pendingToolCalls.map((tc) => ({
-              type: "tool-call" as const,
-              toolCallId: tc.toolCallId,
-              toolName: tc.toolName,
-              input: safeParseJSON(tc.input),
-            })),
-          ];
-
-          const toolResultParts: LanguageModelV4ToolResultPart[] = [];
-          for (const tc of pendingToolCalls) {
-            allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
-            const tool = toolsByName.get(tc.toolName);
-            if (!tool) {
-              const error = `Unknown tool: ${tc.toolName}`;
-              streamController.enqueue({
-                type: "tool-error",
-                payload: { error, message: error, toolName: tc.toolName, toolCallId: tc.toolCallId },
-              });
-              toolResultParts.push({
-                type: "tool-result",
-                toolCallId: tc.toolCallId,
-                toolName: tc.toolName,
-                output: { type: "text", value: JSON.stringify({ error }) },
-              });
+          await rateLimiter.beforeCall();
+          let streamResult: Awaited<ReturnType<typeof model.doStream>>;
+          try {
+            streamResult = await model.doStream({
+              prompt: messages,
+              temperature: options.temperature,
+              tools: functionTools.length > 0 ? functionTools : undefined,
+              toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
+              ...(options.reasoning ? { reasoning: options.reasoning } : {}),
+              ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
+            });
+            rateLimiter.reset();
+          } catch (error) {
+            const recovery = rateLimiter.onError(error);
+            if (recovery.shouldRetry) {
+              log.debug("agent-stream.rate_limit.retry", { delay_ms: recovery.delayMs, iteration: loopIteration });
+              await new Promise((resolve) => setTimeout(resolve, recovery.delayMs));
               continue;
             }
+            throw error;
+          }
 
-            try {
-              const args = JSON.parse(tc.input);
-              const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
+          const pendingToolCalls: Array<{
+            toolCallId: string;
+            toolName: string;
+            input: string;
+          }> = [];
+          finishReason = undefined;
+          const stepTextParts: string[] = [];
+          const reasoningBlocks = new Map<string, ReasoningBlock>();
+
+          const reader = streamResult.stream.getReader();
+          while (true) {
+            const { done, value: part } = await reader.read();
+            if (done) break;
+            emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, reasoningBlocks);
+            if (part.type === "finish") {
+              finishReason = part.finishReason;
               streamController.enqueue({
-                type: "tool-result",
-                payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
-              });
-              const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
-              const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
-              toolResultParts.push({
-                type: "tool-result",
-                toolCallId: tc.toolCallId,
-                toolName: tc.toolName,
-                output: { type: "text", value: outputValue },
-              });
-            } catch (error) {
-              const serializedError = serializeToolError(error);
-              const message = serializedError.error.message;
-              const code = serializedError.error.code;
-              const kind = serializedError.error.kind;
-              streamController.enqueue({
-                type: "tool-error",
+                type: "model-usage",
                 payload: {
-                  error: serializedError.error,
-                  message,
-                  code,
-                  kind,
-                  toolName: tc.toolName,
-                  toolCallId: tc.toolCallId,
+                  inputTokens: part.usage?.inputTokens?.total,
+                  outputTokens: part.usage?.outputTokens?.total,
+                  cacheReadTokens: part.usage?.inputTokens?.cacheRead,
+                  cacheWriteTokens: part.usage?.inputTokens?.cacheWrite,
+                  reasoningTokens: part.usage?.outputTokens?.reasoning,
                 },
               });
-              toolResultParts.push({
-                type: "tool-result",
+            }
+          }
+
+          const stepText = stepTextParts.join("");
+          // Text alongside tool calls is narration, not the final response. Only a pure
+          // no-tool-call step carries the answer; prepend any prefix carried from a truncation.
+          if (pendingToolCalls.length === 0) answerText = truncatedPrefix + stepText;
+
+          if (pendingToolCalls.length > 0) {
+            const assistantContent: Array<
+              LanguageModelV4ReasoningPart | LanguageModelV4TextPart | LanguageModelV4ToolCallPart
+            > = [
+              ...reasoningContentParts(reasoningBlocks),
+              ...(stepText.length > 0 ? [{ type: "text" as const, text: stepText }] : []),
+              ...pendingToolCalls.map((tc) => ({
+                type: "tool-call" as const,
                 toolCallId: tc.toolCallId,
                 toolName: tc.toolName,
-                output: { type: "text", value: JSON.stringify(serializedError) },
-              });
+                input: safeParseJSON(tc.input),
+              })),
+            ];
+
+            const toolResultParts: LanguageModelV4ToolResultPart[] = [];
+            for (const tc of pendingToolCalls) {
+              allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
+              const tool = toolsByName.get(tc.toolName);
+              if (!tool) {
+                const error = `Unknown tool: ${tc.toolName}`;
+                streamController.enqueue({
+                  type: "tool-error",
+                  payload: { error, message: error, toolName: tc.toolName, toolCallId: tc.toolCallId },
+                });
+                toolResultParts.push({
+                  type: "tool-result",
+                  toolCallId: tc.toolCallId,
+                  toolName: tc.toolName,
+                  output: { type: "text", value: JSON.stringify({ error }) },
+                });
+                continue;
+              }
+
+              try {
+                const args = JSON.parse(tc.input);
+                const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
+                streamController.enqueue({
+                  type: "tool-result",
+                  payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
+                });
+                const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
+                const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
+                toolResultParts.push({
+                  type: "tool-result",
+                  toolCallId: tc.toolCallId,
+                  toolName: tc.toolName,
+                  output: { type: "text", value: outputValue },
+                });
+              } catch (error) {
+                const serializedError = serializeToolError(error);
+                const message = serializedError.error.message;
+                const code = serializedError.error.code;
+                const kind = serializedError.error.kind;
+                streamController.enqueue({
+                  type: "tool-error",
+                  payload: {
+                    error: serializedError.error,
+                    message,
+                    code,
+                    kind,
+                    toolName: tc.toolName,
+                    toolCallId: tc.toolCallId,
+                  },
+                });
+                toolResultParts.push({
+                  type: "tool-result",
+                  toolCallId: tc.toolCallId,
+                  toolName: tc.toolName,
+                  output: { type: "text", value: JSON.stringify(serializedError) },
+                });
+              }
             }
+
+            messages.push({ role: "assistant", content: assistantContent });
+            messages.push({ role: "tool", content: toolResultParts });
           }
 
-          messages.push({ role: "assistant", content: assistantContent });
-          messages.push({ role: "tool", content: toolResultParts });
-        }
+          // A step is terminal when the model emitted no tool calls (native end_turn) OR it
+          // emitted tool calls but finished with a non-tool-calls reason (degenerate; terminate
+          // rather than loop).
+          const isTerminalStep =
+            pendingToolCalls.length === 0 || (finishReason !== undefined && finishReason.unified !== "tool-calls");
 
-        // A step is terminal when the model emitted no tool calls (native end_turn) OR it
-        // emitted tool calls but finished with a non-tool-calls reason (degenerate; terminate
-        // rather than loop).
-        const isTerminalStep =
-          pendingToolCalls.length === 0 || (finishReason !== undefined && finishReason.unified !== "tool-calls");
-
-        if (isTerminalStep) {
-          const extras =
-            options.onBeforeFinish?.({ messages, text: stepText, answerText, finishReason: finishReason?.unified }) ??
-            [];
-          if (extras.length > 0) {
-            // On a no-tool-call step the assistant text has not been pushed yet; push it so the
-            // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
-            // An empty-answer reopen has blank stepText; skip the empty text block (providers
-            // reject it) so the completion backstop can actually retry.
-            if (pendingToolCalls.length === 0 && stepText.length > 0) {
-              messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
+          if (isTerminalStep) {
+            const extras =
+              options.onBeforeFinish?.({ messages, text: stepText, answerText, finishReason: finishReason?.unified }) ??
+              [];
+            if (extras.length > 0) {
+              // On a no-tool-call step the assistant text has not been pushed yet; push it so the
+              // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
+              // An empty-answer reopen has blank stepText; skip the empty text block (providers
+              // reject it) so the completion backstop can actually retry.
+              if (pendingToolCalls.length === 0 && stepText.length > 0) {
+                messages.push({ role: "assistant", content: [{ type: "text", text: stepText }] });
+              }
+              // A truncated no-tool-call step is a fragment of the answer; carry it so the
+              // continuation appends to it rather than the assembled answer losing the prefix.
+              if (pendingToolCalls.length === 0 && finishReason?.unified === "length") truncatedPrefix += stepText;
+              for (const msg of extras) messages.push(msg);
+              continue;
             }
-            // A truncated no-tool-call step is a fragment of the answer; carry it so the
-            // continuation appends to it rather than the assembled answer losing the prefix.
-            if (pendingToolCalls.length === 0 && finishReason?.unified === "length") truncatedPrefix += stepText;
-            for (const msg of extras) messages.push(msg);
-            continue;
+            break;
           }
-          break;
+
+          const extras = options.onBeforeNextCall?.(messages) ?? [];
+          for (const msg of extras) messages.push(msg);
         }
 
-        const extras = options.onBeforeNextCall?.(messages) ?? [];
-        for (const msg of extras) messages.push(msg);
+        log.debug("agent-stream.complete", {
+          iterations: loopIteration,
+          total_tool_calls: allToolCalls.length,
+          text_length: answerText.length,
+          finish_reason: finishReason?.unified ?? "unknown",
+        });
+        streamController.close();
+        return {
+          text: answerText,
+          textStreamed: answerText.trim().length > 0,
+          toolCalls: allToolCalls,
+          ...(finishReason ? { finishReason: finishReason.unified } : {}),
+        };
+      } finally {
+        options.installSideEffectSink?.(null);
       }
-
-      log.debug("agent-stream.complete", {
-        iterations: loopIteration,
-        total_tool_calls: allToolCalls.length,
-        text_length: answerText.length,
-        finish_reason: finishReason?.unified ?? "unknown",
-      });
-      streamController.close();
-      return {
-        text: answerText,
-        textStreamed: answerText.trim().length > 0,
-        toolCalls: allToolCalls,
-        ...(finishReason ? { finishReason: finishReason.unified } : {}),
-      };
     })().catch((error) => {
       try {
         streamController.error(error);
