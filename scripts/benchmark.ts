@@ -17,12 +17,12 @@ const PROJECTS: Project[] = [
   { name: "acolyte", url: "https://github.com/cniska/acolyte.git", lang: "typescript" },
   { name: "opencode", url: "https://github.com/anomalyco/opencode.git", lang: "typescript" },
   { name: "codex", url: "https://github.com/openai/codex.git", lang: "rust" },
-  { name: "crush", url: "https://github.com/charmbracelet/crush.git", lang: "go" },
-  { name: "aider", url: "https://github.com/Aider-AI/aider.git", lang: "python" },
-  { name: "goose", url: "https://github.com/block/goose.git", lang: "rust" },
+  { name: "goose", url: "https://github.com/aaif-goose/goose.git", lang: "rust" },
+  { name: "open-interpreter", url: "https://github.com/openinterpreter/openinterpreter.git", lang: "rust" },
+  { name: "reasonix", url: "https://github.com/esengine/DeepSeek-Reasonix.git", lang: "go" },
+  { name: "kimchi", url: "https://github.com/getkimchi/kimchi.git", lang: "typescript" },
   { name: "qwen-code", url: "https://github.com/QwenLM/qwen-code.git", lang: "typescript" },
-  { name: "plandex", url: "https://github.com/plandex-ai/plandex.git", lang: "go" },
-  { name: "mistral-vibe", url: "https://github.com/mistralai/mistral-vibe.git", lang: "python" },
+  { name: "grok-build", url: "https://github.com/xai-org/grok-build.git", lang: "rust" },
 ];
 
 // --- file collection ---
@@ -96,18 +96,48 @@ interface FileStats {
   files: string[];
   lines: string[];
   lineCount: number;
+  codeLineCount: number;
+  commentLineCount: number;
+  blankLineCount: number;
   fileCounts: { file: string; lines: number }[];
 }
 
+function classifyLines(lines: string[]): Pick<FileStats, "codeLineCount" | "commentLineCount" | "blankLineCount"> {
+  let codeLineCount = 0;
+  let commentLineCount = 0;
+  let blankLineCount = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) blankLineCount++;
+    else if (/^(?:\/\/|#|\/\*|\*|\*\/|<!--|-->)\s?/.test(trimmed)) commentLineCount++;
+    else codeLineCount++;
+  }
+
+  return { codeLineCount, commentLineCount, blankLineCount };
+}
+
 function readFiles(files: string[]): FileStats {
-  const result: FileStats = { files: [], lines: [], lineCount: 0, fileCounts: [] };
+  const result: FileStats = {
+    files: [],
+    lines: [],
+    lineCount: 0,
+    codeLineCount: 0,
+    commentLineCount: 0,
+    blankLineCount: 0,
+    fileCounts: [],
+  };
   for (const file of files) {
     const content = readFileSync(file, "utf8");
     const fileLines = content.split("\n");
     if (fileLines.length > MAX_FILE_LINES) continue;
+    const lineKinds = classifyLines(fileLines);
     result.files.push(file);
     result.lines.push(...fileLines);
     result.lineCount += fileLines.length;
+    result.codeLineCount += lineKinds.codeLineCount;
+    result.commentLineCount += lineKinds.commentLineCount;
+    result.blankLineCount += lineKinds.blankLineCount;
     result.fileCounts.push({ file, lines: fileLines.length });
   }
   return result;
@@ -273,17 +303,12 @@ function cloneSnapshot(name: string, url: string): void {
   execSync(`git clone --depth 1 --quiet ${url} ${dir}`, { stdio: "ignore" });
 }
 
-function getCreatedDate(repoPath: string): string {
-  try {
-    const out = execSync(`gh api repos/${repoPath} --jq '.created_at'`, { encoding: "utf8" }).trim();
-    return out.split("T")[0];
-  } catch {
-    return "unknown";
-  }
+function getRevision(dir: string): string {
+  return execSync("git rev-parse --short=12 HEAD", { cwd: dir, encoding: "utf8" }).trim();
 }
 
-function getRevision(dir: string): string {
-  return execSync(`git -C ${dir} rev-parse --short=12 HEAD`, { encoding: "utf8" }).trim();
+function getSnapshotDate(dir: string): string {
+  return execSync("git log -1 --format=%cI", { cwd: dir, encoding: "utf8" }).trim();
 }
 
 // --- main ---
@@ -357,17 +382,17 @@ for (const p of PROJECTS) {
   else if (p.lang === "rust") barrelFiles = src.files.filter((f) => f.endsWith("/mod.rs")).length;
   else if (p.lang === "go") barrelFiles = src.files.filter((f) => f.endsWith("/doc.go")).length;
 
-  const repoPath = p.url.replace("https://github.com/", "").replace(".git", "");
-  const initialCommit = getCreatedDate(repoPath);
-
   console.log(`  Source lines:     ${src.lineCount}`);
+  console.log(`  Code lines:       ${src.codeLineCount}`);
+  console.log(`  Comment lines:    ${src.commentLineCount}`);
+  console.log(`  Blank lines:      ${src.blankLineCount}`);
   console.log(`  Source files:     ${src.files.length}`);
   console.log(`  Avg lines/file:   ${avgLines}`);
   console.log(`  Files > 500:      ${filesOver500} (${filesOver500Pct}%)`);
   console.log(`  Largest file:     ${largestFile.lines}`);
   console.log(`  Barrel files:     ${barrelFiles}`);
   console.log(`  Revision:         ${getRevision(dir)}`);
-  console.log(`  Initial commit:   ${initialCommit}`);
+  console.log(`  Snapshot date:    ${getSnapshotDate(dir)}`);
   console.log(`  Dependencies:     ${deps.runtime} runtime + ${deps.dev} dev = ${deps.runtime + deps.dev} total`);
   console.log(`  Test files:       ${test.fileCount}`);
   console.log(`  Test lines:       ${test.count}`);
