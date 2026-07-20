@@ -99,7 +99,6 @@ jobs:
   # can never ship -- the nightly just surfaces mac/linux build breakage within a
   # day instead of paying compile minutes (macOS bills ~10x) on every merge.
   compile:
-    name: Compile (${{ matrix.target }})
     if: github.event_name == 'schedule'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
