@@ -317,7 +317,7 @@ describe("cli visual regression", () => {
     {
       args: ["init", "help"],
       output: dedent(`
-        Usage: acolyte init [openai|anthropic|google]
+        Usage: acolyte init [vercel|anthropic|google|openai]
         
         Description: initialize provider API key
         

@@ -16,6 +16,22 @@ acolyte config set --project logFormat json
 acolyte config unset openaiBaseUrl
 ```
 
+## Provider API keys
+
+`acolyte init` saves a provider key so it applies across every repository:
+
+```bash
+acolyte init            # prompts for provider and key
+acolyte init openai     # or name the provider directly
+acolyte init vercel     # stored as AI_GATEWAY_API_KEY
+```
+
+The key is written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. If a key for that provider is already stored, `init` asks before replacing it.
+
+Acolyte reads each provider key from the environment first, then the credentials file. Any variable in the process environment — exported in your shell, injected by CI, or loaded from a project `.env` — takes precedence over the stored key.
+
+Providers: `anthropic` (`ANTHROPIC_API_KEY`), `google` (`GOOGLE_API_KEY`), `openai` (`OPENAI_API_KEY`), `vercel` (`AI_GATEWAY_API_KEY`). `acolyte status` lists which providers are configured and how they authenticate.
+
 ## Vercel AI Gateway (recommended)
 
 The fastest way to get started. The [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) provides unified access to 20+ providers with a single API key.

@@ -40,36 +40,58 @@ async function runCliWithInput(
   return { exitCode, stdout, stderr };
 }
 
-async function createTestEnv(): Promise<{ home: string; project: string }> {
+async function createTestEnv(): Promise<{ home: string; project: string; credentialsPath: string }> {
   const home = dirs.createDir("acolyte-cli-init-home-");
   const project = dirs.createDir("acolyte-cli-init-project-");
-  await mkdir(configDir({ HOME: home }), { recursive: true });
-  return { home, project };
+  const dir = configDir({ HOME: home });
+  await mkdir(dir, { recursive: true });
+  return { home, project, credentialsPath: join(dir, "credentials") };
 }
 
 describe("cli init", () => {
-  test("writes selected provider API key to local .env", async () => {
-    const { home, project } = await createTestEnv();
+  test("writes selected provider API key to the global credentials file", async () => {
+    const { home, project, credentialsPath } = await createTestEnv();
     const result = await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
 
     expect(result.exitCode).toBe(0);
     expect(`${result.stdout}\n${result.stderr}`).toContain("Saved OPENAI_API_KEY");
 
-    const envText = await readFile(join(project, ".env"), "utf8");
-    expect(envText).toContain("OPENAI_API_KEY=sk-openai-test");
+    const credentials = await readFile(credentialsPath, "utf8");
+    expect(credentials).toContain("OPENAI_API_KEY=sk-openai-test");
+    // The key belongs to user identity, not the project checkout.
+    expect(readFile(join(project, ".env"), "utf8")).rejects.toThrow();
   }, 15_000);
 
-  test("refuses to re-run when provider key already exists", async () => {
-    const { home, project } = await createTestEnv();
-    const first = await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
-    expect(first.exitCode).toBe(0);
+  test("maps vercel to AI_GATEWAY_API_KEY", async () => {
+    const { home, project, credentialsPath } = await createTestEnv();
+    const result = await runCliWithInput(home, project, ["init", "vercel"], "vck-test\n");
 
-    const second = await runCliWithInput(home, project, ["init", "openai"], "sk-openai-other\n");
-    expect(second.exitCode).toBe(1);
-    expect(`${second.stdout}\n${second.stderr}`).toContain("already exists in .env");
+    expect(result.exitCode).toBe(0);
+    const credentials = await readFile(credentialsPath, "utf8");
+    expect(credentials).toContain("AI_GATEWAY_API_KEY=vck-test");
+  }, 15_000);
 
-    const envText = await readFile(join(project, ".env"), "utf8");
-    expect(envText).toContain("OPENAI_API_KEY=sk-openai-test");
-    expect(envText).not.toContain("OPENAI_API_KEY=sk-openai-other");
+  test("declining the override keeps the existing key", async () => {
+    const { home, project, credentialsPath } = await createTestEnv();
+    await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
+
+    const second = await runCliWithInput(home, project, ["init", "openai"], "n\n");
+    expect(second.exitCode).toBe(0);
+    expect(`${second.stdout}\n${second.stderr}`).toContain("Left the existing key unchanged.");
+
+    const credentials = await readFile(credentialsPath, "utf8");
+    expect(credentials).toContain("OPENAI_API_KEY=sk-openai-test");
+  }, 15_000);
+
+  test("confirming the override replaces the existing key", async () => {
+    const { home, project, credentialsPath } = await createTestEnv();
+    await runCliWithInput(home, project, ["init", "openai"], "sk-openai-test\n");
+
+    const second = await runCliWithInput(home, project, ["init", "openai"], "y\nsk-openai-other\n");
+    expect(second.exitCode).toBe(0);
+
+    const credentials = await readFile(credentialsPath, "utf8");
+    expect(credentials).toContain("OPENAI_API_KEY=sk-openai-other");
+    expect(credentials).not.toContain("OPENAI_API_KEY=sk-openai-test");
   }, 15_000);
 });

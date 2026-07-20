@@ -1,10 +1,11 @@
 import { readResolvedConfigSync } from "./config";
-import { readCredentialsSync } from "./credentials";
+import { readCredentialsSync, readProviderApiKeysSync } from "./credentials";
 import { env } from "./env";
 import { setLocale } from "./i18n";
 
 const fileConfig = readResolvedConfigSync();
 const credentials = readCredentialsSync();
+const providerApiKeys = readProviderApiKeysSync();
 setLocale(fileConfig.locale);
 
 export const appConfig = {
@@ -16,19 +17,19 @@ export const appConfig = {
     replyTimeoutMs: fileConfig.replyTimeoutMs,
   },
   openai: {
-    apiKey: env.OPENAI_API_KEY,
+    apiKey: env.OPENAI_API_KEY ?? providerApiKeys.OPENAI_API_KEY,
     baseUrl: fileConfig.openaiBaseUrl,
   },
   anthropic: {
-    apiKey: env.ANTHROPIC_API_KEY,
+    apiKey: env.ANTHROPIC_API_KEY ?? providerApiKeys.ANTHROPIC_API_KEY,
     baseUrl: fileConfig.anthropicBaseUrl,
   },
   google: {
-    apiKey: env.GOOGLE_API_KEY,
+    apiKey: env.GOOGLE_API_KEY ?? providerApiKeys.GOOGLE_API_KEY,
     baseUrl: fileConfig.googleBaseUrl,
   },
   vercel: {
-    apiKey: env.AI_GATEWAY_API_KEY,
+    apiKey: env.AI_GATEWAY_API_KEY ?? providerApiKeys.AI_GATEWAY_API_KEY,
     baseUrl: fileConfig.vercelBaseUrl,
   },
   model: fileConfig.model,
