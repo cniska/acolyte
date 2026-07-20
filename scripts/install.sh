@@ -24,11 +24,7 @@ main() {
     *) echo "No prebuilt binary for ${platform}-${arch}. Build from source with Bun (see README)." >&2; exit 1 ;;
   esac
 
-  if [ "$platform" = "linux" ]; then
-    INSTALL_DIR="${HOME}/.local/bin"
-  else
-    INSTALL_DIR="${HOME}/.acolyte/bin"
-  fi
+  INSTALL_DIR="${HOME}/.local/bin"
 
   asset="acolyte-${platform}-${arch}.tar.gz"
 

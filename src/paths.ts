@@ -21,23 +21,14 @@ function xdgDir(env: Env, key: string, fallback: string): string {
   return join(fallback, "acolyte");
 }
 
-export function configDir(env: Env = process.env, platform: Platform = resolvePlatform()): string {
-  if (platform === "linux") {
-    return xdgDir(env, "XDG_CONFIG_HOME", join(resolveHomeDir(env), ".config"));
-  }
-  return join(resolveHomeDir(env), ".acolyte");
+export function configDir(env: Env = process.env, _platform: Platform = resolvePlatform()): string {
+  return xdgDir(env, "XDG_CONFIG_HOME", join(resolveHomeDir(env), ".config"));
 }
 
-export function dataDir(env: Env = process.env, platform: Platform = resolvePlatform()): string {
-  if (platform === "linux") {
-    return xdgDir(env, "XDG_DATA_HOME", join(resolveHomeDir(env), ".local", "share"));
-  }
-  return join(resolveHomeDir(env), ".acolyte");
+export function dataDir(env: Env = process.env, _platform: Platform = resolvePlatform()): string {
+  return xdgDir(env, "XDG_DATA_HOME", join(resolveHomeDir(env), ".local", "share"));
 }
 
-export function stateDir(env: Env = process.env, platform: Platform = resolvePlatform()): string {
-  if (platform === "linux") {
-    return xdgDir(env, "XDG_STATE_HOME", join(resolveHomeDir(env), ".local", "state"));
-  }
-  return join(resolveHomeDir(env), ".acolyte");
+export function stateDir(env: Env = process.env, _platform: Platform = resolvePlatform()): string {
+  return xdgDir(env, "XDG_STATE_HOME", join(resolveHomeDir(env), ".local", "state"));
 }

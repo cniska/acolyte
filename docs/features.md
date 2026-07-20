@@ -19,7 +19,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - live status line with location, model, token, skill, and PR segments
 - auto-update on startup with progress UI
 - update flags to force or skip auto-update (`--update`, `--no-update`)
-- XDG Base Directory support on Linux
+- XDG-style global directories
 - one-line install script
 
 ## Agent execution

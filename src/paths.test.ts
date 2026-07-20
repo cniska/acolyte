@@ -12,45 +12,35 @@ describe("resolveHomeDir", () => {
   });
 });
 
-describe("macOS paths", () => {
-  const env = { HOME: "/Users/me" };
-
-  test("configDir uses .acolyte", () => {
-    expect(configDir(env, "darwin")).toBe("/Users/me/.acolyte");
+describe("XDG paths", () => {
+  test("macOS and Linux share the same default configDir", () => {
+    const env = { HOME: "/Users/me" };
+    expect(configDir(env, "darwin")).toBe("/Users/me/.config/acolyte");
+    expect(configDir(env, "linux")).toBe("/Users/me/.config/acolyte");
   });
 
-  test("dataDir uses .acolyte", () => {
-    expect(dataDir(env, "darwin")).toBe("/Users/me/.acolyte");
+  test("macOS and Linux share the same default dataDir", () => {
+    const env = { HOME: "/Users/me" };
+    expect(dataDir(env, "darwin")).toBe("/Users/me/.local/share/acolyte");
+    expect(dataDir(env, "linux")).toBe("/Users/me/.local/share/acolyte");
   });
 
-  test("stateDir uses .acolyte", () => {
-    expect(stateDir(env, "darwin")).toBe("/Users/me/.acolyte");
+  test("macOS and Linux share the same default stateDir", () => {
+    const env = { HOME: "/Users/me" };
+    expect(stateDir(env, "darwin")).toBe("/Users/me/.local/state/acolyte");
+    expect(stateDir(env, "linux")).toBe("/Users/me/.local/state/acolyte");
   });
-});
 
-describe("Linux paths", () => {
   test("configDir respects XDG_CONFIG_HOME", () => {
-    expect(configDir({ HOME: "/home/me", XDG_CONFIG_HOME: "/custom/config" }, "linux")).toBe("/custom/config/acolyte");
-  });
-
-  test("configDir defaults to ~/.config/acolyte", () => {
-    expect(configDir({ HOME: "/home/me" }, "linux")).toBe("/home/me/.config/acolyte");
+    expect(configDir({ HOME: "/home/me", XDG_CONFIG_HOME: "/custom/config" }, "darwin")).toBe("/custom/config/acolyte");
   });
 
   test("dataDir respects XDG_DATA_HOME", () => {
-    expect(dataDir({ HOME: "/home/me", XDG_DATA_HOME: "/custom/data" }, "linux")).toBe("/custom/data/acolyte");
-  });
-
-  test("dataDir defaults to ~/.local/share/acolyte", () => {
-    expect(dataDir({ HOME: "/home/me" }, "linux")).toBe("/home/me/.local/share/acolyte");
+    expect(dataDir({ HOME: "/home/me", XDG_DATA_HOME: "/custom/data" }, "darwin")).toBe("/custom/data/acolyte");
   });
 
   test("stateDir respects XDG_STATE_HOME", () => {
-    expect(stateDir({ HOME: "/home/me", XDG_STATE_HOME: "/custom/state" }, "linux")).toBe("/custom/state/acolyte");
-  });
-
-  test("stateDir defaults to ~/.local/state/acolyte", () => {
-    expect(stateDir({ HOME: "/home/me" }, "linux")).toBe("/home/me/.local/state/acolyte");
+    expect(stateDir({ HOME: "/home/me", XDG_STATE_HOME: "/custom/state" }, "darwin")).toBe("/custom/state/acolyte");
   });
 
   test("ignores relative XDG_CONFIG_HOME per spec", () => {
