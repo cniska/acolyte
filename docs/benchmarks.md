@@ -26,15 +26,15 @@ This methodology requires a comparable public source repository. Claude Code, Cu
 
 | Project | Revision | Language | Source lines | Code | Comments | Blank | Files | Dependencies |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| **Acolyte** | `65833b19d5c4` | TypeScript | 31,068 | 27,336 | 795 | 2,937 | 257 | 10 + 6 |
-| OpenCode | `b67fda133a18` | TypeScript | 414,444 | 368,100 | 9,594 | 36,750 | 2,315 | 222 + 111 |
-| Codex | `2244d11a1d9e` | Rust | 893,908 | 760,235 | 59,598 | 74,075 | 2,248 | 326 + 83 |
+| **Acolyte** | `8590335ddca0` | TypeScript | 31,068 | 27,336 | 795 | 2,937 | 257 | 10 + 6 |
+| OpenCode | `d36a2d8981ba` | TypeScript | 414,504 | 368,156 | 9,594 | 36,754 | 2,315 | 222 + 111 |
+| Codex | `28aacbb9d9e4` | Rust | 895,988 | 761,972 | 59,750 | 74,266 | 2,256 | 332 + 85 |
 | Goose | `36cb569e366f` | Rust | 200,974 | 164,705 | 13,913 | 22,356 | 428 | 165 + 22 |
-| Open Interpreter | `a4da0fc3cece` | Rust | 897,914 | 764,463 | 59,105 | 74,346 | 2,171 | 333 + 83 |
-| Reasonix | `77fd1a47be89` | Go | 205,633 | 168,750 | 20,886 | 15,997 | 641 | 45 + 0 |
+| Open Interpreter | `a4da0fc3cece` | Rust | 897,914 | 764,463 | 59,105 | 74,346 | 2,171 | 339 + 85 |
+| Reasonix | `9eb9511f8b20` | Go | 205,633 | 168,750 | 20,886 | 15,997 | 641 | 45 + 0 |
 | Kimchi | `53a1d48a9521` | TypeScript | 115,150 | 87,314 | 15,187 | 12,649 | 595 | 25 + 19 |
-| Qwen Code | `e27edf60b776` | TypeScript | 994,503 | 754,959 | 157,556 | 81,988 | 3,262 | 218 + 137 |
-| Grok Build | `ba76b0a683fa` | Rust | 1,229,473 | 932,162 | 206,652 | 90,659 | 1,926 | 313 + 70 |
+| Qwen Code | `9e822d6004d8` | TypeScript | 996,211 | 756,505 | 157,627 | 82,079 | 3,265 | 218 + 137 |
+| Grok Build | `ba76b0a683fa` | Rust | 1,229,473 | 932,162 | 206,652 | 90,659 | 1,926 | 319 + 71 |
 
 ## Dependency surface area
 
@@ -84,7 +84,7 @@ Per 1k source lines.
 |---|---:|---:|---:|---:|---:|
 | `unsafe` (Rust) | 0.2 | 0.8 | 0.8 | 0.8 | — |
 | `.unwrap()` (Rust) | 14.5 | 2.8 | 2.8 | 15.8 | — |
-| `.expect()` (Rust) | 2.1 | 13.1 | 13.8 | 3.7 | — |
+| `.expect()` (Rust) | 2.1 | 13.1 | 13.7 | 3.7 | — |
 | `any` / `interface{}` (Go) | — | — | — | — | 3.5 |
 | `panic()` (Go) | — | — | — | — | 0.2 |
 | `nolint` (Go) | — | — | — | — | 0.0 |
@@ -93,8 +93,8 @@ Per 1k source lines.
 
 | Metric | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Test files | 216 | 699 | 405 | 26 | 397 | 597 | 440 | 1,835 | 343 |
-| Test lines | 29,636 | 167,697 | 253,114 | 14,638 | 237,596 | 180,152 | 127,960 | 1,016,697 | 132,351 |
+| Test files | 216 | 700 | 405 | 26 | 397 | 596 | 440 | 1,838 | 343 |
+| Test lines | 29,636 | 167,792 | 253,176 | 14,638 | 237,596 | 180,152 | 127,960 | 1,018,902 | 132,351 |
 | Ratio | 0.95 | 0.40 | 0.28 | 0.07 | 0.26 | 0.88 | 1.11 | 1.02 | 0.11 |
 
 This ratio measures test volume, not executed coverage or test effectiveness.
@@ -110,9 +110,9 @@ Test types include:
 
 | Metric | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Avg lines / file | 121 | 179 | 398 | 470 | 414 | 321 | 194 | 305 | 638 |
-| Files > 500 lines | 3 (1%) | 194 (8%) | 503 (22%) | 128 (30%) | 504 (23%) | 101 (16%) | 46 (8%) | 468 (14%) | 692 (36%) |
-| Largest file | 619 | 7,220 | 7,302 | 4,428 | 6,352 | 10,000 | 4,664 | 9,799 | 9,768 |
+| Avg lines / file | 121 | 179 | 397 | 470 | 414 | 321 | 194 | 305 | 638 |
+| Files > 500 lines | 3 (1%) | 194 (8%) | 503 (22%) | 128 (30%) | 504 (23%) | 101 (16%) | 46 (8%) | 469 (14%) | 692 (36%) |
+| Largest file | 619 | 7,220 | 7,349 | 4,428 | 6,352 | 10,000 | 4,664 | 9,799 | 9,768 |
 | Barrel / index files | 1 | 70 | 77 | 50 | 73 | 2 | 36 | 161 | 190 |
 
 Acolyte has the smallest average module size and fewest large files in this snapshot.

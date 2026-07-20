@@ -250,23 +250,35 @@ function countDepsRust(dir: string): { runtime: number; dev: number } {
   const cargoFiles = walk(dir).filter((f) => f.endsWith("/Cargo.toml") && !f.includes("/target/"));
   const runtime = new Set<string>();
   const dev = new Set<string>();
+
+  function dependencySection(section: string): { kind: "runtime" | "dev"; name?: string } | undefined {
+    const header = section.slice(1, -1);
+    const match = header.match(
+      /^(?:(?:target\..+|workspace)\.)?(dependencies|dev-dependencies|build-dependencies)(?:\.(.+))?$/,
+    );
+    if (!match) return undefined;
+    return {
+      kind: match[1] === "dependencies" ? "runtime" : "dev",
+      name: match[2],
+    };
+  }
+
   for (const f of cargoFiles) {
     const text = readFileSync(f, "utf8");
     let section = "";
     for (const line of text.split("\n")) {
-      if (line.startsWith("[")) section = line;
-      else if (
-        (section === "[dependencies]" ||
-          section === "[workspace.dependencies]" ||
-          /^\[target\..+\.dependencies\]$/.test(section)) &&
-        /^[a-z_-]/.test(line)
-      ) {
-        runtime.add(line.split(/[\s=]/)[0]);
-      } else if (
-        (section === "[dev-dependencies]" || /^\[target\..+\.dev-dependencies\]$/.test(section)) &&
-        /^[a-z_-]/.test(line)
-      ) {
-        dev.add(line.split(/[\s=]/)[0]);
+      if (line.startsWith("[")) {
+        section = line;
+        const dependency = dependencySection(section);
+        if (dependency?.name) {
+          (dependency.kind === "runtime" ? runtime : dev).add(dependency.name);
+        }
+        continue;
+      }
+
+      const dependency = dependencySection(section);
+      if (dependency && /^[a-z_-]/.test(line)) {
+        (dependency.kind === "runtime" ? runtime : dev).add(line.split(/[\s=]/)[0]);
       }
     }
   }

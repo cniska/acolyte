@@ -10,7 +10,7 @@ The overview covers documented, shipped capabilities. “Partial” means the ca
 
 | Capability | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
 |---|---|---|---|---|---|---|---|---|---|
-| Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | partial |
 | Client/server or editor protocol | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Workspace boundary or sandbox | ✓ | partial | ✓ | partial | ✓ | ✓ | partial | ✓ | ✓ |
 | Agent skills | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
