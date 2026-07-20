@@ -278,7 +278,8 @@ function countDepsRust(dir: string): { runtime: number; dev: number } {
 
       const dependency = dependencySection(section);
       if (dependency && /^[a-z_-]/.test(line)) {
-        (dependency.kind === "runtime" ? runtime : dev).add(line.split(/[\s=]/)[0]);
+        const name = line.split(/[\s=]/)[0].replace(/\.workspace$/, "");
+        (dependency.kind === "runtime" ? runtime : dev).add(name);
       }
     }
   }
