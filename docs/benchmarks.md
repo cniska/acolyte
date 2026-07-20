@@ -28,13 +28,13 @@ This methodology requires a comparable public source repository. Claude Code, Cu
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | **Acolyte** | `8590335ddca0` | TypeScript | 31,068 | 27,336 | 795 | 2,937 | 257 | 10 + 6 |
 | OpenCode | `d36a2d8981ba` | TypeScript | 414,504 | 368,156 | 9,594 | 36,754 | 2,315 | 222 + 111 |
-| Codex | `b6de5b524cdc` | Rust | 895,926 | 761,912 | 59,750 | 74,264 | 2,256 | 331 + 84 |
+| Codex | `5c18cc0acc37` | Rust | 895,943 | 761,928 | 59,748 | 74,267 | 2,256 | 326 + 84 |
 | Goose | `36cb569e366f` | Rust | 200,974 | 164,705 | 13,913 | 22,356 | 428 | 162 + 20 |
-| Open Interpreter | `a4da0fc3cece` | Rust | 897,914 | 764,463 | 59,105 | 74,346 | 2,171 | 338 + 84 |
+| Open Interpreter | `a4da0fc3cece` | Rust | 897,914 | 764,463 | 59,105 | 74,346 | 2,171 | 333 + 84 |
 | Reasonix | `9eb9511f8b20` | Go | 205,633 | 168,750 | 20,886 | 15,997 | 641 | 45 + 0 |
 | Kimchi | `53a1d48a9521` | TypeScript | 115,150 | 87,314 | 15,187 | 12,649 | 595 | 25 + 19 |
 | Qwen Code | `9e822d6004d8` | TypeScript | 996,211 | 756,505 | 157,627 | 82,079 | 3,265 | 218 + 137 |
-| Grok Build | `ba76b0a683fa` | Rust | 1,229,473 | 932,162 | 206,652 | 90,659 | 1,926 | 311 + 71 |
+| Grok Build | `ba76b0a683fa` | Rust | 1,229,473 | 932,162 | 206,652 | 90,659 | 1,926 | 306 + 71 |
 
 ## Dependency surface area
 
@@ -94,7 +94,7 @@ Per 1k source lines.
 | Metric | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Test files | 216 | 700 | 405 | 26 | 397 | 596 | 440 | 1,838 | 343 |
-| Test lines | 29,636 | 167,792 | 253,174 | 14,638 | 237,596 | 180,152 | 127,960 | 1,018,902 | 132,351 |
+| Test lines | 29,636 | 167,792 | 253,205 | 14,638 | 237,596 | 180,152 | 127,960 | 1,018,902 | 132,351 |
 | Ratio | 0.95 | 0.40 | 0.28 | 0.07 | 0.26 | 0.88 | 1.11 | 1.02 | 0.11 |
 
 This ratio measures test volume, not executed coverage or test effectiveness.
