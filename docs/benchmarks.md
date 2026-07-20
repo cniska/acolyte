@@ -1,105 +1,103 @@
 # Benchmarks
 
-These benchmarks compare Acolyte with eight open-source coding agents using static source counts and normalized pattern counts.
+Static code quality benchmarks compare Acolyte with eight current open-source terminal coding agents using source, dependency, test, and type-safety metrics.
 
-For feature and architecture comparisons, see [Comparison](./comparison.md).
+For feature and architecture comparisons, see [Comparison](./comparison.md). Both documents use the same competitor set.
 
-All metrics extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts).
+All metrics are extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts).
 
 ## Methodology
 
-- **Source lines** = total lines of source code (including blanks and comments)
+- **Source lines** = total lines in included source files, including code, comments, and blanks
+- Code, comment, and blank line counts are reported separately; comment classification is based on leading comment markers
 - Test files, known generated directories, and source files over **10k lines** are excluded
 - Metrics normalized **per 1k source lines** where applicable
-- Dependencies are direct declarations detected in each ecosystem's manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
+- Dependencies are direct declarations detected in the included project manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
 - Each project is measured from a fresh shallow clone of its origin's default branch
-- Snapshot revisions tie each result to the exact source measured, even after those branches move
+- Snapshot revisions tie each result to the exact source measured
+
+These are structural signals, not measures of model quality, runtime correctness, or task success. Repository-wide counts are especially difficult to compare when a project includes multiple clients, products, or bundled applications.
 
 ## Closed systems
 
-This methodology requires a comparable public source repository. Claude Code, Cursor, and Copilot are excluded from the source analysis.
+This methodology requires a comparable public source repository. Claude Code, Cursor, and GitHub Copilot are excluded from the source analysis.
 
 ## Projects compared
 
-| Project | Revision | Language | Description | Source lines | Files | Dependencies |
-|---|---|---|---|---|---|---|
-| **Acolyte** | `178136ee6418` | TypeScript | Terminal coding agent with transparent execution and memory | 30,294 | 249 | 10 + 6 |
-| OpenCode | `cb8be9ba1217` | TypeScript | Open-source coding agent with TUI, web, and desktop clients | 409,049 | 2,287 | 222 + 110 |
-| Codex | `325cf161940c` | Rust | Terminal coding agent from OpenAI | 867,770 | 2,144 | 289 + 81 |
-| Crush | `4721e53c30a0` | Go | Terminal coding agent from Charm with Bubble Tea TUI | 83,525 | 334 | 72 + 0 |
-| Aider | `5dc9490bb35f` | Python | Pair-programming agent for the terminal | 25,958 | 105 | 35 + 17 |
-| Goose | `2ecb8c089487` | Rust | Extensible coding agent from Block with MCP integration | 196,264 | 425 | 157 + 22 |
-| Qwen Code | `515a83110af5` | TypeScript | Terminal coding agent from Alibaba | 953,849 | 3,193 | 219 + 134 |
-| Plandex | `e2d772072efa` | Go | Terminal coding agent for large multi-file tasks | 74,573 | 333 | 54 + 0 |
-| Mistral Vibe | `30792a4cac2c` | Python | Terminal coding agent from Mistral | 64,104 | 378 | 96 + 16 |
+| Project | Revision | Language | Source lines | Code | Comments | Blank | Files | Dependencies |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| **Acolyte** | `8590335ddca0` | TypeScript | 31,068 | 27,336 | 795 | 2,937 | 257 | 10 + 6 |
+| OpenCode | `d36a2d8981ba` | TypeScript | 414,504 | 368,156 | 9,594 | 36,754 | 2,315 | 222 + 111 |
+| Codex | `5c18cc0acc37` | Rust | 895,943 | 761,928 | 59,748 | 74,267 | 2,256 | 326 + 84 |
+| Goose | `36cb569e366f` | Rust | 200,974 | 164,705 | 13,913 | 22,356 | 428 | 162 + 20 |
+| Open Interpreter | `a4da0fc3cece` | Rust | 897,914 | 764,463 | 59,105 | 74,346 | 2,171 | 333 + 84 |
+| Reasonix | `9eb9511f8b20` | Go | 205,633 | 168,750 | 20,886 | 15,997 | 641 | 45 + 0 |
+| Kimchi | `53a1d48a9521` | TypeScript | 115,150 | 87,314 | 15,187 | 12,649 | 595 | 25 + 19 |
+| Qwen Code | `9e822d6004d8` | TypeScript | 996,211 | 756,505 | 157,627 | 82,079 | 3,265 | 218 + 137 |
+| Grok Build | `ba76b0a683fa` | Rust | 1,229,473 | 932,162 | 206,652 | 90,659 | 1,926 | 306 + 71 |
 
 ## Dependency surface area
 
 Measures how much of a codebase depends on external packages.
 
-| Metric | Acolyte | OpenCode | Qwen Code |
-|---|---|---|---|
-| External imports / 1k LOC | 6.9 | 18.9 | 7.0 |
-| Runtime dependencies | 10 | 222 | 219 |
+| Metric | Acolyte | OpenCode | Kimchi | Qwen Code |
+|---|---:|---:|---:|---:|
+| External imports / 1k LOC | 7.0 | 18.9 | 7.4 | 6.9 |
+| Runtime dependencies | 10 | 222 | 25 | 218 |
 
 _TypeScript projects only._
 
-Acolyte has the lowest external import density and fewest runtime dependencies among TypeScript projects.
+Acolyte has the fewest runtime dependencies and lowest external-import density among the TypeScript projects except Qwen Code's slightly lower import count.
 
 ## Input validation density
 
 Counts `.parse()`, `.safeParse()`, and `.validate()` call sites per 1k source lines. This measures validation patterns, not runtime path coverage.
 
-| Metric | Acolyte | OpenCode | Qwen Code |
-|---|---|---|---|
-| Parse and validation calls / 1k LOC | 2.7 | 0.5 | 0.5 |
-| `.safeParse()` calls / 1k | 1.0 | 0.0 | 0.0 |
+| Metric | Acolyte | OpenCode | Kimchi | Qwen Code |
+|---|---:|---:|---:|---:|
+| Parse and validation calls / 1k LOC | 3.1 | 0.5 | 1.2 | 0.5 |
+| `.safeParse()` calls / 1k | 1.3 | 0.0 | 0.0 | 0.0 |
 
 _TypeScript projects only._
 
-Acolyte has the highest combined parse and validation call density, as well as the highest `.safeParse()` call density, among the TypeScript projects.
+Acolyte has the highest measured validation-call density in this TypeScript comparison.
 
 ## TypeScript type safety signals
 
 Per 1k source lines.
 
-| Metric | Acolyte | OpenCode | Qwen Code |
-|---|---|---|---|
-| `as any` | 0.0 | 1.0 | 0.2 |
-| `: any` annotations | 0.0 | 0.6 | 0.3 |
-| `@ts-ignore` / `@ts-expect-error` | 0.0 | 0.2 | 0.0 |
-| Lint ignores | 0.2 | 0.0 | 0.2 |
-| `: unknown` usage | 3.1 | 2.5 | 2.9 |
+| Metric | Acolyte | OpenCode | Kimchi | Qwen Code |
+|---|---:|---:|---:|---:|
+| `as any` | 0.0 | 0.9 | 0.4 | 0.2 |
+| `: any` annotations | 0.0 | 0.6 | 0.2 | 0.2 |
+| `@ts-ignore` / `@ts-expect-error` | 0.0 | 0.2 | 0.0 | 0.0 |
+| Lint ignores | 0.2 | 0.0 | 0.8 | 0.2 |
+| `: unknown` usage | 3.2 | 2.5 | 4.8 | 3.0 |
 
-Acolyte has one measured `as any` occurrence and no `: any` annotations or TypeScript suppression comments.
+Acolyte has the lowest measured TypeScript escape-hatch density in this comparison. These counts do not establish correctness.
 
 ## Language-specific type safety signals
 
 Per 1k source lines.
 
-| Metric | Aider | Mistral Vibe | Goose | Codex | Crush | Plandex |
-|---|---|---|---|---|---|---|
-| `type: ignore` (Python) | 0.0 | 0.1 | — | — | — | — |
-| `Any` usage (Python) | 0.1 | 11.2 | — | — | — | — |
-| `cast()` calls (Python) | 0.0 | 0.6 | — | — | — | — |
-| `unsafe` (Rust) | — | — | 0.1 | 0.8 | — | — |
-| `.unwrap()` (Rust) | — | — | 14.2 | 2.8 | — | — |
-| `.expect()` (Rust) | — | — | 2.0 | 13.5 | — | — |
-| `any` / `interface{}` (Go) | — | — | — | — | 4.6 | 4.4 |
-| `panic()` (Go) | — | — | — | — | 0.2 | 0.3 |
-| `nolint` (Go) | — | — | — | — | 0.2 | 0.0 |
-
-Aider has the lowest measured Python type-escape density. Mistral Vibe has the highest `Any` density. Codex has lower `.unwrap()` density than Goose but substantially higher `.expect()` density.
+| Metric | Goose | Open Interpreter | Codex | Grok Build | Reasonix |
+|---|---:|---:|---:|---:|---:|
+| `unsafe` (Rust) | 0.2 | 0.8 | 0.8 | 0.8 | — |
+| `.unwrap()` (Rust) | 14.5 | 2.8 | 2.8 | 15.8 | — |
+| `.expect()` (Rust) | 2.1 | 13.1 | 13.7 | 3.7 | — |
+| `any` / `interface{}` (Go) | — | — | — | — | 3.5 |
+| `panic()` (Go) | — | — | — | — | 0.2 |
+| `nolint` (Go) | — | — | — | — | 0.0 |
 
 ## Test density
 
-| Metric | Acolyte | OpenCode | Codex | Crush | Aider | Goose | Qwen Code | Plandex | Mistral Vibe |
-|---|---|---|---|---|---|---|---|---|---|
-| Test files | 204 | 689 | 391 | 167 | 42 | 25 | 1,752 | 6 | 424 |
-| Test lines | 28,367 | 166,129 | 241,050 | 39,521 | 12,470 | 13,974 | 943,051 | 2,517 | 98,214 |
-| Ratio | 0.94 | 0.41 | 0.28 | 0.47 | 0.48 | 0.07 | 0.99 | 0.03 | 1.53 |
+| Metric | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Test files | 216 | 700 | 405 | 26 | 397 | 596 | 440 | 1,838 | 343 |
+| Test lines | 29,636 | 167,792 | 253,205 | 14,638 | 237,596 | 180,152 | 127,960 | 1,018,902 | 132,351 |
+| Ratio | 0.95 | 0.40 | 0.28 | 0.07 | 0.26 | 0.88 | 1.11 | 1.02 | 0.11 |
 
-Acolyte has 0.94 test lines per source line. This ratio measures test volume, not executed coverage or test effectiveness.
+This ratio measures test volume, not executed coverage or test effectiveness.
 
 Test types include:
 
@@ -110,24 +108,24 @@ Test types include:
 
 ## Module size
 
-| Metric | Acolyte | OpenCode | Codex | Crush | Aider | Goose | Qwen Code | Plandex | Mistral Vibe |
-|---|---|---|---|---|---|---|---|---|---|
-| Avg lines / file | 122 | 179 | 405 | 250 | 247 | 462 | 299 | 224 | 170 |
-| Files > 500 lines | 3 (1%) | 190 (8%) | 491 (23%) | 35 (10%) | 14 (13%) | 124 (29%) | 446 (14%) | 36 (11%) | 20 (5%) |
-| Largest file | 656 | 7,220 | 6,352 | 4,578 | 2,486 | 4,246 | 8,944 | 2,455 | 4,244 |
-| Barrel / index files | 1 | 70 | 74 | 2 | 5 | 50 | 161 | 0 | 56 |
+| Metric | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Avg lines / file | 121 | 179 | 397 | 470 | 414 | 321 | 194 | 305 | 638 |
+| Files > 500 lines | 3 (1%) | 194 (8%) | 503 (22%) | 128 (30%) | 504 (23%) | 101 (16%) | 46 (8%) | 469 (14%) | 692 (36%) |
+| Largest file | 619 | 7,220 | 7,349 | 4,428 | 6,352 | 10,000 | 4,664 | 9,799 | 9,768 |
+| Barrel / index files | 1 | 70 | 77 | 50 | 73 | 2 | 36 | 161 | 190 |
 
-Acolyte maintains the smallest average module size and fewest large files.
+Acolyte has the smallest average module size and fewest large files in this snapshot.
 
 ## Error-handling patterns
 
 Per 1k source lines.
 
-| Metric | Acolyte | OpenCode | Qwen Code |
-|---|---|---|---|
-| `.safeParse()` calls | 1.0 | 0.0 | 0.0 |
-| `try { ... }` blocks | 5.8 | 1.2 | 5.5 |
-| `.catch()` calls | 0.5 | 1.7 | 0.9 |
+| Metric | Acolyte | OpenCode | Kimchi | Qwen Code |
+|---|---:|---:|---:|---:|
+| `.safeParse()` calls | 1.3 | 0.0 | 0.0 | 0.0 |
+| `try { ... }` blocks | 6.1 | 1.2 | 6.8 | 5.6 |
+| `.catch()` calls | 0.4 | 1.6 | 0.9 | 0.9 |
 
 _TypeScript projects only._
 
@@ -137,16 +135,12 @@ Acolyte has the highest `.safeParse()` call density among the TypeScript project
 
 At this snapshot, Acolyte has:
 
-- The lowest measured `any` escape density among the TypeScript projects
+- The lowest measured TypeScript escape-hatch density
 - The smallest average module size and lowest large-file density
-- The lowest counted dependency total
-- The highest combined parse and validation call density among the TypeScript projects
-- A 0.94 test-to-source line ratio
+- The fewest runtime dependencies
+- The highest measured TypeScript validation-call density
+- A 0.95 test-to-source line ratio
 
-These are static source metrics. They describe code structure and validation patterns, not runtime correctness, model quality, or task performance.
+These signals describe source structure and engineering patterns. They do not rank model quality or user-visible reliability.
 
-## Summary
-
-Acolyte remains the smallest TypeScript codebase in the benchmark. It has the lowest counted dependency total and smallest average module size across all projects. Qwen Code has a slightly higher test-to-source ratio, while Mistral Vibe has the highest ratio overall.
-
-Updated 14 July 2026.
+Updated 20 July 2026.
