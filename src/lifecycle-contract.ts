@@ -1,4 +1,4 @@
-import type { Agent, GenerateResult } from "./agent-contract";
+import type { Agent, GenerateResult, SideEffectSink } from "./agent-contract";
 import type { ChatRequest } from "./api";
 import type { StreamEvent } from "./client-contract";
 import type { ReasoningLevel } from "./config-contract";
@@ -149,7 +149,7 @@ export type RunContext = {
   errorStats: Record<ErrorCategory, number>;
   result?: GenerateResult;
   toolCallStartedAt: Map<string, ToolCallStart>;
-  toolOutputHandler: ((event: ToolOutputEvent) => void) | null;
+  sideEffectSink: SideEffectSink | null;
   reasoning?: ReasoningLevel;
   temperature?: number;
   readonly authRoute?: AuthRoute;

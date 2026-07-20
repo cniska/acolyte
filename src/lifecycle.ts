@@ -13,7 +13,6 @@ import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
-import { renderToolOutput } from "./tool-output-render";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -120,7 +119,7 @@ function createRunContext(
     lastUsageEmitChars: 0,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
-    toolOutputHandler: null,
+    sideEffectSink: null,
     reasoning: input.reasoning,
     temperature: input.temperature,
     authRoute: input.authRoute,
@@ -189,25 +188,6 @@ function acceptResult(ctx: RunContext): void {
   }
 }
 
-function attachToolOutputHandler(ctx: RunContext) {
-  ctx.toolOutputHandler = (event) => {
-    const rendered = renderToolOutput(event.content);
-    if (!rendered.trim()) return;
-    const toolName = event.toolName;
-    const resolvedToolCallId = event.toolCallId ?? toolName;
-    ctx.debug("lifecycle.tool.output", {
-      tool: toolName,
-      preview: rendered.length > 120 ? `${rendered.slice(0, 119)}…` : rendered,
-    });
-    ctx.emit({
-      type: "tool-output",
-      toolCallId: resolvedToolCallId,
-      toolName,
-      content: event.content,
-    });
-  };
-}
-
 export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = defaultLifecycleDeps) {
   const emit = input.onEvent ?? (() => {});
 
@@ -268,16 +248,21 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     policy,
     debug,
     onOutput: (event: ToolOutputEvent) => {
-      ctxRef?.toolOutputHandler?.(event);
+      ctxRef?.sideEffectSink?.({ type: "tool-output", ...event });
     },
     onChecklist: (event) => {
-      emit({ type: "checklist", groupId: event.groupId, groupTitle: event.groupTitle, items: event.items });
+      ctxRef?.sideEffectSink?.({
+        type: "checklist",
+        groupId: event.groupId,
+        groupTitle: event.groupTitle,
+        items: event.items,
+      });
     },
     onSkillActivated: (skill) => {
-      emit({ type: "skill-activated", skill });
+      ctxRef?.sideEffectSink?.({ type: "skill-activated", skill });
     },
     onSkillDeactivated: (name) => {
-      emit({ type: "skill-deactivated", name });
+      ctxRef?.sideEffectSink?.({ type: "skill-deactivated", name });
     },
     mcpListings,
   });
@@ -291,7 +276,6 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     createRunAgent: deps.createRunAgent,
   });
   ctxRef = ctx;
-  attachToolOutputHandler(ctx);
   ctx.session.maxToolCallsPerRequest = policy.maxToolCallsPerRequest;
   if (profile.ecosystem) ctx.session.workspaceProfile = profile;
 

@@ -561,7 +561,7 @@ export function createRunContext(overrides: Partial<RunContext> = {}): RunContex
     lastUsageEmitChars: 0,
     errorStats: createErrorStats(),
     toolCallStartedAt: new Map(),
-    toolOutputHandler: null,
+    sideEffectSink: null,
     ...overrides,
   };
 }

@@ -34,6 +34,7 @@ import { providerFromModel } from "./provider-config";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
+import { renderToolOutput } from "./tool-output-render";
 import type { Toolset } from "./tool-registry";
 
 function budgetNotice(ctx: RunContext): LanguageModelV4Message | undefined {
@@ -207,6 +208,9 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
+      installSideEffectSink: (sink) => {
+        ctx.sideEffectSink = sink;
+      },
       onBeforeNextCall: () => {
         const notice = budgetNotice(ctx);
         if (!notice) return [];
@@ -437,6 +441,37 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       completeToolCall(ctx, p.toolCallId, p.toolName, true);
       emitToolResult(ctx, p.toolCallId, p.toolName, error);
     }
+  },
+
+  "tool-output"(ctx, chunk) {
+    if (chunk.type !== "tool-output") return;
+    const rendered = renderToolOutput(chunk.content);
+    if (!rendered.trim()) return;
+    ctx.debug("lifecycle.tool.output", {
+      tool: chunk.toolName,
+      preview: rendered.length > 120 ? `${rendered.slice(0, 119)}…` : rendered,
+    });
+    ctx.emit({
+      type: "tool-output",
+      toolCallId: chunk.toolCallId ?? chunk.toolName,
+      toolName: chunk.toolName,
+      content: chunk.content,
+    });
+  },
+
+  checklist(ctx, chunk) {
+    if (chunk.type !== "checklist") return;
+    ctx.emit({ type: "checklist", groupId: chunk.groupId, groupTitle: chunk.groupTitle, items: chunk.items });
+  },
+
+  "skill-activated"(ctx, chunk) {
+    if (chunk.type !== "skill-activated") return;
+    ctx.emit({ type: "skill-activated", skill: chunk.skill });
+  },
+
+  "skill-deactivated"(ctx, chunk) {
+    if (chunk.type !== "skill-deactivated") return;
+    ctx.emit({ type: "skill-deactivated", name: chunk.name });
   },
 
   "model-usage"(ctx, chunk) {
