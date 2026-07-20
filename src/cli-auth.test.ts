@@ -190,6 +190,26 @@ describe("authMode", () => {
     expect(deps.removeOAuthTokens).not.toHaveBeenCalled();
   });
 
+  test("--logout --key removes only the stored API key", async () => {
+    const { deps, removes } = createDeps({
+      readOAuthTokens: mock(() => tokens),
+      readProviderApiKeys: mock(() => ({ OPENAI_API_KEY: "sk" })),
+    });
+    await authMode(["openai", "--logout", "--key"], deps);
+    expect(removes).toEqual(["OPENAI_API_KEY"]);
+    expect(deps.removeOAuthTokens).not.toHaveBeenCalled();
+  });
+
+  test("--logout --subscription removes only OAuth tokens", async () => {
+    const { deps, removes } = createDeps({
+      readOAuthTokens: mock(() => tokens),
+      readProviderApiKeys: mock(() => ({ OPENAI_API_KEY: "sk" })),
+    });
+    await authMode(["openai", "--logout", "--subscription"], deps);
+    expect(removes).toEqual([]);
+    expect(deps.removeOAuthTokens).toHaveBeenCalledWith("openai");
+  });
+
   test("login failure stops the server and sets exit code", async () => {
     const { deps, server } = createDeps({
       exchangeCode: mock(async () => {

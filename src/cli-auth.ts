@@ -175,10 +175,28 @@ async function loginSubscription(provider: OAuthProvider, deps: AuthModeDeps): P
   }
 }
 
-async function logoutProvider(provider: Provider, deps: AuthModeDeps): Promise<void> {
+async function logoutProvider(provider: Provider, method: AuthMethod | undefined, deps: AuthModeDeps): Promise<void> {
   const envKey = providerApiEnvKeyByProvider[provider];
   const hadKey = Boolean(deps.readProviderApiKeys()[envKey]);
   const hadSubscription = supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined;
+  if (method === "key") {
+    if (!hadKey) {
+      deps.printDim(t("cli.auth.logout.key_none", { provider }));
+      return;
+    }
+    await deps.removeProviderApiKey(envKey);
+    deps.printDim(t("cli.auth.logout.key", { provider }));
+    return;
+  }
+  if (method === "subscription") {
+    if (!hadSubscription || !supportsSubscription(provider)) {
+      deps.printDim(t("cli.auth.logout.subscription_none", { provider }));
+      return;
+    }
+    await deps.removeOAuthTokens(provider);
+    deps.printDim(t("cli.auth.logout.subscription", { provider }));
+    return;
+  }
   if (!hadKey && !hadSubscription) {
     deps.printDim(t("cli.auth.logout_none", { provider }));
     return;
@@ -200,11 +218,6 @@ async function resolveMethod(
   parsed: ParsedAuthArgs,
   deps: AuthModeDeps,
 ): Promise<AuthMethod | null> {
-  if (parsed.key && parsed.subscription) {
-    deps.printError(t("cli.auth.method.conflict"));
-    process.exitCode = 1;
-    return null;
-  }
   if (parsed.subscription) {
     if (!supportsSubscription(provider)) {
       deps.printError(t("cli.auth.subscription.unsupported", { provider }));
@@ -235,6 +248,11 @@ export async function authMode(args: string[], deps: AuthModeDeps): Promise<void
     deps.commandError("auth");
     return;
   }
+  if (parsed.key && parsed.subscription) {
+    deps.printError(t("cli.auth.method.conflict"));
+    process.exitCode = 1;
+    return;
+  }
 
   if (parsed.provider === undefined) {
     if (parsed.logout || parsed.key || parsed.subscription) {
@@ -254,7 +272,12 @@ export async function authMode(args: string[], deps: AuthModeDeps): Promise<void
   }
 
   if (parsed.logout) {
-    await logoutProvider(provider, deps);
+    if (parsed.subscription && !supportsSubscription(provider)) {
+      deps.printError(t("cli.auth.subscription.unsupported", { provider }));
+      process.exitCode = 1;
+      return;
+    }
+    await logoutProvider(provider, parsed.key ? "key" : parsed.subscription ? "subscription" : undefined, deps);
     return;
   }
 

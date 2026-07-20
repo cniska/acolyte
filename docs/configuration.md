@@ -27,6 +27,8 @@ acolyte auth openai --key            # store OPENAI_API_KEY
 acolyte auth openai --subscription   # browser OAuth
 acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
 acolyte auth openai --logout         # remove stored credentials for openai
+acolyte auth openai --logout --key   # remove only OPENAI_API_KEY
+acolyte auth openai --logout --subscription # remove only the subscription
 ```
 
 API keys are written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. Subscription tokens are stored separately in `<configDir>/oauth.json`. `auth` asks for confirmation before replacing stored credentials.

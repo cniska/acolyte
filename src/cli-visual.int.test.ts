@@ -327,6 +327,8 @@ describe("cli visual regression", () => {
           acolyte auth openai --subscription
           acolyte auth vercel --key
           acolyte auth openai --logout
+          acolyte auth openai --logout --key
+          acolyte auth openai --logout --subscription
       `),
     },
     {

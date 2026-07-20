@@ -112,6 +112,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         "acolyte auth openai --subscription",
         "acolyte auth vercel --key",
         "acolyte auth openai --logout",
+        "acolyte auth openai --logout --key",
+        "acolyte auth openai --logout --subscription",
       ],
     },
     handler: (args) =>

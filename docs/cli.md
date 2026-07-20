@@ -41,6 +41,8 @@ acolyte auth openai --key            # store OPENAI_API_KEY
 acolyte auth openai --subscription   # browser OAuth (port 1455)
 acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
 acolyte auth openai --logout         # remove stored key and subscription for openai
+acolyte auth openai --logout --key   # remove only the stored API key
+acolyte auth openai --logout --subscription # remove only the subscription
 ```
 
 See [Configuration](./configuration.md) for how a subscription interacts with an API key.
