@@ -67,6 +67,8 @@ describe("real emit order (single ordered channel)", () => {
     // channel that jumps the ordered fullStream.
     let ctxRef: RunContext | undefined;
     const onOutput: ToolOutputListener = (event) => ctxRef?.sideEffectSink?.({ type: "tool-output", ...event });
+    // skill-activate raises an output row then a skill-activated event, both mid-execute — the
+    // same shape real toolkits use. Every one must ride the ordered stream.
     const tool: ToolDefinition = {
       id: "skill-activate",
       description: "d",
@@ -77,6 +79,7 @@ describe("real emit order (single ordered channel)", () => {
           content: { kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "acolyte", state: "on" },
           toolCallId,
         });
+        ctxRef?.sideEffectSink?.({ type: "skill-activated", skill: { name: "acolyte", instructions: "x" } });
         return { result: { kind: "skill-activate", activated: [] } };
       },
     } as unknown as ToolDefinition;
@@ -111,15 +114,20 @@ describe("real emit order (single ordered channel)", () => {
     const seq = events.map((e) => e.type);
     const toolCall = seq.indexOf("tool-call");
     const toolOutput = seq.indexOf("tool-output");
+    const skillActivated = seq.indexOf("skill-activated");
     const toolResult = seq.indexOf("tool-result");
     const narrationBeforeToolCall = seq.slice(0, toolCall).filter((t) => t === "text-delta").length;
 
     expect(toolCall).toBeGreaterThan(-1);
     expect(toolOutput).toBeGreaterThan(-1);
+    expect(skillActivated).toBeGreaterThan(-1);
     expect(toolResult).toBeGreaterThan(-1);
-    // The row belongs to its tool call: after the tool-call that spawned it, before its result.
+    // Every event raised mid-execute belongs to its tool call: after the tool-call that spawned
+    // it, before its result. It holds for output rows and skill lifecycle events alike.
     expect(toolOutput).toBeGreaterThan(toolCall);
     expect(toolOutput).toBeLessThan(toolResult);
+    expect(skillActivated).toBeGreaterThan(toolCall);
+    expect(skillActivated).toBeLessThan(toolResult);
     // Step-1 narration lands whole before the tool-call, so no output row splits the prose.
     expect(narrationBeforeToolCall).toBe(narration.length);
   });
