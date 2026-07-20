@@ -18,7 +18,7 @@ const PROJECTS: Project[] = [
   { name: "opencode", url: "https://github.com/anomalyco/opencode.git", lang: "typescript" },
   { name: "codex", url: "https://github.com/openai/codex.git", lang: "rust" },
   { name: "goose", url: "https://github.com/aaif-goose/goose.git", lang: "rust" },
-  { name: "open-interpreter", url: "https://github.com/openinterpreter/openinterpreter.git", lang: "rust" },
+  { name: "kode", url: "https://github.com/shareAI-lab/Kode-CLI.git", lang: "typescript" },
   { name: "reasonix", url: "https://github.com/esengine/DeepSeek-Reasonix.git", lang: "go" },
   { name: "kimchi", url: "https://github.com/getkimchi/kimchi.git", lang: "typescript" },
   { name: "qwen-code", url: "https://github.com/QwenLM/qwen-code.git", lang: "typescript" },

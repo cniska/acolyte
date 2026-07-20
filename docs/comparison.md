@@ -4,34 +4,34 @@ Compare Acolyte with eight current open-source terminal coding agents across arc
 
 See [Why Acolyte](./why-acolyte.md) for a summary.
 
-Projects compared: [OpenCode](https://github.com/anomalyco/opencode), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Open Interpreter](https://github.com/openinterpreter/openinterpreter), [Reasonix](https://github.com/esengine/DeepSeek-Reasonix), [Kimchi](https://github.com/getkimchi/kimchi), [Qwen Code](https://github.com/QwenLM/qwen-code), and [Grok Build](https://github.com/xai-org/grok-build).
+Projects compared: [Kimchi](https://github.com/getkimchi/kimchi), [Kode](https://github.com/shareAI-lab/Kode-CLI), [OpenCode](https://github.com/anomalyco/opencode), [Qwen Code](https://github.com/QwenLM/qwen-code), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Grok Build](https://github.com/xai-org/grok-build), and [Reasonix](https://github.com/esengine/DeepSeek-Reasonix).
 
-The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope. An em dash means the capability was not documented in the reviewed source; it does not prove absence.
+The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope.
 
 ## Feature overview
 
-| Capability | Acolyte | OpenCode | Codex | Goose | Open Interpreter | Reasonix | Kimchi | Qwen Code | Grok Build |
+| Capability | Acolyte | Kimchi | Kode | OpenCode | Qwen Code | Codex | Goose | Grok Build | Reasonix |
 |---|---|---|---|---|---|---|---|---|---|
-| Multi-provider | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | partial |
-| Client/server or editor protocol | ✓ | ✓ | partial | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Multi-provider | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | partial | ✓ |
+| Client/server or editor protocol | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | ✓ | ✓ |
 | Workspace boundary or sandbox | ✓ | partial | ✓ | partial | ✓ | ✓ | partial | ✓ | ✓ |
 | Agent skills | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, permission gates, and editor protocols so their presence can be compared without claiming identical isolation. A dash means the reviewed source did not establish the capability.
+Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, permission gates, and editor protocols so their presence can be compared without claiming identical isolation.
 
 ## Architecture
 
 | Project | Architecture | Deployment model |
 |---|---|---|
 | **Acolyte** | Headless daemon + typed RPC clients | persistent local daemon |
+| Kimchi | TypeScript CLI with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
+| Kode | TypeScript CLI with an ACP server and MCP integration | CLI + ACP |
 | OpenCode | HTTP/WebSocket server + TUI, web, and desktop clients | client/server |
+| Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
 | Codex | Rust CLI, SDKs, app-server, and app-server daemon | CLI + optional server |
 | Goose | ACP agent server with TUI, desktop, and editor clients | CLI + client/server |
-| Open Interpreter | Rust terminal agent with ACP and Codex-compatible protocols | CLI + ACP |
-| Reasonix | Go CLI with desktop client, plugins, and ACP integration | local CLI + desktop |
-| Kimchi | TypeScript CLI with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
-| Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
-| Grok Build | Rust terminal harness and TUI with ACP and sandboxing | local CLI + ACP |
+| Grok Build | Rust terminal harness and TUI with ACP and sandboxing | CLI + ACP |
+| Reasonix | Go CLI with desktop client, plugins, and ACP integration | CLI + desktop |
 
 Acolyte runs as a headless daemon. The CLI and third-party clients connect over the same typed RPC protocol. Editor integrations can use that protocol without embedding a separate agent runtime.
 
@@ -66,7 +66,7 @@ The other projects expose different project-context and command-discovery mechan
 
 Acolyte enforces a workspace sandbox that prevents tool operations outside the resolved workspace root. All file paths are validated against the sandbox boundary using `realpath`-based resolution before any read, write, or delete operation.
 
-Codex provides operating-system sandbox policies with writable-directory restrictions. Qwen Code supports container sandboxes. Reasonix documents workspace permissions and sandbox controls, while Open Interpreter documents native sandboxing. These approaches cover different threats and should not be read as equivalent to Acolyte's path boundary.
+Codex provides operating-system sandbox policies with writable-directory restrictions. Qwen Code supports container sandboxes. Reasonix documents workspace permissions and sandbox controls, while Kode gates file tools through a permission engine and sandboxes shell commands on Linux. These approaches cover different threats and should not be read as equivalent to Acolyte's path boundary.
 
 ## Observability
 
@@ -87,7 +87,7 @@ timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 s
 
 Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/` and can be activated by the agent or through slash commands. Multiple skills can remain active in the same session.
 
-OpenCode, Codex, Goose, Open Interpreter, Reasonix, Kimchi, Qwen Code, and Grok Build also document skills or equivalent skill/plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
+Kimchi, Kode, OpenCode, Qwen Code, Codex, Goose, Grok Build, and Reasonix also document skills or equivalent skill/plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
 
 Core systems expose minimal, well-defined extension points: lifecycle policies, tool registration, memory strategies, skill metadata, and configuration layers. The surface is intentionally narrow; Acolyte is an opinionated product, not a general-purpose agent framework.
 
