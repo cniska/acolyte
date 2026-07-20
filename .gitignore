@@ -11,3 +11,6 @@ acolyte
 *.bun-build
 scripts/data/memory-bench/
 docs/notes/
+.opencode/
+opencode.json
+.pi
