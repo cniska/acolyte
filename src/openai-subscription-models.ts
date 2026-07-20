@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
 import type { Env } from "./paths";
 import { OPENAI_SUBSCRIPTION_BASE_URL } from "./provider-constants";
@@ -33,7 +34,8 @@ async function codexClientVersion(fetchFn: FetchFn): Promise<string> {
   try {
     const res = await fetchFn(CODEX_LATEST_RELEASE_URL, { headers: { Accept: "application/vnd.github+json" } });
     if (res.ok) {
-      const tag = ((await res.json()) as { tag_name?: string }).tag_name?.replace(/^rust-v/, "");
+      const parsed = codexReleaseSchema.safeParse(await res.json());
+      const tag = parsed.success ? parsed.data.tag_name?.replace(/^rust-v/, "") : undefined;
       if (tag && /^\d+\.\d+\.\d+$/.test(tag)) value = tag;
     }
   } catch {
@@ -43,7 +45,14 @@ async function codexClientVersion(fetchFn: FetchFn): Promise<string> {
   return value;
 }
 
-type CodexModel = { slug: string; visibility?: string; tool_mode?: string | null };
+const codexReleaseSchema = z.object({ tag_name: z.string().optional() });
+
+const codexModelSchema = z.object({
+  slug: z.string(),
+  visibility: z.string().optional(),
+  tool_mode: z.string().nullish(),
+});
+const codexModelsResponseSchema = z.object({ models: z.array(codexModelSchema).optional() });
 
 // code_mode_only models (the gpt-5.6 family) reject Acolyte's standard function tools on this
 // backend, so they are unusable over the subscription; excluding them also routes them to the API
@@ -53,20 +62,25 @@ export async function fetchSubscriptionModels(fetchFn: FetchFn, env?: Env): Prom
   const version = await codexClientVersion(fetchFn);
   const authed = withChatGPTAuthFetch(fetchFn, env);
   const res = await authed(`${OPENAI_SUBSCRIPTION_BASE_URL}/models?client_version=${version}`);
-  if (!res.ok) return [];
-  const models = ((await res.json()) as { models?: CodexModel[] }).models ?? [];
+  if (!res.ok) throw new Error(`Codex models request failed: ${res.status}`);
+  const parsed = codexModelsResponseSchema.safeParse(await res.json());
+  if (!parsed.success) throw new Error("Codex models response failed validation");
+  const models = parsed.data.models ?? [];
   const slugs = models.filter((m) => m.visibility === "list" && m.tool_mode !== "code_mode_only").map((m) => m.slug);
   servedModels = new Set(slugs);
   return slugs;
 }
 
 // Populate the served set once per process before routing decides subscription vs API key. Memoized
-// so concurrent requests share one discovery; failures leave the set empty (routes to the API key).
+// so concurrent requests share one discovery; a failed discovery routes to the API key for that
+// request but is not cached, so a transient failure doesn't disable the subscription for the process.
 export function ensureSubscriptionModelsLoaded(fetchFn: FetchFn, env?: Env): Promise<void> {
   if (!discovery) {
     discovery = fetchSubscriptionModels(fetchFn, env).then(
       () => undefined,
-      () => undefined,
+      () => {
+        discovery = undefined;
+      },
     );
   }
   return discovery;

@@ -106,4 +106,22 @@ describe("ensureSubscriptionModelsLoaded", () => {
     expect(codexCalls).toBe(1);
     expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(true);
   });
+
+  test("a transient discovery failure is not cached, so the next call retries", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    let codexAttempts = 0;
+    const fetchFn: FetchFn = async (input) => {
+      const url = String(input);
+      if (url.includes("api.github.com")) return new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }));
+      codexAttempts += 1;
+      if (codexAttempts === 1) return new Response("", { status: 500 });
+      return new Response(JSON.stringify(modelsResponse));
+    };
+    await ensureSubscriptionModelsLoaded(fetchFn, env);
+    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(false);
+    await ensureSubscriptionModelsLoaded(fetchFn, env);
+    expect(codexAttempts).toBe(2);
+    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(true);
+  });
 });

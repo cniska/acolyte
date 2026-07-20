@@ -43,7 +43,13 @@ async function fetchOpenAIModels(config: ProviderFetchConfig): Promise<string[]>
   // A subscription and an API key can both be active: the subscription serves the models it lists,
   // the key serves everything else. Merge both so the user sees the full set.
   const models: string[] = [];
-  if (config.oauth) models.push(...(await fetchSubscriptionModels(globalThis.fetch)));
+  if (config.oauth) {
+    try {
+      models.push(...(await fetchSubscriptionModels(globalThis.fetch)));
+    } catch {
+      // A discovery failure must not drop the API-key models listed below.
+    }
+  }
   // An API key or a bare OpenAI-compatible base URL still exposes the standard /models endpoint;
   // a subscription alone does not (its models come from the codex endpoint above).
   if (config.apiKey || !config.oauth) {
