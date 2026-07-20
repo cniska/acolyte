@@ -166,6 +166,8 @@ export const EN_MESSAGES = {
   "cli.auth.method.invalid": "Invalid method. Use key or subscription.",
   "cli.auth.method.conflict": "Use only one of --key or --subscription.",
   "cli.auth.subscription.unsupported": "{provider} does not support subscription auth. Use --key.",
+  "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]: ",
+  "cli.auth.subscription.override.cancelled": "Left the existing subscription unchanged.",
   "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]: ",
   "cli.auth.override.cancelled": "Left the existing key unchanged.",
   "cli.auth.api_key.empty": "{envKey} cannot be empty.",

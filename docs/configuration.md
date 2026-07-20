@@ -29,7 +29,7 @@ acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
 acolyte auth openai --logout         # remove stored credentials for openai
 ```
 
-API keys are written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. If a key for that provider is already stored, `auth` asks before replacing it. Subscription tokens are stored separately in `<configDir>/oauth.json`.
+API keys are written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. Subscription tokens are stored separately in `<configDir>/oauth.json`. `auth` asks for confirmation before replacing stored credentials.
 
 Acolyte reads each provider key from the environment first, then the credentials file. Any variable in the process environment — exported in your shell, injected by CI, or loaded from a project `.env` — takes precedence over the stored key.
 

@@ -137,6 +137,13 @@ async function loginSubscription(provider: OAuthProvider, deps: AuthModeDeps): P
     process.exitCode = 1;
     return;
   }
+  if (deps.readOAuthTokens(provider) !== undefined) {
+    const answer = deps.prompt(t("cli.auth.subscription.override.confirm", { provider }))?.trim().toLowerCase();
+    if (answer !== "y" && answer !== "yes") {
+      deps.printDim(t("cli.auth.subscription.override.cancelled"));
+      return;
+    }
+  }
 
   const pkce = createPkce();
   const state = deps.createState();

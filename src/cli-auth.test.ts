@@ -141,6 +141,22 @@ describe("authMode", () => {
     expect(deps.writeOAuthTokens).toHaveBeenCalledWith("openai", tokens);
   });
 
+  test("existing subscription: declining the override leaves it unchanged", async () => {
+    const { deps } = createDeps({ readOAuthTokens: mock(() => tokens), prompt: mock(() => "n") });
+    await authMode(["openai", "--subscription"], deps);
+    expect(deps.startCallbackServer).not.toHaveBeenCalled();
+    expect(deps.writeOAuthTokens).not.toHaveBeenCalled();
+    expect((deps.printDim as ReturnType<typeof mock>).mock.calls.some((c) => String(c[0]).includes("unchanged"))).toBe(
+      true,
+    );
+  });
+
+  test("existing subscription: confirming the override runs OAuth", async () => {
+    const { deps } = createDeps({ readOAuthTokens: mock(() => tokens), prompt: mock(() => "y") });
+    await authMode(["openai", "--subscription"], deps);
+    expect(deps.writeOAuthTokens).toHaveBeenCalledWith("openai", tokens);
+  });
+
   test("--key and --subscription together error", async () => {
     const { deps } = createDeps();
     await authMode(["openai", "--key", "--subscription"], deps);
