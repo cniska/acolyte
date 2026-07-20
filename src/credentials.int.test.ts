@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { decodeTokenSubject, readCredentialsSync, removeCredential, writeCredential } from "./credentials";
+import {
+  decodeTokenSubject,
+  readCredentialsSync,
+  readProviderApiKeysSync,
+  removeCredential,
+  writeCredential,
+  writeProviderApiKey,
+} from "./credentials";
 import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
 
@@ -62,6 +69,25 @@ describe("credentials", () => {
     await writeCredential("cloudToken", "tok_sync", env);
     const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudToken: "tok_sync" });
+  });
+
+  test("readProviderApiKeysSync returns empty when no file exists", () => {
+    expect(readProviderApiKeysSync({ HOME: "/nonexistent" })).toEqual({});
+  });
+
+  test("writeProviderApiKey stores and reads back a provider key", async () => {
+    const env = { HOME: createTempHome() };
+    await writeProviderApiKey("OPENAI_API_KEY", "sk-openai", env);
+    expect(readProviderApiKeysSync(env)).toEqual({ OPENAI_API_KEY: "sk-openai" });
+  });
+
+  test("provider keys and cloud credentials share the file without clobbering", async () => {
+    const env = { HOME: createTempHome() };
+    await writeCredential("cloudToken", "tok_abc123", env);
+    await writeProviderApiKey("AI_GATEWAY_API_KEY", "vck-1", env);
+    await writeProviderApiKey("AI_GATEWAY_API_KEY", "vck-2", env);
+    expect(readProviderApiKeysSync(env)).toEqual({ AI_GATEWAY_API_KEY: "vck-2" });
+    expect(readCredentialsSync(env)).toEqual({ cloudToken: "tok_abc123" });
   });
 
   test("decodeTokenSubject extracts sub from JWT", () => {

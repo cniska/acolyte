@@ -7,7 +7,7 @@ import { errorToLogFields, log } from "./log";
 import { closeAllMcpSessions } from "./mcp-session";
 import { readOAuthTokensSync } from "./oauth-store";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
-import type { Provider } from "./provider-contract";
+import { collectProviderStatus } from "./provider-status";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { hasValidAuth } from "./server-auth";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
@@ -82,20 +82,13 @@ function transitionTaskState(
 }
 
 async function createStatusPayload(): Promise<StatusPayload> {
-  const providers: Provider[] = [];
-  const providerAuth: string[] = [];
-  const addProvider = (provider: Provider, methods: string[]) => {
-    if (methods.length === 0) return;
-    providers.push(provider);
-    providerAuth.push(`${provider} (${methods.join(" + ")})`);
-  };
-  // Both can be in effect at once: the subscription serves the gpt-5 family, the key serves the rest.
-  const openaiMethods: string[] = [];
-  if (readOAuthTokensSync("openai") !== undefined) openaiMethods.push(t("status.provider_auth.subscription"));
-  if (OPENAI_API_KEY) openaiMethods.push(t("status.provider_auth.api_key"));
-  addProvider("openai", openaiMethods);
-  addProvider("anthropic", appConfig.anthropic.apiKey ? [t("status.provider_auth.api_key")] : []);
-  addProvider("google", appConfig.google.apiKey ? [t("status.provider_auth.api_key")] : []);
+  const { providers, providerAuth } = collectProviderStatus({
+    anthropicApiKey: Boolean(appConfig.anthropic.apiKey),
+    googleApiKey: Boolean(appConfig.google.apiKey),
+    openaiSubscription: readOAuthTokensSync("openai") !== undefined,
+    openaiApiKey: Boolean(OPENAI_API_KEY),
+    vercelApiKey: Boolean(appConfig.vercel.apiKey),
+  });
   const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();

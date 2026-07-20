@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { configDir, type Env } from "./paths";
+import { type ProviderApiEnvKey, providerApiEnvKeySchema } from "./provider-contract";
 
 const CREDENTIALS_FILE = "credentials";
 
@@ -41,17 +42,44 @@ export function readCredentialsSync(env?: Env): Credentials {
   }
 }
 
-export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
+async function upsertCredentialsEntry(envKey: string, value: string, env?: Env): Promise<void> {
   const path = credentialsPath(env);
   let content = "";
   try {
     content = await readFile(path, "utf8");
   } catch {}
-  const next = upsertDotenvValue(content, KEY_MAP[key], value);
-  const dir = configDir(env);
-  await mkdir(dir, { recursive: true });
+  const next = upsertDotenvValue(content, envKey, value);
+  await mkdir(configDir(env), { recursive: true });
   await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
   await chmod(path, PRIVATE_FILE_MODE);
+}
+
+export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
+  await upsertCredentialsEntry(KEY_MAP[key], value, env);
+}
+
+export function providerCredentialsPath(env?: Env): string {
+  return credentialsPath(env);
+}
+
+export function readProviderApiKeysSync(env?: Env): Partial<Record<ProviderApiEnvKey, string>> {
+  const path = credentialsPath(env);
+  if (!existsSync(path)) return {};
+  try {
+    const entries = parseDotenv(readFileSync(path, "utf8"));
+    const keys: Partial<Record<ProviderApiEnvKey, string>> = {};
+    for (const envKey of providerApiEnvKeySchema.options) {
+      const value = getDotenvValue(entries, envKey);
+      if (value) keys[envKey] = value;
+    }
+    return keys;
+  } catch {
+    return {};
+  }
+}
+
+export async function writeProviderApiKey(envKey: ProviderApiEnvKey, value: string, env?: Env): Promise<void> {
+  await upsertCredentialsEntry(envKey, value, env);
 }
 
 export function decodeTokenSubject(token: string): string | undefined {

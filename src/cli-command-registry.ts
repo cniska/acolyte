@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { hasHelpFlag, parseFlag } from "./cli-args";
 import { authMode } from "./cli-auth";
@@ -24,7 +24,13 @@ import { traceMode } from "./cli-trace";
 import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
-import { removeCredential, writeCredential } from "./credentials";
+import {
+  providerCredentialsPath,
+  readProviderApiKeysSync,
+  removeCredential,
+  writeCredential,
+  writeProviderApiKey,
+} from "./credentials";
 import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
 import { fileMemoryStore } from "./memory-ops";
@@ -97,21 +103,22 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   init: {
     help: {
       command: "init [provider]",
-      usage: "acolyte init [openai|anthropic|google]",
+      usage: "acolyte init [vercel|anthropic|google|openai]",
       description: t("cli.help.desc.init"),
       examples: ["acolyte init", "acolyte init openai"],
     },
     handler: (args) =>
       initMode(args, {
-        cwd: process.cwd,
         hasHelpFlag,
         prompt: (message) => prompt(message),
+        promptHidden,
         printDim,
         printError,
-        readFile,
+        readProviderApiKeys: readProviderApiKeysSync,
+        writeProviderApiKey,
+        credentialsPath: providerCredentialsPath,
         commandError,
         commandHelp,
-        writeFile,
       }),
   },
   auth: {

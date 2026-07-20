@@ -1,29 +1,22 @@
-import type { readFile as readFileType, writeFile as writeFileType } from "node:fs/promises";
-import { join } from "node:path";
-import { promptHidden } from "./cli-prompt-hidden";
-import { upsertDotenvValue } from "./dotenv";
-import { PRIVATE_FILE_MODE } from "./file-ops";
 import { t } from "./i18n";
 import {
   type Provider,
   type ProviderApiEnvKey,
   providerApiEnvKeyByProvider,
-  providerApiEnvKeySchema,
   providerSchema,
 } from "./provider-contract";
 
-const PROVIDER_ENV_KEYS: readonly ProviderApiEnvKey[] = providerApiEnvKeySchema.options;
-
 type InitModeDeps = {
-  cwd: () => string;
   hasHelpFlag: (args: string[]) => boolean;
   prompt: (question: string) => string | null;
+  promptHidden: (question: string) => Promise<string | undefined>;
   printDim: (message: string) => void;
   printError: (message: string) => void;
-  readFile: typeof readFileType;
+  readProviderApiKeys: () => Partial<Record<ProviderApiEnvKey, string>>;
+  writeProviderApiKey: (envKey: ProviderApiEnvKey, value: string) => Promise<void>;
+  credentialsPath: () => string;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
-  writeFile: typeof writeFileType;
 };
 
 function parseInitProvider(value: string | undefined): Provider | null {
@@ -33,25 +26,18 @@ function parseInitProvider(value: string | undefined): Provider | null {
   return parsed.success ? parsed.data : null;
 }
 
-function envKeyForProvider(provider: Provider): ProviderApiEnvKey {
-  return providerApiEnvKeyByProvider[provider];
-}
-
-function hasAnyProviderApiKey(existing: string): boolean {
-  return PROVIDER_ENV_KEYS.some((key) => new RegExp(`^\\s*${key}\\s*=`, "m").test(existing));
-}
-
 export async function initMode(args: string[], deps: InitModeDeps): Promise<void> {
   const {
-    cwd,
     hasHelpFlag,
     printDim,
     printError,
     prompt: promptFn,
-    readFile,
+    promptHidden,
+    readProviderApiKeys,
+    writeProviderApiKey: writeKey,
+    credentialsPath,
     commandError,
     commandHelp,
-    writeFile,
   } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("init");
@@ -70,7 +56,16 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
 
-  const envKey = envKeyForProvider(provider);
+  const envKey = providerApiEnvKeyByProvider[provider];
+
+  if (readProviderApiKeys()[envKey]) {
+    const answer = promptFn(t("cli.init.override.confirm", { envKey }))?.trim().toLowerCase();
+    if (answer !== "y" && answer !== "yes") {
+      printDim(t("cli.init.override.cancelled"));
+      return;
+    }
+  }
+
   const apiKey = await promptHidden(t("cli.init.prompt.api_key"));
   if (!apiKey) {
     printError(t("cli.init.api_key.empty", { envKey }));
@@ -78,21 +73,8 @@ export async function initMode(args: string[], deps: InitModeDeps): Promise<void
     return;
   }
 
-  const envPath = join(cwd(), ".env");
-  let existing = "";
-  try {
-    existing = await readFile(envPath, "utf8");
-  } catch {
-    existing = "";
-  }
-  if (hasAnyProviderApiKey(existing)) {
-    printError(t("cli.init.api_key.exists"));
-    process.exitCode = 1;
-    return;
-  }
-  const next = upsertDotenvValue(existing, envKey, apiKey);
-  await writeFile(envPath, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await writeKey(envKey, apiKey);
 
-  printDim(t("cli.init.saved", { envKey, path: envPath }));
+  printDim(t("cli.init.saved", { envKey, path: credentialsPath() }));
   printDim(t("cli.init.next"));
 }
