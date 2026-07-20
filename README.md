@@ -40,6 +40,15 @@ bun run dev
 
 `bun run dev` starts a watch-mode daemon and opens the CLI client. It restarts any local daemon already using the development port, then stops the daemon it started when the client exits.
 
+For daily dogfooding, link the checkout CLI into your PATH:
+
+```bash
+mkdir -p ~/.local/bin
+ln -sf "$PWD/src/cli.ts" ~/.local/bin/acolyte
+```
+
+Use `scripts/install.sh` only when you want the latest released binary instead of the local source checkout.
+
 Provider credentials are not needed to run the test suites. To use the agent against a provider while developing, configure one once for your user account:
 
 ```bash
