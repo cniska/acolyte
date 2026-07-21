@@ -125,7 +125,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build binary
-        run: bun build --compile src/cli.ts --outfile acolyte --external react-devtools-core
+        run: bash scripts/build-compiled.sh
 
       - name: Smoke test binary
         run: ACOLYTE_SMOKE_EXTENDED=1 bash scripts/smoke-compiled.sh

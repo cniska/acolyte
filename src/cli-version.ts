@@ -12,6 +12,8 @@ export function extractVersionFromPackageJsonText(text: string): string | null {
 }
 
 export function resolveCliVersion(): string {
+  const compiled = process.env.ACOLYTE_COMPILED_VERSION;
+  if (compiled && compiled.trim().length > 0) return compiled.trim();
   if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0)
     return process.env.npm_package_version.trim();
   const candidates = [`${process.cwd()}/package.json`, `${import.meta.dir}/../package.json`];

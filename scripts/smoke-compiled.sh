@@ -13,13 +13,25 @@ run_quiet() {
 }
 
 if [ ! -x "./acolyte" ]; then
-  echo "Missing ./acolyte (expected compiled binary). Run: bun build --compile src/cli.ts --outfile acolyte" >&2
+  echo "Missing ./acolyte (expected compiled binary). Run: bash scripts/build-compiled.sh" >&2
   exit 1
 fi
 
 # Minimal, deterministic checks to ensure the compiled CLI starts.
 run_quiet ./acolyte --help
 run_quiet ./acolyte auth --help
+
+# The compiled binary must report its baked version, not "dev" or the version
+# of whatever project it happens to run inside.
+expected="$(bun -e 'console.log(require("./package.json").version)')"
+reported="$(./acolyte --version)"
+case "$reported" in
+  "$expected" | "$expected "*) ;;
+  *)
+    echo "Version mismatch: expected '$expected', got '$reported'" >&2
+    exit 1
+    ;;
+esac
 
 # Optional stronger checks (still offline/deterministic).
 # This exercises tool registry wiring and the ast-grep native addon path.
