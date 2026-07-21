@@ -65,22 +65,19 @@ export const composerStatusSegmentSchema = z.object({
 export const composerPresentationContractSchema = z.object({
   input: inputControllerStateSchema,
   placeholder: z.string(),
-  focus: z.boolean().optional(),
-  caretVisible: z.boolean().optional(),
-  revision: z.number().int().nonnegative().optional(),
-  ctrlCPending: z.boolean().optional(),
-  prompt: z.enum(["chat", "picker"]).optional(),
-  cursorLine: z.number().int().nonnegative().optional(),
-  activeIdentity: z.string().nullable().optional(),
+  focus: z.boolean(),
+  caretVisible: z.boolean(),
+  revision: z.number().int().nonnegative(),
+  ctrlCPending: z.boolean(),
+  prompt: z.enum(["chat", "picker"]),
+  cursorLine: z.number().int().nonnegative(),
+  activeIdentity: z.string().nullable(),
   picker: composerPickerSchema.nullable(),
-  suggestions: composerSuggestionsSchema.or(z.array(z.string())),
+  suggestions: composerSuggestionsSchema,
   showHelp: z.boolean(),
-  helpEntries: z.array(composerHelpEntrySchema).optional(),
-  helpBreakpoint: z.number().int().positive().optional(),
-  status: z
-    .array(composerStatusSegmentSchema)
-    .or(z.object({ text: z.string() }))
-    .nullable(),
+  helpEntries: z.array(composerHelpEntrySchema),
+  helpBreakpoint: z.number().int().positive(),
+  status: z.array(composerStatusSegmentSchema),
 });
 export type ComposerPresentationContract = z.infer<typeof composerPresentationContractSchema>;
 

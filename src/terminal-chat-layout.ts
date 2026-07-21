@@ -366,8 +366,8 @@ export function layoutChatViewport(input: {
   const composerStart = lines.length;
   lines.push(...composer.lines);
   const status = input.presentation.composer.status;
-  if (status) {
-    const text = Array.isArray(status) ? status.map((segment) => segment.text).join("") : status.text;
+  if (status.length > 0) {
+    const text = status.map((segment) => segment.text).join("");
     lines.push({ spans: [{ text, role: "muted" }] });
   }
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
