@@ -21,6 +21,9 @@ export const terminalStyleRoleSchema = z.enum([
   "tool-label",
   "tool-meta-add",
   "tool-meta-remove",
+  "header-brand",
+  "header-mascot",
+  "header-eyes",
   "cursor",
 ]);
 export type TerminalStyleRole = z.infer<typeof terminalStyleRoleSchema>;
@@ -59,6 +62,9 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "tool-label": { bold: true },
     "tool-meta-add": { foreground: "#4a9a4a" },
     "tool-meta-remove": { foreground: "#9a4a4a" },
+    "header-brand": { foreground: "#A56EFF" },
+    "header-mascot": { foreground: "#2A1D4A" },
+    "header-eyes": { foreground: "#FFD84D" },
     cursor: { inverse: true },
   },
 });

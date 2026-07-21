@@ -5,6 +5,7 @@ import { inputControllerStateSchema } from "./input-controller";
 
 export const headerPresentationSchema = z.object({
   title: z.string(),
+  titleSuffix: z.string().optional(),
   version: z.string(),
   sessionId: z.string(),
 });

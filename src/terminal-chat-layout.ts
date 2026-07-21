@@ -146,6 +146,38 @@ export function layoutTranscriptText(input: {
   };
 }
 
+export function layoutHeader(input: ChatViewportPresentation["header"]): TerminalScene {
+  const meta = (text: string): Array<{ text: string; role: TerminalStyleRole }> => {
+    const [key, ...rest] = text.split(" ");
+    return rest.length === 0
+      ? [{ text, role: "plain" }]
+      : [
+          { text: `${key} `, role: "muted" },
+          { text: rest.join(" "), role: "plain" },
+        ];
+  };
+  return {
+    lines: [
+      {
+        spans: [
+          { text: " ▗█████▖   ", role: "header-mascot" },
+          { text: input.title, role: "header-brand" },
+          ...(input.titleSuffix ? [{ text: input.titleSuffix, role: "header-brand" as const }] : []),
+        ],
+      },
+      {
+        spans: [
+          { text: " ▟█ ", role: "header-mascot" },
+          { text: "● ●", role: "header-eyes" },
+          { text: " █▙  ", role: "header-mascot" },
+          ...meta(`version ${input.version}`),
+        ],
+      },
+      { spans: [{ text: " ▜█▄▄▄▄▄█▛  ", role: "header-mascot" }, ...meta(`session ${input.sessionId}`)] },
+    ],
+  };
+}
+
 export function layoutTranscriptChecklist(output: ChecklistOutput): TerminalScene {
   const formatted = formatChecklist(output);
   return {
@@ -216,13 +248,7 @@ export function layoutChatViewport(input: {
     lines.push(...scene.lines);
     sections.push({ id, lineStart, lineEnd: lines.length, finalized });
   };
-  append("header", true, {
-    lines: [
-      { spans: [{ text: input.presentation.header.title, role: "assistant" }] },
-      { spans: [{ text: `version ${input.presentation.header.version}`, role: "muted" }] },
-      { spans: [{ text: `session ${input.presentation.header.sessionId}`, role: "muted" }] },
-    ],
-  });
+  append("header", true, layoutHeader(input.presentation.header));
   for (const row of input.presentation.transcript) {
     if (row.content.kind === "checklist") continue;
     if (row.content.kind === "tool-output") {
