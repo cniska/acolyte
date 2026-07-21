@@ -72,11 +72,7 @@ export function ChatTranscriptRow({
   toolContentWidth,
   presentation,
 }: ChatTranscriptRowProps): React.ReactNode {
-  if (
-    presentation &&
-    (presentation.kind === "user" || presentation.kind === "assistant") &&
-    presentation.content.kind === "message"
-  ) {
+  if (presentation?.kind === "user" && presentation.content.kind === "message") {
     return (
       <TerminalSceneRender
         scene={layoutTranscriptMessage({
