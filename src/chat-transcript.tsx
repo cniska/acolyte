@@ -88,7 +88,7 @@ export function ChatTranscriptRow({
       <TerminalSceneRender
         scene={layoutTranscriptTool({
           parts: presentation.content.output.parts,
-          lifecycle: presentation.lifecycle,
+          status: presentation.status,
           columns: contentWidth + 2,
         })}
       />
@@ -121,7 +121,7 @@ export function ChatTranscriptRow({
           scene={layoutTranscriptText({
             text: presentation.content.text,
             marker,
-            markerRole: presentation.kind === "system" ? "muted" : transcriptOutcomeRole(presentation.lifecycle),
+            markerRole: presentation.kind === "system" ? "muted" : transcriptOutcomeRole(presentation.status),
             textRole: "muted",
             columns: contentWidth + 2,
           })}

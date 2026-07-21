@@ -8,7 +8,7 @@ import {
 } from "./chat-contract";
 import { checklistOutputSchema } from "./checklist-contract";
 
-export const transcriptLifecycleSchema = z.enum([
+export const transcriptStatusSchema = z.enum([
   "complete",
   "active",
   "pending",
@@ -18,7 +18,7 @@ export const transcriptLifecycleSchema = z.enum([
   "error",
   "cancelled",
 ]);
-export type TranscriptLifecycle = z.infer<typeof transcriptLifecycleSchema>;
+export type TranscriptStatus = z.infer<typeof transcriptStatusSchema>;
 export const transcriptContentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("message"), text: z.string() }),
   z.object({ kind: z.literal("tool-output"), output: toolOutputSchema }),
@@ -29,7 +29,7 @@ export type TranscriptContent = z.infer<typeof transcriptContentSchema>;
 export const transcriptRowSchema = z.object({
   id: chatRowIdSchema,
   kind: chatRowKindSchema,
-  lifecycle: transcriptLifecycleSchema,
+  status: transcriptStatusSchema,
   content: transcriptContentSchema,
 });
 export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
@@ -39,19 +39,19 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
     typeof row.content === "object" && "parts" in row.content
       ? row.content.parts.find((part) => part.kind === "tool-header")?.state
       : undefined;
-  const lifecycle: TranscriptLifecycle =
+  const status: TranscriptStatus =
     headerState === "on"
       ? "success"
       : headerState === "off"
         ? "cancelled"
         : (row.style?.outcome ?? (row.kind === "status" ? "success" : "complete"));
   if (typeof row.content === "string")
-    return { id: row.id, kind: row.kind, lifecycle, content: { kind: "message", text: row.content } };
+    return { id: row.id, kind: row.kind, status, content: { kind: "message", text: row.content } };
   if ("parts" in row.content)
-    return { id: row.id, kind: row.kind, lifecycle, content: { kind: "tool-output", output: row.content } };
+    return { id: row.id, kind: row.kind, status, content: { kind: "tool-output", output: row.content } };
   if ("header" in row.content)
-    return { id: row.id, kind: row.kind, lifecycle, content: { kind: "command-output", output: row.content } };
-  return { id: row.id, kind: row.kind, lifecycle, content: { kind: "checklist", output: row.content } };
+    return { id: row.id, kind: row.kind, status, content: { kind: "command-output", output: row.content } };
+  return { id: row.id, kind: row.kind, status, content: { kind: "checklist", output: row.content } };
 }
 
 export function projectActiveTranscript(

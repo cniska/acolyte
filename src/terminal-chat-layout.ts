@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { formatCommandOutput, formatCompactNumber } from "./chat-format";
-import type { TranscriptLifecycle } from "./chat-transcript-contract";
+import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
@@ -69,8 +69,8 @@ export function layoutTranscriptText(input: {
   };
 }
 
-export function transcriptOutcomeRole(lifecycle: TranscriptLifecycle): TerminalStyleRole {
-  switch (lifecycle) {
+export function transcriptOutcomeRole(status: TranscriptStatus): TerminalStyleRole {
+  switch (status) {
     case "success":
       return "success";
     case "error":
@@ -293,13 +293,26 @@ function toolRole(role: string): TerminalStyleRole | null {
   return "muted";
 }
 
+function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
+  switch (status) {
+    case "success":
+      return "success";
+    case "error":
+      return "error";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return "tool";
+  }
+}
+
 export function layoutTranscriptTool(input: {
   parts: ToolOutputPart[];
-  lifecycle: "complete" | "active" | "pending" | "queued" | "success" | "warning" | "error" | "cancelled";
+  status: TranscriptStatus;
   columns: number;
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
-  const marker = input.lifecycle === "success" ? "◉ " : input.lifecycle === "cancelled" ? "○ " : "• ";
+  const markerRole = toolMarkerRole(input.status);
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -318,7 +331,7 @@ export function layoutTranscriptTool(input: {
       return {
         fill,
         spans: [
-          { text: index === 0 ? marker : " ".repeat(fitted.indent + 2), role: "tool" as const },
+          { text: index === 0 ? "• " : " ".repeat(fitted.indent + 2), role: markerRole },
           ...spans,
           ...(padding ? [{ text: padding, role: "plain" as const }] : []),
         ],
@@ -348,10 +361,10 @@ export function layoutChatViewport(input: {
     if (row.content.kind === "tool-output") {
       append(
         row.id,
-        row.lifecycle !== "active",
+        row.status !== "active",
         layoutTranscriptTool({
           parts: row.content.output.parts,
-          lifecycle: row.lifecycle,
+          status: row.status,
           columns: input.constraints.columns,
         }),
       );
@@ -371,7 +384,7 @@ export function layoutChatViewport(input: {
     } else if (row.kind === "user" || row.kind === "assistant") {
       append(
         row.id,
-        row.lifecycle !== "active",
+        row.status !== "active",
         layoutTranscriptMessage({ text: row.content.text, kind: row.kind, columns: input.constraints.columns }),
       );
     } else {
@@ -381,7 +394,7 @@ export function layoutChatViewport(input: {
         layoutTranscriptText({
           text: row.content.text,
           marker: row.kind === "system" ? "  " : "• ",
-          markerRole: row.kind === "system" ? "muted" : transcriptOutcomeRole(row.lifecycle),
+          markerRole: row.kind === "system" ? "muted" : transcriptOutcomeRole(row.status),
           textRole: "muted",
           columns: input.constraints.columns,
         }),

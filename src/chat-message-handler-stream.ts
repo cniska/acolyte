@@ -156,7 +156,7 @@ export function createMessageStreamState(input: {
         ? current.map((row) => (row.id === id ? { ...row, content } : row))
         : [...current, { id, kind: "assistant" as const, content }],
     );
-    upsertTranscriptRow({ id, kind: "assistant", lifecycle: "active", content: { kind: "message", text: content } });
+    upsertTranscriptRow({ id, kind: "assistant", status: "active", content: { kind: "message", text: content } });
   }
 
   /** Reveal any backlog, flush, and detach from the current agent row. */
@@ -165,7 +165,7 @@ export function createMessageStreamState(input: {
     flush();
     if (activeRowId)
       input.setTranscriptPresentation?.((current) =>
-        current.map((row) => (row.id === activeRowId ? { ...row, lifecycle: "complete" } : row)),
+        current.map((row) => (row.id === activeRowId ? { ...row, status: "complete" } : row)),
       );
     activeRowId = null;
     agentContent = "";
@@ -245,7 +245,7 @@ export function createMessageStreamState(input: {
         upsertTranscriptRow({
           id: rowId,
           kind: "tool",
-          lifecycle: "active",
+          status: "active",
           content: { kind: "tool-output", output: { parts: update.items } },
         });
         promoteFinalizedPrefix();
@@ -291,7 +291,7 @@ export function createMessageStreamState(input: {
         current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, outcome } } : row)),
       );
       input.setTranscriptPresentation?.((current) =>
-        current.map((row) => (row.id === rowId ? { ...row, lifecycle: entry.isError ? "error" : "success" } : row)),
+        current.map((row) => (row.id === rowId ? { ...row, status: entry.isError ? "error" : "success" } : row)),
       );
       // The marker is now final, so the row is immutable: promote it (and any prefix
       // it was blocking) into write-once scrollback.
@@ -311,7 +311,7 @@ export function createMessageStreamState(input: {
         upsertTranscriptRow({
           id: rowId,
           kind: "task",
-          lifecycle: "active",
+          status: "active",
           content: { kind: "checklist", output: content },
         });
         promoteFinalizedPrefix();
