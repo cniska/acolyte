@@ -6,9 +6,12 @@ import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { commandOutputColWidth, formatCompactNumber } from "./chat-format";
 import { rowMarker } from "./chat-row-marker";
 import { ShimmerText } from "./chat-shimmer";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
+import { layoutTranscriptMessage } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToolOutputTui } from "./tool-output-tui";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
@@ -55,9 +58,30 @@ type ChatTranscriptRowProps = {
   row: ChatRow;
   contentWidth: number;
   toolContentWidth: number;
+  presentation?: TranscriptRow;
 };
 
-export function ChatTranscriptRow({ row, contentWidth, toolContentWidth }: ChatTranscriptRowProps): React.ReactNode {
+export function ChatTranscriptRow({
+  row,
+  contentWidth,
+  toolContentWidth,
+  presentation,
+}: ChatTranscriptRowProps): React.ReactNode {
+  if (
+    presentation &&
+    (presentation.kind === "user" || presentation.kind === "assistant") &&
+    presentation.content.kind === "message"
+  ) {
+    return (
+      <TerminalSceneRender
+        scene={layoutTranscriptMessage({
+          text: presentation.content.text,
+          kind: presentation.kind,
+          columns: contentWidth + 2,
+        })}
+      />
+    );
+  }
   const { glyph, color } = rowMarker(row);
   const textColor = row.style?.text;
   const dim = row.style?.dim ?? false;

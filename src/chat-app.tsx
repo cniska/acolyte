@@ -46,7 +46,12 @@ function ChatApp(props: ChatAppProps) {
           return (
             <Box key={item.id} flexDirection="column">
               <Text> </Text>
-              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={contentWidth} />
+              <ChatTranscriptRow
+                row={item}
+                contentWidth={contentWidth}
+                toolContentWidth={contentWidth}
+                presentation={state.transcriptPresentation.find((row) => row.id === item.id)}
+              />
             </Box>
           );
         }}

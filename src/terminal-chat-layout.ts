@@ -90,4 +90,20 @@ export function layoutTerminalChat(input: {
     cursor: { ...composer.cursor, row: composer.cursor.row + body.length },
   };
 }
+
+export function layoutTranscriptMessage(input: {
+  text: string;
+  kind: "user" | "assistant";
+  columns: number;
+}): TerminalScene {
+  const marker = input.kind === "user" ? "❯ " : "• ";
+  const role = input.kind;
+  const lines = wrapTerminalText(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
+    spans: [
+      { text: index === 0 ? marker : "  ", role },
+      { text, role },
+    ],
+  }));
+  return { lines };
+}
 export { truncate as truncateTerminalText };

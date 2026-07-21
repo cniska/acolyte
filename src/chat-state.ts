@@ -17,6 +17,7 @@ import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import type { PrInfo } from "./gh-contract";
@@ -44,6 +45,7 @@ export interface ChatAppProps {
 export interface ChatStateResult {
   promotedRows: PromotedItem[];
   rows: ChatRow[];
+  transcriptPresentation: TranscriptRow[];
   pendingState: PendingState | null;
   pendingFrame: number;
   pendingStartedAt: number | null;
@@ -381,6 +383,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   return {
     promotedRows,
     rows,
+    transcriptPresentation: currentSession.transcriptPresentation ?? [],
     pendingState,
     pendingFrame,
     pendingStartedAt,
