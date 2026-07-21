@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { prColor, StatusLine, type StatusLineState, statusTokenTotals } from "./chat-status-line";
+import { prColor, StatusLine, statusTokenTotals } from "./chat-status-line";
+import type { FooterStatus } from "./footer-status-contract";
 import { renderToString } from "./tui";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { stripAnsi } from "./tui/serialize";
@@ -27,7 +28,7 @@ describe("statusTokenTotals", () => {
   });
 });
 
-const BASE: StatusLineState = {
+const BASE: FooterStatus = {
   repo: "acolyte",
   worktree: null,
   branch: "main",
@@ -42,7 +43,7 @@ const BASE: StatusLineState = {
   skills: [],
 };
 
-function render(overrides: Partial<StatusLineState> = {}): string {
+function render(overrides: Partial<FooterStatus> = {}): string {
   return renderPlain(<StatusLine {...BASE} {...overrides} />).trimEnd();
 }
 

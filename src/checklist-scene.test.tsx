@@ -18,7 +18,7 @@ test("semantic checklist scene preserves the legacy checklist projection", () =>
   const presentation: TranscriptRow = {
     id: row.id,
     kind: "task",
-    lifecycle: "active",
+    status: "active",
     content: { kind: "checklist", output: row.content },
   };
   expect(renderPlain(<ChatChecklist rows={[row]} presentation={[presentation]} />, 80)).toBe(legacy);

@@ -24,7 +24,7 @@ test("semantic user and assistant scenes preserve the legacy transcript text", (
     const presentation: TranscriptRow = {
       id: `row_${item.kind}`,
       kind: item.kind,
-      lifecycle: "complete",
+      status: "complete",
       content: { kind: "message", text: item.text },
     };
     const scene = renderPlain(
@@ -73,7 +73,7 @@ test("semantic assistant rows retain rich inline-code rendering", () => {
       presentation={{
         id: "row_assistant",
         kind: "assistant",
-        lifecycle: "complete",
+        status: "complete",
         content: { kind: "message", text: content },
       }}
     />,

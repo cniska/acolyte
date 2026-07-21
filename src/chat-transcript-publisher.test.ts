@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { type ActiveTranscriptState, createTranscriptPublisher } from "./chat-transcript-publisher";
 
-test("publishes command rows to semantic presentation with stable ids and lifecycle", () => {
+test("publishes command rows to semantic presentation with stable ids and status", () => {
   let transcript: ActiveTranscriptState = { rows: [], presentation: [] };
   const publish = createTranscriptPublisher({
     setTranscript: (updater) => {
@@ -15,9 +15,9 @@ test("publishes command rows to semantic presentation with stable ids and lifecy
   ]);
   expect(transcript.rows.map((row) => row.id)).toEqual(["row_system", "row_status", "row_task"]);
   expect(transcript.presentation).toEqual([
-    { id: "row_system", kind: "system", lifecycle: "complete", content: { kind: "message", text: "Unknown command" } },
-    { id: "row_status", kind: "status", lifecycle: "success", content: { kind: "message", text: "Worked" } },
-    { id: "row_task", kind: "task", lifecycle: "complete", content: { kind: "message", text: "Interrupted" } },
+    { id: "row_system", kind: "system", status: "complete", content: { kind: "message", text: "Unknown command" } },
+    { id: "row_status", kind: "status", status: "success", content: { kind: "message", text: "Worked" } },
+    { id: "row_task", kind: "task", status: "complete", content: { kind: "message", text: "Interrupted" } },
   ]);
 });
 
@@ -25,7 +25,7 @@ test("fills every missing live row without replacing stream-owned presentation",
   let transcript: ActiveTranscriptState = {
     rows: [],
     presentation: [
-      { id: "row_tool", kind: "tool", lifecycle: "active", content: { kind: "tool-output", output: { parts: [] } } },
+      { id: "row_tool", kind: "tool", status: "active", content: { kind: "tool-output", output: { parts: [] } } },
     ],
   };
   const publish = createTranscriptPublisher({
@@ -49,7 +49,7 @@ test("fills every missing live row without replacing stream-owned presentation",
     "row_task",
     "row_system",
   ]);
-  expect(transcript.presentation.find((row) => row.id === "row_tool")?.lifecycle).toBe("active");
+  expect(transcript.presentation.find((row) => row.id === "row_tool")?.status).toBe("active");
   expect(transcript.presentation.find((row) => row.id === "row_task")?.content).toEqual({
     kind: "checklist",
     output: { groupId: "group_1", groupTitle: "Plan", items: [] },

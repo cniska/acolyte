@@ -43,9 +43,9 @@ function markerAndTextRoles(scene: TerminalScene, rowId: string): { marker?: str
 
 test("status and task rows render a muted body with an outcome-colored marker", () => {
   const scene = layoutTranscript([
-    { id: "row_worked", kind: "status", lifecycle: "success", content: { kind: "message", text: "Worked 2s" } },
-    { id: "row_failed", kind: "task", lifecycle: "error", content: { kind: "message", text: "Failed" } },
-    { id: "row_cancel", kind: "task", lifecycle: "cancelled", content: { kind: "message", text: "Interrupted" } },
+    { id: "row_worked", kind: "status", status: "success", content: { kind: "message", text: "Worked 2s" } },
+    { id: "row_failed", kind: "task", status: "error", content: { kind: "message", text: "Failed" } },
+    { id: "row_cancel", kind: "task", status: "cancelled", content: { kind: "message", text: "Interrupted" } },
   ]);
   expect(markerAndTextRoles(scene, "row_worked")).toEqual({ marker: "success", text: "muted" });
   expect(markerAndTextRoles(scene, "row_failed")).toEqual({ marker: "error", text: "muted" });
@@ -56,9 +56,7 @@ test("viewport layout orders finalized transcript before mutable pending and com
   const scene = layoutChatViewport({
     presentation: {
       header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
-      transcript: [
-        { id: "row_1", kind: "assistant", lifecycle: "complete", content: { kind: "message", text: "hello" } },
-      ],
+      transcript: [{ id: "row_1", kind: "assistant", status: "complete", content: { kind: "message", text: "hello" } }],
       pending: { state: { kind: "running" }, frame: 0, startedAt: 0, queuedMessages: [], runningUsage: null },
       composer: {
         input: { text: "ask", cursor: 3 },
