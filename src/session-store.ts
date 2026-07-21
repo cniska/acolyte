@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { chatRowSchema } from "./chat-contract";
+import { migrateLegacyChatRow } from "./chat-transcript-contract";
 import { t } from "./i18n";
 import { log } from "./log";
 import { dataDir } from "./paths";
@@ -22,7 +24,8 @@ export function parseSessionState(input: unknown): SessionState {
   if (!envelope.success) return DEFAULT_SESSION_STATE;
   const sessions: Session[] = [];
   for (const raw of envelope.data.sessions) {
-    const parsed = sessionSchema.safeParse(raw);
+    const migrated = migrateTranscript(raw);
+    const parsed = sessionSchema.safeParse(migrated);
     if (parsed.success) {
       sessions.push(parsed.data);
       continue;
@@ -43,6 +46,15 @@ export function parseSessionState(input: unknown): SessionState {
   }
   const activeSessionId = sessionIdSchema.safeParse(envelope.data.activeSessionId);
   return { sessions, activeSessionId: activeSessionId.success ? activeSessionId.data : undefined };
+}
+
+function migrateTranscript(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const session = raw as Record<string, unknown>;
+  if (Array.isArray(session.transcriptPresentation) || !Array.isArray(session.transcript)) return raw;
+  const transcript = z.array(chatRowSchema).safeParse(session.transcript);
+  if (!transcript.success) return raw;
+  return { ...session, transcriptPresentation: transcript.data.map(migrateLegacyChatRow) };
 }
 
 export function createSession(model: string): Session {
