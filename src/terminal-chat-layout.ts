@@ -45,6 +45,23 @@ export function wrapTerminalText(text: string, columns: number): string[] {
   }
   return output.length ? output : [""];
 }
+export function wrapTerminalProse(text: string, columns: number): string[] {
+  return text.split("\n").flatMap((logical) => {
+    if (!logical) return [""];
+    const lines: string[] = [];
+    let line = "";
+    for (const word of logical.trim().split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && width(candidate) > columns) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    return [...lines, line];
+  });
+}
 export function layoutComposer(
   input: ComposerPresentation,
   constraints: TerminalConstraints,
@@ -98,7 +115,7 @@ export function layoutTranscriptMessage(input: {
 }): TerminalScene {
   const marker = input.kind === "user" ? "❯ " : "• ";
   const role = input.kind;
-  const lines = wrapTerminalText(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
+  const lines = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
     spans: [
       { text: index === 0 ? marker : "  ", role },
       { text, role },
