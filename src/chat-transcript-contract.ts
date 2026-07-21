@@ -55,3 +55,16 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
     return { id: row.id, kind: row.kind, lifecycle, content: { kind: "command-output", output: row.content } };
   return { id: row.id, kind: row.kind, lifecycle, content: { kind: "checklist", output: row.content } };
 }
+
+export function legacyChatRowFromTranscript(row: TranscriptRow): ChatRow {
+  switch (row.content.kind) {
+    case "message":
+      return { id: row.id, kind: row.kind, content: row.content.text };
+    case "tool-output":
+      return { id: row.id, kind: row.kind, content: row.content.output };
+    case "command-output":
+      return { id: row.id, kind: row.kind, content: row.content.output };
+    case "checklist":
+      return { id: row.id, kind: row.kind, content: row.content.output };
+  }
+}

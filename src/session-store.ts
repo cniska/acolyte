@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { chatRowSchema } from "./chat-contract";
-import { migrateLegacyChatRow } from "./chat-transcript-contract";
+import { legacyChatRowFromTranscript, migrateLegacyChatRow, transcriptRowSchema } from "./chat-transcript-contract";
 import { t } from "./i18n";
 import { log } from "./log";
 import { dataDir } from "./paths";
@@ -51,7 +51,16 @@ export function parseSessionState(input: unknown): SessionState {
 function migrateTranscript(raw: unknown): unknown {
   if (!raw || typeof raw !== "object") return raw;
   const session = raw as Record<string, unknown>;
-  if (Array.isArray(session.transcriptPresentation) || !Array.isArray(session.transcript)) return raw;
+  if (!Array.isArray(session.transcript)) return raw;
+  const semantic = z.array(transcriptRowSchema).safeParse(session.transcript);
+  if (semantic.success) {
+    return {
+      ...session,
+      transcript: semantic.data.map(legacyChatRowFromTranscript),
+      transcriptPresentation: semantic.data,
+    };
+  }
+  if (Array.isArray(session.transcriptPresentation)) return raw;
   const transcript = z.array(chatRowSchema).safeParse(session.transcript);
   if (!transcript.success) return raw;
   return { ...session, transcriptPresentation: transcript.data.map(migrateLegacyChatRow) };
@@ -103,7 +112,15 @@ export function createFileSessionStore(storePath?: string): SessionStore {
     // Unique temp name so a stray concurrent writer (another instance) can't have its
     // rename target pulled out from under it.
     const tmp = `${resolvedPath}.${process.pid}.${createId()}.tmp`;
-    await writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
+    const persisted = {
+      ...state,
+      sessions: state.sessions.map((session) => ({
+        ...session,
+        transcript: session.transcriptPresentation ?? session.transcript?.map(migrateLegacyChatRow),
+        transcriptPresentation: undefined,
+      })),
+    };
+    await writeFile(tmp, JSON.stringify(persisted, null, 2), "utf8");
     await rename(tmp, resolvedPath);
   }
 
