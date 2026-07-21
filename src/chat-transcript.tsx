@@ -10,7 +10,12 @@ import type { TranscriptRow } from "./chat-transcript-contract";
 import type { PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import { layoutTranscriptMessage, layoutTranscriptText, layoutTranscriptTool } from "./terminal-chat-layout";
+import {
+  layoutTranscriptMessage,
+  layoutTranscriptText,
+  layoutTranscriptTool,
+  transcriptOutcomeRole,
+} from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToolOutputTui } from "./tool-output-tui";
 import { Box, Text } from "./tui";
@@ -100,7 +105,8 @@ export function ChatTranscriptRow({
         scene={layoutTranscriptText({
           text: body ? `${presentation.content.output.header}\n\n${body}` : presentation.content.output.header,
           marker: presentation.kind === "system" ? "  " : "• ",
-          role: presentation.kind === "system" ? "muted" : "plain",
+          markerRole: presentation.kind === "system" ? "muted" : "plain",
+          textRole: presentation.kind === "system" ? "muted" : "plain",
           columns: contentWidth + 2,
         })}
       />
@@ -119,7 +125,8 @@ export function ChatTranscriptRow({
           scene={layoutTranscriptText({
             text: presentation.content.text,
             marker,
-            role: presentation.kind === "system" ? "muted" : "plain",
+            markerRole: presentation.kind === "system" ? "muted" : transcriptOutcomeRole(presentation.lifecycle),
+            textRole: "muted",
             columns: contentWidth + 2,
           })}
         />

@@ -242,7 +242,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           ...current,
           createRow("task", t("chat.submit.interrupted"), {
             dim: true,
-            markerColor: palette.cancelled,
+            outcome: "cancelled",
           }),
         ]);
         input.promote?.();

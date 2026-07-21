@@ -44,7 +44,7 @@ export type TerminalTheme = z.infer<typeof terminalThemeSchema>;
 export const terminalTheme: TerminalTheme = Object.freeze({
   styles: {
     plain: {},
-    muted: { foreground: "#666666", dim: true },
+    muted: { foreground: "#8b949e" },
     user: { foreground: "#ffffff" },
     assistant: { foreground: "#ffffff" },
     tool: { foreground: "#aaaaaa" },

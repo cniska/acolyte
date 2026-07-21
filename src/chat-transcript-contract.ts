@@ -44,9 +44,7 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
       ? "success"
       : headerState === "off"
         ? "cancelled"
-        : row.kind === "status"
-          ? "success"
-          : "complete";
+        : (row.style?.outcome ?? (row.kind === "status" ? "success" : "complete"));
   if (typeof row.content === "string")
     return { id: row.id, kind: row.kind, lifecycle, content: { kind: "message", text: row.content } };
   if ("parts" in row.content)

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { formatCommandOutput, formatCompactNumber } from "./chat-format";
+import type { TranscriptLifecycle } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
@@ -54,17 +55,33 @@ export function layoutTranscriptMessage(input: {
 export function layoutTranscriptText(input: {
   text: string;
   marker: string;
-  role: TerminalStyleRole;
+  markerRole: TerminalStyleRole;
+  textRole: TerminalStyleRole;
   columns: number;
 }): TerminalScene {
   return {
     lines: wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
       spans: [
-        { text: index === 0 ? input.marker : "  ", role: input.role },
-        { text, role: input.role },
+        { text: index === 0 ? input.marker : "  ", role: input.markerRole },
+        { text, role: input.textRole },
       ],
     })),
   };
+}
+
+export function transcriptOutcomeRole(lifecycle: TranscriptLifecycle): TerminalStyleRole {
+  switch (lifecycle) {
+    case "success":
+      return "success";
+    case "error":
+      return "error";
+    case "cancelled":
+      return "cancelled";
+    case "warning":
+      return "warning";
+    default:
+      return "muted";
+  }
 }
 
 export function layoutHeader(input: ChatViewportPresentation["header"]): TerminalScene {
@@ -346,7 +363,8 @@ export function layoutChatViewport(input: {
         layoutTranscriptText({
           text: body ? `${row.content.output.header}\n\n${body}` : row.content.output.header,
           marker: row.kind === "system" ? "  " : "• ",
-          role: row.kind === "system" ? "muted" : "plain",
+          markerRole: row.kind === "system" ? "muted" : "plain",
+          textRole: row.kind === "system" ? "muted" : "plain",
           columns: input.constraints.columns,
         }),
       );
@@ -363,7 +381,8 @@ export function layoutChatViewport(input: {
         layoutTranscriptText({
           text: row.content.text,
           marker: row.kind === "system" ? "  " : "• ",
-          role: row.kind === "system" ? "muted" : "plain",
+          markerRole: row.kind === "system" ? "muted" : transcriptOutcomeRole(row.lifecycle),
+          textRole: "muted",
           columns: input.constraints.columns,
         }),
       );
