@@ -122,6 +122,7 @@ export function ChatTranscriptRow({
 
 type ChatTranscriptProps = {
   rows: ChatRow[];
+  presentation?: TranscriptRow[];
   pendingState?: PendingState | null;
   pendingFrame: number;
   queuedMessages?: string[];
@@ -177,7 +178,12 @@ export function ChatTranscript(props: ChatTranscriptProps): React.ReactNode {
       {rows.map((row, index) => (
         <React.Fragment key={row.id}>
           {index > 0 ? <Text> </Text> : null}
-          <ChatTranscriptRow row={row} contentWidth={contentWidth} toolContentWidth={toolContentWidth} />
+          <ChatTranscriptRow
+            row={row}
+            contentWidth={contentWidth}
+            toolContentWidth={toolContentWidth}
+            presentation={props.presentation?.find((presentation) => presentation.id === row.id)}
+          />
         </React.Fragment>
       ))}
       {isPending ? (

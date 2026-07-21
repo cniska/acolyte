@@ -7,6 +7,7 @@ import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { addActiveSkill, removeActiveSkill } from "./chat-skill-activator";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import {
   appendInputHistory,
   applyUserTurn,
@@ -27,6 +28,7 @@ type CreateMessageHandlerInput = {
   currentSession: Session;
   setCurrentSession: (next: Session) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+  setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
@@ -101,6 +103,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const streamState = createMessageStreamState({
       setRows: input.setRows,
       promoteRows: input.promoteRows,
+      setTranscriptPresentation: input.setTranscriptPresentation,
     });
 
     await input.persist();

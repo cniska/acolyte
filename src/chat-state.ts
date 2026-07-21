@@ -82,6 +82,9 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     [props.onSessionChange],
   );
   const [rows, setRows] = useState<ChatRow[]>([]);
+  const [transcriptPresentation, setTranscriptPresentation] = useState<TranscriptRow[]>(
+    () => session.transcriptPresentation ?? [],
+  );
 
   const {
     value,
@@ -115,6 +118,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
+    setTranscriptPresentation(currentSession.transcriptPresentation ?? []);
   }, [currentSession]);
 
   const {
@@ -150,6 +154,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     const segment = currentSegment(promotedRows);
     if (segment.sessionId === currentSession.id) currentSession.transcript = segment.rows;
   }, [promotedRows, currentSession]);
+
+  useSyncEffect(() => {
+    currentSession.transcriptPresentation = transcriptPresentation;
+  }, [currentSession, transcriptPresentation]);
 
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
@@ -236,6 +244,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     currentSession,
     setCurrentSession: updateSession,
     setRows,
+    setTranscriptPresentation,
     setShowHelp,
     setValue,
     persist,
@@ -383,7 +392,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   return {
     promotedRows,
     rows,
-    transcriptPresentation: currentSession.transcriptPresentation ?? [],
+    transcriptPresentation,
     pendingState,
     pendingFrame,
     pendingStartedAt,

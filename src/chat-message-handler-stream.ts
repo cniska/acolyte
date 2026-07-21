@@ -1,4 +1,5 @@
 import { type ChatRow, createRow } from "./chat-contract";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { ChecklistItem } from "./checklist-contract";
 import type { StreamEvent } from "./client-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
@@ -44,6 +45,7 @@ const MIN_DRIP_CHARS = 8;
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   promoteRows?: (rows: readonly ChatRow[]) => void;
+  setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
 }): MessageStreamState {
   // --- agent streaming state ---
   let activeRowId: string | null = null;
@@ -225,6 +227,15 @@ export function createMessageStreamState(input: {
           }
           return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
+        input.setTranscriptPresentation?.((current) => [
+          ...current,
+          {
+            id: rowId,
+            kind: "tool",
+            lifecycle: "active",
+            content: { kind: "tool-output", output: { parts: update.items } },
+          },
+        ]);
         promoteFinalizedPrefix();
         return;
       }
@@ -238,6 +249,13 @@ export function createMessageStreamState(input: {
         next[idx] = { ...existing, content: { parts: update.items } };
         return next;
       });
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) =>
+          row.id === existingRowId && row.content.kind === "tool-output"
+            ? { ...row, content: { kind: "tool-output", output: { parts: update.items } } }
+            : row,
+        ),
+      );
     },
 
     onToolResult: (entry) => {
@@ -251,6 +269,7 @@ export function createMessageStreamState(input: {
         if (!rowId) return;
         pendingToolRowIds.delete(rowId);
         input.setRows((current) => current.filter((row) => row.id !== rowId));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => row.id !== rowId));
         return;
       }
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
@@ -258,6 +277,9 @@ export function createMessageStreamState(input: {
       const markerColor = entry.isError ? palette.error : palette.success;
       input.setRows((current) =>
         current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, markerColor } } : row)),
+      );
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) => (row.id === rowId ? { ...row, lifecycle: entry.isError ? "error" : "success" } : row)),
       );
       // The marker is now final, so the row is immutable: promote it (and any prefix
       // it was blocking) into write-once scrollback.

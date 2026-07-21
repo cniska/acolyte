@@ -58,6 +58,7 @@ function ChatApp(props: ChatAppProps) {
       </Static>
       <ChatTranscript
         rows={transcriptRows}
+        presentation={state.transcriptPresentation}
         pendingState={state.pendingState}
         pendingFrame={state.pendingFrame}
         pendingStartedAt={state.pendingStartedAt}
