@@ -228,6 +228,113 @@ export function layoutPending(input: {
   return { lines };
 }
 
+export function layoutComposerStatus(input: {
+  presentation: ChatViewportPresentation["composer"];
+  constraints: TerminalConstraints;
+}): TerminalScene {
+  const { presentation, constraints } = input;
+  const terminalWidth = Math.max(24, constraints.columns);
+  const border = (): TerminalLine => ({ spans: [{ text: "─".repeat(terminalWidth), role: "composer-border" }] });
+  if (presentation.picker) {
+    const picker = presentation.picker;
+    const label =
+      picker.kind === "model" ? `Model: ${picker.query}` : picker.kind === "skills" ? "Skills:" : "Sessions:";
+    const items = picker.items.slice(picker.scrollOffset, picker.scrollOffset + 8);
+    return {
+      lines: [
+        border(),
+        { spans: [{ text: label, role: "plain" }] },
+        { spans: [{ text: "", role: "plain" }] },
+        ...items.map((item, index) => ({
+          spans: [
+            {
+              text: `${picker.scrollOffset + index === picker.selected ? "›" : " "} ${item.label}`,
+              role: picker.scrollOffset + index === picker.selected ? ("composer-prompt" as const) : ("plain" as const),
+            },
+          ],
+        })),
+        { spans: [{ text: "", role: "plain" }] },
+        { spans: [{ text: picker.hint, role: "muted" }] },
+        border(),
+      ],
+      cursor: { row: 1, column: width(label) },
+    };
+  }
+  const text = presentation.input.text || presentation.placeholder;
+  const promptLines = wrapTerminalProse(text, terminalWidth - 2);
+  const lines: TerminalLine[] = [border()];
+  lines.push(
+    ...promptLines.map((line, index) => ({
+      spans: [
+        { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" as const },
+        { text: line, role: presentation.input.text ? ("plain" as const) : ("muted" as const) },
+      ],
+    })),
+  );
+  lines.push(border());
+  if (presentation.showHelp) {
+    const columns = terminalWidth >= presentation.helpBreakpoint ? 2 : 1;
+    for (let index = 0; index < presentation.helpEntries.length; index += columns) {
+      lines.push({
+        spans: presentation.helpEntries.slice(index, index + columns).flatMap((entry) => [
+          { text: `  ${entry.key.padEnd(20)}`, role: "muted" as const },
+          { text: entry.description, role: "muted" as const },
+        ]),
+      });
+    }
+  } else if (presentation.suggestions.kind === "at") {
+    const selected = presentation.suggestions.selected;
+    if (presentation.suggestions.noMatches) lines.push({ spans: [{ text: " No matches.", role: "muted" }] });
+    else
+      lines.push(
+        ...presentation.suggestions.candidates.map((candidate, index) => ({
+          spans: [
+            {
+              text: `  ${candidate.label}`,
+              role: index === selected ? ("composer-prompt" as const) : ("plain" as const),
+            },
+          ],
+        })),
+      );
+  } else if (presentation.suggestions.kind === "slash") {
+    const selected = presentation.suggestions.selected;
+    lines.push(
+      ...presentation.suggestions.candidates.map((candidate, index) => ({
+        spans: [
+          {
+            text: `  ${candidate.command}`,
+            role: index === selected ? ("composer-prompt" as const) : ("muted" as const),
+          },
+        ],
+      })),
+    );
+    if (presentation.suggestions.selectedHelp)
+      lines.push({ spans: [{ text: `\n  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
+  }
+  if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.status.length > 0)
+    lines.push({
+      spans: presentation.status.map((segment) => ({
+        text: segment.text,
+        role:
+          segment.role === "plain"
+            ? ("plain" as const)
+            : segment.role === "success"
+              ? ("success" as const)
+              : segment.role === "warning"
+                ? ("warning" as const)
+                : segment.role === "error"
+                  ? ("error" as const)
+                  : ("muted" as const),
+      })),
+    });
+  const before = presentation.input.text.slice(0, presentation.input.cursor);
+  const cursorLine = wrapTerminalProse(before, terminalWidth - 2).length - 1;
+  return {
+    lines,
+    cursor: { row: cursorLine + 1, column: 2 + width(wrapTerminalProse(before, terminalWidth - 2).at(-1) ?? "") },
+  };
+}
+
 export function layoutTranscriptChecklist(output: ChecklistOutput): TerminalScene {
   const formatted = formatChecklist(output);
   return {
@@ -355,14 +462,7 @@ export function layoutChatViewport(input: {
       false,
       layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
     );
-  const composer = layoutComposer(
-    {
-      text: input.presentation.composer.input.text,
-      cursor: input.presentation.composer.input.cursor,
-      placeholder: input.presentation.composer.placeholder,
-    },
-    input.constraints,
-  );
+  const composer = layoutComposerStatus({ presentation: input.presentation.composer, constraints: input.constraints });
   const composerStart = lines.length;
   lines.push(...composer.lines);
   const status = input.presentation.composer.status;
@@ -371,6 +471,7 @@ export function layoutChatViewport(input: {
     lines.push({ spans: [{ text, role: "muted" }] });
   }
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
-  return { lines, sections, cursor: { ...composer.cursor, row: composer.cursor.row + composerStart } };
+  const cursor = composer.cursor ?? { row: 0, column: 0 };
+  return { lines, sections, cursor: { ...cursor, row: cursor.row + composerStart } };
 }
 export { truncate as truncateTerminalText };
