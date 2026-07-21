@@ -19,7 +19,6 @@ type ChatInputPanelProps = {
   statusLine?: StatusLineState;
   value?: string;
   cursor?: number;
-  inputRevision?: number;
   onAction?: (action: InputEditAction, fromPaste: boolean) => void;
   onSubmit?: (next: string) => void;
   atQuery?: string | null;
@@ -128,7 +127,6 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     statusLine,
     value = "",
     cursor = 0,
-    inputRevision = 0,
     onAction = noop,
     onSubmit = noop,
     atQuery = null,
@@ -189,7 +187,6 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         onAction={onAction}
         onSubmit={onSubmit}
         onCursorLine={onCursorLine}
-        key={`chat-input-${inputRevision}`}
       />
       <Text color={brandColor} dimColor>
         {borderLine()}

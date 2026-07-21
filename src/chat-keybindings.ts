@@ -113,7 +113,6 @@ type UseChatKeybindingsInput = {
   inputHistoryDraft: string;
   value: string;
   setValue: (next: string) => void;
-  setInputRevision: (next: number | ((current: number) => number)) => void;
   applyingHistoryRef: { current: boolean };
   isPending: boolean;
   atQuery: string | null;
@@ -196,7 +195,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
-        input.setInputRevision((current) => current + 1);
         return;
       }
       if (!suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
@@ -205,7 +203,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
-        input.setInputRevision((current) => current + 1);
         return;
       }
       if (!browsingInputHistory && input.atQuery !== null && input.atSuggestions.length > 0) {
@@ -221,7 +218,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
-          input.setInputRevision((current) => current + 1);
           return;
         }
         if (key.upArrow) {
@@ -246,7 +242,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
-          input.setInputRevision((current) => current + 1);
           return;
         }
         if (key.upArrow) {

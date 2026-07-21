@@ -55,7 +55,6 @@ export interface ChatStateResult {
   runningUsage: { inputTokens: number; outputTokens: number } | null;
   picker: PickerState | null;
   value: string;
-  inputRevision: number;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -98,8 +97,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     dispatch,
     value,
     setValue,
-    inputRevision,
-    setInputRevision,
     inputHistory,
     setInputHistory,
     inputHistoryIndex,
@@ -304,7 +301,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     inputHistoryDraft,
     value,
     setValue,
-    setInputRevision,
     applyingHistoryRef,
     isPending,
     atQuery,
@@ -375,7 +371,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       });
       if (resolved.kind === "autocomplete") {
         setValue(resolved.value);
-        setInputRevision((current) => current + 1);
         return;
       }
       const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending });
@@ -395,7 +390,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       isPending,
       setQueuedMessages,
       setValue,
-      setInputRevision,
       handleSubmit,
     ],
   );
@@ -412,7 +406,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     picker,
     value,
     cursor: input.cursor,
-    inputRevision,
     atQuery,
     atSuggestions,
     atSuggestionIndex,

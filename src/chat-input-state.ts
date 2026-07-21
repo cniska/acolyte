@@ -14,8 +14,6 @@ export type InputState = {
   dispatch: (action: InputEditAction) => void;
   value: string;
   setValue: (next: string) => void;
-  inputRevision: number;
-  setInputRevision: (next: number | ((current: number) => number)) => void;
   inputHistory: string[];
   setInputHistory: (updater: (current: string[]) => string[]) => void;
   inputHistoryIndex: number;
@@ -27,7 +25,6 @@ export type InputState = {
 
 export function useInputState(messages: ChatMessage[]): InputState {
   const [input, setInput] = useState<InputControllerState>(() => createInputController());
-  const [inputRevision, setInputRevision] = useState(0);
   const [inputHistoryIndex, setInputHistoryIndex] = useState(-1);
   const [inputHistoryDraft, setInputHistoryDraft] = useState("");
   const applyingHistoryRef = useRef(false);
@@ -47,8 +44,6 @@ export function useInputState(messages: ChatMessage[]): InputState {
     dispatch,
     value: input.text,
     setValue,
-    inputRevision,
-    setInputRevision,
     inputHistory,
     setInputHistory,
     inputHistoryIndex,
