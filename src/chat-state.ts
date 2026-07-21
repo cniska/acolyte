@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
-import { processInputChange, processInputSubmit } from "./chat-input-handlers";
+import { processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
 import { type GitStatus, gitStatus } from "./chat-layout";
@@ -23,6 +23,7 @@ import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
+import type { InputEditAction } from "./input-controller";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -64,7 +65,8 @@ export interface ChatStateResult {
   ctrlCPending: boolean;
   activeSessionId: string | undefined;
   statusLine: StatusLineState;
-  handleInputChange: (next: string) => void;
+  cursor: number;
+  handleInputAction: (action: InputEditAction, fromPaste: boolean) => void;
   handleInputSubmit: (next: string) => void;
   handlePickerQueryChange: (query: string) => void;
   handlePickerSubmit: () => void;
@@ -92,6 +94,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   );
 
   const {
+    input,
+    dispatch,
     value,
     setValue,
     inputRevision,
@@ -335,22 +339,24 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     if (picker && pickerItemCount(picker) > 0) void handlePickerSelect(picker);
   }, [picker, handlePickerSelect]);
 
-  const handleInputChange = useCallback(
-    (next: string, fromPaste = false) => {
-      const decision = processInputChange({
-        currentValue: value,
-        nextValue: next,
-        applyingHistory: applyingHistoryRef.current,
-        paste: fromPaste,
-      });
-      if (decision.ignore) return;
-      if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
-      if (decision.resetHistoryIndex) setInputHistoryIndex(-1);
-      if (showHelp) setShowHelp(false);
-      if (ctrlCPending) setCtrlCPending(false);
-      setValue(decision.nextValue);
+  const handleInputAction = useCallback(
+    (action: InputEditAction, _fromPaste: boolean) => {
+      const textChanging =
+        action.kind === "insert" ||
+        action.kind === "delete-backward" ||
+        action.kind === "delete-forward" ||
+        action.kind === "delete-word-backward" ||
+        action.kind === "clear" ||
+        action.kind === "replace";
+      if (textChanging) {
+        if (applyingHistoryRef.current) applyingHistoryRef.current = false;
+        else setInputHistoryIndex(-1);
+        if (showHelp) setShowHelp(false);
+        if (ctrlCPending) setCtrlCPending(false);
+      }
+      dispatch(action);
     },
-    [value, setValue, setInputHistoryIndex, applyingHistoryRef, showHelp, ctrlCPending, setCtrlCPending],
+    [dispatch, setInputHistoryIndex, applyingHistoryRef, showHelp, ctrlCPending, setCtrlCPending],
   );
 
   const handleInputSubmit = useCallback(
@@ -405,6 +411,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     runningUsage,
     picker,
     value,
+    cursor: input.cursor,
     inputRevision,
     atQuery,
     atSuggestions,
@@ -415,7 +422,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     ctrlCPending,
     activeSessionId: sessionState.activeSessionId,
     statusLine,
-    handleInputChange,
+    handleInputAction,
     handleInputSubmit,
     handlePickerQueryChange,
     handlePickerSubmit,

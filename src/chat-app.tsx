@@ -76,8 +76,9 @@ function ChatApp(props: ChatAppProps) {
         brandColor={palette.brand}
         statusLine={state.statusLine}
         value={state.value}
+        cursor={state.cursor}
         inputRevision={state.inputRevision}
-        onChange={state.handleInputChange}
+        onAction={state.handleInputAction}
         onSubmit={state.handleInputSubmit}
         atQuery={state.atQuery}
         atSuggestions={state.atSuggestions}

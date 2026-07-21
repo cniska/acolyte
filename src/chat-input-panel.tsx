@@ -5,6 +5,7 @@ import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./
 import { slashCommandHelp } from "./chat-slash";
 import { StatusLine, type StatusLineState } from "./chat-status-line";
 import { t } from "./i18n";
+import type { InputEditAction } from "./input-controller";
 import { PromptInput } from "./prompt-input";
 import { Box, Text } from "./tui";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
@@ -17,8 +18,9 @@ type ChatInputPanelProps = {
   brandColor?: string;
   statusLine?: StatusLineState;
   value?: string;
+  cursor?: number;
   inputRevision?: number;
-  onChange?: (next: string) => void;
+  onAction?: (action: InputEditAction, fromPaste: boolean) => void;
   onSubmit?: (next: string) => void;
   atQuery?: string | null;
   atSuggestions?: string[];
@@ -125,8 +127,9 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
     brandColor = "white",
     statusLine,
     value = "",
+    cursor = 0,
     inputRevision = 0,
-    onChange = noop,
+    onAction = noop,
     onSubmit = noop,
     atQuery = null,
     atSuggestions = [],
@@ -177,12 +180,13 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
       </Text>
       <PromptInput
         value={value}
+        cursor={cursor}
         placeholder={t("chat.input.placeholder")}
         caretVisible={caretVisible}
         linePrefixFirst="❯ "
         linePrefixRest="  "
         wrapWidth={termWidth - 2}
-        onChange={onChange}
+        onAction={onAction}
         onSubmit={onSubmit}
         onCursorLine={onCursorLine}
         key={`chat-input-${inputRevision}`}
