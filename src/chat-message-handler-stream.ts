@@ -72,6 +72,16 @@ export function createMessageStreamState(input: {
   // Cleared whenever any other row is appended, so only adjacent repeats collapse.
   let lastNoticeKey: string | null = null;
 
+  function upsertTranscriptRow(row: TranscriptRow): void {
+    input.setTranscriptPresentation?.((current) => {
+      const index = current.findIndex((currentRow) => currentRow.id === row.id);
+      if (index < 0) return [...current, row];
+      const next = [...current];
+      next[index] = row;
+      return next;
+    });
+  }
+
   function cancelTick(): void {
     if (tickTimer) {
       clearTimeout(tickTimer);
@@ -146,12 +156,17 @@ export function createMessageStreamState(input: {
         ? current.map((row) => (row.id === id ? { ...row, content } : row))
         : [...current, { id, kind: "assistant" as const, content }],
     );
+    upsertTranscriptRow({ id, kind: "assistant", lifecycle: "active", content: { kind: "message", text: content } });
   }
 
   /** Reveal any backlog, flush, and detach from the current agent row. */
   function sealAgentRow(): void {
     drainBacklog();
     flush();
+    if (activeRowId)
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) => (row.id === activeRowId ? { ...row, lifecycle: "complete" } : row)),
+      );
     activeRowId = null;
     agentContent = "";
   }
@@ -227,15 +242,12 @@ export function createMessageStreamState(input: {
           }
           return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
-        input.setTranscriptPresentation?.((current) => [
-          ...current,
-          {
-            id: rowId,
-            kind: "tool",
-            lifecycle: "active",
-            content: { kind: "tool-output", output: { parts: update.items } },
-          },
-        ]);
+        upsertTranscriptRow({
+          id: rowId,
+          kind: "tool",
+          lifecycle: "active",
+          content: { kind: "tool-output", output: { parts: update.items } },
+        });
         promoteFinalizedPrefix();
         return;
       }
@@ -274,9 +286,9 @@ export function createMessageStreamState(input: {
       }
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!rowId) return;
-      const markerColor = entry.isError ? palette.error : palette.success;
+      const outcome = entry.isError ? "error" : "success";
       input.setRows((current) =>
-        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, markerColor } } : row)),
+        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, outcome } } : row)),
       );
       input.setTranscriptPresentation?.((current) =>
         current.map((row) => (row.id === rowId ? { ...row, lifecycle: entry.isError ? "error" : "success" } : row)),
@@ -296,10 +308,12 @@ export function createMessageStreamState(input: {
         checklistRowIdByGroupId.set(entry.groupId, rowId);
         lastNoticeKey = null;
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
-        input.setTranscriptPresentation?.((current) => [
-          ...current,
-          { id: rowId, kind: "task", lifecycle: "active", content: { kind: "checklist", output: content } },
-        ]);
+        upsertTranscriptRow({
+          id: rowId,
+          kind: "task",
+          lifecycle: "active",
+          content: { kind: "checklist", output: content },
+        });
         promoteFinalizedPrefix();
         return;
       }
