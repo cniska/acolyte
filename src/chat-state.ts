@@ -18,6 +18,7 @@ import { createSkillActivator } from "./chat-skill-activator";
 import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import type { TranscriptRow } from "./chat-transcript-contract";
+import { createTranscriptPublisher } from "./chat-transcript-publisher";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import type { PrInfo } from "./gh-contract";
@@ -84,6 +85,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [rows, setRows] = useState<ChatRow[]>([]);
   const [transcriptPresentation, setTranscriptPresentation] = useState<TranscriptRow[]>(
     () => session.transcriptPresentation ?? [],
+  );
+  const publishRows = useCallback(
+    createTranscriptPublisher({ setRows, setPresentation: setTranscriptPresentation }),
+    [],
   );
 
   const {
@@ -216,7 +221,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const activateSkill = createSkillActivator({
     currentSession,
-    setRows,
+    setRows: publishRows,
     nowIso,
     persist,
   });
@@ -226,7 +231,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     currentSession,
     setCurrentSession: updateSession,
     setTokenUsage,
-    setRows,
+    setRows: publishRows,
     setPicker,
     setShowHelp,
     setValue,
@@ -243,7 +248,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     sessionState,
     currentSession,
     setCurrentSession: updateSession,
-    setRows,
+    setRows: publishRows,
     setTranscriptPresentation,
     setShowHelp,
     setValue,
