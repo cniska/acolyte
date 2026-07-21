@@ -296,10 +296,19 @@ export function createMessageStreamState(input: {
         checklistRowIdByGroupId.set(entry.groupId, rowId);
         lastNoticeKey = null;
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
+        input.setTranscriptPresentation?.((current) => [
+          ...current,
+          { id: rowId, kind: "task", lifecycle: "active", content: { kind: "checklist", output: content } },
+        ]);
         promoteFinalizedPrefix();
         return;
       }
       input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) =>
+          row.id === existingRowId ? { ...row, content: { kind: "checklist", output: content } } : row,
+        ),
+      );
     },
 
     onProgressError: (error) => {

@@ -1,8 +1,11 @@
 import React from "react";
 import type { ChatRow } from "./chat-contract";
 import { isChecklistOutput } from "./chat-contract";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
+import { layoutTranscriptChecklist } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
 import { Box, Text } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
 
@@ -23,9 +26,10 @@ function renderChecklist(output: ChecklistOutput): React.ReactNode {
 
 type ChatChecklistProps = {
   rows: ChatRow[];
+  presentation?: TranscriptRow[];
 };
 
-export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
+export function ChatChecklist({ rows, presentation = [] }: ChatChecklistProps): React.ReactNode {
   if (rows.length === 0) return null;
   const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
   const contentWidth = Math.max(24, columns - 2);
@@ -39,7 +43,11 @@ export function ChatChecklist({ rows }: ChatChecklistProps): React.ReactNode {
               <Text>{"  "}</Text>
             </Box>
             <Box width={contentWidth} overflow="truncate">
-              {isChecklistOutput(row.content) ? <Text>{renderChecklist(row.content)}</Text> : null}
+              {presentation.find((item) => item.id === row.id)?.content.kind === "checklist" ? (
+                <TerminalSceneRender scene={layoutTranscriptChecklist(row.content as ChecklistOutput)} />
+              ) : isChecklistOutput(row.content) ? (
+                <Text>{renderChecklist(row.content)}</Text>
+              ) : null}
             </Box>
           </Box>
         </React.Fragment>

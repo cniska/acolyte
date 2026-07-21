@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ChecklistOutput } from "./checklist-contract";
+import { formatChecklist } from "./checklist-format";
 import type { TerminalCursor, TerminalLine, TerminalScene } from "./terminal-scene-contract";
 import type { TerminalStyleRole } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
@@ -139,6 +141,18 @@ export function layoutTranscriptText(input: {
         { text, role: input.role },
       ],
     })),
+  };
+}
+
+export function layoutTranscriptChecklist(output: ChecklistOutput): TerminalScene {
+  const formatted = formatChecklist(output);
+  return {
+    lines: [
+      { spans: [{ text: formatted.header, role: "tool-label" }] },
+      ...formatted.items.map((item) => ({
+        spans: [{ text: `  ${item.marker} ${item.label}`, role: "muted" as const }],
+      })),
+    ],
   };
 }
 

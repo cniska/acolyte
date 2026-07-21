@@ -65,7 +65,7 @@ function ChatApp(props: ChatAppProps) {
         queuedMessages={state.queuedMessages}
         runningUsage={state.runningUsage}
       />
-      <ChatChecklist rows={checklistRows} />
+      <ChatChecklist rows={checklistRows} presentation={state.transcriptPresentation} />
 
       <Text> </Text>
       <ChatInputPanel
