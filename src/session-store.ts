@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
-import { chatRowSchema } from "./chat-contract";
-import { legacyChatRowFromTranscript, migrateLegacyChatRow, transcriptRowSchema } from "./chat-transcript-contract";
+import { legacyChatRowFromTranscript, transcriptRowSchema } from "./chat-transcript-contract";
 import { t } from "./i18n";
 import { log } from "./log";
 import { dataDir } from "./paths";
@@ -24,8 +23,7 @@ export function parseSessionState(input: unknown): SessionState {
   if (!envelope.success) return DEFAULT_SESSION_STATE;
   const sessions: Session[] = [];
   for (const raw of envelope.data.sessions) {
-    const migrated = migrateTranscript(raw);
-    const parsed = sessionSchema.safeParse(migrated);
+    const parsed = sessionSchema.safeParse(hydrateSemanticTranscript(raw));
     if (parsed.success) {
       sessions.push(parsed.data);
       continue;
@@ -48,22 +46,17 @@ export function parseSessionState(input: unknown): SessionState {
   return { sessions, activeSessionId: activeSessionId.success ? activeSessionId.data : undefined };
 }
 
-function migrateTranscript(raw: unknown): unknown {
+function hydrateSemanticTranscript(raw: unknown): unknown {
   if (!raw || typeof raw !== "object") return raw;
-  const session = raw as Record<string, unknown>;
-  if (!Array.isArray(session.transcript)) return raw;
-  const semantic = z.array(transcriptRowSchema).safeParse(session.transcript);
-  if (semantic.success) {
-    return {
-      ...session,
-      transcript: semantic.data.map(legacyChatRowFromTranscript),
-      transcriptPresentation: semantic.data,
-    };
-  }
-  if (Array.isArray(session.transcriptPresentation)) return raw;
-  const transcript = z.array(chatRowSchema).safeParse(session.transcript);
-  if (!transcript.success) return raw;
-  return { ...session, transcriptPresentation: transcript.data.map(migrateLegacyChatRow) };
+  const { transcript, transcriptPresentation: _transcriptPresentation, ...session } = raw as Record<string, unknown>;
+  if (!Array.isArray(transcript)) return session;
+  const semantic = z.array(transcriptRowSchema).safeParse(transcript);
+  if (!semantic.success) return session;
+  return {
+    ...session,
+    transcript: semantic.data.map(legacyChatRowFromTranscript),
+    transcriptPresentation: semantic.data,
+  };
 }
 
 export function createSession(model: string): Session {
@@ -116,7 +109,7 @@ export function createFileSessionStore(storePath?: string): SessionStore {
       ...state,
       sessions: state.sessions.map((session) => ({
         ...session,
-        transcript: session.transcriptPresentation ?? session.transcript?.map(migrateLegacyChatRow),
+        transcript: session.transcriptPresentation,
         transcriptPresentation: undefined,
       })),
     };
