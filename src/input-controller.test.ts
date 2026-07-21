@@ -35,6 +35,13 @@ describe("input controller", () => {
       cursor: 3,
     });
   });
+  test("moves by word boundary across successive words", () => {
+    const text = "run verify now";
+    const left = (cursor: number) => reduceInput({ text, cursor }, { kind: "move-word", direction: "left" }).cursor;
+    expect([left(text.length), left(11), left(4)]).toEqual([11, 4, 0]);
+    const right = (cursor: number) => reduceInput({ text, cursor }, { kind: "move-word", direction: "right" }).cursor;
+    expect([right(0), right(4), right(11)]).toEqual([3, 10, 14]);
+  });
   test("deletes the word before the cursor", () => {
     expect(reduceInput({ text: "one two", cursor: 7 }, { kind: "delete-word-backward" })).toEqual({
       text: "one ",
