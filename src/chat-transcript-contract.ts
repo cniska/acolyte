@@ -59,7 +59,10 @@ export function projectActiveTranscript(
   presentation: readonly TranscriptRow[],
 ): TranscriptRow[] {
   const byId = new Map(presentation.map((row) => [row.id, row]));
-  return rows.map((row) => byId.get(row.id) ?? migrateLegacyChatRow(row));
+  return rows.flatMap((row) => {
+    const semanticRow = byId.get(row.id);
+    return semanticRow ? [semanticRow] : [];
+  });
 }
 
 export function legacyChatRowFromTranscript(row: TranscriptRow): ChatRow {
