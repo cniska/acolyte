@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { formatCommandOutput } from "./chat-format";
+import type { ChatViewportPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
 import type { TerminalCursor, TerminalLine, TerminalScene } from "./terminal-scene-contract";
-import type { TerminalStyleRole } from "./terminal-theme";
+import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
 
@@ -197,5 +199,103 @@ export function layoutTranscriptTool(input: {
       };
     }),
   };
+}
+
+export function layoutChatViewport(input: {
+  presentation: ChatViewportPresentation;
+  constraints: TerminalConstraints;
+  theme: TerminalTheme;
+  now: number;
+}): TerminalScene {
+  void input.theme;
+  void input.now;
+  const lines: TerminalLine[] = [];
+  const sections: NonNullable<TerminalScene["sections"]> = [];
+  const append = (id: string, finalized: boolean, scene: TerminalScene): void => {
+    const lineStart = lines.length;
+    lines.push(...scene.lines);
+    sections.push({ id, lineStart, lineEnd: lines.length, finalized });
+  };
+  append("header", true, {
+    lines: [
+      { spans: [{ text: input.presentation.header.title, role: "assistant" }] },
+      { spans: [{ text: `version ${input.presentation.header.version}`, role: "muted" }] },
+      { spans: [{ text: `session ${input.presentation.header.sessionId}`, role: "muted" }] },
+    ],
+  });
+  for (const row of input.presentation.transcript) {
+    if (row.content.kind === "checklist") continue;
+    if (row.content.kind === "tool-output") {
+      append(
+        row.id,
+        row.lifecycle !== "active",
+        layoutTranscriptTool({
+          parts: row.content.output.parts,
+          lifecycle: row.lifecycle,
+          columns: input.constraints.columns,
+        }),
+      );
+    } else if (row.content.kind === "command-output") {
+      const body = formatCommandOutput(row.content.output);
+      append(
+        row.id,
+        true,
+        layoutTranscriptText({
+          text: body ? `${row.content.output.header}\n\n${body}` : row.content.output.header,
+          marker: row.kind === "system" ? "  " : "• ",
+          role: row.kind === "system" ? "muted" : "plain",
+          columns: input.constraints.columns,
+        }),
+      );
+    } else if (row.kind === "user" || row.kind === "assistant") {
+      append(
+        row.id,
+        row.lifecycle !== "active",
+        layoutTranscriptMessage({ text: row.content.text, kind: row.kind, columns: input.constraints.columns }),
+      );
+    } else {
+      append(
+        row.id,
+        true,
+        layoutTranscriptText({
+          text: row.content.text,
+          marker: row.kind === "system" ? "  " : "• ",
+          role: row.kind === "system" ? "muted" : "plain",
+          columns: input.constraints.columns,
+        }),
+      );
+    }
+  }
+  const checklists = input.presentation.transcript.filter((row) => row.content.kind === "checklist");
+  if (checklists.length > 0)
+    append("checklist", false, {
+      lines: checklists.flatMap(
+        (row) => layoutTranscriptChecklist((row.content as { output: ChecklistOutput }).output).lines,
+      ),
+    });
+  if (input.presentation.pending) {
+    const pending = input.presentation.pending;
+    const text =
+      pending.state.kind === "queued" ? "Queued" : pending.state.kind === "accepted" ? "Accepted" : "Working";
+    append(
+      "pending",
+      false,
+      layoutTranscriptText({ text, marker: "• ", role: "pending", columns: input.constraints.columns }),
+    );
+  }
+  const composer = layoutComposer(
+    {
+      text: input.presentation.composer.input.text,
+      cursor: input.presentation.composer.input.cursor,
+      placeholder: input.presentation.composer.placeholder,
+    },
+    input.constraints,
+  );
+  const composerStart = lines.length;
+  lines.push(...composer.lines);
+  if (input.presentation.composer.status)
+    lines.push({ spans: [{ text: input.presentation.composer.status.text, role: "muted" }] });
+  sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
+  return { lines, sections, cursor: { ...composer.cursor, row: composer.cursor.row + composerStart } };
 }
 export { truncate as truncateTerminalText };
