@@ -17,7 +17,7 @@ import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
-import type { TranscriptRow } from "./chat-transcript-contract";
+import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
 import { createTranscriptPublisher } from "./chat-transcript-publisher";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
@@ -48,6 +48,7 @@ export interface ChatStateResult {
   promotedRows: PromotedItem[];
   rows: ChatRow[];
   transcriptPresentation: TranscriptRow[];
+  activeTranscript: TranscriptRow[];
   pendingState: PendingState | null;
   pendingFrame: number;
   pendingStartedAt: number | null;
@@ -121,6 +122,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   } = usePendingState();
 
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
+  const activeTranscript = projectActiveTranscript(rows, transcriptPresentation);
 
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
@@ -398,6 +400,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     promotedRows,
     rows,
     transcriptPresentation,
+    activeTranscript,
     pendingState,
     pendingFrame,
     pendingStartedAt,

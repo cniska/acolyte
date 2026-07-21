@@ -54,6 +54,14 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
   return { id: row.id, kind: row.kind, lifecycle, content: { kind: "checklist", output: row.content } };
 }
 
+export function projectActiveTranscript(
+  rows: readonly ChatRow[],
+  presentation: readonly TranscriptRow[],
+): TranscriptRow[] {
+  const byId = new Map(presentation.map((row) => [row.id, row]));
+  return rows.map((row) => byId.get(row.id) ?? migrateLegacyChatRow(row));
+}
+
 export function legacyChatRowFromTranscript(row: TranscriptRow): ChatRow {
   switch (row.content.kind) {
     case "message":
