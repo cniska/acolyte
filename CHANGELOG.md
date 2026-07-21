@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.1 (2026-07-21)
+
+- docs(readme): add install command (`a091849d`)
+- fix(cli): bake version into compiled binary (#339) (`5fb4bd1b`)
+
+
 ## 0.22.0 (2026-07-20)
 
 - fix(memory): scope-aware recall isolation (#274) (`cfbe6843`)
