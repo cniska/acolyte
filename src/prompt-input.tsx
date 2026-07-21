@@ -1,7 +1,13 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { unreachable } from "./assert";
-import { type InputControllerState, type InputEditAction, reduceInput } from "./input-controller";
+import {
+  type InputControllerState,
+  type InputEditAction,
+  reduceInput,
+  wordBoundaryLeft,
+  wordBoundaryRight,
+} from "./input-controller";
 import type { PromptAction } from "./prompt-keymap";
 import { resolvePromptAction } from "./prompt-keymap";
 import { Box, Text, useInput } from "./tui";
@@ -21,28 +27,6 @@ interface PromptInputProps {
   onSubmit: (value: string) => void;
   onCursorLine: (line: number) => void;
   wrapWidth?: number;
-}
-
-export function moveWordLeft(value: string, cursor: number): number {
-  let index = Math.max(0, Math.min(cursor, value.length));
-  while (index > 0 && /\s/.test(value[index - 1] ?? "")) {
-    index -= 1;
-  }
-  while (index > 0 && !/\s/.test(value[index - 1] ?? "")) {
-    index -= 1;
-  }
-  return index;
-}
-
-export function moveWordRight(value: string, cursor: number): number {
-  let index = Math.max(0, Math.min(cursor, value.length));
-  while (index < value.length && /\s/.test(value[index] ?? "")) {
-    index += 1;
-  }
-  while (index < value.length && !/\s/.test(value[index] ?? "")) {
-    index += 1;
-  }
-  return index;
 }
 
 export function cursorLineIndex(value: string, cursorOffset: number, wrapWidth?: number): number {
@@ -346,15 +330,15 @@ export function PromptInput({
         moveCursor(v.length);
         return;
       case "move_word_left":
-        moveCursor(moveWordLeft(v, c));
+        moveCursor(wordBoundaryLeft(v, c));
         return;
       case "move_word_right":
-        moveCursor(moveWordRight(v, c));
+        moveCursor(wordBoundaryRight(v, c));
         return;
       case "delete_word_back": {
         metaPrefixAt.current = null;
         if (c === 0) return;
-        const next = moveWordLeft(v, c);
+        const next = wordBoundaryLeft(v, c);
         emitChange(`${v.slice(0, next)}${v.slice(c)}`);
         moveCursor(next);
         return;
