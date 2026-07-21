@@ -16,6 +16,22 @@ describe("semantic transcript contract", () => {
     });
   });
 
+  test("derives status and task lifecycle from the row outcome", () => {
+    expect(
+      migrateLegacyChatRow({ id: "row_1", kind: "status", content: "Worked 2s", style: { outcome: "success" } })
+        .lifecycle,
+    ).toBe("success");
+    expect(
+      migrateLegacyChatRow({ id: "row_2", kind: "task", content: "Failed", style: { outcome: "error" } }).lifecycle,
+    ).toBe("error");
+    expect(
+      migrateLegacyChatRow({ id: "row_3", kind: "task", content: "Interrupted", style: { outcome: "cancelled" } })
+        .lifecycle,
+    ).toBe("cancelled");
+    expect(migrateLegacyChatRow({ id: "row_4", kind: "status", content: "Worked 2s" }).lifecycle).toBe("success");
+    expect(migrateLegacyChatRow({ id: "row_5", kind: "task", content: "note" }).lifecycle).toBe("complete");
+  });
+
   test("accepts only explicit lifecycle and semantic content", () => {
     expect(
       transcriptRowSchema.safeParse({

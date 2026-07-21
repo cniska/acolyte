@@ -29,4 +29,10 @@ describe("rowMarker", () => {
     expect(rowMarker(row("status", { markerColor: palette.success })).color).toBe(palette.success);
     expect(rowMarker(row("assistant", { markerColor: palette.error })).color).toBe(palette.error);
   });
+
+  test("resolves the semantic outcome to its palette color", () => {
+    expect(rowMarker(row("status", { outcome: "success" })).color).toBe(palette.success);
+    expect(rowMarker(row("task", { outcome: "error" })).color).toBe(palette.error);
+    expect(rowMarker(row("task", { outcome: "cancelled" })).color).toBe(palette.cancelled);
+  });
 });

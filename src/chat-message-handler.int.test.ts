@@ -6,7 +6,6 @@ import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
-import { palette } from "./palette";
 import {
   createClient,
   createMessage,
@@ -535,7 +534,7 @@ describe("chat message handler", () => {
     expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
-    expect(last?.style?.markerColor).toBe(palette.cancelled);
+    expect(last?.style?.outcome).toBe("cancelled");
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {
