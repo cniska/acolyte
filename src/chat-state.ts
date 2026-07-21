@@ -84,14 +84,18 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     },
     [props.onSessionChange],
   );
-  const [rows, setRows] = useState<ChatRow[]>([]);
-  const [transcriptPresentation, setTranscriptPresentation] = useState<TranscriptRow[]>(
-    () => session.transcriptPresentation ?? [],
-  );
-  const publishRows = useCallback(
-    createTranscriptPublisher({ setRows, setPresentation: setTranscriptPresentation }),
-    [],
-  );
+  const [transcript, setTranscript] = useState<{ rows: ChatRow[]; presentation: TranscriptRow[] }>(() => ({
+    rows: [],
+    presentation: session.transcriptPresentation ?? [],
+  }));
+  const setRows = useCallback((updater: (current: ChatRow[]) => ChatRow[]) => {
+    setTranscript((current) => ({ ...current, rows: updater(current.rows) }));
+  }, []);
+  const setTranscriptPresentation = useCallback((updater: (current: TranscriptRow[]) => TranscriptRow[]) => {
+    setTranscript((current) => ({ ...current, presentation: updater(current.presentation) }));
+  }, []);
+  const publishRows = useCallback(createTranscriptPublisher({ setTranscript }), []);
+  const { rows, presentation: transcriptPresentation } = transcript;
 
   const {
     input,
@@ -126,7 +130,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
-    setTranscriptPresentation(currentSession.transcriptPresentation ?? []);
+    setTranscriptPresentation(() => currentSession.transcriptPresentation ?? []);
   }, [currentSession]);
 
   const {

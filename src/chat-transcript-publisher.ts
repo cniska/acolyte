@@ -3,19 +3,26 @@ import { migrateLegacyChatRow, type TranscriptRow } from "./chat-transcript-cont
 
 const PUBLISHED_KINDS = new Set<ChatRow["kind"]>(["system", "status", "task"]);
 
+export type ActiveTranscriptState = {
+  rows: ChatRow[];
+  presentation: TranscriptRow[];
+};
+
 export function createTranscriptPublisher(input: {
-  setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  setPresentation: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
+  setTranscript: (updater: (current: ActiveTranscriptState) => ActiveTranscriptState) => void;
 }): (updater: (current: ChatRow[]) => ChatRow[]) => void {
   return (updater) => {
-    input.setRows((current) => {
-      const next = updater(current);
-      const published = next.filter((row) => PUBLISHED_KINDS.has(row.kind));
-      input.setPresentation((presentation) => {
-        const publishedIds = new Set(published.map((row) => row.id));
-        return [...presentation.filter((row) => !publishedIds.has(row.id)), ...published.map(migrateLegacyChatRow)];
-      });
-      return next;
+    input.setTranscript((current) => {
+      const rows = updater(current.rows);
+      const published = rows.filter((row) => PUBLISHED_KINDS.has(row.kind));
+      const publishedIds = new Set(published.map((row) => row.id));
+      return {
+        rows,
+        presentation: [
+          ...current.presentation.filter((row) => !publishedIds.has(row.id)),
+          ...published.map(migrateLegacyChatRow),
+        ],
+      };
     });
   };
 }
