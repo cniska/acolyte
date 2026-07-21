@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { formatCommandOutput } from "./chat-format";
-import type { ChatViewportPresentation } from "./chat-viewport-contract";
+import { formatCommandOutput, formatCompactNumber } from "./chat-format";
+import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
+import { t } from "./i18n";
 import type { TerminalCursor, TerminalLine, TerminalScene } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
@@ -178,6 +179,55 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
   };
 }
 
+export function layoutPending(input: {
+  presentation: PendingPresentation;
+  now: number;
+  columns: number;
+}): TerminalScene {
+  const { presentation } = input;
+  const elapsed =
+    presentation.state.kind === "running" && presentation.startedAt !== null
+      ? Math.max(0, Math.floor((input.now - presentation.startedAt) / 1000))
+      : 0;
+  const tokenText = presentation.runningUsage
+    ? t("unit.token.arrows", {
+        input: formatCompactNumber(presentation.runningUsage.inputTokens),
+        output: formatCompactNumber(presentation.runningUsage.outputTokens),
+      })
+    : "";
+  const text =
+    presentation.state.kind === "running"
+      ? `${t("agent.status.working")} (${[elapsed >= 60 ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s` : `${elapsed}s`, presentation.state.toolCalls ? t("unit.tool", { count: presentation.state.toolCalls }) : "", tokenText].filter(Boolean).join(" · ")})`
+      : presentation.state.kind === "queued"
+        ? typeof presentation.state.position === "number"
+          ? t("rpc.status.queued", { position: presentation.state.position })
+          : t("rpc.status.queued.unknown")
+        : t("rpc.status.accepted");
+  const blink = presentation.state.kind !== "running" || Math.abs(presentation.frame) % 16 < 8;
+  const role: TerminalStyleRole =
+    presentation.state.kind === "running"
+      ? "pending-shimmer"
+      : presentation.state.kind === "queued"
+        ? "queued"
+        : "pending";
+  const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => ({
+    spans: [
+      { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role },
+      { text: line, role },
+    ],
+  }));
+  for (const message of presentation.queuedMessages)
+    lines.push(
+      ...wrapTerminalProse(message, Math.max(24, input.columns - 2)).map((line, index) => ({
+        spans: [
+          { text: index === 0 ? "❯ " : "  ", role: "muted" as const },
+          { text: line, role: "muted" as const },
+        ],
+      })),
+    );
+  return { lines };
+}
+
 export function layoutTranscriptChecklist(output: ChecklistOutput): TerminalScene {
   const formatted = formatChecklist(output);
   return {
@@ -299,16 +349,12 @@ export function layoutChatViewport(input: {
         (row) => layoutTranscriptChecklist((row.content as { output: ChecklistOutput }).output).lines,
       ),
     });
-  if (input.presentation.pending) {
-    const pending = input.presentation.pending;
-    const text =
-      pending.state.kind === "queued" ? "Queued" : pending.state.kind === "accepted" ? "Accepted" : "Working";
+  if (input.presentation.pending)
     append(
       "pending",
       false,
-      layoutTranscriptText({ text, marker: "• ", role: "pending", columns: input.constraints.columns }),
+      layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
     );
-  }
   const composer = layoutComposer(
     {
       text: input.presentation.composer.input.text,
