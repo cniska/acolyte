@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { migrateLegacyChatRow, transcriptRowSchema } from "./chat-transcript-contract";
-import { parseSessionState } from "./session-store";
+import { migrateLegacyChatRow, projectActiveTranscript, transcriptRowSchema } from "./chat-transcript-contract";
 
 describe("semantic transcript contract", () => {
   test("migrates each legacy payload into a discriminated semantic payload", () => {
@@ -32,6 +31,41 @@ describe("semantic transcript contract", () => {
     expect(migrateLegacyChatRow({ id: "row_5", kind: "task", content: "note" }).lifecycle).toBe("complete");
   });
 
+  test("projects active rows in their live order with semantic enrichment", () => {
+    expect(
+      projectActiveTranscript(
+        [
+          { id: "row_user", kind: "user", content: "inspect" },
+          { id: "row_tool", kind: "tool", content: { parts: [] } },
+          { id: "row_status", kind: "status", content: "Worked 2s" },
+        ],
+        [
+          {
+            id: "row_user",
+            kind: "user",
+            lifecycle: "complete",
+            content: { kind: "message", text: "inspect" },
+          },
+          {
+            id: "row_tool",
+            kind: "tool",
+            lifecycle: "active",
+            content: { kind: "tool-output", output: { parts: [] } },
+          },
+          {
+            id: "row_promoted",
+            kind: "assistant",
+            lifecycle: "complete",
+            content: { kind: "message", text: "already static" },
+          },
+        ],
+      ),
+    ).toEqual([
+      { id: "row_user", kind: "user", lifecycle: "complete", content: { kind: "message", text: "inspect" } },
+      { id: "row_tool", kind: "tool", lifecycle: "active", content: { kind: "tool-output", output: { parts: [] } } },
+    ]);
+  });
+
   test("accepts only explicit lifecycle and semantic content", () => {
     expect(
       transcriptRowSchema.safeParse({
@@ -42,26 +76,5 @@ describe("semantic transcript contract", () => {
       }).success,
     ).toBe(true);
     expect(transcriptRowSchema.safeParse({ id: "row_1", kind: "assistant", content: "working" }).success).toBe(false);
-  });
-
-  test("preserves legacy transcript rows and records their semantic migration", () => {
-    const state = parseSessionState({
-      sessions: [
-        {
-          id: "sess_1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-          model: "test",
-          title: "Test",
-          messages: [],
-          tokenUsage: [],
-          transcript: [{ id: "row_1", kind: "user", content: "hello" }],
-        },
-      ],
-    });
-    expect(state.sessions[0]?.transcript).toEqual([{ id: "row_1", kind: "user", content: "hello" }]);
-    expect(state.sessions[0]?.transcriptPresentation).toEqual([
-      { id: "row_1", kind: "user", lifecycle: "complete", content: { kind: "message", text: "hello" } },
-    ]);
   });
 });
