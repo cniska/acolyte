@@ -77,6 +77,6 @@ export function reduceInput(state: InputControllerState, action: InputEditAction
     case "set-cursor":
       return { ...state, cursor: Math.max(0, Math.min(action.cursor, state.text.length)) };
     case "replace":
-      return { text: action.text, cursor: Math.min(action.cursor ?? cursor, action.text.length) };
+      return { text: action.text, cursor: Math.min(action.cursor ?? action.text.length, action.text.length) };
   }
 }

@@ -15,10 +15,10 @@ describe("input controller", () => {
     });
     expect(reduceInput(createInputController(), { kind: "delete-backward" })).toEqual({ text: "", cursor: 0 });
   });
-  test("replace without a cursor clamps the previous cursor to the new text", () => {
-    expect(reduceInput({ text: "one", cursor: 3 }, { kind: "replace", text: "history entry" })).toEqual({
-      text: "history entry",
-      cursor: 3,
+  test("replace without a cursor lands at the end of the new text", () => {
+    expect(reduceInput({ text: "/he", cursor: 3 }, { kind: "replace", text: "/new" })).toEqual({
+      text: "/new",
+      cursor: 4,
     });
     expect(reduceInput({ text: "longer text", cursor: 9 }, { kind: "replace", text: "hi" })).toEqual({
       text: "hi",
