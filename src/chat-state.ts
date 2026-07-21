@@ -15,12 +15,13 @@ import { createPickerHandlers } from "./chat-picker-handlers";
 import { currentSegment, type PromotedItem, usePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
-import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
+import { statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
 import { createTranscriptPublisher } from "./chat-transcript-publisher";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
+import type { FooterStatus } from "./footer-status-contract";
 import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
 import type { InputEditAction } from "./input-controller";
@@ -64,7 +65,7 @@ export interface ChatStateResult {
   showHelp: boolean;
   ctrlCPending: boolean;
   activeSessionId: string | undefined;
-  statusLine: StatusLineState;
+  statusLine: FooterStatus;
   cursor: number;
   handleInputAction: (action: InputEditAction, fromPaste: boolean) => void;
   handleInputSubmit: (next: string) => void;
@@ -175,7 +176,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
-  const statusLine: StatusLineState = {
+  const statusLine: FooterStatus = {
     repo: git?.repo ?? basename(process.cwd()),
     worktree: git?.worktree ?? null,
     branch: git?.branch ?? null,

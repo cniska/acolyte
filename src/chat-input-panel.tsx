@@ -3,7 +3,8 @@ import { clampSuggestionIndex } from "./chat-effects";
 import { BREAKPOINT_TWO_COLUMN, borderLine, SHORTCUT_ITEMS } from "./chat-layout";
 import { type PickerState, pickerHint, pickerLabel, renderPickerItems } from "./chat-picker";
 import { slashCommandHelp } from "./chat-slash";
-import { StatusLine, type StatusLineState } from "./chat-status-line";
+import { StatusLine } from "./chat-status-line";
+import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
 import type { InputEditAction } from "./input-controller";
 import { PromptInput } from "./prompt-input";
@@ -16,7 +17,7 @@ type ChatInputPanelProps = {
   onPickerSubmit?: () => void;
   activeSessionId?: string | undefined;
   brandColor?: string;
-  statusLine?: StatusLineState;
+  statusLine?: FooterStatus;
   value?: string;
   cursor?: number;
   onAction?: (action: InputEditAction, fromPaste: boolean) => void;

@@ -1,27 +1,12 @@
 import type React from "react";
 import { unreachable } from "./assert";
 import { formatCompactNumber } from "./chat-format";
-import type { PrInfo, PrState } from "./gh-contract";
+import type { FooterStatus } from "./footer-status-contract";
+import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
 import { Box, Text } from "./tui";
 
-export type StatusLineState = {
-  /** Repo name (git root basename), or the cwd basename outside a git repo. */
-  repo: string;
-  worktree: string | null;
-  branch: string | null;
-  dirty: boolean;
-  ahead: number;
-  behind: number;
-  /** Model display name, without the effort suffix. */
-  model: string;
-  effort: string | null;
-  inputTokens: number;
-  outputTokens: number;
-  pr: PrInfo | null;
-  skills: readonly string[];
-};
 export function prColor(state: PrState): string {
   switch (state) {
     case "open":
@@ -36,7 +21,7 @@ export function prColor(state: PrState): string {
 }
 
 /** dirty (`*`) and ahead/behind (`↑n ↓n`), rendered dim beside the branch name. */
-function branchSuffix({ dirty, ahead, behind }: Pick<StatusLineState, "dirty" | "ahead" | "behind">): string {
+function branchSuffix({ dirty, ahead, behind }: Pick<FooterStatus, "dirty" | "ahead" | "behind">): string {
   let suffix = dirty ? "*" : "";
   if (ahead > 0) suffix += ` ↑${ahead}`;
   if (behind > 0) suffix += ` ↓${behind}`;
@@ -62,7 +47,7 @@ export function statusTokenTotals(
   return { inputTokens, outputTokens };
 }
 
-export function StatusLine(state: StatusLineState): React.ReactNode {
+export function StatusLine(state: FooterStatus): React.ReactNode {
   const { repo, worktree, branch, model, effort, inputTokens, outputTokens, pr, skills } = state;
   const segments: React.ReactNode[] = [];
 
