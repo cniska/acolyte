@@ -3,14 +3,14 @@ import { wrapText } from "./chat-content";
 import { renderAssistantContent } from "./chat-content-render";
 import type { ChatRow, CommandOutput } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
-import { commandOutputColWidth, formatCompactNumber } from "./chat-format";
+import { commandOutputColWidth, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { rowMarker } from "./chat-row-marker";
 import { ShimmerText } from "./chat-shimmer";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import type { PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { palette } from "./palette";
-import { layoutTranscriptMessage, layoutTranscriptTool } from "./terminal-chat-layout";
+import { layoutTranscriptMessage, layoutTranscriptText, layoutTranscriptTool } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToolOutputTui } from "./tool-output-tui";
 import { Box, Text } from "./tui";
@@ -92,6 +92,39 @@ export function ChatTranscriptRow({
         })}
       />
     );
+  }
+  if (presentation?.content.kind === "command-output") {
+    const body = formatCommandOutput(presentation.content.output);
+    return (
+      <TerminalSceneRender
+        scene={layoutTranscriptText({
+          text: body ? `${presentation.content.output.header}\n\n${body}` : presentation.content.output.header,
+          marker: presentation.kind === "system" ? "  " : "• ",
+          role: presentation.kind === "system" ? "muted" : "plain",
+          columns: contentWidth + 2,
+        })}
+      />
+    );
+  }
+  if (presentation && presentation.content.kind === "message") {
+    const marker =
+      presentation.kind === "system"
+        ? "  "
+        : presentation.kind === "status" || presentation.kind === "task"
+          ? "• "
+          : null;
+    if (marker) {
+      return (
+        <TerminalSceneRender
+          scene={layoutTranscriptText({
+            text: presentation.content.text,
+            marker,
+            role: presentation.kind === "system" ? "muted" : "plain",
+            columns: contentWidth + 2,
+          })}
+        />
+      );
+    }
   }
   const { glyph, color } = rowMarker(row);
   const textColor = row.style?.text;

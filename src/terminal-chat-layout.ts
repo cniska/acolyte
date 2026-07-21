@@ -126,6 +126,22 @@ export function layoutTranscriptMessage(input: {
   return { lines };
 }
 
+export function layoutTranscriptText(input: {
+  text: string;
+  marker: string;
+  role: TerminalStyleRole;
+  columns: number;
+}): TerminalScene {
+  return {
+    lines: wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
+      spans: [
+        { text: index === 0 ? input.marker : "  ", role: input.role },
+        { text, role: input.role },
+      ],
+    })),
+  };
+}
+
 function toolRole(role: string): TerminalStyleRole | null {
   if (role === "label") return "tool-label";
   if (role === "meta-add") return "tool-meta-add";
