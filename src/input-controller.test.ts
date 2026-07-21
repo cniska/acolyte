@@ -15,4 +15,36 @@ describe("input controller", () => {
     });
     expect(reduceInput(createInputController(), { kind: "delete-backward" })).toEqual({ text: "", cursor: 0 });
   });
+  test("moves by word boundary in both directions", () => {
+    expect(reduceInput({ text: "one two", cursor: 7 }, { kind: "move-word", direction: "left" })).toEqual({
+      text: "one two",
+      cursor: 4,
+    });
+    expect(reduceInput({ text: "one two", cursor: 0 }, { kind: "move-word", direction: "right" })).toEqual({
+      text: "one two",
+      cursor: 3,
+    });
+  });
+  test("deletes the word before the cursor", () => {
+    expect(reduceInput({ text: "one two", cursor: 7 }, { kind: "delete-word-backward" })).toEqual({
+      text: "one ",
+      cursor: 4,
+    });
+    expect(reduceInput({ text: "one two", cursor: 0 }, { kind: "delete-word-backward" })).toEqual({
+      text: "one two",
+      cursor: 0,
+    });
+  });
+  test("clears all text and resets the cursor", () =>
+    expect(reduceInput({ text: "abc", cursor: 3 }, { kind: "clear" })).toEqual({ text: "", cursor: 0 }));
+  test("sets an absolute cursor clamped to text length", () => {
+    expect(reduceInput({ text: "abc", cursor: 0 }, { kind: "set-cursor", cursor: 2 })).toEqual({
+      text: "abc",
+      cursor: 2,
+    });
+    expect(reduceInput({ text: "abc", cursor: 0 }, { kind: "set-cursor", cursor: 9 })).toEqual({
+      text: "abc",
+      cursor: 3,
+    });
+  });
 });
