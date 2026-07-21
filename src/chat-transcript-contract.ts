@@ -35,7 +35,18 @@ export const transcriptRowSchema = z.object({
 export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
 
 export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
-  const lifecycle: TranscriptLifecycle = row.kind === "status" ? "success" : "complete";
+  const headerState =
+    typeof row.content === "object" && "parts" in row.content
+      ? row.content.parts.find((part) => part.kind === "tool-header")?.state
+      : undefined;
+  const lifecycle: TranscriptLifecycle =
+    headerState === "on"
+      ? "success"
+      : headerState === "off"
+        ? "cancelled"
+        : row.kind === "status"
+          ? "success"
+          : "complete";
   if (typeof row.content === "string")
     return { id: row.id, kind: row.kind, lifecycle, content: { kind: "message", text: row.content } };
   if ("parts" in row.content)

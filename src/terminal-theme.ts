@@ -18,6 +18,9 @@ export const terminalStyleRoleSchema = z.enum([
   "diff-gutter",
   "composer-border",
   "composer-prompt",
+  "tool-label",
+  "tool-meta-add",
+  "tool-meta-remove",
   "cursor",
 ]);
 export type TerminalStyleRole = z.infer<typeof terminalStyleRoleSchema>;
@@ -53,6 +56,9 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "diff-gutter": { foreground: "#8b949e" },
     "composer-border": { foreground: "#58a6ff", dim: true },
     "composer-prompt": { foreground: "#58a6ff", bold: true },
+    "tool-label": { bold: true },
+    "tool-meta-add": { foreground: "#4a9a4a" },
+    "tool-meta-remove": { foreground: "#9a4a4a" },
     cursor: { inverse: true },
   },
 });

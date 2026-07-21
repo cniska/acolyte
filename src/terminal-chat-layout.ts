@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { TerminalCursor, TerminalLine, TerminalScene } from "./terminal-scene-contract";
 import type { TerminalStyleRole } from "./terminal-theme";
+import type { ToolOutputPart } from "./tool-output-contract";
+import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
 
 export const terminalConstraintsSchema = z.object({
   columns: z.number().int().positive(),
@@ -122,5 +124,48 @@ export function layoutTranscriptMessage(input: {
     ],
   }));
   return { lines };
+}
+
+function toolRole(role: string): TerminalStyleRole | null {
+  if (role === "label") return "tool-label";
+  if (role === "meta-add") return "tool-meta-add";
+  if (role === "meta-remove") return "tool-meta-remove";
+  if (role === "diff-text") return "plain";
+  if (role === "stream-tag") return null;
+  return "muted";
+}
+
+export function layoutTranscriptTool(input: {
+  parts: ToolOutputPart[];
+  lifecycle: "complete" | "active" | "pending" | "queued" | "success" | "warning" | "error" | "cancelled";
+  columns: number;
+}): TerminalScene {
+  const contentWidth = Math.max(24, input.columns - 2);
+  const marker = input.lifecycle === "success" ? "◉ " : input.lifecycle === "cancelled" ? "○ " : "• ";
+  return {
+    lines: layoutToolOutput(input.parts).map((line, index) => {
+      const fitted = fitLine(
+        { ...line, segments: line.segments.filter((segment) => segment.role !== "stream-tag") },
+        contentWidth,
+      );
+      const fill =
+        fitted.fill === "diff-add" ? "diff-added" : fitted.fill === "diff-remove" ? "diff-removed" : undefined;
+      const spans = fitted.segments.flatMap((segment) => {
+        const role = toolRole(segment.role);
+        return role ? [{ text: segment.text, role: segment.role === "diff-text" && fill ? fill : role }] : [];
+      });
+      const padding = fill
+        ? " ".repeat(Math.max(0, contentWidth - fitted.indent - segmentsWidth(fitted.segments)))
+        : "";
+      return {
+        fill,
+        spans: [
+          { text: index === 0 ? marker : " ".repeat(fitted.indent + 2), role: "tool" as const },
+          ...spans,
+          ...(padding ? [{ text: padding, role: "plain" as const }] : []),
+        ],
+      };
+    }),
+  };
 }
 export { truncate as truncateTerminalText };
