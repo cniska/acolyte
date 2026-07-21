@@ -51,5 +51,8 @@
     "react-reconciler": "^0.33.0",
     "tiktoken": "^1.0.22",
     "zod": "^4.4.3"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.11"
   }
 }
