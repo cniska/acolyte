@@ -18,7 +18,7 @@ Acolyte is an open-source, terminal-first AI coding agent with an opinionated ru
 curl -fsSL https://acolyte.sh/install | sh
 ```
 
-Installs the latest released binary for macOS and Linux. To run from source instead, see [Local development](#local-development).
+Installs the latest released binary for macOS and Linux. It keeps itself up to date automatically — see [Updates](docs/updates.md). To run from source instead, see [Local development](#local-development).
 
 ## Runtime model
 
