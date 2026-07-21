@@ -365,8 +365,11 @@ export function layoutChatViewport(input: {
   );
   const composerStart = lines.length;
   lines.push(...composer.lines);
-  if (input.presentation.composer.status)
-    lines.push({ spans: [{ text: input.presentation.composer.status.text, role: "muted" }] });
+  const status = input.presentation.composer.status;
+  if (status) {
+    const text = Array.isArray(status) ? status.map((segment) => segment.text).join("") : status.text;
+    lines.push({ spans: [{ text, role: "muted" }] });
+  }
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
   return { lines, sections, cursor: { ...composer.cursor, row: composer.cursor.row + composerStart } };
 }

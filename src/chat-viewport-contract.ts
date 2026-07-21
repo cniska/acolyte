@@ -22,20 +22,65 @@ export const pendingPresentationSchema = z.object({
 });
 export type PendingPresentation = z.infer<typeof pendingPresentationSchema>;
 
+export const composerPickerItemSchema = z.object({ label: z.string(), value: z.string() });
+export const composerPickerSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("model"),
+    query: z.string(),
+    items: z.array(composerPickerItemSchema),
+    selected: z.number().int().nonnegative(),
+    scrollOffset: z.number().int().nonnegative(),
+    hint: z.string(),
+  }),
+  z.object({
+    kind: z.enum(["skills", "sessions"]),
+    items: z.array(composerPickerItemSchema),
+    selected: z.number().int().nonnegative(),
+    scrollOffset: z.number().int().nonnegative(),
+    hint: z.string(),
+  }),
+]);
+export const composerSuggestionsSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("none") }),
+  z.object({
+    kind: z.literal("at"),
+    query: z.string(),
+    candidates: z.array(z.object({ label: z.string(), value: z.string() })),
+    selected: z.number().int().nonnegative(),
+    noMatches: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal("slash"),
+    candidates: z.array(z.object({ command: z.string(), help: z.string().optional() })),
+    selected: z.number().int().nonnegative(),
+    selectedHelp: z.string().optional(),
+  }),
+]);
+export const composerHelpEntrySchema = z.object({ key: z.string(), description: z.string() });
+export const composerStatusSegmentSchema = z.object({
+  kind: z.enum(["repository", "branch", "model", "effort", "usage", "pull-request", "skills", "hint"]),
+  text: z.string(),
+  role: z.enum(["plain", "muted", "success", "warning", "error"]),
+});
 export const composerPresentationContractSchema = z.object({
   input: inputControllerStateSchema,
   placeholder: z.string(),
-  picker: z
-    .object({
-      kind: z.string(),
-      query: z.string(),
-      items: z.array(z.string()),
-      selected: z.number().int().nonnegative(),
-    })
-    .nullable(),
-  suggestions: z.array(z.string()),
+  focus: z.boolean().optional(),
+  caretVisible: z.boolean().optional(),
+  revision: z.number().int().nonnegative().optional(),
+  ctrlCPending: z.boolean().optional(),
+  prompt: z.enum(["chat", "picker"]).optional(),
+  cursorLine: z.number().int().nonnegative().optional(),
+  activeIdentity: z.string().nullable().optional(),
+  picker: composerPickerSchema.nullable(),
+  suggestions: composerSuggestionsSchema.or(z.array(z.string())),
   showHelp: z.boolean(),
-  status: z.object({ text: z.string() }).nullable(),
+  helpEntries: z.array(composerHelpEntrySchema).optional(),
+  helpBreakpoint: z.number().int().positive().optional(),
+  status: z
+    .array(composerStatusSegmentSchema)
+    .or(z.object({ text: z.string() }))
+    .nullable(),
 });
 export type ComposerPresentationContract = z.infer<typeof composerPresentationContractSchema>;
 
