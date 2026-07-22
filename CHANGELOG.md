@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.22.2 (2026-07-22)
+
+- fix(deps): override hono server vulnerability (`2a9fd079`)
+- fix(deps): override fast-uri to patched version (`bb2a0ea2`)
+- fix(cli): stop self-update overwriting runtime (#340) (`bd838a95`)
+- refactor: extract APP_NAME constant (`7ff1d43a`)
+
+
 ## 0.22.1 (2026-07-21)
 
 - docs(readme): add install command (`a091849d`)
