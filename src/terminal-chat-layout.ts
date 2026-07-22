@@ -289,7 +289,8 @@ export function layoutComposerStatus(input: {
         .slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE)
         .map((line, index) => row(index, line));
     } else if (picker.kind === "skills") {
-      pickerItems = visible.map((item, index) =>
+      // Skills are not windowed (no scrollOffset); render the full list, as legacy did.
+      pickerItems = picker.items.map((item, index) =>
         row(
           index,
           `${truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH)} ${item.detail ?? ""}`,

@@ -196,6 +196,19 @@ describe("chat picker visual regression", () => {
     }
   });
 
+  test("renders every skill and keeps the selection visible past the page size", () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      name: `skill-${String(i + 1).padStart(2, "0")}`,
+      description: "desc",
+      path: `bundled://skill-${i + 1}`,
+      source: "bundled" as const,
+    }));
+    const out = renderInputPanelWithPicker({ kind: "skills", items, selected: 9 }, 80);
+    expect(out).toContain("skill-01");
+    expect(out).toContain("skill-10");
+    expect(out).toContain("› skill-10");
+  });
+
   test("clips overflowing picker rows to exactly the terminal width", () => {
     const widths = pickerRowWidths(
       {
