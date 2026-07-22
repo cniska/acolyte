@@ -1,9 +1,13 @@
 import { access, chmod, copyFile, lstat, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { errorMessage } from "./error-contract";
 
 const FETCH_TIMEOUT_MS = 5_000;
+
+export function isSelfUpdatableBinary(execPath: string = process.execPath): boolean {
+  return basename(execPath) === "acolyte";
+}
 
 export type ProgressCallback = (received: number, total: number) => void;
 export type InstallResult = { success: boolean; error?: string };
@@ -99,6 +103,8 @@ export async function installUpdate(
   onProgress?: ProgressCallback,
 ): Promise<InstallResult> {
   const binaryPath = process.execPath;
+  if (!isSelfUpdatableBinary(binaryPath))
+    return { success: false, error: `refusing to overwrite ${binaryPath}: not the installed acolyte binary` };
   const tmp = tmpdir();
   const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
   const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
