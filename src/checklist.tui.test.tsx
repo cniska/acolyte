@@ -1,17 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { ChatChecklist } from "./chat-checklist";
-import type { ChatRow } from "./chat-contract";
 import type { ChecklistOutput } from "./checklist-contract";
+import { layoutTranscriptChecklist } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
 function renderChecklist(checklists: ChecklistOutput[]): string {
-  const rows: ChatRow[] = checklists.map((content, i) => ({
-    id: `row_${i}`,
-    kind: "task",
-    content,
-  }));
-  return renderPlain(<ChatChecklist rows={rows} />, 96);
+  // Match the viewport: a 2-space gutter on every checklist line, a blank line between rows.
+  const lines = checklists.flatMap((content, i) => {
+    const scene = layoutTranscriptChecklist(content);
+    const indented = scene.lines.map((line) => ({
+      spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
+    }));
+    return i > 0 ? [{ spans: [{ text: "", role: "plain" as const }] }, ...indented] : indented;
+  });
+  return renderPlain(<TerminalSceneRender scene={{ lines }} />, 96);
 }
 
 /** dedent with a 2-char gutter matching the checklist spacer column. */
@@ -91,8 +94,8 @@ describe("checklist TUI rendering", () => {
     );
   });
 
-  test("renders nothing when rows are empty", () => {
-    expect(renderPlain(<ChatChecklist rows={[]} />, 96)).toBe("");
+  test("renders nothing when there are no checklists", () => {
+    expect(renderChecklist([])).toBe("");
   });
 
   test("checklist aligns with transcript row markers", () => {
