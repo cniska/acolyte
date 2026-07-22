@@ -2,18 +2,19 @@ import React from "react";
 import type { TerminalScene } from "../terminal-scene-contract";
 import { terminalTheme } from "../terminal-theme";
 import { Text } from "./components";
-import { fitSceneViewport, type SceneViewportConstraints, sceneCursorPlacement } from "./scene-viewport";
+import { fitSceneViewport, type SceneViewportConstraints } from "./scene-viewport";
 
 export function TerminalSceneViewport({
   scene,
   constraints,
+  liveLineStart,
 }: {
   scene: TerminalScene;
   constraints: SceneViewportConstraints;
+  liveLineStart?: number;
 }): React.ReactNode {
-  const viewport = fitSceneViewport(scene, constraints);
-  sceneCursorPlacement(scene, viewport.liveLineStart);
-  const lines = scene.lines.slice(viewport.liveLineStart);
+  const start = liveLineStart ?? fitSceneViewport(scene, constraints).liveLineStart;
+  const lines = scene.lines.slice(start);
   const lineOccurrences = new Map<string, number>();
   return (
     <Text>
