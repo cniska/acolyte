@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import type { ChatRow } from "./chat-contract";
-import { ChatTranscript } from "./chat-transcript";
+import { layoutTranscriptTool } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput } from "./tool-output-layout";
 import { renderToolOutput } from "./tool-output-render";
@@ -28,8 +28,8 @@ function semanticLines(): string[] {
 test("CLI and chat project the same semantic tool layout", () => {
   const lines = semanticLines();
   expect(renderToolOutput(parts, contentWidth)).toBe(lines.join("\n"));
-  const row: ChatRow = { id: "row_tool", kind: "tool", content: { parts } };
-  expect(renderPlain(<ChatTranscript rows={[row]} pendingFrame={0} />, columns)).toBe(
+  const scene = layoutTranscriptTool({ parts, status: "complete", columns });
+  expect(renderPlain(<TerminalSceneRender scene={scene} />, columns)).toBe(
     `• ${lines[0]}\n${lines
       .slice(1)
       .map((line) => `  ${line}`)
