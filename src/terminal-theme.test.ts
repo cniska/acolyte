@@ -38,6 +38,11 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles.error?.foreground).toBe(palette.error);
   });
 
+  test("pending shimmer endpoints match the legacy dim and gray sweep", () => {
+    expect(terminalTheme.styles["pending-shimmer"]?.foreground).toBe(palette.dim);
+    expect(terminalTheme.styles["pending-shimmer-bright"]?.foreground).toBe(palette.gray);
+  });
+
   test("diff rows keep the legacy background and white text", () => {
     expect(terminalTheme.styles["diff-added"]).toEqual({ foreground: palette.text, background: palette.diffAdd });
     expect(terminalTheme.styles["diff-removed"]).toEqual({ foreground: palette.text, background: palette.diffRemove });

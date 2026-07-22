@@ -37,3 +37,26 @@ test("pending marker and text carry separate roles per kind", () => {
   expect(marker("accepted")?.[0]?.role).toBe("accepted");
   expect(marker("accepted")?.[1]?.role).toBe("muted");
 });
+
+test("running pending text shimmers with a frame-indexed sweep", () => {
+  const bodyRoles = (frame: number) =>
+    new Set(
+      layoutPending({
+        presentation: {
+          state: { kind: "running", toolCalls: 0 },
+          frame,
+          startedAt: 0,
+          queuedMessages: [],
+          runningUsage: null,
+        },
+        now: 0,
+        columns: 80,
+      })
+        .lines[0]?.spans.slice(1)
+        .map((span) => span.role),
+    );
+
+  expect(bodyRoles(0)).toEqual(new Set(["pending-shimmer"]));
+  expect(bodyRoles(8).has("pending-shimmer-bright")).toBe(true);
+  expect(bodyRoles(8)).not.toEqual(bodyRoles(0));
+});

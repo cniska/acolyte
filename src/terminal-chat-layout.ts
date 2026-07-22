@@ -9,7 +9,7 @@ import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
-import type { TerminalLine, TerminalScene } from "./terminal-scene-contract";
+import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
@@ -148,6 +148,26 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
   };
 }
 
+const PENDING_FRAME_COUNT = 16;
+const SHIMMER_SWEEP = 12;
+
+function shimmerRole(distance: number): TerminalStyleRole {
+  if (distance < SHIMMER_SWEEP / 3) return "pending-shimmer-bright";
+  if (distance < (SHIMMER_SWEEP * 2) / 3) return "pending-shimmer-mid";
+  return "pending-shimmer";
+}
+
+function shimmerSpans(text: string, offset: number, sweepPos: number): TerminalSpan[] {
+  const spans: TerminalSpan[] = [];
+  for (const [index, char] of [...text].entries()) {
+    const role = shimmerRole(Math.abs(offset + index - sweepPos));
+    const last = spans.at(-1);
+    if (last && last.role === role) last.text += char;
+    else spans.push({ text: char, role });
+  }
+  return spans;
+}
+
 export function layoutPending(input: {
   presentation: PendingPresentation;
   now: number;
@@ -172,17 +192,25 @@ export function layoutPending(input: {
           ? t("rpc.status.queued", { position: presentation.state.position })
           : t("rpc.status.queued.unknown")
         : t("rpc.status.accepted");
-  const blink = presentation.state.kind !== "running" || Math.abs(presentation.frame) % 16 < 8;
-  // Marker carries the kind color, text the shimmer/dim — separate roles, as legacy rendered them.
-  const markerRole: TerminalStyleRole =
-    presentation.state.kind === "running" ? "pending" : presentation.state.kind === "queued" ? "queued" : "accepted";
-  const textRole: TerminalStyleRole = presentation.state.kind === "running" ? "pending-shimmer" : "muted";
-  const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => ({
-    spans: [
-      { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role: markerRole },
-      { text: line, role: textRole },
-    ],
-  }));
+  const running = presentation.state.kind === "running";
+  const blink = !running || Math.abs(presentation.frame) % PENDING_FRAME_COUNT < PENDING_FRAME_COUNT / 2;
+  // Marker carries the kind color, the text a shimmer sweep (running) or dim (queued/accepted).
+  const markerRole: TerminalStyleRole = running
+    ? "pending"
+    : presentation.state.kind === "queued"
+      ? "queued"
+      : "accepted";
+  const range = text.length + SHIMMER_SWEEP * 2;
+  const sweepPos = ((Math.abs(presentation.frame) % PENDING_FRAME_COUNT) / PENDING_FRAME_COUNT) * range - SHIMMER_SWEEP;
+  let shimmerOffset = 0;
+  const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
+    const marker: TerminalSpan = { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role: markerRole };
+    const body: TerminalSpan[] = running
+      ? shimmerSpans(line, shimmerOffset, sweepPos)
+      : [{ text: line, role: "muted" }];
+    shimmerOffset += line.length;
+    return { spans: [marker, ...body] };
+  });
   for (const message of presentation.queuedMessages) {
     lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push(
