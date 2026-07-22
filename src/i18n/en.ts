@@ -24,7 +24,7 @@ export const EN_MESSAGES = {
   "chat.picker.no_matches": "No matches.",
   "chat.picker.sessions.none": "No saved sessions.",
   "chat.picker.skills.none": "No skills found in ./.agents/skills.",
-  "chat.picker.title.model": "Model",
+  "chat.picker.label.model": "Model",
   "chat.picker.title.resume": "Resume Session",
   "chat.picker.title.skills": "Skills",
   "chat.progress.thinking": "Thinking…",

@@ -208,12 +208,28 @@ export function layoutComposerStatus(input: {
   const border = (): TerminalLine => ({ spans: [{ text: "─".repeat(terminalWidth), role: "composer-border" }] });
   if (presentation.picker) {
     const picker = presentation.picker;
+    const modelPrefix = `${t("chat.picker.label.model")}: `;
     const label =
       picker.kind === "model"
-        ? `Model: ${picker.input.text}`
+        ? `${modelPrefix}${picker.input.text}`
         : picker.kind === "skills"
           ? t("chat.picker.title.skills")
           : t("chat.picker.title.resume");
+    let labelLine: TerminalLine = { spans: [{ text: label, role: "plain" }] };
+    let labelColumn = width(label);
+    if (picker.kind === "model") {
+      const query = picker.input.text;
+      const caret = Math.max(0, Math.min(picker.input.cursor, query.length));
+      labelLine = {
+        spans: [
+          { text: modelPrefix, role: "plain" },
+          { text: query.slice(0, caret), role: "plain" },
+          { text: query[caret] ?? " ", role: presentation.caretVisible ? "cursor" : "plain" },
+          { text: query.slice(caret + 1), role: "plain" },
+        ],
+      };
+      labelColumn = width(modelPrefix) + width(query.slice(0, caret));
+    }
     const items = picker.items.slice(picker.scrollOffset, picker.scrollOffset + 8);
     const pickerItems =
       picker.kind === "model" && picker.loading
@@ -239,14 +255,14 @@ export function layoutComposerStatus(input: {
     return {
       lines: [
         border(),
-        { spans: [{ text: label, role: "plain" }] },
+        labelLine,
         { spans: [{ text: "", role: "plain" }] },
         ...pickerItems,
         { spans: [{ text: "", role: "plain" }] },
         { spans: [{ text: picker.hint, role: "muted" }] },
         border(),
       ],
-      cursor: { row: 1, column: width(label) },
+      cursor: { row: 1, column: labelColumn },
     };
   }
   const promptWrapWidth = terminalWidth - 2;

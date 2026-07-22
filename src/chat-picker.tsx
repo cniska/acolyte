@@ -62,7 +62,7 @@ export function pickerLabel(picker: PickerState): string {
     case "resume":
       return t("chat.picker.title.resume");
     case "model":
-      return `${t("chat.picker.title.model")}: `;
+      return `${t("chat.picker.label.model")}: `;
     default:
       return unreachable(picker);
   }
