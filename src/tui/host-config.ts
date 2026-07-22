@@ -30,9 +30,8 @@ export function setOnClear(fn: (() => void) | null): void {
   onClear = fn;
 }
 
-// Clear the terminal through the render loop so it resets its frozen-scrollback
-// bookkeeping in the same step. A bare scrollback wipe would leave the renderer
-// believing lines are still frozen off-screen. No-op until a render is mounted.
+// Route the clear through the render loop so it resets its frozen-scrollback bookkeeping too;
+// a bare wipe would leave stale off-screen tracking. No-op until a render is mounted.
 export function clearTerminal(): void {
   onClear?.();
 }

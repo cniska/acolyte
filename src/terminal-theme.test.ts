@@ -18,4 +18,9 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles.queued?.foreground).toBe(palette.queued);
     expect(terminalTheme.styles.accepted?.foreground).toBe(palette.accepted);
   });
+
+  test("selection and cancelled markers use the brand and cancelled palette colors", () => {
+    expect(terminalTheme.styles.selected?.foreground).toBe(palette.brand);
+    expect(terminalTheme.styles.cancelled?.foreground).toBe(palette.cancelled);
+  });
 });

@@ -173,8 +173,7 @@ export function layoutPending(input: {
           : t("rpc.status.queued.unknown")
         : t("rpc.status.accepted");
   const blink = presentation.state.kind !== "running" || Math.abs(presentation.frame) % 16 < 8;
-  // Legacy colors the marker by kind (running blue, queued gold, accepted cyan) while the
-  // text shimmers (running) or dims (queued/accepted) — so marker and text carry separate roles.
+  // Marker carries the kind color, text the shimmer/dim — separate roles, as legacy rendered them.
   const markerRole: TerminalStyleRole =
     presentation.state.kind === "running" ? "pending" : presentation.state.kind === "queued" ? "queued" : "accepted";
   const textRole: TerminalStyleRole = presentation.state.kind === "running" ? "pending-shimmer" : "muted";
@@ -245,8 +244,7 @@ export function layoutComposerStatus(input: {
               spans: [
                 {
                   text: `${picker.scrollOffset + index === picker.selected ? "›" : " "} ${identity}${label}${detail}`,
-                  role:
-                    picker.scrollOffset + index === picker.selected ? ("composer-prompt" as const) : ("plain" as const),
+                  role: picker.scrollOffset + index === picker.selected ? ("selected" as const) : ("plain" as const),
                 },
               ],
             };
@@ -320,7 +318,7 @@ export function layoutComposerStatus(input: {
           spans: [
             {
               text: `  ${candidate.label}`,
-              role: index === selected ? ("composer-prompt" as const) : ("plain" as const),
+              role: index === selected ? ("selected" as const) : ("plain" as const),
             },
           ],
         })),
@@ -332,7 +330,7 @@ export function layoutComposerStatus(input: {
         spans: [
           {
             text: `  ${candidate.command}`,
-            role: index === selected ? ("composer-prompt" as const) : ("muted" as const),
+            role: index === selected ? ("selected" as const) : ("muted" as const),
           },
         ],
       })),

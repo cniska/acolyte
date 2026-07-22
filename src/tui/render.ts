@@ -65,6 +65,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   // Lets us emit only the delta on subsequent frames instead of re-emitting.
   let frozenLineCount = 0;
   let frozenScrollbackText = "";
+  // Width the frozen lines were measured at; count-based adoption is unsafe once it changes.
+  let frozenColumns = lastRenderColumns;
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -212,20 +214,20 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      // When an overflowing turn finalizes and moves into static, its top lines already
-      // scrolled off — eraseSequence() reaches only the live tail, so re-emitting them
-      // duplicates. Adopt the frozen prefix by physical-line count and write only the delta
-      // below it. Count, not byte match: a row can change between the freeze frame and the
-      // commit (a tool row running->done) above the fold, which a byte compare would miss,
-      // re-listing the whole slice below its frozen copy. Guarded on the frozen prefix having
-      // left the live region — while those lines are still live the static append is
-      // unrelated content, and skipping by count would drop it.
+      // An overflowing section finalizing into static already scrolled its top lines off,
+      // beyond eraseSequence()'s reach, so re-emitting them duplicates. Drop the frozen prefix
+      // by count (which a byte match would miss when a row changed above the fold on finalize)
+      // only while the width matches the freeze and the prefix has left the live region;
+      // otherwise the count is stale or the append is unrelated, so fall back to a byte match
+      // that dedups an unchanged prefix but never drops content.
       if (frozenLineCount > 0) {
         const frozenLines = frozenScrollbackText.split("\n");
         const frozenLeftLiveRegion = frozenLines.some((line, i) => allLines[i] !== line);
-        const appendedLineCount = appendedStatic.split("\n").length - 1;
-        if (frozenLeftLiveRegion && appendedLineCount >= frozenLineCount) {
+        if (cols === frozenColumns && frozenLeftLiveRegion) {
           appendedStatic = appendedStatic.split("\n").slice(frozenLineCount).join("\n");
+        } else {
+          const frozenPrefix = `${frozenScrollbackText}\n`;
+          if (appendedStatic.startsWith(frozenPrefix)) appendedStatic = appendedStatic.slice(frozenPrefix.length);
         }
       }
       const buf = eraseSequence() + appendedStatic;
@@ -265,6 +267,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       // needs a non-empty tail to anchor the erase distance.
       frozenLineCount = Math.min(fold, allLines.length - 1);
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      frozenColumns = cols;
     }
 
     const erase = eraseSequence();
@@ -295,6 +298,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       const overflowLines = liveLines.slice(0, splitIdx);
       frozenLineCount += splitIdx;
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      frozenColumns = cols;
       syncWrite(`${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
     } else {
       syncWrite(erase + liveLines.join("\n"));
@@ -330,9 +334,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   setOnCommit(throttledCommitRender);
 
-  // A scrollback wipe erases the frozen off-screen lines the renderer was tracking, so
-  // reset that bookkeeping in the same step: the next commit then writes committed slices
-  // in full instead of adopting a prefix that no longer exists on screen.
+  // A scrollback wipe erases the off-screen lines this bookkeeping tracks, so reset it in the
+  // same step or the next commit adopts a frozen prefix that no longer exists on screen.
   setOnClear(() => {
     if (exited) return;
     frozenLineCount = 0;

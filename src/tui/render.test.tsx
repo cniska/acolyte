@@ -1167,6 +1167,56 @@ describe("render", () => {
     }
   });
 
+  test("a promotion after a width change writes committed lines in full, never dropping them", async () => {
+    // The frozen line count is measured in the freeze frame's width. After a resize the
+    // committed slice rewraps to a different line count, so dropping that stale count would
+    // remove more lines than the widened content holds — silent transcript loss. Adoption is
+    // gated on the width matching the freeze; a mismatch falls back to a byte match, which
+    // dedups an unchanged prefix but never drops content.
+    const NARROW = ["N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7"];
+    const WIDE = ["W0", "W1", "W2", "W3", "W4"];
+    let promoted = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => promoted,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postResize: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const p = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>{p && WIDE.map((line) => <tui-text key={line}>{line}</tui-text>)}</tui-static>
+              {!p && NARROW.map((line) => <tui-text key={line}>{line}</tui-text>)}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf); // freeze the top narrow lines at 20 cols
+        Object.defineProperty(process.stdout, "columns", { value: 40, configurable: true });
+        promoted = true;
+        for (const listener of listeners) listener();
+        const mark = buf.length;
+        await drainFrame(() => app.flush(), buf);
+        postResize.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const emitted = postResize.join("");
+    for (const line of WIDE) {
+      expect(emitted).toContain(line);
+    }
+  });
+
   test("flush commits a pending throttled render immediately", async () => {
     const writes = await withMockedStdout(async () => {
       const { render } = await import("./render");
