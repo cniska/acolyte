@@ -6,7 +6,7 @@ import { useSuggestions } from "./chat-effects";
 import { processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { type GitStatus, gitStatus } from "./chat-layout";
+import { type GitStatus, gitStatus, SHORTCUT_ITEMS } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
@@ -19,12 +19,14 @@ import { statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
 import { createTranscriptPublisher } from "./chat-transcript-publisher";
+import type { ChatViewportPresentationInput } from "./chat-viewport-contract";
+import { createViewportPickerInput, createViewportSuggestionsInput } from "./chat-viewport-publisher";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
-import type { InputEditAction } from "./input-controller";
+import { type InputEditAction, reduceInput } from "./input-controller";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -50,6 +52,7 @@ export interface ChatStateResult {
   rows: ChatRow[];
   transcriptPresentation: TranscriptRow[];
   activeTranscript: TranscriptRow[];
+  presentationInput: ChatViewportPresentationInput;
   pendingState: PendingState | null;
   pendingFrame: number;
   pendingStartedAt: number | null;
@@ -69,7 +72,7 @@ export interface ChatStateResult {
   cursor: number;
   handleInputAction: (action: InputEditAction, fromPaste: boolean) => void;
   handleInputSubmit: (next: string) => void;
-  handlePickerQueryChange: (query: string) => void;
+  handlePickerAction: (action: InputEditAction, fromPaste: boolean) => void;
   handlePickerSubmit: () => void;
   onCursorLine: (line: number) => void;
 }
@@ -189,6 +192,33 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     outputTokens: tokenTotals.outputTokens,
     pr,
     skills: currentSession.activeSkills?.map((s) => s.name) ?? [],
+  };
+  const presentationInput: ChatViewportPresentationInput = {
+    header: { title: "Acolyte", version: props.version, sessionId: currentSession.id },
+    activeTranscript,
+    pending: pendingState
+      ? {
+          state: pendingState,
+          frame: pendingFrame,
+          startedAt: pendingStartedAt,
+          queuedMessages,
+          runningUsage,
+        }
+      : null,
+    composer: {
+      input,
+      picker: createViewportPickerInput(picker, currentSession.id),
+      suggestions: createViewportSuggestionsInput({
+        atQuery,
+        atSuggestions,
+        atSuggestionIndex,
+        slashSuggestions,
+        slashSuggestionIndex,
+      }),
+      help: { visible: showHelp, entries: SHORTCUT_ITEMS },
+      ctrlCPending,
+      footer: statusLine,
+    },
   };
 
   useMountEffect(() => {
@@ -330,11 +360,12 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     cursorLineRef,
   });
 
-  const handlePickerQueryChange = useCallback((query: string) => {
+  const handlePickerAction = useCallback((action: InputEditAction, _fromPaste: boolean) => {
     setPicker((current) => {
       if (current?.kind !== "model") return current;
-      const filtered = suggestModels(query, current.items);
-      return { ...current, query, filtered, index: 0, scrollOffset: 0 };
+      const nextInput = reduceInput(current.input, action);
+      const filtered = suggestModels(nextInput.text, current.items);
+      return { ...current, input: nextInput, filtered, index: 0, scrollOffset: 0 };
     });
   }, []);
 
@@ -406,6 +437,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     rows,
     transcriptPresentation,
     activeTranscript,
+    presentationInput,
     pendingState,
     pendingFrame,
     pendingStartedAt,
@@ -425,7 +457,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     statusLine,
     handleInputAction,
     handleInputSubmit,
-    handlePickerQueryChange,
+    handlePickerAction,
     handlePickerSubmit,
     onCursorLine: (line: number) => {
       cursorLineRef.current = line;

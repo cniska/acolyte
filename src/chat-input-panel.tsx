@@ -13,7 +13,7 @@ import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 type ChatInputPanelProps = {
   picker?: PickerState | null;
-  onPickerQueryChange?: (query: string) => void;
+  onPickerAction?: (action: InputEditAction, fromPaste: boolean) => void;
   onPickerSubmit?: () => void;
   activeSessionId?: string | undefined;
   brandColor?: string;
@@ -121,7 +121,7 @@ function renderInputPanelContent(input: {
 export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
   const {
     picker = null,
-    onPickerQueryChange = noop,
+    onPickerAction = noop,
     onPickerSubmit = noop,
     activeSessionId,
     brandColor = "white",
@@ -152,9 +152,10 @@ export function ChatInputPanel(props: ChatInputPanelProps): React.ReactNode {
         </Text>
         {picker.kind === "model" ? (
           <PromptInput
-            value={picker.query}
+            value={picker.input.text}
+            cursor={picker.input.cursor}
             linePrefixFirst={pickerLabel(picker)}
-            onChange={onPickerQueryChange}
+            onAction={onPickerAction}
             onSubmit={onPickerSubmit}
             onCursorLine={noop}
           />

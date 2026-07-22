@@ -3,6 +3,7 @@ import { unreachable } from "./assert";
 import { alignCols } from "./chat-format";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
+import type { InputControllerState } from "./input-controller";
 import type { Session } from "./session-contract";
 import type { SkillMeta } from "./skill-contract";
 import { truncateToWidth } from "./truncate-text";
@@ -20,7 +21,7 @@ export type PickerState =
       kind: "model";
       items: ModelPickerItem[];
       filtered: ModelPickerItem[];
-      query: string;
+      input: InputControllerState;
       index: number;
       scrollOffset: number;
       loading?: boolean;

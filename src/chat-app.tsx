@@ -70,7 +70,7 @@ function ChatApp(props: ChatAppProps) {
       <Text> </Text>
       <ChatInputPanel
         picker={state.picker}
-        onPickerQueryChange={state.handlePickerQueryChange}
+        onPickerAction={state.handlePickerAction}
         onPickerSubmit={state.handlePickerSubmit}
         activeSessionId={state.activeSessionId}
         brandColor={palette.brand}

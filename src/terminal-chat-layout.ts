@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { formatCommandOutput, formatCompactNumber } from "./chat-format";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
 import { formatChecklist } from "./checklist-format";
+import { formatRelativeTime } from "./datetime";
+import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
 import type { TerminalLine, TerminalScene } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
@@ -43,6 +46,34 @@ export function layoutTranscriptMessage(input: {
 }): TerminalScene {
   const marker = input.kind === "user" ? "❯ " : "• ";
   const role = input.kind;
+  if (input.kind === "assistant") {
+    const contentWidth = Math.max(24, input.columns - 2);
+    return {
+      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), contentWidth)
+        .split("\n")
+        .map((line, index) => ({
+          spans: [
+            { text: index === 0 ? marker : "  ", role },
+            ...tokenize(line).map((token) => ({
+              text:
+                token.kind === "code"
+                  ? token.text.slice(1, -1)
+                  : token.kind === "bold"
+                    ? token.text.slice(2, -2)
+                    : token.text,
+              role:
+                token.kind === "code"
+                  ? ("assistant-code" as const)
+                  : token.kind === "bold"
+                    ? ("assistant-bold" as const)
+                    : token.kind === "path"
+                      ? ("assistant-path" as const)
+                      : role,
+            })),
+          ],
+        })),
+    };
+  }
   const lines = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
     spans: [
       { text: index === 0 ? marker : "  ", role },
@@ -98,20 +129,20 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
     lines: [
       {
         spans: [
-          { text: " ▗█████▖   ", role: "header-mascot" },
+          { text: "   ▗█████▖   ", role: "header-mascot" },
           { text: input.title, role: "header-brand" },
           ...(input.titleSuffix ? [{ text: input.titleSuffix, role: "header-brand" as const }] : []),
         ],
       },
       {
         spans: [
-          { text: " ▟█ ", role: "header-mascot" },
+          { text: "  ▟█ ", role: "header-mascot" },
           { text: "● ●", role: "header-eyes" },
           { text: " █▙  ", role: "header-mascot" },
           ...meta(`version ${input.version}`),
         ],
       },
-      { spans: [{ text: " ▜█▄▄▄▄▄█▛  ", role: "header-mascot" }, ...meta(`session ${input.sessionId}`)] },
+      { spans: [{ text: "  ▜█▄▄▄▄▄█▛  ", role: "header-mascot" }, ...meta(`session ${input.sessionId}`)] },
     ],
   };
 }
@@ -153,7 +184,8 @@ export function layoutPending(input: {
       { text: line, role },
     ],
   }));
-  for (const message of presentation.queuedMessages)
+  for (const message of presentation.queuedMessages) {
+    lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push(
       ...wrapTerminalProse(message, Math.max(24, input.columns - 2)).map((line, index) => ({
         spans: [
@@ -162,6 +194,7 @@ export function layoutPending(input: {
         ],
       })),
     );
+  }
   return { lines };
 }
 
@@ -175,21 +208,39 @@ export function layoutComposerStatus(input: {
   if (presentation.picker) {
     const picker = presentation.picker;
     const label =
-      picker.kind === "model" ? `Model: ${picker.query}` : picker.kind === "skills" ? "Skills:" : "Sessions:";
+      picker.kind === "model"
+        ? `Model: ${picker.input.text}`
+        : picker.kind === "skills"
+          ? t("chat.picker.title.skills")
+          : t("chat.picker.title.resume");
     const items = picker.items.slice(picker.scrollOffset, picker.scrollOffset + 8);
+    const pickerItems =
+      picker.kind === "model" && picker.loading
+        ? [{ spans: [{ text: `  ${t("chat.picker.loading")}`, role: "muted" as const }] }]
+        : items.map((item, index) => {
+            const detail = item.detail
+              ? picker.kind === "sessions"
+                ? `  ${formatRelativeTime(item.detail)}`
+                : ` ${item.detail}`
+              : "";
+            const identity = picker.kind === "sessions" ? `${item.active ? "●" : " "} ${item.value}  ` : "";
+            const label = picker.kind === "skills" ? item.label.padEnd(20) : item.label;
+            return {
+              spans: [
+                {
+                  text: `${picker.scrollOffset + index === picker.selected ? "›" : " "} ${identity}${label}${detail}`,
+                  role:
+                    picker.scrollOffset + index === picker.selected ? ("composer-prompt" as const) : ("plain" as const),
+                },
+              ],
+            };
+          });
     return {
       lines: [
         border(),
         { spans: [{ text: label, role: "plain" }] },
         { spans: [{ text: "", role: "plain" }] },
-        ...items.map((item, index) => ({
-          spans: [
-            {
-              text: `${picker.scrollOffset + index === picker.selected ? "›" : " "} ${item.label}`,
-              role: picker.scrollOffset + index === picker.selected ? ("composer-prompt" as const) : ("plain" as const),
-            },
-          ],
-        })),
+        ...pickerItems,
         { spans: [{ text: "", role: "plain" }] },
         { spans: [{ text: picker.hint, role: "muted" }] },
         border(),
@@ -211,12 +262,17 @@ export function layoutComposerStatus(input: {
   lines.push(border());
   if (presentation.showHelp) {
     const columns = terminalWidth >= presentation.helpBreakpoint ? 2 : 1;
-    for (let index = 0; index < presentation.helpEntries.length; index += columns) {
+    const rowsPerColumn =
+      columns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
+    for (let row = 0; row < rowsPerColumn; row++) {
+      const entries = [
+        presentation.helpEntries[row],
+        columns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
+      ];
       lines.push({
-        spans: presentation.helpEntries.slice(index, index + columns).flatMap((entry) => [
-          { text: `  ${entry.key.padEnd(20)}`, role: "muted" as const },
-          { text: entry.description, role: "muted" as const },
-        ]),
+        spans: entries.flatMap((entry) =>
+          entry ? [{ text: `  ${entry.key.padEnd(20)}${entry.description}`.padEnd(44), role: "muted" as const }] : [],
+        ),
       });
     }
   } else if (presentation.suggestions.kind === "at") {
@@ -248,27 +304,38 @@ export function layoutComposerStatus(input: {
     if (presentation.suggestions.selectedHelp)
       lines.push({ spans: [{ text: `\n  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
   }
-  if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.status.length > 0)
-    lines.push({
-      spans: presentation.status.map((segment) => ({
-        text: segment.text,
-        role:
-          segment.role === "plain"
-            ? ("plain" as const)
-            : segment.role === "success"
-              ? ("success" as const)
-              : segment.role === "warning"
-                ? ("warning" as const)
-                : segment.role === "error"
-                  ? ("error" as const)
-                  : ("muted" as const),
-      })),
-    });
+  if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
+    lines.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
   const before = presentation.input.text.slice(0, presentation.input.cursor);
   const cursorLine = wrapTerminalProse(before, terminalWidth - 2).length - 1;
   return {
     lines,
     cursor: { row: cursorLine + 1, column: 2 + width(wrapTerminalProse(before, terminalWidth - 2).at(-1) ?? "") },
+  };
+}
+
+export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
+  const names: string[] = [];
+  for (const name of [status.repo, status.worktree, status.branch]) {
+    if (name && !names.includes(name)) names.push(name);
+  }
+  const suffix = `${status.dirty ? "*" : ""}${status.ahead ? ` ↑${status.ahead}` : ""}${status.behind ? ` ↓${status.behind}` : ""}`;
+  const location = names.map((name) => `${name}${name === status.branch ? suffix : ""}`);
+  const model = `${status.model}${status.effort ? ` ${status.effort}` : ""}`;
+  const usage =
+    status.inputTokens || status.outputTokens
+      ? t("unit.token.arrows", {
+          input: formatCompactNumber(status.inputTokens),
+          output: formatCompactNumber(status.outputTokens),
+        })
+      : null;
+  const pr = status.pr ? `PR #${status.pr.number}` : null;
+  const text = [...location, model, usage, pr].filter((part): part is string => Boolean(part)).join(" · ");
+  const skills = status.skills.length > 0 ? `  ${status.skills.join(" · ")}` : "";
+  return {
+    lines: wrapTerminalProse(`${text}${skills}`, Math.max(22, columns - 2)).map((line) => ({
+      spans: [{ text: `  ${line}`, role: "muted" }],
+    })),
   };
 }
 
@@ -312,7 +379,9 @@ export function layoutTranscriptTool(input: {
   columns: number;
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
-  const markerRole = toolMarkerRole(input.status);
+  const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
+  const marker = headerState === "on" ? "◉ " : headerState === "off" ? "○ " : "• ";
+  const markerRole = headerState === "on" ? "tool" : headerState === "off" ? "muted" : toolMarkerRole(input.status);
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -331,7 +400,7 @@ export function layoutTranscriptTool(input: {
       return {
         fill,
         spans: [
-          { text: index === 0 ? "• " : " ".repeat(fitted.indent + 2), role: markerRole },
+          { text: index === 0 ? marker : " ".repeat(fitted.indent + 2), role: markerRole },
           ...spans,
           ...(padding ? [{ text: padding, role: "plain" as const }] : []),
         ],
@@ -414,14 +483,20 @@ export function layoutChatViewport(input: {
       false,
       layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
     );
-  const composer = layoutComposerStatus({ presentation: input.presentation.composer, constraints: input.constraints });
+  const composer = layoutComposerStatus({
+    presentation: input.presentation.composer,
+    constraints: input.constraints,
+  });
   const composerStart = lines.length;
   lines.push(...composer.lines);
-  const status = input.presentation.composer.status;
-  if (status.length > 0) {
-    const text = status.map((segment) => segment.text).join("");
-    lines.push({ spans: [{ text, role: "muted" }] });
-  }
+  if (
+    input.presentation.footer &&
+    !input.presentation.composer.showHelp &&
+    input.presentation.composer.suggestions.kind === "none" &&
+    !input.presentation.composer.picker &&
+    !input.presentation.composer.ctrlCPending
+  )
+    lines.push(...layoutFooterStatus(input.presentation.footer, input.constraints.columns).lines);
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
   const cursor = composer.cursor ?? { row: 0, column: 0 };
   return { lines, sections, cursor: { ...cursor, row: cursor.row + composerStart } };
