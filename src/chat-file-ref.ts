@@ -101,17 +101,21 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     .slice(0, max);
 }
 
-export function shouldAutocompleteAtSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
+export function shouldAutocompleteAtSubmit(
+  inputValue: string,
+  selectedSuggestion: string | undefined,
+  cursor?: number,
+): boolean {
   if (!selectedSuggestion) return false;
-  const token = findActiveAtToken(inputValue);
+  const token = findActiveAtToken(inputValue, cursor);
   if (!token) return false;
   const currentToken = inputValue.slice(token.start, token.end);
   if (!currentToken.startsWith("@")) return false;
   return currentToken !== `@${selectedSuggestion}`;
 }
 
-export function applyAtSuggestion(inputValue: string, suggestion: string): string {
-  const token = findActiveAtToken(inputValue);
+export function applyAtSuggestion(inputValue: string, suggestion: string, cursor?: number): string {
+  const token = findActiveAtToken(inputValue, cursor);
   if (!token) return inputValue;
   const before = inputValue.slice(0, token.start);
   const after = inputValue.slice(token.end);

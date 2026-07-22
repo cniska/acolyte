@@ -340,6 +340,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setValue,
     applyingHistoryRef,
     isPending,
+    cursor: input.cursor,
     atQuery,
     atSuggestions,
     atSuggestionIndex,
@@ -397,6 +398,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     (next: string) => {
       const resolved = processInputSubmit({
         value: next,
+        cursor: input.cursor,
         atSuggestions,
         atSuggestionIndex,
         slashSuggestions,
@@ -421,6 +423,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       void handleSubmit(queueDecision.value);
     },
     [
+      input.cursor,
       atSuggestions,
       atSuggestionIndex,
       slashSuggestions,
