@@ -145,7 +145,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     atSuggestions,
     atSuggestionIndex,
     setAtSuggestionIndex,
-  } = useSuggestions(value);
+  } = useSuggestions(value, input.cursor);
 
   const [showHelp, setShowHelp] = useState(false);
   const cursorLineRef = useRef(0);

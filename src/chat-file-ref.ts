@@ -23,10 +23,7 @@ export function invalidateRepoPathCandidates(root?: string): void {
   if (!root || repoPathCache.cwd === root) repoPathCache = null;
 }
 
-function findActiveAtToken(inputValue: string): AtToken | null {
-  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
-  if (matches.length === 0) return null;
-  const match = matches[matches.length - 1];
+function toAtToken(match: RegExpMatchArray): AtToken {
   const full = match[0] ?? "";
   const query = match[2] ?? "";
   const fullStart = match.index ?? 0;
@@ -36,8 +33,23 @@ function findActiveAtToken(inputValue: string): AtToken | null {
   return { query, start, end };
 }
 
-export function extractAtReferenceQuery(inputValue: string): string | null {
-  return findActiveAtToken(inputValue)?.query ?? null;
+// With a cursor, the active token is the one the caret sits inside — so a
+// completed `@path ` (caret past the trailing space) no longer matches and the
+// picker closes. Without a cursor, callers acting on an already-chosen token
+// fall back to the last match.
+function findActiveAtToken(inputValue: string, cursor?: number): AtToken | null {
+  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
+  if (matches.length === 0) return null;
+  if (cursor === undefined) return toAtToken(matches[matches.length - 1] as RegExpMatchArray);
+  for (const match of matches) {
+    const token = toAtToken(match);
+    if (cursor >= token.start && cursor <= token.end) return token;
+  }
+  return null;
+}
+
+export function extractAtReferenceQuery(inputValue: string, cursor?: number): string | null {
+  return findActiveAtToken(inputValue, cursor)?.query ?? null;
 }
 
 export function rankAtReferenceSuggestions(paths: string[], query: string, max = MAX_AT_SUGGESTIONS): string[] {
