@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { layoutTranscriptTool } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToString } from "./tui";
-import { ansi } from "./tui/styles";
+import { stripAnsi } from "./tui/serialize";
+import { ansi, colorToFg } from "./tui/styles";
 import { renderPlain } from "./tui/test-utils";
 
 const parts = [
@@ -20,6 +21,25 @@ test("semantic tool scene renders the tool label and a status-colored marker", (
   const scene = layoutTranscriptTool({ parts, status: "success", columns: 32 });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("• Edit");
   expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${ansi.fgRgb(63, 185, 80)}• `);
+});
+
+test("diff-add rows paint the full row width with the legacy diff background", () => {
+  const scene = layoutTranscriptTool({
+    parts: [
+      { kind: "tool-header" as const, labelKey: "tool.label.file_edit", detail: "src/a.ts" },
+      { kind: "diff" as const, marker: "add" as const, lineNumber: 12, text: "const x = 1;" },
+    ],
+    status: "success",
+    columns: 40,
+  });
+  const output = renderToString(<TerminalSceneRender scene={scene} />);
+  const diffLine = stripAnsi(output)
+    .split("\n")
+    .find((line) => line.includes("12"));
+  expect(diffLine).toHaveLength(40);
+  expect(output).toContain(ansi.bgRgb(26, 58, 26));
+  expect(output).toContain(ansi.fgRgb(74, 154, 74));
+  expect(output).toContain(colorToFg("white"));
 });
 
 test("semantic skill-toggle tools retain their distinct markers", () => {

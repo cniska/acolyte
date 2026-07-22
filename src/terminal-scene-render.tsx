@@ -12,19 +12,23 @@ export function TerminalSceneRender({ scene }: { scene: TerminalScene }): React.
         const lineOccurrence = lineOccurrences.get(lineSignature) ?? 0;
         lineOccurrences.set(lineSignature, lineOccurrence + 1);
         const spanOccurrences = new Map<string, number>();
+        const fillBackground = line.fill ? terminalTheme.styles[line.fill]?.background : undefined;
+        const fillStart = fillBackground ? line.spans.findIndex((span) => /\S/.test(span.text)) : -1;
         return (
           <React.Fragment key={`${lineSignature}:${lineOccurrence}`}>
             {lineIndex > 0 ? "\n" : null}
-            {line.spans.map((span) => {
+            {line.spans.map((span, spanIndex) => {
               const spanSignature = `${span.role}:${span.text}`;
               const spanOccurrence = spanOccurrences.get(spanSignature) ?? 0;
               spanOccurrences.set(spanSignature, spanOccurrence + 1);
               const style = terminalTheme.styles[span.role];
+              const background =
+                style.background ?? (fillStart >= 0 && spanIndex >= fillStart ? fillBackground : undefined);
               return (
                 <Text
                   key={`${spanSignature}:${spanOccurrence}`}
                   color={style.foreground}
-                  backgroundColor={style.background}
+                  backgroundColor={background}
                   bold={style.bold}
                   dimColor={style.dim}
                   inverse={style.inverse}

@@ -421,8 +421,17 @@ export function layoutTranscriptTool(input: {
       const fill =
         fitted.fill === "diff-add" ? "diff-added" : fitted.fill === "diff-remove" ? "diff-removed" : undefined;
       const spans = fitted.segments.flatMap((segment) => {
-        const role = toolRole(segment.role);
-        return role ? [{ text: segment.text, role: segment.role === "diff-text" && fill ? fill : role }] : [];
+        const base = toolRole(segment.role);
+        if (!base) return [];
+        const role: TerminalStyleRole =
+          fill && segment.role === "diff-text"
+            ? fill
+            : fill && segment.role === "diff-gutter"
+              ? fill === "diff-added"
+                ? "tool-meta-add"
+                : "tool-meta-remove"
+              : base;
+        return [{ text: segment.text, role }];
       });
       const padding = fill
         ? " ".repeat(Math.max(0, contentWidth - fitted.indent - segmentsWidth(fitted.segments)))
