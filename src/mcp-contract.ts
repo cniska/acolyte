@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { APP_NAME } from "./app-contract";
 import { resolveCliVersion } from "./cli-version";
 import { readJson } from "./json";
 
-export const MCP_CLIENT_INFO = { name: "acolyte", version: resolveCliVersion() };
+export const MCP_CLIENT_INFO = { name: APP_NAME, version: resolveCliVersion() };
 export const MCP_CONNECT_TIMEOUT_MS = 10_000;
 export const STDIO_ENV_ALLOWLIST = [
   "PATH",

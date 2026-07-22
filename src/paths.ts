@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
+import { APP_NAME } from "./app-contract";
 
 export type Env = Record<string, string | undefined>;
 
@@ -17,8 +18,8 @@ function resolvePlatform(): Platform {
 
 function xdgDir(env: Env, key: string, fallback: string): string {
   const value = env[key];
-  if (value && value.trim().length > 0 && isAbsolute(value)) return join(value, "acolyte");
-  return join(fallback, "acolyte");
+  if (value && value.trim().length > 0 && isAbsolute(value)) return join(value, APP_NAME);
+  return join(fallback, APP_NAME);
 }
 
 export function configDir(env: Env = process.env, _platform: Platform = resolvePlatform()): string {

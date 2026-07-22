@@ -1,12 +1,13 @@
 import { access, chmod, copyFile, lstat, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { APP_NAME } from "./app-contract";
 import { errorMessage } from "./error-contract";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
 export function isSelfUpdatableBinary(execPath: string = process.execPath): boolean {
-  return basename(execPath) === "acolyte";
+  return basename(execPath) === APP_NAME;
 }
 
 export type ProgressCallback = (received: number, total: number) => void;
@@ -58,12 +59,12 @@ export async function extractBinary(tarPath: string, outDir: string): Promise<st
     const stderr = await new Response(proc.stderr).text();
     throw new Error(`Extract failed (exit ${exitCode}): ${stderr}`);
   }
-  const binaryPath = join(outDir, "acolyte");
+  const binaryPath = join(outDir, APP_NAME);
   await access(binaryPath);
   const stat = await lstat(binaryPath);
-  if (!stat.isFile()) throw new Error("Extracted acolyte is not a regular file");
+  if (!stat.isFile()) throw new Error(`Extracted ${APP_NAME} is not a regular file`);
   const entries = await readdir(outDir);
-  const unexpected = entries.filter((e) => e !== "acolyte");
+  const unexpected = entries.filter((e) => e !== APP_NAME);
   if (unexpected.length > 0) throw new Error(`Unexpected files in archive: ${unexpected.join(", ")}`);
   return binaryPath;
 }
