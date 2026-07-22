@@ -81,6 +81,31 @@ test("a hidden caret renders the character without the cursor role", () => {
   expect(caretSpans(scene)).toHaveLength(0);
 });
 
+test("model picker query renders a caret via the cursor role", () => {
+  const composer = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "s" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: "", cursor: 0 },
+      picker: {
+        kind: "model",
+        input: { text: "gpt", cursor: 1 },
+        items: [],
+        selected: 0,
+        scrollOffset: 0,
+        loading: false,
+      },
+      suggestions: { kind: "none" },
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  }).composer;
+  const scene = layoutComposerStatus({ presentation: composer, constraints: { columns: 80, rows: 40 } });
+  expect(caretSpans(scene)).toEqual([{ text: "p", role: "cursor" }]);
+});
+
 test("caret coordinate tracks the character-preserving wrap", () => {
   const long = "aaa bbb ccc ddd eee fff ggg hhh";
   const scene = composerScene(long, long.length, 20);
