@@ -16,14 +16,12 @@ const base = {
   showHelp: false,
   helpEntries: [],
   helpBreakpoint: 92,
-  status: [{ kind: "model" as const, text: " model", role: "muted" as const }],
 };
 
-test("composer layout preserves border, continuation prompt, and footer", () => {
+test("composer layout preserves border and continuation prompt", () => {
   const scene = layoutComposerStatus({ presentation: base, constraints: { columns: 12, rows: 20 } });
   expect(scene.lines[0]?.spans[0]?.text).toBe("─".repeat(24));
   expect(scene.lines[2]?.spans[0]?.text).toBe("  ");
-  expect(scene.lines.at(-1)?.spans[0]?.text).toBe(" model");
   expect(scene.cursor?.row).toBeGreaterThan(0);
 });
 
@@ -33,7 +31,7 @@ test("composer layout windows picker items", () => {
       ...base,
       picker: {
         kind: "model",
-        query: "x",
+        input: { text: "x", cursor: 1 },
         items: [
           { label: "one", value: "one" },
           { label: "two", value: "two" },

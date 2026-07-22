@@ -38,3 +38,28 @@ test("semantic tool scene preserves legacy tool text and uses status markers", (
     renderToString(<ChatTranscriptRow row={row} contentWidth={30} toolContentWidth={30} presentation={successful} />),
   ).toContain(`${ansi.fgRgb(63, 185, 80)}• `);
 });
+
+test("semantic skill-toggle tools retain their distinct markers", () => {
+  const toggled = {
+    id: "row_skill",
+    kind: "tool" as const,
+    status: "success" as const,
+    content: {
+      kind: "tool-output" as const,
+      output: {
+        parts: [{ kind: "tool-header" as const, labelKey: "tool.label.skill_activate", state: "on" as const }],
+      },
+    },
+  };
+  expect(
+    renderPlain(
+      <ChatTranscriptRow
+        row={{ id: "row_skill", kind: "tool", content: toggled.content.output }}
+        contentWidth={30}
+        toolContentWidth={30}
+        presentation={toggled}
+      />,
+      32,
+    ),
+  ).toStartWith("◉");
+});

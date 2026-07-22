@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { composerPresentationContractSchema } from "./chat-viewport-contract";
 
-test("composer contract preserves picker, suggestions, help, and structured status semantics", () => {
+test("composer contract preserves picker, suggestions, and help semantics", () => {
   const parsed = composerPresentationContractSchema.safeParse({
     input: { text: "/mo", cursor: 3 },
     placeholder: "Ask",
@@ -14,7 +14,7 @@ test("composer contract preserves picker, suggestions, help, and structured stat
     activeIdentity: "sess_1",
     picker: {
       kind: "model",
-      query: "",
+      input: { text: "", cursor: 0 },
       items: [{ label: "model", value: "provider/model" }],
       selected: 0,
       scrollOffset: 0,
@@ -29,7 +29,6 @@ test("composer contract preserves picker, suggestions, help, and structured stat
     showHelp: true,
     helpEntries: [{ key: "/model", description: "Change model" }],
     helpBreakpoint: 92,
-    status: [{ kind: "model", text: "model", role: "plain" }],
   });
   expect(parsed.success).toBe(true);
 });

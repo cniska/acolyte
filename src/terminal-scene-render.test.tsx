@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { ChatTranscriptRow } from "./chat-transcript";
 import type { TranscriptRow } from "./chat-transcript-contract";
+import { layoutTranscriptMessage } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToString } from "./tui";
 import { stripAnsi } from "./tui/serialize";
@@ -63,22 +64,43 @@ test("renders repeated scene spans without duplicate React keys", () => {
   }
 });
 
-test("semantic assistant rows retain rich inline-code rendering", () => {
-  const content = "Use `code`.";
-  const output = renderToString(
+test("semantic assistant scenes preserve legacy inline rendering", () => {
+  const content = "Use `code`, **bold**, and src/chat.ts:42.";
+  const legacy = renderPlain(
     <ChatTranscriptRow
       row={{ id: "row_assistant", kind: "assistant", content }}
-      contentWidth={40}
-      toolContentWidth={40}
-      presentation={{
-        id: "row_assistant",
-        kind: "assistant",
-        status: "complete",
-        content: { kind: "message", text: content },
-      }}
+      contentWidth={50}
+      toolContentWidth={50}
     />,
+    52,
   );
-  expect(stripAnsi(output)).toContain("• Use code.");
+  const scene = layoutTranscriptMessage({ text: content, kind: "assistant", columns: 52 });
+  const output = renderToString(<TerminalSceneRender scene={scene} />);
+  expect(renderPlain(<TerminalSceneRender scene={scene} />, 52)).toBe(legacy);
   expect(stripAnsi(output)).not.toContain("`code`");
+  expect(stripAnsi(output)).not.toContain("**bold**");
   expect(output).toContain(ansi.dim);
+  expect(output).toContain(ansi.bold);
+});
+
+test("assistant layout represents inline markup as semantic spans", () => {
+  const scene = layoutTranscriptMessage({
+    text: "Use `code`, **bold**, and src/chat.ts:42.",
+    kind: "assistant",
+    columns: 80,
+  });
+  expect(scene.lines[0]?.spans).toEqual([
+    { text: "• ", role: "assistant" },
+    { text: "Use", role: "assistant" },
+    { text: " ", role: "assistant" },
+    { text: "code", role: "assistant-code" },
+    { text: ",", role: "assistant" },
+    { text: " ", role: "assistant" },
+    { text: "bold", role: "assistant-bold" },
+    { text: ",", role: "assistant" },
+    { text: " ", role: "assistant" },
+    { text: "and", role: "assistant" },
+    { text: " ", role: "assistant" },
+    { text: "src/chat.ts:42.", role: "assistant-path" },
+  ]);
 });

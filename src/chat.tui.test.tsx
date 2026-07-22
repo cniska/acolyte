@@ -150,7 +150,7 @@ describe("chat tui visual regression: model picker", () => {
         { label: "gpt-5-mini", value: "gpt-5-mini" },
         { label: "gpt-5.2", value: "gpt-5.2" },
       ],
-      query: "",
+      input: { text: "", cursor: 0 },
       index: 1,
       scrollOffset: 0,
     };
@@ -175,7 +175,7 @@ describe("chat tui visual regression: model picker", () => {
       kind: "model" as const,
       items: [{ label: "openai-compatible/qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b" }],
       filtered: [{ label: "openai-compatible/qwen2.5-coder:3b", value: "openai-compatible/qwen2.5-coder:3b" }],
-      query: "",
+      input: { text: "", cursor: 0 },
       index: 0,
       scrollOffset: 0,
     };
@@ -192,7 +192,7 @@ describe("chat tui visual regression: model picker", () => {
         { label: "gpt-5.2", value: "gpt-5.2" },
       ],
       filtered: [{ label: "gpt-5.2", value: "gpt-5.2" }],
-      query: "5.2",
+      input: { text: "5.2", cursor: 3 },
       index: 0,
       scrollOffset: 0,
     };
@@ -219,7 +219,7 @@ describe("chat tui visual regression: model picker", () => {
         { label: "gpt-5.2", value: "gpt-5.2" },
       ],
       filtered: [],
-      query: "zzz",
+      input: { text: "zzz", cursor: 3 },
       index: 0,
       scrollOffset: 0,
     };
@@ -247,7 +247,7 @@ describe("chat tui visual regression: model picker", () => {
       kind: "model" as const,
       items: models,
       filtered: models,
-      query: "",
+      input: { text: "", cursor: 0 },
       index: 9,
       scrollOffset: 4,
     };
