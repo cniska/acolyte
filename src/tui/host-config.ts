@@ -24,6 +24,19 @@ export function setOnCommit(fn: (() => void) | null): void {
   onCommit = fn;
 }
 
+let onClear: (() => void) | null = null;
+
+export function setOnClear(fn: (() => void) | null): void {
+  onClear = fn;
+}
+
+// Clear the terminal through the render loop so it resets its frozen-scrollback
+// bookkeeping in the same step. A bare scrollback wipe would leave the renderer
+// believing lines are still frozen off-screen. No-op until a render is mounted.
+export function clearTerminal(): void {
+  onClear?.();
+}
+
 export const hostConfig = {
   supportsMutation: true,
   supportsPersistence: false,

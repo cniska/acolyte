@@ -6,7 +6,6 @@ import {
   rankAtReferenceSuggestions,
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
-import { appendPromotedItems } from "./chat-promotion";
 import { toRows } from "./chat-session";
 import { createSession } from "./test-utils";
 
@@ -91,23 +90,6 @@ describe("chat-ui helpers", () => {
     expect(rows).toEqual([
       { id: "row_2", kind: "user", content: "hello" },
       { id: "row_3", kind: "assistant", content: "hi" },
-    ]);
-  });
-
-  test("appendPromotedItems ignores duplicate row ids", () => {
-    const initial = [
-      { id: "header_sess_demo", kind: "header" as const, sessionId: "sess_demo", lines: [] },
-      { id: "row_1", kind: "user" as const, content: "hello" },
-    ];
-    const next = [
-      { id: "row_1", kind: "user" as const, content: "hello" },
-      { id: "row_2", kind: "assistant" as const, content: "hi" },
-    ];
-
-    expect(appendPromotedItems(initial, next)).toEqual([
-      { id: "header_sess_demo", kind: "header", sessionId: "sess_demo", lines: [] },
-      { id: "row_1", kind: "user", content: "hello" },
-      { id: "row_2", kind: "assistant", content: "hi" },
     ]);
   });
 });

@@ -44,7 +44,6 @@ const MIN_DRIP_CHARS = 8;
 
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  promoteRows?: (rows: readonly ChatRow[]) => void;
   setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
 }): MessageStreamState {
   // --- agent streaming state ---
@@ -115,24 +114,6 @@ export function createMessageStreamState(input: {
     pendingText = codePoints.slice(n).join("");
     flush();
     if (pendingText.length > 0) scheduleTick();
-  }
-
-  // Move the longest contiguous prefix of finalized rows into write-once scrollback.
-  // A row is still mutable — and blocks the prefix — while it is the live prose row,
-  // an unresolved tool row, or a checklist row (which is removed, not promoted, at
-  // finalize). Static renders above the whole active region, so promoting anything
-  // but a front-anchored prefix would reorder the transcript.
-  function promoteFinalizedPrefix(): void {
-    if (!input.promoteRows) return;
-    const checklistRowIds = new Set(checklistRowIdByGroupId.values());
-    const blocked = (id: string): boolean => id === activeRowId || pendingToolRowIds.has(id) || checklistRowIds.has(id);
-    input.setRows((current) => {
-      let n = 0;
-      while (n < current.length && !blocked(current[n]?.id ?? "")) n++;
-      if (n === 0) return current;
-      input.promoteRows?.(current.slice(0, n));
-      return current.slice(n);
-    });
   }
 
   function flush(): void {
@@ -206,7 +187,6 @@ export function createMessageStreamState(input: {
 
     onToolCall: () => {
       sealAgentRow();
-      promoteFinalizedPrefix();
     },
 
     onOutput: (entry) => {
@@ -248,7 +228,6 @@ export function createMessageStreamState(input: {
           status: "active",
           content: { kind: "tool-output", output: { parts: update.items } },
         });
-        promoteFinalizedPrefix();
         return;
       }
       // Existing tool call: update in place.
@@ -293,10 +272,7 @@ export function createMessageStreamState(input: {
       input.setTranscriptPresentation?.((current) =>
         current.map((row) => (row.id === rowId ? { ...row, status: entry.isError ? "error" : "success" } : row)),
       );
-      // The marker is now final, so the row is immutable: promote it (and any prefix
-      // it was blocking) into write-once scrollback.
       pendingToolRowIds.delete(rowId);
-      promoteFinalizedPrefix();
     },
 
     onChecklist: (entry) => {
@@ -314,7 +290,6 @@ export function createMessageStreamState(input: {
           status: "active",
           content: { kind: "checklist", output: content },
         });
-        promoteFinalizedPrefix();
         return;
       }
       input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
@@ -334,7 +309,6 @@ export function createMessageStreamState(input: {
         input.setRows((current) => [...current, createRow("system", error, { dim: true, text: palette.error })]);
         lastNoticeKey = key;
       }
-      promoteFinalizedPrefix();
     },
 
     onProgressNotice: (notice) => {
@@ -345,7 +319,6 @@ export function createMessageStreamState(input: {
         input.setRows((current) => [...current, createRow("system", notice.message, { dim: true, text: color })]);
         lastNoticeKey = key;
       }
-      promoteFinalizedPrefix();
     },
 
     streamedText: () => agentContent + pendingText,

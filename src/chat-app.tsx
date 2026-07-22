@@ -1,18 +1,17 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { ChatHeader } from "./chat-header";
-import { isHeaderItem } from "./chat-promotion";
+import { PromotedSliceView } from "./chat-promoted-slice";
 import { type ChatAppProps, useChatState } from "./chat-state";
-import { ChatTranscriptRow } from "./chat-transcript";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { setLogSink } from "./log";
-import { palette } from "./palette";
 import { stateDir } from "./paths";
 import { PromptInputHandler } from "./prompt-input";
 import { layoutChatViewport } from "./terminal-chat-layout";
 import { terminalTheme } from "./terminal-theme";
-import { Box, render, Static, TerminalSceneViewport, Text, useApp } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/constants";
+import { Box, render, Static, TerminalSceneViewport, useApp } from "./tui";
+import { DEFAULT_COLUMNS, DEFAULT_ROWS } from "./tui/constants";
+import { useSyncEffect } from "./tui/effects";
+import { planScenePromotion } from "./tui/scene-viewport";
 
 const noop = (): void => {};
 
@@ -21,47 +20,28 @@ function ChatApp(props: ChatAppProps) {
   const state = useChatState(props, exit);
 
   const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
-  const constraints = { columns, rows: process.stdout.rows ?? 40 };
+  const constraints = { columns, rows: process.stdout.rows ?? DEFAULT_ROWS };
   const scene = layoutChatViewport({
     presentation: createChatViewportPresentation(state.presentationInput),
     constraints,
     theme: terminalTheme,
     now: Date.now(),
   });
-  const liveLineStart = scene.sections?.find((section) => section.id === "header")?.lineEnd ?? 0;
+  const promotedIds = new Set(state.promotedSlices.map((slice) => slice.id));
+  const plan = planScenePromotion(scene, constraints, promotedIds);
+
+  // Freeze the newly-committed slices and evict their rows in the same commit that renders
+  // the live tail from the snapped boundary, so a scrolled-off row never renders twice.
+  useSyncEffect(() => {
+    state.commitPromotion(plan.slices, plan.committedSectionIds);
+  }, [plan.committedSectionIds.join(","), plan.slices.length]);
+
+  const scrollback = [...state.promotedSlices, ...plan.slices];
 
   return (
     <Box flexDirection="column">
-      <Static items={state.promotedRows}>
-        {(item) => {
-          if (isHeaderItem(item)) {
-            return (
-              <Box key={item.id} flexDirection="column">
-                <Text> </Text>
-                <ChatHeader
-                  lines={item.lines}
-                  brandColor={palette.brand}
-                  mascot={palette.mascot}
-                  mascotEyes={palette.mascotEyes}
-                />
-              </Box>
-            );
-          }
-          const contentWidth = Math.max(24, columns - 2);
-          return (
-            <Box key={item.id} flexDirection="column">
-              <Text> </Text>
-              <ChatTranscriptRow
-                row={item}
-                contentWidth={contentWidth}
-                toolContentWidth={contentWidth}
-                presentation={state.transcriptPresentation.find((row) => row.id === item.id)}
-              />
-            </Box>
-          );
-        }}
-      </Static>
-      <TerminalSceneViewport scene={scene} constraints={constraints} liveLineStart={liveLineStart} />
+      <Static items={scrollback}>{(slice) => <PromotedSliceView slice={slice} />}</Static>
+      <TerminalSceneViewport scene={scene} constraints={constraints} liveLineStart={plan.liveLineStart} />
       {state.picker ? (
         state.picker.kind === "model" ? (
           <PromptInputHandler

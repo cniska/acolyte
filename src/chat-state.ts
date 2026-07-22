@@ -12,7 +12,7 @@ import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { currentSegment, type PromotedItem, usePromotion } from "./chat-promotion";
+import { resumeActiveTranscript, useScenePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { statusTokenTotals } from "./chat-status-line";
@@ -32,6 +32,7 @@ import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
+import type { PromotedSceneSlice } from "./tui/scene-viewport";
 
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 
@@ -48,7 +49,8 @@ export interface ChatAppProps {
 }
 
 export interface ChatStateResult {
-  promotedRows: PromotedItem[];
+  promotedSlices: PromotedSceneSlice[];
+  commitPromotion: (slices: readonly PromotedSceneSlice[], committedRowIds: readonly string[]) => void;
   rows: ChatRow[];
   transcriptPresentation: TranscriptRow[];
   activeTranscript: TranscriptRow[];
@@ -88,10 +90,9 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     },
     [props.onSessionChange],
   );
-  const [transcript, setTranscript] = useState<{ rows: ChatRow[]; presentation: TranscriptRow[] }>(() => ({
-    rows: [],
-    presentation: session.transcriptPresentation ?? [],
-  }));
+  const [transcript, setTranscript] = useState<{ rows: ChatRow[]; presentation: TranscriptRow[] }>(() =>
+    resumeActiveTranscript(session),
+  );
   const setRows = useCallback((updater: (current: ChatRow[]) => ChatRow[]) => {
     setTranscript((current) => ({ ...current, rows: updater(current.rows) }));
   }, []);
@@ -132,9 +133,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
   const activeTranscript = projectActiveTranscript(rows, transcriptPresentation);
 
+  // Presentation is reset explicitly by resume/clear (which also open a new scrollback
+  // segment); resetting it here would clobber their freshly-id'd seed on the same
+  // currentSession change and desync it from the active rows.
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
-    setTranscriptPresentation(() => currentSession.transcriptPresentation ?? []);
   }, [currentSession]);
 
   const {
@@ -153,24 +156,39 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [git, setGit] = useState<GitStatus | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
-  const { promotedRows, promote, promoteRows, resumeTranscript, clearTranscript } = usePromotion({
-    version: props.version,
-    session,
-    currentSessionId: currentSession.id,
-    setRows,
-  });
+  const { promotedSlices, appendSlices, openSegment } = useScenePromotion({ version: props.version, session });
 
-  // Keep the persisted display projection in sync with what's on screen so a resumed
-  // session renders byte-exactly what streamed. The log spans every session opened this
-  // process, so project only the current segment (the tail after its header) and write
-  // it only when the segment belongs to the current session — a switch that hasn't
-  // opened its segment yet must never inherit the outgoing session's rows. Disk
+  // Freeze the newly-scrolled-off slices and evict their rows from the active scene in one
+  // commit, so no frame renders a row in both scrollback and the live tail.
+  const commitPromotion = useCallback(
+    (slices: readonly PromotedSceneSlice[], committedRowIds: readonly string[]) => {
+      appendSlices(slices);
+      if (committedRowIds.length === 0) return;
+      const committed = new Set(committedRowIds);
+      setRows((current) => current.filter((row) => !committed.has(row.id)));
+    },
+    [appendSlices, setRows],
+  );
+
+  const clearTranscript = useCallback(
+    (sessionId?: string) => {
+      openSegment(sessionId ?? currentSession.id);
+      setTranscript({ rows: [], presentation: [] });
+    },
+    [openSegment, currentSession.id],
+  );
+
+  const resumeTranscript = useCallback(
+    (target: Session) => {
+      openSegment(target.id);
+      setTranscript(resumeActiveTranscript(target, true));
+    },
+    [openSegment],
+  );
+
+  // The semantic transcript is the single persisted display source; keep it synced to the
+  // current session so a resumed session re-lays-out byte-exactly what streamed. Disk
   // persistence is owned by the handler's turn-boundary persist() and the exit persist.
-  useSyncEffect(() => {
-    const segment = currentSegment(promotedRows);
-    if (segment.sessionId === currentSession.id) currentSession.transcript = segment.rows;
-  }, [promotedRows, currentSession]);
-
   useSyncEffect(() => {
     currentSession.transcriptPresentation = transcriptPresentation;
   }, [currentSession, transcriptPresentation]);
@@ -320,8 +338,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setInterrupt: (handler) => {
       interruptRef.current = handler;
     },
-    promote,
-    promoteRows,
     resumeTranscript,
     clearTranscript,
   });
@@ -436,7 +452,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   );
 
   return {
-    promotedRows,
+    promotedSlices,
+    commitPromotion,
     rows,
     transcriptPresentation,
     activeTranscript,

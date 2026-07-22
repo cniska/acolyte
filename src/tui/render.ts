@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
-import { DEFAULT_COLUMNS } from "./constants";
+import { DEFAULT_COLUMNS, DEFAULT_ROWS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
-import { setOnCommit } from "./host-config";
+import { setOnClear, setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
@@ -170,7 +170,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     if (exited) return;
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const { staticItems, active } = serializeSplit(root, cols);
-    const maxLiveRows = (stdout.rows ?? 24) - 1;
+    const maxLiveRows = (stdout.rows ?? DEFAULT_ROWS) - 1;
     const forced = paintForced;
     paintForced = false;
 
@@ -204,21 +204,28 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       if (lastActiveLineCount > maxLiveRows) lastActiveLineCount = maxLiveRows;
     }
 
+    const allLines = active.split("\n");
+
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
       let appendedStatic = "";
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      // When an overflowing active turn is promoted to static, its top lines are
-      // already frozen in scrollback — they scrolled off and eraseSequence() can
-      // only reach the live tail, so re-emitting them duplicates. Adopt the frozen
-      // prefix: write only the delta below it. A rendering mismatch (prefix no
-      // longer matches) falls back to the full write, no worse than before.
+      // When an overflowing turn finalizes and moves into static, its top lines already
+      // scrolled off — eraseSequence() reaches only the live tail, so re-emitting them
+      // duplicates. Adopt the frozen prefix by physical-line count and write only the delta
+      // below it. Count, not byte match: a row can change between the freeze frame and the
+      // commit (a tool row running->done) above the fold, which a byte compare would miss,
+      // re-listing the whole slice below its frozen copy. Guarded on the frozen prefix having
+      // left the live region — while those lines are still live the static append is
+      // unrelated content, and skipping by count would drop it.
       if (frozenLineCount > 0) {
-        const frozenPrefix = `${frozenScrollbackText}\n`;
-        if (appendedStatic.startsWith(frozenPrefix)) {
-          appendedStatic = appendedStatic.slice(frozenPrefix.length);
+        const frozenLines = frozenScrollbackText.split("\n");
+        const frozenLeftLiveRegion = frozenLines.some((line, i) => allLines[i] !== line);
+        const appendedLineCount = appendedStatic.split("\n").length - 1;
+        if (frozenLeftLiveRegion && appendedLineCount >= frozenLineCount) {
+          appendedStatic = appendedStatic.split("\n").slice(frozenLineCount).join("\n");
         }
       }
       const buf = eraseSequence() + appendedStatic;
@@ -235,8 +242,6 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
     // Only re-render the active region if it changed.
     if (active === lastActive && !forced) return;
-
-    const allLines = active.split("\n");
 
     // Frozen lines scrolled into append-only scrollback; eraseSequence() cannot reach
     // them. When the frozen prefix no longer matches — an edit above the fold, or a
@@ -325,6 +330,20 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   setOnCommit(throttledCommitRender);
 
+  // A scrollback wipe erases the frozen off-screen lines the renderer was tracking, so
+  // reset that bookkeeping in the same step: the next commit then writes committed slices
+  // in full instead of adopting a prefix that no longer exists on screen.
+  setOnClear(() => {
+    if (exited) return;
+    frozenLineCount = 0;
+    frozenScrollbackText = "";
+    lastActive = "";
+    lastActiveLineCount = 0;
+    staleTail = [];
+    pendingStaleTail = [];
+    if (stdout.isTTY) stdout.write(ansi.clearScreen);
+  });
+
   const container = reconciler.createContainer(
     root,
     0,
@@ -354,6 +373,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   function cleanup() {
     setOnCommit(null);
+    setOnClear(null);
     if (resizeTimer) clearTimeout(resizeTimer);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);

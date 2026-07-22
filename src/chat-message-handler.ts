@@ -50,8 +50,6 @@ type CreateMessageHandlerInput = {
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
   nowIso: () => string;
   setInterrupt: (handler: (() => void) | null) => void;
-  promote?: () => void;
-  promoteRows?: (rows: readonly ChatRow[]) => void;
   resumeTranscript: (session: Session) => void;
   clearTranscript: (sessionId?: string) => void;
 };
@@ -102,7 +100,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const runningToolCallIds = new Set<string>();
     const streamState = createMessageStreamState({
       setRows: input.setRows,
-      promoteRows: input.promoteRows,
       setTranscriptPresentation: input.setTranscriptPresentation,
     });
 
@@ -195,7 +192,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           ? [createRow("assistant", assistantMessage.content)]
           : [];
       input.setRows((current) => [...current, ...fallbackRows, ...turn.rows]);
-      input.promote?.();
       invalidateRepoPathCandidates();
       input.currentSession.tokenUsage.push(turn.tokenEntry);
       input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
@@ -245,14 +241,12 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
             outcome: "cancelled",
           }),
         ]);
-        input.promote?.();
       } else {
         streamState.dispose();
         input.setRows((current) => [
           ...current,
           createRow("system", formatSubmitError(error), { text: palette.error }),
         ]);
-        input.promote?.();
       }
     } finally {
       if (cleanup !== "none") {
@@ -355,7 +349,6 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     log.debug("chat.command.result", { stop: commandResult.stop, userText: commandResult.userText });
     if (commandResult.stop) {
       releaseTurn();
-      input.promote?.();
       return;
     }
     userText = commandResult.userText;

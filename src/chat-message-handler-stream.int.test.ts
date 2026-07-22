@@ -319,7 +319,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("never surfaces blocked tool rows when mixed with allowed tool work", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -357,8 +357,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("hello");
 
-    const promoted = calls.promotedSnapshots.flat();
-    const toolRows = promoted.filter((row) => row.kind === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(1);
     expect(
       isToolOutput(toolRows[0]?.content) &&
@@ -367,9 +366,7 @@ describe("chat message handler stream behavior", () => {
         ),
     ).toBe(true);
     expect(
-      promoted.some(
-        (row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header"),
-      ),
+      rows.some((row) => isToolOutput(row.content) && row.content.parts.some((item) => item.kind === "file-header")),
     ).toBe(false);
   });
 
@@ -411,7 +408,7 @@ describe("chat message handler stream behavior", () => {
       ],
     ];
     let replyCount = 0;
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -428,8 +425,7 @@ describe("chat message handler stream behavior", () => {
     await handleMessage("create file");
     await handleMessage("edit file");
 
-    const promoted = calls.promotedSnapshots.flat();
-    const editedRows = promoted.filter(
+    const editedRows = rows.filter(
       (row) =>
         row.kind === "tool" &&
         isToolOutput(row.content) &&
@@ -596,7 +592,7 @@ describe("chat message handler stream behavior", () => {
   });
 
   test("batched tool calls each get their own tool row", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
@@ -655,8 +651,7 @@ describe("chat message handler stream behavior", () => {
 
     await handleMessage("rename across files");
 
-    const promoted = calls.promotedSnapshots.flat();
-    const toolRows = promoted.filter((row) => row.kind === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(2);
   });
 });

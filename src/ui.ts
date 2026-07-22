@@ -1,5 +1,6 @@
 import { stdout } from "node:process";
 import { palette } from "./palette";
+import { ansi } from "./tui/styles";
 
 let uiSink: ((chunk: string) => void) | null = null;
 
@@ -77,5 +78,5 @@ export function printError(content: string): void {
 }
 
 export function clearScreen(): void {
-  write("\x1b[2J\x1b[3J\x1b[H");
+  write(ansi.clearScreen);
 }
