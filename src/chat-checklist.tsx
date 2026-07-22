@@ -44,7 +44,7 @@ export function ChatChecklist({ rows, presentation = [] }: ChatChecklistProps): 
             </Box>
             <Box width={contentWidth} overflow="truncate">
               {presentation.find((item) => item.id === row.id)?.content.kind === "checklist" ? (
-                <TerminalSceneRender scene={layoutTranscriptChecklist(row.content as ChecklistOutput)} />
+                <TerminalSceneRender scene={layoutTranscriptChecklist(row.content as ChecklistOutput, contentWidth)} />
               ) : isChecklistOutput(row.content) ? (
                 <Text>{renderChecklist(row.content)}</Text>
               ) : null}

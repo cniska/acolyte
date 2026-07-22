@@ -23,6 +23,23 @@ export type TerminalConstraints = z.infer<typeof terminalConstraintsSchema>;
 function width(text: string): number {
   return Bun.stringWidth(text);
 }
+
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+export function truncateToWidth(text: string, maxWidth: number): string {
+  if (maxWidth <= 0) return "";
+  if (width(text) <= maxWidth) return text;
+  const budget = maxWidth - 1;
+  let out = "";
+  let used = 0;
+  for (const { segment } of graphemeSegmenter.segment(text)) {
+    const segmentWidth = width(segment);
+    if (used + segmentWidth > budget) break;
+    out += segment;
+    used += segmentWidth;
+  }
+  return `${out}…`;
+}
 export function wrapTerminalProse(text: string, columns: number): string[] {
   return text.split("\n").flatMap((logical) => {
     if (!logical) return [""];
@@ -396,13 +413,13 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   };
 }
 
-export function layoutTranscriptChecklist(output: ChecklistOutput): TerminalScene {
+export function layoutTranscriptChecklist(output: ChecklistOutput, contentWidth: number): TerminalScene {
   const formatted = formatChecklist(output);
   return {
     lines: [
-      { spans: [{ text: formatted.header, role: "tool-label" }] },
+      { spans: [{ text: truncateToWidth(formatted.header, contentWidth), role: "tool-label" }] },
       ...formatted.items.map((item) => ({
-        spans: [{ text: `  ${item.marker} ${item.label}`, role: "muted" as const }],
+        spans: [{ text: truncateToWidth(`  ${item.marker} ${item.label}`, contentWidth), role: "muted" as const }],
       })),
     ],
   };
@@ -546,7 +563,10 @@ export function layoutChatViewport(input: {
     );
   for (const row of input.presentation.transcript) {
     if (row.content.kind !== "checklist") continue;
-    const checklist = layoutTranscriptChecklist((row.content as { output: ChecklistOutput }).output);
+    const checklist = layoutTranscriptChecklist(
+      (row.content as { output: ChecklistOutput }).output,
+      Math.max(24, input.constraints.columns - 2),
+    );
     append(row.id, false, {
       lines: checklist.lines.map((line) => ({
         ...line,

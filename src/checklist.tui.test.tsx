@@ -5,16 +5,17 @@ import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
-function renderChecklist(checklists: ChecklistOutput[]): string {
+function renderChecklist(checklists: ChecklistOutput[], columns = 96): string {
   // Match the viewport: a 2-space gutter on every checklist line, a blank line between rows.
+  const contentWidth = Math.max(24, columns - 2);
   const lines = checklists.flatMap((content, i) => {
-    const scene = layoutTranscriptChecklist(content);
+    const scene = layoutTranscriptChecklist(content, contentWidth);
     const indented = scene.lines.map((line) => ({
       spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
     }));
     return i > 0 ? [{ spans: [{ text: "", role: "plain" as const }] }, ...indented] : indented;
   });
-  return renderPlain(<TerminalSceneRender scene={{ lines }} />, 96);
+  return renderPlain(<TerminalSceneRender scene={{ lines }} />, columns);
 }
 
 /** dedent with a 2-char gutter matching the checklist spacer column. */
@@ -96,6 +97,30 @@ describe("checklist TUI rendering", () => {
 
   test("renders nothing when there are no checklists", () => {
     expect(renderChecklist([])).toBe("");
+  });
+
+  test("truncates an overflowing item to the content width with an ellipsis", () => {
+    const out = renderChecklist(
+      [
+        {
+          groupId: "g1",
+          groupTitle: "Steps",
+          items: [
+            {
+              id: "s1",
+              label: "Wire the overflow prop end-to-end across the serialize pass and every box layout path",
+              status: "in_progress",
+              order: 0,
+            },
+          ],
+        },
+      ],
+      40,
+    );
+    const widths = out.split("\n").map((line) => Bun.stringWidth(line));
+    expect(Math.max(...widths)).toBeLessThanOrEqual(40);
+    expect(out).toContain("…");
+    expect(out).not.toContain("box layout path");
   });
 
   test("checklist aligns with transcript row markers", () => {
