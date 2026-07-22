@@ -13,6 +13,7 @@ import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
+import { truncateToWidth } from "./truncate-text";
 
 export const terminalConstraintsSchema = z.object({
   columns: z.number().int().positive(),
@@ -22,23 +23,6 @@ export type TerminalConstraints = z.infer<typeof terminalConstraintsSchema>;
 
 function width(text: string): number {
   return Bun.stringWidth(text);
-}
-
-const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-
-export function truncateToWidth(text: string, maxWidth: number): string {
-  if (maxWidth <= 0) return "";
-  if (width(text) <= maxWidth) return text;
-  const budget = maxWidth - 1;
-  let out = "";
-  let used = 0;
-  for (const { segment } of graphemeSegmenter.segment(text)) {
-    const segmentWidth = width(segment);
-    if (used + segmentWidth > budget) break;
-    out += segment;
-    used += segmentWidth;
-  }
-  return `${out}…`;
 }
 export function wrapTerminalProse(text: string, columns: number): string[] {
   return text.split("\n").flatMap((logical) => {
