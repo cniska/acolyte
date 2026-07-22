@@ -173,16 +173,15 @@ export function layoutPending(input: {
           : t("rpc.status.queued.unknown")
         : t("rpc.status.accepted");
   const blink = presentation.state.kind !== "running" || Math.abs(presentation.frame) % 16 < 8;
-  const role: TerminalStyleRole =
-    presentation.state.kind === "running"
-      ? "pending-shimmer"
-      : presentation.state.kind === "queued"
-        ? "queued"
-        : "pending";
+  // Legacy colors the marker by kind (running blue, queued gold, accepted cyan) while the
+  // text shimmers (running) or dims (queued/accepted) — so marker and text carry separate roles.
+  const markerRole: TerminalStyleRole =
+    presentation.state.kind === "running" ? "pending" : presentation.state.kind === "queued" ? "queued" : "accepted";
+  const textRole: TerminalStyleRole = presentation.state.kind === "running" ? "pending-shimmer" : "muted";
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => ({
     spans: [
-      { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role },
-      { text: line, role },
+      { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role: markerRole },
+      { text: line, role: textRole },
     ],
   }));
   for (const message of presentation.queuedMessages) {

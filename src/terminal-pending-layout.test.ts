@@ -18,3 +18,22 @@ test("pending layout carries running details, blink frame, and queued rows", () 
   expect(scene.lines[1]?.spans.map((span) => span.text).join("")).toBe("");
   expect(scene.lines[2]?.spans.map((span) => span.text).join("")).toBe("❯ next task");
 });
+
+test("pending marker and text carry separate roles per kind", () => {
+  const marker = (kind: "running" | "queued" | "accepted") =>
+    layoutPending({
+      presentation: { state: { kind, position: 1 }, frame: 0, startedAt: 0, queuedMessages: [], runningUsage: null },
+      now: 0,
+      columns: 80,
+    }).lines[0]?.spans;
+
+  const running = marker("running");
+  expect(running?.[0]?.role).toBe("pending");
+  expect(running?.[1]?.role).toBe("pending-shimmer");
+
+  expect(marker("queued")?.[0]?.role).toBe("queued");
+  expect(marker("queued")?.[1]?.role).toBe("muted");
+
+  expect(marker("accepted")?.[0]?.role).toBe("accepted");
+  expect(marker("accepted")?.[1]?.role).toBe("muted");
+});
