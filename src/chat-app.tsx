@@ -1,28 +1,34 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { ChatChecklist } from "./chat-checklist";
-import type { ChatRow } from "./chat-contract";
-import { isChecklistOutput } from "./chat-contract";
 import { ChatHeader } from "./chat-header";
-import { ChatInputPanel } from "./chat-input-panel";
 import { isHeaderItem } from "./chat-promotion";
 import { type ChatAppProps, useChatState } from "./chat-state";
-import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { ChatTranscriptRow } from "./chat-transcript";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { setLogSink } from "./log";
 import { palette } from "./palette";
 import { stateDir } from "./paths";
-import { Box, render, Static, Text, useApp } from "./tui";
+import { PromptInputHandler } from "./prompt-input";
+import { layoutChatViewport } from "./terminal-chat-layout";
+import { terminalTheme } from "./terminal-theme";
+import { Box, render, Static, TerminalSceneViewport, Text, useApp } from "./tui";
 import { DEFAULT_COLUMNS } from "./tui/constants";
+
+const noop = (): void => {};
 
 function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();
   const state = useChatState(props, exit);
 
-  const transcriptRows: ChatRow[] = [];
-  const checklistRows: ChatRow[] = [];
-  for (const row of state.rows) {
-    (isChecklistOutput(row.content) ? checklistRows : transcriptRows).push(row);
-  }
+  const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
+  const constraints = { columns, rows: process.stdout.rows ?? 40 };
+  const scene = layoutChatViewport({
+    presentation: createChatViewportPresentation(state.presentationInput),
+    constraints,
+    theme: terminalTheme,
+    now: Date.now(),
+  });
+  const liveLineStart = scene.sections?.find((section) => section.id === "header")?.lineEnd ?? 0;
 
   return (
     <Box flexDirection="column">
@@ -41,7 +47,6 @@ function ChatApp(props: ChatAppProps) {
               </Box>
             );
           }
-          const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
           const contentWidth = Math.max(24, columns - 2);
           return (
             <Box key={item.id} flexDirection="column">
@@ -56,38 +61,27 @@ function ChatApp(props: ChatAppProps) {
           );
         }}
       </Static>
-      <ChatTranscript
-        rows={transcriptRows}
-        presentation={state.transcriptPresentation}
-        pendingState={state.pendingState}
-        pendingFrame={state.pendingFrame}
-        pendingStartedAt={state.pendingStartedAt}
-        queuedMessages={state.queuedMessages}
-        runningUsage={state.runningUsage}
-      />
-      <ChatChecklist rows={checklistRows} presentation={state.transcriptPresentation} />
-
-      <Text> </Text>
-      <ChatInputPanel
-        picker={state.picker}
-        onPickerAction={state.handlePickerAction}
-        onPickerSubmit={state.handlePickerSubmit}
-        activeSessionId={state.activeSessionId}
-        brandColor={palette.brand}
-        statusLine={state.statusLine}
-        value={state.value}
-        cursor={state.cursor}
-        onAction={state.handleInputAction}
-        onSubmit={state.handleInputSubmit}
-        atQuery={state.atQuery}
-        atSuggestions={state.atSuggestions}
-        atSuggestionIndex={state.atSuggestionIndex}
-        slashSuggestions={state.slashSuggestions}
-        slashSuggestionIndex={state.slashSuggestionIndex}
-        showHelp={state.showHelp}
-        ctrlCPending={state.ctrlCPending}
-        onCursorLine={state.onCursorLine}
-      />
+      <TerminalSceneViewport scene={scene} constraints={constraints} liveLineStart={liveLineStart} />
+      {state.picker ? (
+        state.picker.kind === "model" ? (
+          <PromptInputHandler
+            value={state.picker.input.text}
+            cursor={state.picker.input.cursor}
+            onAction={state.handlePickerAction}
+            onSubmit={state.handlePickerSubmit}
+            onCursorLine={noop}
+          />
+        ) : null
+      ) : (
+        <PromptInputHandler
+          value={state.value}
+          cursor={state.cursor}
+          onAction={state.handleInputAction}
+          onSubmit={state.handleInputSubmit}
+          onCursorLine={state.onCursorLine}
+          wrapWidth={Math.max(24, columns) - 2}
+        />
+      )}
     </Box>
   );
 }
