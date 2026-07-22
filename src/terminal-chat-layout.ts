@@ -524,17 +524,20 @@ export function layoutChatViewport(input: {
       );
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);
-      append(
-        row.id,
-        true,
-        layoutTranscriptText({
-          text: body ? `${row.content.output.header}\n\n${body}` : row.content.output.header,
-          marker: row.kind === "system" ? "  " : "• ",
-          markerRole: row.kind === "system" ? "muted" : "plain",
-          textRole: row.kind === "system" ? "muted" : "plain",
-          columns: input.constraints.columns,
-        }),
-      );
+      const text = body ? `${row.content.output.header}\n\n${body}` : row.content.output.header;
+      const marker = row.kind === "system" ? "  " : "• ";
+      const role: TerminalStyleRole = row.kind === "system" ? "muted" : "plain";
+      const contentWidth = Math.max(24, input.constraints.columns - 2);
+      // Command output is preformatted (aligned columns); preserve its whitespace and
+      // truncate over-long lines rather than prose-wrapping, which would collapse the alignment.
+      append(row.id, true, {
+        lines: text.split("\n").map((line, index) => ({
+          spans: [
+            { text: index === 0 ? marker : "  ", role },
+            { text: truncateToWidth(line, contentWidth), role },
+          ],
+        })),
+      });
     } else if (row.kind === "user" || row.kind === "assistant") {
       append(
         row.id,

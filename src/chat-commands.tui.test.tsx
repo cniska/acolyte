@@ -1,14 +1,50 @@
 import { describe, expect, test } from "bun:test";
-import { ChatTranscript } from "./chat-transcript";
+import type { ChatRow } from "./chat-contract";
+import { migrateLegacyChatRow } from "./chat-transcript-contract";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
+import { layoutChatViewport } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
+import { terminalTheme } from "./terminal-theme";
 import { createClient, createMessageHandlerHarness, createSession, createSessionState, dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui/test-utils";
 
-function renderTranscript(
-  rows: Parameters<typeof ChatTranscript>[0]["rows"],
-  columns = DEFAULT_TERMINAL_WIDTH,
-): string {
-  return dedent(renderPlain(<ChatTranscript rows={rows} pendingFrame={0} />, columns));
+const footer = {
+  repo: "acolyte",
+  worktree: null,
+  branch: "main",
+  dirty: false,
+  ahead: 0,
+  behind: 0,
+  model: "gpt-5",
+  effort: null,
+  inputTokens: 0,
+  outputTokens: 0,
+  pr: null,
+  skills: [],
+} as const;
+
+// Drive the semantic transcript through the same scene pipeline the live chat uses,
+// then read only the transcript region (between the header and the composer).
+function renderTranscript(rows: ChatRow[], columns = DEFAULT_TERMINAL_WIDTH): string {
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: rows.map(migrateLegacyChatRow),
+    pending: null,
+    composer: {
+      input: { text: "", cursor: 0 },
+      picker: null,
+      suggestions: { kind: "none" },
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  });
+  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 200 }, theme: terminalTheme, now: 0 });
+  const header = scene.sections?.find((section) => section.id === "header");
+  const composer = scene.sections?.find((section) => section.id === "composer");
+  const lines = scene.lines.slice(header?.lineEnd, composer?.lineStart);
+  return dedent(renderPlain(<TerminalSceneRender scene={{ lines }} />, columns));
 }
 
 describe("chat slash command visual regression", () => {
