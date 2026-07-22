@@ -50,6 +50,20 @@ describe("chat-ui helpers", () => {
     expect(applyAtSuggestion("review @src/cl now", "src/cli.ts")).toBe("review @src/cli.ts now");
   });
 
+  test("extractAtReferenceQuery is cursor-aware so an accepted @path closes the picker", () => {
+    expect(extractAtReferenceQuery("@src/cl", 7)).toBe("src/cl");
+    const accepted = applyAtSuggestion("@src/cl", "src/cli.ts");
+    expect(accepted).toBe("@src/cli.ts ");
+    // Caret past the completed token and its trailing space: no active token, picker closes.
+    expect(extractAtReferenceQuery(accepted, accepted.length)).toBeNull();
+    // Caret back inside the token still resolves it.
+    expect(extractAtReferenceQuery(accepted, 5)).toBe("src/cli.ts");
+    // A caret inside an earlier token selects that one, not the last match.
+    expect(extractAtReferenceQuery("@aaa @bbb", 3)).toBe("aaa");
+    // Cursor-less callers keep last-match behavior.
+    expect(extractAtReferenceQuery(accepted)).toBe("src/cli.ts");
+  });
+
   test("extractAtReferencePaths finds unique @paths in a prompt", () => {
     expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual(["AGENTS.md", "docs/soul.md"]);
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
