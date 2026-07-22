@@ -420,6 +420,7 @@ export function layoutChatViewport(input: {
   const lines: TerminalLine[] = [];
   const sections: NonNullable<TerminalScene["sections"]> = [];
   const append = (id: string, finalized: boolean, scene: TerminalScene): void => {
+    if (lines.length > 0) lines.push({ spans: [{ text: "", role: "plain" }] });
     const lineStart = lines.length;
     lines.push(...scene.lines);
     sections.push({ id, lineStart, lineEnd: lines.length, finalized });
@@ -470,23 +471,27 @@ export function layoutChatViewport(input: {
       );
     }
   }
-  const checklists = input.presentation.transcript.filter((row) => row.content.kind === "checklist");
-  if (checklists.length > 0)
-    append("checklist", false, {
-      lines: checklists.flatMap(
-        (row) => layoutTranscriptChecklist((row.content as { output: ChecklistOutput }).output).lines,
-      ),
-    });
   if (input.presentation.pending)
     append(
       "pending",
       false,
       layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
     );
+  for (const row of input.presentation.transcript) {
+    if (row.content.kind !== "checklist") continue;
+    const checklist = layoutTranscriptChecklist((row.content as { output: ChecklistOutput }).output);
+    append(row.id, false, {
+      lines: checklist.lines.map((line) => ({
+        ...line,
+        spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
+      })),
+    });
+  }
   const composer = layoutComposerStatus({
     presentation: input.presentation.composer,
     constraints: input.constraints,
   });
+  if (lines.length > 0) lines.push({ spans: [{ text: "", role: "plain" }] });
   const composerStart = lines.length;
   lines.push(...composer.lines);
   if (
