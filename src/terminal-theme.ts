@@ -50,7 +50,7 @@ export type TerminalTheme = z.infer<typeof terminalThemeSchema>;
 export const terminalTheme: TerminalTheme = Object.freeze({
   styles: {
     plain: {},
-    muted: { foreground: "#8b949e" },
+    muted: { dim: true },
     user: { foreground: "#ffffff" },
     assistant: { foreground: "#ffffff" },
     "assistant-code": { foreground: "#ffffff", dim: true },
@@ -64,9 +64,9 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "pending-shimmer": { foreground: "#666666", dim: true },
     queued: { foreground: "#F5C451" },
     accepted: { foreground: "#4DD2FF" },
-    success: { foreground: "#3fb950" },
+    success: { foreground: "green" },
     warning: { foreground: "#d29922" },
-    error: { foreground: "#f85149" },
+    error: { foreground: "red" },
     cancelled: { foreground: "#E5A84B" },
     "diff-added": { foreground: "white", background: "#1a3a1a" },
     "diff-removed": { foreground: "white", background: "#3a1a1a" },

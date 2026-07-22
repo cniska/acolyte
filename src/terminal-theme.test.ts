@@ -28,4 +28,18 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles["skill-on"]?.foreground).toBe(palette.brand);
     expect(terminalTheme.styles["skill-off"]?.foreground).toBe(palette.dim);
   });
+
+  test("muted text dims the default foreground, as the legacy dimColor did", () => {
+    expect(terminalTheme.styles.muted).toEqual({ dim: true });
+  });
+
+  test("success and error resolve to the terminal-defined ANSI colors", () => {
+    expect(terminalTheme.styles.success?.foreground).toBe(palette.success);
+    expect(terminalTheme.styles.error?.foreground).toBe(palette.error);
+  });
+
+  test("diff rows keep the legacy background and white text", () => {
+    expect(terminalTheme.styles["diff-added"]).toEqual({ foreground: palette.text, background: palette.diffAdd });
+    expect(terminalTheme.styles["diff-removed"]).toEqual({ foreground: palette.text, background: palette.diffRemove });
+  });
 });

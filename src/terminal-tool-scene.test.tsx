@@ -20,7 +20,7 @@ const parts = [
 test("semantic tool scene renders the tool label and a status-colored marker", () => {
   const scene = layoutTranscriptTool({ parts, status: "success", columns: 32 });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("• Edit");
-  expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${ansi.fgRgb(63, 185, 80)}• `);
+  expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${colorToFg("green")}• `);
 });
 
 test("diff-add rows paint the full row width with the legacy diff background", () => {
