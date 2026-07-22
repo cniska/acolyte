@@ -1,7 +1,6 @@
 import { basename } from "node:path";
 import { slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
-import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */
 export const BREAKPOINT_TWO_COLUMN = 92;
@@ -75,9 +74,4 @@ export async function gitStatus(cwd = process.cwd()): Promise<GitStatus | null> 
   }
 
   return { repo: basename(mainRoot), worktree, branch, dirty, ahead, behind };
-}
-
-export function borderLine(): string {
-  const width = process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH;
-  return "─".repeat(Math.max(24, width));
 }
