@@ -405,11 +405,27 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
       : null;
   const pr = status.pr ? `PR #${status.pr.number}` : null;
   const text = [...location, model, usage, pr].filter((part): part is string => Boolean(part)).join(" · ");
-  const skills = status.skills.length > 0 ? `  ${status.skills.join(" · ")}` : "";
+  if (status.skills.length === 0) {
+    return {
+      lines: wrapTerminalProse(text, Math.max(22, columns - 2)).map((line) => ({
+        spans: [{ text: `  ${line}`, role: "muted" as const }],
+      })),
+    };
+  }
+  const skillSegment = status.skills.join(" · ");
+  const left = `  ${text}`;
+  const leftWidth = width(left);
+  // Legacy footer: skills sit right-justified on the status row with a 2-col inset,
+  // and stack onto their own 2-col-indented row once that inset no longer fits.
+  if (leftWidth + 2 + width(skillSegment) <= columns) {
+    const gap = columns - leftWidth - width(skillSegment);
+    return { lines: [{ spans: [{ text: `${left}${" ".repeat(gap)}${skillSegment}`, role: "muted" }] }] };
+  }
   return {
-    lines: wrapTerminalProse(`${text}${skills}`, Math.max(22, columns - 2)).map((line) => ({
-      spans: [{ text: `  ${line}`, role: "muted" }],
-    })),
+    lines: [
+      { spans: [{ text: left, role: "muted" }] },
+      { spans: [{ text: truncateToWidth(`  ${skillSegment}`, columns), role: "muted" }] },
+    ],
   };
 }
 
