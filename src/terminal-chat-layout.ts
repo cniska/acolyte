@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
-import { formatCommandOutput, formatCompactNumber } from "./chat-format";
+import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
+import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import type { ChecklistOutput } from "./checklist-contract";
@@ -257,27 +258,48 @@ export function layoutComposerStatus(input: {
       };
       labelColumn = width(modelPrefix) + width(query.slice(0, caret));
     }
-    const items = picker.items.slice(picker.scrollOffset, picker.scrollOffset + 8);
-    const pickerItems =
-      picker.kind === "model" && picker.loading
-        ? [{ spans: [{ text: `  ${t("chat.picker.loading")}`, role: "muted" as const }] }]
-        : items.map((item, index) => {
-            const detail = item.detail
-              ? picker.kind === "sessions"
-                ? `  ${formatRelativeTime(item.detail)}`
-                : ` ${item.detail}`
-              : "";
-            const identity = picker.kind === "sessions" ? `${item.active ? "●" : " "} ${item.value}  ` : "";
-            const label = picker.kind === "skills" ? item.label.padEnd(20) : item.label;
-            return {
-              spans: [
-                {
-                  text: `${picker.scrollOffset + index === picker.selected ? "›" : " "} ${identity}${label}${detail}`,
-                  role: picker.scrollOffset + index === picker.selected ? ("selected" as const) : ("plain" as const),
-                },
-              ],
-            };
-          });
+    const visible = picker.items.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
+    const selectedRel = picker.selected - picker.scrollOffset;
+    const rowPrefix = (index: number): string => (index === selectedRel ? "› " : "  ");
+    const rowRole = (index: number): TerminalStyleRole => (index === selectedRel ? "selected" : "plain");
+    const row = (index: number, body: string): TerminalLine => ({
+      spans: [{ text: truncateToWidth(`${rowPrefix(index)}${body}`, terminalWidth), role: rowRole(index) }],
+    });
+    let pickerItems: TerminalLine[];
+    if (picker.kind === "model" && picker.loading) {
+      pickerItems = [{ spans: [{ text: `  ${t("chat.picker.loading")}`, role: "muted" }] }];
+    } else if (visible.length === 0) {
+      pickerItems = [{ spans: [{ text: ` ${t("chat.picker.no_matches")}`, role: "muted" }] }];
+    } else if (picker.kind === "sessions") {
+      // alignCols across the full list (not just the visible slice), matching legacy, so a
+      // long id or title in an off-screen row still lines up the visible rows' columns.
+      const idCells = picker.items.map((item) => `${item.active ? "●" : " "} ${item.value}`);
+      const timeCells = picker.items.map((item) => (item.detail ? formatRelativeTime(item.detail) : ""));
+      const idWidth = Math.max(0, ...idCells.map((cell) => cell.length));
+      const timeWidth = Math.max(0, ...timeCells.map((cell) => cell.length));
+      const titleBudget = Math.max(1, terminalWidth - 2 - idWidth - 2 - timeWidth - 2);
+      const aligned = alignCols(
+        picker.items.map((item, index) => [
+          idCells[index] ?? "",
+          truncateToWidth(item.label || t("chat.session.default_title"), titleBudget),
+          timeCells[index] ?? "",
+        ]),
+      );
+      pickerItems = aligned
+        .slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE)
+        .map((line, index) => row(index, line));
+    } else if (picker.kind === "skills") {
+      pickerItems = visible.map((item, index) =>
+        row(
+          index,
+          `${truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH)} ${item.detail ?? ""}`,
+        ),
+      );
+    } else {
+      // Model rows have no column after the label, so padding would only add
+      // trailing space the renderer trims; emit the label as-is.
+      pickerItems = visible.map((item, index) => row(index, item.label));
+    }
     return {
       lines: [
         border(),
