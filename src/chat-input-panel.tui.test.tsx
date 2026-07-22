@@ -1,43 +1,69 @@
 import { describe, expect, test } from "bun:test";
-import { ChatInputPanel } from "./chat-input-panel";
-import { palette } from "./palette";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
+import { layoutChatViewport } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
+import { terminalTheme } from "./terminal-theme";
 import { renderToString } from "./tui/render-to-string";
 import { stripAnsiLength } from "./tui/serialize";
 import { withTerminalWidth } from "./tui/test-utils";
 
-function rowWidths(props: Record<string, unknown>, columns: number): number[] {
-  const raw = withTerminalWidth(columns, () =>
-    renderToString(<ChatInputPanel brandColor={palette.brand} onCursorLine={() => {}} {...props} />),
-  );
+const footer = {
+  repo: "acolyte",
+  worktree: null,
+  branch: "main",
+  dirty: false,
+  ahead: 0,
+  behind: 0,
+  model: "gpt-5",
+  effort: null,
+  inputTokens: 0,
+  outputTokens: 0,
+  pr: null,
+  skills: [],
+} as const;
+
+function composerRowWidths(
+  suggestions: Parameters<typeof createChatViewportPresentation>[0]["composer"]["suggestions"],
+  columns: number,
+): number[] {
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: "@", cursor: 1 },
+      picker: null,
+      suggestions,
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  });
+  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const raw = withTerminalWidth(columns, () => renderToString(<TerminalSceneRender scene={scene} />));
   return raw.split("\n").map((line) => stripAnsiLength(line));
 }
 
-describe("chat input panel suggestion clipping", () => {
+describe("composer suggestion clipping", () => {
   test("clips overflowing @-mention suggestions to the terminal width", () => {
-    const widths = rowWidths(
+    const widths = composerRowWidths(
       {
-        atQuery: "s",
-        atSuggestions: ["src/some/really/long/nested/path/to/a/file/that/overflows.tsx", "short.ts"],
-        atSuggestionIndex: 0,
+        kind: "at",
+        query: "s",
+        candidates: ["src/some/really/long/nested/path/to/a/file/that/overflows.tsx", "short.ts"],
+        selected: 0,
       },
       40,
     );
-    for (const width of widths) {
-      expect(width).toBeLessThanOrEqual(40);
-    }
+    for (const width of widths) expect(width).toBeLessThanOrEqual(40);
     expect(Math.max(...widths)).toBe(40);
   });
 
   test("clips overflowing slash-command suggestions to the terminal width", () => {
-    const widths = rowWidths(
-      {
-        slashSuggestions: ["/some-really-long-slash-command-name-that-overflows", "/help"],
-        slashSuggestionIndex: 0,
-      },
+    const widths = composerRowWidths(
+      { kind: "slash", candidates: ["/some-really-long-slash-command-name-that-overflows", "/help"], selected: 0 },
       40,
     );
-    for (const width of widths) {
-      expect(width).toBeLessThanOrEqual(40);
-    }
+    for (const width of widths) expect(width).toBeLessThanOrEqual(40);
   });
 });

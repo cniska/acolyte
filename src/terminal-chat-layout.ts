@@ -362,7 +362,7 @@ export function layoutComposerStatus(input: {
         ...presentation.suggestions.candidates.map((candidate, index) => ({
           spans: [
             {
-              text: `  ${candidate.label}`,
+              text: truncateToWidth(`  ${candidate.label}`, terminalWidth),
               role: index === selected ? ("selected" as const) : ("plain" as const),
             },
           ],
@@ -374,7 +374,7 @@ export function layoutComposerStatus(input: {
       ...presentation.suggestions.candidates.map((candidate, index) => ({
         spans: [
           {
-            text: `  ${candidate.command}`,
+            text: truncateToWidth(`  ${candidate.command}`, terminalWidth),
             role: index === selected ? ("selected" as const) : ("muted" as const),
           },
         ],
