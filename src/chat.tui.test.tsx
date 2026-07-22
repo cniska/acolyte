@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { ComponentProps } from "react";
-import { ChatHeader } from "./chat-header";
-import { ChatInputPanel } from "./chat-input-panel";
-import { palette } from "./palette";
+import { SHORTCUT_ITEMS } from "./chat-layout";
+import type { ViewportPickerInput, ViewportSuggestionsInput } from "./chat-viewport-contract";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
+import { layoutChatViewport, layoutHeader } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
+import { terminalTheme } from "./terminal-theme";
 import { dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui/test-utils";
@@ -22,36 +24,73 @@ const DEFAULT_STATUS_LINE = {
   skills: [],
 } as const;
 
-const noopCursorLine = () => {};
+type LegacyModelPicker = {
+  kind: "model";
+  items: Array<{ label: string; value: string }>;
+  filtered: Array<{ label: string; value: string }>;
+  input: { text: string; cursor: number };
+  index: number;
+  scrollOffset: number;
+  loading?: boolean;
+};
 
-function renderInputPanel(
-  overrides: Partial<ComponentProps<typeof ChatInputPanel>> = {},
-  columns = DEFAULT_TERMINAL_WIDTH,
-): string {
-  return renderPlain(
-    <ChatInputPanel
-      brandColor={palette.brand}
-      statusLine={DEFAULT_STATUS_LINE}
-      onCursorLine={noopCursorLine}
-      {...overrides}
-    />,
-    columns,
-  );
+type InputPanelOverrides = {
+  statusLine?: typeof DEFAULT_STATUS_LINE;
+  showHelp?: boolean;
+  value?: string;
+  slashSuggestions?: string[];
+  slashSuggestionIndex?: number;
+  picker?: LegacyModelPicker;
+};
+
+function composerScene(overrides: InputPanelOverrides, columns: number) {
+  const value = overrides.value ?? "";
+
+  const suggestions: ViewportSuggestionsInput = overrides.slashSuggestions
+    ? {
+        kind: "slash",
+        candidates: overrides.slashSuggestions,
+        selected: overrides.slashSuggestionIndex ?? 0,
+      }
+    : { kind: "none" };
+
+  const picker: ViewportPickerInput | null = overrides.picker
+    ? {
+        kind: "model",
+        input: overrides.picker.input,
+        items: overrides.picker.filtered,
+        selected: overrides.picker.index,
+        scrollOffset: overrides.picker.scrollOffset,
+        loading: overrides.picker.loading ?? false,
+      }
+    : null;
+
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: value, cursor: value.length },
+      picker,
+      suggestions,
+      help: overrides.showHelp ? { visible: true, entries: SHORTCUT_ITEMS } : { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer: overrides.statusLine ?? DEFAULT_STATUS_LINE,
+    },
+  });
+  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const composer = scene.sections?.find((section) => section.id === "composer");
+  return { lines: scene.lines.slice(composer?.lineStart, composer?.lineEnd) };
+}
+
+function renderInputPanel(overrides: InputPanelOverrides = {}, columns = DEFAULT_TERMINAL_WIDTH): string {
+  return renderPlain(<TerminalSceneRender scene={composerScene(overrides, columns)} />, columns);
 }
 
 describe("chat tui visual regression: header", () => {
   test("renders stable header block", () => {
     const out = renderPlain(
-      <ChatHeader
-        lines={[
-          { id: "title", text: "Acolyte" },
-          { id: "session", text: "version 0.1.0" },
-          { id: "context", text: "session sess_demo1234" },
-        ]}
-        brandColor={palette.brand}
-        mascot={palette.mascot}
-        mascotEyes={palette.mascotEyes}
-      />,
+      <TerminalSceneRender scene={layoutHeader({ title: "Acolyte", version: "0.1.0", sessionId: "sess_demo1234" })} />,
     );
     expect(out).toBe(
       dedent(
