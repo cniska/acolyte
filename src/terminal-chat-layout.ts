@@ -8,6 +8,7 @@ import { formatChecklist } from "./checklist-format";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
+import { buildPromptDisplayLines } from "./prompt-display";
 import type { TerminalLine, TerminalScene } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
@@ -248,18 +249,38 @@ export function layoutComposerStatus(input: {
       cursor: { row: 1, column: width(label) },
     };
   }
-  const text = presentation.input.text || presentation.placeholder;
-  const promptLines = wrapTerminalProse(text, terminalWidth - 2);
-  const lines: TerminalLine[] = [border()];
-  lines.push(
-    ...promptLines.map((line, index) => ({
+  const promptWrapWidth = terminalWidth - 2;
+  const caretRole: TerminalStyleRole = presentation.caretVisible ? "cursor" : "plain";
+  const promptLines: TerminalLine[] = [];
+  let caretRow = 1;
+  let caretColumn = 2;
+  if (presentation.input.text.length === 0) {
+    const placeholder = presentation.placeholder;
+    promptLines.push({
       spans: [
-        { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" as const },
-        { text: line, role: presentation.input.text ? ("plain" as const) : ("muted" as const) },
+        { text: "❯ ", role: "composer-prompt" },
+        { text: placeholder.slice(0, 1) || " ", role: caretRole },
+        { text: placeholder.slice(1), role: "muted" },
       ],
-    })),
-  );
-  lines.push(border());
+    });
+  } else {
+    const displayLines = buildPromptDisplayLines(presentation.input.text, presentation.input.cursor, promptWrapWidth);
+    for (const [index, line] of displayLines.entries()) {
+      if (line.cursor !== null) {
+        caretRow = index + 1;
+        caretColumn = 2 + width(line.before);
+      }
+      promptLines.push({
+        spans: [
+          { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" },
+          { text: line.before, role: "plain" },
+          ...(line.cursor !== null ? [{ text: line.cursor, role: caretRole }] : []),
+          { text: line.after, role: "plain" },
+        ],
+      });
+    }
+  }
+  const lines: TerminalLine[] = [border(), ...promptLines, border()];
   if (presentation.showHelp) {
     const columns = terminalWidth >= presentation.helpBreakpoint ? 2 : 1;
     const rowsPerColumn =
@@ -306,12 +327,7 @@ export function layoutComposerStatus(input: {
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
     lines.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
-  const before = presentation.input.text.slice(0, presentation.input.cursor);
-  const cursorLine = wrapTerminalProse(before, terminalWidth - 2).length - 1;
-  return {
-    lines,
-    cursor: { row: cursorLine + 1, column: 2 + width(wrapTerminalProse(before, terminalWidth - 2).at(-1) ?? "") },
-  };
+  return { lines, cursor: { row: caretRow, column: caretColumn } };
 }
 
 export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
