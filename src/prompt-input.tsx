@@ -30,20 +30,16 @@ interface PromptInputProps {
   wrapWidth?: number;
 }
 
-export function PromptInput({
+export function usePromptInput({
   value,
   cursor,
-  placeholder = "",
   focus = true,
-  caretVisible = true,
-  linePrefixFirst = "",
-  linePrefixRest = "",
   onChange,
   onAction,
   onSubmit,
   onCursorLine,
   wrapWidth,
-}: PromptInputProps): React.JSX.Element {
+}: PromptInputProps): { effectiveCursor: number } {
   const controlled = onAction !== undefined && cursor !== undefined;
   const [cursorOffset, setCursorOffset] = useState(value.length);
   const metaPrefixAt = useRef<number | null>(null);
@@ -238,6 +234,27 @@ export function PromptInput({
 
   useInput(controlled ? handleControlledInput : handleInput, { isActive: focus });
 
+  const effectiveCursor = controlled ? controlledStateRef.current.cursor : cursorOffset;
+  return { effectiveCursor };
+}
+
+export function PromptInputHandler(props: PromptInputProps): null {
+  usePromptInput(props);
+  return null;
+}
+
+export function PromptInput(props: PromptInputProps): React.JSX.Element {
+  const {
+    value,
+    placeholder = "",
+    focus = true,
+    caretVisible = true,
+    linePrefixFirst = "",
+    linePrefixRest = "",
+    wrapWidth,
+  } = props;
+  const { effectiveCursor } = usePromptInput(props);
+
   if (value.length === 0 && placeholder.length > 0) {
     return (
       <Text>
@@ -280,7 +297,6 @@ export function PromptInput({
       </Box>
     );
   }
-  const effectiveCursor = controlled ? controlledStateRef.current.cursor : cursorOffset;
   const lines = buildPromptDisplayLines(value, effectiveCursor, wrapWidth);
   let lineOffset = 0;
   const focusLines = lines.map((line) => {
