@@ -22,7 +22,10 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 |---|---|
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
 | Chat Promotion | State transition that moves completed chat rows from the active (re-rendered) region to static (write-once scrollback) |
+| Chat Viewport | The whole live chat surface — header, transcript, pending, composer, and footer — modeled as one ordered semantic unit and laid out by terminal layout |
 | ChatRow | One display block in the chat transcript; may render as many visual lines (e.g. a usage summary or status panel) |
+| ChatViewportPresentation | Semantic, renderer-independent description of the chat viewport derived from the presentation input; consumed by terminal layout to produce a Terminal Scene |
+| ChatViewportPresentationInput | Lossless per-render snapshot of live chat state that chat-state publishes as the input payload for viewport presentation; carries raw state only, no derived wording or layout |
 | Cloud Sync | Feature that syncs memory and sessions to a hosted cloud API for portable agent identity across machines |
 | CloudClient | HTTP client that implements `MemoryStore` and `SessionStore` against the cloud API |
 | Composer | The chat input surface — prompt text, cursor, picker, suggestions, help, and status — modeled semantically and laid out by terminal layout |
