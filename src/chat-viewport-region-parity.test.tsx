@@ -1,15 +1,11 @@
 import { expect, test } from "bun:test";
-import { ChatChecklist } from "./chat-checklist";
-import type { ChatRow } from "./chat-contract";
-import { ChatInputPanel } from "./chat-input-panel";
-import { ChatTranscript } from "./chat-transcript";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import type { ChecklistOutput } from "./checklist-contract";
 import { layoutChatViewport } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
-import { Box, Text } from "./tui";
+import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
 const footer = {
@@ -38,34 +34,6 @@ const checklist: ChecklistOutput = {
   ],
 };
 
-// Mirror of chat-app.tsx's live region: everything rendered below the <Static>
-// promoted scrollback. The scene tail (the lines after the promoted `header`
-// section) must render byte-for-byte the same as this composition.
-function LegacyLiveRegion(props: {
-  rows: ChatRow[];
-  presentation: TranscriptRow[];
-  checklistRows: ChatRow[];
-  pendingState?: Parameters<typeof ChatTranscript>[0]["pendingState"];
-  queued?: string[];
-}) {
-  return (
-    <Box flexDirection="column">
-      <ChatTranscript
-        rows={props.rows}
-        presentation={props.presentation}
-        pendingState={props.pendingState ?? null}
-        pendingFrame={0}
-        pendingStartedAt={0}
-        queuedMessages={props.queued ?? []}
-        runningUsage={null}
-      />
-      <ChatChecklist rows={props.checklistRows} presentation={props.presentation} />
-      <Text> </Text>
-      <ChatInputPanel statusLine={footer} value="" onCursorLine={() => {}} />
-    </Box>
-  );
-}
-
 function sceneTail(input: {
   activeTranscript: TranscriptRow[];
   pending?: ReturnType<typeof createChatViewportPresentation>["pending"];
@@ -93,47 +61,45 @@ function sceneTail(input: {
   return renderPlain(<TerminalSceneRender scene={{ lines: scene.lines.slice(header?.lineEnd) }} />, columns);
 }
 
-test("empty session live region matches the legacy composer", () => {
-  const legacy = renderPlain(<LegacyLiveRegion rows={[]} presentation={[]} checklistRows={[]} />, columns);
-  expect(sceneTail({ activeTranscript: [] })).toBe(legacy);
+test("empty session live region renders the composer chrome", () => {
+  expect(sceneTail({ activeTranscript: [] })).toBe(
+    dedent(`
+      ────────────────────────────────────────────────────────────
+      ❯ Ask anything…
+      ────────────────────────────────────────────────────────────
+        acolyte · main · gpt-5
+    `),
+  );
 });
 
-test("transcript rows live region matches legacy spacing", () => {
-  const rows: ChatRow[] = [
-    { id: "r1", kind: "user", content: "hello there" },
-    { id: "r2", kind: "assistant", content: "hi back" },
-  ];
+test("transcript rows live region renders messages above the composer", () => {
   const presentation: TranscriptRow[] = [
     { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "hello there" } },
     { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "hi back" } },
   ];
-  const legacy = renderPlain(<LegacyLiveRegion rows={rows} presentation={presentation} checklistRows={[]} />, columns);
-  expect(sceneTail({ activeTranscript: presentation })).toBe(legacy);
+  expect(sceneTail({ activeTranscript: presentation })).toBe(
+    dedent(`
+      ❯ hello there
+
+      • hi back
+
+      ────────────────────────────────────────────────────────────
+      ❯ Ask anything…
+      ────────────────────────────────────────────────────────────
+        acolyte · main · gpt-5
+    `),
+  );
 });
 
-test("rows, pending, and checklist live region matches legacy order and indent", () => {
+test("rows, pending, and checklist live region renders in order with indent", () => {
   const originalNow = Date.now;
   Date.now = () => 5000;
   try {
-    const rows: ChatRow[] = [
-      { id: "r1", kind: "user", content: "do the thing" },
-      { id: "r2", kind: "assistant", content: "on it" },
-    ];
-    const checklistRow: ChatRow = { id: "cl", kind: "tool", content: checklist as unknown as ChatRow["content"] };
     const presentation: TranscriptRow[] = [
       { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "do the thing" } },
       { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "on it" } },
       { id: "cl", kind: "tool", status: "active", content: { kind: "checklist", output: checklist } },
     ];
-    const legacy = renderPlain(
-      <LegacyLiveRegion
-        rows={rows}
-        presentation={presentation}
-        checklistRows={[checklistRow]}
-        pendingState={{ kind: "running", toolCalls: 1 }}
-      />,
-      columns,
-    );
     const scene = sceneTail({
       activeTranscript: presentation,
       pending: {
@@ -144,30 +110,36 @@ test("rows, pending, and checklist live region matches legacy order and indent",
         runningUsage: null,
       },
     });
-    expect(scene).toBe(legacy);
+    expect(scene).toBe(
+      dedent(`
+        ❯ do the thing
+
+        • on it
+
+        • Working… (5s · 1 tool)
+
+          Plan (1/2)
+            ● step one
+            ⊙ step two
+
+        ────────────────────────────────────────────────────────────
+        ❯ Ask anything…
+        ────────────────────────────────────────────────────────────
+          acolyte · main · gpt-5
+      `),
+    );
   } finally {
     Date.now = originalNow;
   }
 });
 
-test("queued messages live region matches legacy", () => {
+test("queued messages live region renders below the pending indicator", () => {
   const originalNow = Date.now;
   Date.now = () => 5000;
   try {
-    const rows: ChatRow[] = [{ id: "r1", kind: "user", content: "first" }];
     const presentation: TranscriptRow[] = [
       { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "first" } },
     ];
-    const legacy = renderPlain(
-      <LegacyLiveRegion
-        rows={rows}
-        presentation={presentation}
-        checklistRows={[]}
-        pendingState={{ kind: "running", toolCalls: 0 }}
-        queued={["next up"]}
-      />,
-      columns,
-    );
     const scene = sceneTail({
       activeTranscript: presentation,
       pending: {
@@ -178,7 +150,20 @@ test("queued messages live region matches legacy", () => {
         runningUsage: null,
       },
     });
-    expect(scene).toBe(legacy);
+    expect(scene).toBe(
+      dedent(`
+        ❯ first
+
+        • Working… (5s)
+
+        ❯ next up
+
+        ────────────────────────────────────────────────────────────
+        ❯ Ask anything…
+        ────────────────────────────────────────────────────────────
+          acolyte · main · gpt-5
+      `),
+    );
   } finally {
     Date.now = originalNow;
   }
