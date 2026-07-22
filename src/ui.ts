@@ -20,8 +20,10 @@ function hexToAnsi(hex: string): string {
   return `\x1b[38;2;${(n >> 16) & 255};${(n >> 8) & 255};${n & 255}m`;
 }
 
+export const dimText = (value: string): string => `\x1b[2m${value}\x1b[22m`;
+
 const color = {
-  dim: (value: string): string => `\x1b[2m${value}\x1b[22m`,
+  dim: dimText,
   brand: (value: string): string => `${hexToAnsi(palette.brand)}${value}\x1b[39m`,
   white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
   green: (value: string): string => `\x1b[32m${value}\x1b[39m`,

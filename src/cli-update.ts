@@ -2,12 +2,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
-import { palette } from "./palette";
 import { stateDir } from "./paths";
 import { stopAllLocalServers } from "./server-daemon";
-import { ansi, colorToFg } from "./tui/styles";
-import { printOutput } from "./ui";
-import { installUpdate } from "./update-ops";
+import { ansi } from "./tui/styles";
+import { dimText, printDim, printError, printWarning } from "./ui";
+import { installUpdate, isSelfUpdatableBinary } from "./update-ops";
 
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -114,42 +113,40 @@ async function checkForUpdate(
   };
 }
 
-const BRAND = colorToFg(palette.brand);
-const GREEN = colorToFg(palette.green);
-const RED = colorToFg(palette.red);
 const BAR_FILL = "\u2588";
 const BAR_EMPTY = "\u2591";
 
 function progressBar(fraction: number, width: number): string {
   const filled = Math.round(fraction * width);
-  const empty = width - filled;
-  return `${BRAND}${BAR_FILL.repeat(filled)}${ansi.dim}${BAR_EMPTY.repeat(empty)}${ansi.reset}`;
+  return `${BAR_FILL.repeat(filled)}${BAR_EMPTY.repeat(width - filled)}`;
+}
+
+function progressLine(fraction: number): string {
+  const percent = Math.round(fraction * 100);
+  return dimText(`Downloading  ${progressBar(fraction, 20)}  ${String(percent).padStart(3)}%`);
 }
 
 function renderHeader(current: string, latest: string): void {
   stdout.write(ansi.cursorHide);
-  stdout.write(
-    `\n  ${BRAND}Acolyte${ansi.reset} ${ansi.dim}v${current}${ansi.reset} \u2192 ${ansi.dim}v${latest}${ansi.reset}\n\n`,
-  );
-  stdout.write(`  Downloading  ${progressBar(0, 20)}   0%\n`);
+  printDim(`Acolyte v${current} \u2192 v${latest}`);
+  stdout.write(`${progressLine(0)}\n`);
 }
 
 function renderProgress(received: number, total: number): void {
   const fraction = total > 0 ? Math.min(received / total, 1) : 0;
-  const percent = Math.round(fraction * 100);
   stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
-  stdout.write(`  Downloading  ${progressBar(fraction, 20)}  ${String(percent).padStart(3)}%\n`);
+  stdout.write(`${progressLine(fraction)}\n`);
 }
 
 function renderDone(latest: string): void {
   stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
-  stdout.write(`  ${GREEN}Updated to v${latest}${ansi.reset}\n\n`);
-  stdout.write(ansi.cursorShow);
+  printDim(`Updated to v${latest}`);
+  stdout.write(`\n${ansi.cursorShow}`);
 }
 
 function renderError(message: string): void {
   stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
-  stdout.write(`  ${RED}Update failed: ${message}${ansi.reset}\n\n`);
+  printError(`Update failed: ${message}`);
   stdout.write(ansi.cursorShow);
 }
 
@@ -179,17 +176,23 @@ async function performUpdate(currentVersion: string, update: UpdateInfo): Promis
   reexec();
 }
 
-export async function updateMode(): Promise<void> {
+export async function updateMode(execPath: string = process.execPath): Promise<void> {
+  if (!isSelfUpdatableBinary(execPath)) {
+    printDim(
+      "Self-update applies only to the installed acolyte binary. Running from source; update via your package manager or a fresh install.",
+    );
+    return;
+  }
   const currentVersion = resolveCliVersion();
   const update = await checkForUpdate(currentVersion, { force: true });
 
   if (!update) {
-    printOutput("Could not check for updates. Check your network connection.");
+    printWarning("Could not check for updates. Check your network connection.");
     return;
   }
 
   if (!update.available) {
-    printOutput(`Already up to date (${currentVersion}).`);
+    printDim(`Already up to date (${currentVersion}).`);
     return;
   }
 
@@ -200,10 +203,9 @@ export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Pro
   if (options?.skip) return false;
   if (process.env.ACOLYTE_SKIP_UPDATE === "1") return false;
   if (process.argv.includes("--no-update")) return false;
+  if (!isSelfUpdatableBinary()) return false;
 
   const currentVersion = resolveCliVersion();
-  if (currentVersion === "dev") return false;
-
   const update = await checkForUpdate(currentVersion);
   if (!update?.available) return false;
 
