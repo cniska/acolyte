@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildPromptDisplayLines, cursorLineIndex, moveLineDown, moveLineUp } from "./prompt-input";
+import { buildPromptDisplayLines, cursorLineIndex, moveLineDown, moveLineUp } from "./prompt-display";
 
 describe("prompt input word navigation", () => {
   test("buildPromptDisplayLines resolves cursor on multiline input", () => {
