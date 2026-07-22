@@ -64,6 +64,15 @@ describe("chat-ui helpers", () => {
     expect(extractAtReferenceQuery(accepted)).toBe("src/cli.ts");
   });
 
+  test("accepting a suggestion applies to the token under the cursor, not the last match", () => {
+    // Caret inside the first token: complete it, leave the second mention untouched.
+    expect(applyAtSuggestion("@aaa @bbb", "aaa.ts", 2)).toBe("@aaa.ts @bbb");
+    expect(shouldAutocompleteAtSubmit("@aaa @bbb", "aaa.ts", 2)).toBe(true);
+    expect(shouldAutocompleteAtSubmit("@aaa.ts @bbb", "aaa.ts", 4)).toBe(false);
+    // Cursor-less callers keep last-match behavior.
+    expect(applyAtSuggestion("@aaa @bbb", "bbb.ts")).toBe("@aaa @bbb.ts ");
+  });
+
   test("extractAtReferencePaths finds unique @paths in a prompt", () => {
     expect(extractAtReferencePaths("review @AGENTS.md and @docs/soul.md")).toEqual(["AGENTS.md", "docs/soul.md"]);
     expect(extractAtReferencePaths("repeat @AGENTS.md and @AGENTS.md")).toEqual(["AGENTS.md"]);
