@@ -410,7 +410,8 @@ export function layoutTranscriptTool(input: {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
   const marker = headerState === "on" ? "◉ " : headerState === "off" ? "○ " : "• ";
-  const markerRole = headerState === "on" ? "tool" : headerState === "off" ? "muted" : toolMarkerRole(input.status);
+  const markerRole =
+    headerState === "on" ? "skill-on" : headerState === "off" ? "skill-off" : toolMarkerRole(input.status);
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(

@@ -23,4 +23,9 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles.selected?.foreground).toBe(palette.brand);
     expect(terminalTheme.styles.cancelled?.foreground).toBe(palette.cancelled);
   });
+
+  test("skill-toggle markers use the brand (on) and dim (off) palette colors", () => {
+    expect(terminalTheme.styles["skill-on"]?.foreground).toBe(palette.brand);
+    expect(terminalTheme.styles["skill-off"]?.foreground).toBe(palette.dim);
+  });
 });
