@@ -85,6 +85,86 @@ export function wrapCodeText(text: string, budget: number): string[] {
   return rows;
 }
 
+const TAB_WIDTH = 4;
+// Deepest indent that still leaves room for content; a deeper indent is clamped so text always survives.
+const MIN_USER_CONTENT = 16;
+
+function expandTabs(line: string): string {
+  let out = "";
+  let col = 0;
+  for (const ch of line) {
+    if (ch === "\t") {
+      const advance = TAB_WIDTH - (col % TAB_WIDTH);
+      out += " ".repeat(advance);
+      col += advance;
+    } else {
+      out += ch;
+      col += Bun.stringWidth(ch);
+    }
+  }
+  return out;
+}
+
+function wrapUserLine(line: string, limit: number): string[] {
+  const rawIndent = line.match(/^ */)?.[0].length ?? 0;
+  const body = line.slice(rawIndent);
+  if (body.length === 0) return [""];
+  const prefix = " ".repeat(Math.min(rawIndent, Math.max(0, limit - MIN_USER_CONTENT)));
+  const prefixWidth = prefix.length;
+  const rows: string[] = [];
+  let row = prefix;
+  let used = prefixWidth;
+  // Trailing whitespace is invisible and is stripped by formatters (so it would desync snapshots);
+  // a run between words on the same row is still preserved. A row that trims to empty came from
+  // boundary whitespace, not content — dropping it avoids a spurious blank band row (a truly blank
+  // logical line is handled above and never reaches here).
+  const pushRow = () => {
+    const trimmed = row.replace(/\s+$/, "");
+    if (trimmed.length > 0) rows.push(trimmed);
+    row = prefix;
+    used = prefixWidth;
+  };
+  for (const token of body.match(/\s+|\S+/g) ?? []) {
+    const cells = Bun.stringWidth(token);
+    if (used + cells <= limit) {
+      row += token;
+      used += cells;
+      continue;
+    }
+    if (/^\s/.test(token)) {
+      if (used > prefixWidth) pushRow();
+      continue;
+    }
+    if (used > prefixWidth) pushRow();
+    if (prefixWidth + cells <= limit) {
+      row += token;
+      used += cells;
+      continue;
+    }
+    for (const { segment } of codeGraphemes.segment(token)) {
+      const cell = Bun.stringWidth(segment);
+      if (used > prefixWidth && used + cell > limit) pushRow();
+      row += segment;
+      used += cell;
+    }
+  }
+  pushRow();
+  return rows;
+}
+
+// Whitespace-faithful wrap for a user message: unlike wrapTerminalProse it never trims indent or
+// collapses internal runs, so a pasted indented block reads as typed. Per logical line, tabs expand
+// to 4-column stops (a raw tab would break the band's width math), leading indent is preserved and
+// repeated as the continuation prefix, and the body word-wraps with a wrapCodeText-style grapheme
+// hard-break for a single token wider than the budget. Pure geometry — takes a display-width budget.
+export function wrapUserText(text: string, budget: number): string[] {
+  const limit = Math.max(1, budget);
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .flatMap((logical) => wrapUserLine(expandTabs(logical), limit));
+}
+
 export function sanitizeAssistantContent(content: string): string {
   const cleaned = content
     .split("\n")
