@@ -118,10 +118,10 @@ describe("cli-prompt", () => {
     expect(ok).toBe(false);
   });
 
-  test("checklist events print header and items", async () => {
+  test("tasklist events print header and items", async () => {
     const events: StreamEvent[] = [
       {
-        type: "checklist",
+        type: "tasklist",
         groupId: "grp_1",
         groupTitle: "Build pipeline",
         items: [

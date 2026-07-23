@@ -25,7 +25,7 @@ function createToolkitInput(
     workspace,
     session: createSessionContext(),
     onOutput: (event) => outputs?.push(event),
-    onChecklist: () => {},
+    onTasklist: () => {},
     onSkillActivated: (skill) => activations?.push(skill),
     onSkillDeactivated: (name) => deactivations?.push(name),
   };

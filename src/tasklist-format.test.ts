@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { formatChecklist } from "./checklist-format";
+import { formatTasklist } from "./tasklist-format";
 
-describe("formatChecklist", () => {
+describe("formatTasklist", () => {
   test("returns header with progress and sorted items", () => {
-    const result = formatChecklist({
+    const result = formatTasklist({
       groupId: "g1",
       groupTitle: "Build",
       items: [
@@ -21,7 +21,7 @@ describe("formatChecklist", () => {
   });
 
   test("handles single item", () => {
-    const result = formatChecklist({
+    const result = formatTasklist({
       groupId: "g1",
       groupTitle: "Quick",
       items: [{ id: "s1", label: "do it", status: "pending", order: 0 }],

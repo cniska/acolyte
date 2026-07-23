@@ -9,7 +9,7 @@ describe("toolsets", () => {
     const { tools, session } = toolsForAgent();
     const coreTools = [
       "activateSkill",
-      "createChecklist",
+      "createTasklist",
       "createFile",
       "deactivateSkill",
       "deleteFile",
@@ -34,7 +34,7 @@ describe("toolsets", () => {
       "scanCode",
       "searchFiles",
       "sessionSearch",
-      "updateChecklist",
+      "updateTasklist",
       "webFetch",
       "webSearch",
     ];
@@ -71,7 +71,7 @@ describe("toolIdsByCategory", () => {
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
     expect(ids).toContain("undo-restore");
-    expect(ids).not.toContain("checklist-update");
+    expect(ids).not.toContain("tasklist-update");
     expect(ids).not.toContain("file-read");
     expect(ids).not.toContain("shell-run");
     expect(ids).not.toContain("web-search");
@@ -110,8 +110,8 @@ describe("localization baseline", () => {
     const runTestsInstruction = toolDefinitionsById["test-run"]?.instruction ?? "";
     const webSearchInstruction = toolDefinitionsById["web-search"]?.instruction ?? "";
     const webFetchInstruction = toolDefinitionsById["web-fetch"]?.instruction ?? "";
-    const checklistCreateInstruction = toolDefinitionsById["checklist-create"]?.instruction ?? "";
-    const checklistUpdateInstruction = toolDefinitionsById["checklist-update"]?.instruction ?? "";
+    const tasklistCreateInstruction = toolDefinitionsById["tasklist-create"]?.instruction ?? "";
+    const tasklistUpdateInstruction = toolDefinitionsById["tasklist-update"]?.instruction ?? "";
     const sessionSearchInstruction = toolDefinitionsById["session-search"]?.instruction ?? "";
     const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
@@ -154,8 +154,8 @@ describe("localization baseline", () => {
     ]);
     expectIntent(webSearchInstruction, [["external information"], ["not available in the repository"]]);
     expectIntent(webFetchInstruction, [["read specific urls"]]);
-    expectIntent(checklistCreateInstruction, [["checklist-create"], ["multi-step tasks"], ["checklist-update"]]);
-    expectIntent(checklistUpdateInstruction, [["checklist-update"], ["status"], ["checklist-create"]]);
+    expectIntent(tasklistCreateInstruction, [["tasklist-create"], ["multi-step tasks"], ["tasklist-update"]]);
+    expectIntent(tasklistUpdateInstruction, [["tasklist-update"], ["status"], ["tasklist-create"]]);
     expectIntent(sessionSearchInstruction, [["session-search"], ["keyword"], ["older history"]]);
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);

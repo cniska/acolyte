@@ -53,7 +53,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     expect(out).toBe("❯ hi\n• Hello there.");
   });
 
-  test("tool output, checklist, and notice", async () => {
+  test("tool output, tasklist, and notice", async () => {
     const events: StreamEvent[] = [
       { type: "text-delta", text: "Let me check the config." },
       {
@@ -64,7 +64,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       },
       { type: "tool-result", toolCallId: "c1", toolName: "file-read" },
       {
-        type: "checklist",
+        type: "tasklist",
         groupId: "g1",
         groupTitle: "Steps",
         items: [
@@ -111,7 +111,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     expect(out).toBe("❯ search\n\n• Done.");
   });
 
-  test("checklist reprints on each progress update", async () => {
+  test("tasklist reprints on each progress update", async () => {
     const items = (readDone: boolean) => [
       { id: "s1", label: "read", status: readDone ? ("done" as const) : ("pending" as const), order: 0 },
       { id: "s2", label: "edit", status: "pending" as const, order: 1 },
@@ -120,8 +120,8 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       "run",
       client(
         [
-          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
-          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
+          { type: "tasklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
+          { type: "tasklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
         ],
         { output: "Done." },
       ),

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
-import { checklistItemSchema } from "./checklist-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { promptBreakdownSchema, tokenCountSchema, tokenUsageSchema } from "./session-contract";
 import { activeSkillSchema, activeSkillsSchema } from "./skill-contract";
 import type { StatusFields } from "./status-contract";
 import { streamErrorSchema } from "./stream-error";
 import type { TaskId, TaskRecord } from "./task-contract";
+import { tasklistItemSchema } from "./tasklist-contract";
 import { toolOutputPartSchema } from "./tool-output-contract";
 
 export const pendingStateSchema = z.discriminatedUnion("kind", [
@@ -54,11 +54,11 @@ const streamUsageEventSchema = z.object({
   outputTokens: tokenCountSchema,
 });
 const statusEventSchema = z.object({ type: z.literal("status"), state: pendingStateSchema });
-const checklistEventSchema = z.object({
-  type: z.literal("checklist"),
+const tasklistEventSchema = z.object({
+  type: z.literal("tasklist"),
   groupId: z.string().min(1),
   groupTitle: z.string().min(1),
-  items: z.array(checklistItemSchema),
+  items: z.array(tasklistItemSchema),
 });
 const skillActivatedEventSchema = z.object({
   type: z.literal("skill-activated"),
@@ -91,7 +91,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   toolResultEventSchema,
   streamUsageEventSchema,
   statusEventSchema,
-  checklistEventSchema,
+  tasklistEventSchema,
   skillActivatedEventSchema,
   skillDeactivatedEventSchema,
   errorEventSchema,

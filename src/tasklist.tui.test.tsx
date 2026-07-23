@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type { ChecklistOutput } from "./checklist-contract";
-import { layoutTranscriptChecklist } from "./terminal-chat-layout";
+import type { TasklistOutput } from "./tasklist-contract";
+import { layoutTranscriptTasklist } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
-function renderChecklist(checklists: ChecklistOutput[], columns = 96): string {
-  // Match the viewport: a 2-space gutter on every checklist line, a blank line between rows.
+function renderTasklist(tasklists: TasklistOutput[], columns = 96): string {
+  // Match the viewport: a 2-space gutter on every tasklist line, a blank line between rows.
   const contentWidth = Math.max(24, columns - 2);
-  const lines = checklists.flatMap((content, i) => {
-    const scene = layoutTranscriptChecklist(content, contentWidth);
+  const lines = tasklists.flatMap((content, i) => {
+    const scene = layoutTranscriptTasklist(content, contentWidth);
     const indented = scene.lines.map((line) => ({
       spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
     }));
@@ -18,15 +18,15 @@ function renderChecklist(checklists: ChecklistOutput[], columns = 96): string {
   return renderPlain(<TerminalSceneRender scene={{ lines }} />, columns);
 }
 
-/** dedent with a 2-char gutter matching the checklist spacer column. */
+/** dedent with a 2-char gutter matching the tasklist spacer column. */
 function expected(value: string): string {
   return dedent(value, 2);
 }
 
-describe("checklist TUI rendering", () => {
+describe("tasklist TUI rendering", () => {
   test("renders header with progress and status markers", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Build pipeline",
@@ -49,7 +49,7 @@ describe("checklist TUI rendering", () => {
 
   test("renders all status marker variants", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Steps",
@@ -74,7 +74,7 @@ describe("checklist TUI rendering", () => {
 
   test("sorts items by order regardless of input order", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Steps",
@@ -95,12 +95,12 @@ describe("checklist TUI rendering", () => {
     );
   });
 
-  test("renders nothing when there are no checklists", () => {
-    expect(renderChecklist([])).toBe("");
+  test("renders nothing when there are no tasklists", () => {
+    expect(renderTasklist([])).toBe("");
   });
 
   test("truncates an overflowing item to the content width with an ellipsis", () => {
-    const out = renderChecklist(
+    const out = renderTasklist(
       [
         {
           groupId: "g1",
@@ -123,8 +123,8 @@ describe("checklist TUI rendering", () => {
     expect(out).not.toContain("box layout path");
   });
 
-  test("checklist aligns with transcript row markers", () => {
-    const output = renderChecklist([
+  test("tasklist aligns with transcript row markers", () => {
+    const output = renderTasklist([
       {
         groupId: "g1",
         groupTitle: "Steps",
@@ -135,9 +135,9 @@ describe("checklist TUI rendering", () => {
     expect(output).toMatch(/^ {2}\S/);
   });
 
-  test("renders multiple checklists", () => {
+  test("renders multiple tasklists", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Phase A",
@@ -162,7 +162,7 @@ describe("checklist TUI rendering", () => {
 
   test("all done shows full progress", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Done",

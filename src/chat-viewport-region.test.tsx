@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
-import type { ChecklistOutput } from "./checklist-contract";
+import type { TasklistOutput } from "./tasklist-contract";
 import { layoutChatViewport } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
@@ -25,7 +25,7 @@ const footer = {
 
 const columns = 60;
 
-const checklist: ChecklistOutput = {
+const tasklist: TasklistOutput = {
   groupId: "g1",
   groupTitle: "Plan",
   items: [
@@ -80,14 +80,14 @@ test("transcript rows live region renders messages above the composer", () => {
   );
 });
 
-test("rows, pending, and checklist live region renders in order with indent", () => {
+test("rows, pending, and tasklist live region renders in order with indent", () => {
   const originalNow = Date.now;
   Date.now = () => 5000;
   try {
     const presentation: TranscriptRow[] = [
       { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "do the thing" } },
       { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "on it" } },
-      { id: "cl", kind: "tool", status: "active", content: { kind: "checklist", output: checklist } },
+      { id: "cl", kind: "tool", status: "active", content: { kind: "tasklist", output: tasklist } },
     ];
     const scene = sceneTail({
       activeTranscript: presentation,

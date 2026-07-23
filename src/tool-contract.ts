@@ -1,9 +1,9 @@
 import type { LanguageModelV4FunctionTool } from "@ai-sdk/provider";
 import { z } from "zod";
-import type { ChecklistItem } from "./checklist-contract";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
 import { log } from "./log";
 import type { ActiveSkill } from "./skill-contract";
+import type { TasklistItem } from "./tasklist-contract";
 import type { ToolOutputListener } from "./tool-output-format";
 import type { WorkspaceProfile } from "./workspace-contract";
 
@@ -22,7 +22,7 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
 };
 
-export type ChecklistListener = (event: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
+export type TasklistListener = (event: { groupId: string; groupTitle: string; items: TasklistItem[] }) => void;
 
 export type SkillActivatedListener = (skill: ActiveSkill) => void;
 
@@ -33,7 +33,7 @@ export type ToolkitInput = {
   session: SessionContext;
   sessionId?: string;
   onOutput: ToolOutputListener;
-  onChecklist: ChecklistListener;
+  onTasklist: TasklistListener;
   onSkillActivated: SkillActivatedListener;
   onSkillDeactivated: SkillDeactivatedListener;
 };

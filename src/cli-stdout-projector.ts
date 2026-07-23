@@ -1,8 +1,9 @@
 import { stdout as output } from "node:process";
-import { type ChatRow, isChecklistOutput, isToolOutput } from "./chat-contract";
+import { type ChatRow, isTasklistOutput, isToolOutput } from "./chat-contract";
 import { rowMarker } from "./chat-row-marker";
-import { formatChecklist } from "./checklist-format";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
+import { palette } from "./palette";
+import { formatTasklist } from "./tasklist-format";
 import { renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
 
@@ -25,7 +26,7 @@ export function createStdoutRowProjector(): {
 
   const emittedAssistant = new Map<string, string>();
   const emittedTool = new Map<string, string>();
-  const emittedChecklist = new Map<string, string>();
+  const emittedTasklist = new Map<string, string>();
   const emittedRowIds = new Set<string>();
 
   function writeRaw(text: string): void {
@@ -89,14 +90,14 @@ export function createStdoutRowProjector(): {
     hasPrintedProgress = true;
   }
 
-  function renderChecklist(row: ChatRow): void {
-    if (!isChecklistOutput(row.content)) return;
-    const { header, items } = formatChecklist(row.content);
-    // The stream reuses one row id per checklist group, so reprint on every content
+  function renderTasklist(row: ChatRow): void {
+    if (!isTasklistOutput(row.content)) return;
+    const { header, items } = formatTasklist(row.content);
+    // The stream reuses one row id per tasklist group, so reprint on every content
     // change (progress update) but not when an unrelated event re-runs the projection.
     const rendered = `${header}\n${items.map((item) => `${item.marker} ${item.label}`).join("\n")}`;
-    if (emittedChecklist.get(row.id) === rendered) return;
-    emittedChecklist.set(row.id, rendered);
+    if (emittedTasklist.get(row.id) === rendered) return;
+    emittedTasklist.set(row.id, rendered);
     printDim(`${rowMarker(row).glyph} ${header}`);
     for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
     hasPrintedProgress = true;
@@ -114,7 +115,7 @@ export function createStdoutRowProjector(): {
             renderTool(row);
             break;
           case "task":
-            renderChecklist(row);
+            renderTasklist(row);
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {

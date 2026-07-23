@@ -84,7 +84,7 @@ export const composerPresentationContractSchema = z.object({
 });
 export type ComposerPresentationContract = z.infer<typeof composerPresentationContractSchema>;
 
-export const viewportSectionKindSchema = z.enum(["header", "transcript", "pending", "checklist", "composer"]);
+export const viewportSectionKindSchema = z.enum(["header", "transcript", "pending", "tasklist", "composer"]);
 export const viewportSectionSchema = z.object({
   id: z.string().min(1),
   kind: viewportSectionKindSchema,

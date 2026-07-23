@@ -23,7 +23,7 @@ Files are named `<domain>-<concern>.ts`. The domain prefix groups related module
 | `git-*` | Git operations | `git-toolkit.ts` |
 | `web-*` | Web fetch and search | `web-toolkit.ts` |
 | `memory-*` | Context distillation and persistent memory | `memory-toolkit.ts` |
-| `checklist-*` | Task tracking within a session | `checklist-toolkit.ts` |
+| `tasklist-*` | Task tracking within a session | `tasklist-toolkit.ts` |
 | `undo-*` | Undo checkpoints for file edits | `undo-toolkit.ts` |
 | `chat-*` | TUI chat application | `chat-app.tsx` |
 | `cli-*` | CLI entry, subcommands, daemon management | `cli.ts` |

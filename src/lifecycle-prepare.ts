@@ -21,7 +21,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
   const { tools, session } = toolsForAgent({
     workspace: input.workspace,
     onOutput: input.onOutput,
-    onChecklist: input.onChecklist,
+    onTasklist: input.onTasklist,
     onSkillActivated: input.onSkillActivated,
     onSkillDeactivated: input.onSkillDeactivated,
     taskId: input.taskId,

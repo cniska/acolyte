@@ -4,12 +4,12 @@ import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-form
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
-import type { ChecklistOutput } from "./checklist-contract";
-import { formatChecklist } from "./checklist-format";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
+import type { TasklistOutput } from "./tasklist-contract";
+import { formatTasklist } from "./tasklist-format";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolOutputPart } from "./tool-output-contract";
@@ -436,8 +436,8 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   };
 }
 
-export function layoutTranscriptChecklist(output: ChecklistOutput, contentWidth: number): TerminalScene {
-  const formatted = formatChecklist(output);
+export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number): TerminalScene {
+  const formatted = formatTasklist(output);
   return {
     lines: [
       { spans: [{ text: truncateToWidth(formatted.header, contentWidth), role: "tool-label" }] },
@@ -534,7 +534,7 @@ export function layoutChatViewport(input: {
   };
   append("header", true, layoutHeader(input.presentation.header));
   for (const row of input.presentation.transcript) {
-    if (row.content.kind === "checklist") continue;
+    if (row.content.kind === "tasklist") continue;
     if (row.content.kind === "tool-output") {
       append(
         row.id,
@@ -590,13 +590,13 @@ export function layoutChatViewport(input: {
       layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
     );
   for (const row of input.presentation.transcript) {
-    if (row.content.kind !== "checklist") continue;
-    const checklist = layoutTranscriptChecklist(
-      (row.content as { output: ChecklistOutput }).output,
+    if (row.content.kind !== "tasklist") continue;
+    const tasklist = layoutTranscriptTasklist(
+      (row.content as { output: TasklistOutput }).output,
       Math.max(24, input.constraints.columns - 2),
     );
     append(row.id, false, {
-      lines: checklist.lines.map((line) => ({
+      lines: tasklist.lines.map((line) => ({
         ...line,
         spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
       })),
