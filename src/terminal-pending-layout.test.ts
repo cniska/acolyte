@@ -14,7 +14,7 @@ test("pending layout carries running details, blink frame, and queued rows", () 
     columns: 80,
   });
   expect(scene.lines[0]?.spans.map((span) => span.text).join("")).toContain("Working… (1m 5s · 2 tools · ↑10 ↓2)");
-  expect(scene.lines[0]?.spans[0]?.text).toBe("  ");
+  expect(scene.lines[0]?.spans[0]?.text).toBe("◇ ");
   expect(scene.lines[1]?.spans.map((span) => span.text).join("")).toBe("");
   expect(scene.lines[2]?.spans.map((span) => span.text).join("")).toBe("❯ next task");
 });

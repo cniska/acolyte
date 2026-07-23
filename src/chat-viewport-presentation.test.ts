@@ -40,5 +40,8 @@ test("viewport presentation preserves active transcript and derives scene compos
   expect(presentation.transcript.map((row) => row.id)).toEqual(["row_1"]);
   expect(presentation.footer?.model).toBe("gpt-5");
   expect(presentation.composer.picker).toMatchObject({ kind: "model", input: { text: "gpt", cursor: 1 } });
-  expect(presentation.composer.suggestions).toMatchObject({ kind: "slash", selectedHelp: "show server status" });
+  expect(presentation.composer.suggestions).toMatchObject({
+    kind: "slash",
+    candidates: [{ command: "/status", help: "show server status" }],
+  });
 });

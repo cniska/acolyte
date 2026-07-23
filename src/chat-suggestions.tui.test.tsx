@@ -56,7 +56,9 @@ describe("composer suggestion clipping", () => {
       40,
     );
     for (const width of widths) expect(width).toBeLessThanOrEqual(40);
-    expect(Math.max(...widths)).toBe(40);
+    // The widest row is the composer box, whose right border sits at the last column
+    // before the 1ch right gutter (trailing whitespace the renderer trims).
+    expect(Math.max(...widths)).toBe(39);
   });
 
   test("clips overflowing slash-command suggestions to the terminal width", () => {

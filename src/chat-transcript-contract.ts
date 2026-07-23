@@ -6,7 +6,7 @@ import {
   commandOutputSchema,
   toolOutputSchema,
 } from "./chat-contract";
-import { checklistOutputSchema } from "./checklist-contract";
+import { tasklistOutputSchema } from "./tasklist-contract";
 
 export const transcriptStatusSchema = z.enum([
   "complete",
@@ -23,7 +23,7 @@ export const transcriptContentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("message"), text: z.string() }),
   z.object({ kind: z.literal("tool-output"), output: toolOutputSchema }),
   z.object({ kind: z.literal("command-output"), output: commandOutputSchema }),
-  z.object({ kind: z.literal("checklist"), output: checklistOutputSchema }),
+  z.object({ kind: z.literal("tasklist"), output: tasklistOutputSchema }),
 ]);
 export type TranscriptContent = z.infer<typeof transcriptContentSchema>;
 export const transcriptRowSchema = z.object({
@@ -51,7 +51,7 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
     return { id: row.id, kind: row.kind, status, content: { kind: "tool-output", output: row.content } };
   if ("header" in row.content)
     return { id: row.id, kind: row.kind, status, content: { kind: "command-output", output: row.content } };
-  return { id: row.id, kind: row.kind, status, content: { kind: "checklist", output: row.content } };
+  return { id: row.id, kind: row.kind, status, content: { kind: "tasklist", output: row.content } };
 }
 
 export function projectActiveTranscript(
@@ -73,7 +73,7 @@ export function legacyChatRowFromTranscript(row: TranscriptRow): ChatRow {
       return { id: row.id, kind: row.kind, content: row.content.output };
     case "command-output":
       return { id: row.id, kind: row.kind, content: row.content.output };
-    case "checklist":
+    case "tasklist":
       return { id: row.id, kind: row.kind, content: row.content.output };
   }
 }

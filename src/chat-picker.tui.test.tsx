@@ -3,7 +3,6 @@ import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { layoutChatViewport } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
-import { dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderToString } from "./tui/render-to-string";
 import { stripAnsiLength } from "./tui/serialize";
@@ -25,6 +24,15 @@ const footer = {
   pr: null,
   skills: [],
 } as const;
+
+// The rendered composer box: gutter, rounded frame, 1ch padding, interior padded to the
+// content width so the right border is column-stable.
+const box = (interior: string[], columns = DEFAULT_TERMINAL_WIDTH): string =>
+  [
+    ` ╭${"─".repeat(columns - 4)}╮`,
+    ...interior.map((line) => ` │ ${line.padEnd(columns - 6)} │`),
+    ` ╰${"─".repeat(columns - 4)}╯`,
+  ].join("\n");
 
 function pickerScene(picker: PickerInput, columns: number) {
   const presentation = createChatViewportPresentation({
@@ -77,16 +85,14 @@ describe("chat picker visual regression", () => {
       selected: 0,
     });
     expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Skills
-
-      › build                Implement features incrementally through vertical slices
-        debug                Debug systematically with structured triage
-
-      Enter to select · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
+      box([
+        "Skills",
+        "",
+        "› build                Implement features incrementally through vertical slices",
+        "  debug                Debug systematically with structured triage",
+        "",
+        "Enter to select · Esc to close",
+      ]),
     );
   });
 
@@ -113,16 +119,17 @@ describe("chat picker visual regression", () => {
       40,
     );
     expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────
-      Skills
-
-      › improve-codebase-ar… Find deepening o…
-        build                Implement featur…
-
-      Enter to select · Esc to close
-      ────────────────────────────────────────
-    `),
+      box(
+        [
+          "Skills",
+          "",
+          "› improve-codebase-ar… Find deepe…",
+          "  build                Implement …",
+          "",
+          "Enter to select · Esc to close",
+        ],
+        40,
+      ),
     );
   });
 
@@ -148,16 +155,17 @@ describe("chat picker visual regression", () => {
         40,
       );
       expect(out).toBe(
-        dedent(`
-        ────────────────────────────────────────
-        Resume Session
-
-          ● sess_active  A very long …  just now
-        ›   sess_prev    Short          just now
-
-        Enter to resume · Esc to close
-        ────────────────────────────────────────
-      `),
+        box(
+          [
+            "Resume Session",
+            "",
+            "  ◆ sess_active  A very…  just now",
+            "›   sess_prev    Short    just now",
+            "",
+            "Enter to resume · Esc to close",
+          ],
+          40,
+        ),
       );
     } finally {
       Date.now = realNow;
@@ -180,16 +188,14 @@ describe("chat picker visual regression", () => {
       });
 
       expect(out).toBe(
-        dedent(`
-        ────────────────────────────────────────────────────────────────────────────────────────────────
-        Resume Session
-
-          ● sess_active  Current Session   just now
-        ›   sess_prev    Previous Session  just now
-
-        Enter to resume · Esc to close
-        ────────────────────────────────────────────────────────────────────────────────────────────────
-      `),
+        box([
+          "Resume Session",
+          "",
+          "  ◆ sess_active  Current Session   just now",
+          "›   sess_prev    Previous Session  just now",
+          "",
+          "Enter to resume · Esc to close",
+        ]),
       );
     } finally {
       Date.now = realNow;
@@ -228,7 +234,8 @@ describe("chat picker visual regression", () => {
     for (const width of widths) {
       expect(width).toBeLessThanOrEqual(40);
     }
-    // The overflowing skill row is clipped up to the full terminal width, not left short.
-    expect(Math.max(...widths)).toBe(40);
+    // The widest row is the composer box, whose right border sits at the last column
+    // before the 1ch right gutter (trailing whitespace the renderer trims).
+    expect(Math.max(...widths)).toBe(39);
   });
 });

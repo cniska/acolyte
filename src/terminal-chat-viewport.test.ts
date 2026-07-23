@@ -36,8 +36,9 @@ function layoutTranscript(transcript: TranscriptRow[]): TerminalScene {
 
 function markerAndTextRoles(scene: TerminalScene, rowId: string): { marker?: string; text?: string } {
   const section = scene.sections?.find((s) => s.id === rowId);
-  const spans = section ? scene.lines[section.lineStart]?.spans : undefined;
-  return { marker: spans?.[0]?.role, text: spans?.[1]?.role };
+  const spans = (section ? scene.lines[section.lineStart]?.spans : undefined) ?? [];
+  const markerIndex = spans.findIndex((span) => /\S/.test(span.text));
+  return { marker: spans[markerIndex]?.role, text: spans[markerIndex + 1]?.role };
 }
 
 test("status and task rows render a muted body with an outcome-colored marker", () => {

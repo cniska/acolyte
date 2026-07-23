@@ -106,7 +106,7 @@ describe("chat-commands", () => {
     expect(stop).toBe(true);
     const row = rows.find((r) => isCommandOutput(r.content) && r.content.header === "Sessions 2");
     expect(row).toBeDefined();
-    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(
+    expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("◆ sess_aaaa1111"))).toBe(
       true,
     );
     expect(isCommandOutput(row?.content) && row?.content.list?.some((line) => line.includes("sess_bbbb2222"))).toBe(

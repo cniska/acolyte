@@ -250,9 +250,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     onOutput: (event: ToolOutputEvent) => {
       ctxRef?.sideEffectSink?.({ type: "tool-output", ...event });
     },
-    onChecklist: (event) => {
+    onTasklist: (event) => {
       ctxRef?.sideEffectSink?.({
-        type: "checklist",
+        type: "tasklist",
         groupId: event.groupId,
         groupTitle: event.groupTitle,
         items: event.items,

@@ -68,7 +68,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Token Overlap | Keyword matching component of hybrid recall that catches exact term matches embeddings miss |
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Toolkit | Group of domain tools exposed through adapters and composition |
-| TranscriptRow | Semantic transcript entry (message, tool, command, or checklist) with a stable id and lifecycle state; the persisted successor to ChatRow |
+| TranscriptRow | Semantic transcript entry (message, tool, command, or tasklist) with a stable id and lifecycle state; the persisted successor to ChatRow |
 | Turn | One model response to a user message, including all tool calls within that response |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

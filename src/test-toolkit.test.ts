@@ -10,7 +10,7 @@ function createToolkit(testCommand?: { bin: string; args: string[] }) {
     workspace: process.cwd(),
     session,
     onOutput: (e) => output.push(e),
-    onChecklist: () => {},
+    onTasklist: () => {},
     onSkillActivated: () => {},
     onSkillDeactivated: () => {},
   });

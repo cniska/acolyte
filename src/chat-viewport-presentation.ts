@@ -69,9 +69,6 @@ export function createChatViewportPresentation(input: ChatViewportPresentationIn
               help: slashCommandHelp(command),
             })),
             selected: input.composer.suggestions.selected,
-            selectedHelp: slashCommandHelp(
-              input.composer.suggestions.candidates[input.composer.suggestions.selected] ?? "",
-            ),
           }
         : { kind: "none" as const };
   return {

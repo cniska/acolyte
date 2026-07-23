@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { SHORTCUT_ITEMS } from "./chat-layout";
 import type { ViewportPickerInput, ViewportSuggestionsInput } from "./chat-viewport-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
-import { layoutChatViewport, layoutHeader } from "./terminal-chat-layout";
+import { layoutChatViewport, layoutFooterStatus, layoutHeader } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
 import { dedent } from "./test-utils";
@@ -23,6 +23,15 @@ const DEFAULT_STATUS_LINE = {
   pr: null,
   skills: [],
 } as const;
+
+// The rendered composer box: gutter, rounded frame, 1ch padding, interior padded to the
+// content width so the right border is column-stable.
+const box = (interior: string[], columns = DEFAULT_TERMINAL_WIDTH): string =>
+  [
+    ` ╭${"─".repeat(columns - 4)}╮`,
+    ...interior.map((line) => ` │ ${line.padEnd(columns - 6)} │`),
+    ` ╰${"─".repeat(columns - 4)}╯`,
+  ].join("\n");
 
 type LegacyModelPicker = {
   kind: "model";
@@ -116,55 +125,39 @@ describe("chat tui visual regression: header", () => {
 
 describe("chat tui visual regression: status line and help", () => {
   test("renders stable, left-aligned status line row", () => {
-    const out = renderInputPanel();
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-        acolyte · main · gpt-5-mini medium
-    `),
+    const panel = renderInputPanel();
+    const status = renderPlain(
+      <TerminalSceneRender scene={layoutFooterStatus(DEFAULT_STATUS_LINE, DEFAULT_TERMINAL_WIDTH)} />,
+      DEFAULT_TERMINAL_WIDTH,
     );
+    const out = `${panel}\n${status}`;
+    expect(out).toBe(`${box(["❯"])}\nacolyte · main · gpt-5-mini medium`);
   });
+
+  const HELP_SINGLE_COLUMN = [
+    "     @path               mention path",
+    "     /new                start new session",
+    "     /clear              clear transcript",
+    "     /resume <id>        resume session",
+    "     /sessions           show sessions",
+    "     /workspaces         manage workspaces",
+    "     /model              change model",
+    "     /status             show server status",
+    "     /memory [scope]     show memory notes",
+    "     /memory add <text>  add memory note",
+    "     /usage              show token usage",
+    "     /skills             show skills picker",
+    "     /exit               exit chat",
+  ];
 
   test("renders help pane without context", () => {
     const out = renderInputPanel({ showHelp: true });
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-        @path               attach file             /status             show server status
-        /new                start new session       /memory [scope]     show memory notes
-        /resume <id>        resume session          /memory add <text>  add memory note
-        /sessions           show sessions           /usage              show token usage
-        /workspaces         manage workspaces       /skills             show skills picker
-        /model              change model            /exit               exit chat
-    `),
-    );
+    expect(out).toBe([box(["❯"]), ...HELP_SINGLE_COLUMN].join("\n"));
   });
 
   test("renders single-column help pane at narrow width without context", () => {
     const out = renderInputPanel({ showHelp: true }, 80);
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────
-        @path               attach file
-        /new                start new session
-        /resume <id>        resume session
-        /sessions           show sessions
-        /workspaces         manage workspaces
-        /model              change model
-        /status             show server status
-        /memory [scope]     show memory notes
-        /memory add <text>  add memory note
-        /usage              show token usage
-        /skills             show skills picker
-        /exit               exit chat
-    `),
-    );
+    expect(out).toBe([box(["❯"], 80), ...HELP_SINGLE_COLUMN].join("\n"));
   });
 
   test("renders slash suggestions with selected help and no status line row", () => {
@@ -173,16 +166,7 @@ describe("chat tui visual regression: status line and help", () => {
       slashSuggestions: ["/model"],
       slashSuggestionIndex: 0,
     });
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      ❯ /mo
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-        /model
-
-        change model
-    `),
-    );
+    expect(out).toBe(`${box(["❯ /model"])}\n     /model               change model`);
   });
 
   test("renders multiple slash suggestions with the selected command's help", () => {
@@ -194,29 +178,12 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ /st
-      ────────────────────────────────────────────────────────────────────────────────
-        /status
-        /stop
-
-        show server status
-    `),
-    );
+    expect(out).toBe(`${box(["❯ /status"], 80)}\n     /status              show server status\n     /stop`);
   });
 
   test("renders the ctrl-c exit hint below the composer", () => {
     const out = renderInputPanel({ ctrlCPending: true }, 80);
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────
-        ctrl+c again to exit
-    `),
-    );
+    expect(out).toBe(`${box(["❯"], 80)}\n   ctrl+c again to exit`);
   });
 
   test("renders at-mention suggestions below the composer", () => {
@@ -227,15 +194,7 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ @src
-      ────────────────────────────────────────────────────────────────────────────────
-        src/chat-state.ts
-        src/chat-app.tsx
-    `),
-    );
+    expect(out).toBe(`${box(["❯ @src/chat-app.tsx"], 80)}\n     src/chat-state.ts\n     src/chat-app.tsx`);
   });
 });
 
@@ -258,16 +217,7 @@ describe("chat tui visual regression: model picker", () => {
 
     const output = renderInputPanel({ picker });
     expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model:
-
-        gpt-5-mini
-      › gpt-5.2
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
+      box(["Model", "", "  gpt-5-mini", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]),
     );
   });
 
@@ -299,17 +249,7 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker });
-    expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: 5.2
-
-      › gpt-5.2
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
-    );
+    expect(output).toBe(box(["Model 5.2", "", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]));
   });
 
   test("renders model picker empty state when no matches", () => {
@@ -326,17 +266,7 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker });
-    expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model: zzz
-
-       No matches.
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
-    );
+    expect(output).toBe(box(["Model zzz", "", " No matches.", "", "Type to filter · Enter to apply · Esc to close"]));
   });
 
   test("renders model picker with scroll window", () => {
@@ -355,22 +285,20 @@ describe("chat tui visual regression: model picker", () => {
 
     const output = renderInputPanel({ picker });
     expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-      Model:
-
-        model-05
-        model-06
-        model-07
-        model-08
-        model-09
-      › model-10
-        model-11
-        model-12
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────────────────────
-    `),
+      box([
+        "Model",
+        "",
+        "  model-05",
+        "  model-06",
+        "  model-07",
+        "  model-08",
+        "  model-09",
+        "› model-10",
+        "  model-11",
+        "  model-12",
+        "",
+        "Type to filter · Enter to apply · Esc to close",
+      ]),
     );
   });
 
@@ -386,16 +314,6 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker }, 80);
-    expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      Model: gpt
-
-        Loading…
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────
-    `),
-    );
+    expect(output).toBe(box(["Model gpt", "", "  Loading…", "", "Type to filter · Enter to apply · Esc to close"], 80));
   });
 });

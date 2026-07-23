@@ -50,10 +50,10 @@ function capture(prompt: string, c: Client): Promise<string> {
 describe("cli-prompt golden output (output-path fold safety net)", () => {
   test("streamed answer", async () => {
     const out = await capture("hi", client([{ type: "text-delta", text: "Hello there." }], { output: "Hello there." }));
-    expect(out).toBe("❯ hi\n• Hello there.");
+    expect(out).toBe("❯ hi\n◆ Hello there.");
   });
 
-  test("tool output, checklist, and notice", async () => {
+  test("tool output and notice; tasklist is suppressed in run mode", async () => {
     const events: StreamEvent[] = [
       { type: "text-delta", text: "Let me check the config." },
       {
@@ -64,7 +64,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       },
       { type: "tool-result", toolCallId: "c1", toolName: "file-read" },
       {
-        type: "checklist",
+        type: "tasklist",
         groupId: "g1",
         groupTitle: "Steps",
         items: [
@@ -75,10 +75,11 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       { type: "notice", level: "warn", message: "trace sink is dark" },
     ];
     const out = await capture("check config", client(events, { output: "Updated the config." }));
-    // The final answer ("Updated the config.") diverges from the streamed preview ("Let
-    // me check the config.") and now appears in full — previously it was dropped.
+    // The tasklist is the agent's interactive-chat work tracker; run mode omits it, so the
+    // stream's tasklist event produces no rows. The final answer ("Updated the config.")
+    // diverges from the streamed preview and appears in full.
     expect(out).toBe(
-      "❯ check config\n• Let me check the config.• tool.file_read.header src/config.ts\n• Steps (1/2)\n  ● read\n  ○ edit\ntrace sink is dark\n\n\n\n• Updated the config.",
+      "❯ check config\n◆ Let me check the config.◆ tool.file_read.header src/config.ts\ntrace sink is dark\n\n\n\n◆ Updated the config.",
     );
   });
 
@@ -90,7 +91,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         error: "Cannot finish yet: validation missing",
       }),
     );
-    expect(out).toBe("❯ fix\n• Trying the edit.Cannot finish yet: validation missing");
+    expect(out).toBe("❯ fix\n◆ Trying the edit.Cannot finish yet: validation missing");
   });
 
   test("a lone detail-less tool header prints nothing until it has content", async () => {
@@ -108,10 +109,10 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         { output: "Done." },
       ),
     );
-    expect(out).toBe("❯ search\n\n• Done.");
+    expect(out).toBe("❯ search\n\n◆ Done.");
   });
 
-  test("checklist reprints on each progress update", async () => {
+  test("tasklist events render nothing in run mode", async () => {
     const items = (readDone: boolean) => [
       { id: "s1", label: "read", status: readDone ? ("done" as const) : ("pending" as const), order: 0 },
       { id: "s2", label: "edit", status: "pending" as const, order: 1 },
@@ -120,12 +121,12 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
       "run",
       client(
         [
-          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
-          { type: "checklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
+          { type: "tasklist", groupId: "g1", groupTitle: "Steps", items: items(false) },
+          { type: "tasklist", groupId: "g1", groupTitle: "Steps", items: items(true) },
         ],
         { output: "Done." },
       ),
     );
-    expect(out).toBe("❯ run\n• Steps (0/2)\n  ○ read\n  ○ edit\n• Steps (1/2)\n  ● read\n  ○ edit\n\n\n• Done.");
+    expect(out).toBe("❯ run\n\n◆ Done.");
   });
 });

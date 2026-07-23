@@ -24,7 +24,7 @@ test("semantic user and assistant scenes render the transcript text with kind ma
     />,
     26,
   );
-  expect(assistant).toContain("•");
+  expect(assistant).toContain("◆");
   expect(assistant.replace(/\n\s*/g, " ")).toContain("A concise answer that wraps");
 });
 
@@ -68,7 +68,7 @@ test("assistant layout represents inline markup as semantic spans", () => {
     columns: 80,
   });
   expect(scene.lines[0]?.spans).toEqual([
-    { text: "• ", role: "assistant" },
+    { text: "◆ ", role: "assistant" },
     { text: "Use", role: "assistant" },
     { text: " ", role: "assistant" },
     { text: "code", role: "assistant-code" },

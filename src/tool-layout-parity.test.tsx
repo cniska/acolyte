@@ -30,7 +30,7 @@ test("CLI and chat project the same semantic tool layout", () => {
   expect(renderToolOutput(parts, contentWidth)).toBe(lines.join("\n"));
   const scene = layoutTranscriptTool({ parts, status: "complete", columns });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, columns)).toBe(
-    `• ${lines[0]}\n${lines
+    `◆ ${lines[0]}\n${lines
       .slice(1)
       .map((line) => `  ${line}`)
       .join("\n")}`,

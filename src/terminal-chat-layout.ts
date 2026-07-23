@@ -1,18 +1,20 @@
 import { z } from "zod";
-import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
+import { unreachable } from "./assert";
+import { type MarkupToken, sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
+import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
-import type { ChecklistOutput } from "./checklist-contract";
-import { formatChecklist } from "./checklist-format";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
+import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
+import { type TasklistItemStatus, type TasklistOutput, tasklistMarker, tasklistProgress } from "./tasklist-contract";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
-import type { ToolOutputPart } from "./tool-output-contract";
+import type { ToolHeaderState, ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
 import { truncateToWidth } from "./truncate-text";
 
@@ -42,48 +44,149 @@ export function wrapTerminalProse(text: string, columns: number): string[] {
     return [...lines, line];
   });
 }
+
+const GUTTER = 1;
+const BOX_BORDER = 1;
+const BOX_PAD = 1;
+// The column where content begins: transcript rows inset by the box's border+pad thickness so
+// their glyphs align with the boxed composer prompt, even though only the composer draws a frame.
+const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
+function contentWidth(columns: number): number {
+  return Math.max(24, columns - 2 * CONTENT_COLUMN);
+}
+// The one wrap width for composer input. The input handler resolves visual up/down motion against
+// this same value, so its line math can never disagree with what the box renders.
+export function promptWrapWidth(columns: number): number {
+  return contentWidth(Math.max(24, columns)) - 2;
+}
+function insetScene(scene: TerminalScene, left: number): TerminalScene {
+  const pad = " ".repeat(left);
+  return {
+    ...scene,
+    lines: scene.lines.map((line) =>
+      line.spans.every((span) => span.text.length === 0)
+        ? line
+        : { ...line, spans: [{ text: pad, role: "plain" as const }, ...line.spans] },
+    ),
+    cursor: scene.cursor ? { ...scene.cursor, column: scene.cursor.column + left } : undefined,
+  };
+}
+
+function assistantTokenSpan(token: MarkupToken, role: TerminalStyleRole): TerminalSpan {
+  switch (token.kind) {
+    case "code":
+      return { text: token.text.slice(1, -1), role: "assistant-code" };
+    case "bold":
+      return { text: token.text.slice(2, -2), role: "assistant-bold" };
+    case "path":
+      return { text: token.text, role: "assistant-path" };
+    default:
+      return { text: token.text, role };
+  }
+}
+
+function lineWidth(line: TerminalLine): number {
+  return line.spans.reduce((total, span) => total + width(span.text), 0);
+}
+
+// The inline completion preview: the remainder of the selected suggestion when it extends what is
+// typed. Only a prefix match ghosts — a fuzzy match (`/he` → `/new`) has no coherent continuation,
+// so nothing shows and the candidate list carries it instead. Requires a non-empty typed fragment
+// past the trigger: a bare `/` or `@` guesses too early (and would pin the caret on the trigger).
+function composerGhost(presentation: ChatViewportPresentation["composer"]): string {
+  if (presentation.input.cursor !== presentation.input.text.length) return "";
+  const suggestions = presentation.suggestions;
+  if (suggestions.kind === "slash") {
+    const typed = presentation.input.text;
+    if (typed.length < 2) return "";
+    const command = suggestions.candidates[suggestions.selected]?.command ?? "";
+    return command.startsWith(typed) ? command.slice(typed.length) : "";
+  }
+  if (suggestions.kind === "at") {
+    if (suggestions.query.length === 0) return "";
+    const value = suggestions.candidates[suggestions.selected]?.value ?? "";
+    return value.startsWith(suggestions.query) ? value.slice(suggestions.query.length) : "";
+  }
+  return "";
+}
+
+// Interior rows are padded to the content width so the right border is column-stable, and the
+// interior cursor is translated by the same constant that draws the padding, so they cannot drift.
+function frameScene(interior: TerminalScene, columns: number): TerminalScene {
+  const inner = contentWidth(columns);
+  const gutter = " ".repeat(GUTTER);
+  const rule = "─".repeat(Math.max(0, columns - 2 * GUTTER - 2));
+  const horizontal = (left: string, right: string): TerminalLine => ({
+    spans: [
+      { text: gutter, role: "plain" },
+      { text: `${left}${rule}${right}`, role: "composer-border" },
+    ],
+  });
+  const frame = (line: TerminalLine): TerminalLine => {
+    const pad = Math.max(0, inner - lineWidth(line));
+    return {
+      ...line,
+      spans: [
+        { text: gutter, role: "plain" },
+        { text: "│", role: "composer-border" },
+        { text: " ".repeat(BOX_PAD), role: "plain" },
+        ...line.spans,
+        ...(pad > 0 ? [{ text: " ".repeat(pad), role: "plain" as const }] : []),
+        { text: " ".repeat(BOX_PAD), role: "plain" },
+        { text: "│", role: "composer-border" },
+      ],
+    };
+  };
+  return {
+    lines: [horizontal("╭", "╮"), ...interior.lines.map(frame), horizontal("╰", "╯")],
+    cursor: interior.cursor
+      ? { row: interior.cursor.row + 1, column: interior.cursor.column + CONTENT_COLUMN }
+      : undefined,
+  };
+}
+
 export function layoutTranscriptMessage(input: {
   text: string;
   kind: "user" | "assistant";
   columns: number;
 }): TerminalScene {
-  const marker = input.kind === "user" ? "❯ " : "• ";
+  const marker = input.kind === "user" ? `${GLYPH_USER} ` : `${GLYPH_FILLED} `;
   const role = input.kind;
   if (input.kind === "assistant") {
-    const contentWidth = Math.max(24, input.columns - 2);
+    const textWrap = Math.max(1, contentWidth(input.columns) - width(marker));
     return {
-      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), contentWidth)
+      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), textWrap)
         .split("\n")
         .map((line, index) => ({
           spans: [
             { text: index === 0 ? marker : "  ", role },
-            ...tokenize(line).map((token) => ({
-              text:
-                token.kind === "code"
-                  ? token.text.slice(1, -1)
-                  : token.kind === "bold"
-                    ? token.text.slice(2, -2)
-                    : token.text,
-              role:
-                token.kind === "code"
-                  ? ("assistant-code" as const)
-                  : token.kind === "bold"
-                    ? ("assistant-bold" as const)
-                    : token.kind === "path"
-                      ? ("assistant-path" as const)
-                      : role,
-            })),
+            ...tokenize(line).map((token) => assistantTokenSpan(token, role)),
           ],
         })),
     };
   }
-  const lines = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
-    spans: [
-      { text: index === 0 ? marker : "  ", role },
-      { text, role },
-    ],
-  }));
-  return { lines };
+  // The band bleeds the full terminal width while the text sits at the content column, mirroring the
+  // demo's negative-margin trick. Leading whitespace carries the user-fill role so its own background
+  // paints the left gutter — the renderer's `fill` only reaches from the first non-blank span rightward.
+  const bandLine = (): TerminalLine => ({ spans: [{ text: " ".repeat(input.columns), role: "user-fill" as const }] });
+  const textLines: TerminalLine[] = wrapTerminalProse(
+    input.text,
+    Math.max(1, contentWidth(input.columns) - width(marker)),
+  ).map((text, index) => {
+    const lead =
+      index === 0
+        ? [
+            { text: " ".repeat(CONTENT_COLUMN), role: "user-fill" as const },
+            { text: marker, role },
+          ]
+        : [{ text: " ".repeat(CONTENT_COLUMN + width(marker)), role: "user-fill" as const }];
+    const pad = Math.max(0, input.columns - CONTENT_COLUMN - width(marker) - width(text));
+    return {
+      fill: "user-fill" as const,
+      spans: [...lead, { text, role }, ...(pad ? [{ text: " ".repeat(pad), role: "plain" as const }] : [])],
+    };
+  });
+  return { lines: [bandLine(), ...textLines, bandLine()] };
 }
 
 export function layoutTranscriptText(input: {
@@ -206,7 +309,10 @@ export function layoutPending(input: {
   const sweepPos = ((Math.abs(presentation.frame) % PENDING_FRAME_COUNT) / PENDING_FRAME_COUNT) * range - SHIMMER_SWEEP;
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
-    const marker: TerminalSpan = { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role: markerRole };
+    const marker: TerminalSpan = {
+      text: index === 0 ? `${blink ? GLYPH_FILLED : GLYPH_HOLLOW} ` : "  ",
+      role: markerRole,
+    };
     const body: TerminalSpan[] = running
       ? shimmerSpans(line, shimmerOffset, sweepPos)
       : [{ text: line, role: "muted" }];
@@ -233,37 +339,36 @@ export function layoutComposerStatus(input: {
 }): TerminalScene {
   const { presentation, constraints } = input;
   const terminalWidth = Math.max(24, constraints.columns);
-  const border = (): TerminalLine => ({ spans: [{ text: "─".repeat(terminalWidth), role: "composer-border" }] });
+  const cw = contentWidth(terminalWidth);
   if (presentation.picker) {
     const picker = presentation.picker;
-    const modelPrefix = `${t("chat.picker.label.model")}: `;
-    const label =
-      picker.kind === "model"
-        ? `${modelPrefix}${picker.input.text}`
-        : picker.kind === "skills"
-          ? t("chat.picker.title.skills")
-          : t("chat.picker.title.resume");
-    let labelLine: TerminalLine = { spans: [{ text: label, role: "plain" }] };
-    let labelColumn = width(label);
+    let labelLine: TerminalLine;
+    let labelColumn: number;
     if (picker.kind === "model") {
-      const query = picker.input.text;
+      const modelPrefix = `${t("chat.picker.label.model")} `;
+      // Reserve one column for the trailing caret so the label can never outgrow the box interior.
+      const query = truncateToWidth(picker.input.text, Math.max(1, cw - width(modelPrefix) - 1));
       const caret = Math.max(0, Math.min(picker.input.cursor, query.length));
       labelLine = {
         spans: [
           { text: modelPrefix, role: "plain" },
-          { text: query.slice(0, caret), role: "plain" },
-          { text: query[caret] ?? " ", role: presentation.caretVisible ? "cursor" : "plain" },
-          { text: query.slice(caret + 1), role: "plain" },
+          { text: query.slice(0, caret), role: "muted" },
+          { text: query[caret] ?? " ", role: presentation.caretVisible ? "cursor" : "muted" },
+          { text: query.slice(caret + 1), role: "muted" },
         ],
       };
       labelColumn = width(modelPrefix) + width(query.slice(0, caret));
+    } else {
+      const title = picker.kind === "skills" ? t("chat.picker.title.skills") : t("chat.picker.title.resume");
+      labelLine = { spans: [{ text: title, role: "plain" }] };
+      labelColumn = width(title);
     }
     const visible = picker.items.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
     const selectedRel = picker.selected - picker.scrollOffset;
     const rowPrefix = (index: number): string => (index === selectedRel ? "› " : "  ");
     const rowRole = (index: number): TerminalStyleRole => (index === selectedRel ? "selected" : "plain");
     const row = (index: number, body: string): TerminalLine => ({
-      spans: [{ text: truncateToWidth(`${rowPrefix(index)}${body}`, terminalWidth), role: rowRole(index) }],
+      spans: [{ text: truncateToWidth(`${rowPrefix(index)}${body}`, cw), role: rowRole(index) }],
     });
     let pickerItems: TerminalLine[];
     if (picker.kind === "model" && picker.loading) {
@@ -273,11 +378,11 @@ export function layoutComposerStatus(input: {
     } else if (picker.kind === "sessions") {
       // alignCols across the full list (not just the visible slice), matching legacy, so a
       // long id or title in an off-screen row still lines up the visible rows' columns.
-      const idCells = picker.items.map((item) => `${item.active ? "●" : " "} ${item.value}`);
+      const idCells = picker.items.map((item) => `${item.active ? GLYPH_FILLED : " "} ${item.value}`);
       const timeCells = picker.items.map((item) => (item.detail ? formatRelativeTime(item.detail) : ""));
       const idWidth = Math.max(0, ...idCells.map((cell) => cell.length));
       const timeWidth = Math.max(0, ...timeCells.map((cell) => cell.length));
-      const titleBudget = Math.max(1, terminalWidth - 2 - idWidth - 2 - timeWidth - 2);
+      const titleBudget = Math.max(1, cw - 2 - idWidth - 2 - timeWidth - 2);
       const aligned = alignCols(
         picker.items.map((item, index) => [
           idCells[index] ?? "",
@@ -290,54 +395,79 @@ export function layoutComposerStatus(input: {
         .map((line, index) => row(index, line));
     } else if (picker.kind === "skills") {
       // Skills are not windowed (no scrollOffset); render the full list, as legacy did.
-      pickerItems = picker.items.map((item, index) =>
-        row(
-          index,
-          `${truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH)} ${item.detail ?? ""}`,
-        ),
-      );
+      pickerItems = picker.items.map((item, index) => {
+        const label = truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
+        const detail = item.detail ?? "";
+        if (index === selectedRel) return row(index, `${label} ${detail}`);
+        return {
+          spans: [
+            { text: truncateToWidth(`  ${label}`, cw), role: "plain" as const },
+            { text: truncateToWidth(` ${detail}`, Math.max(1, cw - 2 - PICKER_LABEL_WIDTH)), role: "muted" as const },
+          ],
+        };
+      });
     } else {
       // Model rows have no column after the label, so padding would only add
       // trailing space the renderer trims; emit the label as-is.
       pickerItems = visible.map((item, index) => row(index, item.label));
     }
-    return {
-      lines: [
-        border(),
-        labelLine,
-        { spans: [{ text: "", role: "plain" }] },
-        ...pickerItems,
-        { spans: [{ text: "", role: "plain" }] },
-        { spans: [{ text: picker.hint, role: "muted" }] },
-        border(),
-      ],
-      cursor: { row: 1, column: labelColumn },
-    };
+    return frameScene(
+      {
+        lines: [
+          labelLine,
+          { spans: [{ text: "", role: "plain" }] },
+          ...pickerItems,
+          { spans: [{ text: "", role: "plain" }] },
+          { spans: [{ text: picker.hint, role: "muted" }] },
+        ],
+        cursor: { row: 0, column: labelColumn },
+      },
+      terminalWidth,
+    );
   }
-  const promptWrapWidth = terminalWidth - 2;
   const caretRole: TerminalStyleRole = presentation.caretVisible ? "cursor" : "plain";
+  const ghost = composerGhost(presentation);
   const promptLines: TerminalLine[] = [];
-  let caretRow = 1;
+  let caretRow = 0;
   let caretColumn = 2;
   if (presentation.input.text.length === 0) {
-    const placeholder = presentation.placeholder;
     promptLines.push({
       spans: [
         { text: "❯ ", role: "composer-prompt" },
-        { text: placeholder.slice(0, 1) || " ", role: caretRole },
-        { text: placeholder.slice(1), role: "muted" },
+        { text: " ", role: caretRole },
       ],
     });
   } else {
-    const displayLines = buildPromptDisplayLines(presentation.input.text, presentation.input.cursor, promptWrapWidth);
+    const displayLines = buildPromptDisplayLines(
+      presentation.input.text,
+      presentation.input.cursor,
+      promptWrapWidth(terminalWidth),
+    );
     for (const [index, line] of displayLines.entries()) {
       if (line.cursor !== null) {
-        caretRow = index + 1;
+        caretRow = index;
         caretColumn = 2 + width(line.before);
+      }
+      const marker = { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" as const };
+      // The caret sits at the insertion point — on the ghost's first char (inverse) — and the rest
+      // trails faint. Clip to the interior so a long candidate never pushes the line past the border.
+      const ghostRoom = promptWrapWidth(terminalWidth) - width(line.before);
+      const shownGhost =
+        ghost && line.cursor !== null && line.after === "" ? ghost.slice(0, Math.max(0, ghostRoom)) : "";
+      if (shownGhost) {
+        promptLines.push({
+          spans: [
+            marker,
+            { text: line.before, role: "plain" },
+            { text: shownGhost.slice(0, 1), role: caretRole },
+            { text: shownGhost.slice(1), role: "ghost" },
+          ],
+        });
+        continue;
       }
       promptLines.push({
         spans: [
-          { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" },
+          marker,
           { text: line.before, role: "plain" },
           ...(line.cursor !== null ? [{ text: line.cursor, role: caretRole }] : []),
           { text: line.after, role: "plain" },
@@ -345,31 +475,37 @@ export function layoutComposerStatus(input: {
       });
     }
   }
-  const lines: TerminalLine[] = [border(), ...promptLines, border()];
+  const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
+  const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
-    const columns = terminalWidth >= presentation.helpBreakpoint ? 2 : 1;
+    const helpColumns = cw >= presentation.helpBreakpoint ? 2 : 1;
     const rowsPerColumn =
-      columns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
+      helpColumns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
     for (let row = 0; row < rowsPerColumn; row++) {
       const entries = [
         presentation.helpEntries[row],
-        columns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
+        helpColumns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
       ];
-      lines.push({
+      attached.push({
         spans: entries.flatMap((entry) =>
-          entry ? [{ text: `  ${entry.key.padEnd(20)}${entry.description}`.padEnd(44), role: "muted" as const }] : [],
+          entry
+            ? [
+                { text: `  ${entry.key.padEnd(20)}`, role: "plain" as const },
+                { text: entry.description.padEnd(22), role: "muted" as const },
+              ]
+            : [],
         ),
       });
     }
   } else if (presentation.suggestions.kind === "at") {
     const selected = presentation.suggestions.selected;
-    if (presentation.suggestions.noMatches) lines.push({ spans: [{ text: " No matches.", role: "muted" }] });
+    if (presentation.suggestions.noMatches) attached.push({ spans: [{ text: " No matches.", role: "muted" }] });
     else
-      lines.push(
+      attached.push(
         ...presentation.suggestions.candidates.map((candidate, index) => ({
           spans: [
             {
-              text: truncateToWidth(`  ${candidate.label}`, terminalWidth),
+              text: truncateToWidth(`  ${candidate.label}`, cw),
               role: index === selected ? ("selected" as const) : ("plain" as const),
             },
           ],
@@ -377,22 +513,42 @@ export function layoutComposerStatus(input: {
       );
   } else if (presentation.suggestions.kind === "slash") {
     const selected = presentation.suggestions.selected;
-    lines.push(
-      ...presentation.suggestions.candidates.map((candidate, index) => ({
-        spans: [
-          {
-            text: truncateToWidth(`  ${candidate.command}`, terminalWidth),
-            role: index === selected ? ("selected" as const) : ("muted" as const),
-          },
-        ],
-      })),
+    // Each command carries its help in a dim column (like the skills picker), so the whole list
+    // is legible at once instead of only the selected row's help on a line below.
+    attached.push(
+      ...presentation.suggestions.candidates.map((candidate, index) => {
+        const label = truncateToWidth(candidate.command, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
+        const help = candidate.help ?? "";
+        if (index === selected)
+          return { spans: [{ text: truncateToWidth(`  ${label} ${help}`, cw), role: "selected" as const }] };
+        return {
+          spans: [
+            { text: `  ${label}`, role: "plain" as const },
+            { text: truncateToWidth(` ${help}`, Math.max(1, cw - 2 - PICKER_LABEL_WIDTH)), role: "muted" as const },
+          ],
+        };
+      }),
     );
-    if (presentation.suggestions.selectedHelp)
-      lines.push({ spans: [{ text: `\n  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
-    lines.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
-  return { lines, cursor: { row: caretRow, column: caretColumn } };
+    attached.push({ spans: [{ text: t("chat.input.ctrl_c_hint"), role: "muted" }] });
+  return {
+    lines: [...boxed.lines, ...insetScene({ lines: attached }, CONTENT_COLUMN).lines],
+    cursor: boxed.cursor,
+  };
+}
+
+function prStateRole(state: PrState): TerminalStyleRole {
+  switch (state) {
+    case "open":
+      return "pr-open";
+    case "merged":
+      return "pr-merged";
+    case "closed":
+      return "pr-closed";
+    default:
+      return unreachable(state);
+  }
 }
 
 export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
@@ -401,51 +557,102 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
     if (name && !names.includes(name)) names.push(name);
   }
   const suffix = `${status.dirty ? "*" : ""}${status.ahead ? ` ↑${status.ahead}` : ""}${status.behind ? ` ↓${status.behind}` : ""}`;
-  const location = names.map((name) => `${name}${name === status.branch ? suffix : ""}`);
-  const model = `${status.model}${status.effort ? ` ${status.effort}` : ""}`;
-  const usage =
-    status.inputTokens || status.outputTokens
-      ? t("unit.token.arrows", {
-          input: formatCompactNumber(status.inputTokens),
-          output: formatCompactNumber(status.outputTokens),
-        })
-      : null;
-  const pr = status.pr ? `PR #${status.pr.number}` : null;
-  const text = [...location, model, usage, pr].filter((part): part is string => Boolean(part)).join(" · ");
+  // Two recessed gray tiers matching ~/.claude/statusline.sh (names/model brighter, the rest
+  // faint); the PR number is the one state-colored accent, since a merged/closed PR on the branch
+  // is actionable — its `PR` label stays faint like the other labels.
+  const segments: TerminalSpan[] = [];
+  const separate = (): void => {
+    if (segments.length > 0) segments.push({ text: " · ", role: "faint" });
+  };
+  for (const name of names) {
+    separate();
+    segments.push({ text: name, role: "subtle" });
+    if (name === status.branch && suffix) segments.push({ text: suffix, role: "faint" });
+  }
+  separate();
+  segments.push({ text: status.model, role: "subtle" });
+  if (status.effort) segments.push({ text: ` ${status.effort}`, role: "faint" });
+  if (status.inputTokens || status.outputTokens) {
+    separate();
+    segments.push({
+      text: t("unit.token.arrows", {
+        input: formatCompactNumber(status.inputTokens),
+        output: formatCompactNumber(status.outputTokens),
+      }),
+      role: "faint",
+    });
+  }
+  if (status.pr) {
+    separate();
+    segments.push({ text: "PR ", role: "faint" });
+    segments.push({ text: `#${status.pr.number}`, role: prStateRole(status.pr.state) });
+  }
+  const text = segments.map((segment) => segment.text).join("");
+  const statusWidth = width(text);
   if (status.skills.length === 0) {
+    if (statusWidth <= columns) return { lines: [{ spans: segments }] };
     return {
-      lines: wrapTerminalProse(text, Math.max(22, columns - 2)).map((line) => ({
-        spans: [{ text: `  ${line}`, role: "muted" as const }],
+      lines: wrapTerminalProse(text, columns).map((line) => ({
+        spans: [{ text: line, role: "faint" as const }],
       })),
     };
   }
   const skillSegment = status.skills.join(" · ");
-  const left = `  ${text}`;
-  const leftWidth = width(left);
-  // Legacy footer: skills sit right-justified on the status row with a 2-col inset,
-  // and stack onto their own 2-col-indented row once that inset no longer fits.
-  if (leftWidth + 2 + width(skillSegment) <= columns) {
-    const gap = columns - leftWidth - width(skillSegment);
-    return { lines: [{ spans: [{ text: `${left}${" ".repeat(gap)}${skillSegment}`, role: "muted" }] }] };
+  // Skills sit right-justified on the status row, and stack onto their own row once they no longer fit.
+  if (statusWidth + 2 + width(skillSegment) <= columns) {
+    const gap = columns - statusWidth - width(skillSegment);
+    return { lines: [{ spans: [...segments, { text: `${" ".repeat(gap)}${skillSegment}`, role: "faint" }] }] };
   }
   return {
-    lines: [
-      { spans: [{ text: left, role: "muted" }] },
-      { spans: [{ text: truncateToWidth(`  ${skillSegment}`, columns), role: "muted" }] },
-    ],
+    lines: [{ spans: segments }, { spans: [{ text: truncateToWidth(skillSegment, columns), role: "faint" }] }],
   };
 }
 
-export function layoutTranscriptChecklist(output: ChecklistOutput, contentWidth: number): TerminalScene {
-  const formatted = formatChecklist(output);
-  return {
-    lines: [
-      { spans: [{ text: truncateToWidth(formatted.header, contentWidth), role: "tool-label" }] },
-      ...formatted.items.map((item) => ({
-        spans: [{ text: truncateToWidth(`  ${item.marker} ${item.label}`, contentWidth), role: "muted" as const }],
-      })),
-    ],
-  };
+const TASKLIST_VISIBLE_LIMIT = 5;
+const TASKLIST_PULSE_MS = 500;
+
+function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
+  switch (status) {
+    case "done":
+      return "success";
+    case "failed":
+      return "error";
+    default:
+      return "faint";
+  }
+}
+
+// Gentle glyph pulse for the active item, not a brightness blink (which pulls focus off the transcript).
+function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string {
+  if (status === "in_progress") return pulseFilled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+  return tasklistMarker(status);
+}
+
+// Display-only bounded view: the semantic tasklist keeps every item; done collapses into the count.
+export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number, now: number): TerminalScene {
+  const sorted = [...output.items].sort((a, b) => a.order - b.order);
+  const { done, total } = tasklistProgress(sorted);
+  const notDone = sorted.filter((item) => item.status !== "done");
+  const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
+  const overflow = notDone.length - visible.length;
+  const pulseFilled = Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
+  const count = ` ${done}/${total}`;
+  const lines: TerminalLine[] = [
+    {
+      spans: [
+        { text: truncateToWidth(output.groupTitle, Math.max(1, contentWidth - width(count))), role: "tool-label" },
+        { text: count, role: "muted" },
+      ],
+    },
+    ...visible.map((item) => ({
+      spans: [
+        { text: `  ${taskItemGlyph(item.status, pulseFilled)} `, role: taskItemRole(item.status) },
+        { text: truncateToWidth(item.label, Math.max(1, contentWidth - 4)), role: "muted" as const },
+      ],
+    })),
+  ];
+  if (overflow > 0) lines.push({ spans: [{ text: `  +${overflow} pending`, role: "muted" }] });
+  return { lines };
 }
 
 function toolRole(role: string): TerminalStyleRole | null {
@@ -465,8 +672,32 @@ function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
       return "error";
     case "cancelled":
       return "cancelled";
+    case "active":
+      return "pending";
     default:
       return "tool";
+  }
+}
+
+function toolMarkerGlyph(headerState: ToolHeaderState | undefined, status: TranscriptStatus): string {
+  switch (headerState) {
+    case "on":
+      return GLYPH_FISHEYE;
+    case "off":
+      return GLYPH_HOLLOW;
+    default:
+      return status === "active" ? GLYPH_FISHEYE : GLYPH_FILLED;
+  }
+}
+
+function toolHeaderMarkerRole(headerState: ToolHeaderState | undefined, status: TranscriptStatus): TerminalStyleRole {
+  switch (headerState) {
+    case "on":
+      return "skill-on";
+    case "off":
+      return "skill-off";
+    default:
+      return toolMarkerRole(status);
   }
 }
 
@@ -477,9 +708,8 @@ export function layoutTranscriptTool(input: {
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
-  const marker = headerState === "on" ? "◉ " : headerState === "off" ? "○ " : "• ";
-  const markerRole =
-    headerState === "on" ? "skill-on" : headerState === "off" ? "skill-off" : toolMarkerRole(input.status);
+  const marker = `${toolMarkerGlyph(headerState, input.status)} `;
+  const markerRole = toolHeaderMarkerRole(headerState, input.status);
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -523,7 +753,7 @@ export function layoutChatViewport(input: {
   now: number;
 }): TerminalScene {
   void input.theme;
-  void input.now;
+  const cw = contentWidth(input.constraints.columns);
   const lines: TerminalLine[] = [];
   const sections: NonNullable<TerminalScene["sections"]> = [];
   const append = (id: string, finalized: boolean, scene: TerminalScene): void => {
@@ -532,54 +762,63 @@ export function layoutChatViewport(input: {
     lines.push(...scene.lines);
     sections.push({ id, lineStart, lineEnd: lines.length, finalized });
   };
-  append("header", true, layoutHeader(input.presentation.header));
+  append("header", true, insetScene(layoutHeader(input.presentation.header), CONTENT_COLUMN));
   for (const row of input.presentation.transcript) {
-    if (row.content.kind === "checklist") continue;
+    if (row.content.kind === "tasklist") continue;
     if (row.content.kind === "tool-output") {
       append(
         row.id,
         row.status !== "active",
-        layoutTranscriptTool({
-          parts: row.content.output.parts,
-          status: row.status,
-          columns: input.constraints.columns,
-        }),
+        insetScene(
+          layoutTranscriptTool({ parts: row.content.output.parts, status: row.status, columns: cw }),
+          CONTENT_COLUMN,
+        ),
       );
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);
       const text = body ? `${row.content.output.header}\n\n${body}` : row.content.output.header;
-      const marker = row.kind === "system" ? "  " : "• ";
+      const marker = row.kind === "system" ? "  " : `${GLYPH_FILLED} `;
       const role: TerminalStyleRole = row.kind === "system" ? "muted" : "plain";
-      const contentWidth = Math.max(24, input.constraints.columns - 2);
       // Command output is preformatted (aligned columns); preserve its whitespace and
       // truncate over-long lines rather than prose-wrapping, which would collapse the alignment.
-      append(row.id, true, {
-        lines: text.split("\n").map((line, index) => ({
-          spans: [
-            { text: index === 0 ? marker : "  ", role },
-            { text: truncateToWidth(line, contentWidth), role },
-          ],
-        })),
-      });
-    } else if (row.kind === "user" || row.kind === "assistant") {
       append(
         row.id,
-        row.status !== "active",
-        layoutTranscriptMessage({ text: row.content.text, kind: row.kind, columns: input.constraints.columns }),
+        true,
+        insetScene(
+          {
+            lines: text.split("\n").map((line, index) => ({
+              spans: [
+                { text: index === 0 ? marker : "  ", role },
+                { text: truncateToWidth(line, cw - width(marker)), role },
+              ],
+            })),
+          },
+          CONTENT_COLUMN,
+        ),
       );
+    } else if (row.kind === "user" || row.kind === "assistant") {
+      const message = layoutTranscriptMessage({
+        text: row.content.text,
+        kind: row.kind,
+        columns: input.constraints.columns,
+      });
+      append(row.id, row.status !== "active", row.kind === "user" ? message : insetScene(message, CONTENT_COLUMN));
     } else {
       append(
         row.id,
         true,
-        layoutTranscriptText({
-          text: row.content.text,
-          marker: row.kind === "system" ? "  " : "• ",
-          markerRole: transcriptOutcomeRole(row.status),
-          // System notices carry their level in the text color (error red, warning yellow);
-          // status/task rows keep muted text and let the marker carry the outcome.
-          textRole: row.kind === "system" ? transcriptOutcomeRole(row.status) : "muted",
-          columns: input.constraints.columns,
-        }),
+        insetScene(
+          layoutTranscriptText({
+            text: row.content.text,
+            marker: row.kind === "system" ? "  " : `${GLYPH_FILLED} `,
+            markerRole: transcriptOutcomeRole(row.status),
+            // System notices carry their level in the text color (error red, warning yellow);
+            // status/task rows keep muted text and let the marker carry the outcome.
+            textRole: row.kind === "system" ? transcriptOutcomeRole(row.status) : "muted",
+            columns: cw,
+          }),
+          CONTENT_COLUMN,
+        ),
       );
     }
   }
@@ -587,20 +826,21 @@ export function layoutChatViewport(input: {
     append(
       "pending",
       false,
-      layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
+      insetScene(
+        layoutPending({ presentation: input.presentation.pending, now: input.now, columns: cw }),
+        CONTENT_COLUMN,
+      ),
     );
   for (const row of input.presentation.transcript) {
-    if (row.content.kind !== "checklist") continue;
-    const checklist = layoutTranscriptChecklist(
-      (row.content as { output: ChecklistOutput }).output,
-      Math.max(24, input.constraints.columns - 2),
+    if (row.content.kind !== "tasklist") continue;
+    append(
+      row.id,
+      false,
+      insetScene(
+        layoutTranscriptTasklist((row.content as { output: TasklistOutput }).output, cw, input.now),
+        CONTENT_COLUMN,
+      ),
     );
-    append(row.id, false, {
-      lines: checklist.lines.map((line) => ({
-        ...line,
-        spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
-      })),
-    });
   }
   const composer = layoutComposerStatus({
     presentation: input.presentation.composer,
@@ -609,15 +849,21 @@ export function layoutChatViewport(input: {
   if (lines.length > 0) lines.push({ spans: [{ text: "", role: "plain" }] });
   const composerStart = lines.length;
   lines.push(...composer.lines);
-  if (
-    input.presentation.footer &&
-    !input.presentation.composer.showHelp &&
-    input.presentation.composer.suggestions.kind === "none" &&
-    !input.presentation.composer.picker &&
-    !input.presentation.composer.ctrlCPending
-  )
-    lines.push(...layoutFooterStatus(input.presentation.footer, input.constraints.columns).lines);
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
+  // Its own section below the box; hidden under help, suggestions, and an open picker, where a
+  // status row below a completion list or picker looks out of place.
+  const composerPresentation = input.presentation.composer;
+  const showFooter =
+    input.presentation.footer &&
+    !composerPresentation.showHelp &&
+    composerPresentation.suggestions.kind === "none" &&
+    !composerPresentation.picker &&
+    !composerPresentation.ctrlCPending;
+  if (showFooter && input.presentation.footer) {
+    const footerStart = lines.length;
+    lines.push(...insetScene(layoutFooterStatus(input.presentation.footer, cw), CONTENT_COLUMN).lines);
+    sections.push({ id: "footer", lineStart: footerStart, lineEnd: lines.length, finalized: false });
+  }
   const cursor = composer.cursor ?? { row: 0, column: 0 };
   return { lines, sections, cursor: { ...cursor, row: cursor.row + composerStart } };
 }

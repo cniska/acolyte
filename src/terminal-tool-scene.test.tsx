@@ -19,11 +19,11 @@ const parts = [
 
 test("semantic tool scene renders the tool label and a status-colored marker", () => {
   const scene = layoutTranscriptTool({ parts, status: "success", columns: 32 });
-  expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("• Edit");
-  expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${colorToFg("green")}• `);
+  expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("◆ Edit");
+  expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${colorToFg("green")}◆ `);
 });
 
-test("diff-add rows paint the full row width with the legacy diff background", () => {
+test("diff-add rows paint the full row width with the tinted band and green text", () => {
   const scene = layoutTranscriptTool({
     parts: [
       { kind: "tool-header" as const, labelKey: "tool.label.file_edit", detail: "src/a.ts" },
@@ -37,9 +37,9 @@ test("diff-add rows paint the full row width with the legacy diff background", (
     .split("\n")
     .find((line) => line.includes("12"));
   expect(diffLine).toHaveLength(40);
-  expect(output).toContain(ansi.bgRgb(26, 58, 26));
+  expect(output).toContain(ansi.bgRgb(13, 31, 13));
   expect(output).toContain(ansi.fgRgb(74, 154, 74));
-  expect(output).toContain(colorToFg("white"));
+  expect(output).not.toContain(colorToFg("white"));
 });
 
 test("semantic skill-toggle tools retain their distinct markers", () => {
@@ -48,5 +48,5 @@ test("semantic skill-toggle tools retain their distinct markers", () => {
     status: "success",
     columns: 32,
   });
-  expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("◉");
+  expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("◈");
 });

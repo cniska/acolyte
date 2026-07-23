@@ -6,7 +6,7 @@ import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { renderToolOutput } from "./tool-output-render";
 import { renderToString } from "./tui/index";
-import { colorToFg } from "./tui/styles";
+import { ansi, colorToFg } from "./tui/styles";
 import { renderPlain } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
@@ -35,25 +35,25 @@ const CASES: ToolCase[] = [
     name: "tool-header with detail",
     parts: [{ kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" }],
     cli: "Read a.ts",
-    chat: "• Read a.ts",
+    chat: "◆ Read a.ts",
   },
   {
     name: "tool-header without detail",
     parts: [{ kind: "tool-header", labelKey: "tool.label.git_status" }],
     cli: "Git Status",
-    chat: "• Git Status",
+    chat: "◆ Git Status",
   },
   {
     name: "file-header renders label and targets",
     parts: [{ kind: "file-header", labelKey: "tool.label.file_read", count: 2, targets: ["a.ts", "b.ts"] }],
     cli: "Read 2 files",
-    chat: "• Read 2 files",
+    chat: "◆ Read 2 files",
   },
   {
     name: "file-header with single file shows path",
     parts: [{ kind: "file-header", labelKey: "tool.label.file_read", count: 1, targets: ["a.ts"] }],
     cli: "Read a.ts",
-    chat: "• Read a.ts",
+    chat: "◆ Read a.ts",
   },
   {
     name: "scope-header for search with summary",
@@ -72,7 +72,7 @@ const CASES: ToolCase[] = [
         3 matches in 2 files
     `),
     chat: dedent(`
-      • Search needle
+      ◆ Search needle
           3 matches in 2 files
     `),
   },
@@ -87,7 +87,7 @@ const CASES: ToolCase[] = [
         1 match in 1 file
     `),
     chat: dedent(`
-      • Search needle in src/
+      ◆ Search needle in src/
           1 match in 1 file
     `),
   },
@@ -102,7 +102,7 @@ const CASES: ToolCase[] = [
         2 files
     `),
     chat: dedent(`
-      • Find *.ts
+      ◆ Find *.ts
           2 files
     `),
   },
@@ -123,7 +123,7 @@ const CASES: ToolCase[] = [
         5 matches in 3 files
     `),
     chat: dedent(`
-      • Search 3 patterns
+      ◆ Search 3 patterns
           5 matches in 3 files
     `),
   },
@@ -142,7 +142,7 @@ const CASES: ToolCase[] = [
          10 +const y = 3;
     `),
     chat: dedent(`
-      • Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts (+1 -1)
             9  const x = 1;
            10 -const y = 2;
            10 +const y = 3;
@@ -167,7 +167,7 @@ const CASES: ToolCase[] = [
          11  const b = 4;
     `),
     chat: dedent(`
-      • Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts (+1 -1)
             1  const a = 1;
             ⋮
            10 -const y = 2;
@@ -190,7 +190,7 @@ const CASES: ToolCase[] = [
          10 +const y = 3;
     `),
     chat: dedent(`
-      • Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts (+1 -1)
             1  const a = 1;
             ⋮  +3 lines
            10 +const y = 3;
@@ -209,7 +209,7 @@ const CASES: ToolCase[] = [
          2 +new
     `),
     chat: dedent(`
-      • Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts (+1 -1)
            2 -old
            2 +new
     `),
@@ -227,7 +227,7 @@ const CASES: ToolCase[] = [
         out | world
     `),
     chat: dedent(`
-      • Run echo hello
+      ◆ Run echo hello
           hello
           world
     `),
@@ -247,7 +247,7 @@ const CASES: ToolCase[] = [
         out | done
     `),
     chat: dedent(`
-      • Run make
+      ◆ Run make
           compiling...
           warning: unused var
           done
@@ -270,7 +270,7 @@ const CASES: ToolCase[] = [
         out | line6
     `),
     chat: dedent(`
-      • Run cmd
+      ◆ Run cmd
           line1
           line2
           ⋮ +3 lines
@@ -285,7 +285,7 @@ const CASES: ToolCase[] = [
         (No output)
     `),
     chat: dedent(`
-      • Run cmd
+      ◆ Run cmd
           (No output)
     `),
   },
@@ -302,7 +302,7 @@ const CASES: ToolCase[] = [
         ?? src/new.ts
     `),
     chat: dedent(`
-      • Git Status
+      ◆ Git Status
           M src/cli.ts
           ?? src/new.ts
     `),
@@ -320,7 +320,7 @@ const CASES: ToolCase[] = [
         -const y = 2;
     `),
     chat: dedent(`
-      • Git Diff src/agent.ts
+      ◆ Git Diff src/agent.ts
           +const x = 1;
           -const y = 2;
     `),
@@ -342,7 +342,7 @@ const CASES: ToolCase[] = [
         +line13
     `),
     chat: dedent(`
-      • Git Diff
+      ◆ Git Diff
           +line1
           -line2
           ⋮ +10 lines
@@ -362,7 +362,7 @@ const CASES: ToolCase[] = [
         def5678 fix: resolve bug
     `),
     chat: dedent(`
-      • Git Log src/cli.ts
+      ◆ Git Log src/cli.ts
           abc1234 feat: add feature
           def5678 fix: resolve bug
     `),
@@ -384,7 +384,7 @@ const CASES: ToolCase[] = [
         ghi9012 last
     `),
     chat: dedent(`
-      • Git Log
+      ◆ Git Log
           abc1234 first
           def5678 second
           … +8 lines
@@ -404,7 +404,7 @@ const CASES: ToolCase[] = [
         +const x = 1;
     `),
     chat: dedent(`
-      • Git Show abc1234
+      ◆ Git Show abc1234
           feat: add feature
           +const x = 1;
     `),
@@ -424,7 +424,7 @@ const CASES: ToolCase[] = [
         src/c.ts
     `),
     chat: dedent(`
-      • Git Add 3 files
+      ◆ Git Add 3 files
           src/a.ts
           src/b.ts
           src/c.ts
@@ -445,7 +445,7 @@ const CASES: ToolCase[] = [
         … +6 files
     `),
     chat: dedent(`
-      • Git Add 8 files
+      ◆ Git Add 8 files
           src/a.ts
           src/b.ts
           … +6 files
@@ -455,7 +455,7 @@ const CASES: ToolCase[] = [
     name: "git-commit with hash",
     parts: [{ kind: "tool-header", labelKey: "tool.label.git_commit", detail: "feat: add feature (abc1234)" }],
     cli: "Git Commit feat: add feature (abc1234)",
-    chat: "• Git Commit feat: add feature (abc1234)",
+    chat: "◆ Git Commit feat: add feature (abc1234)",
   },
   {
     name: "git-commit with body lines",
@@ -470,7 +470,7 @@ const CASES: ToolCase[] = [
         Updated config schema
     `),
     chat: dedent(`
-      • Git Commit feat: add feature (abc1234)
+      ◆ Git Commit feat: add feature (abc1234)
           Added new auth module
           Updated config schema
     `),
@@ -490,7 +490,7 @@ const CASES: ToolCase[] = [
         … +5 lines
     `),
     chat: dedent(`
-      • Git Commit refactor: cleanup (def5678)
+      ◆ Git Commit refactor: cleanup (def5678)
           Line 1
           Line 2
           … +5 lines
@@ -509,7 +509,7 @@ const CASES: ToolCase[] = [
         … +5 matches
     `),
     chat: dedent(`
-      • Find *.ts
+      ◆ Find *.ts
           a.ts
           … +5 matches
     `),
@@ -518,13 +518,13 @@ const CASES: ToolCase[] = [
     name: "skill-activate with name",
     parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state: "on" }],
     cli: "Skill build",
-    chat: "◉ Skill build",
+    chat: "◈ Skill build",
   },
   {
     name: "skill-deactivate with name",
     parts: [{ kind: "tool-header", labelKey: "tool.label.skill_deactivate", detail: "build", state: "off" }],
     cli: "Skill build",
-    chat: "○ Skill build",
+    chat: "◇ Skill build",
   },
 ];
 
@@ -589,7 +589,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     const diffLine = out.split("\n").find((line) => line.includes("X")) ?? "";
     expect(diffLine.endsWith("…")).toBe(true); // content was cut, not wrapped
     expect(Bun.stringWidth(diffLine)).toBeLessThanOrEqual(40);
-    expect(out).toContain("• Edit notes.ts (+1 -0)");
+    expect(out).toContain("◆ Edit notes.ts (+1 -0)");
   });
 
   test("tints the active-skill marker brand and the deactivate marker dim", () => {
@@ -599,8 +599,8 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         status: "success",
         columns: 96,
       });
-    expect(renderToString(<TerminalSceneRender scene={skillScene("on")} />)).toContain(`${colorToFg(palette.brand)}◉`);
-    expect(renderToString(<TerminalSceneRender scene={skillScene("off")} />)).toContain(`${colorToFg(palette.dim)}○`);
+    expect(renderToString(<TerminalSceneRender scene={skillScene("on")} />)).toContain(`${colorToFg(palette.brand)}◈`);
+    expect(renderToString(<TerminalSceneRender scene={skillScene("off")} />)).toContain(`${ansi.dim}◇`);
   });
 
   test("renders stderr in the same style as stdout, without a red channel flag", () => {

@@ -37,7 +37,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - Step budget enforcement for cost protection
 - Two-tier result cache for read-only and search tools with cross-task persistence
 - Streaming progress output with real-time token usage
-- Inline task checklist for multi-step tasks
+- Inline tasklist for multi-step tasks
 
 ## Tools
 

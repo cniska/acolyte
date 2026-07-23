@@ -64,6 +64,7 @@ describe("chat slash command visual regression", () => {
       dedent(`
         ❯ /status
 
+
           Status
 
           Providers:          openai (api key)
@@ -117,6 +118,7 @@ describe("chat slash command visual regression", () => {
       dedent(`
         ❯ /usage
 
+
           Usage
 
           Input:              15.9k  42.0k
@@ -151,9 +153,10 @@ describe("chat slash command visual regression", () => {
         dedent(`
           ❯ /sessions
 
+
             Sessions 2
 
-            ● sess_active  Current Session   just now
+            ◆ sess_active  Current Session   just now
               sess_prev    Previous Session  just now
       `),
       );

@@ -10,10 +10,12 @@ export const palette = {
   dim: "#666666", // dimmest ambient detail (Claude Code inactive)
 
   // Diff
-  diffAdd: "#1a3a1a",
-  diffRemove: "#3a1a1a",
+  diffAdd: "#0d1f0d",
+  diffRemove: "#1f0d0d",
   diffAddText: "#4a9a4a",
   diffRemoveText: "#9a4a4a",
+
+  userBand: "#1c1c26",
 
   // Semantic
   green: "green",
@@ -21,6 +23,7 @@ export const palette = {
   blue: "blue",
   yellow: "yellow",
   cyan: "cyan",
+  magenta: "magenta",
   success: "green",
   error: "red",
   cancelled: "#E5A84B",
