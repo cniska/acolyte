@@ -61,6 +61,26 @@ test("semantic assistant scenes render inline markup as styled spans, not raw ma
   expect(output).toContain(ansi.bold);
 });
 
+test("assistant layout keeps fenced code whitespace as assistant-code spans", () => {
+  const scene = layoutTranscriptMessage({
+    text: "Fix:\n```ts\n  const x = 1\n    nested()\n```",
+    kind: "assistant",
+    columns: 80,
+  });
+  expect(scene.lines[0]?.spans).toEqual([
+    { text: "◆ ", role: "assistant" },
+    { text: "Fix:", role: "assistant" },
+  ]);
+  expect(scene.lines[1]?.spans).toEqual([
+    { text: "  ", role: "assistant" },
+    { text: "  const x = 1", role: "assistant-code" },
+  ]);
+  expect(scene.lines[2]?.spans).toEqual([
+    { text: "  ", role: "assistant" },
+    { text: "    nested()", role: "assistant-code" },
+  ]);
+});
+
 test("assistant layout represents inline markup as semantic spans", () => {
   const scene = layoutTranscriptMessage({
     text: "Use `code`, **bold**, and src/chat.ts:42.",

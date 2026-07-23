@@ -114,4 +114,9 @@ describe("cli-format", () => {
     expect(lines[0]).toBe("◆ 1. first second third");
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
   });
+
+  test("formatAgentReplyOutput preserves fenced code indentation", () => {
+    const out = formatAgentReplyOutput(["Fix:", "```ts", "function f() {", "    return 1;", "}", "```"].join("\n"), 80);
+    expect(out).toBe(["◆ Fix:", "  function f() {", "      return 1;", "  }"].join("\n"));
+  });
 });
