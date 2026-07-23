@@ -53,7 +53,7 @@ The model completes by emitting a no-tool-call step whose text is the final resp
 - `RunControl` is a first-class abstraction that owns yield and cancellation behavior for a lifecycle run
 - created at the transport layer (e.g. RPC) where queue and abort state are known, and threaded into the lifecycle as a single object
 - `shouldYield()` is checked after generation completes and before accepting the result; yielding skips result acceptance and memory commit
-- `isCancelled()` is checked at event emission boundaries and in error handlers
+- `isCancelled()` is checked at event emission boundaries, in error handlers, and before accepting the result; a cancelled run skips result acceptance and memory commit, so an undelivered answer never reaches history or memory
 - both methods are polled (not event-driven) — the answer can change over time as external state evolves
 
 ## Memory integration point

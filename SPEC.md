@@ -117,7 +117,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **LC-11** — A tool-result payload is capped in size when written, so no single result consumes the next call's context; the per-call input check is the backstop for cumulative growth.
 - **LC-12** — The active-skill roster is bounded to a fraction of the context window; when an entry does not fit, the whole entry is dropped rather than emitting a malformed partial skill description.
 - **LC-13** — When earlier conversation history cannot fit the running window, the model receives an explicit gap notice and can retrieve the omitted history via session search; the drop is recorded observably.
-- **LC-14** — A run-control object owns yield and cancellation for a run: a yield checkpoint is honored only between lifecycle decisions, never mid-step, and yielding skips result acceptance and memory commit. Cancellation is polled at event and error boundaries.
+- **LC-14** — A run-control object owns yield and cancellation for a run: a yield checkpoint is honored only between lifecycle decisions, never mid-step, and yielding skips result acceptance and memory commit. Cancellation is polled at event and error boundaries, and a cancelled run likewise skips result acceptance and memory commit at that decision point, so an undelivered result is not accepted or distilled into memory.
 - **LC-15** — Provider rate limits are respected with sliding-window pacing and backoff, and provider prompt-cache behavior is used where available with cached-input tokens reported.
 
 ## 5. Security & sandbox requirements (SEC)
