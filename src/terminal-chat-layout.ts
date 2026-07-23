@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { unreachable } from "./assert";
 import { type MarkupToken, sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
@@ -7,6 +8,7 @@ import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
+import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
 import { type TasklistItemStatus, type TasklistOutput, tasklistMarker } from "./tasklist-contract";
@@ -340,17 +342,12 @@ export function layoutComposerStatus(input: {
   const cw = contentWidth(terminalWidth);
   if (presentation.picker) {
     const picker = presentation.picker;
-    const modelPrefix = `${t("chat.picker.label.model")} `;
-    const label =
-      picker.kind === "model"
-        ? `${modelPrefix}${picker.input.text}`
-        : picker.kind === "skills"
-          ? t("chat.picker.title.skills")
-          : t("chat.picker.title.resume");
-    let labelLine: TerminalLine = { spans: [{ text: label, role: "plain" }] };
-    let labelColumn = width(label);
+    let labelLine: TerminalLine;
+    let labelColumn: number;
     if (picker.kind === "model") {
-      const query = picker.input.text;
+      const modelPrefix = `${t("chat.picker.label.model")} `;
+      // Reserve one column for the trailing caret so the label can never outgrow the box interior.
+      const query = truncateToWidth(picker.input.text, Math.max(1, cw - width(modelPrefix) - 1));
       const caret = Math.max(0, Math.min(picker.input.cursor, query.length));
       labelLine = {
         spans: [
@@ -361,6 +358,10 @@ export function layoutComposerStatus(input: {
         ],
       };
       labelColumn = width(modelPrefix) + width(query.slice(0, caret));
+    } else {
+      const title = picker.kind === "skills" ? t("chat.picker.title.skills") : t("chat.picker.title.resume");
+      labelLine = { spans: [{ text: title, role: "plain" }] };
+      labelColumn = width(title);
     }
     const visible = picker.items.slice(picker.scrollOffset, picker.scrollOffset + PICKER_PAGE_SIZE);
     const selectedRel = picker.selected - picker.scrollOffset;
@@ -537,7 +538,7 @@ export function layoutComposerStatus(input: {
   };
 }
 
-function prStateRole(state: string): TerminalStyleRole {
+function prStateRole(state: PrState): TerminalStyleRole {
   switch (state) {
     case "open":
       return "pr-open";
@@ -546,7 +547,7 @@ function prStateRole(state: string): TerminalStyleRole {
     case "closed":
       return "pr-closed";
     default:
-      return "muted";
+      return unreachable(state);
   }
 }
 
