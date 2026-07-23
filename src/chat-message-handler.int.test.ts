@@ -6,7 +6,6 @@ import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { StreamEvent } from "./client-contract";
-import { palette } from "./palette";
 import {
   createClient,
   createMessage,
@@ -208,7 +207,7 @@ describe("chat message handler", () => {
       ],
     ];
     let replyCount = 0;
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -227,8 +226,7 @@ describe("chat message handler", () => {
     await handleMessage("delete sum.rs");
 
     // Each turn promotes its rows — collect all promoted rows across turns.
-    const promoted = calls.promotedSnapshots.flat();
-    const toolRows = promoted.filter((row) => row.kind === "tool");
+    const toolRows = rows.filter((row) => row.kind === "tool");
     expect(toolRows).toHaveLength(3);
     expect(
       isToolOutput(toolRows[0]?.content) &&
@@ -246,15 +244,13 @@ describe("chat message handler", () => {
       isToolOutput(toolRows[2]?.content) &&
         toolRows[2]?.content.parts.some((i) => i.kind === "tool-header" && i.labelKey === "tool.label.file_delete"),
     ).toBe(true);
-    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
-    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(
-      true,
-    );
-    expect(promoted.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Created sum.rs.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Updated sum.rs for three args.")).toBe(true);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "Removed sum.rs.")).toBe(true);
   });
 
   test("keeps the streamed prose as the authoritative transcript", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -270,13 +266,13 @@ describe("chat message handler", () => {
 
     await handleMessage("tell me about this project");
 
-    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    const assistantRows = rows.filter((row) => row.kind === "assistant");
     expect(assistantRows).toHaveLength(1);
     expect(assistantRows[0]?.content).toBe("the complete streamed answer.");
   });
 
   test("falls back to reply.output when the stream emits no prose", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async () => ({
@@ -289,7 +285,7 @@ describe("chat message handler", () => {
 
     await handleMessage("tell me about this project");
 
-    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    const assistantRows = rows.filter((row) => row.kind === "assistant");
     expect(assistantRows).toHaveLength(1);
     expect(assistantRows[0]?.content).toBe("answer delivered without deltas.");
   });
@@ -320,7 +316,7 @@ describe("chat message handler", () => {
   });
 
   test("completion turn: streamed answer is not duplicated by the authoritative commit", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -337,13 +333,13 @@ describe("chat message handler", () => {
 
     await handleMessage("say the complete answer");
 
-    const assistantRows = calls.promotedSnapshots.flat().filter((row) => row.kind === "assistant");
+    const assistantRows = rows.filter((row) => row.kind === "assistant");
     expect(assistantRows).toHaveLength(1);
     expect(assistantRows[0]?.content).toBe("The complete answer.");
   });
 
   test("preserves prose/tool interleaving instead of collapsing prose to the end", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -363,8 +359,7 @@ describe("chat message handler", () => {
 
     await handleMessage("edit a.rs");
 
-    const promoted = calls.promotedSnapshots.flat();
-    const kinds = promoted.map((row) => row.kind);
+    const kinds = rows.map((row) => row.kind);
     const firstProse = kinds.indexOf("assistant");
     const toolIdx = kinds.indexOf("tool");
     const lastProse = kinds.lastIndexOf("assistant");
@@ -373,7 +368,7 @@ describe("chat message handler", () => {
     expect(firstProse).toBeGreaterThanOrEqual(0);
     expect(toolIdx).toBeGreaterThan(firstProse);
     expect(lastProse).toBeGreaterThan(toolIdx);
-    const proseContents = promoted.filter((row) => row.kind === "assistant").map((row) => row.content);
+    const proseContents = rows.filter((row) => row.kind === "assistant").map((row) => row.content);
     expect(proseContents).toEqual(["Let me check the file.", "Done editing."]);
   });
 
@@ -535,7 +530,7 @@ describe("chat message handler", () => {
     expect(last?.kind).toBe("task");
     expect(last?.content).toBe("Interrupted");
     expect(last?.style?.dim).toBe(true);
-    expect(last?.style?.markerColor).toBe(palette.cancelled);
+    expect(last?.style?.outcome).toBe("cancelled");
   });
 
   test("interrupt followed by next prompt yields clean transcript flow", async () => {
@@ -760,8 +755,8 @@ describe("chat message handler", () => {
     expect(interruptHandler).not.toBeNull();
   });
 
-  test("promote is called after turn completion with all rows", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+  test("a completed turn keeps its user and assistant rows in the transcript", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: "done" });
@@ -773,13 +768,12 @@ describe("chat message handler", () => {
 
     await handleMessage("hello");
 
-    const promoted = calls.promotedSnapshots.flat();
-    expect(promoted.some((r) => r.kind === "user")).toBe(true);
-    expect(promoted.some((r) => r.kind === "assistant")).toBe(true);
+    expect(rows.some((r) => r.kind === "user")).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant")).toBe(true);
   });
 
-  test("promote includes tool output rows", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+  test("a tool turn keeps its tool row in the transcript", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "tool-call", toolCallId: "tc_1", toolName: "file-edit", args: {} });
@@ -798,12 +792,11 @@ describe("chat message handler", () => {
 
     await handleMessage("edit a file");
 
-    const promoted = calls.promotedSnapshots.flat();
-    expect(promoted.some((r) => r.kind === "tool")).toBe(true);
+    expect(rows.some((r) => r.kind === "tool")).toBe(true);
   });
 
   test("renders assistant output even when the reply streams no deltas", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async () => ({
           model: "gpt-5-mini",
@@ -816,12 +809,11 @@ describe("chat message handler", () => {
 
     await handleMessage("hello");
 
-    const promoted = calls.promotedSnapshots[0] ?? [];
-    expect(promoted.some((r) => r.kind === "assistant" && r.content === "No changes needed.")).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant" && r.content === "No changes needed.")).toBe(true);
   });
 
-  test("eagerly promotes finalized rows mid-turn, before the turn completes", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+  test("keeps the turn's interleaved rows in order with no duplicates", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -842,22 +834,15 @@ describe("chat message handler", () => {
 
     await handleMessage("edit a.rs");
 
-    // Promotion happens incrementally: the first prose row and the resolved tool row
-    // move to scrollback while the turn is still streaming, not in one turn-end batch.
-    expect(calls.promotedSnapshots.length).toBeGreaterThan(1);
-    const firstBatch = calls.promotedSnapshots[0] ?? [];
-    expect(firstBatch.some((r) => r.kind === "assistant" && r.content === "Checking the file.")).toBe(true);
-    // Every row still lands in scrollback exactly once across the incremental batches.
-    const promoted = calls.promotedSnapshots.flat();
-    const proseContents = promoted.filter((r) => r.kind === "assistant").map((r) => r.content);
+    const proseContents = rows.filter((r) => r.kind === "assistant").map((r) => r.content);
     expect(proseContents).toEqual(["Checking the file.", "Done."]);
-    expect(promoted.filter((r) => r.kind === "tool")).toHaveLength(1);
-    const ids = promoted.map((r) => r.id);
+    expect(rows.filter((r) => r.kind === "tool")).toHaveLength(1);
+    const ids = rows.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  test("de-duplicates a repeated progress notice even after it is promoted", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({
+  test("de-duplicates a repeated progress notice", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
@@ -871,31 +856,12 @@ describe("chat message handler", () => {
 
     await handleMessage("go");
 
-    const notices = calls.promotedSnapshots
-      .flat()
-      .filter((r) => r.kind === "system" && r.content === "rate limited, retrying");
+    const notices = rows.filter((r) => r.kind === "system" && r.content === "rate limited, retrying");
     expect(notices).toHaveLength(1);
   });
 
-  test("promote clears dynamic rows", async () => {
-    const { handleMessage, rows, calls } = createMessageHandlerHarness({
-      client: createClient({
-        replyStream: async (input) => {
-          input.onEvent({ type: "text-delta", text: "done" });
-          return { model: "gpt-5-mini", outputStreamed: true, output: "done" };
-        },
-        status: async () => ({}),
-      }),
-    });
-
-    await handleMessage("hello");
-
-    expect(calls.promotedSnapshots).toHaveLength(1);
-    expect(rows).toHaveLength(0);
-  });
-
-  test("a blocked question promotes the reason into the durable transcript", async () => {
-    const { handleMessage, rows, session, calls } = createMessageHandlerHarness({
+  test("a blocked question keeps the reason in the durable transcript", async () => {
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         // A blocked turn with no streamed prose: the reason arrives via output, nothing streams.
         replyStream: async () => ({
@@ -909,17 +875,14 @@ describe("chat message handler", () => {
 
     await handleMessage("set up the deploy");
 
-    expect(calls.promotedSnapshots).toHaveLength(1);
-    const promoted = calls.promotedSnapshots[0] ?? [];
-    expect(promoted.some((r) => r.kind === "assistant" && r.content === "Which credential should I use?")).toBe(true);
-    expect(rows).toHaveLength(0);
+    expect(rows.some((r) => r.kind === "assistant" && r.content === "Which credential should I use?")).toBe(true);
     expect(session.messages.some((m) => m.role === "assistant" && m.content === "Which credential should I use?")).toBe(
       true,
     );
   });
 
   test("a blocking error renders as an error row with no prompt or invented prose", async () => {
-    const { handleMessage, session, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows, session, calls } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async () => ({
           model: "gpt-5-mini",
@@ -933,10 +896,8 @@ describe("chat message handler", () => {
 
     await handleMessage("do the thing");
 
-    expect(calls.promotedSnapshots).toHaveLength(1);
-    const promoted = calls.promotedSnapshots[0] ?? [];
-    expect(promoted.some((r) => r.kind === "system" && r.content === "completion blocked: empty answer")).toBe(true);
-    expect(promoted.some((r) => r.kind === "assistant")).toBe(false);
+    expect(rows.some((r) => r.kind === "system" && r.content === "completion blocked: empty answer")).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant")).toBe(false);
     expect(session.messages.some((m) => m.role === "assistant")).toBe(false);
     expect(calls.pendingStates.at(-1)).toBeNull();
     expect(calls.pendingTransitions.at(-1)).toBe(false);
@@ -944,7 +905,7 @@ describe("chat message handler", () => {
 
   test("a blocked question after tool calls still renders its reason", async () => {
     const reason = "Which layer should the rate limit live in — the RPC accept loop or per-session?";
-    const { handleMessage, session, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         // Mirrors a real blocked turn: the model runs tools, streams NO prose, then ends its
         // turn with the reason as output only, never as a text-delta.
@@ -973,8 +934,7 @@ describe("chat message handler", () => {
 
     await handleMessage("Add rate limiting to the RPC server.");
 
-    const promoted = calls.promotedSnapshots.flat();
-    expect(promoted.some((r) => r.kind === "assistant" && r.content === reason)).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant" && r.content === reason)).toBe(true);
     expect(session.messages.some((m) => m.role === "assistant" && m.content === reason)).toBe(true);
   });
 
@@ -984,7 +944,7 @@ describe("chat message handler", () => {
     // mistaken for the answer and suppress rendering the blocked reason.
     const narration = "I'm going to locate the RPC server and add rate limiting.";
     const reason = "Which layer should the rate limit live in — the RPC accept loop or per-session?";
-    const { handleMessage, session, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows, session } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async (input) => {
           input.onEvent({ type: "text-delta", text: narration });
@@ -1009,15 +969,14 @@ describe("chat message handler", () => {
 
     await handleMessage("Add rate limiting to the RPC server.");
 
-    const promoted = calls.promotedSnapshots.flat();
-    expect(promoted.some((r) => r.kind === "assistant" && r.content === narration)).toBe(true);
-    expect(promoted.some((r) => r.kind === "assistant" && r.content === reason)).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant" && r.content === narration)).toBe(true);
+    expect(rows.some((r) => r.kind === "assistant" && r.content === reason)).toBe(true);
     expect(session.messages.some((m) => m.role === "assistant" && m.content === reason)).toBe(true);
   });
 
   test("answering a blocked turn in-process does not duplicate the reason row", async () => {
     let call = 0;
-    const { handleMessage, calls } = createMessageHandlerHarness({
+    const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         replyStream: async () => {
           call += 1;
@@ -1032,17 +991,15 @@ describe("chat message handler", () => {
     await handleMessage("set up the deploy");
     await handleMessage("use the CI token");
 
-    const promoted = calls.promotedSnapshots.flat();
-    expect(
-      promoted.filter((r) => r.kind === "assistant" && r.content === "Which credential should I use?"),
-    ).toHaveLength(1);
+    expect(rows.filter((r) => r.kind === "assistant" && r.content === "Which credential should I use?")).toHaveLength(
+      1,
+    );
   });
 
-  test("promote is called after abort with interrupted row", async () => {
+  test("an aborted turn keeps the interrupted row in the transcript", async () => {
     const rows: ChatRow[] = [];
     let interruptHandler: () => void = () => {};
     let interruptRegistered = false;
-    const promotedSnapshots: ChatRow[][] = [];
 
     const session = createSession({ id: "sess_test" });
     const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
@@ -1094,10 +1051,6 @@ describe("chat message handler", () => {
         interruptRegistered = handler !== null;
         if (handler) interruptHandler = handler;
       },
-      promote: () => {
-        promotedSnapshots.push([...rows]);
-        rows.splice(0, rows.length);
-      },
       resumeTranscript: () => {},
       clearTranscript: () => {},
     });
@@ -1109,9 +1062,7 @@ describe("chat message handler", () => {
     interruptHandler();
     await pending;
 
-    expect(promotedSnapshots).toHaveLength(1);
-    const promoted = promotedSnapshots[0] ?? [];
-    expect(promoted.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
+    expect(rows.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
   });
 
   test("a blocked question ends the turn with no pending indicator", async () => {

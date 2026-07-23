@@ -15,6 +15,11 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 - If a test needs real fs/process/network behavior, use `*.int.test.ts` instead.
 - Prefer mocks for UI/layout-focused unit tests.
 
+## TUI unit testing
+
+- Headless input logic (keystroke → edit action → callbacks) is unit-tested at its seam: render the handler under a fake `InputContext` that captures the registered handler, then drive it with synthetic `KeyEvent`s. Byte-level key parsing stays in `prompt-keymap`'s own tests, so a handler test asserts behavior, not escape sequences.
+- Layout parity between two render paths (the live tail vs. scrollback, or chat vs. CLI) is pinned by rendering both from one scene and asserting byte-equality, so a forked renderer cannot pass silently.
+
 ## Integration test boundary
 
 - Tool integration tests must dispatch through `toolsForAgent({ workspace })` and call `tools.<name>.execute()`, not the underlying function directly. This exercises budget checks, hooks, caching, and call logging — the same path production uses.

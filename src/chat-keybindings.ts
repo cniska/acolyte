@@ -13,6 +13,7 @@ type HistoryTransition = {
 type ResolveTabAutocompleteInput = {
   browsingInputHistory: boolean;
   value: string;
+  cursor?: number;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -82,7 +83,8 @@ export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): stri
   if (!input.isTab || input.browsingInputHistory) return null;
   if (input.atQuery !== null && input.atSuggestions.length > 0) {
     const selected = input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
-    if (shouldAutocompleteAtSubmit(input.value, selected)) return applyAtSuggestion(input.value, selected ?? "");
+    if (shouldAutocompleteAtSubmit(input.value, selected, input.cursor))
+      return applyAtSuggestion(input.value, selected ?? "", input.cursor);
   }
   if (input.atQuery === null && input.slashSuggestions.length > 0) {
     const selected =
@@ -113,9 +115,9 @@ type UseChatKeybindingsInput = {
   inputHistoryDraft: string;
   value: string;
   setValue: (next: string) => void;
-  setInputRevision: (next: number | ((current: number) => number)) => void;
   applyingHistoryRef: { current: boolean };
   isPending: boolean;
+  cursor: number;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -196,7 +198,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
-        input.setInputRevision((current) => current + 1);
         return;
       }
       if (!suggestionNavActive && historyTriggerDown && input.inputHistoryIndex >= 0) {
@@ -205,13 +206,13 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         input.setInputHistoryIndex(transition.nextIndex);
         input.applyingHistoryRef.current = true;
         input.setValue(transition.nextValue);
-        input.setInputRevision((current) => current + 1);
         return;
       }
       if (!browsingInputHistory && input.atQuery !== null && input.atSuggestions.length > 0) {
         const autocompleted = resolveTabAutocomplete({
           browsingInputHistory,
           value: input.value,
+          cursor: input.cursor,
           atQuery: input.atQuery,
           atSuggestions: input.atSuggestions,
           atSuggestionIndex: input.atSuggestionIndex,
@@ -221,7 +222,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
-          input.setInputRevision((current) => current + 1);
           return;
         }
         if (key.upArrow) {
@@ -237,6 +237,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         const autocompleted = resolveTabAutocomplete({
           browsingInputHistory,
           value: input.value,
+          cursor: input.cursor,
           atQuery: input.atQuery,
           atSuggestions: input.atSuggestions,
           atSuggestionIndex: input.atSuggestionIndex,
@@ -246,7 +247,6 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
-          input.setInputRevision((current) => current + 1);
           return;
         }
         if (key.upArrow) {

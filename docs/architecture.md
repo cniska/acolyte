@@ -31,7 +31,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
 - custom React reconciler for terminal rendering
-- **details:** see [TUI](./tui.md)
+- **details:** see [TUI](./tui.md) for the renderer, [Chat Presentation](./chat-presentation.md) for the chat-state-to-terminal pipeline
 
 ## Daemon flow
 

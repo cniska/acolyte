@@ -3,7 +3,6 @@ import { type ChatRow, isChecklistOutput, isToolOutput } from "./chat-contract";
 import { rowMarker } from "./chat-row-marker";
 import { formatChecklist } from "./checklist-format";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
-import { palette } from "./palette";
 import { renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
 
@@ -119,9 +118,9 @@ export function createStdoutRowProjector(): {
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {
-              // Color by the notice/error level carried on the row style: warn→yellow,
-              // error→red.
-              if (row.style?.text === palette.error) printError(row.content);
+              // Color by the notice/error level carried on the row's semantic outcome:
+              // error→red, everything else (warning)→yellow.
+              if (row.style?.outcome === "error") printError(row.content);
               else printWarning(row.content);
               hasPrintedProgress = true;
             }

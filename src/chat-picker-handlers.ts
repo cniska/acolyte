@@ -5,6 +5,7 @@ import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
+import { createInputController } from "./input-controller";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skill-ops";
@@ -64,7 +65,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
       kind: "model",
       items: [],
       filtered: [],
-      query: "",
+      input: createInputController(),
       index: 0,
       scrollOffset: 0,
       loading: true,

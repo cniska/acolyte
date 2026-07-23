@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type React from "react";
-import { createElement as h, useEffect, useState } from "react";
+import { createElement as h, useEffect, useState, useSyncExternalStore } from "react";
 import { reconciler } from "./reconciler";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
@@ -1054,6 +1054,167 @@ describe("render", () => {
     const writesAfterFlush = frameWrites.slice(staticFlushIdx);
     const ovf1AfterFlush = writesAfterFlush.filter((w) => w.includes("OVF1"));
     expect(ovf1AfterFlush.length).toBeLessThanOrEqual(1);
+  });
+
+  test("promoting an overflowed turn whose above-fold row changed does not duplicate scrollback", async () => {
+    // Finding #1: a non-finalized row (tool running) sits above a screenful, freezes into
+    // scrollback, then finalizes (tool done) in the same frame its section commits to
+    // <tui-static>. A byte-match adoption misses the change and re-emits the whole slice
+    // below its frozen copy; adopting the frozen prefix by physical-line count avoids it.
+    const build = (marker: string, promoted: boolean) => {
+      const lines = ["L1", "L2", `tool ${marker}`, "L4", "L5", "L6", "L7", "L8"];
+      const nodes = lines.map((line) => <tui-text key={line}>{line}</tui-text>);
+      return promoted ? (
+        <tui-box key="p" flexDirection="column">
+          <tui-static>{nodes}</tui-static>
+          <tui-text>input</tui-text>
+        </tui-box>
+      ) : (
+        <tui-box key="a" flexDirection="column">
+          {nodes}
+          <tui-text>input</tui-text>
+        </tui-box>
+      );
+    };
+    const frames = await renderScript([build("running", false), build("done", true)], { columns: 20, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, 20);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (const line of ["L1", "L2", "L4", "L5", "L6", "L7", "L8"]) {
+      expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+    }
+  });
+
+  test("a static flush with no frozen overlap keeps every committed line", async () => {
+    // The count-based adoption must not over-skip: a fresh static item flushed while the
+    // renderer still holds a frozen overflow prefix from an unrelated live region (a
+    // /clear seeding a new header mid-overflow) must be written in full, not truncated.
+    const HEADER = ["H1", "H2", "H3", "H4"];
+    const build = (withHeader: boolean) => (
+      <tui-box key={withHeader ? "h" : "a"} flexDirection="column">
+        {withHeader && (
+          <tui-static>
+            {HEADER.map((line) => (
+              <tui-text key={line}>{line}</tui-text>
+            ))}
+          </tui-static>
+        )}
+        {["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8"].map((line) => (
+          <tui-text key={line}>{line}</tui-text>
+        ))}
+      </tui-box>
+    );
+    const frames = await renderScript([build(false), build(true)], { columns: 20, rows: 6 });
+    const vt = replayTerminal(frameWrites(frames.flat()), 6, 20);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (const line of HEADER) {
+      expect(transcript.filter((row) => row.trim() === line).length).toBe(1);
+    }
+  });
+
+  test("clearTerminal resets frozen state so a later static flush is not truncated", async () => {
+    // openSegment (/clear, session switch) wipes scrollback through clearTerminal. If the
+    // renderer kept its frozen-overflow count across the wipe, the count-based adoption
+    // would skip that many lines off the fresh segment's header — dropping its top rows.
+    const { clearTerminal } = await import("./host-config");
+    const HEADER = ["H1", "H2", "H3", "H4"];
+    const LIVE = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8"];
+    const postClear: string[] = [];
+    // A synchronous external store (as renderScript uses) so the segment swap commits in
+    // one deterministic frame — a ref-driven setState is default priority and would not
+    // flush under the manual drain, letting the wipe race the commit.
+    let cleared = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => cleared,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const c = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>{c && HEADER.map((line) => <tui-text key={line}>{line}</tui-text>)}</tui-static>
+              {!c && LIVE.map((line) => <tui-text key={line}>{line}</tui-text>)}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf); // V1..V3 overflow and freeze
+        const mark = buf.length;
+        // openSegment wipes the terminal, then swaps in the new segment's rows: the wipe's
+        // frozen-state reset must land before the swap commits.
+        cleared = true;
+        clearTerminal();
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), buf);
+        postClear.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    // The fresh segment header must be written in full after the wipe. With the frozen
+    // count left stale, count-based adoption would drop its top rows, emitting only H4.
+    const emitted = postClear.join("");
+    for (const line of HEADER) {
+      expect(emitted).toContain(line);
+    }
+  });
+
+  test("a promotion after a width change writes committed lines in full, never dropping them", async () => {
+    // The frozen line count is measured in the freeze frame's width. After a resize the
+    // committed slice rewraps to a different line count, so dropping that stale count would
+    // remove more lines than the widened content holds — silent transcript loss. Adoption is
+    // gated on the width matching the freeze; a mismatch falls back to a byte match, which
+    // dedups an unchanged prefix but never drops content.
+    const NARROW = ["N0", "N1", "N2", "N3", "N4", "N5", "N6", "N7"];
+    const WIDE = ["W0", "W1", "W2", "W3", "W4"];
+    let promoted = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => promoted,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postResize: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const p = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              <tui-static>{p && WIDE.map((line) => <tui-text key={line}>{line}</tui-text>)}</tui-static>
+              {!p && NARROW.map((line) => <tui-text key={line}>{line}</tui-text>)}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf); // freeze the top narrow lines at 20 cols
+        Object.defineProperty(process.stdout, "columns", { value: 40, configurable: true });
+        promoted = true;
+        for (const listener of listeners) listener();
+        const mark = buf.length;
+        await drainFrame(() => app.flush(), buf);
+        postResize.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const emitted = postResize.join("");
+    for (const line of WIDE) {
+      expect(emitted).toContain(line);
+    }
   });
 
   test("flush commits a pending throttled render immediately", async () => {

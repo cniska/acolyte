@@ -1,5 +1,12 @@
-import { type ChatRow, isToolOutput } from "./chat-contract";
+import { type ChatRow, isToolOutput, type RowOutcome } from "./chat-contract";
 import { palette } from "./palette";
+
+const OUTCOME_COLORS: Record<RowOutcome, string> = {
+  success: palette.success,
+  warning: palette.yellow,
+  error: palette.error,
+  cancelled: palette.cancelled,
+};
 
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: "❯",
@@ -25,6 +32,9 @@ function skillStateMarker(row: ChatRow): { glyph: string; color: string } | unde
 export function rowMarker(row: ChatRow): { glyph: string; color?: string } {
   const skillMarker = skillStateMarker(row);
   if (skillMarker) return skillMarker;
-  const color = row.style?.markerColor ?? (row.kind === "assistant" ? palette.text : undefined);
+  const color =
+    (row.style?.outcome && OUTCOME_COLORS[row.style.outcome]) ??
+    row.style?.markerColor ??
+    (row.kind === "assistant" ? palette.text : undefined);
   return { glyph: MARKERS[row.kind], color };
 }

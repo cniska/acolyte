@@ -7,6 +7,7 @@ import {
   messageIdSchema,
   messageSchema,
 } from "./chat-contract";
+import { type TranscriptRow, transcriptRowSchema } from "./chat-transcript-contract";
 import { type IsoDateTimeString, isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { type ActiveSkill, activeSkillSchema } from "./skill-contract";
@@ -64,6 +65,7 @@ export const sessionSchema = z.object({
   // Display projection (interleaved prose/tool rows) for live/resume parity. Optional:
   // its absence marks a pre-parity session, which resumes from `messages` (collapsed).
   transcript: z.array(chatRowSchema).optional(),
+  transcriptPresentation: z.array(transcriptRowSchema).optional(),
   tokenUsage: z.array(sessionTokenUsageEntrySchema),
 });
 
@@ -79,6 +81,7 @@ export interface Session {
   activeSkills?: ActiveSkill[];
   messages: ChatMessage[];
   transcript?: ChatRow[];
+  transcriptPresentation?: TranscriptRow[];
   tokenUsage: SessionTokenUsageEntry[];
 }
 

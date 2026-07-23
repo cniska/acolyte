@@ -39,10 +39,10 @@ export type SuggestionsState = {
   setAtSuggestionIndex: (next: number | ((current: number) => number)) => void;
 };
 
-export function useSuggestions(value: string): SuggestionsState {
+export function useSuggestions(value: string, cursor?: number): SuggestionsState {
   const slashSuggestions = suggestSlashCommands(value);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
-  const atQuery = extractAtReferenceQuery(value);
+  const atQuery = extractAtReferenceQuery(value, cursor);
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
 

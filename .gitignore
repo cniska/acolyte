@@ -10,7 +10,7 @@ scripts/demo.sh
 acolyte
 *.bun-build
 scripts/data/memory-bench/
-docs/notes/
+docs/notes
 .opencode/
 opencode.json
 .pi
