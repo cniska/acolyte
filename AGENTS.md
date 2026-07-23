@@ -1,5 +1,7 @@
 # Project Rules
 
+[SPEC.md](SPEC.md) is the source of truth for requirements (what, not how) — read it before changing behavior, and keep it current in the same change that changes behavior; the spec never lags the code. Invariants may cite spec IDs; code, comments, and test names must not.
+
 ## Architecture
 
 Acolyte is a terminal-first AI coding agent: local-first, observable, extensible. Read `docs/architecture.md` before working on unfamiliar subsystems.
