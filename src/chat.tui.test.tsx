@@ -178,29 +178,12 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ /st
-      ────────────────────────────────────────────────────────────────────────────────
-        /status
-        /stop
-
-        show server status
-    `),
-    );
+    expect(out).toBe(`${box(["❯ /status"], 80)}\n     /status              show server status\n     /stop`);
   });
 
   test("renders the ctrl-c exit hint below the composer", () => {
     const out = renderInputPanel({ ctrlCPending: true }, 80);
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────────────────────────
-        ctrl+c again to exit
-    `),
-    );
+    expect(out).toBe(`${box(["❯"], 80)}\n   ctrl+c again to exit`);
   });
 
   test("renders at-mention suggestions below the composer", () => {
@@ -211,15 +194,7 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      ❯ @src
-      ────────────────────────────────────────────────────────────────────────────────
-        src/chat-state.ts
-        src/chat-app.tsx
-    `),
-    );
+    expect(out).toBe(`${box(["❯ @src/chat-app.tsx"], 80)}\n     src/chat-state.ts\n     src/chat-app.tsx`);
   });
 });
 
@@ -242,7 +217,7 @@ describe("chat tui visual regression: model picker", () => {
 
     const output = renderInputPanel({ picker });
     expect(output).toBe(
-      box(["Model:", "", "  gpt-5-mini", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]),
+      box(["Model", "", "  gpt-5-mini", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]),
     );
   });
 
@@ -274,7 +249,7 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker });
-    expect(output).toBe(box(["Model: 5.2", "", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]));
+    expect(output).toBe(box(["Model 5.2", "", "› gpt-5.2", "", "Type to filter · Enter to apply · Esc to close"]));
   });
 
   test("renders model picker empty state when no matches", () => {
@@ -291,7 +266,7 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker });
-    expect(output).toBe(box(["Model: zzz", "", " No matches.", "", "Type to filter · Enter to apply · Esc to close"]));
+    expect(output).toBe(box(["Model zzz", "", " No matches.", "", "Type to filter · Enter to apply · Esc to close"]));
   });
 
   test("renders model picker with scroll window", () => {
@@ -311,7 +286,7 @@ describe("chat tui visual regression: model picker", () => {
     const output = renderInputPanel({ picker });
     expect(output).toBe(
       box([
-        "Model:",
+        "Model",
         "",
         "  model-05",
         "  model-06",
@@ -339,16 +314,6 @@ describe("chat tui visual regression: model picker", () => {
     };
 
     const output = renderInputPanel({ picker }, 80);
-    expect(output).toBe(
-      dedent(`
-      ────────────────────────────────────────────────────────────────────────────────
-      Model: gpt
-
-        Loading…
-
-      Type to filter · Enter to apply · Esc to close
-      ────────────────────────────────────────────────────────────────────────────────
-    `),
-    );
+    expect(output).toBe(box(["Model gpt", "", "  Loading…", "", "Type to filter · Enter to apply · Esc to close"], 80));
   });
 });

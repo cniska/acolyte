@@ -340,7 +340,7 @@ export function layoutComposerStatus(input: {
   const cw = contentWidth(terminalWidth);
   if (presentation.picker) {
     const picker = presentation.picker;
-    const modelPrefix = `${t("chat.picker.label.model")}: `;
+    const modelPrefix = `${t("chat.picker.label.model")} `;
     const label =
       picker.kind === "model"
         ? `${modelPrefix}${picker.input.text}`
@@ -355,9 +355,9 @@ export function layoutComposerStatus(input: {
       labelLine = {
         spans: [
           { text: modelPrefix, role: "plain" },
-          { text: query.slice(0, caret), role: "plain" },
-          { text: query[caret] ?? " ", role: presentation.caretVisible ? "cursor" : "plain" },
-          { text: query.slice(caret + 1), role: "plain" },
+          { text: query.slice(0, caret), role: "muted" },
+          { text: query[caret] ?? " ", role: presentation.caretVisible ? "cursor" : "muted" },
+          { text: query.slice(caret + 1), role: "muted" },
         ],
       };
       labelColumn = width(modelPrefix) + width(query.slice(0, caret));
