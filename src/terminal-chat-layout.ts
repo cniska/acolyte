@@ -6,13 +6,13 @@ import {
   segmentAssistantContent,
   tokenize,
   wrapAssistantContent,
-  wrapCodeText,
 } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
+import { highlightCode } from "./code-highlight";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
@@ -33,6 +33,38 @@ export type TerminalConstraints = z.infer<typeof terminalConstraintsSchema>;
 
 function width(text: string): number {
   return Bun.stringWidth(text);
+}
+
+const codeGraphemes = new Intl.Segmenter();
+
+// Hard-wraps highlighted code spans to a display-width budget, breaking at the last grapheme that
+// fits — no word wrap, no truncation, because code is read and copied. Pure geometry: measures
+// display cells (Bun.stringWidth), takes a budget not physical columns. A blank line yields one
+// empty row. Shares its break rule with chat-content's wrapCodeText (the colorless CLI path); the
+// equivalence is pinned by a test so the two never drift.
+export function wrapSpans(spans: TerminalSpan[], budget: number): TerminalSpan[][] {
+  const limit = Math.max(1, budget);
+  const rows: TerminalSpan[][] = [];
+  let row: TerminalSpan[] = [];
+  let used = 0;
+  for (const span of spans) {
+    let chunk = "";
+    for (const { segment } of codeGraphemes.segment(span.text)) {
+      const cell = width(segment);
+      if (used > 0 && used + cell > limit) {
+        if (chunk.length > 0) row.push({ text: chunk, role: span.role });
+        chunk = "";
+        rows.push(row);
+        row = [];
+        used = 0;
+      }
+      chunk += segment;
+      used += cell;
+    }
+    if (chunk.length > 0) row.push({ text: chunk, role: span.role });
+  }
+  rows.push(row);
+  return rows;
 }
 export function wrapTerminalProse(text: string, columns: number): string[] {
   return text.split("\n").flatMap((logical) => {
@@ -168,9 +200,9 @@ export function layoutTranscriptMessage(input: {
           contentLines.push(tokenize(line).map((token) => assistantTokenSpan(token, role)));
         }
       } else {
-        for (const source of segment.text.split("\n")) {
-          for (const line of wrapCodeText(source, textWrap)) {
-            contentLines.push(line ? [{ text: line, role: "assistant-code" as const }] : []);
+        for (const line of highlightCode(segment.text, segment.lang)) {
+          for (const wrapped of wrapSpans(line, textWrap)) {
+            contentLines.push(wrapped);
           }
         }
       }
