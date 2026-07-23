@@ -473,20 +473,22 @@ export function layoutComposerStatus(input: {
       );
   } else if (presentation.suggestions.kind === "slash") {
     const selected = presentation.suggestions.selected;
+    // Each command carries its help in a dim column (like the skills picker), so the whole list
+    // is legible at once instead of only the selected row's help on a line below.
     attached.push(
-      ...presentation.suggestions.candidates.map((candidate, index) => ({
-        spans: [
-          {
-            text: truncateToWidth(`  ${candidate.command}`, cw),
-            role: index === selected ? ("selected" as const) : ("muted" as const),
-          },
-        ],
-      })),
+      ...presentation.suggestions.candidates.map((candidate, index) => {
+        const label = truncateToWidth(candidate.command, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
+        const help = candidate.help ?? "";
+        if (index === selected)
+          return { spans: [{ text: truncateToWidth(`  ${label} ${help}`, cw), role: "selected" as const }] };
+        return {
+          spans: [
+            { text: `  ${label}`, role: "plain" as const },
+            { text: truncateToWidth(` ${help}`, Math.max(1, cw - 2 - PICKER_LABEL_WIDTH)), role: "muted" as const },
+          ],
+        };
+      }),
     );
-    if (presentation.suggestions.selectedHelp) {
-      attached.push({ spans: [{ text: "", role: "plain" }] });
-      attached.push({ spans: [{ text: `  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
-    }
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
     attached.push({ spans: [{ text: t("chat.input.ctrl_c_hint"), role: "muted" }] });

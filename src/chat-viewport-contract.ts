@@ -62,7 +62,6 @@ export const composerSuggestionsSchema = z.discriminatedUnion("kind", [
     kind: z.literal("slash"),
     candidates: z.array(z.object({ command: z.string(), help: z.string().optional() })),
     selected: z.number().int().nonnegative(),
-    selectedHelp: z.string().optional(),
   }),
 ]);
 export const composerHelpEntrySchema = z.object({ key: z.string(), description: z.string() });
