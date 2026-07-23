@@ -147,6 +147,11 @@ const SCOPE_ROLES: Record<string, TerminalStyleRole> = {
   "meta.prompt": "syntax-meta",
 };
 
+// null (not a plain fallback) lets a caller keep its own rendering for an unknown token.
+export function resolveLanguage(token: string): string | null {
+  return LANGUAGE_ALIASES[token.trim().toLowerCase()] ?? null;
+}
+
 const MAX_CHARS = 20_000;
 const MAX_LINES = 400;
 const MEMO_LIMIT = 500;

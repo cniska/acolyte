@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { highlightCode } from "./code-highlight";
+import { highlightCode, resolveLanguage } from "./code-highlight";
 import type { TerminalSpan } from "./terminal-scene-contract";
 
 function reconstruct(lines: TerminalSpan[][]): string {
@@ -66,5 +66,18 @@ describe("highlightCode", () => {
     const flat = spans(highlightCode(huge, "ts"));
     expect(flat.every((span) => span.role === "syntax-plain")).toBe(true);
     expect(flat.some((span) => span.role === "syntax-keyword")).toBe(false);
+  });
+});
+
+describe("resolveLanguage", () => {
+  test("maps an alias to its grammar, trimming and lowercasing", () => {
+    expect(resolveLanguage("ts")).toBe("typescript");
+    expect(resolveLanguage("  TS ")).toBe("typescript");
+    expect(resolveLanguage("py")).toBe("python");
+  });
+
+  test("returns null for an unknown token", () => {
+    expect(resolveLanguage("unknownext")).toBeNull();
+    expect(resolveLanguage("")).toBeNull();
   });
 });

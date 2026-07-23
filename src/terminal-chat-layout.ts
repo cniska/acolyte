@@ -1,3 +1,4 @@
+import { extname } from "node:path";
 import { z } from "zod";
 import { unreachable } from "./assert";
 import {
@@ -12,7 +13,7 @@ import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-gl
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
-import { highlightCode } from "./code-highlight";
+import { highlightCode, resolveLanguage } from "./code-highlight";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
@@ -715,6 +716,15 @@ function toolRole(role: string): TerminalStyleRole | null {
   return "muted";
 }
 
+// A diff line's segment role once its band is known: text takes the band color, the gutter takes
+// the matching meta tint, everything else keeps its base role.
+function diffSpanRole(role: string, fill: TerminalStyleRole | undefined, base: TerminalStyleRole): TerminalStyleRole {
+  if (!fill) return base;
+  if (role === "diff-text") return fill;
+  if (role === "diff-gutter") return fill === "diff-added" ? "tool-meta-add" : "tool-meta-remove";
+  return base;
+}
+
 function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
   switch (status) {
     case "success":
@@ -761,6 +771,8 @@ export function layoutTranscriptTool(input: {
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
   const marker = `${toolMarkerGlyph(headerState, input.status)} `;
   const markerRole = toolHeaderMarkerRole(headerState, input.status);
+  const editPath = input.parts.find((part) => part.kind === "edit-header")?.path;
+  const diffLang = editPath ? resolveLanguage(extname(editPath).slice(1)) : null;
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -772,15 +784,12 @@ export function layoutTranscriptTool(input: {
       const spans = fitted.segments.flatMap((segment) => {
         const base = toolRole(segment.role);
         if (!base) return [];
-        const role: TerminalStyleRole =
-          fill && segment.role === "diff-text"
-            ? fill
-            : fill && segment.role === "diff-gutter"
-              ? fill === "diff-added"
-                ? "tool-meta-add"
-                : "tool-meta-remove"
-              : base;
-        return [{ text: segment.text, role }];
+        // Removed lines stay flat red: the code is being discarded, so highlighting it is just noise.
+        if (segment.role === "diff-text" && diffLang && fill !== "diff-removed") {
+          const [lineSpans = []] = highlightCode(segment.text, diffLang);
+          return lineSpans;
+        }
+        return [{ text: segment.text, role: diffSpanRole(segment.role, fill, base) }];
       });
       const padding = fill
         ? " ".repeat(Math.max(0, contentWidth - fitted.indent - segmentsWidth(fitted.segments)))
