@@ -97,7 +97,7 @@ describe("scene transcript integrity", () => {
   test("the oracle transcript is non-trivial and carries every tricky vector", async () => {
     const expected = await oracleTranscript();
     expect(expected.some((line) => line.includes(CJK))).toBe(true);
-    expect(expected.some((line) => line.includes("+const value"))).toBe(true);
+    expect(expected.some((line) => line.includes("+ const value"))).toBe(true);
     expect(expected.some((line) => Bun.stringWidth(line) === COLUMNS)).toBe(true);
   });
 
