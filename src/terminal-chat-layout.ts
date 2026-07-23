@@ -194,7 +194,10 @@ export function layoutTranscriptMessage(input: {
   if (input.kind === "assistant") {
     const textWrap = Math.max(1, contentWidth(input.columns) - width(marker));
     const contentLines: TerminalSpan[][] = [];
-    for (const segment of segmentAssistantContent(input.text)) {
+    // Segments alternate prose/code, so a blank line before every segment but the first sets a
+    // code block off from surrounding prose — the visual separator, since fence markers are stripped.
+    segmentAssistantContent(input.text).forEach((segment, index) => {
+      if (index > 0) contentLines.push([]);
       if (segment.kind === "prose") {
         for (const line of wrapAssistantContent(sanitizeAssistantContent(segment.text), textWrap).split("\n")) {
           contentLines.push(tokenize(line).map((token) => assistantTokenSpan(token, role)));
@@ -206,7 +209,7 @@ export function layoutTranscriptMessage(input: {
           }
         }
       }
-    }
+    });
     return {
       lines: contentLines.map((spans, index) => ({
         spans: [{ text: index === 0 ? marker : "  ", role }, ...spans],

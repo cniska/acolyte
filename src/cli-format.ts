@@ -149,7 +149,8 @@ export function formatRunSummary(
 
 export function formatAgentReplyOutput(content: string, wrapWidth = 100): string {
   const lines: string[] = [];
-  for (const segment of segmentAssistantContent(content)) {
+  segmentAssistantContent(content).forEach((segment, index) => {
+    if (index > 0) lines.push("");
     if (segment.kind === "prose") {
       lines.push(...wrapAssistantContent(segment.text, wrapWidth).split("\n"));
     } else {
@@ -157,7 +158,7 @@ export function formatAgentReplyOutput(content: string, wrapWidth = 100): string
         lines.push(...wrapCodeText(source, wrapWidth));
       }
     }
-  }
+  });
   if (lines.length === 0) return GLYPH_FILLED;
   return lines
     .map((line, index) => {

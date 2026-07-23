@@ -71,9 +71,11 @@ test("assistant layout highlights fenced code and preserves whitespace", () => {
     { text: "◆ ", role: "assistant" },
     { text: "Fix:", role: "assistant" },
   ]);
+  // A blank line sets the code block off from the prose (fence markers are stripped).
+  expect(scene.lines[1]?.spans).toEqual([{ text: "  ", role: "assistant" }]);
   // Continuation marker, then highlighted code whose spans reconstruct the source line verbatim
   // (leading indentation intact) — code is tokenized, not word-collapsed.
-  const codeLine1 = scene.lines[1]?.spans ?? [];
+  const codeLine1 = scene.lines[2]?.spans ?? [];
   expect(codeLine1[0]).toEqual({ text: "  ", role: "assistant" });
   expect(
     codeLine1
@@ -84,7 +86,7 @@ test("assistant layout highlights fenced code and preserves whitespace", () => {
   expect(codeLine1).toContainEqual({ text: "const", role: "syntax-keyword" });
   expect(codeLine1.slice(1)[0]).toEqual({ text: "  ", role: "syntax-plain" });
 
-  const codeLine2 = scene.lines[2]?.spans ?? [];
+  const codeLine2 = scene.lines[3]?.spans ?? [];
   expect(codeLine2[0]).toEqual({ text: "  ", role: "assistant" });
   expect(
     codeLine2
