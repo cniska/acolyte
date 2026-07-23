@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { type MarkupToken, sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
+import {
+  type MarkupToken,
+  sanitizeAssistantContent,
+  segmentAssistantContent,
+  tokenize,
+  wrapAssistantContent,
+  wrapCodeText,
+} from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
@@ -154,15 +161,24 @@ export function layoutTranscriptMessage(input: {
   const role = input.kind;
   if (input.kind === "assistant") {
     const textWrap = Math.max(1, contentWidth(input.columns) - width(marker));
+    const contentLines: TerminalSpan[][] = [];
+    for (const segment of segmentAssistantContent(input.text)) {
+      if (segment.kind === "prose") {
+        for (const line of wrapAssistantContent(sanitizeAssistantContent(segment.text), textWrap).split("\n")) {
+          contentLines.push(tokenize(line).map((token) => assistantTokenSpan(token, role)));
+        }
+      } else {
+        for (const source of segment.text.split("\n")) {
+          for (const line of wrapCodeText(source, textWrap)) {
+            contentLines.push(line ? [{ text: line, role: "assistant-code" as const }] : []);
+          }
+        }
+      }
+    }
     return {
-      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), textWrap)
-        .split("\n")
-        .map((line, index) => ({
-          spans: [
-            { text: index === 0 ? marker : "  ", role },
-            ...tokenize(line).map((token) => assistantTokenSpan(token, role)),
-          ],
-        })),
+      lines: contentLines.map((spans, index) => ({
+        spans: [{ text: index === 0 ? marker : "  ", role }, ...spans],
+      })),
     };
   }
   // The band bleeds the full terminal width while the text sits at the content column, mirroring the
