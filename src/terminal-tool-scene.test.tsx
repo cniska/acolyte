@@ -37,7 +37,7 @@ test("diff-add rows paint the full row width with the tinted band and green text
     .split("\n")
     .find((line) => line.includes("12"));
   expect(diffLine).toHaveLength(40);
-  expect(output).toContain(ansi.bgRgb(13, 31, 13));
+  expect(output).toContain(ansi.bgRgb(4, 34, 8));
   expect(output).toContain(ansi.fgRgb(74, 154, 74));
   expect(output).not.toContain(colorToFg("white"));
 });
