@@ -297,6 +297,14 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     return deps.phaseFinalize(ctx);
   }
 
+  // A cancelled run (client disconnect or daemon shutdown) is never delivered, so it must not
+  // leave a trace in history or memory — committing an answer the user never saw is the
+  // divergence this guards against. Finalize for resource cleanup, but accept nothing.
+  if (input.runControl?.isCancelled()) {
+    ctx.debug("lifecycle.cancelled", {});
+    return deps.phaseFinalize(ctx);
+  }
+
   acceptResult(ctx);
 
   commitMemory(ctx, input);

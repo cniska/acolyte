@@ -335,3 +335,23 @@ describe("runLifecycle yield", () => {
     expect(debugEvents).not.toContain("lifecycle.yield");
   });
 });
+
+describe("runLifecycle cancel", () => {
+  const baseInput = createLifecycleInput({ soulPrompt: "SOUL", workspace: process.cwd(), taskId: "task_test" });
+
+  test("skips accept and memory commit when cancelled", async () => {
+    const deps = createLifecycleDeps();
+    const events: string[] = [];
+    await runLifecycle(
+      {
+        ...baseInput,
+        runControl: createRunControl({ isCancelled: () => true }),
+        onDebug: (entry) => events.push(entry.event),
+      },
+      deps,
+    );
+    expect(deps.phaseFinalize).toHaveBeenCalledTimes(1);
+    expect(events).toContain("lifecycle.cancelled");
+    expect(events).not.toContain("lifecycle.memory.commit_scheduled");
+  });
+});
