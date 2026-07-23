@@ -18,10 +18,11 @@ const base = {
   helpBreakpoint: 92,
 };
 
-test("composer layout preserves border and continuation prompt", () => {
+test("composer layout preserves box frame and continuation prompt", () => {
   const scene = layoutComposerStatus({ presentation: base, constraints: { columns: 12, rows: 20 } });
-  expect(scene.lines[0]?.spans[0]?.text).toBe("─".repeat(24));
-  expect(scene.lines[2]?.spans[0]?.text).toBe("  ");
+  expect(scene.lines[0]?.spans[1]?.text).toBe(`╭${"─".repeat(20)}╮`);
+  expect(scene.lines.at(-1)?.spans[1]?.text).toBe(`╰${"─".repeat(20)}╯`);
+  expect(scene.lines[2]?.spans[3]?.text).toBe("  ");
   expect(scene.cursor?.row).toBeGreaterThan(0);
 });
 
@@ -43,5 +44,6 @@ test("composer layout windows picker items", () => {
     },
     constraints: { columns: 80, rows: 20 },
   });
-  expect(scene.lines.map((line) => line.spans.map((span) => span.text).join(""))).toContain("› two");
+  const rendered = scene.lines.map((line) => line.spans.map((span) => span.text).join(""));
+  expect(rendered.some((line) => line.includes("│ › two"))).toBe(true);
 });

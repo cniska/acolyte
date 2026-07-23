@@ -78,6 +78,47 @@ function assistantTokenSpan(token: MarkupToken, role: TerminalStyleRole): Termin
   }
 }
 
+function lineWidth(line: TerminalLine): number {
+  return line.spans.reduce((total, span) => total + width(span.text), 0);
+}
+
+// Wraps interior lines (laid out against contentWidth) in the rounded composer box. Ragged interior
+// rows are padded to the content width so the right border always lands on the same column, and the
+// interior cursor is translated here — the same constant that draws the padding shifts the caret,
+// so the two cannot drift.
+function frameScene(interior: TerminalScene, columns: number): TerminalScene {
+  const inner = contentWidth(columns);
+  const gutter = " ".repeat(GUTTER);
+  const rule = "─".repeat(Math.max(0, columns - 2 * GUTTER - 2));
+  const horizontal = (left: string, right: string): TerminalLine => ({
+    spans: [
+      { text: gutter, role: "plain" },
+      { text: `${left}${rule}${right}`, role: "composer-border" },
+    ],
+  });
+  const frame = (line: TerminalLine): TerminalLine => {
+    const pad = Math.max(0, inner - lineWidth(line));
+    return {
+      ...line,
+      spans: [
+        { text: gutter, role: "plain" },
+        { text: "│", role: "composer-border" },
+        { text: " ".repeat(BOX_PAD), role: "plain" },
+        ...line.spans,
+        ...(pad > 0 ? [{ text: " ".repeat(pad), role: "plain" as const }] : []),
+        { text: " ".repeat(BOX_PAD), role: "plain" },
+        { text: "│", role: "composer-border" },
+      ],
+    };
+  };
+  return {
+    lines: [horizontal("╭", "╮"), ...interior.lines.map(frame), horizontal("╰", "╯")],
+    cursor: interior.cursor
+      ? { row: interior.cursor.row + 1, column: interior.cursor.column + CONTENT_COLUMN }
+      : undefined,
+  };
+}
+
 export function layoutTranscriptMessage(input: {
   text: string;
   kind: "user" | "assistant";
@@ -272,7 +313,7 @@ export function layoutComposerStatus(input: {
 }): TerminalScene {
   const { presentation, constraints } = input;
   const terminalWidth = Math.max(24, constraints.columns);
-  const border = (): TerminalLine => ({ spans: [{ text: "─".repeat(terminalWidth), role: "composer-border" }] });
+  const cw = contentWidth(terminalWidth);
   if (presentation.picker) {
     const picker = presentation.picker;
     const modelPrefix = `${t("chat.picker.label.model")}: `;
@@ -302,7 +343,7 @@ export function layoutComposerStatus(input: {
     const rowPrefix = (index: number): string => (index === selectedRel ? "› " : "  ");
     const rowRole = (index: number): TerminalStyleRole => (index === selectedRel ? "selected" : "plain");
     const row = (index: number, body: string): TerminalLine => ({
-      spans: [{ text: truncateToWidth(`${rowPrefix(index)}${body}`, terminalWidth), role: rowRole(index) }],
+      spans: [{ text: truncateToWidth(`${rowPrefix(index)}${body}`, cw), role: rowRole(index) }],
     });
     let pickerItems: TerminalLine[];
     if (picker.kind === "model" && picker.loading) {
@@ -316,7 +357,7 @@ export function layoutComposerStatus(input: {
       const timeCells = picker.items.map((item) => (item.detail ? formatRelativeTime(item.detail) : ""));
       const idWidth = Math.max(0, ...idCells.map((cell) => cell.length));
       const timeWidth = Math.max(0, ...timeCells.map((cell) => cell.length));
-      const titleBudget = Math.max(1, terminalWidth - 2 - idWidth - 2 - timeWidth - 2);
+      const titleBudget = Math.max(1, cw - 2 - idWidth - 2 - timeWidth - 2);
       const aligned = alignCols(
         picker.items.map((item, index) => [
           idCells[index] ?? "",
@@ -340,38 +381,36 @@ export function layoutComposerStatus(input: {
       // trailing space the renderer trims; emit the label as-is.
       pickerItems = visible.map((item, index) => row(index, item.label));
     }
-    return {
-      lines: [
-        border(),
-        labelLine,
-        { spans: [{ text: "", role: "plain" }] },
-        ...pickerItems,
-        { spans: [{ text: "", role: "plain" }] },
-        { spans: [{ text: picker.hint, role: "muted" }] },
-        border(),
-      ],
-      cursor: { row: 1, column: labelColumn },
-    };
+    return frameScene(
+      {
+        lines: [
+          labelLine,
+          { spans: [{ text: "", role: "plain" }] },
+          ...pickerItems,
+          { spans: [{ text: "", role: "plain" }] },
+          { spans: [{ text: picker.hint, role: "muted" }] },
+        ],
+        cursor: { row: 0, column: labelColumn },
+      },
+      terminalWidth,
+    );
   }
-  const promptWrapWidth = terminalWidth - 2;
   const caretRole: TerminalStyleRole = presentation.caretVisible ? "cursor" : "plain";
   const promptLines: TerminalLine[] = [];
-  let caretRow = 1;
+  let caretRow = 0;
   let caretColumn = 2;
   if (presentation.input.text.length === 0) {
-    const placeholder = presentation.placeholder;
     promptLines.push({
       spans: [
         { text: "❯ ", role: "composer-prompt" },
-        { text: placeholder.slice(0, 1) || " ", role: caretRole },
-        { text: placeholder.slice(1), role: "muted" },
+        { text: " ", role: caretRole },
       ],
     });
   } else {
-    const displayLines = buildPromptDisplayLines(presentation.input.text, presentation.input.cursor, promptWrapWidth);
+    const displayLines = buildPromptDisplayLines(presentation.input.text, presentation.input.cursor, cw - 2);
     for (const [index, line] of displayLines.entries()) {
       if (line.cursor !== null) {
-        caretRow = index + 1;
+        caretRow = index;
         caretColumn = 2 + width(line.before);
       }
       promptLines.push({
@@ -384,17 +423,18 @@ export function layoutComposerStatus(input: {
       });
     }
   }
-  const lines: TerminalLine[] = [border(), ...promptLines, border()];
+  const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
+  const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
-    const columns = terminalWidth >= presentation.helpBreakpoint ? 2 : 1;
+    const helpColumns = cw >= presentation.helpBreakpoint ? 2 : 1;
     const rowsPerColumn =
-      columns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
+      helpColumns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
     for (let row = 0; row < rowsPerColumn; row++) {
       const entries = [
         presentation.helpEntries[row],
-        columns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
+        helpColumns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
       ];
-      lines.push({
+      attached.push({
         spans: entries.flatMap((entry) =>
           entry ? [{ text: `  ${entry.key.padEnd(20)}${entry.description}`.padEnd(44), role: "muted" as const }] : [],
         ),
@@ -402,13 +442,13 @@ export function layoutComposerStatus(input: {
     }
   } else if (presentation.suggestions.kind === "at") {
     const selected = presentation.suggestions.selected;
-    if (presentation.suggestions.noMatches) lines.push({ spans: [{ text: " No matches.", role: "muted" }] });
+    if (presentation.suggestions.noMatches) attached.push({ spans: [{ text: " No matches.", role: "muted" }] });
     else
-      lines.push(
+      attached.push(
         ...presentation.suggestions.candidates.map((candidate, index) => ({
           spans: [
             {
-              text: truncateToWidth(`  ${candidate.label}`, terminalWidth),
+              text: truncateToWidth(`  ${candidate.label}`, cw),
               role: index === selected ? ("selected" as const) : ("plain" as const),
             },
           ],
@@ -416,22 +456,27 @@ export function layoutComposerStatus(input: {
       );
   } else if (presentation.suggestions.kind === "slash") {
     const selected = presentation.suggestions.selected;
-    lines.push(
+    attached.push(
       ...presentation.suggestions.candidates.map((candidate, index) => ({
         spans: [
           {
-            text: truncateToWidth(`  ${candidate.command}`, terminalWidth),
+            text: truncateToWidth(`  ${candidate.command}`, cw),
             role: index === selected ? ("selected" as const) : ("muted" as const),
           },
         ],
       })),
     );
-    if (presentation.suggestions.selectedHelp)
-      lines.push({ spans: [{ text: `\n  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
+    if (presentation.suggestions.selectedHelp) {
+      attached.push({ spans: [{ text: "", role: "plain" }] });
+      attached.push({ spans: [{ text: `  ${presentation.suggestions.selectedHelp}`, role: "muted" }] });
+    }
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
-    lines.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
-  return { lines, cursor: { row: caretRow, column: caretColumn } };
+    attached.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
+  return {
+    lines: [...boxed.lines, ...insetScene({ lines: attached }, CONTENT_COLUMN).lines],
+    cursor: boxed.cursor,
+  };
 }
 
 function prStateRole(state: string): TerminalStyleRole {

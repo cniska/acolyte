@@ -63,12 +63,15 @@ function sceneTail(input: {
 
 test("empty session live region renders the composer chrome", () => {
   expect(sceneTail({ activeTranscript: [] })).toBe(
-    dedent(`
-      ────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────
-         acolyte · main · gpt-5
-    `),
+    dedent(
+      `
+      ╭${"─".repeat(56)}╮
+      │ ❯${" ".repeat(54)}│
+      ╰${"─".repeat(56)}╯
+        acolyte · main · gpt-5
+      `,
+      1,
+    ),
   );
 });
 
@@ -78,17 +81,20 @@ test("transcript rows live region renders messages above the composer", () => {
     { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "hi back" } },
   ];
   expect(sceneTail({ activeTranscript: presentation })).toBe(
-    dedent(`
-         ❯ hello there
+    dedent(
+      `
+        ❯ hello there
 
 
-         ◆ hi back
+        ◆ hi back
 
-      ────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────
-         acolyte · main · gpt-5
-    `),
+      ╭${"─".repeat(56)}╮
+      │ ❯${" ".repeat(54)}│
+      ╰${"─".repeat(56)}╯
+        acolyte · main · gpt-5
+      `,
+      1,
+    ),
   );
 });
 
@@ -112,22 +118,25 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
       },
     });
     expect(scene).toBe(
-      dedent(`
-           ❯ do the thing
+      dedent(
+        `
+          ❯ do the thing
 
 
-           ◆ on it
+          ◆ on it
 
-           ◆ Working… (5s · 1 tool)
+          ◆ Working… (5s · 1 tool)
 
-           Plan 1/2
-             ◈ step two
+          Plan 1/2
+            ◈ step two
 
-        ────────────────────────────────────────────────────────────
-        ❯ Ask anything…
-        ────────────────────────────────────────────────────────────
-           acolyte · main · gpt-5
-      `),
+        ╭${"─".repeat(56)}╮
+        │ ❯${" ".repeat(54)}│
+        ╰${"─".repeat(56)}╯
+          acolyte · main · gpt-5
+        `,
+        1,
+      ),
     );
   } finally {
     Date.now = originalNow;
@@ -152,19 +161,22 @@ test("queued messages live region renders below the pending indicator", () => {
       },
     });
     expect(scene).toBe(
-      dedent(`
-           ❯ first
+      dedent(
+        `
+          ❯ first
 
 
-           ◆ Working… (5s)
+          ◆ Working… (5s)
 
-           ❯ next up
+          ❯ next up
 
-        ────────────────────────────────────────────────────────────
-        ❯ Ask anything…
-        ────────────────────────────────────────────────────────────
-           acolyte · main · gpt-5
-      `),
+        ╭${"─".repeat(56)}╮
+        │ ❯${" ".repeat(54)}│
+        ╰${"─".repeat(56)}╯
+          acolyte · main · gpt-5
+        `,
+        1,
+      ),
     );
   } finally {
     Date.now = originalNow;
