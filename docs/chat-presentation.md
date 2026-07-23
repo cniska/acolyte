@@ -32,7 +32,7 @@ The scene is the physical output of *lay out*: an ordered list of styled `lines`
 
 A **line fill** is a line-level role whose background paints the row's content region (from the first non-blank span to the line end), leaving leading indentation unpainted. This is how a diff row gets a full-width background band spanning gutter, text, and trailing pad while the span foregrounds stay independent.
 
-The scene is cut into identified **sections** (`header`, one per transcript row, an optional `pending` block, and `composer`; the footer folds into the composer section). A section is **finalized** when its bytes can never change again. Streaming prose, active tools, pending rows, and mutable geometry are never finalized.
+The scene is cut into identified **sections** (`header`, one per transcript row, an optional `pending` block, `composer`, and `footer`). A section is **finalized** when its bytes can never change again. Streaming prose, active tools, pending rows, and mutable geometry are never finalized.
 
 ## Promotion
 
