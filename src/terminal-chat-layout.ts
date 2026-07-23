@@ -87,10 +87,8 @@ function lineWidth(line: TerminalLine): number {
   return line.spans.reduce((total, span) => total + width(span.text), 0);
 }
 
-// Wraps interior lines (laid out against contentWidth) in the rounded composer box. Ragged interior
-// rows are padded to the content width so the right border always lands on the same column, and the
-// interior cursor is translated here — the same constant that draws the padding shifts the caret,
-// so the two cannot drift.
+// Interior rows are padded to the content width so the right border is column-stable, and the
+// interior cursor is translated by the same constant that draws the padding, so they cannot drift.
 function frameScene(interior: TerminalScene, columns: number): TerminalScene {
   const inner = contentWidth(columns);
   const gutter = " ".repeat(GUTTER);
@@ -375,7 +373,6 @@ export function layoutComposerStatus(input: {
         .map((line, index) => row(index, line));
     } else if (picker.kind === "skills") {
       // Skills are not windowed (no scrollOffset); render the full list, as legacy did.
-      // Descriptions sit in the dim tier; the selected row keeps its whole-row highlight.
       pickerItems = picker.items.map((item, index) => {
         const label = truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
         const detail = item.detail ?? "";
@@ -492,7 +489,7 @@ export function layoutComposerStatus(input: {
     }
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
-    attached.push({ spans: [{ text: `  ${t("chat.input.ctrl_c_hint")}`, role: "muted" }] });
+    attached.push({ spans: [{ text: t("chat.input.ctrl_c_hint"), role: "muted" }] });
   return {
     lines: [...boxed.lines, ...insetScene({ lines: attached }, CONTENT_COLUMN).lines],
     cursor: boxed.cursor,

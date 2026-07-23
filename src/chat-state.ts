@@ -8,9 +8,8 @@ import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
 import { type GitStatus, gitStatus, SHORTCUT_ITEMS } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
-import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
-import { type PickerState, pickerItemCount } from "./chat-picker";
+import { type PickerState, pickerItemCount, reduceModelPickerAction } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
 import { resumeActiveTranscript, useScenePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
@@ -26,7 +25,7 @@ import { nowIso } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
-import { type InputEditAction, reduceInput } from "./input-controller";
+import type { InputEditAction } from "./input-controller";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
@@ -378,12 +377,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   });
 
   const handlePickerAction = useCallback((action: InputEditAction, _fromPaste: boolean) => {
-    setPicker((current) => {
-      if (current?.kind !== "model") return current;
-      const nextInput = reduceInput(current.input, action);
-      const filtered = suggestModels(nextInput.text, current.items);
-      return { ...current, input: nextInput, filtered, index: 0, scrollOffset: 0 };
-    });
+    setPicker((current) => (current?.kind === "model" ? reduceModelPickerAction(current, action) : current));
   }, []);
 
   const handlePickerSubmit = useCallback(() => {
