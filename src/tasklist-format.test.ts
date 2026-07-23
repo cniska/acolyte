@@ -14,9 +14,9 @@ describe("formatTasklist", () => {
     });
     expect(result.header).toBe("Build (1/3)");
     expect(result.items).toEqual([
-      { id: "s1", marker: "●", label: "lint" },
-      { id: "s2", marker: "⊙", label: "test" },
-      { id: "s3", marker: "○", label: "deploy" },
+      { id: "s1", marker: "◆", label: "lint" },
+      { id: "s2", marker: "◈", label: "test" },
+      { id: "s3", marker: "◇", label: "deploy" },
     ]);
   });
 
@@ -27,6 +27,6 @@ describe("formatTasklist", () => {
       items: [{ id: "s1", label: "do it", status: "pending", order: 0 }],
     });
     expect(result.header).toBe("Quick (0/1)");
-    expect(result.items).toEqual([{ id: "s1", marker: "○", label: "do it" }]);
+    expect(result.items).toEqual([{ id: "s1", marker: "◇", label: "do it" }]);
   });
 });

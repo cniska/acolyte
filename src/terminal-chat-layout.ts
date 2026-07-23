@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
+import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
@@ -8,11 +9,10 @@ import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
-import type { TasklistOutput } from "./tasklist-contract";
-import { formatTasklist } from "./tasklist-format";
+import { type TasklistItemStatus, type TasklistOutput, tasklistMarker } from "./tasklist-contract";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
-import type { ToolOutputPart } from "./tool-output-contract";
+import type { ToolHeaderState, ToolOutputPart } from "./tool-output-contract";
 import { fitLine, layoutToolOutput, segmentsWidth } from "./tool-output-layout";
 import { truncateToWidth } from "./truncate-text";
 
@@ -47,7 +47,7 @@ export function layoutTranscriptMessage(input: {
   kind: "user" | "assistant";
   columns: number;
 }): TerminalScene {
-  const marker = input.kind === "user" ? "❯ " : "• ";
+  const marker = input.kind === "user" ? `${GLYPH_USER} ` : `${GLYPH_FILLED} `;
   const role = input.kind;
   if (input.kind === "assistant") {
     const contentWidth = Math.max(24, input.columns - 2);
@@ -77,13 +77,23 @@ export function layoutTranscriptMessage(input: {
         })),
     };
   }
-  const lines = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map((text, index) => ({
-    spans: [
-      { text: index === 0 ? marker : "  ", role },
-      { text, role },
-    ],
-  }));
-  return { lines };
+  // An all-space line can't anchor `fill`, so the pad lines take the band from the user-fill role's own bg.
+  const bandLine = (): TerminalLine => ({ spans: [{ text: " ".repeat(input.columns), role: "user-fill" as const }] });
+  const textLines: TerminalLine[] = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map(
+    (text, index) => {
+      const markerText = index === 0 ? marker : "  ";
+      const pad = Math.max(0, input.columns - width(markerText) - width(text));
+      return {
+        fill: "user-fill" as const,
+        spans: [
+          { text: markerText, role },
+          { text, role },
+          ...(pad ? [{ text: " ".repeat(pad), role: "plain" as const }] : []),
+        ],
+      };
+    },
+  );
+  return { lines: [bandLine(), ...textLines, bandLine()] };
 }
 
 export function layoutTranscriptText(input: {
@@ -206,7 +216,10 @@ export function layoutPending(input: {
   const sweepPos = ((Math.abs(presentation.frame) % PENDING_FRAME_COUNT) / PENDING_FRAME_COUNT) * range - SHIMMER_SWEEP;
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
-    const marker: TerminalSpan = { text: index === 0 ? `${blink ? "•" : " "} ` : "  ", role: markerRole };
+    const marker: TerminalSpan = {
+      text: index === 0 ? `${blink ? GLYPH_FILLED : GLYPH_HOLLOW} ` : "  ",
+      role: markerRole,
+    };
     const body: TerminalSpan[] = running
       ? shimmerSpans(line, shimmerOffset, sweepPos)
       : [{ text: line, role: "muted" }];
@@ -273,7 +286,7 @@ export function layoutComposerStatus(input: {
     } else if (picker.kind === "sessions") {
       // alignCols across the full list (not just the visible slice), matching legacy, so a
       // long id or title in an off-screen row still lines up the visible rows' columns.
-      const idCells = picker.items.map((item) => `${item.active ? "●" : " "} ${item.value}`);
+      const idCells = picker.items.map((item) => `${item.active ? GLYPH_FILLED : " "} ${item.value}`);
       const timeCells = picker.items.map((item) => (item.detail ? formatRelativeTime(item.detail) : ""));
       const idWidth = Math.max(0, ...idCells.map((cell) => cell.length));
       const timeWidth = Math.max(0, ...timeCells.map((cell) => cell.length));
@@ -395,57 +408,121 @@ export function layoutComposerStatus(input: {
   return { lines, cursor: { row: caretRow, column: caretColumn } };
 }
 
+function prStateRole(state: string): TerminalStyleRole {
+  switch (state) {
+    case "open":
+      return "pr-open";
+    case "merged":
+      return "pr-merged";
+    case "closed":
+      return "pr-closed";
+    default:
+      return "muted";
+  }
+}
+
 export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
   const names: string[] = [];
   for (const name of [status.repo, status.worktree, status.branch]) {
     if (name && !names.includes(name)) names.push(name);
   }
   const suffix = `${status.dirty ? "*" : ""}${status.ahead ? ` ↑${status.ahead}` : ""}${status.behind ? ` ↓${status.behind}` : ""}`;
-  const location = names.map((name) => `${name}${name === status.branch ? suffix : ""}`);
-  const model = `${status.model}${status.effort ? ` ${status.effort}` : ""}`;
-  const usage =
-    status.inputTokens || status.outputTokens
-      ? t("unit.token.arrows", {
-          input: formatCompactNumber(status.inputTokens),
-          output: formatCompactNumber(status.outputTokens),
-        })
-      : null;
-  const pr = status.pr ? `PR #${status.pr.number}` : null;
-  const text = [...location, model, usage, pr].filter((part): part is string => Boolean(part)).join(" · ");
+  // Two recessed gray tiers matching ~/.claude/statusline.sh (names/model brighter, the rest
+  // faint); PR is the one state-colored accent, since a merged/closed PR on the branch is actionable.
+  const segments: TerminalSpan[] = [];
+  const separate = (): void => {
+    if (segments.length > 0) segments.push({ text: " · ", role: "faint" });
+  };
+  for (const name of names) {
+    separate();
+    segments.push({ text: name, role: "subtle" });
+    if (name === status.branch && suffix) segments.push({ text: suffix, role: "faint" });
+  }
+  separate();
+  segments.push({ text: status.model, role: "subtle" });
+  if (status.effort) segments.push({ text: ` ${status.effort}`, role: "faint" });
+  if (status.inputTokens || status.outputTokens) {
+    separate();
+    segments.push({
+      text: t("unit.token.arrows", {
+        input: formatCompactNumber(status.inputTokens),
+        output: formatCompactNumber(status.outputTokens),
+      }),
+      role: "faint",
+    });
+  }
+  if (status.pr) {
+    separate();
+    segments.push({ text: `PR #${status.pr.number}`, role: prStateRole(status.pr.state) });
+  }
+  const text = segments.map((segment) => segment.text).join("");
+  const statusLine: TerminalSpan[] = [{ text: "  ", role: "faint" }, ...segments];
+  const statusWidth = 2 + width(text);
   if (status.skills.length === 0) {
+    if (statusWidth <= columns) return { lines: [{ spans: statusLine }] };
     return {
       lines: wrapTerminalProse(text, Math.max(22, columns - 2)).map((line) => ({
-        spans: [{ text: `  ${line}`, role: "muted" as const }],
+        spans: [{ text: `  ${line}`, role: "faint" as const }],
       })),
     };
   }
   const skillSegment = status.skills.join(" · ");
-  const left = `  ${text}`;
-  const leftWidth = width(left);
-  // Legacy footer: skills sit right-justified on the status row with a 2-col inset,
-  // and stack onto their own 2-col-indented row once that inset no longer fits.
-  if (leftWidth + 2 + width(skillSegment) <= columns) {
-    const gap = columns - leftWidth - width(skillSegment);
-    return { lines: [{ spans: [{ text: `${left}${" ".repeat(gap)}${skillSegment}`, role: "muted" }] }] };
+  // Skills sit right-justified on the status row with a 2-col inset, and stack onto their
+  // own 2-col-indented row once that inset no longer fits.
+  if (statusWidth + 2 + width(skillSegment) <= columns) {
+    const gap = columns - statusWidth - width(skillSegment);
+    return { lines: [{ spans: [...statusLine, { text: `${" ".repeat(gap)}${skillSegment}`, role: "faint" }] }] };
   }
   return {
-    lines: [
-      { spans: [{ text: left, role: "muted" }] },
-      { spans: [{ text: truncateToWidth(`  ${skillSegment}`, columns), role: "muted" }] },
-    ],
+    lines: [{ spans: statusLine }, { spans: [{ text: truncateToWidth(`  ${skillSegment}`, columns), role: "faint" }] }],
   };
 }
 
-export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number): TerminalScene {
-  const formatted = formatTasklist(output);
-  return {
-    lines: [
-      { spans: [{ text: truncateToWidth(formatted.header, contentWidth), role: "tool-label" }] },
-      ...formatted.items.map((item) => ({
-        spans: [{ text: truncateToWidth(`  ${item.marker} ${item.label}`, contentWidth), role: "muted" as const }],
-      })),
-    ],
-  };
+const TASKLIST_VISIBLE_LIMIT = 5;
+const TASKLIST_PULSE_MS = 500;
+
+function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
+  switch (status) {
+    case "done":
+      return "success";
+    case "failed":
+      return "error";
+    default:
+      return "faint";
+  }
+}
+
+// Gentle glyph pulse for the active item, not a brightness blink (which pulls focus off the transcript).
+function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string {
+  if (status === "in_progress") return pulseFilled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+  return tasklistMarker(status);
+}
+
+// Display-only bounded view: the semantic tasklist keeps every item; done collapses into the count.
+export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number, now: number): TerminalScene {
+  const sorted = [...output.items].sort((a, b) => a.order - b.order);
+  const done = sorted.filter((item) => item.status === "done").length;
+  const notDone = sorted.filter((item) => item.status !== "done");
+  const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
+  const overflow = notDone.length - visible.length;
+  const pulseFilled = Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
+  const count = ` ${done}/${sorted.length}`;
+  const lines: TerminalLine[] = [
+    {
+      spans: [
+        { text: truncateToWidth(output.groupTitle, Math.max(1, contentWidth - width(count))), role: "tool-label" },
+        { text: count, role: "muted" },
+      ],
+    },
+    ...visible.map((item) => ({
+      spans: [
+        { text: `  ${taskItemGlyph(item.status, pulseFilled)} `, role: taskItemRole(item.status) },
+        { text: truncateToWidth(item.label, Math.max(1, contentWidth - 4)), role: "muted" as const },
+      ],
+    })),
+  ];
+  if (overflow > 0) lines.push({ spans: [{ text: `  +${overflow} pending`, role: "muted" }] });
+  return { lines };
 }
 
 function toolRole(role: string): TerminalStyleRole | null {
@@ -465,8 +542,32 @@ function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
       return "error";
     case "cancelled":
       return "cancelled";
+    case "active":
+      return "pending";
     default:
       return "tool";
+  }
+}
+
+function toolMarkerGlyph(headerState: ToolHeaderState | undefined, status: TranscriptStatus): string {
+  switch (headerState) {
+    case "on":
+      return GLYPH_FISHEYE;
+    case "off":
+      return GLYPH_HOLLOW;
+    default:
+      return status === "active" ? GLYPH_FISHEYE : GLYPH_FILLED;
+  }
+}
+
+function toolHeaderMarkerRole(headerState: ToolHeaderState | undefined, status: TranscriptStatus): TerminalStyleRole {
+  switch (headerState) {
+    case "on":
+      return "skill-on";
+    case "off":
+      return "skill-off";
+    default:
+      return toolMarkerRole(status);
   }
 }
 
@@ -477,9 +578,8 @@ export function layoutTranscriptTool(input: {
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
-  const marker = headerState === "on" ? "◉ " : headerState === "off" ? "○ " : "• ";
-  const markerRole =
-    headerState === "on" ? "skill-on" : headerState === "off" ? "skill-off" : toolMarkerRole(input.status);
+  const marker = `${toolMarkerGlyph(headerState, input.status)} `;
+  const markerRole = toolHeaderMarkerRole(headerState, input.status);
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -523,7 +623,6 @@ export function layoutChatViewport(input: {
   now: number;
 }): TerminalScene {
   void input.theme;
-  void input.now;
   const lines: TerminalLine[] = [];
   const sections: NonNullable<TerminalScene["sections"]> = [];
   const append = (id: string, finalized: boolean, scene: TerminalScene): void => {
@@ -548,7 +647,7 @@ export function layoutChatViewport(input: {
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);
       const text = body ? `${row.content.output.header}\n\n${body}` : row.content.output.header;
-      const marker = row.kind === "system" ? "  " : "• ";
+      const marker = row.kind === "system" ? "  " : `${GLYPH_FILLED} `;
       const role: TerminalStyleRole = row.kind === "system" ? "muted" : "plain";
       const contentWidth = Math.max(24, input.constraints.columns - 2);
       // Command output is preformatted (aligned columns); preserve its whitespace and
@@ -573,7 +672,7 @@ export function layoutChatViewport(input: {
         true,
         layoutTranscriptText({
           text: row.content.text,
-          marker: row.kind === "system" ? "  " : "• ",
+          marker: row.kind === "system" ? "  " : `${GLYPH_FILLED} `,
           markerRole: transcriptOutcomeRole(row.status),
           // System notices carry their level in the text color (error red, warning yellow);
           // status/task rows keep muted text and let the marker carry the outcome.
@@ -594,6 +693,7 @@ export function layoutChatViewport(input: {
     const tasklist = layoutTranscriptTasklist(
       (row.content as { output: TasklistOutput }).output,
       Math.max(24, input.constraints.columns - 2),
+      input.now,
     );
     append(row.id, false, {
       lines: tasklist.lines.map((line) => ({
@@ -609,15 +709,20 @@ export function layoutChatViewport(input: {
   if (lines.length > 0) lines.push({ spans: [{ text: "", role: "plain" }] });
   const composerStart = lines.length;
   lines.push(...composer.lines);
-  if (
-    input.presentation.footer &&
-    !input.presentation.composer.showHelp &&
-    input.presentation.composer.suggestions.kind === "none" &&
-    !input.presentation.composer.picker &&
-    !input.presentation.composer.ctrlCPending
-  )
-    lines.push(...layoutFooterStatus(input.presentation.footer, input.constraints.columns).lines);
   sections.push({ id: "composer", lineStart: composerStart, lineEnd: lines.length, finalized: false });
+  // Its own section below the box; hidden under help, suggestions, and an open picker, where a
+  // status row below a completion list or picker looks out of place.
+  const composerPresentation = input.presentation.composer;
+  const showFooter =
+    input.presentation.footer &&
+    !composerPresentation.showHelp &&
+    composerPresentation.suggestions.kind === "none" &&
+    !composerPresentation.picker;
+  if (showFooter && input.presentation.footer) {
+    const footerStart = lines.length;
+    lines.push(...layoutFooterStatus(input.presentation.footer, input.constraints.columns).lines);
+    sections.push({ id: "footer", lineStart: footerStart, lineEnd: lines.length, finalized: false });
+  }
   const cursor = composer.cursor ?? { row: 0, column: 0 };
   return { lines, sections, cursor: { ...cursor, row: cursor.row + composerStart } };
 }

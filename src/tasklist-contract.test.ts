@@ -3,10 +3,10 @@ import { tasklistMarker, tasklistProgress } from "./tasklist-contract";
 
 describe("tasklistMarker", () => {
   test("returns correct markers", () => {
-    expect(tasklistMarker("pending")).toBe("○");
-    expect(tasklistMarker("in_progress")).toBe("⊙");
-    expect(tasklistMarker("done")).toBe("●");
-    expect(tasklistMarker("failed")).toBe("◉");
+    expect(tasklistMarker("pending")).toBe("◇");
+    expect(tasklistMarker("in_progress")).toBe("◈");
+    expect(tasklistMarker("done")).toBe("◆");
+    expect(tasklistMarker("failed")).toBe("◆");
   });
 });
 

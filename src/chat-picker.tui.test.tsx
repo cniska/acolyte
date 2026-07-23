@@ -152,7 +152,7 @@ describe("chat picker visual regression", () => {
         ────────────────────────────────────────
         Resume Session
 
-          ● sess_active  A very long …  just now
+          ◆ sess_active  A very long …  just now
         ›   sess_prev    Short          just now
 
         Enter to resume · Esc to close
@@ -184,7 +184,7 @@ describe("chat picker visual regression", () => {
         ────────────────────────────────────────────────────────────────────────────────────────────────
         Resume Session
 
-          ● sess_active  Current Session   just now
+          ◆ sess_active  Current Session   just now
         ›   sess_prev    Previous Session  just now
 
         Enter to resume · Esc to close

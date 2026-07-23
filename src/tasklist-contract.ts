@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW } from "./chat-glyphs";
 
 export const tasklistItemStatusSchema = z.enum(["pending", "in_progress", "done", "failed"]);
 export type TasklistItemStatus = z.infer<typeof tasklistItemStatusSchema>;
@@ -21,10 +22,10 @@ export const tasklistOutputSchema = z.object({
 export type TasklistOutput = z.infer<typeof tasklistOutputSchema>;
 
 const STATUS_MARKERS: Record<TasklistItemStatus, string> = {
-  pending: "○",
-  in_progress: "⊙",
-  done: "●",
-  failed: "◉",
+  pending: GLYPH_HOLLOW,
+  in_progress: GLYPH_FISHEYE,
+  done: GLYPH_FILLED,
+  failed: GLYPH_FILLED,
 };
 
 export function tasklistMarker(status: TasklistItemStatus): string {

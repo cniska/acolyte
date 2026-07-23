@@ -70,7 +70,8 @@ test("transcript rows live region renders messages above the composer", () => {
     dedent(`
       ❯ hello there
 
-      • hi back
+
+      ◆ hi back
 
       ────────────────────────────────────────────────────────────
       ❯ Ask anything…
@@ -103,13 +104,13 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
       dedent(`
         ❯ do the thing
 
-        • on it
 
-        • Working… (5s · 1 tool)
+        ◆ on it
 
-          Plan (1/2)
-            ● step one
-            ⊙ step two
+        ◆ Working… (5s · 1 tool)
+
+          Plan 1/2
+            ◈ step two
 
         ────────────────────────────────────────────────────────────
         ❯ Ask anything…
@@ -143,7 +144,8 @@ test("queued messages live region renders below the pending indicator", () => {
       dedent(`
         ❯ first
 
-        • Working… (5s)
+
+        ◆ Working… (5s)
 
         ❯ next up
 

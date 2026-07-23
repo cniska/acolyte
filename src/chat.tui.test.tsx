@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { SHORTCUT_ITEMS } from "./chat-layout";
 import type { ViewportPickerInput, ViewportSuggestionsInput } from "./chat-viewport-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
-import { layoutChatViewport, layoutHeader } from "./terminal-chat-layout";
+import { layoutChatViewport, layoutFooterStatus, layoutHeader } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
 import { dedent } from "./test-utils";
@@ -116,7 +116,12 @@ describe("chat tui visual regression: header", () => {
 
 describe("chat tui visual regression: status line and help", () => {
   test("renders stable, left-aligned status line row", () => {
-    const out = renderInputPanel();
+    const box = renderInputPanel();
+    const status = renderPlain(
+      <TerminalSceneRender scene={layoutFooterStatus(DEFAULT_STATUS_LINE, DEFAULT_TERMINAL_WIDTH)} />,
+      DEFAULT_TERMINAL_WIDTH,
+    );
+    const out = `${box}\n${status}`;
     expect(out).toBe(
       dedent(`
       ────────────────────────────────────────────────────────────────────────────────────────────────

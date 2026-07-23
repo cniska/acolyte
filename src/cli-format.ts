@@ -1,6 +1,7 @@
 import { relative } from "node:path";
 import { wrapAssistantContent } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
+import { GLYPH_FILLED } from "./chat-glyphs";
 import { t, tDynamic } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { toolLabelKey } from "./tool-output-format";
@@ -149,10 +150,10 @@ export function formatRunSummary(
 export function formatAgentReplyOutput(content: string, wrapWidth = 100): string {
   const wrapped = wrapAssistantContent(content, wrapWidth);
   const lines = wrapped.split("\n");
-  if (lines.length === 0) return "•";
+  if (lines.length === 0) return GLYPH_FILLED;
   return lines
     .map((line, index) => {
-      if (index === 0) return line.length > 0 ? `• ${line}` : "•";
+      if (index === 0) return line.length > 0 ? `${GLYPH_FILLED} ${line}` : GLYPH_FILLED;
       return line.length > 0 ? `  ${line}` : "";
     })
     .join("\n");

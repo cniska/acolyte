@@ -50,7 +50,7 @@ function capture(prompt: string, c: Client): Promise<string> {
 describe("cli-prompt golden output (output-path fold safety net)", () => {
   test("streamed answer", async () => {
     const out = await capture("hi", client([{ type: "text-delta", text: "Hello there." }], { output: "Hello there." }));
-    expect(out).toBe("❯ hi\n• Hello there.");
+    expect(out).toBe("❯ hi\n◆ Hello there.");
   });
 
   test("tool output, tasklist, and notice", async () => {
@@ -78,7 +78,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     // The final answer ("Updated the config.") diverges from the streamed preview ("Let
     // me check the config.") and now appears in full — previously it was dropped.
     expect(out).toBe(
-      "❯ check config\n• Let me check the config.• tool.file_read.header src/config.ts\n• Steps (1/2)\n  ● read\n  ○ edit\ntrace sink is dark\n\n\n\n• Updated the config.",
+      "❯ check config\n◆ Let me check the config.◆ tool.file_read.header src/config.ts\n◆ Steps (1/2)\n  ◆ read\n  ◇ edit\ntrace sink is dark\n\n\n\n◆ Updated the config.",
     );
   });
 
@@ -90,7 +90,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         error: "Cannot finish yet: validation missing",
       }),
     );
-    expect(out).toBe("❯ fix\n• Trying the edit.Cannot finish yet: validation missing");
+    expect(out).toBe("❯ fix\n◆ Trying the edit.Cannot finish yet: validation missing");
   });
 
   test("a lone detail-less tool header prints nothing until it has content", async () => {
@@ -108,7 +108,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         { output: "Done." },
       ),
     );
-    expect(out).toBe("❯ search\n\n• Done.");
+    expect(out).toBe("❯ search\n\n◆ Done.");
   });
 
   test("tasklist reprints on each progress update", async () => {
@@ -126,6 +126,6 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         { output: "Done." },
       ),
     );
-    expect(out).toBe("❯ run\n• Steps (0/2)\n  ○ read\n  ○ edit\n• Steps (1/2)\n  ● read\n  ○ edit\n\n\n• Done.");
+    expect(out).toBe("❯ run\n◆ Steps (0/2)\n  ◇ read\n  ◇ edit\n◆ Steps (1/2)\n  ◆ read\n  ◇ edit\n\n\n◆ Done.");
   });
 });

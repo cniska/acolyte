@@ -9,7 +9,7 @@ function renderTasklist(tasklists: TasklistOutput[], columns = 96): string {
   // Match the viewport: a 2-space gutter on every tasklist line, a blank line between rows.
   const contentWidth = Math.max(24, columns - 2);
   const lines = tasklists.flatMap((content, i) => {
-    const scene = layoutTranscriptTasklist(content, contentWidth);
+    const scene = layoutTranscriptTasklist(content, contentWidth, 0);
     const indented = scene.lines.map((line) => ({
       spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
     }));
@@ -24,7 +24,7 @@ function expected(value: string): string {
 }
 
 describe("tasklist TUI rendering", () => {
-  test("renders header with progress and status markers", () => {
+  test("renders header count with the not-done items, collapsing done", () => {
     expect(
       renderTasklist([
         {
@@ -39,15 +39,14 @@ describe("tasklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Build pipeline (1/3)
-          ● lint
-          ⊙ test
-          ○ deploy
+        Build pipeline 1/3
+          ◈ test
+          ◇ deploy
       `),
     );
   });
 
-  test("renders all status marker variants", () => {
+  test("renders in-progress, pending, and failed markers (done collapses into the count)", () => {
     expect(
       renderTasklist([
         {
@@ -63,11 +62,10 @@ describe("tasklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Steps (1/4)
-          ● done step
-          ⊙ active step
-          ○ waiting step
-          ◉ broken step
+        Steps 1/4
+          ◈ active step
+          ◇ waiting step
+          ◆ broken step
       `),
     );
   });
@@ -87,10 +85,9 @@ describe("tasklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Steps (1/3)
-          ● first
-          ⊙ second
-          ○ third
+        Steps 1/3
+          ◈ second
+          ◇ third
       `),
     );
   });
@@ -151,16 +148,47 @@ describe("tasklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Phase A (1/1)
-          ● step A
+        Phase A 1/1
 
-        Phase B (0/1)
-          ○ step B
+        Phase B 0/1
+          ◇ step B
       `),
     );
   });
 
-  test("all done shows full progress", () => {
+  test("caps not-done rows at five and folds the rest into a pending count", () => {
+    expect(
+      renderTasklist([
+        {
+          groupId: "g1",
+          groupTitle: "Long",
+          items: [
+            { id: "d1", label: "done one", status: "done", order: 0 },
+            { id: "d2", label: "done two", status: "done", order: 1 },
+            { id: "p1", label: "task one", status: "in_progress", order: 2 },
+            { id: "p2", label: "task two", status: "pending", order: 3 },
+            { id: "p3", label: "task three", status: "pending", order: 4 },
+            { id: "p4", label: "task four", status: "pending", order: 5 },
+            { id: "p5", label: "task five", status: "pending", order: 6 },
+            { id: "p6", label: "task six", status: "pending", order: 7 },
+            { id: "p7", label: "task seven", status: "pending", order: 8 },
+          ],
+        },
+      ]),
+    ).toBe(
+      expected(`
+        Long 2/9
+          ◈ task one
+          ◇ task two
+          ◇ task three
+          ◇ task four
+          ◇ task five
+          +2 pending
+      `),
+    );
+  });
+
+  test("all done collapses to the header count", () => {
     expect(
       renderTasklist([
         {
@@ -172,12 +200,6 @@ describe("tasklist TUI rendering", () => {
           ],
         },
       ]),
-    ).toBe(
-      expected(`
-        Done (2/2)
-          ● a
-          ● b
-      `),
-    );
+    ).toBe(expected(`Done 2/2`));
   });
 });

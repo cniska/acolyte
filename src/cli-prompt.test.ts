@@ -209,7 +209,7 @@ describe("cli-prompt", () => {
     };
 
     const { output } = await runPromptAndCapture("hi", createTestSession(), client);
-    expect(output).toBe("❯ hi\n• Hello there.");
+    expect(output).toBe("❯ hi\n◆ Hello there.");
   });
 
   // Regression: a notice appended while agent prose is still buffered used to render
