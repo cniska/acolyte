@@ -73,7 +73,7 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     faint: { foreground: "#666666" },
     user: { foreground: "#ffffff" },
     assistant: { foreground: "#ffffff" },
-    "assistant-code": { foreground: "#ffffff", dim: true },
+    "assistant-code": { foreground: "#4DA3FF" },
     "assistant-bold": { foreground: "#ffffff", bold: true },
     "assistant-path": { foreground: "#ffffff", dim: true },
     // Foreground-only (no code-block band), built from Acolyte's own accent hues so code speaks the
