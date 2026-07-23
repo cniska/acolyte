@@ -102,5 +102,5 @@ test("viewport layout carries the semantic footer onto the final scene line", ()
       .at(-1)
       ?.spans.map((span) => span.text)
       .join(""),
-  ).toBe("  acolyte · main* ↑2 ↓1 · gpt-5.2 medium · ↑48.6k ↓12.4k");
+  ).toBe("   acolyte · main* ↑2 ↓1 · gpt-5.2 medium · ↑48.6k ↓12.4k");
 });

@@ -2,7 +2,6 @@ import { stdout as output } from "node:process";
 import { type ChatRow, isTasklistOutput, isToolOutput } from "./chat-contract";
 import { rowMarker } from "./chat-row-marker";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
-import { palette } from "./palette";
 import { formatTasklist } from "./tasklist-format";
 import { renderToolOutput } from "./tool-output-render";
 import { printDim, printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
