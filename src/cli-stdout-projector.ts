@@ -1,10 +1,9 @@
 import { stdout as output } from "node:process";
-import { type ChatRow, isTasklistOutput, isToolOutput } from "./chat-contract";
+import { type ChatRow, isToolOutput } from "./chat-contract";
 import { rowMarker } from "./chat-row-marker";
 import { formatAgentReplyOutput, printIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
-import { formatTasklist } from "./tasklist-format";
 import { renderToolOutput } from "./tool-output-render";
-import { printDim, printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
+import { printError, printMarkerLine, printOutput, printWarning, streamText } from "./ui";
 
 /**
  * Projects the row model (fed by MessageStreamState.onEvent) onto append-only stdout,
@@ -25,7 +24,6 @@ export function createStdoutRowProjector(): {
 
   const emittedAssistant = new Map<string, string>();
   const emittedTool = new Map<string, string>();
-  const emittedTasklist = new Map<string, string>();
   const emittedRowIds = new Set<string>();
 
   function writeRaw(text: string): void {
@@ -89,19 +87,6 @@ export function createStdoutRowProjector(): {
     hasPrintedProgress = true;
   }
 
-  function renderTasklist(row: ChatRow): void {
-    if (!isTasklistOutput(row.content)) return;
-    const { header, items } = formatTasklist(row.content);
-    // The stream reuses one row id per tasklist group, so reprint on every content
-    // change (progress update) but not when an unrelated event re-runs the projection.
-    const rendered = `${header}\n${items.map((item) => `${item.marker} ${item.label}`).join("\n")}`;
-    if (emittedTasklist.get(row.id) === rendered) return;
-    emittedTasklist.set(row.id, rendered);
-    printDim(`${rowMarker(row).glyph} ${header}`);
-    for (const item of items) printIndentedDim(`${item.marker} ${item.label}`);
-    hasPrintedProgress = true;
-  }
-
   return {
     setRows: (updater) => {
       const next = updater(rows);
@@ -112,9 +97,6 @@ export function createStdoutRowProjector(): {
             break;
           case "tool":
             renderTool(row);
-            break;
-          case "task":
-            renderTasklist(row);
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {

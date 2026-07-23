@@ -4,7 +4,6 @@ import { handlePrompt } from "./cli-prompt";
 import { captureCliOutput } from "./cli-test-harness";
 import type { Client, StreamEvent } from "./client-contract";
 import type { Session } from "./session-contract";
-import { expectIntent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 
 function createTestSession(): Session {
@@ -116,27 +115,6 @@ describe("cli-prompt", () => {
     const { ok } = await runPromptAndCapture("fix it", session, client);
 
     expect(ok).toBe(false);
-  });
-
-  test("tasklist events print header and items", async () => {
-    const events: StreamEvent[] = [
-      {
-        type: "tasklist",
-        groupId: "grp_1",
-        groupTitle: "Build pipeline",
-        items: [
-          { id: "s1", label: "lint", status: "done", order: 0 },
-          { id: "s2", label: "test", status: "in_progress", order: 1 },
-          { id: "s3", label: "deploy", status: "pending", order: 2 },
-        ],
-      },
-    ];
-
-    const session = createTestSession();
-    const client = createStreamingClient(events);
-    const { output } = await runPromptAndCapture("run pipeline", session, client);
-
-    expectIntent(output, [["build pipeline", "1/3"], ["lint"], ["test"], ["deploy"]]);
   });
 
   test("text-delta renders before subsequent tool-output", async () => {

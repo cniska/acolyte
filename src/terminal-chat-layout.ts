@@ -11,7 +11,7 @@ import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { buildPromptDisplayLines } from "./prompt-display";
-import { type TasklistItemStatus, type TasklistOutput, tasklistMarker } from "./tasklist-contract";
+import { type TasklistItemStatus, type TasklistOutput, tasklistMarker, tasklistProgress } from "./tasklist-contract";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
 import type { TerminalStyleRole, TerminalTheme } from "./terminal-theme";
 import type { ToolHeaderState, ToolOutputPart } from "./tool-output-contract";
@@ -629,12 +629,12 @@ function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string
 // Display-only bounded view: the semantic tasklist keeps every item; done collapses into the count.
 export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number, now: number): TerminalScene {
   const sorted = [...output.items].sort((a, b) => a.order - b.order);
-  const done = sorted.filter((item) => item.status === "done").length;
+  const { done, total } = tasklistProgress(sorted);
   const notDone = sorted.filter((item) => item.status !== "done");
   const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
   const overflow = notDone.length - visible.length;
   const pulseFilled = Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
-  const count = ` ${done}/${sorted.length}`;
+  const count = ` ${done}/${total}`;
   const lines: TerminalLine[] = [
     {
       spans: [
