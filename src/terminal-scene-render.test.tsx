@@ -117,3 +117,21 @@ test("assistant layout represents inline markup as semantic spans", () => {
     { text: "src/chat.ts:42.", role: "assistant-path" },
   ]);
 });
+
+test("user layout preserves leading indent and internal whitespace runs", () => {
+  const scene = layoutTranscriptMessage({ text: "    def f():\nreturn    x", kind: "user", columns: 40 });
+  const userText = scene.lines.flatMap((line) => line.spans).filter((span) => span.role === "user");
+  expect(userText.map((span) => span.text)).toEqual(["❯ ", "    def f():", "return    x"]);
+});
+
+test("user layout renders a blank interior line as a solid band row with no hole", () => {
+  const scene = layoutTranscriptMessage({ text: "first\n\nlast", kind: "user", columns: 30 });
+  const blank = scene.lines[2];
+  expect(blank?.spans.some((span) => span.role === "user")).toBe(false);
+  expect(blank).toEqual({
+    spans: [
+      { text: " ", role: "plain" },
+      { text: " ".repeat(28), role: "user-fill" },
+    ],
+  });
+});

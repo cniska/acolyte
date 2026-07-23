@@ -156,6 +156,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-8** — Slash commands cover session control (new, clear, resume, sessions), model change, status, usage, memory management, skill run and skills picker, and exit; the parallel-workspaces commands appear only when that flag is enabled.
 - **TUI-9** — Fuzzy autocomplete is offered for file paths, sessions, commands, and skills.
 - **TUI-10** — A queued message typed while a turn is running is handled cooperatively and processed in order rather than dropped or interleaved mid-step.
+- **TUI-11** — A user message renders verbatim in the transcript: leading indentation and internal whitespace runs are preserved (tabs expanded to fixed-width stops), and a wrapped line repeats its indentation on each continuation row.
 
 ## 8. Observability requirements (OBS)
 
