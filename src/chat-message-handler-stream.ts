@@ -3,7 +3,6 @@ import type { TranscriptRow } from "./chat-transcript-contract";
 import type { ChecklistItem } from "./checklist-contract";
 import type { StreamEvent } from "./client-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
-import { palette } from "./palette";
 import { createId } from "./short-id";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { createToolOutputState } from "./tool-output-render";
@@ -306,17 +305,17 @@ export function createMessageStreamState(input: {
       sealAgentRow();
       const key = `error:${error}`;
       if (key !== lastNoticeKey) {
-        input.setRows((current) => [...current, createRow("system", error, { dim: true, text: palette.error })]);
+        input.setRows((current) => [...current, createRow("system", error, { outcome: "error" })]);
         lastNoticeKey = key;
       }
     },
 
     onProgressNotice: (notice) => {
       sealAgentRow();
-      const color = notice.level === "error" ? palette.error : palette.yellow;
-      const key = `${color}:${notice.message}`;
+      const outcome = notice.level === "error" ? "error" : "warning";
+      const key = `${outcome}:${notice.message}`;
       if (key !== lastNoticeKey) {
-        input.setRows((current) => [...current, createRow("system", notice.message, { dim: true, text: color })]);
+        input.setRows((current) => [...current, createRow("system", notice.message, { outcome })]);
         lastNoticeKey = key;
       }
     },

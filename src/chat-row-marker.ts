@@ -3,6 +3,7 @@ import { palette } from "./palette";
 
 const OUTCOME_COLORS: Record<RowOutcome, string> = {
   success: palette.success,
+  warning: palette.yellow,
   error: palette.error,
   cancelled: palette.cancelled,
 };

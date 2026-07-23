@@ -574,8 +574,10 @@ export function layoutChatViewport(input: {
         layoutTranscriptText({
           text: row.content.text,
           marker: row.kind === "system" ? "  " : "• ",
-          markerRole: row.kind === "system" ? "muted" : transcriptOutcomeRole(row.status),
-          textRole: "muted",
+          markerRole: transcriptOutcomeRole(row.status),
+          // System notices carry their level in the text color (error red, warning yellow);
+          // status/task rows keep muted text and let the marker carry the outcome.
+          textRole: row.kind === "system" ? transcriptOutcomeRole(row.status) : "muted",
           columns: input.constraints.columns,
         }),
       );

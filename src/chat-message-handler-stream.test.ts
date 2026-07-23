@@ -3,7 +3,6 @@ import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import type { TranscriptRow } from "./chat-transcript-contract";
-import { palette } from "./palette";
 
 // Larger than any drip horizon, so advancing by it fully reveals the backlog.
 const DRAIN_ALL_MS = 1000;
@@ -42,10 +41,10 @@ describe("chat-message-handler-stream", () => {
     expect(state.streamedText()).toBe("answer");
 
     state.onEvent({ type: "notice", level: "warn", message: "sink is dark" });
-    expect(rows.some((r) => r.content === "sink is dark" && r.style?.text === palette.yellow)).toBe(true);
+    expect(rows.some((r) => r.content === "sink is dark" && r.style?.outcome === "warning")).toBe(true);
 
     state.onEvent({ type: "error", errorMessage: "boom" });
-    expect(rows.some((r) => r.content === "boom" && r.style?.text === palette.error)).toBe(true);
+    expect(rows.some((r) => r.content === "boom" && r.style?.outcome === "error")).toBe(true);
     state.dispose();
   });
 
@@ -332,9 +331,9 @@ describe("chat-message-handler-stream", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.kind).toBe("system");
     expect(rows[0]?.content).toBe("Trace logging is off.");
-    // warn is not the error color — a non-fatal notice must not read as a task failure.
-    expect(rows[0]?.style?.text).toBe(palette.yellow);
-    expect(rows[0]?.style?.text).not.toBe(palette.error);
+    // warn is not the error outcome — a non-fatal notice must not read as a task failure.
+    expect(rows[0]?.style?.outcome).toBe("warning");
+    expect(rows[0]?.style?.outcome).not.toBe("error");
     state.dispose();
   });
 
