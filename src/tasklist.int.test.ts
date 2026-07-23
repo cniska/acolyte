@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
-import { isChecklistOutput } from "./chat-contract";
-import type { ChecklistOutput } from "./checklist-contract";
+import { isTasklistOutput } from "./chat-contract";
+import type { TasklistOutput } from "./tasklist-contract";
 import { createClient, createMessageHandlerHarness } from "./test-utils";
 
-describe("checklist integration", () => {
-  test("checklist event creates a task row with correct content", async () => {
+describe("tasklist integration", () => {
+  test("tasklist event creates a task row with correct content", async () => {
     let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
@@ -13,7 +13,7 @@ describe("checklist integration", () => {
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Refactoring auth module",
             items: [
@@ -30,26 +30,26 @@ describe("checklist integration", () => {
 
     await handleMessage("refactor auth");
 
-    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
     expect(taskRows).toHaveLength(1);
 
-    const content = taskRows[0]?.content as ChecklistOutput;
+    const content = taskRows[0]?.content as TasklistOutput;
     expect(content.groupId).toBe("grp_1");
     expect(content.groupTitle).toBe("Refactoring auth module");
     expect(content.items).toHaveLength(3);
     expect(content.items.every((item) => item.status === "pending")).toBe(true);
   });
 
-  test("subsequent checklist events update the same row in place", async () => {
+  test("subsequent tasklist events update the same row in place", async () => {
     let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
-          // set-checklist creates with all pending
+          // set-tasklist creates with all pending
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Build pipeline",
             items: [
@@ -57,9 +57,9 @@ describe("checklist integration", () => {
               { id: "s2", label: "test", status: "pending", order: 1 },
             ],
           });
-          // checklist-update updates individual items
+          // tasklist-update updates individual items
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Build pipeline",
             items: [
@@ -75,15 +75,15 @@ describe("checklist integration", () => {
 
     await handleMessage("run pipeline");
 
-    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
     expect(taskRows).toHaveLength(1);
 
-    const content = taskRows[0]?.content as ChecklistOutput;
+    const content = taskRows[0]?.content as TasklistOutput;
     expect(content.items[0]?.status).toBe("done");
     expect(content.items[1]?.status).toBe("in_progress");
   });
 
-  test("different group IDs produce separate checklist rows", async () => {
+  test("different group IDs produce separate tasklist rows", async () => {
     let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
@@ -91,13 +91,13 @@ describe("checklist integration", () => {
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_a",
             groupTitle: "Phase A",
             items: [{ id: "a1", label: "step A1", status: "pending", order: 0 }],
           });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_b",
             groupTitle: "Phase B",
             items: [{ id: "b1", label: "step B1", status: "pending", order: 0 }],
@@ -110,13 +110,13 @@ describe("checklist integration", () => {
 
     await handleMessage("multi-phase");
 
-    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
     expect(taskRows).toHaveLength(2);
-    expect((taskRows[0]?.content as ChecklistOutput).groupId).toBe("grp_a");
-    expect((taskRows[1]?.content as ChecklistOutput).groupId).toBe("grp_b");
+    expect((taskRows[0]?.content as TasklistOutput).groupId).toBe("grp_a");
+    expect((taskRows[1]?.content as TasklistOutput).groupId).toBe("grp_b");
   });
 
-  test("checklist row appears before subsequent tool rows", async () => {
+  test("tasklist row appears before subsequent tool rows", async () => {
     let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
@@ -124,7 +124,7 @@ describe("checklist integration", () => {
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "pending", order: 0 }],
@@ -149,14 +149,14 @@ describe("checklist integration", () => {
 
     await handleMessage("go");
 
-    const taskIndex = snapshot.findIndex((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskIndex = snapshot.findIndex((row) => row.kind === "task" && isTasklistOutput(row.content));
     const toolIndex = snapshot.findIndex((row) => row.kind === "tool");
     expect(taskIndex).toBeGreaterThanOrEqual(0);
     expect(toolIndex).toBeGreaterThanOrEqual(0);
     expect(taskIndex).toBeLessThan(toolIndex);
   });
 
-  test("checklist events do not break tool output rows", async () => {
+  test("tasklist events do not break tool output rows", async () => {
     let snapshot: ChatRow[] = [];
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
@@ -164,7 +164,7 @@ describe("checklist integration", () => {
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "edit file", status: "in_progress", order: 0 }],
@@ -194,20 +194,20 @@ describe("checklist integration", () => {
 
     await handleMessage("edit something");
 
-    const taskRows = snapshot.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
+    const taskRows = snapshot.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
     const toolRows = snapshot.filter((row) => row.kind === "tool");
     expect(taskRows).toHaveLength(1);
     expect(toolRows).toHaveLength(1);
   });
 
-  test("checklist rows are removed after turn completes", async () => {
+  test("tasklist rows are removed after turn completes", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "done", order: 0 }],
@@ -219,18 +219,18 @@ describe("checklist integration", () => {
 
     await handleMessage("go");
 
-    const checklistRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
-    expect(checklistRows).toHaveLength(0);
+    const tasklistRows = rows.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
+    expect(tasklistRows).toHaveLength(0);
   });
 
-  test("checklist rows are removed on abort", async () => {
+  test("tasklist rows are removed on abort", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
         status: async () => ({}),
         replyStream: async (input) => {
           input.onEvent({ type: "status", state: { kind: "running" } });
           input.onEvent({
-            type: "checklist",
+            type: "tasklist",
             groupId: "grp_1",
             groupTitle: "Steps",
             items: [{ id: "s1", label: "do thing", status: "in_progress", order: 0 }],
@@ -242,7 +242,7 @@ describe("checklist integration", () => {
 
     await handleMessage("go");
 
-    const checklistRows = rows.filter((row) => row.kind === "task" && isChecklistOutput(row.content));
-    expect(checklistRows).toHaveLength(0);
+    const tasklistRows = rows.filter((row) => row.kind === "task" && isTasklistOutput(row.content));
+    expect(tasklistRows).toHaveLength(0);
   });
 });

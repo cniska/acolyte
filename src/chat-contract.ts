@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { checklistOutputSchema } from "./checklist-contract";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
+import { tasklistOutputSchema } from "./tasklist-contract";
 import { toolOutputPartSchema } from "./tool-output-contract";
 
 export const roleSchema = z.enum(["system", "user", "assistant"]);
@@ -50,7 +50,7 @@ export const commandOutputSchema = z.object({
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
 
-const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema, checklistOutputSchema]);
+const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema, tasklistOutputSchema]);
 
 export type ChatRowContent = z.infer<typeof chatRowContentSchema>;
 
@@ -75,8 +75,6 @@ export function isCommandOutput(content: ChatRowContent | undefined): content is
   return typeof content === "object" && "header" in content;
 }
 
-export function isChecklistOutput(
-  content: ChatRowContent | undefined,
-): content is z.infer<typeof checklistOutputSchema> {
+export function isTasklistOutput(content: ChatRowContent | undefined): content is z.infer<typeof tasklistOutputSchema> {
   return typeof content === "object" && "groupId" in content;
 }

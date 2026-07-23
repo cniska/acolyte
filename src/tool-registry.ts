@@ -1,6 +1,5 @@
 import { resolve } from "node:path";
 import { invariant } from "./assert";
-import { createChecklistToolkit } from "./checklist-toolkit";
 import { createCodeToolkit } from "./code-toolkit";
 import { createFileToolkit } from "./file-toolkit";
 import { createGhToolkit } from "./gh-toolkit";
@@ -10,14 +9,15 @@ import { createMemoryToolkit } from "./memory-toolkit";
 import { createSessionToolkit } from "./session-toolkit";
 import { createShellToolkit } from "./shell-toolkit";
 import { createSkillToolkit } from "./skill-toolkit";
+import { createTasklistToolkit } from "./tasklist-toolkit";
 import { createTestToolkit } from "./test-toolkit";
 import { createToolCache } from "./tool-cache";
 import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type {
-  ChecklistListener,
   SessionContext,
   SkillActivatedListener,
   SkillDeactivatedListener,
+  TasklistListener,
   ToolCategory,
   ToolDefinition,
   ToolkitInput,
@@ -37,7 +37,7 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createTestToolkit> &
   ReturnType<typeof createGhToolkit> &
   ReturnType<typeof createGitToolkit> &
-  ReturnType<typeof createChecklistToolkit> &
+  ReturnType<typeof createTasklistToolkit> &
   ReturnType<typeof createSessionToolkit> &
   ReturnType<typeof createMemoryToolkit> &
   ReturnType<typeof createSkillToolkit> &
@@ -82,8 +82,8 @@ export const TOOLKIT_REGISTRY: {
     createToolkit: (input) => createTestToolkit(input),
   },
   {
-    id: "checklist",
-    createToolkit: (input) => createChecklistToolkit(input),
+    id: "tasklist",
+    createToolkit: (input) => createTasklistToolkit(input),
   },
   {
     id: "gh",
@@ -104,7 +104,7 @@ export const TOOLKIT_REGISTRY: {
 ];
 
 const noopOutput: ToolOutputListener = () => {};
-const noopChecklist: ChecklistListener = () => {};
+const noopTasklist: TasklistListener = () => {};
 const noopSkillActivated: SkillActivatedListener = () => {};
 const noopSkillDeactivated: SkillDeactivatedListener = () => {};
 
@@ -112,7 +112,7 @@ function collectTools(
   workspace: string,
   session: SessionContext,
   onOutput: ToolOutputListener = noopOutput,
-  onChecklist: ChecklistListener = noopChecklist,
+  onTasklist: TasklistListener = noopTasklist,
   onSkillActivated: SkillActivatedListener = noopSkillActivated,
   onSkillDeactivated: SkillDeactivatedListener = noopSkillDeactivated,
   sessionId?: string,
@@ -126,7 +126,7 @@ function collectTools(
         session,
         sessionId,
         onOutput,
-        onChecklist,
+        onTasklist,
         onSkillActivated,
         onSkillDeactivated,
       }),
@@ -177,7 +177,7 @@ export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
 export function toolsForAgent(options?: {
   workspace?: string;
   onOutput?: ToolOutputListener;
-  onChecklist?: ChecklistListener;
+  onTasklist?: TasklistListener;
   onSkillActivated?: SkillActivatedListener;
   onSkillDeactivated?: SkillDeactivatedListener;
   taskId?: string;
@@ -194,7 +194,7 @@ export function toolsForAgent(options?: {
     workspace,
     session,
     options?.onOutput,
-    options?.onChecklist,
+    options?.onTasklist,
     options?.onSkillActivated,
     options?.onSkillDeactivated,
     options?.sessionId,

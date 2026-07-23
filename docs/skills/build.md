@@ -14,7 +14,7 @@ Build in thin vertical slices. Implement one piece, verify it, and commit it whe
 3. **Implement the slice.** Stay within its boundary — don't fix adjacent issues or refactor unrelated code.
 4. **Verify the slice.** Run the targeted tests (`test-run`), then the project's full verification. The build must pass after every slice.
 5. **Commit the slice (only if commits are in scope, via `git-add`/`git-commit`).** One logical change per commit.
-6. **Repeat.** Mark the finished slice done with `checklist-update` if the plan left a checklist. If commits are not in scope, pause after each verified slice and ask before starting the next one.
+6. **Repeat.** Mark the finished slice done with `tasklist-update` if the plan left a tasklist. If commits are not in scope, pause after each verified slice and ask before starting the next one.
 
 ## Slicing strategies
 

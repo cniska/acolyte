@@ -459,9 +459,9 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     });
   },
 
-  checklist(ctx, chunk) {
-    if (chunk.type !== "checklist") return;
-    ctx.emit({ type: "checklist", groupId: chunk.groupId, groupTitle: chunk.groupTitle, items: chunk.items });
+  tasklist(ctx, chunk) {
+    if (chunk.type !== "tasklist") return;
+    ctx.emit({ type: "tasklist", groupId: chunk.groupId, groupTitle: chunk.groupTitle, items: chunk.items });
   },
 
   "skill-activated"(ctx, chunk) {

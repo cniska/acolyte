@@ -6,7 +6,7 @@ import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { setLogSink } from "./log";
 import { stateDir } from "./paths";
 import { PromptInputHandler } from "./prompt-input";
-import { layoutChatViewport } from "./terminal-chat-layout";
+import { layoutChatViewport, promptWrapWidth } from "./terminal-chat-layout";
 import { terminalTheme } from "./terminal-theme";
 import { Box, render, Static, TerminalSceneViewport, useApp } from "./tui";
 import { DEFAULT_COLUMNS, DEFAULT_ROWS } from "./tui/constants";
@@ -59,7 +59,7 @@ function ChatApp(props: ChatAppProps) {
           onAction={state.handleInputAction}
           onSubmit={state.handleInputSubmit}
           onCursorLine={state.onCursorLine}
-          wrapWidth={Math.max(24, columns) - 2}
+          wrapWidth={promptWrapWidth(columns)}
         />
       )}
     </Box>

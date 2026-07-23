@@ -51,7 +51,7 @@ test("fills every missing live row without replacing stream-owned presentation",
   ]);
   expect(transcript.presentation.find((row) => row.id === "row_tool")?.status).toBe("active");
   expect(transcript.presentation.find((row) => row.id === "row_task")?.content).toEqual({
-    kind: "checklist",
+    kind: "tasklist",
     output: { groupId: "group_1", groupTitle: "Plan", items: [] },
   });
 });

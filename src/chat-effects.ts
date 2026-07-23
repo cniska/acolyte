@@ -3,6 +3,8 @@ import { extractAtReferenceQuery, getCachedRepoPathCandidates, rankAtReferenceSu
 import { suggestSlashCommands } from "./chat-slash";
 import { useAsyncEffect, useSyncEffect } from "./tui/effects";
 
+export const SUGGESTION_LIMIT = 8;
+
 export function clampSuggestionIndex(current: number, length: number): number {
   return Math.max(0, Math.min(current, Math.max(0, length - 1)));
 }
@@ -21,7 +23,7 @@ export function useAtSuggestionsEffect(
       }
       const candidates = await getCachedRepoPathCandidates();
       if (cancelled()) return;
-      const next = rankAtReferenceSuggestions(candidates, atQuery);
+      const next = rankAtReferenceSuggestions(candidates, atQuery, SUGGESTION_LIMIT);
       setAtSuggestions(next);
       setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));
     },
@@ -40,7 +42,7 @@ export type SuggestionsState = {
 };
 
 export function useSuggestions(value: string, cursor?: number): SuggestionsState {
-  const slashSuggestions = suggestSlashCommands(value);
+  const slashSuggestions = suggestSlashCommands(value, SUGGESTION_LIMIT);
   const [slashSuggestionIndex, setSlashSuggestionIndex] = useState(0);
   const atQuery = extractAtReferenceQuery(value, cursor);
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);

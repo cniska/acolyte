@@ -24,7 +24,6 @@ test("composer contract preserves picker, suggestions, and help semantics", () =
       kind: "slash",
       candidates: [{ command: "/model", help: "Change model" }],
       selected: 0,
-      selectedHelp: "Change model",
     },
     showHelp: true,
     helpEntries: [{ key: "/model", description: "Change model" }],

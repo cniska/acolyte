@@ -24,9 +24,9 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles.cancelled?.foreground).toBe(palette.cancelled);
   });
 
-  test("skill-toggle markers use the brand (on) and dim (off) palette colors", () => {
+  test("skill-toggle markers use the brand (on) and ANSI dim (off)", () => {
     expect(terminalTheme.styles["skill-on"]?.foreground).toBe(palette.brand);
-    expect(terminalTheme.styles["skill-off"]?.foreground).toBe(palette.dim);
+    expect(terminalTheme.styles["skill-off"]).toEqual({ dim: true });
   });
 
   test("muted text dims the default foreground, as the legacy dimColor did", () => {
@@ -43,8 +43,14 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles["pending-shimmer-bright"]?.foreground).toBe(palette.gray);
   });
 
-  test("diff rows keep the legacy background and white text", () => {
-    expect(terminalTheme.styles["diff-added"]).toEqual({ foreground: palette.text, background: palette.diffAdd });
-    expect(terminalTheme.styles["diff-removed"]).toEqual({ foreground: palette.text, background: palette.diffRemove });
+  test("diff rows color the text green/red on the tinted band", () => {
+    expect(terminalTheme.styles["diff-added"]).toEqual({
+      foreground: palette.diffAddText,
+      background: palette.diffAdd,
+    });
+    expect(terminalTheme.styles["diff-removed"]).toEqual({
+      foreground: palette.diffRemoveText,
+      background: palette.diffRemove,
+    });
   });
 });

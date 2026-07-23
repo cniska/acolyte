@@ -100,18 +100,18 @@ describe("cli-format", () => {
 
   test("formatAgentReplyOutput indents multiline assistant output", () => {
     const out = formatAgentReplyOutput(["1. first", "2. second", "3. third"].join("\n"));
-    expect(out).toBe(["• 1. first", "  2. second", "  3. third"].join("\n"));
+    expect(out).toBe(["◆ 1. first", "  2. second", "  3. third"].join("\n"));
   });
 
   test("formatAgentReplyOutput preserves blank lines without trailing spaces", () => {
     const out = formatAgentReplyOutput(["Summary", "", "Next step"].join("\n"));
-    expect(out).toBe(["• Summary", "", "  Next step"].join("\n"));
+    expect(out).toBe(["◆ Summary", "", "  Next step"].join("\n"));
   });
 
   test("formatAgentReplyOutput wraps long lines with stable indentation", () => {
     const out = formatAgentReplyOutput("1. first second third fourth fifth", 16);
     const lines = out.split("\n");
-    expect(lines[0]).toBe("• 1. first second third");
+    expect(lines[0]).toBe("◆ 1. first second third");
     expect(lines[1]).toMatch(/^\s+fourth fifth$/);
   });
 });

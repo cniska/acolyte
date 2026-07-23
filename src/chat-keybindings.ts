@@ -20,6 +20,9 @@ type ResolveTabAutocompleteInput = {
   slashSuggestions: string[];
   slashSuggestionIndex: number;
   isTab: boolean;
+  // Right-arrow at end-of-input accepts the ghost — only a prefix extension, matching what is
+  // previewed. Tab still accepts any selected candidate (including fuzzy matches from the list).
+  isGhostAccept?: boolean;
 };
 
 export type BareCharShortcut = "help" | "skills" | null;
@@ -80,15 +83,17 @@ export function resolveHistoryDown(
 }
 
 export function resolveTabAutocomplete(input: ResolveTabAutocompleteInput): string | null {
-  if (!input.isTab || input.browsingInputHistory) return null;
+  if ((!input.isTab && !input.isGhostAccept) || input.browsingInputHistory) return null;
   if (input.atQuery !== null && input.atSuggestions.length > 0) {
     const selected = input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
+    if (input.isGhostAccept && !(selected ?? "").startsWith(input.atQuery)) return null;
     if (shouldAutocompleteAtSubmit(input.value, selected, input.cursor))
       return applyAtSuggestion(input.value, selected ?? "", input.cursor);
   }
   if (input.atQuery === null && input.slashSuggestions.length > 0) {
     const selected =
       input.slashSuggestions[clampSuggestionIndex(input.slashSuggestionIndex, input.slashSuggestions.length)];
+    if (input.isGhostAccept && !(selected ?? "").startsWith(input.value.trim())) return null;
     if (shouldAutocompleteSlashSubmit(input.value, selected)) return selected ?? "";
   }
   return null;
@@ -187,6 +192,8 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
       const suggestionNavActive =
         !browsingInputHistory &&
         (input.atQuery !== null || (input.atQuery === null && input.slashSuggestions.length > 0));
+      // Right-arrow at end of input is otherwise a no-op, so it is free to accept a shown ghost.
+      const ghostAccept = key.rightArrow && input.cursor === input.value.length;
       const onFirstLine = input.cursorLineRef.current === 0;
       const historyTriggerUp = key.upArrow && onFirstLine;
       const historyTriggerDown = key.downArrow;
@@ -219,6 +226,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           slashSuggestions: input.slashSuggestions,
           slashSuggestionIndex: input.slashSuggestionIndex,
           isTab: key.tab,
+          isGhostAccept: ghostAccept,
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);
@@ -244,6 +252,7 @@ export function useChatKeybindings(input: UseChatKeybindingsInput): void {
           slashSuggestions: input.slashSuggestions,
           slashSuggestionIndex: input.slashSuggestionIndex,
           isTab: key.tab,
+          isGhostAccept: ghostAccept,
         });
         if (autocompleted !== null) {
           input.setValue(autocompleted);

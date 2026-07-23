@@ -411,7 +411,7 @@ describe("chat-message-handler-stream: presentation stays in sync on prune", () 
     };
   }
 
-  const checklist = {
+  const tasklist = {
     groupId: "g1",
     groupTitle: "Plan",
     items: [{ id: "i1", label: "step one", status: "in_progress" as const, order: 0 }],
@@ -419,10 +419,10 @@ describe("chat-message-handler-stream: presentation stays in sync on prune", () 
 
   // Regression: persistence is presentation-first, so a row pruned from `rows` but left in
   // `transcriptPresentation` reappears on resume. finalize/dispose must prune both.
-  test("finalize removes the checklist from rows AND presentation", () => {
+  test("finalize removes the tasklist from rows AND presentation", () => {
     const harness = createDualHarness();
     const state = createMessageStreamState(harness);
-    state.onChecklist(checklist);
+    state.onTasklist(tasklist);
     expect(harness.rows).toHaveLength(1);
     expect(harness.presentation).toHaveLength(1);
 
@@ -431,10 +431,10 @@ describe("chat-message-handler-stream: presentation stays in sync on prune", () 
     expect(harness.presentation).toHaveLength(0);
   });
 
-  test("dispose removes the checklist from rows AND presentation", () => {
+  test("dispose removes the tasklist from rows AND presentation", () => {
     const harness = createDualHarness();
     const state = createMessageStreamState(harness);
-    state.onChecklist(checklist);
+    state.onTasklist(tasklist);
     expect(harness.presentation).toHaveLength(1);
 
     state.dispose();

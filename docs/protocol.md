@@ -23,7 +23,7 @@ Events are append-only and ordered per request.
 - `tool-result`: tool completion (success/error, structured error detail)
 - `text-delta`: assistant text stream chunks
 - `usage`: token usage for the current generation step
-- `checklist`: inline task checklist with group ID, title, and items
+- `tasklist`: inline task list with group ID, title, and items
 - `error`: terminal stream error
 
 ## Invariants

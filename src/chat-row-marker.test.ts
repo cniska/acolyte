@@ -10,10 +10,10 @@ function row(kind: ChatRow["kind"], style?: ChatRow["style"]): ChatRow {
 describe("rowMarker", () => {
   test("maps each row kind to its glyph", () => {
     expect(rowMarker(row("user")).glyph).toBe("❯");
-    expect(rowMarker(row("assistant")).glyph).toBe("•");
-    expect(rowMarker(row("tool")).glyph).toBe("•");
-    expect(rowMarker(row("status")).glyph).toBe("•");
-    expect(rowMarker(row("task")).glyph).toBe("•");
+    expect(rowMarker(row("assistant")).glyph).toBe("◆");
+    expect(rowMarker(row("tool")).glyph).toBe("◆");
+    expect(rowMarker(row("status")).glyph).toBe("◆");
+    expect(rowMarker(row("task")).glyph).toBe("◆");
     expect(rowMarker(row("system")).glyph).toBe(" ");
   });
 

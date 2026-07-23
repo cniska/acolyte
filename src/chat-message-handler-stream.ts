@@ -1,9 +1,9 @@
 import { type ChatRow, createRow } from "./chat-contract";
 import type { TranscriptRow } from "./chat-transcript-contract";
-import type { ChecklistItem } from "./checklist-contract";
 import type { StreamEvent } from "./client-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createId } from "./short-id";
+import type { TasklistItem } from "./tasklist-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { createToolOutputState } from "./tool-output-render";
 
@@ -21,11 +21,11 @@ export type MessageStreamState = {
     errorCode?: string;
     error?: { category?: string; [key: string]: unknown };
   }) => void;
-  onChecklist: (entry: { groupId: string; groupTitle: string; items: ChecklistItem[] }) => void;
+  onTasklist: (entry: { groupId: string; groupTitle: string; items: TasklistItem[] }) => void;
   onProgressError: (error: string) => void;
   onProgressNotice: (notice: { message: string; level: "warn" | "error"; source?: string }) => void;
   streamedText: () => string;
-  /** Flush remaining buffered prose and detach: seal the live agent row and drop unresolved checklist rows. */
+  /** Flush remaining buffered prose and detach: seal the live agent row and drop unresolved tasklist rows. */
   finalize: () => void;
   dispose: () => void;
 };
@@ -62,8 +62,8 @@ export function createMessageStreamState(input: {
   const pendingToolRowIds = new Set<string>();
   const toolOutput = createToolOutputState();
 
-  // --- checklist state ---
-  const checklistRowIdByGroupId = new Map<string, string>();
+  // --- tasklist state ---
+  const tasklistRowIdByGroupId = new Map<string, string>();
 
   // Signature of the last row appended, when it was a progress notice — lets a repeat
   // notice dedupe even after the prior one was promoted out of the active region.
@@ -166,8 +166,8 @@ export function createMessageStreamState(input: {
         case "tool-result":
           state.onToolResult(event);
           break;
-        case "checklist":
-          state.onChecklist(event);
+        case "tasklist":
+          state.onTasklist(event);
           break;
         case "error":
           state.onProgressError(event.errorMessage);
@@ -274,27 +274,27 @@ export function createMessageStreamState(input: {
       pendingToolRowIds.delete(rowId);
     },
 
-    onChecklist: (entry) => {
+    onTasklist: (entry) => {
       const content = { groupId: entry.groupId, groupTitle: entry.groupTitle, items: entry.items };
-      const existingRowId = checklistRowIdByGroupId.get(entry.groupId);
+      const existingRowId = tasklistRowIdByGroupId.get(entry.groupId);
       if (!existingRowId) {
         sealAgentRow();
         const rowId = `row_${createId()}`;
-        checklistRowIdByGroupId.set(entry.groupId, rowId);
+        tasklistRowIdByGroupId.set(entry.groupId, rowId);
         lastNoticeKey = null;
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
         upsertTranscriptRow({
           id: rowId,
           kind: "task",
           status: "active",
-          content: { kind: "checklist", output: content },
+          content: { kind: "tasklist", output: content },
         });
         return;
       }
       input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
       input.setTranscriptPresentation?.((current) =>
         current.map((row) =>
-          row.id === existingRowId ? { ...row, content: { kind: "checklist", output: content } } : row,
+          row.id === existingRowId ? { ...row, content: { kind: "tasklist", output: content } } : row,
         ),
       );
     },
@@ -324,26 +324,26 @@ export function createMessageStreamState(input: {
 
     finalize: () => {
       sealAgentRow();
-      const checklistIds = new Set(checklistRowIdByGroupId.values());
-      checklistRowIdByGroupId.clear();
-      if (checklistIds.size > 0) {
-        input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
-        input.setTranscriptPresentation?.((current) => current.filter((row) => !checklistIds.has(row.id)));
+      const tasklistIds = new Set(tasklistRowIdByGroupId.values());
+      tasklistRowIdByGroupId.clear();
+      if (tasklistIds.size > 0) {
+        input.setRows((current) => current.filter((row) => !tasklistIds.has(row.id)));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => !tasklistIds.has(row.id)));
       }
       agentRowIds.length = 0;
     },
 
     dispose: () => {
       cancelTick();
-      const checklistIds = new Set(checklistRowIdByGroupId.values());
-      checklistRowIdByGroupId.clear();
+      const tasklistIds = new Set(tasklistRowIdByGroupId.values());
+      tasklistRowIdByGroupId.clear();
       const idsToRemove = [...agentRowIds];
       if (activeRowId && !idsToRemove.includes(activeRowId)) idsToRemove.push(activeRowId);
       activeRowId = null;
       agentContent = "";
       pendingText = "";
       agentRowIds.length = 0;
-      const removeSet = new Set([...idsToRemove, ...checklistIds]);
+      const removeSet = new Set([...idsToRemove, ...tasklistIds]);
       if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
         input.setTranscriptPresentation?.((current) => current.filter((row) => !removeSet.has(row.id)));

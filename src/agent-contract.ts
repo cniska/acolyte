@@ -4,9 +4,9 @@ import type {
   LanguageModelV4Message,
   SharedV4ProviderOptions,
 } from "@ai-sdk/provider";
-import type { ChecklistItem } from "./checklist-contract";
 import type { ReasoningLevel } from "./config-contract";
 import type { ActiveSkill } from "./skill-contract";
+import type { TasklistItem } from "./tasklist-contract";
 import type { ToolDefinition } from "./tool-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 
@@ -57,13 +57,13 @@ export type StreamChunk =
   | { type: "model-usage"; payload: ModelUsagePayload }
   | SideEffectChunk;
 
-// Effects a tool raises mid-execute (output rows, checklists, skill lifecycle). They ride the
+// Effects a tool raises mid-execute (output rows, tasklists, skill lifecycle). They ride the
 // same ordered `fullStream` as text and tool calls so the transcript order is structurally
 // faithful — a tool can only emit them from inside its `execute`, between its tool-call and
 // tool-result chunks.
 export type SideEffectChunk =
   | { type: "tool-output"; toolName: string; content: ToolOutputPart; toolCallId?: string }
-  | { type: "checklist"; groupId: string; groupTitle: string; items: ChecklistItem[] }
+  | { type: "tasklist"; groupId: string; groupTitle: string; items: TasklistItem[] }
   | { type: "skill-activated"; skill: ActiveSkill }
   | { type: "skill-deactivated"; name: string };
 

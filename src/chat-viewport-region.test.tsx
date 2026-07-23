@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
-import type { ChecklistOutput } from "./checklist-contract";
+import type { TasklistOutput } from "./tasklist-contract";
 import { layoutChatViewport } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
@@ -25,7 +25,7 @@ const footer = {
 
 const columns = 60;
 
-const checklist: ChecklistOutput = {
+const tasklist: TasklistOutput = {
   groupId: "g1",
   groupTitle: "Plan",
   items: [
@@ -61,33 +61,51 @@ function sceneTail(input: {
   return renderPlain(<TerminalSceneRender scene={{ lines: scene.lines.slice(header?.lineEnd) }} />, columns);
 }
 
+test("empty session live region renders the composer chrome", () => {
+  expect(sceneTail({ activeTranscript: [] })).toBe(
+    dedent(
+      `
+      ╭${"─".repeat(56)}╮
+      │ ❯${" ".repeat(54)}│
+      ╰${"─".repeat(56)}╯
+        acolyte · main · gpt-5
+      `,
+      1,
+    ),
+  );
+});
+
 test("transcript rows live region renders messages above the composer", () => {
   const presentation: TranscriptRow[] = [
     { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "hello there" } },
     { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "hi back" } },
   ];
   expect(sceneTail({ activeTranscript: presentation })).toBe(
-    dedent(`
-      ❯ hello there
+    dedent(
+      `
+        ❯ hello there
 
-      • hi back
 
-      ────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────
+        ◆ hi back
+
+      ╭${"─".repeat(56)}╮
+      │ ❯${" ".repeat(54)}│
+      ╰${"─".repeat(56)}╯
         acolyte · main · gpt-5
-    `),
+      `,
+      1,
+    ),
   );
 });
 
-test("rows, pending, and checklist live region renders in order with indent", () => {
+test("rows, pending, and tasklist live region renders in order with indent", () => {
   const originalNow = Date.now;
   Date.now = () => 5000;
   try {
     const presentation: TranscriptRow[] = [
       { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "do the thing" } },
       { id: "r2", kind: "assistant", status: "complete", content: { kind: "message", text: "on it" } },
-      { id: "cl", kind: "tool", status: "active", content: { kind: "checklist", output: checklist } },
+      { id: "cl", kind: "tool", status: "active", content: { kind: "tasklist", output: tasklist } },
     ];
     const scene = sceneTail({
       activeTranscript: presentation,
@@ -100,22 +118,25 @@ test("rows, pending, and checklist live region renders in order with indent", ()
       },
     });
     expect(scene).toBe(
-      dedent(`
-        ❯ do the thing
+      dedent(
+        `
+          ❯ do the thing
 
-        • on it
 
-        • Working… (5s · 1 tool)
+          ◆ on it
 
-          Plan (1/2)
-            ● step one
-            ⊙ step two
+          ◆ Working… (5s · 1 tool)
 
-        ────────────────────────────────────────────────────────────
-        ❯ Ask anything…
-        ────────────────────────────────────────────────────────────
+          Plan 1/2
+            ◈ step two
+
+        ╭${"─".repeat(56)}╮
+        │ ❯${" ".repeat(54)}│
+        ╰${"─".repeat(56)}╯
           acolyte · main · gpt-5
-      `),
+        `,
+        1,
+      ),
     );
   } finally {
     Date.now = originalNow;
@@ -140,18 +161,22 @@ test("queued messages live region renders below the pending indicator", () => {
       },
     });
     expect(scene).toBe(
-      dedent(`
-        ❯ first
+      dedent(
+        `
+          ❯ first
 
-        • Working… (5s)
 
-        ❯ next up
+          ◆ Working… (5s)
 
-        ────────────────────────────────────────────────────────────
-        ❯ Ask anything…
-        ────────────────────────────────────────────────────────────
+          ❯ next up
+
+        ╭${"─".repeat(56)}╮
+        │ ❯${" ".repeat(54)}│
+        ╰${"─".repeat(56)}╯
           acolyte · main · gpt-5
-      `),
+        `,
+        1,
+      ),
     );
   } finally {
     Date.now = originalNow;

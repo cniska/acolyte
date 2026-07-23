@@ -1,19 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { checklistMarker, checklistProgress } from "./checklist-contract";
+import { tasklistMarker, tasklistProgress } from "./tasklist-contract";
 
-describe("checklistMarker", () => {
+describe("tasklistMarker", () => {
   test("returns correct markers", () => {
-    expect(checklistMarker("pending")).toBe("○");
-    expect(checklistMarker("in_progress")).toBe("⊙");
-    expect(checklistMarker("done")).toBe("●");
-    expect(checklistMarker("failed")).toBe("◉");
+    expect(tasklistMarker("pending")).toBe("◇");
+    expect(tasklistMarker("in_progress")).toBe("◈");
+    expect(tasklistMarker("done")).toBe("◆");
+    expect(tasklistMarker("failed")).toBe("◆");
   });
 });
 
-describe("checklistProgress", () => {
+describe("tasklistProgress", () => {
   test("counts done items", () => {
     expect(
-      checklistProgress([
+      tasklistProgress([
         { id: "1", label: "a", status: "done", order: 0 },
         { id: "2", label: "b", status: "in_progress", order: 1 },
         { id: "3", label: "c", status: "pending", order: 2 },
@@ -23,7 +23,7 @@ describe("checklistProgress", () => {
 
   test("handles all done", () => {
     expect(
-      checklistProgress([
+      tasklistProgress([
         { id: "1", label: "a", status: "done", order: 0 },
         { id: "2", label: "b", status: "done", order: 1 },
       ]),
@@ -32,7 +32,7 @@ describe("checklistProgress", () => {
 
   test("failed items do not count as done", () => {
     expect(
-      checklistProgress([
+      tasklistProgress([
         { id: "1", label: "a", status: "done", order: 0 },
         { id: "2", label: "b", status: "failed", order: 1 },
       ]),
@@ -40,6 +40,6 @@ describe("checklistProgress", () => {
   });
 
   test("handles empty list", () => {
-    expect(checklistProgress([])).toEqual({ done: 0, total: 0 });
+    expect(tasklistProgress([])).toEqual({ done: 0, total: 0 });
   });
 });

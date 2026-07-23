@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type { ChecklistOutput } from "./checklist-contract";
-import { layoutTranscriptChecklist } from "./terminal-chat-layout";
+import type { TasklistOutput } from "./tasklist-contract";
+import { layoutTranscriptTasklist } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
-function renderChecklist(checklists: ChecklistOutput[], columns = 96): string {
-  // Match the viewport: a 2-space gutter on every checklist line, a blank line between rows.
+function renderTasklist(tasklists: TasklistOutput[], columns = 96): string {
+  // Match the viewport: a 2-space gutter on every tasklist line, a blank line between rows.
   const contentWidth = Math.max(24, columns - 2);
-  const lines = checklists.flatMap((content, i) => {
-    const scene = layoutTranscriptChecklist(content, contentWidth);
+  const lines = tasklists.flatMap((content, i) => {
+    const scene = layoutTranscriptTasklist(content, contentWidth, 0);
     const indented = scene.lines.map((line) => ({
       spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
     }));
@@ -18,15 +18,15 @@ function renderChecklist(checklists: ChecklistOutput[], columns = 96): string {
   return renderPlain(<TerminalSceneRender scene={{ lines }} />, columns);
 }
 
-/** dedent with a 2-char gutter matching the checklist spacer column. */
+/** dedent with a 2-char gutter matching the tasklist spacer column. */
 function expected(value: string): string {
   return dedent(value, 2);
 }
 
-describe("checklist TUI rendering", () => {
-  test("renders header with progress and status markers", () => {
+describe("tasklist TUI rendering", () => {
+  test("renders header count with the not-done items, collapsing done", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Build pipeline",
@@ -39,17 +39,16 @@ describe("checklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Build pipeline (1/3)
-          ● lint
-          ⊙ test
-          ○ deploy
+        Build pipeline 1/3
+          ◈ test
+          ◇ deploy
       `),
     );
   });
 
-  test("renders all status marker variants", () => {
+  test("renders in-progress, pending, and failed markers (done collapses into the count)", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Steps",
@@ -63,18 +62,17 @@ describe("checklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Steps (1/4)
-          ● done step
-          ⊙ active step
-          ○ waiting step
-          ◉ broken step
+        Steps 1/4
+          ◈ active step
+          ◇ waiting step
+          ◆ broken step
       `),
     );
   });
 
   test("sorts items by order regardless of input order", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Steps",
@@ -87,20 +85,19 @@ describe("checklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Steps (1/3)
-          ● first
-          ⊙ second
-          ○ third
+        Steps 1/3
+          ◈ second
+          ◇ third
       `),
     );
   });
 
-  test("renders nothing when there are no checklists", () => {
-    expect(renderChecklist([])).toBe("");
+  test("renders nothing when there are no tasklists", () => {
+    expect(renderTasklist([])).toBe("");
   });
 
   test("truncates an overflowing item to the content width with an ellipsis", () => {
-    const out = renderChecklist(
+    const out = renderTasklist(
       [
         {
           groupId: "g1",
@@ -123,8 +120,8 @@ describe("checklist TUI rendering", () => {
     expect(out).not.toContain("box layout path");
   });
 
-  test("checklist aligns with transcript row markers", () => {
-    const output = renderChecklist([
+  test("tasklist aligns with transcript row markers", () => {
+    const output = renderTasklist([
       {
         groupId: "g1",
         groupTitle: "Steps",
@@ -135,9 +132,9 @@ describe("checklist TUI rendering", () => {
     expect(output).toMatch(/^ {2}\S/);
   });
 
-  test("renders multiple checklists", () => {
+  test("renders multiple tasklists", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Phase A",
@@ -151,18 +148,49 @@ describe("checklist TUI rendering", () => {
       ]),
     ).toBe(
       expected(`
-        Phase A (1/1)
-          ● step A
+        Phase A 1/1
 
-        Phase B (0/1)
-          ○ step B
+        Phase B 0/1
+          ◇ step B
       `),
     );
   });
 
-  test("all done shows full progress", () => {
+  test("caps not-done rows at five and folds the rest into a pending count", () => {
     expect(
-      renderChecklist([
+      renderTasklist([
+        {
+          groupId: "g1",
+          groupTitle: "Long",
+          items: [
+            { id: "d1", label: "done one", status: "done", order: 0 },
+            { id: "d2", label: "done two", status: "done", order: 1 },
+            { id: "p1", label: "task one", status: "in_progress", order: 2 },
+            { id: "p2", label: "task two", status: "pending", order: 3 },
+            { id: "p3", label: "task three", status: "pending", order: 4 },
+            { id: "p4", label: "task four", status: "pending", order: 5 },
+            { id: "p5", label: "task five", status: "pending", order: 6 },
+            { id: "p6", label: "task six", status: "pending", order: 7 },
+            { id: "p7", label: "task seven", status: "pending", order: 8 },
+          ],
+        },
+      ]),
+    ).toBe(
+      expected(`
+        Long 2/9
+          ◈ task one
+          ◇ task two
+          ◇ task three
+          ◇ task four
+          ◇ task five
+          +2 pending
+      `),
+    );
+  });
+
+  test("all done collapses to the header count", () => {
+    expect(
+      renderTasklist([
         {
           groupId: "g1",
           groupTitle: "Done",
@@ -172,12 +200,6 @@ describe("checklist TUI rendering", () => {
           ],
         },
       ]),
-    ).toBe(
-      expected(`
-        Done (2/2)
-          ● a
-          ● b
-      `),
-    );
+    ).toBe(expected(`Done 2/2`));
   });
 });

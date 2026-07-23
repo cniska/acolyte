@@ -28,8 +28,8 @@ const toolOutput: TranscriptContent = {
   output: { parts: [{ kind: "tool-header", labelKey: "read" }] },
 };
 const commandOutput: TranscriptContent = { kind: "command-output", output: { header: "Status", sections: [] } };
-const checklist: TranscriptContent = {
-  kind: "checklist",
+const tasklist: TranscriptContent = {
+  kind: "tasklist",
   output: { groupId: "g1", groupTitle: "Plan", items: [{ id: "i1", label: "step", status: "in_progress", order: 0 }] },
 };
 
@@ -63,7 +63,7 @@ function finalizedForRow(kind: RowKind, status: TranscriptStatus, content: Trans
 }
 
 // A section may enter static scrollback only once its bytes can never change again.
-// Streaming rows (active prose, active tools, checklists, pending) must never finalize;
+// Streaming rows (active prose, active tools, tasklists, pending) must never finalize;
 // settled rows must, or they repaint forever. This table is the promotion-integrity gate.
 const cases: Array<{
   name: string;
@@ -95,8 +95,8 @@ const cases: Array<{
   { name: "command output", kind: "system", status: "complete", content: commandOutput, finalized: true },
   { name: "status outcome row", kind: "status", status: "success", content: message("Worked 5s"), finalized: true },
   { name: "task outcome row", kind: "task", status: "success", content: message("Built"), finalized: true },
-  { name: "active checklist", kind: "tool", status: "active", content: checklist, finalized: false },
-  { name: "completed checklist", kind: "tool", status: "complete", content: checklist, finalized: false },
+  { name: "active tasklist", kind: "tool", status: "active", content: tasklist, finalized: false },
+  { name: "completed tasklist", kind: "tool", status: "complete", content: tasklist, finalized: false },
 ];
 
 describe("layoutChatViewport finalization eligibility", () => {

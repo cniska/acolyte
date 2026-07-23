@@ -10,6 +10,7 @@ import type {
 import { dispatchSubcommandGroup } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
+import { GLYPH_FILLED } from "./chat-glyphs";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
 import { createSession } from "./session-store";
@@ -34,7 +35,7 @@ async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<C
     return { stop: true, userText: text };
   }
   const grid = workspaces.map((ws) => {
-    const active = ws.id === ctx.sessionState.activeSessionId ? "●" : " ";
+    const active = ws.id === ctx.sessionState.activeSessionId ? GLYPH_FILLED : " ";
     const branch = ws.branch.length > 0 ? ws.branch : "—";
     const path = ws.path.length > 0 ? ws.path : "—";
     return [`${active} ${ws.name}`, branch, path];
