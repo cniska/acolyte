@@ -166,7 +166,7 @@ describe("chat tui visual regression: status line and help", () => {
       slashSuggestions: ["/model"],
       slashSuggestionIndex: 0,
     });
-    expect(out).toBe(`${box(["❯ /mo"])}\n     /model               change model`);
+    expect(out).toBe(`${box(["❯ /model"])}\n     /model               change model`);
   });
 
   test("renders multiple slash suggestions with the selected command's help", () => {

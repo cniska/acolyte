@@ -40,6 +40,37 @@ test("input handler visual-line math matches the box wrap width", () => {
   expect(scene.cursor?.row).toBe(handlerLine + 1);
 });
 
+test("ghost text shows the prefix remainder in its own role, distinct from typed input", () => {
+  const scene = layoutComposerStatus({
+    presentation: {
+      ...base,
+      input: { text: "/st", cursor: 3 },
+      suggestions: { kind: "slash", candidates: [{ command: "/status" }], selected: 0 },
+    },
+    constraints: { columns: 80, rows: 20 },
+  });
+  // Caret stays on the last typed char (`t`); the ghost remainder (`atus`) trails in its own role.
+  const promptLine = scene.lines.find((line) => line.spans.some((span) => span.role === "ghost"));
+  const typed = promptLine?.spans.find((span) => span.text === "/s");
+  const caret = promptLine?.spans.find((span) => span.text === "t" && span.role === "cursor");
+  const ghost = promptLine?.spans.find((span) => span.text === "atus");
+  expect(typed?.role).toBe("plain");
+  expect(caret).toBeDefined();
+  expect(ghost?.role).toBe("ghost");
+});
+
+test("a fuzzy (non-prefix) suggestion ghosts nothing", () => {
+  const scene = layoutComposerStatus({
+    presentation: {
+      ...base,
+      input: { text: "/he", cursor: 3 },
+      suggestions: { kind: "slash", candidates: [{ command: "/new" }], selected: 0 },
+    },
+    constraints: { columns: 80, rows: 20 },
+  });
+  expect(scene.lines.some((line) => line.spans.some((span) => span.role === "ghost"))).toBe(false);
+});
+
 test("composer layout windows picker items", () => {
   const scene = layoutComposerStatus({
     presentation: {

@@ -87,6 +87,24 @@ function lineWidth(line: TerminalLine): number {
   return line.spans.reduce((total, span) => total + width(span.text), 0);
 }
 
+// The inline completion preview: the remainder of the selected suggestion when it extends what is
+// typed. Only a prefix match ghosts — a fuzzy match (`/he` → `/new`) has no coherent continuation,
+// so nothing shows and the candidate list carries it instead.
+function composerGhost(presentation: ChatViewportPresentation["composer"]): string {
+  if (presentation.input.cursor !== presentation.input.text.length) return "";
+  const suggestions = presentation.suggestions;
+  if (suggestions.kind === "slash") {
+    const command = suggestions.candidates[suggestions.selected]?.command ?? "";
+    const typed = presentation.input.text;
+    return command.startsWith(typed) ? command.slice(typed.length) : "";
+  }
+  if (suggestions.kind === "at") {
+    const value = suggestions.candidates[suggestions.selected]?.value ?? "";
+    return value.startsWith(suggestions.query) ? value.slice(suggestions.query.length) : "";
+  }
+  return "";
+}
+
 // Interior rows are padded to the content width so the right border is column-stable, and the
 // interior cursor is translated by the same constant that draws the padding, so they cannot drift.
 function frameScene(interior: TerminalScene, columns: number): TerminalScene {
@@ -404,6 +422,7 @@ export function layoutComposerStatus(input: {
     );
   }
   const caretRole: TerminalStyleRole = presentation.caretVisible ? "cursor" : "plain";
+  const ghost = composerGhost(presentation);
   const promptLines: TerminalLine[] = [];
   let caretRow = 0;
   let caretColumn = 2;
@@ -425,9 +444,29 @@ export function layoutComposerStatus(input: {
         caretRow = index;
         caretColumn = 2 + width(line.before);
       }
+      const marker = { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" as const };
+      // Ghost trails faint after the typed text; the caret stays on the last typed char so the
+      // preview never reads as text the user wrote. Clip to the interior so a long candidate never
+      // pushes the line past the box border.
+      const ghostRoom = promptWrapWidth(terminalWidth) - width(line.before);
+      const shownGhost =
+        ghost && line.cursor !== null && line.after === "" && line.before.length > 0
+          ? ghost.slice(0, Math.max(0, ghostRoom))
+          : "";
+      if (shownGhost) {
+        promptLines.push({
+          spans: [
+            marker,
+            { text: line.before.slice(0, -1), role: "plain" },
+            { text: line.before.slice(-1), role: caretRole },
+            { text: shownGhost, role: "ghost" },
+          ],
+        });
+        continue;
+      }
       promptLines.push({
         spans: [
-          { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" },
+          marker,
           { text: line.before, role: "plain" },
           ...(line.cursor !== null ? [{ text: line.cursor, role: caretRole }] : []),
           { text: line.after, role: "plain" },
