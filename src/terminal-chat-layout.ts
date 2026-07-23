@@ -448,21 +448,18 @@ export function layoutComposerStatus(input: {
         caretColumn = 2 + width(line.before);
       }
       const marker = { text: index === 0 ? "❯ " : "  ", role: "composer-prompt" as const };
-      // Ghost trails faint after the typed text; the caret stays on the last typed char so the
-      // preview never reads as text the user wrote. Clip to the interior so a long candidate never
-      // pushes the line past the box border.
+      // The caret sits at the insertion point — on the ghost's first char (inverse) — and the rest
+      // trails faint. Clip to the interior so a long candidate never pushes the line past the border.
       const ghostRoom = promptWrapWidth(terminalWidth) - width(line.before);
       const shownGhost =
-        ghost && line.cursor !== null && line.after === "" && line.before.length > 0
-          ? ghost.slice(0, Math.max(0, ghostRoom))
-          : "";
+        ghost && line.cursor !== null && line.after === "" ? ghost.slice(0, Math.max(0, ghostRoom)) : "";
       if (shownGhost) {
         promptLines.push({
           spans: [
             marker,
-            { text: line.before.slice(0, -1), role: "plain" },
-            { text: line.before.slice(-1), role: caretRole },
-            { text: shownGhost, role: "ghost" },
+            { text: line.before, role: "plain" },
+            { text: shownGhost.slice(0, 1), role: caretRole },
+            { text: shownGhost.slice(1), role: "ghost" },
           ],
         });
         continue;

@@ -49,11 +49,11 @@ test("ghost text shows the prefix remainder in its own role, distinct from typed
     },
     constraints: { columns: 80, rows: 20 },
   });
-  // Caret stays on the last typed char (`t`); the ghost remainder (`atus`) trails in its own role.
+  // Caret sits at the insertion point — on the ghost's first char (`a`) inverse; `tus` trails faint.
   const promptLine = scene.lines.find((line) => line.spans.some((span) => span.role === "ghost"));
-  const typed = promptLine?.spans.find((span) => span.text === "/s");
-  const caret = promptLine?.spans.find((span) => span.text === "t" && span.role === "cursor");
-  const ghost = promptLine?.spans.find((span) => span.text === "atus");
+  const typed = promptLine?.spans.find((span) => span.text === "/st");
+  const caret = promptLine?.spans.find((span) => span.text === "a" && span.role === "cursor");
+  const ghost = promptLine?.spans.find((span) => span.text === "tus");
   expect(typed?.role).toBe("plain");
   expect(caret).toBeDefined();
   expect(ghost?.role).toBe("ghost");
