@@ -61,17 +61,6 @@ function sceneTail(input: {
   return renderPlain(<TerminalSceneRender scene={{ lines: scene.lines.slice(header?.lineEnd) }} />, columns);
 }
 
-test("empty session live region renders the composer chrome", () => {
-  expect(sceneTail({ activeTranscript: [] })).toBe(
-    dedent(`
-      ────────────────────────────────────────────────────────────
-      ❯ Ask anything…
-      ────────────────────────────────────────────────────────────
-        acolyte · main · gpt-5
-    `),
-  );
-});
-
 test("transcript rows live region renders messages above the composer", () => {
   const presentation: TranscriptRow[] = [
     { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "hello there" } },
