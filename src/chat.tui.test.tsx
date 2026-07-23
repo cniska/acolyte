@@ -185,6 +185,28 @@ describe("chat tui visual regression: status line and help", () => {
     );
   });
 
+  test("renders multiple slash suggestions with the selected command's help", () => {
+    const out = renderInputPanel(
+      {
+        value: "/st",
+        slashSuggestions: ["/status", "/stop"],
+        slashSuggestionIndex: 0,
+      },
+      80,
+    );
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────
+      ❯ /st
+      ────────────────────────────────────────────────────────────────────────────────
+        /status
+        /stop
+
+        show server status
+    `),
+    );
+  });
+
   test("renders the ctrl-c exit hint below the composer", () => {
     const out = renderInputPanel({ ctrlCPending: true }, 80);
     expect(out).toBe(
