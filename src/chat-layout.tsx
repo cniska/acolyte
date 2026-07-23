@@ -6,7 +6,7 @@ import { t } from "./i18n";
 export const BREAKPOINT_TWO_COLUMN = 92;
 
 export const SHORTCUT_ITEMS = [
-  { key: "@path", description: t("chat.at_ref.mention_file") },
+  { key: "@path", description: t("chat.at_ref.mention_path") },
   { key: "/new", description: slashCommandHelp("/new") },
   { key: "/clear", description: slashCommandHelp("/clear") },
   { key: "/resume <id>", description: slashCommandHelp("/resume") },
