@@ -2,6 +2,7 @@ import { afterEach, describe, expect, jest, test } from "bun:test";
 import type { ChatRow } from "./chat-contract";
 import { isToolOutput } from "./chat-contract";
 import { createMessageStreamState } from "./chat-message-handler-stream";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import { palette } from "./palette";
 
 // Larger than any drip horizon, so advancing by it fully reveals the backlog.
@@ -391,5 +392,54 @@ describe("chat-message-handler-stream", () => {
     expect(toolIdx).toBeGreaterThan(assistantIdx);
     expect(rows[assistantIdx]?.content).toBe(prose);
     state.dispose();
+  });
+});
+
+describe("chat-message-handler-stream: presentation stays in sync on prune", () => {
+  function createDualHarness(): {
+    rows: ChatRow[];
+    presentation: TranscriptRow[];
+    setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
+    setTranscriptPresentation: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
+  } {
+    const rows: ChatRow[] = [];
+    const presentation: TranscriptRow[] = [];
+    return {
+      rows,
+      presentation,
+      setRows: (updater) => rows.splice(0, rows.length, ...updater(rows)),
+      setTranscriptPresentation: (updater) => presentation.splice(0, presentation.length, ...updater(presentation)),
+    };
+  }
+
+  const checklist = {
+    groupId: "g1",
+    groupTitle: "Plan",
+    items: [{ id: "i1", label: "step one", status: "in_progress" as const, order: 0 }],
+  };
+
+  // Regression: persistence is presentation-first, so a row pruned from `rows` but left in
+  // `transcriptPresentation` reappears on resume. finalize/dispose must prune both.
+  test("finalize removes the checklist from rows AND presentation", () => {
+    const harness = createDualHarness();
+    const state = createMessageStreamState(harness);
+    state.onChecklist(checklist);
+    expect(harness.rows).toHaveLength(1);
+    expect(harness.presentation).toHaveLength(1);
+
+    state.finalize();
+    expect(harness.rows).toHaveLength(0);
+    expect(harness.presentation).toHaveLength(0);
+  });
+
+  test("dispose removes the checklist from rows AND presentation", () => {
+    const harness = createDualHarness();
+    const state = createMessageStreamState(harness);
+    state.onChecklist(checklist);
+    expect(harness.presentation).toHaveLength(1);
+
+    state.dispose();
+    expect(harness.rows).toHaveLength(0);
+    expect(harness.presentation).toHaveLength(0);
   });
 });
