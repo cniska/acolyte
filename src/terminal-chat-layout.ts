@@ -558,7 +558,8 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   }
   const suffix = `${status.dirty ? "*" : ""}${status.ahead ? ` ↑${status.ahead}` : ""}${status.behind ? ` ↓${status.behind}` : ""}`;
   // Two recessed gray tiers matching ~/.claude/statusline.sh (names/model brighter, the rest
-  // faint); PR is the one state-colored accent, since a merged/closed PR on the branch is actionable.
+  // faint); the PR number is the one state-colored accent, since a merged/closed PR on the branch
+  // is actionable — its `PR` label stays faint like the other labels.
   const segments: TerminalSpan[] = [];
   const separate = (): void => {
     if (segments.length > 0) segments.push({ text: " · ", role: "faint" });
@@ -583,7 +584,8 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   }
   if (status.pr) {
     separate();
-    segments.push({ text: `PR #${status.pr.number}`, role: prStateRole(status.pr.state) });
+    segments.push({ text: "PR ", role: "faint" });
+    segments.push({ text: `#${status.pr.number}`, role: prStateRole(status.pr.state) });
   }
   const text = segments.map((segment) => segment.text).join("");
   const statusWidth = width(text);

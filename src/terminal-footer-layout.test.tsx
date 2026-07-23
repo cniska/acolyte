@@ -62,6 +62,16 @@ test("footer renders the PR number at the end", () => {
   ).toBe("acolyte · main · gpt-5.2 medium · PR #281");
 });
 
+test("footer colors only the PR number, keeping the PR label faint", () => {
+  const scene = layoutFooterStatus(
+    { ...base, pr: { number: 281, state: "merged", title: "x", url: "https://example.test/pr/281" } },
+    100,
+  );
+  const spans = scene.lines[0]?.spans ?? [];
+  expect(spans.find((span) => span.text === "PR ")?.role).toBe("faint");
+  expect(spans.find((span) => span.text === "#281")?.role).toBe("pr-merged");
+});
+
 test("footer omits effort when absent", () => {
   expect(render({ ...base, effort: null }, 100)).toBe("acolyte · main · gpt-5.2");
 });
