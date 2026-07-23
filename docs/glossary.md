@@ -22,9 +22,13 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 |---|---|
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
 | Chat Promotion | State transition that moves completed chat rows from the active (re-rendered) region to static (write-once scrollback) |
+| Chat Viewport | The whole live chat surface — header, transcript, pending, composer, and footer — modeled as one ordered semantic unit and laid out by terminal layout |
 | ChatRow | One display block in the chat transcript; may render as many visual lines (e.g. a usage summary or status panel) |
+| ChatViewportPresentation | Semantic, renderer-independent description of the chat viewport derived from the presentation input; consumed by terminal layout to produce a Terminal Scene |
+| ChatViewportPresentationInput | Lossless per-render snapshot of live chat state that chat-state publishes as the input payload for viewport presentation; carries raw state only, no derived wording or layout |
 | Cloud Sync | Feature that syncs memory and sessions to a hosted cloud API for portable agent identity across machines |
 | CloudClient | HTTP client that implements `MemoryStore` and `SessionStore` against the cloud API |
+| Composer | The chat input surface — prompt text, cursor, picker, suggestions, help, and status — modeled semantically and laid out by terminal layout |
 | Context Budgeting | Token allocation strategy that reserves system space first and fills the remaining budget by priority |
 | Distill | Memory source that extracts observations from conversations at project, user, or session scope |
 | Ecosystem Detector | Pluggable rule that identifies the workspace type and resolves available tooling |
@@ -34,6 +38,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Frozen Overflow | TUI renderer optimization where active content lines that exceed the viewport are written once to scrollback and excluded from subsequent re-renders |
 | Host | Runtime environment around the model that provides tools, lifecycle structure, and memory |
 | Hybrid Recall | Relevance-ranked memory selection using a weighted blend of cosine similarity and TF-IDF token overlap |
+| Input Controller | Renderer-independent owner of the composer's logical text and cursor; `reduceInput` applies edit actions with no terminal geometry |
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle State | Internal task-scoped runtime state used during the lifecycle pass |
 | Memory Distiller | Extracts and commits observations from conversations after each request |
@@ -57,10 +62,13 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Step Budget | Per-turn tool-call limit inlined into tool execution to prevent runaway loops |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
+| Terminal Scene | Physical styled lines, cursor geometry, and finalizable section identities produced by terminal layout for the renderer |
+| Terminal Theme | Fixed internal mapping of semantic style roles to terminal-neutral styles; not user-configurable theming |
 | TF-IDF | Term Frequency–Inverse Document Frequency; weights token matches by rarity across the memory corpus so uncommon terms score higher |
 | Token Overlap | Keyword matching component of hybrid recall that catches exact term matches embeddings miss |
 | Tool Cache | Two-tier cache for read-only and search tool results across a task and session |
 | Toolkit | Group of domain tools exposed through adapters and composition |
+| TranscriptRow | Semantic transcript entry (message, tool, command, or checklist) with a stable id and lifecycle state; the persisted successor to ChatRow |
 | Turn | One model response to a user message, including all tool calls within that response |
 | Workspace Command | Typed shell command descriptor used for lint, format, and test commands |
 | Workspace Profile | Cached per-workspace detection result containing ecosystem, package manager, and commands |

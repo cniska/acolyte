@@ -8,7 +8,7 @@ import type { CommandContext } from "./chat-commands-contract";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { type CreatePickerHandlersInput, createPickerHandlers } from "./chat-picker-handlers";
-import { toRows } from "./chat-session";
+import { resumeActiveTranscript } from "./chat-promotion";
 import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
@@ -290,7 +290,6 @@ export type MessageHandlerHarness = {
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
     runningUsageSets: Array<{ inputTokens: number; outputTokens: number } | null>;
-    promotedSnapshots: ChatRow[][];
     order: string[];
   };
   interrupt: {
@@ -318,7 +317,6 @@ export function createMessageHandlerHarness(overrides?: {
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
     runningUsageSets: [] as Array<{ inputTokens: number; outputTokens: number } | null>,
-    promotedSnapshots: [] as ChatRow[][],
     // Ordered log of the turn-commit lifecycle setters, for asserting batching.
     order: [] as string[],
   };
@@ -383,21 +381,10 @@ export function createMessageHandlerHarness(overrides?: {
       interrupt.registered = handler !== null;
       if (handler) interrupt.fire = handler;
     },
-    promote: () => {
-      const snapshot = [...rows];
-      calls.promotedSnapshots.push(snapshot);
-      rows.splice(0, rows.length);
-    },
-    // Eager promotion records what moved; setRows removes them from the active mirror,
-    // matching the real setPromotedRows/setRows split.
-    promoteRows: (promoted) => {
-      calls.promotedSnapshots.push([...promoted]);
-    },
     resumeTranscript: (resumed) => {
-      const seed = resumed.transcript ?? toRows(resumed.messages);
-      calls.promotedSnapshots.push([...seed]);
+      const seed = resumeActiveTranscript(resumed).rows;
       for (const row of seed) if (!allRows.includes(row)) allRows.push(row);
-      rows.splice(0, rows.length);
+      rows.splice(0, rows.length, ...seed);
     },
     clearTranscript: () => {
       rows.splice(0, rows.length);

@@ -1,8 +1,8 @@
 import { type ChatRow, createRow } from "./chat-contract";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { ChecklistItem } from "./checklist-contract";
 import type { StreamEvent } from "./client-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
-import { palette } from "./palette";
 import { createId } from "./short-id";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { createToolOutputState } from "./tool-output-render";
@@ -43,7 +43,7 @@ const MIN_DRIP_CHARS = 8;
 
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
-  promoteRows?: (rows: readonly ChatRow[]) => void;
+  setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
 }): MessageStreamState {
   // --- agent streaming state ---
   let activeRowId: string | null = null;
@@ -69,6 +69,16 @@ export function createMessageStreamState(input: {
   // notice dedupe even after the prior one was promoted out of the active region.
   // Cleared whenever any other row is appended, so only adjacent repeats collapse.
   let lastNoticeKey: string | null = null;
+
+  function upsertTranscriptRow(row: TranscriptRow): void {
+    input.setTranscriptPresentation?.((current) => {
+      const index = current.findIndex((currentRow) => currentRow.id === row.id);
+      if (index < 0) return [...current, row];
+      const next = [...current];
+      next[index] = row;
+      return next;
+    });
+  }
 
   function cancelTick(): void {
     if (tickTimer) {
@@ -105,24 +115,6 @@ export function createMessageStreamState(input: {
     if (pendingText.length > 0) scheduleTick();
   }
 
-  // Move the longest contiguous prefix of finalized rows into write-once scrollback.
-  // A row is still mutable — and blocks the prefix — while it is the live prose row,
-  // an unresolved tool row, or a checklist row (which is removed, not promoted, at
-  // finalize). Static renders above the whole active region, so promoting anything
-  // but a front-anchored prefix would reorder the transcript.
-  function promoteFinalizedPrefix(): void {
-    if (!input.promoteRows) return;
-    const checklistRowIds = new Set(checklistRowIdByGroupId.values());
-    const blocked = (id: string): boolean => id === activeRowId || pendingToolRowIds.has(id) || checklistRowIds.has(id);
-    input.setRows((current) => {
-      let n = 0;
-      while (n < current.length && !blocked(current[n]?.id ?? "")) n++;
-      if (n === 0) return current;
-      input.promoteRows?.(current.slice(0, n));
-      return current.slice(n);
-    });
-  }
-
   function flush(): void {
     // Leading whitespace stripped every call so `content` is a pure function of
     // agentContent (no mutation), keeping the updater idempotent.
@@ -144,12 +136,17 @@ export function createMessageStreamState(input: {
         ? current.map((row) => (row.id === id ? { ...row, content } : row))
         : [...current, { id, kind: "assistant" as const, content }],
     );
+    upsertTranscriptRow({ id, kind: "assistant", status: "active", content: { kind: "message", text: content } });
   }
 
   /** Reveal any backlog, flush, and detach from the current agent row. */
   function sealAgentRow(): void {
     drainBacklog();
     flush();
+    if (activeRowId)
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) => (row.id === activeRowId ? { ...row, status: "complete" } : row)),
+      );
     activeRowId = null;
     agentContent = "";
   }
@@ -189,7 +186,6 @@ export function createMessageStreamState(input: {
 
     onToolCall: () => {
       sealAgentRow();
-      promoteFinalizedPrefix();
     },
 
     onOutput: (entry) => {
@@ -225,7 +221,12 @@ export function createMessageStreamState(input: {
           }
           return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
-        promoteFinalizedPrefix();
+        upsertTranscriptRow({
+          id: rowId,
+          kind: "tool",
+          status: "active",
+          content: { kind: "tool-output", output: { parts: update.items } },
+        });
         return;
       }
       // Existing tool call: update in place.
@@ -238,6 +239,13 @@ export function createMessageStreamState(input: {
         next[idx] = { ...existing, content: { parts: update.items } };
         return next;
       });
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) =>
+          row.id === existingRowId && row.content.kind === "tool-output"
+            ? { ...row, content: { kind: "tool-output", output: { parts: update.items } } }
+            : row,
+        ),
+      );
     },
 
     onToolResult: (entry) => {
@@ -251,18 +259,19 @@ export function createMessageStreamState(input: {
         if (!rowId) return;
         pendingToolRowIds.delete(rowId);
         input.setRows((current) => current.filter((row) => row.id !== rowId));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => row.id !== rowId));
         return;
       }
       const rowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!rowId) return;
-      const markerColor = entry.isError ? palette.error : palette.success;
+      const outcome = entry.isError ? "error" : "success";
       input.setRows((current) =>
-        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, markerColor } } : row)),
+        current.map((row) => (row.id === rowId ? { ...row, style: { ...row.style, outcome } } : row)),
       );
-      // The marker is now final, so the row is immutable: promote it (and any prefix
-      // it was blocking) into write-once scrollback.
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) => (row.id === rowId ? { ...row, status: entry.isError ? "error" : "success" } : row)),
+      );
       pendingToolRowIds.delete(rowId);
-      promoteFinalizedPrefix();
     },
 
     onChecklist: (entry) => {
@@ -274,10 +283,20 @@ export function createMessageStreamState(input: {
         checklistRowIdByGroupId.set(entry.groupId, rowId);
         lastNoticeKey = null;
         input.setRows((current) => [...current, { id: rowId, kind: "task" as const, content }]);
-        promoteFinalizedPrefix();
+        upsertTranscriptRow({
+          id: rowId,
+          kind: "task",
+          status: "active",
+          content: { kind: "checklist", output: content },
+        });
         return;
       }
       input.setRows((current) => current.map((row) => (row.id === existingRowId ? { ...row, content } : row)));
+      input.setTranscriptPresentation?.((current) =>
+        current.map((row) =>
+          row.id === existingRowId ? { ...row, content: { kind: "checklist", output: content } } : row,
+        ),
+      );
     },
 
     onProgressError: (error) => {
@@ -286,21 +305,19 @@ export function createMessageStreamState(input: {
       sealAgentRow();
       const key = `error:${error}`;
       if (key !== lastNoticeKey) {
-        input.setRows((current) => [...current, createRow("system", error, { dim: true, text: palette.error })]);
+        input.setRows((current) => [...current, createRow("system", error, { outcome: "error" })]);
         lastNoticeKey = key;
       }
-      promoteFinalizedPrefix();
     },
 
     onProgressNotice: (notice) => {
       sealAgentRow();
-      const color = notice.level === "error" ? palette.error : palette.yellow;
-      const key = `${color}:${notice.message}`;
+      const outcome = notice.level === "error" ? "error" : "warning";
+      const key = `${outcome}:${notice.message}`;
       if (key !== lastNoticeKey) {
-        input.setRows((current) => [...current, createRow("system", notice.message, { dim: true, text: color })]);
+        input.setRows((current) => [...current, createRow("system", notice.message, { outcome })]);
         lastNoticeKey = key;
       }
-      promoteFinalizedPrefix();
     },
 
     streamedText: () => agentContent + pendingText,
@@ -311,6 +328,7 @@ export function createMessageStreamState(input: {
       checklistRowIdByGroupId.clear();
       if (checklistIds.size > 0) {
         input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => !checklistIds.has(row.id)));
       }
       agentRowIds.length = 0;
     },
@@ -328,6 +346,7 @@ export function createMessageStreamState(input: {
       const removeSet = new Set([...idsToRemove, ...checklistIds]);
       if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => !removeSet.has(row.id)));
       }
     },
   };

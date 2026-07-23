@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { legacyChatRowFromTranscript, transcriptRowSchema } from "./chat-transcript-contract";
 import { t } from "./i18n";
 import { log } from "./log";
 import { dataDir } from "./paths";
@@ -22,7 +23,7 @@ export function parseSessionState(input: unknown): SessionState {
   if (!envelope.success) return DEFAULT_SESSION_STATE;
   const sessions: Session[] = [];
   for (const raw of envelope.data.sessions) {
-    const parsed = sessionSchema.safeParse(raw);
+    const parsed = sessionSchema.safeParse(hydrateSemanticTranscript(raw));
     if (parsed.success) {
       sessions.push(parsed.data);
       continue;
@@ -43,6 +44,19 @@ export function parseSessionState(input: unknown): SessionState {
   }
   const activeSessionId = sessionIdSchema.safeParse(envelope.data.activeSessionId);
   return { sessions, activeSessionId: activeSessionId.success ? activeSessionId.data : undefined };
+}
+
+function hydrateSemanticTranscript(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const { transcript, transcriptPresentation: _transcriptPresentation, ...session } = raw as Record<string, unknown>;
+  if (!Array.isArray(transcript)) return session;
+  const semantic = z.array(transcriptRowSchema).safeParse(transcript);
+  if (!semantic.success) return session;
+  return {
+    ...session,
+    transcript: semantic.data.map(legacyChatRowFromTranscript),
+    transcriptPresentation: semantic.data,
+  };
 }
 
 export function createSession(model: string): Session {
@@ -91,7 +105,15 @@ export function createFileSessionStore(storePath?: string): SessionStore {
     // Unique temp name so a stray concurrent writer (another instance) can't have its
     // rename target pulled out from under it.
     const tmp = `${resolvedPath}.${process.pid}.${createId()}.tmp`;
-    await writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
+    const persisted = {
+      ...state,
+      sessions: state.sessions.map((session) => ({
+        ...session,
+        transcript: session.transcriptPresentation,
+        transcriptPresentation: undefined,
+      })),
+    };
+    await writeFile(tmp, JSON.stringify(persisted, null, 2), "utf8");
     await rename(tmp, resolvedPath);
   }
 

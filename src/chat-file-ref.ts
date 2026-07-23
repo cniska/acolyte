@@ -23,10 +23,7 @@ export function invalidateRepoPathCandidates(root?: string): void {
   if (!root || repoPathCache.cwd === root) repoPathCache = null;
 }
 
-function findActiveAtToken(inputValue: string): AtToken | null {
-  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
-  if (matches.length === 0) return null;
-  const match = matches[matches.length - 1];
+function toAtToken(match: RegExpMatchArray): AtToken {
   const full = match[0] ?? "";
   const query = match[2] ?? "";
   const fullStart = match.index ?? 0;
@@ -36,8 +33,23 @@ function findActiveAtToken(inputValue: string): AtToken | null {
   return { query, start, end };
 }
 
-export function extractAtReferenceQuery(inputValue: string): string | null {
-  return findActiveAtToken(inputValue)?.query ?? null;
+// With a cursor, the active token is the one the caret sits inside — so a
+// completed `@path ` (caret past the trailing space) no longer matches and the
+// picker closes. Without a cursor, callers acting on an already-chosen token
+// fall back to the last match.
+function findActiveAtToken(inputValue: string, cursor?: number): AtToken | null {
+  const matches = [...inputValue.matchAll(/(^|\s)@([^\s@]*)/g)];
+  if (matches.length === 0) return null;
+  if (cursor === undefined) return toAtToken(matches[matches.length - 1] as RegExpMatchArray);
+  for (const match of matches) {
+    const token = toAtToken(match);
+    if (cursor >= token.start && cursor <= token.end) return token;
+  }
+  return null;
+}
+
+export function extractAtReferenceQuery(inputValue: string, cursor?: number): string | null {
+  return findActiveAtToken(inputValue, cursor)?.query ?? null;
 }
 
 export function rankAtReferenceSuggestions(paths: string[], query: string, max = MAX_AT_SUGGESTIONS): string[] {
@@ -89,17 +101,21 @@ export function rankAtReferenceSuggestions(paths: string[], query: string, max =
     .slice(0, max);
 }
 
-export function shouldAutocompleteAtSubmit(inputValue: string, selectedSuggestion: string | undefined): boolean {
+export function shouldAutocompleteAtSubmit(
+  inputValue: string,
+  selectedSuggestion: string | undefined,
+  cursor?: number,
+): boolean {
   if (!selectedSuggestion) return false;
-  const token = findActiveAtToken(inputValue);
+  const token = findActiveAtToken(inputValue, cursor);
   if (!token) return false;
   const currentToken = inputValue.slice(token.start, token.end);
   if (!currentToken.startsWith("@")) return false;
   return currentToken !== `@${selectedSuggestion}`;
 }
 
-export function applyAtSuggestion(inputValue: string, suggestion: string): string {
-  const token = findActiveAtToken(inputValue);
+export function applyAtSuggestion(inputValue: string, suggestion: string, cursor?: number): string {
+  const token = findActiveAtToken(inputValue, cursor);
   if (!token) return inputValue;
   const before = inputValue.slice(0, token.start);
   const after = inputValue.slice(token.end);

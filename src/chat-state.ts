@@ -3,29 +3,36 @@ import { useCallback, useRef, useState } from "react";
 import { appConfig } from "./app-config";
 import type { ChatRow } from "./chat-contract";
 import { useSuggestions } from "./chat-effects";
-import { processInputChange, processInputSubmit } from "./chat-input-handlers";
+import { processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { type GitStatus, gitStatus } from "./chat-layout";
+import { type GitStatus, gitStatus, SHORTCUT_ITEMS } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { suggestModels } from "./chat-model-autocomplete";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount } from "./chat-picker";
 import { createPickerHandlers } from "./chat-picker-handlers";
-import { currentSegment, type PromotedItem, usePromotion } from "./chat-promotion";
+import { resumeActiveTranscript, useScenePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
-import { type StatusLineState, statusTokenTotals } from "./chat-status-line";
+import { statusTokenTotals } from "./chat-status-line";
 import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
+import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
+import { createTranscriptPublisher } from "./chat-transcript-publisher";
+import type { ChatViewportPresentationInput } from "./chat-viewport-contract";
+import { createViewportPickerInput, createViewportSuggestionsInput } from "./chat-viewport-publisher";
 import type { Client, PendingState } from "./client-contract";
 import { nowIso } from "./datetime";
+import type { FooterStatus } from "./footer-status-contract";
 import type { PrInfo } from "./gh-contract";
 import { ghPrView } from "./gh-ops";
+import { type InputEditAction, reduceInput } from "./input-controller";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
+import type { PromotedSceneSlice } from "./tui/scene-viewport";
 
 const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
 
@@ -42,8 +49,12 @@ export interface ChatAppProps {
 }
 
 export interface ChatStateResult {
-  promotedRows: PromotedItem[];
+  promotedSlices: PromotedSceneSlice[];
+  commitPromotion: (slices: readonly PromotedSceneSlice[], committedRowIds: readonly string[]) => void;
   rows: ChatRow[];
+  transcriptPresentation: TranscriptRow[];
+  activeTranscript: TranscriptRow[];
+  presentationInput: ChatViewportPresentationInput;
   pendingState: PendingState | null;
   pendingFrame: number;
   pendingStartedAt: number | null;
@@ -51,7 +62,6 @@ export interface ChatStateResult {
   runningUsage: { inputTokens: number; outputTokens: number } | null;
   picker: PickerState | null;
   value: string;
-  inputRevision: number;
   atQuery: string | null;
   atSuggestions: string[];
   atSuggestionIndex: number;
@@ -60,10 +70,11 @@ export interface ChatStateResult {
   showHelp: boolean;
   ctrlCPending: boolean;
   activeSessionId: string | undefined;
-  statusLine: StatusLineState;
-  handleInputChange: (next: string) => void;
+  statusLine: FooterStatus;
+  cursor: number;
+  handleInputAction: (action: InputEditAction, fromPaste: boolean) => void;
   handleInputSubmit: (next: string) => void;
-  handlePickerQueryChange: (query: string) => void;
+  handlePickerAction: (action: InputEditAction, fromPaste: boolean) => void;
   handlePickerSubmit: () => void;
   onCursorLine: (line: number) => void;
 }
@@ -79,13 +90,23 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     },
     [props.onSessionChange],
   );
-  const [rows, setRows] = useState<ChatRow[]>([]);
+  const [transcript, setTranscript] = useState<{ rows: ChatRow[]; presentation: TranscriptRow[] }>(() =>
+    resumeActiveTranscript(session),
+  );
+  const setRows = useCallback((updater: (current: ChatRow[]) => ChatRow[]) => {
+    setTranscript((current) => ({ ...current, rows: updater(current.rows) }));
+  }, []);
+  const setTranscriptPresentation = useCallback((updater: (current: TranscriptRow[]) => TranscriptRow[]) => {
+    setTranscript((current) => ({ ...current, presentation: updater(current.presentation) }));
+  }, []);
+  const publishRows = useCallback(createTranscriptPublisher({ setTranscript }), []);
+  const { rows, presentation: transcriptPresentation } = transcript;
 
   const {
+    input,
+    dispatch,
     value,
     setValue,
-    inputRevision,
-    setInputRevision,
     inputHistory,
     setInputHistory,
     inputHistoryIndex,
@@ -110,7 +131,11 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   } = usePendingState();
 
   const [tokenUsage, setTokenUsage] = useState<SessionTokenUsageEntry[]>(() => session.tokenUsage ?? []);
+  const activeTranscript = projectActiveTranscript(rows, transcriptPresentation);
 
+  // Presentation is reset explicitly by resume/clear (which also open a new scrollback
+  // segment); resetting it here would clobber their freshly-id'd seed on the same
+  // currentSession change and desync it from the active rows.
   useSyncEffect(() => {
     setTokenUsage(currentSession.tokenUsage ?? []);
   }, [currentSession]);
@@ -123,7 +148,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     atSuggestions,
     atSuggestionIndex,
     setAtSuggestionIndex,
-  } = useSuggestions(value);
+  } = useSuggestions(value, input.cursor);
 
   const [showHelp, setShowHelp] = useState(false);
   const cursorLineRef = useRef(0);
@@ -131,29 +156,48 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [git, setGit] = useState<GitStatus | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
-  const { promotedRows, promote, promoteRows, resumeTranscript, clearTranscript } = usePromotion({
-    version: props.version,
-    session,
-    currentSessionId: currentSession.id,
-    setRows,
-  });
+  const { promotedSlices, appendSlices, openSegment } = useScenePromotion({ version: props.version, session });
 
-  // Keep the persisted display projection in sync with what's on screen so a resumed
-  // session renders byte-exactly what streamed. The log spans every session opened this
-  // process, so project only the current segment (the tail after its header) and write
-  // it only when the segment belongs to the current session — a switch that hasn't
-  // opened its segment yet must never inherit the outgoing session's rows. Disk
+  // Freeze the newly-scrolled-off slices and evict their rows from the active scene in one
+  // commit, so no frame renders a row in both scrollback and the live tail.
+  const commitPromotion = useCallback(
+    (slices: readonly PromotedSceneSlice[], committedRowIds: readonly string[]) => {
+      appendSlices(slices);
+      if (committedRowIds.length === 0) return;
+      const committed = new Set(committedRowIds);
+      setRows((current) => current.filter((row) => !committed.has(row.id)));
+    },
+    [appendSlices, setRows],
+  );
+
+  const clearTranscript = useCallback(
+    (sessionId?: string) => {
+      openSegment(sessionId ?? currentSession.id);
+      setTranscript({ rows: [], presentation: [] });
+    },
+    [openSegment, currentSession.id],
+  );
+
+  const resumeTranscript = useCallback(
+    (target: Session) => {
+      openSegment(target.id);
+      setTranscript(resumeActiveTranscript(target, true));
+    },
+    [openSegment],
+  );
+
+  // The semantic transcript is the single persisted display source; keep it synced to the
+  // current session so a resumed session re-lays-out byte-exactly what streamed. Disk
   // persistence is owned by the handler's turn-boundary persist() and the exit persist.
   useSyncEffect(() => {
-    const segment = currentSegment(promotedRows);
-    if (segment.sessionId === currentSession.id) currentSession.transcript = segment.rows;
-  }, [promotedRows, currentSession]);
+    currentSession.transcriptPresentation = transcriptPresentation;
+  }, [currentSession, transcriptPresentation]);
 
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
-  const statusLine: StatusLineState = {
+  const statusLine: FooterStatus = {
     repo: git?.repo ?? basename(process.cwd()),
     worktree: git?.worktree ?? null,
     branch: git?.branch ?? null,
@@ -166,6 +210,33 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     outputTokens: tokenTotals.outputTokens,
     pr,
     skills: currentSession.activeSkills?.map((s) => s.name) ?? [],
+  };
+  const presentationInput: ChatViewportPresentationInput = {
+    header: { title: "Acolyte", version: props.version, sessionId: currentSession.id },
+    activeTranscript,
+    pending: pendingState
+      ? {
+          state: pendingState,
+          frame: pendingFrame,
+          startedAt: pendingStartedAt,
+          queuedMessages,
+          runningUsage,
+        }
+      : null,
+    composer: {
+      input,
+      picker: createViewportPickerInput(picker, currentSession.id),
+      suggestions: createViewportSuggestionsInput({
+        atQuery,
+        atSuggestions,
+        atSuggestionIndex,
+        slashSuggestions,
+        slashSuggestionIndex,
+      }),
+      help: { visible: showHelp, entries: SHORTCUT_ITEMS },
+      ctrlCPending,
+      footer: statusLine,
+    },
   };
 
   useMountEffect(() => {
@@ -206,7 +277,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const activateSkill = createSkillActivator({
     currentSession,
-    setRows,
+    setRows: publishRows,
     nowIso,
     persist,
   });
@@ -216,7 +287,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     currentSession,
     setCurrentSession: updateSession,
     setTokenUsage,
-    setRows,
+    setRows: publishRows,
     setPicker,
     setShowHelp,
     setValue,
@@ -233,7 +304,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     sessionState,
     currentSession,
     setCurrentSession: updateSession,
-    setRows,
+    setRows: publishRows,
+    setTranscriptPresentation,
     setShowHelp,
     setValue,
     persist,
@@ -266,8 +338,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setInterrupt: (handler) => {
       interruptRef.current = handler;
     },
-    promote,
-    promoteRows,
     resumeTranscript,
     clearTranscript,
   });
@@ -284,9 +354,9 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     inputHistoryDraft,
     value,
     setValue,
-    setInputRevision,
     applyingHistoryRef,
     isPending,
+    cursor: input.cursor,
     atQuery,
     atSuggestions,
     atSuggestionIndex,
@@ -307,11 +377,12 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     cursorLineRef,
   });
 
-  const handlePickerQueryChange = useCallback((query: string) => {
+  const handlePickerAction = useCallback((action: InputEditAction, _fromPaste: boolean) => {
     setPicker((current) => {
       if (current?.kind !== "model") return current;
-      const filtered = suggestModels(query, current.items);
-      return { ...current, query, filtered, index: 0, scrollOffset: 0 };
+      const nextInput = reduceInput(current.input, action);
+      const filtered = suggestModels(nextInput.text, current.items);
+      return { ...current, input: nextInput, filtered, index: 0, scrollOffset: 0 };
     });
   }, []);
 
@@ -319,28 +390,31 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     if (picker && pickerItemCount(picker) > 0) void handlePickerSelect(picker);
   }, [picker, handlePickerSelect]);
 
-  const handleInputChange = useCallback(
-    (next: string, fromPaste = false) => {
-      const decision = processInputChange({
-        currentValue: value,
-        nextValue: next,
-        applyingHistory: applyingHistoryRef.current,
-        paste: fromPaste,
-      });
-      if (decision.ignore) return;
-      if (decision.clearApplyingHistory) applyingHistoryRef.current = false;
-      if (decision.resetHistoryIndex) setInputHistoryIndex(-1);
-      if (showHelp) setShowHelp(false);
-      if (ctrlCPending) setCtrlCPending(false);
-      setValue(decision.nextValue);
+  const handleInputAction = useCallback(
+    (action: InputEditAction, _fromPaste: boolean) => {
+      const textChanging =
+        action.kind === "insert" ||
+        action.kind === "delete-backward" ||
+        action.kind === "delete-forward" ||
+        action.kind === "delete-word-backward" ||
+        action.kind === "clear" ||
+        action.kind === "replace";
+      if (textChanging) {
+        if (applyingHistoryRef.current) applyingHistoryRef.current = false;
+        else setInputHistoryIndex(-1);
+        if (showHelp) setShowHelp(false);
+        if (ctrlCPending) setCtrlCPending(false);
+      }
+      dispatch(action);
     },
-    [value, setValue, setInputHistoryIndex, applyingHistoryRef, showHelp, ctrlCPending, setCtrlCPending],
+    [dispatch, setInputHistoryIndex, applyingHistoryRef, showHelp, ctrlCPending, setCtrlCPending],
   );
 
   const handleInputSubmit = useCallback(
     (next: string) => {
       const resolved = processInputSubmit({
         value: next,
+        cursor: input.cursor,
         atSuggestions,
         atSuggestionIndex,
         slashSuggestions,
@@ -353,7 +427,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       });
       if (resolved.kind === "autocomplete") {
         setValue(resolved.value);
-        setInputRevision((current) => current + 1);
         return;
       }
       const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending });
@@ -366,6 +439,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       void handleSubmit(queueDecision.value);
     },
     [
+      input.cursor,
       atSuggestions,
       atSuggestionIndex,
       slashSuggestions,
@@ -373,14 +447,17 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       isPending,
       setQueuedMessages,
       setValue,
-      setInputRevision,
       handleSubmit,
     ],
   );
 
   return {
-    promotedRows,
+    promotedSlices,
+    commitPromotion,
     rows,
+    transcriptPresentation,
+    activeTranscript,
+    presentationInput,
     pendingState,
     pendingFrame,
     pendingStartedAt,
@@ -388,7 +465,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     runningUsage,
     picker,
     value,
-    inputRevision,
+    cursor: input.cursor,
     atQuery,
     atSuggestions,
     atSuggestionIndex,
@@ -398,9 +475,9 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     ctrlCPending,
     activeSessionId: sessionState.activeSessionId,
     statusLine,
-    handleInputChange,
+    handleInputAction,
     handleInputSubmit,
-    handlePickerQueryChange,
+    handlePickerAction,
     handlePickerSubmit,
     onCursorLine: (line: number) => {
       cursorLineRef.current = line;

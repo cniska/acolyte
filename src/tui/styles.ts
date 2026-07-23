@@ -24,6 +24,7 @@ export const ansi = {
   cursorShow: `${ESC}?25h`,
   eraseDown: `${ESC}J`,
   eraseLine: `${ESC}2K`,
+  clearScreen: `${ESC}2J${ESC}3J${ESC}H`,
   cursorTo(row: number, col: number): string {
     return `${ESC}${row + 1};${col + 1}H`;
   },

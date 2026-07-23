@@ -1,22 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import type { ChatRow } from "./chat-contract";
-import { ChatTranscript } from "./chat-transcript";
 import { palette } from "./palette";
+import { layoutTranscriptTool } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { renderToolOutput } from "./tool-output-render";
 import { renderToString } from "./tui/index";
 import { colorToFg } from "./tui/styles";
-import { renderPlain, withTerminalWidth } from "./tui/test-utils";
+import { renderPlain } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
-  const row: ChatRow = { id: "r1", kind: "tool", content: { parts: toolOutput } };
-  return renderPlain(<ChatTranscript rows={[row]} pendingFrame={0} />, columns);
+  const scene = layoutTranscriptTool({ parts: toolOutput, status: "complete", columns });
+  return renderPlain(<TerminalSceneRender scene={scene} />, columns);
 }
 
 /**
  * One case, two expected strings. The CLI (`renderToolOutput`) and chat
- * (`ChatTranscript`) blocks are two serializers over the same shared layout
+ * (`layoutTranscriptTool` scene) blocks are two serializers over the same shared layout
  * (`tool-output-layout.ts`); they diverge only where intended — the CLI is
  * markerless and keeps `out |`/`err |` stream prefixes, chat prepends the row
  * marker glyph and colors the diff band. This shared table drives both from one input
@@ -592,35 +592,28 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     expect(out).toContain("• Edit notes.ts (+1 -0)");
   });
 
-  test("tints the active-skill marker brand and the deactivate marker dim in the width-2 box", () => {
-    const skillRow = (state: "on" | "off"): ChatRow => ({
-      id: "r1",
-      kind: "tool",
-      content: { parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state }] },
-    });
-    const active = withTerminalWidth(96, () =>
-      renderToString(<ChatTranscript rows={[skillRow("on")]} pendingFrame={0} />),
-    );
-    const inactive = withTerminalWidth(96, () =>
-      renderToString(<ChatTranscript rows={[skillRow("off")]} pendingFrame={0} />),
-    );
-    expect(active).toContain(`${colorToFg(palette.brand)}◉`);
-    expect(inactive).toContain(`${colorToFg(palette.dim)}○`);
+  test("tints the active-skill marker brand and the deactivate marker dim", () => {
+    const skillScene = (state: "on" | "off") =>
+      layoutTranscriptTool({
+        parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state }],
+        status: "success",
+        columns: 96,
+      });
+    expect(renderToString(<TerminalSceneRender scene={skillScene("on")} />)).toContain(`${colorToFg(palette.brand)}◉`);
+    expect(renderToString(<TerminalSceneRender scene={skillScene("off")} />)).toContain(`${colorToFg(palette.dim)}○`);
   });
 
   test("renders stderr in the same style as stdout, without a red channel flag", () => {
-    const row: ChatRow = {
-      id: "r1",
-      kind: "tool",
-      content: {
-        parts: [
-          { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun run build" },
-          { kind: "shell-output", stream: "stdout", text: "identical line" },
-          { kind: "shell-output", stream: "stderr", text: "identical line" },
-        ],
-      },
-    };
-    const output = withTerminalWidth(96, () => renderToString(<ChatTranscript rows={[row]} pendingFrame={0} />));
+    const scene = layoutTranscriptTool({
+      parts: [
+        { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun run build" },
+        { kind: "shell-output", stream: "stdout", text: "identical line" },
+        { kind: "shell-output", stream: "stderr", text: "identical line" },
+      ],
+      status: "complete",
+      columns: 96,
+    });
+    const output = renderToString(<TerminalSceneRender scene={scene} />);
     // stderr is just another output channel — it must not be painted red (SGR 31).
     expect(output).not.toContain("\x1b[31m");
     // Identical text on the two channels renders byte-for-byte the same, proving

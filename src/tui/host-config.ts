@@ -24,6 +24,18 @@ export function setOnCommit(fn: (() => void) | null): void {
   onCommit = fn;
 }
 
+let onClear: (() => void) | null = null;
+
+export function setOnClear(fn: (() => void) | null): void {
+  onClear = fn;
+}
+
+// Route the clear through the render loop so it resets its frozen-scrollback bookkeeping too;
+// a bare wipe would leave stale off-screen tracking. No-op until a render is mounted.
+export function clearTerminal(): void {
+  onClear?.();
+}
+
 export const hostConfig = {
   supportsMutation: true,
   supportsPersistence: false,

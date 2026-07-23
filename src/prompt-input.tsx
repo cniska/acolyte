@@ -1,6 +1,14 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { unreachable } from "./assert";
+import {
+  type InputControllerState,
+  type InputEditAction,
+  reduceInput,
+  wordBoundaryLeft,
+  wordBoundaryRight,
+} from "./input-controller";
+import { buildPromptDisplayLines, cursorLineIndex, moveLineDown, moveLineUp, softWrapLine } from "./prompt-display";
 import type { PromptAction } from "./prompt-keymap";
 import { resolvePromptAction } from "./prompt-keymap";
 import { Box, Text, useInput } from "./tui";
@@ -9,198 +17,30 @@ const META_PREFIX_WINDOW_MS = 150;
 
 interface PromptInputProps {
   value: string;
+  cursor?: number;
   placeholder?: string;
   focus?: boolean;
   caretVisible?: boolean;
   linePrefixFirst?: string;
   linePrefixRest?: string;
-  onChange: (next: string, fromPaste?: boolean) => void;
+  onChange?: (next: string, fromPaste?: boolean) => void;
+  onAction?: (action: InputEditAction, fromPaste: boolean) => void;
   onSubmit: (value: string) => void;
   onCursorLine: (line: number) => void;
   wrapWidth?: number;
 }
 
-export function moveWordLeft(value: string, cursor: number): number {
-  let index = Math.max(0, Math.min(cursor, value.length));
-  while (index > 0 && /\s/.test(value[index - 1] ?? "")) {
-    index -= 1;
-  }
-  while (index > 0 && !/\s/.test(value[index - 1] ?? "")) {
-    index -= 1;
-  }
-  return index;
-}
-
-export function moveWordRight(value: string, cursor: number): number {
-  let index = Math.max(0, Math.min(cursor, value.length));
-  while (index < value.length && /\s/.test(value[index] ?? "")) {
-    index += 1;
-  }
-  while (index < value.length && !/\s/.test(value[index] ?? "")) {
-    index += 1;
-  }
-  return index;
-}
-
-export function cursorLineIndex(value: string, cursorOffset: number, wrapWidth?: number): number {
-  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
-  if (!wrapWidth) return value.slice(0, clamped).split("\n").length - 1;
-  const lines = buildPromptDisplayLines(value, clamped, wrapWidth);
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i]?.cursor !== null) return i;
-  }
-  return 0;
-}
-
-export function moveLineUp(value: string, cursor: number, wrapWidth?: number): number {
-  if (wrapWidth) return moveVisualLine(value, cursor, wrapWidth, -1);
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const before = value.slice(0, clamped);
-  const currentLineStart = before.lastIndexOf("\n") + 1;
-  if (currentLineStart === 0) return cursor;
-  const column = clamped - currentLineStart;
-  const prevLineEnd = currentLineStart - 1;
-  const prevLineStart = before.lastIndexOf("\n", prevLineEnd - 1) + 1;
-  const prevLineLength = prevLineEnd - prevLineStart;
-  return prevLineStart + Math.min(column, prevLineLength);
-}
-
-export function moveLineDown(value: string, cursor: number, wrapWidth?: number): number {
-  if (wrapWidth) return moveVisualLine(value, cursor, wrapWidth, 1);
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const before = value.slice(0, clamped);
-  const currentLineStart = before.lastIndexOf("\n") + 1;
-  const column = clamped - currentLineStart;
-  const nextNewline = value.indexOf("\n", clamped);
-  if (nextNewline === -1) return cursor;
-  const nextLineStart = nextNewline + 1;
-  const nextNextNewline = value.indexOf("\n", nextLineStart);
-  const nextLineLength = (nextNextNewline === -1 ? value.length : nextNextNewline) - nextLineStart;
-  return nextLineStart + Math.min(column, nextLineLength);
-}
-
-function moveVisualLine(value: string, cursor: number, wrapWidth: number, direction: -1 | 1): number {
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const displayLines = buildPromptDisplayLines(value, clamped, wrapWidth);
-  let currentIdx = 0;
-  for (let i = displayLines.length - 1; i >= 0; i--) {
-    if (displayLines[i]?.cursor !== null) {
-      currentIdx = i;
-      break;
-    }
-  }
-  const targetIdx = currentIdx + direction;
-  if (targetIdx < 0 || targetIdx >= displayLines.length) return cursor;
-  let currentStartOffset = 0;
-  const logicalLines = value.split("\n");
-  let offset = 0;
-  outer: for (const line of logicalLines) {
-    const wrapped = softWrapLine(line, wrapWidth);
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      if (lineOffset <= clamped && clamped <= lineOffset + segment.length) {
-        currentStartOffset = lineOffset;
-        break outer;
-      }
-      lineOffset += segment.length;
-    }
-    offset += line.length + 1;
-  }
-  const column = clamped - currentStartOffset;
-
-  // Find target display line's start offset
-  let targetStartOffset = 0;
-  let displayIdx = 0;
-  offset = 0;
-  for (const line of logicalLines) {
-    const wrapped = softWrapLine(line, wrapWidth);
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      if (displayIdx === targetIdx) {
-        targetStartOffset = lineOffset;
-        const targetLength = segment.length;
-        return targetStartOffset + Math.min(column, targetLength);
-      }
-      lineOffset += segment.length;
-      displayIdx++;
-    }
-    offset += line.length + 1;
-  }
-  return cursor;
-}
-
-function softWrapLine(line: string, width: number): string[] {
-  if (width <= 0 || line.length <= width) return [line];
-  const words = line.split(/( +)/);
-  const result: string[] = [];
-  let current = "";
-  for (const word of words) {
-    if (current.length + word.length <= width || current.length === 0) {
-      current += word;
-    } else {
-      result.push(current);
-      current = word.trimStart();
-    }
-  }
-  if (current.length > 0) result.push(current);
-  return result.length > 0 ? result : [""];
-}
-
-export type PromptDisplayLine = {
-  before: string;
-  cursor: string | null;
-  after: string;
-};
-
-export function buildPromptDisplayLines(value: string, cursorOffset: number, wrapWidth?: number): PromptDisplayLine[] {
-  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
-  const logicalLines = value.split("\n");
-  const displayLines: { text: string; startOffset: number }[] = [];
-  let offset = 0;
-  for (let i = 0; i < logicalLines.length; i++) {
-    const line = logicalLines[i] ?? "";
-    const wrapped = wrapWidth ? softWrapLine(line, wrapWidth) : [line];
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      displayLines.push({ text: segment, startOffset: lineOffset });
-      lineOffset += segment.length;
-    }
-    offset += line.length + 1; // +1 for \n
-  }
-  let cursorDisplayLine = 0;
-  for (let i = displayLines.length - 1; i >= 0; i--) {
-    const dl = displayLines[i];
-    if (dl && clamped >= dl.startOffset) {
-      cursorDisplayLine = i;
-      break;
-    }
-  }
-  return displayLines.map((dl, index) => {
-    if (index !== cursorDisplayLine) return { before: dl.text, cursor: null, after: "" };
-    const col = clamped - dl.startOffset;
-    if (col < dl.text.length) {
-      return {
-        before: dl.text.slice(0, col),
-        cursor: dl.text[col] ?? " ",
-        after: dl.text.slice(col + 1),
-      };
-    }
-    return { before: dl.text, cursor: " ", after: "" };
-  });
-}
-
-export function PromptInput({
+export function usePromptInput({
   value,
-  placeholder = "",
+  cursor,
   focus = true,
-  caretVisible = true,
-  linePrefixFirst = "",
-  linePrefixRest = "",
   onChange,
+  onAction,
   onSubmit,
   onCursorLine,
   wrapWidth,
-}: PromptInputProps): React.JSX.Element {
+}: PromptInputProps): { effectiveCursor: number } {
+  const controlled = onAction !== undefined && cursor !== undefined;
   const [cursorOffset, setCursorOffset] = useState(value.length);
   const metaPrefixAt = useRef<number | null>(null);
   const valueRef = useRef(value);
@@ -212,10 +52,15 @@ export function PromptInput({
   const onChangeRef = useRef(onChange);
   const onSubmitRef = useRef(onSubmit);
   const onCursorLineRef = useRef(onCursorLine);
+  const onActionRef = useRef(onAction);
+  const controlledStateRef = useRef<InputControllerState>({ text: value, cursor: value.length });
   onCursorLineRef.current = onCursorLine;
+  onActionRef.current = onAction;
   const wrapWidthRef = useRef(wrapWidth);
   wrapWidthRef.current = wrapWidth;
-  if (valueRef.current !== value) {
+  if (controlled) {
+    controlledStateRef.current = { text: value, cursor: Math.max(0, Math.min(cursor ?? value.length, value.length)) };
+  } else if (valueRef.current !== value) {
     const clamped = Math.max(0, Math.min(cursorRef.current, value.length));
     cursorRef.current = clamped;
     if (cursorOffset !== clamped) setCursorOffset(clamped);
@@ -224,10 +69,86 @@ export function PromptInput({
   onChangeRef.current = onChange;
   onSubmitRef.current = onSubmit;
 
+  const handleControlledInput = useCallback((input: string, key: Parameters<Parameters<typeof useInput>[0]>[1]) => {
+    const dispatchAction = (action: InputEditAction, fromPaste = false) => {
+      const next = reduceInput(controlledStateRef.current, action);
+      controlledStateRef.current = next;
+      onActionRef.current?.(action, fromPaste);
+      onCursorLineRef.current(cursorLineIndex(next.text, next.cursor, wrapWidthRef.current));
+    };
+    const { text: v, cursor: c } = controlledStateRef.current;
+    const now = Date.now();
+    const hasMetaPrefix = metaPrefixAt.current !== null && now - metaPrefixAt.current <= META_PREFIX_WINDOW_MS;
+    if (key.escape && !input) {
+      metaPrefixAt.current = now;
+      return;
+    }
+    const action: PromptAction = resolvePromptAction(input, key, { hasMetaPrefix });
+    switch (action.type) {
+      case "noop":
+        metaPrefixAt.current = null;
+        return;
+      case "submit":
+        onSubmitRef.current(v);
+        return;
+      case "move_home":
+        dispatchAction({ kind: "move", direction: "home" });
+        return;
+      case "move_end":
+        dispatchAction({ kind: "move", direction: "end" });
+        return;
+      case "move_word_left":
+        dispatchAction({ kind: "move-word", direction: "left" });
+        return;
+      case "move_word_right":
+        dispatchAction({ kind: "move-word", direction: "right" });
+        return;
+      case "delete_word_back":
+        metaPrefixAt.current = null;
+        if (c === 0) return;
+        dispatchAction({ kind: "delete-word-backward" });
+        return;
+      case "clear_line":
+        metaPrefixAt.current = null;
+        if (v.length === 0) return;
+        dispatchAction({ kind: "clear" });
+        return;
+      case "move_left":
+        dispatchAction({ kind: "move", direction: "left" });
+        return;
+      case "move_right":
+        dispatchAction({ kind: "move", direction: "right" });
+        return;
+      case "move_up":
+        dispatchAction({ kind: "set-cursor", cursor: moveLineUp(v, c, wrapWidthRef.current) });
+        return;
+      case "move_down":
+        dispatchAction({ kind: "set-cursor", cursor: moveLineDown(v, c, wrapWidthRef.current) });
+        return;
+      case "delete_back":
+        metaPrefixAt.current = null;
+        if (c === 0) return;
+        dispatchAction({ kind: "delete-backward" });
+        return;
+      case "delete_forward":
+        metaPrefixAt.current = null;
+        if (c >= v.length) return;
+        dispatchAction({ kind: "delete-forward" });
+        return;
+      case "insert":
+        metaPrefixAt.current = null;
+        if (v.length === 0 && action.text === "?" && !key.paste) return;
+        dispatchAction({ kind: "insert", text: action.text }, key.paste);
+        return;
+      default:
+        unreachable(action);
+    }
+  }, []);
+
   const handleInput = useCallback((input: string, key: Parameters<Parameters<typeof useInput>[0]>[1]) => {
     const emitChange = (next: string, fromPaste = false) => {
       valueRef.current = next;
-      onChangeRef.current(next, fromPaste);
+      onChangeRef.current?.(next, fromPaste);
     };
     const moveCursor = (next: number) => {
       cursorRef.current = next;
@@ -259,15 +180,15 @@ export function PromptInput({
         moveCursor(v.length);
         return;
       case "move_word_left":
-        moveCursor(moveWordLeft(v, c));
+        moveCursor(wordBoundaryLeft(v, c));
         return;
       case "move_word_right":
-        moveCursor(moveWordRight(v, c));
+        moveCursor(wordBoundaryRight(v, c));
         return;
       case "delete_word_back": {
         metaPrefixAt.current = null;
         if (c === 0) return;
-        const next = moveWordLeft(v, c);
+        const next = wordBoundaryLeft(v, c);
         emitChange(`${v.slice(0, next)}${v.slice(c)}`);
         moveCursor(next);
         return;
@@ -311,7 +232,28 @@ export function PromptInput({
     }
   }, []);
 
-  useInput(handleInput, { isActive: focus });
+  useInput(controlled ? handleControlledInput : handleInput, { isActive: focus });
+
+  const effectiveCursor = controlled ? controlledStateRef.current.cursor : cursorOffset;
+  return { effectiveCursor };
+}
+
+export function PromptInputHandler(props: PromptInputProps): null {
+  usePromptInput(props);
+  return null;
+}
+
+export function PromptInput(props: PromptInputProps): React.JSX.Element {
+  const {
+    value,
+    placeholder = "",
+    focus = true,
+    caretVisible = true,
+    linePrefixFirst = "",
+    linePrefixRest = "",
+    wrapWidth,
+  } = props;
+  const { effectiveCursor } = usePromptInput(props);
 
   if (value.length === 0 && placeholder.length > 0) {
     return (
@@ -355,7 +297,7 @@ export function PromptInput({
       </Box>
     );
   }
-  const lines = buildPromptDisplayLines(value, cursorOffset, wrapWidth);
+  const lines = buildPromptDisplayLines(value, effectiveCursor, wrapWidth);
   let lineOffset = 0;
   const focusLines = lines.map((line) => {
     const content = `${line.before}${line.cursor ?? ""}${line.after}`;

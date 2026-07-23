@@ -1,4 +1,5 @@
 import { type ModelPickerItem, PICKER_PAGE_SIZE, type PickerState } from "./chat-picker";
+import { createInputController } from "./input-controller";
 import { getAvailableModels } from "./provider-models";
 import type { SessionState } from "./session-contract";
 
@@ -41,7 +42,7 @@ export async function createModelPicker(): Promise<PickerState> {
     kind: "model",
     items,
     filtered: items,
-    query: "",
+    input: createInputController(),
     index: 0,
     scrollOffset: 0,
   };

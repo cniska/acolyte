@@ -1,30 +1,57 @@
 import { describe, expect, test } from "bun:test";
-import { ChatInputPanel } from "./chat-input-panel";
-import type { PickerState } from "./chat-picker";
-import { palette } from "./palette";
-import { createSession, dedent } from "./test-utils";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
+import { layoutChatViewport } from "./terminal-chat-layout";
+import { TerminalSceneRender } from "./terminal-scene-render";
+import { terminalTheme } from "./terminal-theme";
+import { dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderToString } from "./tui/render-to-string";
 import { stripAnsiLength } from "./tui/serialize";
 import { renderPlain, withTerminalWidth } from "./tui/test-utils";
 
-function renderInputPanelWithPicker(picker: PickerState, columns = DEFAULT_TERMINAL_WIDTH): string {
-  return renderPlain(
-    <ChatInputPanel picker={picker} activeSessionId="sess_active" brandColor={palette.brand} onCursorLine={() => {}} />,
-    columns,
-  );
+type PickerInput = NonNullable<Parameters<typeof createChatViewportPresentation>[0]["composer"]["picker"]>;
+
+const footer = {
+  repo: "acolyte",
+  worktree: null,
+  branch: "main",
+  dirty: false,
+  ahead: 0,
+  behind: 0,
+  model: "gpt-5",
+  effort: null,
+  inputTokens: 0,
+  outputTokens: 0,
+  pr: null,
+  skills: [],
+} as const;
+
+function pickerScene(picker: PickerInput, columns: number) {
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: "", cursor: 0 },
+      picker,
+      suggestions: { kind: "none" },
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  });
+  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const composer = scene.sections?.find((section) => section.id === "composer");
+  return { lines: scene.lines.slice(composer?.lineStart, composer?.lineEnd) };
 }
 
-function pickerRowWidths(picker: PickerState, columns: number): number[] {
+function renderInputPanelWithPicker(picker: PickerInput, columns = DEFAULT_TERMINAL_WIDTH): string {
+  return renderPlain(<TerminalSceneRender scene={pickerScene(picker, columns)} />, columns);
+}
+
+function pickerRowWidths(picker: PickerInput, columns: number): number[] {
   const raw = withTerminalWidth(columns, () =>
-    renderToString(
-      <ChatInputPanel
-        picker={picker}
-        activeSessionId="sess_active"
-        brandColor={palette.brand}
-        onCursorLine={() => {}}
-      />,
-    ),
+    renderToString(<TerminalSceneRender scene={pickerScene(picker, columns)} />),
   );
   return raw.split("\n").map((line) => stripAnsiLength(line));
 }
@@ -47,7 +74,7 @@ describe("chat picker visual regression", () => {
           source: "bundled" as const,
         },
       ],
-      index: 0,
+      selected: 0,
     });
     expect(out).toBe(
       dedent(`
@@ -81,7 +108,7 @@ describe("chat picker visual regression", () => {
             source: "bundled" as const,
           },
         ],
-        index: 0,
+        selected: 0,
       },
       40,
     );
@@ -105,17 +132,18 @@ describe("chat picker visual regression", () => {
     try {
       const out = renderInputPanelWithPicker(
         {
-          kind: "resume",
+          kind: "sessions",
           items: [
-            createSession({
+            {
               id: "sess_active",
               title: "A very long session title that needs clipping at narrow widths for sure",
               updatedAt: "2026-03-02T00:00:00.000Z",
-            }),
-            createSession({ id: "sess_prev", title: "Short", updatedAt: "2026-03-02T00:00:00.000Z" }),
+            },
+            { id: "sess_prev", title: "Short", updatedAt: "2026-03-02T00:00:00.000Z" },
           ],
-          index: 1,
+          selected: 1,
           scrollOffset: 0,
+          activeSessionId: "sess_active",
         },
         40,
       );
@@ -141,13 +169,14 @@ describe("chat picker visual regression", () => {
     Date.now = () => new Date("2026-03-02T00:00:00.000Z").getTime();
     try {
       const out = renderInputPanelWithPicker({
-        kind: "resume",
+        kind: "sessions",
         items: [
-          createSession({ id: "sess_active", title: "Current Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
-          createSession({ id: "sess_prev", title: "Previous Session", updatedAt: "2026-03-02T00:00:00.000Z" }),
+          { id: "sess_active", title: "Current Session", updatedAt: "2026-03-02T00:00:00.000Z" },
+          { id: "sess_prev", title: "Previous Session", updatedAt: "2026-03-02T00:00:00.000Z" },
         ],
-        index: 1,
+        selected: 1,
         scrollOffset: 0,
+        activeSessionId: "sess_active",
       });
 
       expect(out).toBe(
@@ -167,6 +196,19 @@ describe("chat picker visual regression", () => {
     }
   });
 
+  test("renders every skill and keeps the selection visible past the page size", () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      name: `skill-${String(i + 1).padStart(2, "0")}`,
+      description: "desc",
+      path: `bundled://skill-${i + 1}`,
+      source: "bundled" as const,
+    }));
+    const out = renderInputPanelWithPicker({ kind: "skills", items, selected: 9 }, 80);
+    expect(out).toContain("skill-01");
+    expect(out).toContain("skill-10");
+    expect(out).toContain("› skill-10");
+  });
+
   test("clips overflowing picker rows to exactly the terminal width", () => {
     const widths = pickerRowWidths(
       {
@@ -179,7 +221,7 @@ describe("chat picker visual regression", () => {
             source: "bundled" as const,
           },
         ],
-        index: 0,
+        selected: 0,
       },
       40,
     );

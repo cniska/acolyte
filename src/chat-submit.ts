@@ -25,6 +25,7 @@ export type QueueDeliveryPolicy = "one-at-a-time" | "all";
 
 type ResolveSubmitInput = {
   value: string;
+  cursor?: number;
   atSuggestions: string[];
   atSuggestionIndex: number;
   slashSuggestions: string[];
@@ -32,11 +33,11 @@ type ResolveSubmitInput = {
 };
 
 export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution {
-  const query = extractAtReferenceQuery(input.value);
+  const query = extractAtReferenceQuery(input.value, input.cursor);
   if (query !== null && input.atSuggestions.length > 0) {
     const selected = input.atSuggestions[clampSuggestionIndex(input.atSuggestionIndex, input.atSuggestions.length)];
-    if (shouldAutocompleteAtSubmit(input.value, selected))
-      return { kind: "autocomplete", value: applyAtSuggestion(input.value, selected ?? "") };
+    if (shouldAutocompleteAtSubmit(input.value, selected, input.cursor))
+      return { kind: "autocomplete", value: applyAtSuggestion(input.value, selected ?? "", input.cursor) };
   }
 
   if (query === null && input.slashSuggestions.length > 0) {

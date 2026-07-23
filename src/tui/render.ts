@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { createElement as reactCreateElement, StrictMode } from "react";
-import { DEFAULT_COLUMNS } from "./constants";
+import { DEFAULT_COLUMNS, DEFAULT_ROWS } from "./constants";
 import { AppContext, InputContext, type InputContextValue, type InputRegistration } from "./context";
 import { createElement } from "./dom";
-import { setOnCommit } from "./host-config";
+import { setOnClear, setOnCommit } from "./host-config";
 import { createInputDispatcher } from "./input";
 import { reconciler } from "./reconciler";
 import { serializeSplit, stripAnsiLength } from "./serialize";
@@ -65,6 +65,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   // Lets us emit only the delta on subsequent frames instead of re-emitting.
   let frozenLineCount = 0;
   let frozenScrollbackText = "";
+  // Width the frozen lines were measured at; count-based adoption is unsafe once it changes.
+  let frozenColumns = lastRenderColumns;
   let exitResolve: (() => void) | null = null;
   const exitPromise = new Promise<void>((resolve) => {
     exitResolve = resolve;
@@ -170,7 +172,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     if (exited) return;
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const { staticItems, active } = serializeSplit(root, cols);
-    const maxLiveRows = (stdout.rows ?? 24) - 1;
+    const maxLiveRows = (stdout.rows ?? DEFAULT_ROWS) - 1;
     const forced = paintForced;
     paintForced = false;
 
@@ -204,21 +206,28 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       if (lastActiveLineCount > maxLiveRows) lastActiveLineCount = maxLiveRows;
     }
 
+    const allLines = active.split("\n");
+
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
       let appendedStatic = "";
       for (let i = flushedStaticCount; i < staticItems.length; i++) {
         appendedStatic += `${staticItems[i]}\n`;
       }
-      // When an overflowing active turn is promoted to static, its top lines are
-      // already frozen in scrollback — they scrolled off and eraseSequence() can
-      // only reach the live tail, so re-emitting them duplicates. Adopt the frozen
-      // prefix: write only the delta below it. A rendering mismatch (prefix no
-      // longer matches) falls back to the full write, no worse than before.
+      // An overflowing section finalizing into static already scrolled its top lines off,
+      // beyond eraseSequence()'s reach, so re-emitting them duplicates. Drop the frozen prefix
+      // by count (which a byte match would miss when a row changed above the fold on finalize)
+      // only while the width matches the freeze and the prefix has left the live region;
+      // otherwise the count is stale or the append is unrelated, so fall back to a byte match
+      // that dedups an unchanged prefix but never drops content.
       if (frozenLineCount > 0) {
-        const frozenPrefix = `${frozenScrollbackText}\n`;
-        if (appendedStatic.startsWith(frozenPrefix)) {
-          appendedStatic = appendedStatic.slice(frozenPrefix.length);
+        const frozenLines = frozenScrollbackText.split("\n");
+        const frozenLeftLiveRegion = frozenLines.some((line, i) => allLines[i] !== line);
+        if (cols === frozenColumns && frozenLeftLiveRegion) {
+          appendedStatic = appendedStatic.split("\n").slice(frozenLineCount).join("\n");
+        } else {
+          const frozenPrefix = `${frozenScrollbackText}\n`;
+          if (appendedStatic.startsWith(frozenPrefix)) appendedStatic = appendedStatic.slice(frozenPrefix.length);
         }
       }
       const buf = eraseSequence() + appendedStatic;
@@ -235,8 +244,6 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
     // Only re-render the active region if it changed.
     if (active === lastActive && !forced) return;
-
-    const allLines = active.split("\n");
 
     // Frozen lines scrolled into append-only scrollback; eraseSequence() cannot reach
     // them. When the frozen prefix no longer matches — an edit above the fold, or a
@@ -260,6 +267,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       // needs a non-empty tail to anchor the erase distance.
       frozenLineCount = Math.min(fold, allLines.length - 1);
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      frozenColumns = cols;
     }
 
     const erase = eraseSequence();
@@ -290,6 +298,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       const overflowLines = liveLines.slice(0, splitIdx);
       frozenLineCount += splitIdx;
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+      frozenColumns = cols;
       syncWrite(`${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
     } else {
       syncWrite(erase + liveLines.join("\n"));
@@ -325,6 +334,19 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   setOnCommit(throttledCommitRender);
 
+  // A scrollback wipe erases the off-screen lines this bookkeeping tracks, so reset it in the
+  // same step or the next commit adopts a frozen prefix that no longer exists on screen.
+  setOnClear(() => {
+    if (exited) return;
+    frozenLineCount = 0;
+    frozenScrollbackText = "";
+    lastActive = "";
+    lastActiveLineCount = 0;
+    staleTail = [];
+    pendingStaleTail = [];
+    if (stdout.isTTY) stdout.write(ansi.clearScreen);
+  });
+
   const container = reconciler.createContainer(
     root,
     0,
@@ -354,6 +376,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   function cleanup() {
     setOnCommit(null);
+    setOnClear(null);
     if (resizeTimer) clearTimeout(resizeTimer);
     process.removeListener("SIGINT", onSignal);
     process.removeListener("SIGTERM", onSignal);

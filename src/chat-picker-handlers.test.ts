@@ -57,7 +57,7 @@ describe("chat picker handlers", () => {
         { label: "gpt-5-mini", value: "gpt-5-mini" },
         { label: "gpt-5.2", value: "gpt-5.2" },
       ],
-      query: "",
+      input: { text: "", cursor: 0 },
       index: 1,
       scrollOffset: 0,
     });
@@ -79,7 +79,7 @@ describe("chat picker handlers", () => {
       kind: "model",
       items: [{ label: "gpt-5.2", value: "gpt-5.2" }],
       filtered: [{ label: "gpt-5.2", value: "gpt-5.2" }],
-      query: "",
+      input: { text: "", cursor: 0 },
       index: 0,
       scrollOffset: 0,
     });

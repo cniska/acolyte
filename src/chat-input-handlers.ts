@@ -36,6 +36,7 @@ export function processInputChange(params: ProcessInputChangeParams): InputChang
 
 type ProcessInputSubmitParams = {
   value: string;
+  cursor?: number;
   atSuggestions: string[];
   atSuggestionIndex: number;
   slashSuggestions: string[];
@@ -45,6 +46,7 @@ type ProcessInputSubmitParams = {
 export function processInputSubmit(params: ProcessInputSubmitParams) {
   return resolveSubmitInput({
     value: params.value,
+    cursor: params.cursor,
     atSuggestions: params.atSuggestions,
     atSuggestionIndex: params.atSuggestionIndex,
     slashSuggestions: params.slashSuggestions,

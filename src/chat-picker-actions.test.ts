@@ -78,7 +78,7 @@ describe("chat picker actions", () => {
       expect(picker.items.length).toBeGreaterThan(0);
       expect(picker.filtered.length).toBeGreaterThan(0);
       expect(picker.items[0]).toEqual({ label: "gpt-5-mini", value: "gpt-5-mini" });
-      expect(picker.query).toBe("");
+      expect(picker.input).toEqual({ text: "", cursor: 0 });
       expect(picker.scrollOffset).toBe(0);
     } finally {
       globalThis.fetch = originalFetch;

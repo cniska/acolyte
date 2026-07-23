@@ -1,87 +1,67 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { ChatChecklist } from "./chat-checklist";
-import type { ChatRow } from "./chat-contract";
-import { isChecklistOutput } from "./chat-contract";
-import { ChatHeader } from "./chat-header";
-import { ChatInputPanel } from "./chat-input-panel";
-import { isHeaderItem } from "./chat-promotion";
+import { PromotedSliceView } from "./chat-promoted-slice";
 import { type ChatAppProps, useChatState } from "./chat-state";
-import { ChatTranscript, ChatTranscriptRow } from "./chat-transcript";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { setLogSink } from "./log";
-import { palette } from "./palette";
 import { stateDir } from "./paths";
-import { Box, render, Static, Text, useApp } from "./tui";
-import { DEFAULT_COLUMNS } from "./tui/constants";
+import { PromptInputHandler } from "./prompt-input";
+import { layoutChatViewport } from "./terminal-chat-layout";
+import { terminalTheme } from "./terminal-theme";
+import { Box, render, Static, TerminalSceneViewport, useApp } from "./tui";
+import { DEFAULT_COLUMNS, DEFAULT_ROWS } from "./tui/constants";
+import { useSyncEffect } from "./tui/effects";
+import { planScenePromotion } from "./tui/scene-viewport";
+
+const noop = (): void => {};
 
 function ChatApp(props: ChatAppProps) {
   const { exit } = useApp();
   const state = useChatState(props, exit);
 
-  const transcriptRows: ChatRow[] = [];
-  const checklistRows: ChatRow[] = [];
-  for (const row of state.rows) {
-    (isChecklistOutput(row.content) ? checklistRows : transcriptRows).push(row);
-  }
+  const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
+  const constraints = { columns, rows: process.stdout.rows ?? DEFAULT_ROWS };
+  const scene = layoutChatViewport({
+    presentation: createChatViewportPresentation(state.presentationInput),
+    constraints,
+    theme: terminalTheme,
+    now: Date.now(),
+  });
+  const promotedIds = new Set(state.promotedSlices.map((slice) => slice.id));
+  const plan = planScenePromotion(scene, constraints, promotedIds);
+
+  // Freeze the newly-committed slices and evict their rows in the same commit that renders
+  // the live tail from the snapped boundary, so a scrolled-off row never renders twice.
+  useSyncEffect(() => {
+    state.commitPromotion(plan.slices, plan.committedSectionIds);
+  }, [plan.committedSectionIds.join(","), plan.slices.length]);
+
+  const scrollback = [...state.promotedSlices, ...plan.slices];
 
   return (
     <Box flexDirection="column">
-      <Static items={state.promotedRows}>
-        {(item) => {
-          if (isHeaderItem(item)) {
-            return (
-              <Box key={item.id} flexDirection="column">
-                <Text> </Text>
-                <ChatHeader
-                  lines={item.lines}
-                  brandColor={palette.brand}
-                  mascot={palette.mascot}
-                  mascotEyes={palette.mascotEyes}
-                />
-              </Box>
-            );
-          }
-          const columns = process.stdout.columns ?? DEFAULT_COLUMNS;
-          const contentWidth = Math.max(24, columns - 2);
-          return (
-            <Box key={item.id} flexDirection="column">
-              <Text> </Text>
-              <ChatTranscriptRow row={item} contentWidth={contentWidth} toolContentWidth={contentWidth} />
-            </Box>
-          );
-        }}
-      </Static>
-      <ChatTranscript
-        rows={transcriptRows}
-        pendingState={state.pendingState}
-        pendingFrame={state.pendingFrame}
-        pendingStartedAt={state.pendingStartedAt}
-        queuedMessages={state.queuedMessages}
-        runningUsage={state.runningUsage}
-      />
-      <ChatChecklist rows={checklistRows} />
-
-      <Text> </Text>
-      <ChatInputPanel
-        picker={state.picker}
-        onPickerQueryChange={state.handlePickerQueryChange}
-        onPickerSubmit={state.handlePickerSubmit}
-        activeSessionId={state.activeSessionId}
-        brandColor={palette.brand}
-        statusLine={state.statusLine}
-        value={state.value}
-        inputRevision={state.inputRevision}
-        onChange={state.handleInputChange}
-        onSubmit={state.handleInputSubmit}
-        atQuery={state.atQuery}
-        atSuggestions={state.atSuggestions}
-        atSuggestionIndex={state.atSuggestionIndex}
-        slashSuggestions={state.slashSuggestions}
-        slashSuggestionIndex={state.slashSuggestionIndex}
-        showHelp={state.showHelp}
-        ctrlCPending={state.ctrlCPending}
-        onCursorLine={state.onCursorLine}
-      />
+      <Static items={scrollback}>{(slice) => <PromotedSliceView slice={slice} />}</Static>
+      <TerminalSceneViewport scene={scene} constraints={constraints} liveLineStart={plan.liveLineStart} />
+      {state.picker ? (
+        state.picker.kind === "model" ? (
+          <PromptInputHandler
+            value={state.picker.input.text}
+            cursor={state.picker.input.cursor}
+            onAction={state.handlePickerAction}
+            onSubmit={state.handlePickerSubmit}
+            onCursorLine={noop}
+          />
+        ) : null
+      ) : (
+        <PromptInputHandler
+          value={state.value}
+          cursor={state.cursor}
+          onAction={state.handleInputAction}
+          onSubmit={state.handleInputSubmit}
+          onCursorLine={state.onCursorLine}
+          wrapWidth={Math.max(24, columns) - 2}
+        />
+      )}
     </Box>
   );
 }

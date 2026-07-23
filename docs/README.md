@@ -23,6 +23,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 ## Runtime
 
 - [TUI](./tui.md) — React terminal UI with fuzzy search, autocomplete, model picker, and code editing
+- [Chat Presentation](./chat-presentation.md) — the one-directional chat-state-to-terminal pipeline: present, lay out, resolve, render
 - [Tooling](./tooling.md) — layered tool execution with contracts and effects
 - [Sessions](./sessions.md) — chat context, message history, and session storage backends
 - [Tasks](./tasks.md) — task lifecycle, queue policy, and state transitions
