@@ -76,18 +76,19 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "assistant-code": { foreground: "#ffffff", dim: true },
     "assistant-bold": { foreground: "#ffffff", bold: true },
     "assistant-path": { foreground: "#ffffff", dim: true },
-    // Night Owl-derived, foreground-only (no code-block band): a cool analogous core
-    // (keyword purple -> function blue -> type teal, siblings of the pending/accepted markers),
-    // two warm literal accents, one desaturated green, and the brand purple reserved for `meta`.
-    "syntax-plain": { foreground: "#D6DEEB" },
-    "syntax-keyword": { foreground: "#C792EA" },
-    "syntax-string": { foreground: "#ECC48D" },
+    // Foreground-only (no code-block band), built from Acolyte's own accent hues so code speaks the
+    // same palette as the markers and chrome: keyword = brand, function = the pending-blue marker,
+    // type = the accepted-cyan marker, string = the queued-gold marker. Plain and comment stay calm
+    // (near-white / recessed grey) so the vivid tokens read against a restful base, not as noise.
+    "syntax-plain": { foreground: "#ECF2FB" },
+    "syntax-keyword": { foreground: "#A56EFF" },
+    "syntax-string": { foreground: "#F5C451" },
     "syntax-comment": { foreground: "#999999" },
-    "syntax-number": { foreground: "#F78C6C" },
-    "syntax-type": { foreground: "#7FDBCA" },
-    "syntax-function": { foreground: "#82AAFF" },
-    "syntax-property": { foreground: "#A6D189" },
-    "syntax-meta": { foreground: "#A56EFF" },
+    "syntax-number": { foreground: "#FF7A5C" },
+    "syntax-type": { foreground: "#4DD2FF" },
+    "syntax-function": { foreground: "#4DA3FF" },
+    "syntax-property": { foreground: "#9EE86B" },
+    "syntax-meta": { foreground: "#C792EA" },
     tool: { foreground: "#aaaaaa" },
     "skill-on": { foreground: "#A56EFF" },
     "skill-off": { dim: true },
