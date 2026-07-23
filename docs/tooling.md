@@ -23,7 +23,7 @@ lifecycle → budget → cache → toolkit → registry
 | `memory` | Persistent cross-session knowledge |
 | `skill` | Skill activation and deactivation |
 | `test` | Run workspace tests |
-| `checklist` | Multi-step task tracking |
+| `tasklist` | Multi-step task tracking |
 | `gh` | GitHub issue and pull request operations |
 | `git` | Version control |
 | `web` | External information retrieval |
