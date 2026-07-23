@@ -156,7 +156,7 @@ describe("chat slash command visual regression", () => {
 
             Sessions 2
 
-            ● sess_active  Current Session   just now
+            ◆ sess_active  Current Session   just now
               sess_prev    Previous Session  just now
       `),
       );

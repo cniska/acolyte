@@ -12,7 +12,7 @@ describe("chat-commands-sessions", () => {
     const [row] = sessionsRows(sessionState, 10);
     const content = row?.content;
     expect(isCommandOutput(content) && content.header).toBe("Sessions 1");
-    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("● sess_aaaa1111"))).toBe(true);
+    expect(isCommandOutput(content) && content.list?.some((line) => line.includes("◆ sess_aaaa1111"))).toBe(true);
     expect(isCommandOutput(content) && content.list?.some((line) => line.includes("First"))).toBe(true);
   });
 
@@ -25,7 +25,7 @@ describe("chat-commands-sessions", () => {
       ],
     });
     const lines = formatSessionList(sessionState);
-    expect(lines[0]?.startsWith("● ")).toBe(true);
+    expect(lines[0]?.startsWith("◆ ")).toBe(true);
     expect(lines[1]?.startsWith("  ")).toBe(true);
   });
 });

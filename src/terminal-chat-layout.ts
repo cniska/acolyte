@@ -52,6 +52,11 @@ const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
 function contentWidth(columns: number): number {
   return Math.max(24, columns - 2 * CONTENT_COLUMN);
 }
+// The one wrap width for composer input. The input handler resolves visual up/down motion against
+// this same value, so its line math can never disagree with what the box renders.
+export function promptWrapWidth(columns: number): number {
+  return contentWidth(Math.max(24, columns)) - 2;
+}
 function insetScene(scene: TerminalScene, left: number): TerminalScene {
   const pad = " ".repeat(left);
   return {
@@ -370,12 +375,18 @@ export function layoutComposerStatus(input: {
         .map((line, index) => row(index, line));
     } else if (picker.kind === "skills") {
       // Skills are not windowed (no scrollOffset); render the full list, as legacy did.
-      pickerItems = picker.items.map((item, index) =>
-        row(
-          index,
-          `${truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH)} ${item.detail ?? ""}`,
-        ),
-      );
+      // Descriptions sit in the dim tier; the selected row keeps its whole-row highlight.
+      pickerItems = picker.items.map((item, index) => {
+        const label = truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
+        const detail = item.detail ?? "";
+        if (index === selectedRel) return row(index, `${label} ${detail}`);
+        return {
+          spans: [
+            { text: truncateToWidth(`  ${label}`, cw), role: "plain" as const },
+            { text: truncateToWidth(` ${detail}`, Math.max(1, cw - 2 - PICKER_LABEL_WIDTH)), role: "muted" as const },
+          ],
+        };
+      });
     } else {
       // Model rows have no column after the label, so padding would only add
       // trailing space the renderer trims; emit the label as-is.
@@ -407,7 +418,11 @@ export function layoutComposerStatus(input: {
       ],
     });
   } else {
-    const displayLines = buildPromptDisplayLines(presentation.input.text, presentation.input.cursor, cw - 2);
+    const displayLines = buildPromptDisplayLines(
+      presentation.input.text,
+      presentation.input.cursor,
+      promptWrapWidth(terminalWidth),
+    );
     for (const [index, line] of displayLines.entries()) {
       if (line.cursor !== null) {
         caretRow = index;
@@ -436,7 +451,12 @@ export function layoutComposerStatus(input: {
       ];
       attached.push({
         spans: entries.flatMap((entry) =>
-          entry ? [{ text: `  ${entry.key.padEnd(20)}${entry.description}`.padEnd(44), role: "muted" as const }] : [],
+          entry
+            ? [
+                { text: `  ${entry.key.padEnd(20)}`, role: "plain" as const },
+                { text: entry.description.padEnd(22), role: "muted" as const },
+              ]
+            : [],
         ),
       });
     }
@@ -796,7 +816,8 @@ export function layoutChatViewport(input: {
     input.presentation.footer &&
     !composerPresentation.showHelp &&
     composerPresentation.suggestions.kind === "none" &&
-    !composerPresentation.picker;
+    !composerPresentation.picker &&
+    !composerPresentation.ctrlCPending;
   if (showFooter && input.presentation.footer) {
     const footerStart = lines.length;
     lines.push(...insetScene(layoutFooterStatus(input.presentation.footer, cw), CONTENT_COLUMN).lines);

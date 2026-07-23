@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { layoutComposerStatus } from "./terminal-chat-layout";
+import { cursorLineIndex } from "./prompt-display";
+import { layoutComposerStatus, promptWrapWidth } from "./terminal-chat-layout";
 
 const base = {
   input: { text: "one two three four five six", cursor: 27 },
@@ -24,6 +25,19 @@ test("composer layout preserves box frame and continuation prompt", () => {
   expect(scene.lines.at(-1)?.spans[1]?.text).toBe(`╰${"─".repeat(20)}╯`);
   expect(scene.lines[2]?.spans[3]?.text).toBe("  ");
   expect(scene.cursor?.row).toBeGreaterThan(0);
+});
+
+test("input handler visual-line math matches the box wrap width", () => {
+  // 74 chars of words wraps at the box interior (72 at 80 cols) but not at the pre-box width (78);
+  // the handler resolving up/down against promptWrapWidth must agree with the rendered caret.
+  const text = "word ".repeat(15).trim();
+  const scene = layoutComposerStatus({
+    presentation: { ...base, input: { text, cursor: text.length } },
+    constraints: { columns: 80, rows: 20 },
+  });
+  const handlerLine = cursorLineIndex(text, text.length, promptWrapWidth(80));
+  expect(handlerLine).toBe(1);
+  expect(scene.cursor?.row).toBe(handlerLine + 1);
 });
 
 test("composer layout windows picker items", () => {

@@ -4,7 +4,7 @@ export const EN_MESSAGES = {
     "No final response after tool execution. Retry, or check server logs if this repeats.",
   "agent.output.blocked": "Blocked. More input is needed.",
   "agent.status.working": "Working…",
-  "chat.at_ref.attach_file": "attach file",
+  "chat.at_ref.mention_file": "mention file",
   "chat.at_ref.no_matches": "No file or folder matches.",
   "chat.command.unknown": "Unknown command: {command}",
   "chat.input.ctrl_c_hint": "ctrl+c again to exit",

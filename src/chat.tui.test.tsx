@@ -135,8 +135,9 @@ describe("chat tui visual regression: status line and help", () => {
   });
 
   const HELP_SINGLE_COLUMN = [
-    "     @path               attach file",
+    "     @path               mention file",
     "     /new                start new session",
+    "     /clear              clear transcript",
     "     /resume <id>        resume session",
     "     /sessions           show sessions",
     "     /workspaces         manage workspaces",
