@@ -131,7 +131,7 @@ describe("checklist TUI rendering", () => {
         items: [{ id: "s1", label: "lint", status: "done", order: 0 }],
       },
     ]);
-    // Header starts at column 2 (after 2-char spacer), matching ChatTranscriptRow content column
+    // Header starts at column 2 (after 2-char spacer), matching the transcript row content column
     expect(output).toMatch(/^ {2}\S/);
   });
 
