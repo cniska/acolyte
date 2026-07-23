@@ -329,6 +329,7 @@ export function createMessageStreamState(input: {
       checklistRowIdByGroupId.clear();
       if (checklistIds.size > 0) {
         input.setRows((current) => current.filter((row) => !checklistIds.has(row.id)));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => !checklistIds.has(row.id)));
       }
       agentRowIds.length = 0;
     },
@@ -346,6 +347,7 @@ export function createMessageStreamState(input: {
       const removeSet = new Set([...idsToRemove, ...checklistIds]);
       if (removeSet.size > 0) {
         input.setRows((current) => current.filter((row) => !removeSet.has(row.id)));
+        input.setTranscriptPresentation?.((current) => current.filter((row) => !removeSet.has(row.id)));
       }
     },
   };
