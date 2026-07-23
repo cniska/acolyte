@@ -52,6 +52,37 @@ describe("chat keybindings helpers", () => {
     expect(result).toBe("/status");
   });
 
+  test("ghost-accept (right arrow) applies a prefix suggestion", () => {
+    const result = resolveTabAutocomplete({
+      browsingInputHistory: false,
+      value: "/st",
+      atQuery: null,
+      atSuggestions: [],
+      atSuggestionIndex: 0,
+      slashSuggestions: ["/status"],
+      slashSuggestionIndex: 0,
+      isTab: false,
+      isGhostAccept: true,
+    });
+    expect(result).toBe("/status");
+  });
+
+  test("ghost-accept ignores a fuzzy (non-prefix) suggestion, though tab still takes it", () => {
+    const shared = {
+      browsingInputHistory: false,
+      value: "/hepl",
+      atQuery: null,
+      atSuggestions: [],
+      atSuggestionIndex: 0,
+      slashSuggestions: ["/help"],
+      slashSuggestionIndex: 0,
+    };
+    // `/help` is not a prefix extension of `/hepl`, so the ghost never showed → right arrow no-ops.
+    expect(resolveTabAutocomplete({ ...shared, isTab: false, isGhostAccept: true })).toBeNull();
+    // Tab still accepts the selected candidate from the list.
+    expect(resolveTabAutocomplete({ ...shared, isTab: true })).toBe("/help");
+  });
+
   test("resolveBareCharShortcut ignores pasted ? and $ so they insert as text", () => {
     // Regression: pasting text ending in "?" popped the help panel.
     expect(resolveBareCharShortcut({ keyInput: "?", paste: true, valueLength: 0, isPending: false })).toBeNull();

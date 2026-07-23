@@ -89,16 +89,19 @@ function lineWidth(line: TerminalLine): number {
 
 // The inline completion preview: the remainder of the selected suggestion when it extends what is
 // typed. Only a prefix match ghosts — a fuzzy match (`/he` → `/new`) has no coherent continuation,
-// so nothing shows and the candidate list carries it instead.
+// so nothing shows and the candidate list carries it instead. Requires a non-empty typed fragment
+// past the trigger: a bare `/` or `@` guesses too early (and would pin the caret on the trigger).
 function composerGhost(presentation: ChatViewportPresentation["composer"]): string {
   if (presentation.input.cursor !== presentation.input.text.length) return "";
   const suggestions = presentation.suggestions;
   if (suggestions.kind === "slash") {
-    const command = suggestions.candidates[suggestions.selected]?.command ?? "";
     const typed = presentation.input.text;
+    if (typed.length < 2) return "";
+    const command = suggestions.candidates[suggestions.selected]?.command ?? "";
     return command.startsWith(typed) ? command.slice(typed.length) : "";
   }
   if (suggestions.kind === "at") {
+    if (suggestions.query.length === 0) return "";
     const value = suggestions.candidates[suggestions.selected]?.value ?? "";
     return value.startsWith(suggestions.query) ? value.slice(suggestions.query.length) : "";
   }
