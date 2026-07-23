@@ -127,7 +127,7 @@ describe("chat tui visual regression: status line and help", () => {
       ────────────────────────────────────────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────────────────────────────────────────
-        acolyte · main · gpt-5-mini medium
+      acolyte · main · gpt-5-mini medium
     `),
     );
   });

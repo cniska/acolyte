@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
+import { type MarkupToken, sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
@@ -42,6 +42,42 @@ export function wrapTerminalProse(text: string, columns: number): string[] {
     return [...lines, line];
   });
 }
+
+const GUTTER = 1;
+const BOX_BORDER = 1;
+const BOX_PAD = 1;
+// The column where content begins: transcript rows inset by the box's border+pad thickness so
+// their glyphs align with the boxed composer prompt, even though only the composer draws a frame.
+const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
+function contentWidth(columns: number): number {
+  return Math.max(24, columns - 2 * CONTENT_COLUMN);
+}
+function insetScene(scene: TerminalScene, left: number): TerminalScene {
+  const pad = " ".repeat(left);
+  return {
+    ...scene,
+    lines: scene.lines.map((line) =>
+      line.spans.every((span) => span.text.length === 0)
+        ? line
+        : { ...line, spans: [{ text: pad, role: "plain" as const }, ...line.spans] },
+    ),
+    cursor: scene.cursor ? { ...scene.cursor, column: scene.cursor.column + left } : undefined,
+  };
+}
+
+function assistantTokenSpan(token: MarkupToken, role: TerminalStyleRole): TerminalSpan {
+  switch (token.kind) {
+    case "code":
+      return { text: token.text.slice(1, -1), role: "assistant-code" };
+    case "bold":
+      return { text: token.text.slice(2, -2), role: "assistant-bold" };
+    case "path":
+      return { text: token.text, role: "assistant-path" };
+    default:
+      return { text: token.text, role };
+  }
+}
+
 export function layoutTranscriptMessage(input: {
   text: string;
   kind: "user" | "assistant";
@@ -50,49 +86,39 @@ export function layoutTranscriptMessage(input: {
   const marker = input.kind === "user" ? `${GLYPH_USER} ` : `${GLYPH_FILLED} `;
   const role = input.kind;
   if (input.kind === "assistant") {
-    const contentWidth = Math.max(24, input.columns - 2);
+    const textWrap = Math.max(1, contentWidth(input.columns) - width(marker));
     return {
-      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), contentWidth)
+      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), textWrap)
         .split("\n")
         .map((line, index) => ({
           spans: [
             { text: index === 0 ? marker : "  ", role },
-            ...tokenize(line).map((token) => ({
-              text:
-                token.kind === "code"
-                  ? token.text.slice(1, -1)
-                  : token.kind === "bold"
-                    ? token.text.slice(2, -2)
-                    : token.text,
-              role:
-                token.kind === "code"
-                  ? ("assistant-code" as const)
-                  : token.kind === "bold"
-                    ? ("assistant-bold" as const)
-                    : token.kind === "path"
-                      ? ("assistant-path" as const)
-                      : role,
-            })),
+            ...tokenize(line).map((token) => assistantTokenSpan(token, role)),
           ],
         })),
     };
   }
-  // An all-space line can't anchor `fill`, so the pad lines take the band from the user-fill role's own bg.
+  // The band bleeds the full terminal width while the text sits at the content column, mirroring the
+  // demo's negative-margin trick. Leading whitespace carries the user-fill role so its own background
+  // paints the left gutter — the renderer's `fill` only reaches from the first non-blank span rightward.
   const bandLine = (): TerminalLine => ({ spans: [{ text: " ".repeat(input.columns), role: "user-fill" as const }] });
-  const textLines: TerminalLine[] = wrapTerminalProse(input.text, Math.max(24, input.columns - 2)).map(
-    (text, index) => {
-      const markerText = index === 0 ? marker : "  ";
-      const pad = Math.max(0, input.columns - width(markerText) - width(text));
-      return {
-        fill: "user-fill" as const,
-        spans: [
-          { text: markerText, role },
-          { text, role },
-          ...(pad ? [{ text: " ".repeat(pad), role: "plain" as const }] : []),
-        ],
-      };
-    },
-  );
+  const textLines: TerminalLine[] = wrapTerminalProse(
+    input.text,
+    Math.max(1, contentWidth(input.columns) - width(marker)),
+  ).map((text, index) => {
+    const lead =
+      index === 0
+        ? [
+            { text: " ".repeat(CONTENT_COLUMN), role: "user-fill" as const },
+            { text: marker, role },
+          ]
+        : [{ text: " ".repeat(CONTENT_COLUMN + width(marker)), role: "user-fill" as const }];
+    const pad = Math.max(0, input.columns - CONTENT_COLUMN - width(marker) - width(text));
+    return {
+      fill: "user-fill" as const,
+      spans: [...lead, { text, role }, ...(pad ? [{ text: " ".repeat(pad), role: "plain" as const }] : [])],
+    };
+  });
   return { lines: [bandLine(), ...textLines, bandLine()] };
 }
 
@@ -456,25 +482,23 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
     segments.push({ text: `PR #${status.pr.number}`, role: prStateRole(status.pr.state) });
   }
   const text = segments.map((segment) => segment.text).join("");
-  const statusLine: TerminalSpan[] = [{ text: "  ", role: "faint" }, ...segments];
-  const statusWidth = 2 + width(text);
+  const statusWidth = width(text);
   if (status.skills.length === 0) {
-    if (statusWidth <= columns) return { lines: [{ spans: statusLine }] };
+    if (statusWidth <= columns) return { lines: [{ spans: segments }] };
     return {
-      lines: wrapTerminalProse(text, Math.max(22, columns - 2)).map((line) => ({
-        spans: [{ text: `  ${line}`, role: "faint" as const }],
+      lines: wrapTerminalProse(text, columns).map((line) => ({
+        spans: [{ text: line, role: "faint" as const }],
       })),
     };
   }
   const skillSegment = status.skills.join(" · ");
-  // Skills sit right-justified on the status row with a 2-col inset, and stack onto their
-  // own 2-col-indented row once that inset no longer fits.
+  // Skills sit right-justified on the status row, and stack onto their own row once they no longer fit.
   if (statusWidth + 2 + width(skillSegment) <= columns) {
     const gap = columns - statusWidth - width(skillSegment);
-    return { lines: [{ spans: [...statusLine, { text: `${" ".repeat(gap)}${skillSegment}`, role: "faint" }] }] };
+    return { lines: [{ spans: [...segments, { text: `${" ".repeat(gap)}${skillSegment}`, role: "faint" }] }] };
   }
   return {
-    lines: [{ spans: statusLine }, { spans: [{ text: truncateToWidth(`  ${skillSegment}`, columns), role: "faint" }] }],
+    lines: [{ spans: segments }, { spans: [{ text: truncateToWidth(skillSegment, columns), role: "faint" }] }],
   };
 }
 
@@ -623,6 +647,7 @@ export function layoutChatViewport(input: {
   now: number;
 }): TerminalScene {
   void input.theme;
+  const cw = contentWidth(input.constraints.columns);
   const lines: TerminalLine[] = [];
   const sections: NonNullable<TerminalScene["sections"]> = [];
   const append = (id: string, finalized: boolean, scene: TerminalScene): void => {
@@ -631,54 +656,63 @@ export function layoutChatViewport(input: {
     lines.push(...scene.lines);
     sections.push({ id, lineStart, lineEnd: lines.length, finalized });
   };
-  append("header", true, layoutHeader(input.presentation.header));
+  append("header", true, insetScene(layoutHeader(input.presentation.header), CONTENT_COLUMN));
   for (const row of input.presentation.transcript) {
     if (row.content.kind === "tasklist") continue;
     if (row.content.kind === "tool-output") {
       append(
         row.id,
         row.status !== "active",
-        layoutTranscriptTool({
-          parts: row.content.output.parts,
-          status: row.status,
-          columns: input.constraints.columns,
-        }),
+        insetScene(
+          layoutTranscriptTool({ parts: row.content.output.parts, status: row.status, columns: cw }),
+          CONTENT_COLUMN,
+        ),
       );
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);
       const text = body ? `${row.content.output.header}\n\n${body}` : row.content.output.header;
       const marker = row.kind === "system" ? "  " : `${GLYPH_FILLED} `;
       const role: TerminalStyleRole = row.kind === "system" ? "muted" : "plain";
-      const contentWidth = Math.max(24, input.constraints.columns - 2);
       // Command output is preformatted (aligned columns); preserve its whitespace and
       // truncate over-long lines rather than prose-wrapping, which would collapse the alignment.
-      append(row.id, true, {
-        lines: text.split("\n").map((line, index) => ({
-          spans: [
-            { text: index === 0 ? marker : "  ", role },
-            { text: truncateToWidth(line, contentWidth), role },
-          ],
-        })),
-      });
-    } else if (row.kind === "user" || row.kind === "assistant") {
       append(
         row.id,
-        row.status !== "active",
-        layoutTranscriptMessage({ text: row.content.text, kind: row.kind, columns: input.constraints.columns }),
+        true,
+        insetScene(
+          {
+            lines: text.split("\n").map((line, index) => ({
+              spans: [
+                { text: index === 0 ? marker : "  ", role },
+                { text: truncateToWidth(line, cw - width(marker)), role },
+              ],
+            })),
+          },
+          CONTENT_COLUMN,
+        ),
       );
+    } else if (row.kind === "user" || row.kind === "assistant") {
+      const message = layoutTranscriptMessage({
+        text: row.content.text,
+        kind: row.kind,
+        columns: input.constraints.columns,
+      });
+      append(row.id, row.status !== "active", row.kind === "user" ? message : insetScene(message, CONTENT_COLUMN));
     } else {
       append(
         row.id,
         true,
-        layoutTranscriptText({
-          text: row.content.text,
-          marker: row.kind === "system" ? "  " : `${GLYPH_FILLED} `,
-          markerRole: transcriptOutcomeRole(row.status),
-          // System notices carry their level in the text color (error red, warning yellow);
-          // status/task rows keep muted text and let the marker carry the outcome.
-          textRole: row.kind === "system" ? transcriptOutcomeRole(row.status) : "muted",
-          columns: input.constraints.columns,
-        }),
+        insetScene(
+          layoutTranscriptText({
+            text: row.content.text,
+            marker: row.kind === "system" ? "  " : `${GLYPH_FILLED} `,
+            markerRole: transcriptOutcomeRole(row.status),
+            // System notices carry their level in the text color (error red, warning yellow);
+            // status/task rows keep muted text and let the marker carry the outcome.
+            textRole: row.kind === "system" ? transcriptOutcomeRole(row.status) : "muted",
+            columns: cw,
+          }),
+          CONTENT_COLUMN,
+        ),
       );
     }
   }
@@ -686,21 +720,21 @@ export function layoutChatViewport(input: {
     append(
       "pending",
       false,
-      layoutPending({ presentation: input.presentation.pending, now: input.now, columns: input.constraints.columns }),
+      insetScene(
+        layoutPending({ presentation: input.presentation.pending, now: input.now, columns: cw }),
+        CONTENT_COLUMN,
+      ),
     );
   for (const row of input.presentation.transcript) {
     if (row.content.kind !== "tasklist") continue;
-    const tasklist = layoutTranscriptTasklist(
-      (row.content as { output: TasklistOutput }).output,
-      Math.max(24, input.constraints.columns - 2),
-      input.now,
+    append(
+      row.id,
+      false,
+      insetScene(
+        layoutTranscriptTasklist((row.content as { output: TasklistOutput }).output, cw, input.now),
+        CONTENT_COLUMN,
+      ),
     );
-    append(row.id, false, {
-      lines: tasklist.lines.map((line) => ({
-        ...line,
-        spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
-      })),
-    });
   }
   const composer = layoutComposerStatus({
     presentation: input.presentation.composer,
@@ -720,7 +754,7 @@ export function layoutChatViewport(input: {
     !composerPresentation.picker;
   if (showFooter && input.presentation.footer) {
     const footerStart = lines.length;
-    lines.push(...layoutFooterStatus(input.presentation.footer, input.constraints.columns).lines);
+    lines.push(...insetScene(layoutFooterStatus(input.presentation.footer, cw), CONTENT_COLUMN).lines);
     sections.push({ id: "footer", lineStart: footerStart, lineEnd: lines.length, finalized: false });
   }
   const cursor = composer.cursor ?? { row: 0, column: 0 };

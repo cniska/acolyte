@@ -61,6 +61,17 @@ function sceneTail(input: {
   return renderPlain(<TerminalSceneRender scene={{ lines: scene.lines.slice(header?.lineEnd) }} />, columns);
 }
 
+test("empty session live region renders the composer chrome", () => {
+  expect(sceneTail({ activeTranscript: [] })).toBe(
+    dedent(`
+      ────────────────────────────────────────────────────────────
+      ❯ Ask anything…
+      ────────────────────────────────────────────────────────────
+         acolyte · main · gpt-5
+    `),
+  );
+});
+
 test("transcript rows live region renders messages above the composer", () => {
   const presentation: TranscriptRow[] = [
     { id: "r1", kind: "user", status: "complete", content: { kind: "message", text: "hello there" } },
@@ -68,15 +79,15 @@ test("transcript rows live region renders messages above the composer", () => {
   ];
   expect(sceneTail({ activeTranscript: presentation })).toBe(
     dedent(`
-      ❯ hello there
+         ❯ hello there
 
 
-      ◆ hi back
+         ◆ hi back
 
       ────────────────────────────────────────────────────────────
       ❯ Ask anything…
       ────────────────────────────────────────────────────────────
-        acolyte · main · gpt-5
+         acolyte · main · gpt-5
     `),
   );
 });
@@ -102,20 +113,20 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
     });
     expect(scene).toBe(
       dedent(`
-        ❯ do the thing
+           ❯ do the thing
 
 
-        ◆ on it
+           ◆ on it
 
-        ◆ Working… (5s · 1 tool)
+           ◆ Working… (5s · 1 tool)
 
-          Plan 1/2
-            ◈ step two
+           Plan 1/2
+             ◈ step two
 
         ────────────────────────────────────────────────────────────
         ❯ Ask anything…
         ────────────────────────────────────────────────────────────
-          acolyte · main · gpt-5
+           acolyte · main · gpt-5
       `),
     );
   } finally {
@@ -142,17 +153,17 @@ test("queued messages live region renders below the pending indicator", () => {
     });
     expect(scene).toBe(
       dedent(`
-        ❯ first
+           ❯ first
 
 
-        ◆ Working… (5s)
+           ◆ Working… (5s)
 
-        ❯ next up
+           ❯ next up
 
         ────────────────────────────────────────────────────────────
         ❯ Ask anything…
         ────────────────────────────────────────────────────────────
-          acolyte · main · gpt-5
+           acolyte · main · gpt-5
       `),
     );
   } finally {
