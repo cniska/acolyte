@@ -60,3 +60,23 @@ export function enqueueQueuedMessage(current: string[], next: string, policy: Qu
   if (policy === "all") return [...current, next];
   return [next];
 }
+
+export function dequeueQueuedMessage(current: string[]): { next: string | undefined; rest: string[] } {
+  const [next, ...rest] = current;
+  return { next, rest };
+}
+
+// The submit runs once, outside the setQueue updater, so a StrictMode double-invoke of the
+// updater cannot resubmit the queued command. Read the head from the caller's snapshot; the
+// updater only drains it. submit and setQueue must stay synchronous and adjacent — an await
+// between them would let a message queued in the gap be dropped by one-at-a-time replace.
+export function drainQueueOnTurnEnd(params: {
+  queue: string[];
+  submit: (message: string) => void;
+  setQueue: (updater: (current: string[]) => string[]) => void;
+}): void {
+  const { next } = dequeueQueuedMessage(params.queue);
+  if (next === undefined) return;
+  params.submit(next);
+  params.setQueue((current) => dequeueQueuedMessage(current).rest);
+}

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { enqueueQueuedMessage, resolveQueueSubmit, resolveSubmitInput } from "./chat-submit";
+import {
+  dequeueQueuedMessage,
+  drainQueueOnTurnEnd,
+  enqueueQueuedMessage,
+  resolveQueueSubmit,
+  resolveSubmitInput,
+} from "./chat-submit";
 
 describe("chat submit helpers", () => {
   test("autocompletes unresolved @path on submit", () => {
@@ -66,5 +72,42 @@ describe("chat submit helpers", () => {
 
   test("enqueueQueuedMessage appends in all mode", () => {
     expect(enqueueQueuedMessage(["first", "second"], "latest", "all")).toEqual(["first", "second", "latest"]);
+  });
+
+  test("dequeueQueuedMessage splits head from rest", () => {
+    expect(dequeueQueuedMessage(["one", "two"])).toEqual({ next: "one", rest: ["two"] });
+    expect(dequeueQueuedMessage([])).toEqual({ next: undefined, rest: [] });
+  });
+
+  // A queued slash command must reach the transcript once. The original bug scheduled
+  // the resubmit inside the queue state updater, so React's StrictMode double-invoke of
+  // that updater submitted the command twice. This harness double-invokes the updater
+  // (discarding the first result, like StrictMode) and asserts a single submit.
+  test("drainQueueOnTurnEnd submits the head once under a double-invoked updater", () => {
+    const submitted: string[] = [];
+    let queue = ["/model"];
+    const setQueue = (updater: (current: string[]) => string[]): void => {
+      updater([...queue]); // StrictMode extra invocation — result discarded
+      queue = updater(queue); // real invocation — committed
+    };
+
+    drainQueueOnTurnEnd({ queue, submit: (message) => submitted.push(message), setQueue });
+
+    expect(submitted).toEqual(["/model"]);
+    expect(queue).toEqual([]);
+  });
+
+  test("drainQueueOnTurnEnd does nothing on an empty queue", () => {
+    const submitted: string[] = [];
+    let queue: string[] = [];
+    drainQueueOnTurnEnd({
+      queue,
+      submit: (message) => submitted.push(message),
+      setQueue: (updater) => {
+        queue = updater(queue);
+      },
+    });
+    expect(submitted).toEqual([]);
+    expect(queue).toEqual([]);
   });
 });

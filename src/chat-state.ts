@@ -15,7 +15,7 @@ import { resumeActiveTranscript, useScenePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { statusTokenTotals } from "./chat-status-line";
-import { enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
+import { drainQueueOnTurnEnd, enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
 import { createTranscriptPublisher } from "./chat-transcript-publisher";
 import type { ChatViewportPresentationInput } from "./chat-viewport-contract";
@@ -194,6 +194,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const interruptRef = useRef<(() => void) | null>(null);
   const handleSubmitRef = useRef<((text: string) => Promise<void>) | null>(null);
+  const queuedMessagesRef = useRef<string[]>([]);
+  queuedMessagesRef.current = queuedMessages;
 
   const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
   const statusLine: FooterStatus = {
@@ -322,11 +324,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     onStopPending: () => {
       setPendingState(null);
       setRunningUsage(null);
-      setQueuedMessages((current) => {
-        if (current.length === 0) return current;
-        const [next, ...rest] = current;
-        if (next) queueMicrotask(() => void handleSubmitRef.current?.(next));
-        return rest;
+      drainQueueOnTurnEnd({
+        queue: queuedMessagesRef.current,
+        submit: (message) => queueMicrotask(() => void handleSubmitRef.current?.(message)),
+        setQueue: setQueuedMessages,
       });
     },
     setPendingState,
