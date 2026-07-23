@@ -40,6 +40,8 @@ type InputPanelOverrides = {
   value?: string;
   slashSuggestions?: string[];
   slashSuggestionIndex?: number;
+  atSuggestions?: { query: string; candidates: string[]; selected: number };
+  ctrlCPending?: boolean;
   picker?: LegacyModelPicker;
 };
 
@@ -52,7 +54,14 @@ function composerScene(overrides: InputPanelOverrides, columns: number) {
         candidates: overrides.slashSuggestions,
         selected: overrides.slashSuggestionIndex ?? 0,
       }
-    : { kind: "none" };
+    : overrides.atSuggestions
+      ? {
+          kind: "at",
+          query: overrides.atSuggestions.query,
+          candidates: overrides.atSuggestions.candidates,
+          selected: overrides.atSuggestions.selected,
+        }
+      : { kind: "none" };
 
   const picker: ViewportPickerInput | null = overrides.picker
     ? {
@@ -74,7 +83,7 @@ function composerScene(overrides: InputPanelOverrides, columns: number) {
       picker,
       suggestions,
       help: overrides.showHelp ? { visible: true, entries: SHORTCUT_ITEMS } : { visible: false, entries: [] },
-      ctrlCPending: false,
+      ctrlCPending: overrides.ctrlCPending ?? false,
       footer: overrides.statusLine ?? DEFAULT_STATUS_LINE,
     },
   });
@@ -172,6 +181,37 @@ describe("chat tui visual regression: status line and help", () => {
         /model
 
         change model
+    `),
+    );
+  });
+
+  test("renders the ctrl-c exit hint below the composer", () => {
+    const out = renderInputPanel({ ctrlCPending: true }, 80);
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────
+      ❯ Ask anything…
+      ────────────────────────────────────────────────────────────────────────────────
+        ctrl+c again to exit
+    `),
+    );
+  });
+
+  test("renders at-mention suggestions below the composer", () => {
+    const out = renderInputPanel(
+      {
+        value: "@src",
+        atSuggestions: { query: "src", candidates: ["src/chat-state.ts", "src/chat-app.tsx"], selected: 1 },
+      },
+      80,
+    );
+    expect(out).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────
+      ❯ @src
+      ────────────────────────────────────────────────────────────────────────────────
+        src/chat-state.ts
+        src/chat-app.tsx
     `),
     );
   });
@@ -308,6 +348,31 @@ describe("chat tui visual regression: model picker", () => {
 
       Type to filter · Enter to apply · Esc to close
       ────────────────────────────────────────────────────────────────────────────────────────────────
+    `),
+    );
+  });
+
+  test("renders the loading state while models resolve", () => {
+    const picker = {
+      kind: "model" as const,
+      items: [],
+      filtered: [],
+      input: { text: "gpt", cursor: 3 },
+      index: 0,
+      scrollOffset: 0,
+      loading: true,
+    };
+
+    const output = renderInputPanel({ picker }, 80);
+    expect(output).toBe(
+      dedent(`
+      ────────────────────────────────────────────────────────────────────────────────
+      Model: gpt
+
+        Loading…
+
+      Type to filter · Enter to apply · Esc to close
+      ────────────────────────────────────────────────────────────────────────────────
     `),
     );
   });

@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
+import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import type { FooterStatus } from "./footer-status-contract";
-import { layoutFooterStatus } from "./terminal-chat-layout";
+import { layoutChatViewport, layoutFooterStatus } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
+import { terminalTheme } from "./terminal-theme";
 import { renderPlain } from "./tui/test-utils";
 
 const base: FooterStatus = {
@@ -74,4 +76,33 @@ test("footer stacks skills on their own indented row when they do not fit", () =
   expect(render({ ...base, skills: ["build", "debug"] }, 40)).toBe(
     "  acolyte · main · gpt-5.2 medium\n  build · debug",
   );
+});
+
+test("viewport layout carries the semantic footer onto the final scene line", () => {
+  const footer: FooterStatus = { ...base, dirty: true, ahead: 2, behind: 1, inputTokens: 48600, outputTokens: 12400 };
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: "", cursor: 0 },
+      picker: null,
+      suggestions: { kind: "none" },
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  });
+  const scene = layoutChatViewport({
+    presentation,
+    constraints: { columns: 80, rows: 40 },
+    theme: terminalTheme,
+    now: 0,
+  });
+  expect(
+    scene.lines
+      .at(-1)
+      ?.spans.map((span) => span.text)
+      .join(""),
+  ).toBe("  acolyte · main* ↑2 ↓1 · gpt-5.2 medium · ↑48.6k ↓12.4k");
 });
