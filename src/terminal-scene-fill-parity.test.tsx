@@ -27,8 +27,12 @@ const filledScene: TerminalScene = {
 
 const renderAnsi = (node: ReactNode) => withTerminalWidth(columns, () => renderToString(node));
 
-test("the live tail and scrollback renderers paint a fill line identically", () => {
-  // liveLineStart 0 makes the whole scene the live tail, isolating the render core from fitting.
+// The live viewport and the scrollback renderer both delegate to one `renderSceneLines` core,
+// so a fill line paints identically in both. This is an anti-fork guard: if a future change
+// gives either entry point its own render path, the fill bytes drift and this fails. It does
+// not exercise two independent implementations today — there is deliberately only one.
+test("the live-tail and scrollback renderers share one fill-painting core", () => {
+  // liveLineStart 0 makes the whole scene the live tail, so both calls render the same lines.
   const live = renderAnsi(
     <TerminalSceneViewport scene={filledScene} constraints={{ columns, rows: 10 }} liveLineStart={0} />,
   );
@@ -36,7 +40,7 @@ test("the live tail and scrollback renderers paint a fill line identically", () 
   expect(live).toBe(scrollback);
 });
 
-test("the fill role changes the emitted bytes, so the parity above is non-trivial", () => {
+test("the fill role changes the emitted bytes, so the shared-core check is non-trivial", () => {
   const unfilledScene: TerminalScene = {
     ...filledScene,
     lines: filledScene.lines.map(({ fill, ...line }) => line),
