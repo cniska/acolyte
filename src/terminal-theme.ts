@@ -78,17 +78,19 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "assistant-path": { foreground: "#ffffff", dim: true },
     // Foreground-only (no code-block band), built from Acolyte's own accent hues so code speaks the
     // same palette as the markers and chrome: keyword = brand, function = the pending-blue marker,
-    // type = the accepted-cyan marker, string = the queued-gold marker. Plain and comment stay calm
-    // (near-white / recessed grey) so the vivid tokens read against a restful base, not as noise.
+    // string = the queued-gold marker. `type` sits a step green of the accepted-cyan marker and
+    // `meta` a step pink of the brand so the type/function blues and the keyword/decorator purples
+    // stay distinct. Plain and comment stay calm (near-white / recessed grey) so the vivid tokens
+    // read against a restful base, not as noise.
     "syntax-plain": { foreground: "#ECF2FB" },
     "syntax-keyword": { foreground: "#A56EFF" },
     "syntax-string": { foreground: "#F5C451" },
     "syntax-comment": { foreground: "#999999" },
     "syntax-number": { foreground: "#FF7A5C" },
-    "syntax-type": { foreground: "#4DD2FF" },
+    "syntax-type": { foreground: "#4BE0B0" },
     "syntax-function": { foreground: "#4DA3FF" },
     "syntax-property": { foreground: "#9EE86B" },
-    "syntax-meta": { foreground: "#C792EA" },
+    "syntax-meta": { foreground: "#E07BD0" },
     tool: { foreground: "#aaaaaa" },
     "skill-on": { foreground: "#A56EFF" },
     "skill-off": { dim: true },
