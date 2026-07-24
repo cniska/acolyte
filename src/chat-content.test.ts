@@ -5,6 +5,7 @@ import {
   wrapAssistantContent,
   wrapCodeText,
   wrapText,
+  wrapUserText,
 } from "./chat-content";
 
 describe("chat-content helpers", () => {
@@ -107,5 +108,51 @@ describe("wrapCodeText", () => {
 
   test("clamps a non-positive budget to one column", () => {
     expect(wrapCodeText("ab", 0)).toEqual(["a", "b"]);
+  });
+});
+
+describe("wrapUserText", () => {
+  test("preserves leading indent verbatim", () => {
+    expect(wrapUserText("    indented", 80)).toEqual(["    indented"]);
+  });
+
+  test("preserves internal whitespace runs", () => {
+    expect(wrapUserText("foo    bar", 80)).toEqual(["foo    bar"]);
+  });
+
+  test("expands tabs to 4-column stops", () => {
+    expect(wrapUserText("\tx", 80)).toEqual(["    x"]);
+    expect(wrapUserText("ab\tc", 80)).toEqual(["ab  c"]);
+  });
+
+  test("normalizes CRLF and splits logical lines", () => {
+    expect(wrapUserText("a\r\nb", 80)).toEqual(["a", "b"]);
+  });
+
+  test("renders a blank line as an empty row", () => {
+    expect(wrapUserText("a\n\nb", 80)).toEqual(["a", "", "b"]);
+  });
+
+  test("renders a whitespace-only line as an empty row", () => {
+    expect(wrapUserText("   ", 80)).toEqual([""]);
+  });
+
+  test("word-wraps the body and repeats the indent as the continuation prefix", () => {
+    expect(wrapUserText("  alpha beta gamma delta", 20)).toEqual(["  alpha beta gamma", "  delta"]);
+  });
+
+  test("hard-breaks a single token wider than the budget", () => {
+    expect(wrapUserText("abcdefghij", 4)).toEqual(["abcd", "efgh", "ij"]);
+  });
+
+  test("does not emit a trailing empty row when overflowing whitespace ends a line", () => {
+    expect(wrapUserText("abcdefghij  ", 10)).toEqual(["abcdefghij"]);
+  });
+
+  test("clamps a deep indent so content always survives", () => {
+    const [first = "", second = ""] = wrapUserText(`${" ".repeat(40)}alpha beta`, 20);
+    expect(first.length).toBeLessThanOrEqual(20);
+    expect(`${first}${second}`).toContain("alpha");
+    expect(`${first}${second}`).toContain("beta");
   });
 });

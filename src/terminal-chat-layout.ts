@@ -7,6 +7,7 @@ import {
   segmentAssistantContent,
   tokenize,
   wrapAssistantContent,
+  wrapUserText,
 } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
@@ -217,25 +218,37 @@ export function layoutTranscriptMessage(input: {
       })),
     };
   }
-  // The band bleeds the full terminal width while the text sits at the content column, mirroring the
-  // demo's negative-margin trick. Leading whitespace carries the user-fill role so its own background
-  // paints the left gutter — the renderer's `fill` only reaches from the first non-blank span rightward.
-  const bandLine = (): TerminalLine => ({ spans: [{ text: " ".repeat(input.columns), role: "user-fill" as const }] });
-  const textLines: TerminalLine[] = wrapTerminalProse(
+  // The gray band insets one column from each terminal edge and fills solid across every row. Leading
+  // pad carries the user-fill role so its own background paints up to the marker; each row stops one
+  // column short of the right edge, so the terminal ground shows through as the matching right gutter.
+  const inner = Math.max(1, input.columns - 2 * GUTTER);
+  const gutterSpan = { text: " ".repeat(GUTTER), role: "plain" as const };
+  const bandLine = (): TerminalLine => ({
+    spans: [gutterSpan, { text: " ".repeat(inner), role: "user-fill" as const }],
+  });
+  const textLines: TerminalLine[] = wrapUserText(
     input.text,
     Math.max(1, contentWidth(input.columns) - width(marker)),
   ).map((text, index) => {
+    // A blank interior row has no marker to anchor the fill, so render it as a solid band row —
+    // otherwise the renderer paints no background and the band shows a hole.
+    if (index > 0 && !/\S/.test(text)) return bandLine();
     const lead =
       index === 0
         ? [
-            { text: " ".repeat(CONTENT_COLUMN), role: "user-fill" as const },
+            { text: " ".repeat(CONTENT_COLUMN - GUTTER), role: "user-fill" as const },
             { text: marker, role },
           ]
-        : [{ text: " ".repeat(CONTENT_COLUMN + width(marker)), role: "user-fill" as const }];
-    const pad = Math.max(0, input.columns - CONTENT_COLUMN - width(marker) - width(text));
+        : [{ text: " ".repeat(CONTENT_COLUMN - GUTTER + width(marker)), role: "user-fill" as const }];
+    const pad = Math.max(0, inner - (CONTENT_COLUMN - GUTTER) - width(marker) - width(text));
     return {
       fill: "user-fill" as const,
-      spans: [...lead, { text, role }, ...(pad ? [{ text: " ".repeat(pad), role: "plain" as const }] : [])],
+      spans: [
+        gutterSpan,
+        ...lead,
+        { text, role },
+        ...(pad ? [{ text: " ".repeat(pad), role: "user-fill" as const }] : []),
+      ],
     };
   });
   return { lines: [bandLine(), ...textLines, bandLine()] };
