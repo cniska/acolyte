@@ -23,6 +23,13 @@ describe("highlightCode", () => {
     expect(flat).toContainEqual({ text: "@Component", role: "syntax-meta" });
   });
 
+  test("colors diff add and delete lines with foreground-only roles", () => {
+    const flat = spans(highlightCode("@@ -1,2 +1,2 @@\n-old line\n+new line\n context", "diff"));
+    expect(flat).toContainEqual({ text: "-old line", role: "syntax-deletion" });
+    expect(flat).toContainEqual({ text: "+new line", role: "syntax-addition" });
+    expect(flat).toContainEqual({ text: "@@ -1,2 +1,2 @@", role: "syntax-meta" });
+  });
+
   // The upgrade tripwire: token text must reconstruct the source byte-for-byte, or a highlight.js /
   // lowlight bump silently rewrote token boundaries.
   test.each([
@@ -33,6 +40,7 @@ describe("highlightCode", () => {
     ["bash", 'set -e\nfor f in *.ts; do\n  echo "$f"\ndone'],
     ["css", ".a {\n  color: #fff;\n  margin: 0 auto;\n}"],
     ["yaml", "name: acolyte\nlist:\n  - one\n  - two"],
+    ["diff", "@@ -1,2 +1,2 @@\n-old\n+new\n ctx"],
   ])("reconstructs %s source losslessly", (lang, source) => {
     expect(reconstruct(highlightCode(source, lang))).toBe(source);
   });
@@ -74,6 +82,7 @@ describe("resolveLanguage", () => {
     expect(resolveLanguage("ts")).toBe("typescript");
     expect(resolveLanguage("  TS ")).toBe("typescript");
     expect(resolveLanguage("py")).toBe("python");
+    expect(resolveLanguage("patch")).toBe("diff");
   });
 
   test("returns null for an unknown token", () => {

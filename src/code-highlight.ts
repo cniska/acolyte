@@ -3,6 +3,7 @@ import bash from "highlight.js/lib/languages/bash";
 import c from "highlight.js/lib/languages/c";
 import cpp from "highlight.js/lib/languages/cpp";
 import css from "highlight.js/lib/languages/css";
+import diff from "highlight.js/lib/languages/diff";
 import dockerfile from "highlight.js/lib/languages/dockerfile";
 import go from "highlight.js/lib/languages/go";
 import ini from "highlight.js/lib/languages/ini";
@@ -32,6 +33,7 @@ const lowlight = createLowlight({
   c,
   cpp,
   css,
+  diff,
   dockerfile,
   go,
   ini,
@@ -107,6 +109,8 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   rb: "ruby",
   ruby: "ruby",
   php: "php",
+  diff: "diff",
+  patch: "diff",
 };
 
 // hljs scope (dotted, with `hljs-` prefix and sub-scope `_` suffix stripped) -> our bounded role.
@@ -145,6 +149,8 @@ const SCOPE_ROLES: Record<string, TerminalStyleRole> = {
   meta: "syntax-meta",
   "meta.keyword": "syntax-meta",
   "meta.prompt": "syntax-meta",
+  addition: "syntax-addition",
+  deletion: "syntax-deletion",
 };
 
 // null (not a plain fallback) lets a caller keep its own rendering for an unknown token.

@@ -19,6 +19,8 @@ export const terminalStyleRoleSchema = z.enum([
   "syntax-function",
   "syntax-property",
   "syntax-meta",
+  "syntax-addition",
+  "syntax-deletion",
   "tool",
   "skill-on",
   "skill-off",
@@ -91,6 +93,10 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "syntax-function": { foreground: "#4DA3FF" },
     "syntax-property": { foreground: "#9EE86B" },
     "syntax-meta": { foreground: "#E07BD0" },
+    // Fenced ```diff blocks only: foreground-only add/delete, neon siblings of the vivid palette.
+    // Distinct from the band-carrying diff-added/diff-removed the edit tool uses.
+    "syntax-addition": { foreground: "#5CF08A" },
+    "syntax-deletion": { foreground: "#FF5C7A" },
     tool: { foreground: "#aaaaaa" },
     "skill-on": { foreground: "#A56EFF" },
     "skill-off": { dim: true },
