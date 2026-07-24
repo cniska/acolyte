@@ -1,5 +1,5 @@
 import { relative } from "node:path";
-import { wrapAssistantContent } from "./chat-content";
+import { segmentAssistantContent, wrapAssistantContent, wrapCodeText } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED } from "./chat-glyphs";
 import { t, tDynamic } from "./i18n";
@@ -148,8 +148,17 @@ export function formatRunSummary(
 }
 
 export function formatAgentReplyOutput(content: string, wrapWidth = 100): string {
-  const wrapped = wrapAssistantContent(content, wrapWidth);
-  const lines = wrapped.split("\n");
+  const lines: string[] = [];
+  segmentAssistantContent(content).forEach((segment, index) => {
+    if (index > 0) lines.push("");
+    if (segment.kind === "prose") {
+      lines.push(...wrapAssistantContent(segment.text, wrapWidth).split("\n"));
+    } else {
+      for (const source of segment.text.split("\n")) {
+        lines.push(...wrapCodeText(source, wrapWidth));
+      }
+    }
+  });
   if (lines.length === 0) return GLYPH_FILLED;
   return lines
     .map((line, index) => {

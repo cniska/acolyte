@@ -136,7 +136,7 @@ function bodyLine(part: ToolOutputPart, numWidth: number): LayoutLine {
         kind: "body",
         indent: 2,
         segments: [
-          { role: "diff-gutter", text: ` ${num} ${marker}` },
+          { role: "diff-gutter", text: ` ${num} ${marker} ` },
           { role: "diff-text", text: part.text },
         ],
         fill,

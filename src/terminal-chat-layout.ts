@@ -1,11 +1,19 @@
+import { extname } from "node:path";
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { type MarkupToken, sanitizeAssistantContent, tokenize, wrapAssistantContent } from "./chat-content";
+import {
+  type MarkupToken,
+  sanitizeAssistantContent,
+  segmentAssistantContent,
+  tokenize,
+  wrapAssistantContent,
+} from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
+import { highlightCode, resolveLanguage } from "./code-highlight";
 import { formatRelativeTime } from "./datetime";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
@@ -26,6 +34,38 @@ export type TerminalConstraints = z.infer<typeof terminalConstraintsSchema>;
 
 function width(text: string): number {
   return Bun.stringWidth(text);
+}
+
+const codeGraphemes = new Intl.Segmenter();
+
+// Hard-wraps highlighted code spans to a display-width budget, breaking at the last grapheme that
+// fits — no word wrap, no truncation, because code is read and copied. Pure geometry: measures
+// display cells (Bun.stringWidth), takes a budget not physical columns. A blank line yields one
+// empty row. Shares its break rule with chat-content's wrapCodeText (the colorless CLI path); the
+// equivalence is pinned by a test so the two never drift.
+export function wrapSpans(spans: TerminalSpan[], budget: number): TerminalSpan[][] {
+  const limit = Math.max(1, budget);
+  const rows: TerminalSpan[][] = [];
+  let row: TerminalSpan[] = [];
+  let used = 0;
+  for (const span of spans) {
+    let chunk = "";
+    for (const { segment } of codeGraphemes.segment(span.text)) {
+      const cell = width(segment);
+      if (used > 0 && used + cell > limit) {
+        if (chunk.length > 0) row.push({ text: chunk, role: span.role });
+        chunk = "";
+        rows.push(row);
+        row = [];
+        used = 0;
+      }
+      chunk += segment;
+      used += cell;
+    }
+    if (chunk.length > 0) row.push({ text: chunk, role: span.role });
+  }
+  rows.push(row);
+  return rows;
 }
 export function wrapTerminalProse(text: string, columns: number): string[] {
   return text.split("\n").flatMap((logical) => {
@@ -154,15 +194,27 @@ export function layoutTranscriptMessage(input: {
   const role = input.kind;
   if (input.kind === "assistant") {
     const textWrap = Math.max(1, contentWidth(input.columns) - width(marker));
+    const contentLines: TerminalSpan[][] = [];
+    // Segments alternate prose/code, so a blank line before every segment but the first sets a
+    // code block off from surrounding prose — the visual separator, since fence markers are stripped.
+    segmentAssistantContent(input.text).forEach((segment, index) => {
+      if (index > 0) contentLines.push([]);
+      if (segment.kind === "prose") {
+        for (const line of wrapAssistantContent(sanitizeAssistantContent(segment.text), textWrap).split("\n")) {
+          contentLines.push(tokenize(line).map((token) => assistantTokenSpan(token, role)));
+        }
+      } else {
+        for (const line of highlightCode(segment.text, segment.lang)) {
+          for (const wrapped of wrapSpans(line, textWrap)) {
+            contentLines.push(wrapped);
+          }
+        }
+      }
+    });
     return {
-      lines: wrapAssistantContent(sanitizeAssistantContent(input.text), textWrap)
-        .split("\n")
-        .map((line, index) => ({
-          spans: [
-            { text: index === 0 ? marker : "  ", role },
-            ...tokenize(line).map((token) => assistantTokenSpan(token, role)),
-          ],
-        })),
+      lines: contentLines.map((spans, index) => ({
+        spans: [{ text: index === 0 ? marker : "  ", role }, ...spans],
+      })),
     };
   }
   // The band bleeds the full terminal width while the text sits at the content column, mirroring the
@@ -664,6 +716,15 @@ function toolRole(role: string): TerminalStyleRole | null {
   return "muted";
 }
 
+// A diff line's segment role once its band is known: text takes the band color, the gutter takes
+// the matching meta tint, everything else keeps its base role.
+function diffSpanRole(role: string, fill: TerminalStyleRole | undefined, base: TerminalStyleRole): TerminalStyleRole {
+  if (!fill) return base;
+  if (role === "diff-text") return fill;
+  if (role === "diff-gutter") return fill === "diff-added" ? "tool-meta-add" : "tool-meta-remove";
+  return base;
+}
+
 function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
   switch (status) {
     case "success":
@@ -710,6 +771,8 @@ export function layoutTranscriptTool(input: {
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
   const marker = `${toolMarkerGlyph(headerState, input.status)} `;
   const markerRole = toolHeaderMarkerRole(headerState, input.status);
+  const editPath = input.parts.find((part) => part.kind === "edit-header")?.path;
+  const diffLang = editPath ? resolveLanguage(extname(editPath).slice(1)) : null;
   return {
     lines: layoutToolOutput(input.parts).map((line, index) => {
       const fitted = fitLine(
@@ -721,15 +784,12 @@ export function layoutTranscriptTool(input: {
       const spans = fitted.segments.flatMap((segment) => {
         const base = toolRole(segment.role);
         if (!base) return [];
-        const role: TerminalStyleRole =
-          fill && segment.role === "diff-text"
-            ? fill
-            : fill && segment.role === "diff-gutter"
-              ? fill === "diff-added"
-                ? "tool-meta-add"
-                : "tool-meta-remove"
-              : base;
-        return [{ text: segment.text, role }];
+        // Removed lines stay flat red: the code is being discarded, so highlighting it is just noise.
+        if (segment.role === "diff-text" && diffLang && fill !== "diff-removed") {
+          const [lineSpans = []] = highlightCode(segment.text, diffLang);
+          return lineSpans;
+        }
+        return [{ text: segment.text, role: diffSpanRole(segment.role, fill, base) }];
       });
       const padding = fill
         ? " ".repeat(Math.max(0, contentWidth - fitted.indent - segmentsWidth(fitted.segments)))

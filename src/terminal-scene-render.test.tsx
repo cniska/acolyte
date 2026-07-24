@@ -61,6 +61,41 @@ test("semantic assistant scenes render inline markup as styled spans, not raw ma
   expect(output).toContain(ansi.bold);
 });
 
+test("assistant layout highlights fenced code and preserves whitespace", () => {
+  const scene = layoutTranscriptMessage({
+    text: "Fix:\n```ts\n  const x = 1\n    nested()\n```",
+    kind: "assistant",
+    columns: 80,
+  });
+  expect(scene.lines[0]?.spans).toEqual([
+    { text: "◆ ", role: "assistant" },
+    { text: "Fix:", role: "assistant" },
+  ]);
+  // A blank line sets the code block off from the prose (fence markers are stripped).
+  expect(scene.lines[1]?.spans).toEqual([{ text: "  ", role: "assistant" }]);
+  // Continuation marker, then highlighted code whose spans reconstruct the source line verbatim
+  // (leading indentation intact) — code is tokenized, not word-collapsed.
+  const codeLine1 = scene.lines[2]?.spans ?? [];
+  expect(codeLine1[0]).toEqual({ text: "  ", role: "assistant" });
+  expect(
+    codeLine1
+      .slice(1)
+      .map((span) => span.text)
+      .join(""),
+  ).toBe("  const x = 1");
+  expect(codeLine1).toContainEqual({ text: "const", role: "syntax-keyword" });
+  expect(codeLine1.slice(1)[0]).toEqual({ text: "  ", role: "syntax-plain" });
+
+  const codeLine2 = scene.lines[3]?.spans ?? [];
+  expect(codeLine2[0]).toEqual({ text: "  ", role: "assistant" });
+  expect(
+    codeLine2
+      .slice(1)
+      .map((span) => span.text)
+      .join(""),
+  ).toBe("    nested()");
+});
+
 test("assistant layout represents inline markup as semantic spans", () => {
   const scene = layoutTranscriptMessage({
     text: "Use `code`, **bold**, and src/chat.ts:42.",
