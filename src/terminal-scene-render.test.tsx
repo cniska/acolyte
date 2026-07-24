@@ -120,8 +120,34 @@ test("assistant layout represents inline markup as semantic spans", () => {
 
 test("user layout preserves leading indent and internal whitespace runs", () => {
   const scene = layoutTranscriptMessage({ text: "    def f():\nreturn    x", kind: "user", columns: 40 });
-  const userText = scene.lines.flatMap((line) => line.spans).filter((span) => span.role === "user");
-  expect(userText.map((span) => span.text)).toEqual(["❯ ", "    def f():", "return    x"]);
+  const rows = scene.lines.map((line) => line.spans.map((span) => span.text).join(""));
+  expect(rows.some((row) => row.includes("    def f():"))).toBe(true);
+  expect(rows.some((row) => row.includes("return    x"))).toBe(true);
+});
+
+test("user layout gives whitespace the band fill so an indented line has no hole", () => {
+  const scene = layoutTranscriptMessage({ text: "  indented", kind: "user", columns: 40 });
+  const blankUserSpans = scene.lines
+    .flatMap((line) => line.spans)
+    .filter((span) => span.role === "user" && !/\S/.test(span.text));
+  expect(blankUserSpans).toEqual([]);
+});
+
+test("user layout styles inline code, bold, path, and @-ref markup", () => {
+  const scene = layoutTranscriptMessage({
+    text: "run `build` on **main** in src/foo.ts see @lib/x.ts",
+    kind: "user",
+    columns: 60,
+  });
+  const spans = scene.lines.flatMap((line) => line.spans);
+  expect(spans).toEqual(
+    expect.arrayContaining([
+      { text: "build", role: "assistant-code" },
+      { text: "main", role: "assistant-bold" },
+      { text: "src/foo.ts", role: "assistant-path" },
+      { text: "@lib/x.ts", role: "assistant-code" },
+    ]),
+  );
 });
 
 test("user layout renders a blank interior line as a solid band row with no hole", () => {
