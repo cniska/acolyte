@@ -117,7 +117,7 @@ describe("memoryDistiller integration", () => {
     expect(contents).not.toContain("fixing memory search bug");
   });
 
-  test("sends no explicit temperature so reasoning-model routes do not reject the commit", async () => {
+  test("streams the distill request so the subscription backend accepts it", async () => {
     const store = createStore();
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
@@ -129,6 +129,6 @@ describe("memoryDistiller integration", () => {
     });
 
     expect(lastRequestBody).toBeDefined();
-    expect(lastRequestBody).not.toHaveProperty("temperature");
+    expect(lastRequestBody?.stream).toBe(true);
   });
 });

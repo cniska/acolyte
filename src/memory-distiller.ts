@@ -83,7 +83,8 @@ function parseToolCall(call: LanguageModelV4ToolCall): DistillObservation | null
 async function defaultRunner(systemPrompt: string, userContent: string): Promise<DistillObservation[]> {
   const qualifiedModel = normalizeModel(appConfig.distillModel);
   const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
-  const result = await model.doGenerate({
+  // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
+  const { stream } = await model.doStream({
     prompt: [
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: userContent }] },
@@ -91,10 +92,17 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
     tools: [MEMORY_OBSERVE_TOOL],
     toolChoice: { type: "auto" },
   });
-  return result.content
-    .filter((part): part is LanguageModelV4ToolCall => part.type === "tool-call" && part.toolName === "memory-observe")
-    .map(parseToolCall)
-    .filter((obs): obs is DistillObservation => obs !== null);
+  const observations: DistillObservation[] = [];
+  const reader = stream.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
+    if (value.type !== "tool-call" || value.toolName !== "memory-observe") continue;
+    const obs = parseToolCall(value);
+    if (obs) observations.push(obs);
+  }
+  return observations;
 }
 
 async function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<number> {
