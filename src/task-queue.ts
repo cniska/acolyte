@@ -9,9 +9,11 @@ export function createInMemoryTaskQueue(): TaskQueue {
       const previous = queueByKey.get(key) ?? Promise.resolve();
       const next = previous.catch(() => {}).then(job);
       queueByKey.set(key, next);
-      void next.finally(() => {
-        if (queueByKey.get(key) === next) queueByKey.delete(key);
-      });
+      void next
+        .catch(() => {})
+        .finally(() => {
+          if (queueByKey.get(key) === next) queueByKey.delete(key);
+        });
       return next;
     },
   };
