@@ -224,17 +224,41 @@ export function layoutTranscriptMessage(input: {
   // pad carries the user-fill role so its own background paints up to the marker; each row stops one
   // column short of the right edge, so the terminal ground shows through as the matching right gutter.
   const inner = Math.max(1, input.columns - 2 * GUTTER);
+  const budget = Math.max(1, contentWidth(input.columns) - width(marker));
   const gutterSpan = { text: " ".repeat(GUTTER), role: "plain" as const };
   const bandLine = (): TerminalLine => ({
     spans: [gutterSpan, { text: " ".repeat(inner), role: "user-fill" as const }],
   });
-  const textLines: TerminalLine[] = wrapUserText(
-    input.text,
-    Math.max(1, contentWidth(input.columns) - width(marker)),
-  ).map((text, index) => {
-    // A blank interior row has no marker to anchor the fill, so render it as a solid band row —
-    // otherwise the renderer paints no background and the band shows a hole.
-    if (index > 0 && !/\S/.test(text)) return bandLine();
+  // Fenced code highlights like the assistant path; unfenced text stays one prose segment and renders
+  // verbatim (whitespace-faithful). An empty row array is a blank band row. Whitespace spans take the
+  // fill role because the renderer extends `fill` only rightward from the first non-blank span, so a
+  // leading indent would otherwise leave a hole in the band.
+  const rows: TerminalSpan[][] = [];
+  segmentAssistantContent(input.text).forEach((segment, index) => {
+    if (index > 0) rows.push([]);
+    if (segment.kind === "prose") {
+      for (const line of wrapUserText(segment.text, budget)) {
+        if (!/\S/.test(line)) {
+          rows.push([]);
+          continue;
+        }
+        rows.push(
+          tokenize(line).map((token) =>
+            /\S/.test(token.text) ? assistantTokenSpan(token, role) : { text: token.text, role: "user-fill" as const },
+          ),
+        );
+      }
+    } else {
+      for (const codeLine of highlightCode(segment.text, segment.lang)) {
+        for (const wrapped of wrapSpans(codeLine, budget)) {
+          rows.push(wrapped.map((span) => (/\S/.test(span.text) ? span : { text: span.text, role: "user-fill" })));
+        }
+      }
+    }
+  });
+  const textLines: TerminalLine[] = rows.map((spans, index) => {
+    // A blank interior row has no marker to anchor the fill, so render it as a solid band row.
+    if (index > 0 && spans.length === 0) return bandLine();
     const lead =
       index === 0
         ? [
@@ -242,22 +266,12 @@ export function layoutTranscriptMessage(input: {
             { text: marker, role },
           ]
         : [{ text: " ".repeat(CONTENT_COLUMN - GUTTER + width(marker)), role: "user-fill" as const }];
-    // Whitespace takes the fill role, not plain: the renderer extends `fill` only rightward from the
-    // first non-blank span, so a leading indent would otherwise leave a hole in the band.
-    const tokenSpans = tokenize(text).map((token) =>
-      /\S/.test(token.text) ? assistantTokenSpan(token, role) : { text: token.text, role: "user-fill" as const },
-    );
     // Measured post-strip: the markup mapper drops delimiters, so the rendered width is below the raw line.
-    const rendered = tokenSpans.reduce((total, span) => total + width(span.text), 0);
+    const rendered = spans.reduce((total, span) => total + width(span.text), 0);
     const pad = Math.max(0, inner - (CONTENT_COLUMN - GUTTER) - width(marker) - rendered);
     return {
       fill: "user-fill" as const,
-      spans: [
-        gutterSpan,
-        ...lead,
-        ...tokenSpans,
-        ...(pad ? [{ text: " ".repeat(pad), role: "user-fill" as const }] : []),
-      ],
+      spans: [gutterSpan, ...lead, ...spans, ...(pad ? [{ text: " ".repeat(pad), role: "user-fill" as const }] : [])],
     };
   });
   return { lines: [bandLine(), ...textLines, bandLine()] };

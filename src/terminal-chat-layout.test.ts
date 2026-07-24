@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { wrapCodeText } from "./chat-content";
-import { layoutTranscriptTool, wrapSpans } from "./terminal-chat-layout";
+import { layoutTranscriptMessage, layoutTranscriptTool, wrapSpans } from "./terminal-chat-layout";
 import type { TerminalSpan } from "./terminal-scene-contract";
 import type { ToolOutputPart } from "./tool-output-contract";
 
@@ -115,5 +115,44 @@ describe("layoutTranscriptTool diff highlighting", () => {
     const roles = rolesOf(line.spans);
     expect(roles).not.toContain("syntax-keyword");
     expect(roles).toContain("diff-added");
+  });
+});
+
+describe("layoutTranscriptMessage user messages", () => {
+  const rolesOf = (spans: TerminalSpan[]): string[] => spans.map((span) => span.role);
+
+  test("renders an unfenced paste verbatim with no syntax roles", () => {
+    const scene = layoutTranscriptMessage({ text: "  const x = 1", kind: "user", columns: 80 });
+    const body = scene.lines.map((line) => rowText(line.spans)).join("\n");
+    expect(body).toContain("  const x = 1");
+    for (const line of scene.lines) {
+      for (const role of rolesOf(line.spans)) expect(role.startsWith("syntax-")).toBe(false);
+    }
+  });
+
+  test("highlights a fenced code block and keeps the band whole behind indentation", () => {
+    const scene = layoutTranscriptMessage({
+      text: "look:\n```ts\n  const x = 1\n```",
+      kind: "user",
+      columns: 80,
+    });
+    const allSpans = scene.lines.flatMap((line) => line.spans);
+    expect(allSpans).toContainEqual({ text: "const", role: "syntax-keyword" });
+    // Indentation inside the code takes the fill role, never a foreground-only syntax role, which
+    // would paint no background and leave a hole in the band.
+    for (const span of allSpans) {
+      if (!/\S/.test(span.text)) expect(span.role.startsWith("syntax-")).toBe(false);
+    }
+  });
+
+  test("colors a fenced diff block with foreground-only add/delete roles", () => {
+    const scene = layoutTranscriptMessage({
+      text: "```diff\n-old\n+new\n```",
+      kind: "user",
+      columns: 80,
+    });
+    const roles = scene.lines.flatMap((line) => rolesOf(line.spans));
+    expect(roles).toContain("syntax-addition");
+    expect(roles).toContain("syntax-deletion");
   });
 });
