@@ -19,8 +19,8 @@ const SHELL_PARTS: ToolOutputPart[] = [
 describe("layoutToolOutput", () => {
   test("computes the gutter width from the widest line number", () => {
     const [, context, , add] = layoutToolOutput(DIFF_PARTS);
-    expect(context?.segments[0]?.text).toBe("   9  ");
-    expect(add?.segments[0]?.text).toBe(" 100 +");
+    expect(context?.segments[0]?.text).toBe("   9   ");
+    expect(add?.segments[0]?.text).toBe(" 100 + ");
   });
 
   test("marks add/remove lines with a fill and leaves context unfilled", () => {

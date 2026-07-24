@@ -137,15 +137,15 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-          9  const x = 1;
-         10 -const y = 2;
-         10 +const y = 3;
+          9   const x = 1;
+         10 - const y = 2;
+         10 + const y = 3;
     `),
     chat: dedent(`
       ◆ Edit notes.ts (+1 -1)
-            9  const x = 1;
-           10 -const y = 2;
-           10 +const y = 3;
+            9   const x = 1;
+           10 - const y = 2;
+           10 + const y = 3;
     `),
   },
   {
@@ -160,19 +160,19 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-          1  const a = 1;
+          1   const a = 1;
           ⋮
-         10 -const y = 2;
-         10 +const y = 3;
-         11  const b = 4;
+         10 - const y = 2;
+         10 + const y = 3;
+         11   const b = 4;
     `),
     chat: dedent(`
       ◆ Edit notes.ts (+1 -1)
-            1  const a = 1;
+            1   const a = 1;
             ⋮
-           10 -const y = 2;
-           10 +const y = 3;
-           11  const b = 4;
+           10 - const y = 2;
+           10 + const y = 3;
+           11   const b = 4;
     `),
   },
   {
@@ -185,15 +185,15 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-          1  const a = 1;
+          1   const a = 1;
           ⋮  +3 lines
-         10 +const y = 3;
+         10 + const y = 3;
     `),
     chat: dedent(`
       ◆ Edit notes.ts (+1 -1)
-            1  const a = 1;
+            1   const a = 1;
             ⋮  +3 lines
-           10 +const y = 3;
+           10 + const y = 3;
     `),
   },
   {
@@ -205,13 +205,13 @@ const CASES: ToolCase[] = [
     ],
     cli: dedent(`
       Edit notes.ts (+1 -1)
-         2 -old
-         2 +new
+         2 - old
+         2 + new
     `),
     chat: dedent(`
       ◆ Edit notes.ts (+1 -1)
-           2 -old
-           2 +new
+           2 - old
+           2 + new
     `),
   },
   {
@@ -545,7 +545,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
     const [, body] = renderToolOutput(items, 20).split("\n");
-    expect(body).toBe(`   1 +${"X".repeat(13)}…`);
+    expect(body).toBe(`   1 + ${"X".repeat(12)}…`);
     expect(Bun.stringWidth(body)).toBe(20);
   });
 
@@ -569,7 +569,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
-    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n   1 +${"X".repeat(60)}`);
+    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n   1 + ${"X".repeat(60)}`);
   });
 });
 

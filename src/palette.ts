@@ -10,8 +10,8 @@ export const palette = {
   dim: "#666666", // dimmest ambient detail (Claude Code inactive)
 
   // Diff
-  diffAdd: "#0d1f0d",
-  diffRemove: "#1f0d0d",
+  diffAdd: "#042208",
+  diffRemove: "#2a0606",
   diffAddText: "#4a9a4a",
   diffRemoveText: "#9a4a4a",
 
