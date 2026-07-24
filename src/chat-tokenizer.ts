@@ -1,4 +1,4 @@
-type MarkupTokenKind = "plain" | "code" | "bold" | "path";
+type MarkupTokenKind = "plain" | "code" | "bold" | "path" | "ref";
 
 export type MarkupToken = {
   text: string;
@@ -6,7 +6,7 @@ export type MarkupToken = {
 };
 
 type TokenRule = {
-  kind: Exclude<MarkupTokenKind, "plain" | "path">;
+  kind: Exclude<MarkupTokenKind, "plain" | "path" | "ref">;
   pattern: RegExp;
 };
 
@@ -87,6 +87,10 @@ function tokenizePlainSegment(text: string): MarkupToken[] {
   for (const chunk of chunks) {
     if (/^\s+$/.test(chunk)) {
       tokens.push({ text: chunk, kind: "plain" });
+      continue;
+    }
+    if (chunk.startsWith("@") && looksLikePathRef(chunk.slice(1).replace(/[)",.;!?]+$/g, ""))) {
+      tokens.push({ text: chunk, kind: "ref" });
       continue;
     }
     const core = chunk.replace(/^[("'`]+|[)",.;!?]+$/g, "");

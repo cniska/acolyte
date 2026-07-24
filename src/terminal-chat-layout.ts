@@ -117,6 +117,8 @@ function assistantTokenSpan(token: MarkupToken, role: TerminalStyleRole): Termin
   switch (token.kind) {
     case "code":
       return { text: token.text.slice(1, -1), role: "assistant-code" };
+    case "ref":
+      return { text: token.text, role: "assistant-code" };
     case "bold":
       return { text: token.text.slice(2, -2), role: "assistant-bold" };
     case "path":
@@ -240,13 +242,20 @@ export function layoutTranscriptMessage(input: {
             { text: marker, role },
           ]
         : [{ text: " ".repeat(CONTENT_COLUMN - GUTTER + width(marker)), role: "user-fill" as const }];
-    const pad = Math.max(0, inner - (CONTENT_COLUMN - GUTTER) - width(marker) - width(text));
+    // Whitespace takes the fill role, not plain: the renderer extends `fill` only rightward from the
+    // first non-blank span, so a leading indent would otherwise leave a hole in the band.
+    const tokenSpans = tokenize(text).map((token) =>
+      /\S/.test(token.text) ? assistantTokenSpan(token, role) : { text: token.text, role: "user-fill" as const },
+    );
+    // Measured post-strip: the markup mapper drops delimiters, so the rendered width is below the raw line.
+    const rendered = tokenSpans.reduce((total, span) => total + width(span.text), 0);
+    const pad = Math.max(0, inner - (CONTENT_COLUMN - GUTTER) - width(marker) - rendered);
     return {
       fill: "user-fill" as const,
       spans: [
         gutterSpan,
         ...lead,
-        { text, role },
+        ...tokenSpans,
         ...(pad ? [{ text: " ".repeat(pad), role: "user-fill" as const }] : []),
       ],
     };

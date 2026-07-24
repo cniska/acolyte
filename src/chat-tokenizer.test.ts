@@ -100,8 +100,14 @@ describe("tokenize", () => {
       expect(tokens.find((t) => t.kind === "path")?.text).toBe("src/foo.ts:42");
     });
 
-    test("@ prefix is not a path", () => {
+    test("@ prefix is a ref, not a path", () => {
+      const tokens = tokenize("use @src/file.ts");
+      expect(tokens.find((t) => t.kind === "ref")?.text).toBe("@src/file.ts");
       expect(kinds("use @src/file.ts")).not.toContain("path");
+    });
+
+    test("@ without a path-like target stays plain", () => {
+      expect(kinds("ping @here now")).not.toContain("ref");
     });
 
     test("path inside parentheses", () => {
