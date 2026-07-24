@@ -205,7 +205,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     });
     const providerOptions = promptCacheProviderOptions(provider, cacheKey);
     const reasoning = ctx.reasoning;
-    const temperature = reasoning ? undefined : ctx.temperature;
     const streamOutput = await ctx.agent.stream(prompt, {
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
       installSideEffectSink: (sink) => {
@@ -242,7 +241,6 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
         }
         return renderReopenMessages(decision);
       },
-      ...(typeof temperature === "number" ? { temperature } : {}),
       ...(reasoning ? { reasoning } : {}),
       ...(providerOptions ? { providerOptions } : {}),
     });

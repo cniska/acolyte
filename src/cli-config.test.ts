@@ -34,12 +34,12 @@ describe("cli config", () => {
     expect(dimLines).toContain("locale:  en");
   });
 
-  test("list renders temperature scalar key", async () => {
+  test("list renders replyTimeoutMs scalar key", async () => {
     const { deps, dimLines } = createDeps({
-      readConfig: async () => ({ temperature: 0.2 }),
+      readConfig: async () => ({ replyTimeoutMs: 30000 }),
     });
     await configMode(["list"], deps);
-    expect(dimLines).toContain("temperature:  0.2");
+    expect(dimLines).toContain("replyTimeoutMs:  30000");
   });
 
   test("unset forwards key", async () => {
@@ -49,8 +49,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "temperature"], deps);
-    expect(calls).toEqual([{ key: "temperature", scope: "user" }]);
+    await configMode(["unset", "reasoning"], deps);
+    expect(calls).toEqual([{ key: "reasoning", scope: "user" }]);
   });
 
   test("unset accepts trailing scope flag", async () => {
@@ -60,8 +60,8 @@ describe("cli config", () => {
         calls.push({ key, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["unset", "temperature", "--project"], deps);
-    expect(calls).toEqual([{ key: "temperature", scope: "project" }]);
+    await configMode(["unset", "reasoning", "--project"], deps);
+    expect(calls).toEqual([{ key: "reasoning", scope: "project" }]);
   });
 
   test("set accepts trailing scope flag", async () => {
@@ -71,7 +71,7 @@ describe("cli config", () => {
         calls.push({ key, value, scope: options?.scope ?? "user" });
       },
     });
-    await configMode(["set", "temperature", "0.3", "--project"], deps);
-    expect(calls).toEqual([{ key: "temperature", value: "0.3", scope: "project" }]);
+    await configMode(["set", "reasoning", "high", "--project"], deps);
+    expect(calls).toEqual([{ key: "reasoning", value: "high", scope: "project" }]);
   });
 });

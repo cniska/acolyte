@@ -90,7 +90,6 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
     ],
     tools: [MEMORY_OBSERVE_TOOL],
     toolChoice: { type: "auto" },
-    temperature: 0,
   });
   return result.content
     .filter((part): part is LanguageModelV4ToolCall => part.type === "tool-call" && part.toolName === "memory-observe")

@@ -9,7 +9,6 @@ export const scopeSchema = z.enum(["user", "project"]);
 export type ConfigScope = z.infer<typeof scopeSchema>;
 
 const MAX_RUN_REPLY_TIMEOUT_MS = 600_000;
-const MAX_TEMPERATURE = 2;
 
 export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
 export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
@@ -20,16 +19,11 @@ const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
     (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
     z.number().int().min(min).max(max),
   );
-const parseTemperatureSchema = z.preprocess(
-  (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
-  z.number().min(0).max(MAX_TEMPERATURE),
-);
 
 export interface Config {
   port?: number;
   locale?: TranslationLocale;
   model?: string;
-  temperature?: number;
   distillModel?: string;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
@@ -46,7 +40,6 @@ export interface ResolvedConfig {
   port: number;
   locale: TranslationLocale;
   model: string;
-  temperature?: number;
   distillModel: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
@@ -63,7 +56,6 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   port: parseIntegerSchema(1, 65535),
   locale: translationLocaleSchema,
   model: nonEmptyStringSchema,
-  temperature: parseTemperatureSchema,
   openaiBaseUrl: nonEmptyStringSchema,
   anthropicBaseUrl: nonEmptyStringSchema,
   googleBaseUrl: nonEmptyStringSchema,
@@ -86,7 +78,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     locale: parseField(translationLocaleSchema, input.locale),
     model: parseField(nonEmptyStringSchema, input.model),
-    temperature: parseField(parseTemperatureSchema, input.temperature),
     distillModel: parseField(nonEmptyStringSchema, input.distillModel),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),

@@ -114,7 +114,6 @@ export type LifecycleInput = {
   taskId?: string;
   features: ResolvedFeatureFlags;
   reasoning?: ReasoningLevel;
-  temperature?: number;
   authRoute?: AuthRoute;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
@@ -151,6 +150,5 @@ export type RunContext = {
   toolCallStartedAt: Map<string, ToolCallStart>;
   sideEffectSink: SideEffectSink | null;
   reasoning?: ReasoningLevel;
-  temperature?: number;
   readonly authRoute?: AuthRoute;
 };

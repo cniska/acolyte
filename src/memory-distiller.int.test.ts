@@ -19,14 +19,16 @@ let fake: FakeProviderServer;
 let savedBaseUrl: string;
 let savedApiKey: string | undefined;
 let savedDistillModel: string;
+let lastRequestBody: Record<string, unknown> | undefined;
 
 beforeAll(() => {
   savedBaseUrl = appConfig.openai.baseUrl;
   savedApiKey = appConfig.openai.apiKey;
   savedDistillModel = appConfig.distillModel;
   fake = startFakeProviderServer({
-    handleRequest: (ctx) =>
-      createToolCallsPayload(ctx.model, ctx.responseCounter, [
+    handleRequest: (ctx) => {
+      lastRequestBody = ctx.body as Record<string, unknown>;
+      return createToolCallsPayload(ctx.model, ctx.responseCounter, [
         {
           id: `fc_proj_${ctx.responseCounter}`,
           callId: `call_proj_${ctx.responseCounter}`,
@@ -45,7 +47,8 @@ beforeAll(() => {
           name: "memory-observe",
           args: JSON.stringify({ scope: "session", content: "fixing memory search bug" }),
         },
-      ]),
+      ]);
+    },
   });
   (appConfig.openai as { baseUrl: string }).baseUrl = fake.baseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = "fake-key";
@@ -112,5 +115,20 @@ describe("memoryDistiller integration", () => {
     expect(contents).toContain("project uses Bun as runtime");
     expect(contents).toContain("prefers concise responses");
     expect(contents).not.toContain("fixing memory search bug");
+  });
+
+  test("sends no explicit temperature so reasoning-model routes do not reject the commit", async () => {
+    const store = createStore();
+    const distiller = createMemoryDistiller({ store, policy: testPolicy });
+
+    await distiller.commit({
+      sessionId: "sess_inttest003",
+      resourceId: "proj_inttest003",
+      messages: [{ role: "user", content: "hello" }],
+      output: "hi",
+    });
+
+    expect(lastRequestBody).toBeDefined();
+    expect(lastRequestBody).not.toHaveProperty("temperature");
   });
 });

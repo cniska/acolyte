@@ -33,7 +33,6 @@ export const appConfig = {
     baseUrl: fileConfig.vercelBaseUrl,
   },
   model: fileConfig.model,
-  temperature: fileConfig.temperature,
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
   embeddingModel: fileConfig.embeddingModel,

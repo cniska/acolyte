@@ -68,12 +68,11 @@ function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
 }
 
 describe("phaseGenerate", () => {
-  test("prompt cache options do not suppress temperature without reasoning", async () => {
+  test("forwards prompt cache options", async () => {
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({
       model: "openai/gpt-5-mini",
       reasoning: undefined,
-      temperature: 0.42,
       agent: {
         id: "test-agent",
         name: "test-agent",
@@ -98,7 +97,6 @@ describe("phaseGenerate", () => {
 
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
-    expect(capturedOptions?.temperature).toBe(0.42);
     expect(capturedOptions?.providerOptions?.openai?.promptCacheKey).toBeString();
   });
 
@@ -152,12 +150,11 @@ describe("phaseGenerate", () => {
     expect(start?.fields).not.toHaveProperty("auth_route");
   });
 
-  test("forwards the reasoning level as a call option and suppresses temperature", async () => {
+  test("forwards the reasoning level as a call option", async () => {
     let capturedOptions: StreamOptions | undefined;
     const ctx = createRunContext({
       model: "anthropic/claude-opus-4-8",
       reasoning: "high",
-      temperature: 0.42,
       agent: {
         id: "test-agent",
         name: "test-agent",
@@ -183,9 +180,7 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     expect(capturedOptions?.reasoning).toBe("high");
-    // Reasoning models reject an explicit temperature, and the deprecated thinking
-    // budget must never be assembled by hand.
-    expect(capturedOptions?.temperature).toBeUndefined();
+    // The deprecated thinking budget must never be assembled by hand.
     expect(capturedOptions?.providerOptions?.anthropic).toBeUndefined();
   });
 
