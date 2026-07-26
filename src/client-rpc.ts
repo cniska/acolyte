@@ -66,6 +66,7 @@ export class RpcClient implements Client {
         if (settled) return;
         settled = true;
         cleanup();
+        this.openSockets.delete(socket);
         reject(new Error(connectionHelpMessage(this.apiUrl)));
       };
       socket.addEventListener("open", onOpen);
