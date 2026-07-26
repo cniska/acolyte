@@ -35,11 +35,14 @@ const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
 export const DEFAULT_READ_CONTEXT_LINES = 20;
 
-export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
+export type FindFilesResult = { output: string; totalMatches: number };
+
+export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<FindFilesResult> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
   const multi = patterns.length > 1;
   const sections: string[] = [];
+  let totalMatches = 0;
 
   for (const pattern of patterns) {
     const trimmed = pattern.trim();
@@ -57,6 +60,7 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
       return a.length - b.length;
     });
     const ranked = matched.slice(0, maxResults).map((path) => `./${path}`);
+    totalMatches += matched.length;
 
     if (multi) sections.push(`--- ${trimmed} ---`);
     sections.push(ranked.length > 0 ? ranked.join("\n") : "No matches.");
@@ -67,7 +71,7 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
     }
   }
 
-  return sections.join("\n");
+  return { output: sections.join("\n"), totalMatches };
 }
 
 function toWorkspaceRelativePattern(pattern: string, workspace: string): string {

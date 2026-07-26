@@ -43,21 +43,23 @@ function createFindFilesTool(input: ToolkitInput) {
       kind: z.literal("file-find"),
       pattern: z.string().min(1),
       matches: z.number().int().nonnegative(),
+      truncated: z.boolean(),
       paths: z.array(z.string().min(1)),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
         const patterns = [toolInput.pattern];
-        const raw = await findFiles(input.workspace, patterns);
-        const paths = findResultPaths(raw);
+        const { output, totalMatches } = await findFiles(input.workspace, patterns);
+        const paths = findResultPaths(output);
         emitParts(findSummaryParts(paths, patterns, "tool.label.file_find"), "file-find", input.onOutput, callId);
         return {
           kind: "file-find" as const,
           pattern: toolInput.pattern,
-          matches: paths.length,
+          matches: totalMatches,
+          truncated: paths.length < totalMatches,
           paths,
-          output: raw,
+          output,
         };
       });
     },

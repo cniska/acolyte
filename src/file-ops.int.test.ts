@@ -542,7 +542,18 @@ describe("findFiles", () => {
     const { tools } = toolsForAgent({ workspace });
     const result = await tools.findFiles.execute({ pattern: "src/*.ts" }, "call_find_truncated");
     expect(result.result.paths).toHaveLength(40);
+    expect(result.result.matches).toBe(45);
+    expect(result.result.truncated).toBe(true);
     expect(result.result.output).toContain("45 files matched, showing the first 40");
+  });
+
+  test("reports an uncapped result as complete", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/*-toolkit.ts" }, "call_find_untruncated");
+    expect(result.result.matches).toBe(2);
+    expect(result.result.truncated).toBe(false);
+    expect(result.result.output).not.toContain("Narrow the pattern");
   });
 });
 
