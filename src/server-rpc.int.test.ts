@@ -9,6 +9,7 @@ import {
   withFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { waitForServer } from "../scripts/wait-server";
+import { RpcClient } from "./client-rpc";
 import { testEnvForHome } from "./int-test-utils";
 import { configDir } from "./paths";
 import { tempDir } from "./test-utils";
@@ -137,6 +138,15 @@ async function waitForRpcCondition(
   });
 }
 
+async function waitForAsyncCondition(check: () => Promise<boolean>, label: string, timeoutMs = 15_000): Promise<void> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= timeoutMs) {
+    if (await check().catch(() => false)) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
 function acceptedTaskIdFor(messages: RpcEnvelope[], requestId: string): string | null {
   const accepted = messages.find(
     (m) => m.id === requestId && m.type === "chat.accepted" && typeof m.taskId === "string",
@@ -158,6 +168,50 @@ describe("server rpc websocket queue", () => {
     });
     expect(wrongKey.status).toBe(401);
   });
+
+  test("closing the client cancels its in-flight task", async () => {
+    await withFakeProviderServer(
+      async (providerBaseUrl) => {
+        const port = randomTestPort();
+        const apiKey = "rpc_test_key";
+        await startServerForRpcTest(port, apiKey, { providerBaseUrl });
+
+        const client = new RpcClient(`http://127.0.0.1:${port}`, apiKey);
+        let streaming = false;
+        const reply = client
+          .replyStream({
+            request: {
+              message: "Do a long-running analysis with many steps before answering.",
+              history: [],
+              model: "gpt-5-mini",
+              sessionId: "sess_rpcclientclose",
+            },
+            onEvent: () => {
+              streaming = true;
+            },
+          })
+          .catch((error: unknown) => error);
+
+        await waitForAsyncCondition(async () => streaming, "in-flight task to start streaming");
+
+        client.close();
+
+        const error = (await reply) as Error & { taskId?: string };
+        // Classified as a cancellation, not a dropped stream: a dropped stream would start a
+        // remote-task followup that reopens a socket after exit.
+        expect(error.name).toBe("AbortError");
+        const taskId = error.taskId;
+        if (!taskId) throw new Error(`expected a taskId on the closed stream error: ${error.message}`);
+
+        await waitForAsyncCondition(
+          async () => (await client.taskStatus({ taskId }))?.state === "cancelled",
+          "task to be cancelled on disconnect",
+        );
+        client.close();
+      },
+      { responseDelayMs: 5000 },
+    );
+  }, 30_000);
 
   test("task.status and chat.abort are available", async () => {
     await withFakeProviderServer(

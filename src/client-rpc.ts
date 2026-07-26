@@ -27,6 +27,16 @@ export class RpcClient implements Client {
     return new URL(rpcUrlFromApiUrl(this.apiUrl)).toString();
   }
 
+  private readonly openSockets = new Set<WebSocket>();
+  private released = false;
+
+  // Quitting must not leave work running: the daemon cancels a connection's tasks when
+  // it closes, but an in-flight request holds its socket open until the reply lands.
+  close(): void {
+    this.released = true;
+    for (const socket of [...this.openSockets]) this.closeSocket(socket);
+  }
+
   private async openSocket(): Promise<WebSocket> {
     const url = this.rpcUrl();
     const protocols = this.apiKey ? [`bearer.${this.apiKey}`] : undefined;
@@ -35,6 +45,8 @@ export class RpcClient implements Client {
       let socket: WebSocket;
       try {
         socket = new WebSocket(url, protocols);
+        this.openSockets.add(socket);
+        socket.addEventListener("close", () => this.openSockets.delete(socket), { once: true });
       } catch (error) {
         if (isConnectionFailure(error)) reject(new Error(connectionHelpMessage(this.apiUrl)));
         else reject(error);
@@ -54,6 +66,7 @@ export class RpcClient implements Client {
         if (settled) return;
         settled = true;
         cleanup();
+        this.openSockets.delete(socket);
         reject(new Error(connectionHelpMessage(this.apiUrl)));
       };
       socket.addEventListener("open", onOpen);
@@ -62,6 +75,7 @@ export class RpcClient implements Client {
   }
 
   private closeSocket(ws: WebSocket): void {
+    this.openSockets.delete(ws);
     try {
       ws.close();
     } catch {
@@ -229,6 +243,15 @@ export class RpcClient implements Client {
       };
       const onClose = () => {
         cleanup();
+        // Releasing the connection is a cancellation, not a dropped stream: classifying it
+        // as a failure would start a remote-task followup that reopens a socket on exit.
+        if (this.released) {
+          const abortError = new Error("Request aborted") as Error & { taskId?: TaskId };
+          abortError.name = "AbortError";
+          abortError.taskId = acceptedTaskId;
+          reject(abortError);
+          return;
+        }
         reject(createRemoteError("RPC stream closed before final reply", { taskId: acceptedTaskId }));
       };
       const onError = () => {

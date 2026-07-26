@@ -93,11 +93,16 @@ export async function runChat(
   try {
     onMount?.(app);
     await app.waitUntilExit();
+    // Release before persisting: the daemon cancels this connection's tasks on close, and
+    // a stalled disk write must not hold a cancelled turn open.
+    props.client.close();
     // The last turn's turn-boundary persist ran before its transcript row
     // committed; catch it up here. Signal/fatal exits process.exit before this
     // resumes, so it stays clean-exit-only.
     await props.persist();
   } finally {
+    // Idempotent; repeated here so a throw above still releases the connection.
+    props.client.close();
     setLogSink(null);
   }
 }

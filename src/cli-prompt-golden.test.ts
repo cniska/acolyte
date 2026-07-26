@@ -38,6 +38,7 @@ function client(events: StreamEvent[], reply: { output: string; error?: string }
     },
     status: async () => ({}),
     taskStatus: async () => null,
+    close: () => {},
   };
 }
 

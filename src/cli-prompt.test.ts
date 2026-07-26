@@ -26,6 +26,7 @@ function createStreamingClient(events: StreamEvent[]): Client {
     },
     status: async () => ({}),
     taskStatus: async () => null,
+    close: () => {},
   };
 }
 
@@ -61,6 +62,7 @@ describe("cli-prompt", () => {
       }),
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     const { ok } = await runPromptAndCapture("hello", session, client);
@@ -74,6 +76,7 @@ describe("cli-prompt", () => {
       replyStream: async () => ({ outputStreamed: false, output: "done", model: "gpt-5-mini", activeSkills: [] }),
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     await runPromptAndCapture("drop the build skill", session, client);
@@ -92,6 +95,7 @@ describe("cli-prompt", () => {
       }),
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     await runPromptAndCapture("use the build skill", session, client);
@@ -110,6 +114,7 @@ describe("cli-prompt", () => {
       }),
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     const { ok } = await runPromptAndCapture("fix it", session, client);
@@ -184,6 +189,7 @@ describe("cli-prompt", () => {
       },
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     const { output } = await runPromptAndCapture("hi", createTestSession(), client);
@@ -212,6 +218,7 @@ describe("cli-prompt", () => {
       },
       status: async () => ({}),
       taskStatus: async () => null,
+      close: () => {},
     };
 
     const writes: string[] = [];
