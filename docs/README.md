@@ -7,7 +7,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 ## Overview
 
 - [Features](./features.md) — shipped, user-visible capabilities
-- [Why Acolyte](./why-acolyte.md) — observable execution and full developer control over AI coding
+- [Why Acolyte?](./why-acolyte.md) — observable execution and full developer control over AI coding
 - [Comparison](./comparison.md) — how Acolyte compares to other AI coding agents
 - [Benchmarks](./benchmarks.md) — measured code quality comparisons across agents
 - [Soul](./soul.md) — product persona and operating principles
@@ -22,14 +22,14 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 
 ## Runtime
 
-- [TUI](./tui.md) — React terminal UI with fuzzy search, autocomplete, model picker, and code editing
+- [TUI Renderer](./tui.md) — React terminal UI with fuzzy search, autocomplete, model picker, and code editing
 - [Chat Presentation](./chat-presentation.md) — the one-directional chat-state-to-terminal pipeline: present, lay out, resolve, render
 - [Tooling](./tooling.md) — layered tool execution with contracts and effects
 - [Sessions](./sessions.md) — chat context, message history, and session storage backends
 - [Tasks](./tasks.md) — task lifecycle, queue policy, and state transitions
 - [Memory](./memory.md) — structured facts persisted across session, project, and user tiers
 - [Cloud](./cloud.md) — portable agent identity via cloud-hosted memory and sessions
-- [Context budgeting](./context-budgeting.md) — per-call prompt planning, bounded payloads, and usage breakdowns
+- [Context Budgeting](./context-budgeting.md) — per-call prompt planning, bounded payloads, and usage breakdowns
 
 ## Development
 
@@ -40,6 +40,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 
 - [CLI](./cli.md) — commands for chat, run, server, memory, config, logs, and trace
 - [Configuration](./configuration.md) — settings for models, providers, memory, and runtime behavior
+- [Paths](./paths.md) — XDG-style global directories and project configuration paths
 - [Protocol](./protocol.md) — transport-facing contract between client and server
 - [Localization](./localization.md) — translatable copy separated from protocol contracts
 - [Updates](./updates.md) — versioning, auto-update, and breaking change policy

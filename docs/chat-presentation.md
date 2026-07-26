@@ -1,8 +1,8 @@
-# Chat Presentation Pipeline
+# Chat Presentation
 
 Acolyte's chat is a one-directional pipeline that turns chat state into terminal text through stages that cannot reach back into each other.
 
-Semantics never see pixels, terminal geometry has a single owner, and a fixed theme is the only place colors live. A visual redesign is therefore a change to layout and theme that provably cannot alter agent behavior or corrupt the transcript, and the interactive chat and the CLI's plain output consume the same layout so the two cannot drift.
+Semantics never see pixels, terminal geometry has one owner, and the fixed theme owns colors. A visual redesign therefore changes layout and theme without altering agent behavior or corrupting the transcript. Interactive chat and CLI plain output consume the same layout.
 
 ## The stages
 
@@ -10,47 +10,62 @@ Semantics never see pixels, terminal geometry has a single owner, and a fixed th
 publish → present → lay out → resolve → render
 ```
 
-- **publish**: a lossless snapshot of current chat state (messages, running state, composer text, cursor). No colors, no widths.
-- **present**: the derived semantic view (wording, hints, outcome labels, identity). Still no pixels.
-- **lay out**: turns the presentation into a terminal scene, wrapping text and placing gutters, markers, borders, and the caret, tagging each piece with a style role. The only stage that knows the terminal width.
-- **resolve**: a fixed theme maps each style role to a terminal-neutral style.
-- **render**: the renderer serializes styles to ANSI and prints.
+| Stage | Input and responsibility |
+|---|---|
+| **Publish** | Lossless chat state: messages, running state, composer text, and cursor. No colors or widths. |
+| **Present** | Derived semantics: wording, hints, outcome labels, and identity. No pixels. |
+| **Lay out** | Builds the terminal scene: wrapping, gutters, markers, borders, caret, and style roles. This is the only width-aware stage. |
+| **Resolve** | Maps each style role through the fixed theme to a terminal-neutral style. |
+| **Render** | Serializes styles to ANSI and prints. |
 
 The `*Input` / `*Presentation` suffixes on the contracts encode the direction: raw published state (`ChatViewportPresentationInput`) flows into derived semantics (`ChatViewportPresentation`), never the reverse.
 
 ## Style roles and the theme
 
-A **style role** is a name for how a piece of text should look (`muted`, `cursor`, `diff-added`, `selected`), never a color. Layout may only pick from a finite enum of roles; the fixed terminal theme is the single place a role becomes a concrete style (foreground, background, bold, dim, inverse). There are no user themes, no light/dark variants, no theme names. One internal theme.
+A **style role** names how text should look (`muted`, `cursor`, `diff-added`, `selected`); it is never a color. Layout selects from a finite role enum. The fixed terminal theme is the only place a role becomes foreground, background, bold, dim, or inverse.
 
-This is the seam that makes a facelift safe: it moves roles and their resolutions, nothing upstream. Marker glyphs, gutters, widths, borders, and wording are layout policy, not theme; the theme owns colors and text attributes only.
-
-The theme states each role's literal style at the point of definition rather than referencing a shared palette layer: reading the theme tells you the actual style with no indirection to chase. The one exception is a genuinely shared identity constant (the brand color, used by several roles), which is honest single-sourcing rather than premature deduplication.
+- **Theme owns** colors and text attributes. There are no user themes, variants, or theme names.
+- **Layout owns** wording, marker glyphs, gutters, widths, borders, and geometry.
+- **Literal styles stay local** to the theme table so its rendered result is readable without chasing a palette layer. The shared brand color is the sole shared identity constant.
 
 ## Terminal scene
 
-The scene is the physical output of *lay out*: an ordered list of styled `lines` (each a list of `{text, role}` spans), an optional `cursor` (row and column), ordered `sections`, and each line's optional `fill`. It is the only place display-cell measurement, grapheme-safe wrapping, gutters, borders, background fill, and cursor geometry live. It contains no React nodes.
+The scene is the physical output of *lay out*. It contains no React nodes.
 
-A **line fill** is a line-level role whose background paints the row's content region (from the first non-blank span to the line end), leaving leading indentation unpainted. This is how a diff row gets a full-width background band spanning gutter, text, and trailing pad while the span foregrounds stay independent.
+| Scene element | Meaning |
+|---|---|
+| `lines` | Ordered styled lines, each made of `{text, role}` spans. |
+| `cursor` | Optional row and column. |
+| `sections` | `header`, one section per transcript row, optional `pending`, `composer`, and `footer`. |
+| `fill` | Optional line-level background role. |
 
-The scene is cut into identified **sections** (`header`, one per transcript row, an optional `pending` block, `composer`, and `footer`). A section is **finalized** when its bytes can never change again. Streaming prose, active tools, pending rows, and mutable geometry are never finalized.
+The scene is the only home for display-cell measurement, grapheme-safe wrapping, gutters, borders, background fill, and cursor geometry. A line fill paints from the first non-blank span to the row end, leaving leading indentation unpainted; diff bands can therefore span gutter, text, and trailing pad while span foregrounds remain independent.
+
+A section is **finalized** only when its bytes can never change. Streaming prose, active tools, pending rows, and mutable geometry are never finalized.
 
 ## Promotion
 
-Only finalized sections may enter static scrollback, and their physical lines must be exactly what rendered live. As finalized sections scroll past the live viewport they are frozen into immutable slices, committed once to the terminal's own scrollback, and evicted from the active scene, so the repainting live tail stays small and the scene is always built from the active transcript only.
+```text
+finalized section → immutable slice → terminal scrollback → removed from active scene
+```
 
-The rejected alternative, a full-transcript scene with an advancing line-index boundary, is incoherent under resize, since line indices shift on rewrap. Freezing whole sections in section space survives a width change; a line boundary does not.
-
-Sessions persist semantic transcript rows, not physical scenes. A resumed session re-lays-out its rows under the current terminal constraints, reproducing byte-exact output.
+- **Commit once:** a promoted slice's physical lines are exactly what rendered live.
+- **Keep the tail small:** promoted slices leave the active scene, so repainting only rebuilds active transcript content.
+- **Promote sections, not lines:** resize changes line indices on rewrap; whole sections remain stable.
+- **Resume semantically:** sessions persist transcript rows, not physical scenes. Resume re-lays them out under current constraints.
 
 ## Layout ownership
 
-Terminal layout is the single geometry owner. It owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, background fill, ellipsis, diff line-number layout, composer geometry, and cursor coordinates. Sub-layouts stay column-origin-free: they receive a width budget and lay out against their own column zero. The composition step is the only place that knows the physical column map, applying insets and frames there so the renderer and the shared tool-layout primitives never learn about chat chrome. This keeps CLI plain-output parity safe by construction: the CLI adapter and the interactive renderer consume the same semantic tool layout and must not diverge in tool ordering, headers, diff gutters, width fitting, or truncation.
-
-Any element laid out into a width budget truncates with a trailing ellipsis when its content exceeds that budget, whether the budget is the full terminal width or a sub-column. This is layout policy expressed through one grapheme-aware helper.
+- **One owner:** layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, composer geometry, and cursor coordinates.
+- **Local coordinates:** sub-layouts receive only a width budget and lay out from column zero. Composition alone applies physical insets and frames.
+- **Shared tool layout:** CLI output and interactive chat consume the same tool layout, preserving ordering, headers, diff gutters, fitting, and truncation.
+- **One truncation rule:** content exceeding any width budget, terminal-wide or nested, receives a trailing ellipsis through the grapheme-aware layout helper.
 
 ## Input ownership
 
-A renderer-independent input controller owns the composer's logical text and cursor, edited through a geometry-free reducer (insert, delete, word motion, clear, absolute set-cursor). Typing dispatches actions; layout resolves visual up/down motion to a logical offset before dispatch, so the reducer never sees widths. The scene draws the caret via the `cursor` role, and layout is the single source of the caret column so the caret and the rendered wrap cannot disagree.
+- **Controller:** owns logical composer text and cursor through a geometry-free reducer: insert, delete, word motion, clear, and absolute cursor placement.
+- **Layout:** resolves visual up/down motion to a logical offset before dispatch and is the sole owner of caret coordinates.
+- **Scene:** draws the caret with the `cursor` role, so its column cannot disagree with rendered wrapping.
 
 ## Invariants
 
