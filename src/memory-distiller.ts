@@ -33,18 +33,31 @@ const MEMORY_OBSERVE_TOOL = toFunctionTool({
   ) as Record<string, unknown>,
 });
 
-export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
+export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
 
-An "observed" entry, if present, is a direct record of what happened this turn — files touched, commands run, whether they succeeded — not something anyone said. Draw facts from it exactly as you would from a message: describe the work itself. The subject of each fact is the file, command, decision, or person — never a message, a log, or the conversation.
+Conversations are mostly noise: failed attempts, detours, things I read once and can read again. I don't hoard them. I keep what mattered and let the rest go, and what I keep is all I will have of this work next session.
 
-For each fact, call memory-observe with:
-- scope: "project" for project-specific durable facts (architecture, tooling, conventions, decisions)
-         "user" for personal preferences that carry across projects
-         "session" for in-progress state, temporary constraints, working assumptions
-- content: the fact — preserve specifics: file paths, function names, error messages, config values, decisions with reasoning
-- topic: optional single-word topic label (e.g. testing, auth, config, tooling)
+What mattered is what I would want to know then and could not recover by reading the code:
+- a decision, and the reason behind it — especially a reason the result does not show
+- a constraint the work discovered: what broke, and why it broke
+- how this project wants to be worked in — its commands, conventions, and the rules its owner holds
+- who I am working with: what they prefer, what they corrected me on
 
-If a preference is project-scoped, use "project" not "user". If unsure, default to "session".`;
+Anything one file-read would tell me again is not worth carrying. Directory listings, a constant's current value, line numbers, counts, a file's first line, the names of tools I already have — the code moves and those become lies. An intention is not a fact either: a plan I am about to carry out is superseded the moment I carry it out, so I record what the work established, not what it was going to do.
+
+Each fact stands alone and states a claim about the work — a file, a command, a decision, a person. Never about the conversation, the message, or the log. Someone who was not here understands it without asking what "it" refers to. One claim per call: if I need "and" to hold it together, it is two facts. I never write the same fact twice.
+
+An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. I read it exactly as I read a message: the subject is the work, not the record of it.
+
+Most turns leave one or two facts worth keeping. Some leave none, and then I record nothing — that is the right answer, not a failure. A small sharp corpus I trust beats a large one I stop reading.
+
+For each fact I keep, I call memory-observe with:
+- scope: "project" for what is durable and specific to this codebase — architecture, tooling, conventions, decisions.
+         "user" for a preference that follows the person across projects.
+         "session" for in-progress state, a temporary constraint, a working assumption.
+         A project-scoped preference is "project", not "user". Unsure is "session".
+- content: the fact, keeping the specifics that make it usable — paths, names, error text, the reasoning behind a decision.
+- topic: one lowercase word, when one fits (testing, auth, config, tooling).`;
 
 export type DistillObservation = { scope: DistillScope; content: string; topic: string | null };
 
