@@ -103,6 +103,7 @@ export async function installUpdate(
   checksumUrl: string | null,
   onProgress?: ProgressCallback,
 ): Promise<InstallResult> {
+  if (!checksumUrl) return { success: false, error: "Update checksum is unavailable" };
   const binaryPath = process.execPath;
   if (!isSelfUpdatableBinary(binaryPath))
     return { success: false, error: `refusing to overwrite ${binaryPath}: not the installed acolyte binary` };
@@ -113,7 +114,7 @@ export async function installUpdate(
 
   try {
     await downloadToFile(downloadUrl, tarPath, onProgress);
-    if (checksumUrl) await verifyChecksum(tarPath, checksumUrl);
+    await verifyChecksum(tarPath, checksumUrl);
 
     await mkdir(extractDir, { recursive: true });
     const extractedPath = await extractBinary(tarPath, extractDir);

@@ -32,9 +32,14 @@ describe("isSelfUpdatableBinary", () => {
 });
 
 describe("installUpdate", () => {
+  test("refuses an update without a checksum", async () => {
+    const result = await installUpdate("https://invalid.example/acolyte.tar.gz", null);
+    expect(result).toEqual({ success: false, error: "Update checksum is unavailable" });
+  });
+
   test("refuses to overwrite the runtime when not the acolyte binary", async () => {
     expect(isSelfUpdatableBinary(process.execPath)).toBe(false);
-    const result = await installUpdate("https://invalid.example/acolyte.tar.gz", null);
+    const result = await installUpdate("https://invalid.example/acolyte.tar.gz", "https://invalid.example/checksum");
     expect(result.success).toBe(false);
     expect(result.error).toContain("refusing to overwrite");
   });
