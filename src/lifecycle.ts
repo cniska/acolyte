@@ -9,7 +9,7 @@ import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
 import { listMcpTools } from "./mcp-client";
-import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
+import { defaultMemoryPolicy, type MemoryCommitContext, type MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
@@ -159,7 +159,13 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     { role: "user", content: ctx.request.message },
   ];
   const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
-  const distillTokens = estimateDistillPromptTokens(messages, output, activity);
+  // Upper bound: the commit runs in the background, so the turn can only estimate. The distiller
+  // never sends more than one window and usually far less, having already seen the earlier turns.
+  const distillTokens = estimateDistillPromptTokens(
+    messages.slice(-defaultMemoryPolicy.contextMessageWindow),
+    output,
+    activity,
+  );
   ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {

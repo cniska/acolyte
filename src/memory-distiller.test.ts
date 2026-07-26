@@ -107,6 +107,33 @@ describe("high-water mark", () => {
     expect(seen[1]).not.toContain("turn one");
   });
 
+  test("a failed write leaves the messages re-readable next commit", async () => {
+    const seen: string[] = [];
+    const store = createMockStore();
+    let failWrite = true;
+    store.write = async () => {
+      if (failWrite) throw new Error("disk full");
+    };
+    const distiller = createMemoryDistiller({
+      store,
+      runner: async (_prompt, userContent) => {
+        seen.push(userContent);
+        return [{ scope: "session", content: "a durable fact", topic: null }];
+      },
+      policy: testPolicy,
+    });
+    await expect(
+      distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" }),
+    ).rejects.toThrow();
+    failWrite = false;
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [...turnOne, { role: "user", content: "turn two" }],
+      output: "done two",
+    });
+    expect(seen[1]).toContain("turn one");
+  });
+
   test("each session keeps its own mark", async () => {
     const seen: string[] = [];
     const distiller = createMemoryDistiller({

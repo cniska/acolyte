@@ -132,8 +132,12 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
-  // In-memory: with scope-wide dedup, a mark lost on restart costs one redundant distill, not a duplicate.
+  // In-memory: a mark lost on restart costs one redundant distill, whose facts are then mostly
+  // absorbed by scope dedup. Persisting it would buy little and outlive the history it indexes.
   const distilledThrough = new Map<string, number>();
+  const markDistilled = (sessionId: string | undefined, through: number): void => {
+    if (sessionId) distilledThrough.set(sessionId, through);
+  };
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
@@ -141,16 +145,21 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       if (ctx.messages.length < policy.messageThreshold) return;
 
       const ds = deps.store ?? (await getCachedStore());
-      const alreadyDistilled = ctx.sessionId ? (distilledThrough.get(ctx.sessionId) ?? 0) : 0;
+      const marked = ctx.sessionId ? (distilledThrough.get(ctx.sessionId) ?? 0) : 0;
+      // A mark past the end means history was rewritten under us (an aborted turn is spliced
+      // out), so it indexes messages that no longer exist — distrust it rather than skip the turn.
+      const alreadyDistilled = marked <= ctx.messages.length ? marked : 0;
       const start = Math.max(alreadyDistilled, ctx.messages.length - policy.contextMessageWindow, 0);
       const recentMessages = ctx.messages.slice(start);
       const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
       const observations = await runner(DISTILLER_PROMPT, distillInput);
-      if (ctx.sessionId) distilledThrough.set(ctx.sessionId, ctx.messages.length);
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
-      if (filtered.length === 0) return;
+      if (filtered.length === 0) {
+        markDistilled(ctx.sessionId, ctx.messages.length);
+        return;
+      }
 
       const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity);
       let totalTokens = promptTokens;
@@ -168,6 +177,8 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         else if (obs.scope === "user") userCount++;
         else sessionCount++;
       }
+      // Only once the facts are persisted: a store failure must leave those messages re-readable.
+      markDistilled(ctx.sessionId, ctx.messages.length);
 
       log.debug("memory.distill.commit_done", {
         session: sessionCount,
