@@ -308,6 +308,60 @@ describe("traceMode", () => {
     expect(text).toContain("status=error");
   });
 
+  test("compact output renders the memory commit and its digest coverage", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:05.000Z",
+      taskId: "task_1",
+      event: "lifecycle.summary",
+      fields: { model_calls: "1", tool_calls: "0", has_error: "false" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:06.000Z",
+      taskId: "task_1",
+      event: "lifecycle.memory.commit_done",
+      fields: {
+        session_scoped_facts: "2",
+        project_promoted_facts: "1",
+        activity_files: "3",
+        activity_commands: "1",
+        distill_tokens: "537",
+      },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    const text = output();
+    expect(text).toContain("memory  facts=3");
+    expect(text).toContain("files=3");
+    expect(text).toContain("commands=1");
+    expect(text).toContain("distill_tokens=537");
+  });
+
+  test("compact output surfaces a failed memory commit", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:06.000Z",
+      taskId: "task_1",
+      event: "lifecycle.memory.commit_failed",
+      fields: { message: "Bad Request" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    expect(output()).toContain("memory  commit failed: Bad Request");
+  });
+
   test("compact output hides setup events", async () => {
     const store = createTestStore();
     store.write({

@@ -186,6 +186,35 @@ describe("scheduleMemoryCommit", () => {
     expect(calls).toEqual([{ sessionId: "sess_test0001" }]);
   });
 
+  test("reports task-activity digest coverage on the commit events", async () => {
+    const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
+    scheduleMemoryCommit(
+      {
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+        activity: {
+          filesChanged: ["src/a.ts", "src/b.ts"],
+          commands: [{ command: "bun test", failed: true }],
+          errors: [],
+        },
+      },
+      (event, fields) => {
+        events.push({ event, fields });
+      },
+      undefined,
+      async () => undefined,
+      async (_key: string, job: () => Promise<void>) => {
+        await job();
+      },
+    );
+    await Promise.resolve();
+    for (const name of ["lifecycle.memory.commit_scheduled", "lifecycle.memory.commit_done"]) {
+      const fields = events.find((e) => e.event === name)?.fields;
+      expect(fields).toMatchObject({ activity_files: 2, activity_commands: 1, activity_errors: 0 });
+    }
+  });
+
   test("logs debug event when commit fails", async () => {
     const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(

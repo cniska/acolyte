@@ -2,6 +2,7 @@ import { invariant } from "./assert";
 import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { parseError } from "./error-handling";
 import { field } from "./field";
+import { formatShellCommand } from "./shell-ops";
 import type {
   EffectOutput,
   PostToolContext,
@@ -49,6 +50,24 @@ function extractExitCode(value: unknown): number | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const exitCode = (value as { exitCode?: unknown }).exitCode;
   return typeof exitCode === "number" && Number.isInteger(exitCode) ? exitCode : undefined;
+}
+
+// Command-running tools carry the resolved command on their output, not their input args
+// (shell-run takes cmd + args[]), so on success the executed command comes from the result.
+function extractCommand(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const command = (value as { command?: unknown }).command;
+  return typeof command === "string" && command.length > 0 ? command : undefined;
+}
+
+// A throwing tool (timeout, spawn failure) produces no result, so the args are the only
+// surviving record of what ran — and a command that timed out is exactly the durable fact
+// worth keeping. Mirrors shell-run's own display formatting.
+function commandFromArgs(args: Record<string, unknown>): string | undefined {
+  const cmd = args.cmd;
+  if (typeof cmd !== "string" || cmd.length === 0) return undefined;
+  const rest = Array.isArray(args.args) ? args.args.filter((a): a is string => typeof a === "string") : [];
+  return formatShellCommand({ cmd, args: rest });
 }
 
 type ToolRunInput<T> = {
@@ -146,11 +165,12 @@ function readCachedResult<T>(
 function recordToolSuccess<T>(session: SessionContext, toolId: string, args: Record<string, unknown>, result: T): void {
   recordCall(session, toolId, args, hashResultValue(result), "succeeded", {
     exitCode: extractExitCode(result),
+    command: extractCommand(result),
   });
 }
 
 function recordToolFailure(session: SessionContext, toolId: string, args: Record<string, unknown>): void {
-  recordCall(session, toolId, args, undefined, "failed");
+  recordCall(session, toolId, args, undefined, "failed", { command: commandFromArgs(args) });
 }
 
 async function returnCachedResult<T>(

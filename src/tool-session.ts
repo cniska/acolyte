@@ -30,7 +30,7 @@ export function recordCall(
   args: Record<string, unknown>,
   resultHash?: string,
   status: ToolCallStatus = "succeeded",
-  meta?: { exitCode?: number },
+  meta?: { exitCode?: number; command?: string },
 ): void {
   session.callLog.push({ toolName, args, taskId: session.taskId, resultHash, status, ...meta });
 }

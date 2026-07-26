@@ -17,6 +17,7 @@ import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
+import { renderTaskActivity, type TaskActivity } from "./task-activity";
 import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
@@ -34,6 +35,8 @@ const MEMORY_OBSERVE_TOOL = toFunctionTool({
 
 export const DISTILLER_PROMPT = `Extract concrete facts from this conversation.
 
+An "observed" entry, if present, is a direct record of what happened this turn — files touched, commands run, whether they succeeded — not something anyone said. Draw facts from it exactly as you would from a message: describe the work itself. The subject of each fact is the file, command, decision, or person — never a message, a log, or the conversation.
+
 For each fact, call memory-observe with:
 - scope: "project" for project-specific durable facts (architecture, tooling, conventions, decisions)
          "user" for personal preferences that carry across projects
@@ -45,15 +48,23 @@ If a preference is project-scoped, use "project" not "user". If unsure, default 
 
 export type DistillObservation = { scope: DistillScope; content: string; topic: string | null };
 
-export function createDistillInput(messages: readonly { role: string; content: string }[], output: string): string {
-  return [...messages, { role: "assistant", content: output }].map((m) => `${m.role}: ${m.content}`).join("\n\n");
+export function createDistillInput(
+  messages: readonly { role: string; content: string }[],
+  output: string,
+  activity?: TaskActivity,
+): string {
+  const digest = activity ? renderTaskActivity(activity) : "";
+  const turn = [...messages, { role: "assistant", content: output }];
+  const withActivity = digest ? [{ role: "observed", content: digest }, ...turn] : turn;
+  return withActivity.map((m) => `${m.role}: ${m.content}`).join("\n\n");
 }
 
 export function estimateDistillPromptTokens(
   messages: readonly { role: string; content: string }[],
   output: string,
+  activity?: TaskActivity,
 ): number {
-  return estimateTokens(DISTILLER_PROMPT) + estimateTokens(createDistillInput(messages, output));
+  return estimateTokens(DISTILLER_PROMPT) + estimateTokens(createDistillInput(messages, output, activity));
 }
 
 let cachedStore: MemoryStore | null = null;
@@ -129,14 +140,14 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
 
       const ds = deps.store ?? (await getCachedStore());
       const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
-      const distillInput = createDistillInput(recentMessages, ctx.output);
+      const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
       const observations = await runner(DISTILLER_PROMPT, distillInput);
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
       if (filtered.length === 0) return;
 
-      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output);
+      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity);
       let totalTokens = promptTokens;
       let projectCount = 0;
       let userCount = 0;

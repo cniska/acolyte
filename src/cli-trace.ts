@@ -66,6 +66,7 @@ function truncate(value: string, max: number): string {
 function extractToolArg(fields: Record<string, string>): string {
   if (fields.path) return fields.path;
   if (fields.command) return truncate(fields.command, 40);
+  if (fields.cmd) return truncate([fields.cmd, ...parsePaths(fields.args ?? "")].join(" "), 40);
   if (fields.pattern) return `"${fields.pattern}"`;
   if (fields.paths) return parsePaths(fields.paths).join(", ");
   return "";
@@ -95,11 +96,29 @@ function compactSummary(fields: Record<string, string>): string {
   return parts.join("  ");
 }
 
+function compactMemory(fields: Record<string, string>): string {
+  const facts =
+    Number(fields.project_promoted_facts ?? 0) +
+    Number(fields.user_promoted_facts ?? 0) +
+    Number(fields.session_scoped_facts ?? 0);
+  const parts = [`memory  facts=${facts}`];
+  const digest: string[] = [];
+  if (fields.activity_files && fields.activity_files !== "0") digest.push(`files=${fields.activity_files}`);
+  if (fields.activity_commands && fields.activity_commands !== "0") digest.push(`commands=${fields.activity_commands}`);
+  if (fields.activity_errors && fields.activity_errors !== "0") digest.push(`errors=${fields.activity_errors}`);
+  if (digest.length > 0) parts.push(`digest (${digest.join(" ")})`);
+  if (fields.distill_tokens && fields.distill_tokens !== "0") parts.push(`distill_tokens=${fields.distill_tokens}`);
+  return parts.join("  ");
+}
+
 function renderCompact(lines: LogLine[], out: CliOutput): void {
   const firstTs = lines[0]?.timestamp;
   const lastTs = lines[lines.length - 1]?.timestamp;
   const startLine = lines.find((l) => l.fields.event === "lifecycle.start");
   const summaryLine = lines.find((l) => l.fields.event === "lifecycle.summary");
+  const memoryLine = lines.find(
+    (l) => l.fields.event === "lifecycle.memory.commit_done" || l.fields.event === "lifecycle.memory.commit_failed",
+  );
   const taskId = lines[0]?.taskId ?? "unknown";
   const model = startLine?.fields.model ?? "unknown";
   const duration = firstTs && lastTs ? formatDuration(elapsedMs(firstTs, lastTs)) : "?";
@@ -175,6 +194,13 @@ function renderCompact(lines: LogLine[], out: CliOutput): void {
   if (summaryLine) {
     out.addSeparator();
     out.addHeader(compactSummary(summaryLine.fields));
+  }
+  if (memoryLine) {
+    out.addHeader(
+      memoryLine.fields.event === "lifecycle.memory.commit_failed"
+        ? `memory  commit failed: ${memoryLine.fields.message ?? "unknown"}`
+        : compactMemory(memoryLine.fields),
+    );
   }
 }
 

@@ -15,6 +15,8 @@ Every event carries a sequence number and is associated with its request, task, 
 
 The final summary includes model-call and tool-call counts, read/search/write totals, memory and session searches, duplicate discovery calls, budget exhaustion, and error state.
 
+Memory commit events carry the shape of what was distilled: the message count and output size, and the task-activity digest's coverage — how many changed files, commands, and failures the turn contributed.
+
 ## Inspecting a task
 
 `acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output and cache events, or `--json` for one JSON line per event.

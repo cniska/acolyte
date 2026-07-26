@@ -61,6 +61,7 @@ export type ToolCallRecord = {
   taskId?: string;
   resultHash?: string;
   exitCode?: number;
+  command?: string;
   status: ToolCallStatus;
 };
 

@@ -3,6 +3,7 @@ import type { IsoDateTimeString } from "./datetime";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
 import type { ResourceId } from "./resource-id";
+import type { TaskActivity } from "./task-activity";
 
 export const memoryScopeSchema = z.enum(["user", "project", "session"]);
 export type MemoryScope = z.infer<typeof memoryScopeSchema>;
@@ -28,6 +29,7 @@ export type MemoryCommitContext = {
   readonly workspace?: string;
   readonly messages: readonly { role: string; content: string }[];
   readonly output: string;
+  readonly activity?: TaskActivity;
 };
 
 export type MemoryCommitMetrics = {
