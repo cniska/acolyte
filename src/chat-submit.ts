@@ -50,7 +50,7 @@ export function resolveSubmitInput(input: ResolveSubmitInput): SubmitResolution 
 export function resolveQueueSubmit(input: { value: string; isPending: boolean }): QueueSubmitResolution {
   const trimmed = input.value.trim();
   if (!trimmed) return { kind: "ignore" };
-  if (input.isPending) return { kind: "submit", value: trimmed };
+  if (input.isPending) return { kind: "submit", value: input.value };
   return { kind: "submit", value: input.value };
 }
 

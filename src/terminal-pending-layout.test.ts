@@ -36,6 +36,22 @@ test("each queued message is padded to a sent message's vertical rhythm", () => 
   expect(rows.slice(1)).toEqual(["", "", "❯ first", "", "", "", "❯ second", ""]);
 });
 
+test("queued messages preserve leading indentation", () => {
+  const rows = layoutPending({
+    presentation: {
+      state: { kind: "running", toolCalls: 0 },
+      frame: 0,
+      startedAt: 0,
+      queuedMessages: ["    next task"],
+      runningUsage: null,
+    },
+    now: 0,
+    columns: 80,
+  }).lines.map((line) => line.spans.map((span) => span.text).join(""));
+
+  expect(rows).toContain("❯     next task");
+});
+
 test("pending marker and text carry separate roles per kind", () => {
   const marker = (kind: "running" | "queued" | "accepted") =>
     layoutPending({

@@ -264,12 +264,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
   };
 
   const handler = async (raw: string): Promise<void> => {
+    const displayText = raw;
     const text = raw.trim();
     const busy = turnState === "running" || input.isPending();
     log.debug("chat.handler", { text, turnState, busy });
     if (!text) return;
     if (busy && !text.startsWith("/")) {
-      input.requeueMessage(text);
+      input.requeueMessage(raw);
       return;
     }
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
@@ -294,7 +295,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.currentSession.updatedAt = input.nowIso();
       const { row: userRow } = applyUserTurn({
         session: input.currentSession,
-        displayText: text,
+        displayText,
       });
       input.setRows((current) => [...current, userRow]);
       startPending();
@@ -361,7 +362,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     userText = commandResult.userText;
     const { row: userRow } = applyUserTurn({
       session: input.currentSession,
-      displayText: text,
+      displayText,
     });
     input.setRows((current) => [...current, userRow]);
     await startAssistantTurn(userText);
