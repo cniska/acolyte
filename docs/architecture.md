@@ -95,7 +95,7 @@ resolve → prepare → generate → finalize
 ```text
 Memory Engine
   → Memory Pipeline (ingest → normalize → commit)
-  → Memory Toolkit (search, add, remove) — on-demand access
+  → Memory Toolkit (search, add) — on-demand access
 ```
 
 - Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns

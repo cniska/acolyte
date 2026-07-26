@@ -139,7 +139,7 @@ Two backends, selected via the `cloudSync` feature flag (default: SQLite):
 
 ## Memory toolkit
 
-The memory toolkit (`memory-toolkit.ts`) exposes three tools:
+The memory toolkit (`memory-toolkit.ts`) exposes two tools:
 
 - **memory-search**: search stored memories by query, with optional scope filter. Uses semantic ranking when embeddings are available.
 - **memory-add**: add a new stored memory with content and scope (`user` or `project`).
@@ -153,7 +153,7 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and store factory
 - `src/cloud-client.ts` — cloud API MemoryStore implementation (feature-flagged)
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
-- `src/memory-toolkit.ts` — on-demand memory tools (search, add, remove)
+- `src/memory-toolkit.ts` — on-demand memory tools (search, add)
 - `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering
 
 ## Further reading
