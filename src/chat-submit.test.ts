@@ -3,6 +3,7 @@ import {
   dequeueQueuedMessage,
   drainQueueOnTurnEnd,
   enqueueQueuedMessage,
+  requeueQueuedMessage,
   resolveQueueSubmit,
   resolveSubmitInput,
 } from "./chat-submit";
@@ -88,6 +89,24 @@ describe("chat submit helpers", () => {
     }
 
     expect(submitted).toEqual(["first", "second", "third"]);
+  });
+
+  test("a drained message refused by the handler returns to the head of the queue", async () => {
+    let queue = ["first", "second"];
+    drainQueueOnTurnEnd({
+      queue,
+      // The real submit is deferred to a microtask, so the dequeue lands first.
+      submit: (message) =>
+        queueMicrotask(() => {
+          queue = requeueQueuedMessage(queue, message);
+        }),
+      setQueue: (updater) => {
+        queue = updater(queue);
+      },
+    });
+    await Promise.resolve();
+
+    expect(queue).toEqual(["first", "second"]);
   });
 
   test("dequeueQueuedMessage splits head from rest", () => {

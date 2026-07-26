@@ -58,6 +58,12 @@ export function enqueueQueuedMessage(current: string[], next: string): string[] 
   return [...current, next];
 }
 
+// The drain dequeues before the submit is accepted, so a refused message goes back at
+// the head it came from rather than behind messages typed after it.
+export function requeueQueuedMessage(current: string[], next: string): string[] {
+  return [next, ...current];
+}
+
 export function dequeueQueuedMessage(current: string[]): { next: string | undefined; rest: string[] } {
   const [next, ...rest] = current;
   return { next, rest };
