@@ -515,6 +515,16 @@ describe("findFiles", () => {
     expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
   });
 
+  test("resolves an absolute path with no wildcard to that one file", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute(
+      { pattern: join(workspace, "src", "file-ops.ts") },
+      "call_find_absolute_exact",
+    );
+    expect(result.result.paths).toEqual(["./src/file-ops.ts"]);
+  });
+
   test("rejects an absolute pattern outside the workspace", async () => {
     const workspace = await workspaceWithToolkits();
     const { tools } = toolsForAgent({ workspace });

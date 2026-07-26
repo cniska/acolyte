@@ -43,18 +43,19 @@ const MAX_BRACE_ALTERNATIVES = 64;
  */
 export function createPathMatcher(pattern: string): (path: string) => boolean {
   const normalized = pattern.replace(/^\.\/+/, "");
-  if (!WILDCARD.test(normalized)) {
+  if (!normalized.startsWith("/") && !WILDCARD.test(normalized)) {
     const needle = normalized.toLowerCase();
     return (path) => path.toLowerCase().includes(needle);
   }
-  const anchored = normalized.startsWith("/");
-  const regexes = expandBraces(anchored ? normalized.slice(1) : normalized).map((glob) => compileGlob(glob, anchored));
+  const regexes = expandBraces(normalized).map(compileGlob);
   return (path) => regexes.some((regex) => regex.test(path));
 }
 
-function compileGlob(glob: string, anchored: boolean): RegExp {
+/** Anchoring is decided per expansion so a leading slash inside a brace alternative still anchors. */
+function compileGlob(glob: string): RegExp {
+  const anchored = glob.startsWith("/");
   try {
-    return new RegExp(globToRegex(glob, anchored), "i");
+    return new RegExp(globToRegex(anchored ? glob.slice(1) : glob, anchored), "i");
   } catch {
     throw new Error(`Invalid glob pattern: ${glob}`);
   }

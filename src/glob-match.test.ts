@@ -47,6 +47,14 @@ describe("createPathMatcher", () => {
     expect(matched("/src/*-toolkit.ts")).toEqual(["src/agent-toolkit.ts", "src/file-toolkit.ts"]);
   });
 
+  test("an anchored wildcard-free pattern matches that exact path", () => {
+    expect(matched("/src/file-ops.ts")).toEqual(["src/file-ops.ts"]);
+  });
+
+  test("a leading slash inside a brace alternative still anchors", () => {
+    expect(matched("{/src,/docs}/*.md")).toEqual(["docs/tooling.md"]);
+  });
+
   test("a wildcard-free pattern matches as a substring", () => {
     expect(matched("toolkit")).toEqual(["src/agent-toolkit.ts", "src/file-toolkit.ts"]);
     expect(matched("tool")).toContain("docs/tooling.md");
