@@ -14,6 +14,8 @@ import { addMemory, listArchivedMemories, listMemories, removeMemory } from "./m
 
 type MemoryContextScope = "all" | "user" | "project";
 
+const ARCHIVED_FLAG = "--archived";
+
 function isMemoryContextScope(value: string): value is MemoryContextScope {
   return value === "all" || value === "user" || value === "project";
 }
@@ -75,9 +77,10 @@ async function handleMemoryList(
   parsed: ParsedCommand,
 ): Promise<CommandResult> {
   const { text } = ctx;
-  const scope: MemoryContextScope = parsed.sub === "" ? "all" : (parsed.sub as MemoryContextScope);
-  const archived = parsed.args.includes("--archived");
-  if (parsed.args.some((arg) => arg !== "--archived")) {
+  const scopeToken = parsed.sub === ARCHIVED_FLAG ? "" : parsed.sub;
+  const scope: MemoryContextScope = scopeToken === "" ? "all" : (scopeToken as MemoryContextScope);
+  const archived = parsed.sub === ARCHIVED_FLAG || parsed.args.includes(ARCHIVED_FLAG);
+  if (parsed.args.some((arg) => arg !== ARCHIVED_FLAG)) {
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project] [--archived]"))]);
     return { stop: true, userText: text };
   }
@@ -182,7 +185,7 @@ function createMemoryGroup(ctx: CommandContext, memoryApi: ReturnType<typeof res
       },
       {
         name: "list",
-        match: (sub) => sub === "" || isMemoryContextScope(sub),
+        match: (sub) => sub === "" || sub === ARCHIVED_FLAG || isMemoryContextScope(sub),
         run: (parsed) => handleMemoryList(ctx, memoryApi, parsed),
       },
     ],

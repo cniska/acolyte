@@ -12,6 +12,22 @@ type MemoryOps = {
   restore: (ids: readonly string[]) => Promise<readonly MemoryEntry[]>;
 };
 
+function isArchiveEntry(row: MemoryEntry | MemoryArchiveEntry): row is MemoryArchiveEntry {
+  return "retiredAt" in row;
+}
+
+function toTableRow(row: MemoryEntry | MemoryArchiveEntry): Record<string, string> {
+  const base = { id: row.id, kind: row.kind, content: row.content };
+  if (isArchiveEntry(row)) {
+    return { ...base, retired: formatRelativeTime(row.retiredAt), why: formatDisposition(row.disposition) };
+  }
+  return {
+    ...base,
+    created: formatRelativeTime(row.createdAt),
+    recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
+  };
+}
+
 type MemoryModeDeps = {
   ops: MemoryOps;
   hasHelpFlag: (args: string[]) => boolean;
@@ -50,20 +66,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     const out: CliOutput = json ? createJsonOutput() : createTextOutput();
-    const tableRows = rows.slice(0, 50).map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      content: row.content,
-      ...(archived
-        ? {
-            retired: formatRelativeTime((row as MemoryArchiveEntry).retiredAt),
-            why: formatDisposition((row as MemoryArchiveEntry).disposition),
-          }
-        : {
-            created: formatRelativeTime(row.createdAt),
-            recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
-          }),
-    }));
+    const tableRows = rows.slice(0, 50).map(toTableRow);
     out.addTable(json ? tableRows : fitFlexColumn(tableRows, "content"));
     const rendered = out.render();
     if (rendered) printDim(rendered);
@@ -71,8 +74,8 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
   }
 
   if (subcommand === "restore") {
-    const ids = rest.filter((token) => !token.startsWith("--"));
-    if (ids.length === 0) {
+    const ids = rest;
+    if (ids.length === 0 || ids.some((token) => token.startsWith("--"))) {
       commandError("memory", formatUsage("acolyte memory restore <id>..."));
       return;
     }
