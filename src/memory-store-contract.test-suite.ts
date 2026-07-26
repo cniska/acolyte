@@ -358,15 +358,71 @@ export function memoryStoreContractTests(
 
     test("retire and restore no-op on empty id lists", async () => {
       const s = await getStore();
-      await expect(s.retire([], { kind: "noise" })).resolves.toBeUndefined();
+      expect(await s.retire([], { kind: "noise" })).toEqual([]);
       expect(await s.restore([])).toEqual([]);
     });
 
     test("retire ignores unknown ids and restore returns nothing for them", async () => {
       const s = await getStore();
-      await s.retire(["mem_unknown001"], { kind: "noise" });
+      expect(await s.retire(["mem_unknown001"], { kind: "noise" })).toEqual([]);
       expect(await s.listArchive()).toHaveLength(0);
       expect(await s.restore(["mem_unknown001"])).toEqual([]);
+    });
+
+    test("retire reports only the ids it actually moved", async () => {
+      const s = await getStore();
+      await seed(s, "mem_present001");
+      const retired = await s.retire(["mem_present001", "mem_absent0001"], { kind: "noise" });
+      expect(retired).toEqual(["mem_present001"]);
+      expect((await s.listArchive()).map((r) => r.id)).toEqual(["mem_present001"]);
+    });
+
+    test("a full retire and restore cycle preserves every field", async () => {
+      const s = await getStore();
+      await s.write({
+        id: "mem_fidelity01",
+        scopeKey: "proj_abc123",
+        kind: "stored",
+        content: "the fact with every field set",
+        createdAt: "2026-03-04T08:15:00.000Z",
+        tokenEstimate: 9,
+        topic: "lifecycle",
+      });
+      await s.touchRecalled(["mem_fidelity01"]);
+      const before = (await s.list({ scopeKey: "proj_abc123" }))[0];
+      expect(before?.lastRecalledAt).not.toBeNull();
+
+      await s.retire(["mem_fidelity01"], { kind: "capacity" });
+      await s.restore(["mem_fidelity01"]);
+
+      const after = (await s.list({ scopeKey: "proj_abc123" }))[0];
+      expect(after).toEqual(before);
+    });
+
+    test("retiring again after a restore records the new disposition", async () => {
+      const s = await getStore();
+      await seed(s, "mem_recycled01");
+      await s.retire(["mem_recycled01"], { kind: "superseded", by: ["mem_successor1"] });
+      await s.restore(["mem_recycled01"]);
+      await s.retire(["mem_recycled01"], { kind: "noise" });
+
+      const archived = await s.listArchive({ scopeKey: "proj_abc123" });
+      expect(archived).toHaveLength(1);
+      expect(archived[0]?.disposition).toEqual({ kind: "noise" });
+    });
+
+    test("the archive orders records by when they were retired", async () => {
+      const s = await getStore();
+      await seed(s, "mem_first00001");
+      await s.retire(["mem_first00001"], { kind: "noise" });
+      await seed(s, "mem_second0001");
+      await s.retire(["mem_second0001"], { kind: "noise" });
+
+      const archived = await s.listArchive({ scopeKey: "proj_abc123" });
+      expect(archived.map((r) => r.id)).toEqual(["mem_first00001", "mem_second0001"]);
+      const [first, second] = archived;
+      expect(first && second && first.retiredAt <= second.retiredAt).toBe(true);
+      expect(first && Number.isFinite(Date.parse(first.retiredAt))).toBe(true);
     });
 
     test("a retired record is invisible to list by kind", async () => {
