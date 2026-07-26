@@ -66,12 +66,28 @@ describe("chat submit helpers", () => {
     });
   });
 
-  test("enqueueQueuedMessage keeps only latest prompt in one-at-a-time mode", () => {
-    expect(enqueueQueuedMessage(["first", "second"], "latest", "one-at-a-time")).toEqual(["latest"]);
+  test("enqueueQueuedMessage appends without dropping earlier messages", () => {
+    expect(enqueueQueuedMessage(["first", "second"], "latest")).toEqual(["first", "second", "latest"]);
   });
 
-  test("enqueueQueuedMessage appends in all mode", () => {
-    expect(enqueueQueuedMessage(["first", "second"], "latest", "all")).toEqual(["first", "second", "latest"]);
+  test("messages queued over multiple sends drain one-per-turn in order until empty", () => {
+    let queue = enqueueQueuedMessage([], "first");
+    queue = enqueueQueuedMessage(queue, "second");
+    queue = enqueueQueuedMessage(queue, "third");
+
+    const submitted: string[] = [];
+    // Each turn end drains one head; the resubmit would end another turn, re-firing the drain.
+    while (queue.length > 0) {
+      drainQueueOnTurnEnd({
+        queue,
+        submit: (message) => submitted.push(message),
+        setQueue: (updater) => {
+          queue = updater(queue);
+        },
+      });
+    }
+
+    expect(submitted).toEqual(["first", "second", "third"]);
   });
 
   test("dequeueQueuedMessage splits head from rest", () => {
