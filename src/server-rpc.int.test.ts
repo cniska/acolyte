@@ -197,6 +197,9 @@ describe("server rpc websocket queue", () => {
         client.close();
 
         const error = (await reply) as Error & { taskId?: string };
+        // Classified as a cancellation, not a dropped stream: a dropped stream would start a
+        // remote-task followup that reopens a socket after exit.
+        expect(error.name).toBe("AbortError");
         const taskId = error.taskId;
         if (!taskId) throw new Error(`expected a taskId on the closed stream error: ${error.message}`);
 
