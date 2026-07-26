@@ -1,4 +1,33 @@
 import { alignCols } from "./chat-format";
+import { truncateToWidth } from "./truncate-text";
+
+const TABLE_GAP = 2;
+const MIN_FLEX_COLUMN = 16;
+
+function terminalColumns(fallback = 80): number {
+  const columns = process.stdout.columns;
+  return typeof columns === "number" && columns > 0 ? columns : fallback;
+}
+
+/**
+ * Truncate one flexible column so the widest assembled row fits the terminal width,
+ * reserving the measured width of the sibling columns. Text tables only — callers skip
+ * this for --json so machine-readable output stays whole.
+ */
+export function fitFlexColumn<T extends Record<string, string | undefined>>(
+  rows: T[],
+  flexKey: keyof T & string,
+  width = terminalColumns(),
+): T[] {
+  if (rows.length === 0) return rows;
+  const otherKeys = Object.keys(rows[0]).filter((key) => key !== flexKey);
+  const reserved = otherKeys.reduce(
+    (sum, key) => sum + Math.max(0, ...rows.map((row) => Bun.stringWidth(row[key] ?? ""))) + TABLE_GAP,
+    0,
+  );
+  const budget = Math.max(MIN_FLEX_COLUMN, width - reserved - TABLE_GAP);
+  return rows.map((row) => ({ ...row, [flexKey]: truncateToWidth(row[flexKey] ?? "", budget) }) as T);
+}
 
 export type CliOutputOptions = {
   verbose?: boolean;

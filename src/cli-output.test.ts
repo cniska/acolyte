@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createJsonOutput, createTextOutput } from "./cli-output";
+import { createJsonOutput, createTextOutput, fitFlexColumn } from "./cli-output";
 
 describe("createTextOutput", () => {
   test("renders row as key=value pairs", () => {
@@ -68,6 +68,34 @@ describe("createTextOutput", () => {
 
   test("verbose can be set via options", () => {
     expect(createTextOutput({ verbose: true }).verbose).toBe(true);
+  });
+});
+
+describe("fitFlexColumn", () => {
+  test("truncates the flex column so the widest row fits the width", () => {
+    const rows = [{ id: "sess_abc", title: "x".repeat(200), time: "2 hours ago" }];
+    const [fitted] = fitFlexColumn(rows, "title", 40);
+    // id(8) + gap(2) + title + gap(2) + time(11) must fit 40 columns
+    const rowWidth = fitted.id.length + 2 + fitted.title.length + 2 + fitted.time.length;
+    expect(rowWidth).toBeLessThanOrEqual(40);
+    expect(fitted.title.endsWith("…")).toBe(true);
+  });
+
+  test("adapts to the available width instead of a fixed cap", () => {
+    const rows = [{ id: "a", title: "y".repeat(300), time: "now" }];
+    const wide = fitFlexColumn(rows, "title", 200)[0].title.length;
+    const narrow = fitFlexColumn(rows, "title", 60)[0].title.length;
+    expect(wide).toBeGreaterThan(narrow);
+  });
+
+  test("leaves rows that already fit untouched", () => {
+    const rows = [{ id: "a", title: "short", time: "now" }];
+    expect(fitFlexColumn(rows, "title", 120)[0].title).toBe("short");
+  });
+
+  test("keeps a minimum flex width on a very narrow terminal", () => {
+    const rows = [{ id: "sess_long_id", title: "z".repeat(80), time: "yesterday" }];
+    expect(fitFlexColumn(rows, "title", 10)[0].title.length).toBeGreaterThan(0);
   });
 });
 
