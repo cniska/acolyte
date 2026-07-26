@@ -2,7 +2,7 @@
 
 Compare Acolyte with eight current open-source terminal coding agents across architecture, lifecycle behavior, sandboxing, observability, memory, and extensibility.
 
-See [Why Acolyte](./why-acolyte.md) for a summary.
+See [Why Acolyte?](./why-acolyte.md) for a summary.
 
 Projects compared: [Kimchi](https://github.com/getkimchi/kimchi), [Kode](https://github.com/shareAI-lab/Kode-CLI), [OpenCode](https://github.com/anomalyco/opencode), [Qwen Code](https://github.com/QwenLM/qwen-code), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Grok Build](https://github.com/xai-org/grok-build), and [Reasonix](https://github.com/esengine/DeepSeek-Reasonix).
 
@@ -35,7 +35,13 @@ Workspace controls are not equivalent security models. The row groups path bound
 
 Acolyte runs as a headless daemon. The CLI and third-party clients connect over the same typed RPC protocol. Editor integrations can use that protocol without embedding a separate agent runtime.
 
-Every chat request becomes a task with a state machine (`accepted → queued → running → completed | failed | cancelled`). Tasks have stable IDs and explicit state transitions while retained by the in-memory task store. Sessions, rather than tasks, provide continuity across requests. The RPC protocol exposes task transitions so clients can show real-time progress.
+Every chat request becomes a task with a stable ID and explicit transitions in the in-memory task store:
+
+```text
+accepted → queued → running → completed | failed | cancelled
+```
+
+Sessions, rather than tasks, provide continuity across requests. The RPC protocol exposes task transitions so clients can show real-time progress.
 
 The TUI is a custom React terminal renderer built on `react-reconciler`.
 
@@ -85,9 +91,9 @@ timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 s
 
 ## Skills and extensibility
 
-Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/` and can be activated by the agent or through slash commands. Multiple skills can remain active in the same session.
+Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/`; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
 
-Kimchi, Kode, OpenCode, Qwen Code, Codex, Goose, Grok Build, and Reasonix also document skills or equivalent skill/plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
+The other compared projects also document skills or equivalent skill and plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
 
 Core systems expose minimal, well-defined extension points: lifecycle policies, tool registration, memory strategies, skill metadata, and configuration layers. The surface is intentionally narrow; Acolyte is an opinionated product, not a general-purpose agent framework.
 
@@ -95,7 +101,11 @@ Core systems expose minimal, well-defined extension points: lifecycle policies, 
 
 How each agent retains knowledge across sessions.
 
-Acolyte stores memory in three scopes: session, project, and user. Memory is recalled on demand rather than injected into every prompt. A post-generation distiller can extract observations automatically, while explicit tools let the agent search, add, and remove entries. Retrieval combines semantic similarity with token overlap.
+Acolyte stores memory in three scopes: session, project, and user. The agent recalls it on demand rather than receiving it in every prompt. It can search or add entries; users can also remove, list, and restore them from the CLI.
+
+After each request, a background distiller derives durable, self-contained work facts from task activity and conversation. It skips duplicates and already-distilled messages, and can replace outdated facts with sharper successors. Replaced facts move to a restorable archive with lineage instead of being deleted.
+
+Retrieval is scope-aware and uses semantic similarity, TF-IDF token overlap, and optional topic filtering. Embeddings use the selected provider by default or an explicitly configured OpenAI-compatible endpoint, independently of chat.
 
 The other projects use different combinations of session persistence, project files, repository maps, compaction, plans, and memory extensions. These mechanisms solve different context problems and are not direct substitutes for Acolyte's scoped memory.
 
@@ -115,4 +125,4 @@ These are static engineering signals. They do not establish task success, model 
 
 Reviewed against the revisions recorded in [Benchmarks](./benchmarks.md).
 
-Updated 20 July 2026.
+Updated 27 July 2026.

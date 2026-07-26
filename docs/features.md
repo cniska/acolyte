@@ -11,7 +11,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - fuzzy search and autocomplete for file paths, sessions, commands, and skills
 - file and directory attachments via `@path`
 - slash commands and skill invocation
-- engineering skills for structured workflows (plan, build, review, ship)
+- engineering skills for structured workflows (plan, build, review)
 - an always-available skill roster the agent activates and deactivates on demand
 - configurable locale
 - multi-line input
