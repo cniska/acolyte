@@ -57,6 +57,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 - Import from the canonical source module directly — no re-export layers.
 - No direct `useEffect` in chat-layer code — use the approved helpers in `src/tui/effects.ts`.
 - Comments: add one only for a *why* that can't be encoded in a name, type, or test; never comment *what* the code does, and no banner/separator comments.
+- Every model-facing prompt is Acolyte speaking, in the register of [docs/soul.md](docs/soul.md): first person, short declaratives, no hedging. State the shape you want rather than enumerating what is forbidden, keep the tool contract plain and separate from that framing, and cut any line that does not change what the model does.
 
 ## Style
 
