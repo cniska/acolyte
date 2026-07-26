@@ -1,9 +1,8 @@
 import { hasBoolFlag, stripFlag } from "./cli-args";
-import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
+import { type CliOutput, createJsonOutput, createTextOutput, fitFlexColumn } from "./cli-output";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { SessionStore } from "./session-contract";
-import { truncateText } from "./truncate-text";
 
 type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -33,13 +32,12 @@ export async function historyMode(args: string[], deps: HistoryModeDeps): Promis
   }
 
   const out: CliOutput = json ? createJsonOutput() : createTextOutput();
-  out.addTable(
-    sessions.map((session) => ({
-      id: session.id,
-      title: truncateText(session.title, 60),
-      time: formatRelativeTime(session.updatedAt),
-    })),
-  );
+  const tableRows = sessions.map((session) => ({
+    id: session.id,
+    title: session.title,
+    time: formatRelativeTime(session.updatedAt),
+  }));
+  out.addTable(json ? tableRows : fitFlexColumn(tableRows, "title"));
   const rendered = out.render();
   if (rendered) printDim(rendered);
 }

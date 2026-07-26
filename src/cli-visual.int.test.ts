@@ -187,7 +187,7 @@ describe("cli visual regression", () => {
       const out = await run(["history"]);
       expect(out).toBe(
         dedent(`
-        sess_long  This title is intentionally made very long so we can verify…  just now
+        sess_long  This title is intentionally made very long so we can ver…  just now
       `),
       );
     });

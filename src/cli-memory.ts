@@ -1,10 +1,9 @@
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { formatUsage } from "./cli-help";
-import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
+import { type CliOutput, createJsonOutput, createTextOutput, fitFlexColumn } from "./cli-output";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import type { MemoryEntry, MemoryScope } from "./memory-contract";
-import { truncateText } from "./truncate-text";
 
 type MemoryOps = {
   list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
@@ -46,15 +45,14 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     const out: CliOutput = json ? createJsonOutput() : createTextOutput();
-    out.addTable(
-      rows.slice(0, 50).map((row) => ({
-        id: row.id,
-        kind: row.kind,
-        content: truncateText(row.content, 80),
-        created: formatRelativeTime(row.createdAt),
-        recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
-      })),
-    );
+    const tableRows = rows.slice(0, 50).map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      content: row.content,
+      created: formatRelativeTime(row.createdAt),
+      recalled: row.lastRecalledAt ? formatRelativeTime(row.lastRecalledAt) : "never",
+    }));
+    out.addTable(json ? tableRows : fitFlexColumn(tableRows, "content"));
     const rendered = out.render();
     if (rendered) printDim(rendered);
     return;
