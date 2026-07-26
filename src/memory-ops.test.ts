@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryRecord } from "./memory-contract";
-import { listMemories, resolveScopeKey, visibleScopeKeys } from "./memory-ops";
+import { addObservation, listMemories, resolveScopeKey, visibleScopeKeys } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 
@@ -57,6 +57,23 @@ describe("visibleScopeKeys", () => {
     const keys = visibleScopeKeys({ sessionId: "sess_alpha" });
     expect(keys.has(projectResourceIdFromWorkspace(process.cwd()))).toBe(false);
     expect(keys).toEqual(new Set(["sess_alpha", defaultUserResourceId()]));
+  });
+});
+
+describe("addObservation", () => {
+  test("skips a repeat within a scope but keeps the same fact in a different scope", async () => {
+    const store = createSqliteMemoryStore(":memory:");
+    const fact = "the build runs on bun";
+    const userScope = defaultUserResourceId();
+    const projectScope = projectResourceIdFromWorkspace("/tmp/some-project");
+
+    expect(await addObservation(userScope, fact, { store })).not.toBeNull();
+    expect(await addObservation(userScope, fact, { store })).toBeNull();
+    expect(await addObservation(projectScope, fact, { store })).not.toBeNull();
+
+    expect((await store.list({ scopeKey: userScope })).length).toBe(1);
+    expect((await store.list({ scopeKey: projectScope })).length).toBe(1);
+    store.close();
   });
 });
 

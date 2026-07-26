@@ -76,6 +76,97 @@ describe("createDistillInput", () => {
   });
 });
 
+describe("high-water mark", () => {
+  function captureRunner(seen: string[]) {
+    return async (_prompt: string, userContent: string): Promise<DistillObservation[]> => {
+      seen.push(userContent);
+      return [];
+    };
+  }
+
+  const turnOne = [
+    { role: "user", content: "turn one" },
+    { role: "assistant", content: "reply one" },
+  ];
+
+  test("a later commit re-sends nothing the distiller already saw", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: testPolicy,
+    });
+    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" });
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [...turnOne, { role: "user", content: "turn two" }],
+      output: "done two",
+    });
+    expect(seen[0]).toContain("turn one");
+    expect(seen[1]).toContain("turn two");
+    expect(seen[1]).not.toContain("turn one");
+  });
+
+  test("a failed write leaves the messages re-readable next commit", async () => {
+    const seen: string[] = [];
+    const store = createMockStore();
+    let failWrite = true;
+    store.write = async () => {
+      if (failWrite) throw new Error("disk full");
+    };
+    const distiller = createMemoryDistiller({
+      store,
+      runner: async (_prompt, userContent) => {
+        seen.push(userContent);
+        return [{ scope: "session", content: "a durable fact", topic: null }];
+      },
+      policy: testPolicy,
+    });
+    await expect(
+      distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" }),
+    ).rejects.toThrow();
+    failWrite = false;
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [...turnOne, { role: "user", content: "turn two" }],
+      output: "done two",
+    });
+    expect(seen[1]).toContain("turn one");
+  });
+
+  test("each session keeps its own mark", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: testPolicy,
+    });
+    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done" });
+    await distiller.commit({ sessionId: "sess_test0002", messages: turnOne, output: "done" });
+    expect(seen[1]).toContain("turn one");
+  });
+
+  test("the context window still caps how far back a first commit reaches", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: createMemoryPolicy({ messageThreshold: 1, contextMessageWindow: 2 }),
+    });
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [
+        { role: "user", content: "oldest" },
+        { role: "assistant", content: "middle" },
+        { role: "user", content: "newest" },
+      ],
+      output: "done",
+    });
+    expect(seen[0]).not.toContain("oldest");
+    expect(seen[0]).toContain("newest");
+  });
+});
+
 describe("memoryDistiller", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {
@@ -103,7 +194,7 @@ describe("memoryDistiller", () => {
       expect(store.written).toHaveLength(0);
     });
 
-    test("skips consecutive duplicate observations", async () => {
+    test("skips a duplicate of any earlier observation, not just the latest", async () => {
       const store = createMockStore([
         {
           id: "mem_obs_prev",
@@ -111,6 +202,14 @@ describe("memoryDistiller", () => {
           kind: "observation",
           content: "prefers short answers",
           createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 6,
+        },
+        {
+          id: "mem_obs_newer",
+          scopeKey: "sess_test0001",
+          kind: "observation",
+          content: "the build runs on bun",
+          createdAt: "2026-03-04T11:00:00.000Z",
           tokenEstimate: 6,
         },
       ]);
