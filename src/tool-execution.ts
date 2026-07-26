@@ -51,6 +51,14 @@ function extractExitCode(value: unknown): number | undefined {
   return typeof exitCode === "number" && Number.isInteger(exitCode) ? exitCode : undefined;
 }
 
+// Command-running tools carry the resolved command on their output, not their input args
+// (shell-run takes cmd + args[]), so the executed command is only knowable from the result.
+function extractCommand(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const command = (value as { command?: unknown }).command;
+  return typeof command === "string" && command.length > 0 ? command : undefined;
+}
+
 type ToolRunInput<T> = {
   session: SessionContext;
   toolId: string;
@@ -146,6 +154,7 @@ function readCachedResult<T>(
 function recordToolSuccess<T>(session: SessionContext, toolId: string, args: Record<string, unknown>, result: T): void {
   recordCall(session, toolId, args, hashResultValue(result), "succeeded", {
     exitCode: extractExitCode(result),
+    command: extractCommand(result),
   });
 }
 

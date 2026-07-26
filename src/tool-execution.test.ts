@@ -87,6 +87,19 @@ describe("per-tool timeout", () => {
     expect(session.callLog[0]).toMatchObject({ toolName: "test-run", status: "succeeded", exitCode: 1 });
   });
 
+  test("records the executed command from the result, not the input args", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    // shell-run takes cmd + args[]; only the result carries the resolved command string.
+    await runTool(session, "shell-run", "call_1", { cmd: "bun", args: ["test"] }, async () => ({
+      kind: "shell-run",
+      command: "bun test",
+      exitCode: 0,
+      output: "",
+    }));
+    expect(session.callLog[0]).toMatchObject({ toolName: "shell-run", command: "bun test" });
+  });
+
   test("runs success pipeline stages in order", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
