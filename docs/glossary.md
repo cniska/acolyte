@@ -20,6 +20,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 
 | Term | Definition |
 |---|---|
+| Backend | Where Acolyte's persistence and future remote execution are hosted — `local` or `cloud`; the deployment level, broader than Storage and distinct from Provider |
 | Base Agent Input | Immutable prompt input created during `prepare` and used for the generation pass |
 | Chat Promotion | State transition that moves completed chat rows from the active (re-rendered) region to static (write-once scrollback) |
 | Chat Viewport | The whole live chat surface — header, transcript, pending, composer, and footer — modeled as one ordered semantic unit and laid out by terminal layout |
@@ -50,8 +51,8 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
 | Observation | Memory record kind for facts extracted from conversations via `memory-observe` tool calls |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
-| Provider | Model backend selected for a request (`openai`, `anthropic`, `google`, or `vercel`) |
-| Record | Persisted entity object stored by a persistence backend |
+| Provider | Model service selected for a request (`openai`, `anthropic`, `google`, or `vercel`) |
+| Record | Persisted entity object stored by a persistence layer |
 | Registry | Composition layer that wires implementations into an agent-facing surface under shared contracts |
 | Resource ID | Typed cross-session identity key used for memory and execution scoping |
 | Session | One chat session in memory, including messages, model, token usage, and timestamps |
@@ -60,6 +61,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
 | Step Budget | Per-turn tool-call limit inlined into tool execution to prevent runaway loops |
+| Storage | The persistence mechanism a `*Store` uses for memory and session records — `sqlite` (local) or `cloud` |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |
 | Task Queue | Runtime queue policy that orders accepted tasks and enforces capacity and cancellation boundaries |
 | Terminal Scene | Physical styled lines, cursor geometry, and finalizable section identities produced by terminal layout for the renderer |

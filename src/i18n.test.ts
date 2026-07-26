@@ -25,4 +25,10 @@ describe("i18n", () => {
     expect(t("unit.match", { count: 1 })).toBe("1 match");
     expect(t("unit.match", { count: 5 })).toBe("5 matches");
   });
+
+  test("memory summary pluralizes entries by count", () => {
+    expect(t("status.memory.summary", { storage: "sqlite", count: 1 })).toBe("sqlite (1 entry)");
+    expect(t("status.memory.summary", { storage: "sqlite", count: 0 })).toBe("sqlite (0 entries)");
+    expect(t("status.memory.summary", { storage: "cloud", count: 42 })).toBe("cloud (42 entries)");
+  });
 });

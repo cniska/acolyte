@@ -6,6 +6,8 @@ import type { ResourceId } from "./resource-id";
 
 export const memoryScopeSchema = z.enum(["user", "project", "session"]);
 export type MemoryScope = z.infer<typeof memoryScopeSchema>;
+export const memoryStorageSchema = z.enum(["sqlite", "cloud"]);
+export type MemoryStorage = z.infer<typeof memoryStorageSchema>;
 export const memoryIdSchema = domainIdSchema("mem");
 export type MemoryId = z.infer<typeof memoryIdSchema>;
 
@@ -81,6 +83,7 @@ export const memoryRecordSchema = z.object({
 export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
 
 export interface MemoryStore {
+  readonly storage: MemoryStorage;
   list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;

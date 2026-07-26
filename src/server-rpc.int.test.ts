@@ -357,6 +357,7 @@ describe("server rpc websocket queue", () => {
         expect(status.rpc_queue_length).toBe(1);
         expect(status.tasks_total).toBe(2);
         expect(status.tasks_running).toBe(1);
+        expect(status.memory).toMatch(/^sqlite \(\d+ entr(?:y|ies)\)$/);
 
         ws.send(
           JSON.stringify({

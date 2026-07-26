@@ -7,7 +7,6 @@ describe("status format", () => {
       provider_auth: ["openai (api key)"],
       model: "gpt-5-mini",
       service: "http://localhost:6767",
-      memory: "file (8 entries)",
     });
 
     expect(output?.header).toBe("Status");
@@ -15,7 +14,34 @@ describe("status format", () => {
     expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
     expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
     expect(pairs).toContainEqual(["Service", "http://localhost:6767"]);
-    expect(pairs).toContainEqual(["Memory", "file (8 entries)"]);
+  });
+
+  test("labels the memory summary the daemon emits", () => {
+    const output = createStatusOutput({ memory: "sqlite (142 entries)" });
+    const pairs = output?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Memory", "sqlite (142 entries)"]);
+  });
+
+  test("surfaces resource diagnostics the daemon emits", () => {
+    const output = createStatusOutput({
+      model: "gpt-5-mini",
+      "resources.prompt.agents": "missing_or_unreadable",
+      "resources.skills.invalid": 2,
+      "resources.config.collisions": "project,user",
+    });
+    const pairs = output?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Agents file", "missing_or_unreadable"]);
+    expect(pairs).toContainEqual(["Invalid skills", "2"]);
+    expect(pairs).toContainEqual(["Config file collisions", "project,user"]);
+  });
+
+  test("drops labels the daemon never emits", () => {
+    const output = createStatusOutput({
+      model: "gpt-5-mini",
+      active_skill: "review",
+    });
+    const pairs = output?.sections[0] ?? [];
+    expect(pairs.map(([k]: [string, string]) => k)).toEqual(["Model"]);
   });
 
   test("returns null for empty fields", () => {
