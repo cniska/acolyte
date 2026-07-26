@@ -225,6 +225,19 @@ describe("memoryDistiller", () => {
       expect(store.written).toHaveLength(0);
     });
 
+    test("commits nothing when the turn establishes nothing", async () => {
+      const store = createMockStore();
+      const source = createTestDistiller(store, makeRunner([]));
+      const metrics = await source.commit({
+        sessionId: "sess_test0001",
+        resourceId: "proj_abc123",
+        messages: [{ role: "user", content: "hello" }],
+        output: "Hello.",
+      });
+      expect(store.written).toHaveLength(0);
+      expect(metrics).toBeUndefined();
+    });
+
     test("stores topic on observations", async () => {
       const store = createMockStore();
       const source = createTestDistiller(
