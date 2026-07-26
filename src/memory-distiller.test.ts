@@ -266,8 +266,17 @@ describe("memoryDistiller", () => {
       expect(store.written).toHaveLength(0);
     });
 
-    test("commits nothing when the turn establishes nothing", async () => {
-      const store = createMockStore();
+    test("reports retrieved candidates and distill tokens when the turn establishes nothing", async () => {
+      const store = createMockStore([
+        {
+          id: "mem_known00001",
+          scopeKey: "sess_test0001",
+          kind: "observation",
+          content: "the project uses Bun",
+          createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 5,
+        },
+      ]);
       const source = createTestDistiller(store, makeRunner([]));
       const metrics = await source.commit({
         sessionId: "sess_test0001",
@@ -276,7 +285,14 @@ describe("memoryDistiller", () => {
         output: "Hello.",
       });
       expect(store.written).toHaveLength(0);
-      expect(metrics).toBeUndefined();
+      expect(metrics).toMatchObject({
+        projectPromotedFacts: 0,
+        userPromotedFacts: 0,
+        sessionScopedFacts: 0,
+        supersededFacts: 0,
+        candidateCount: 1,
+      });
+      expect(metrics?.distillTokens).toBeGreaterThan(0);
     });
 
     test("stores topic on observations", async () => {

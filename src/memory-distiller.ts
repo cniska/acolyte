@@ -284,12 +284,19 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
+      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);
       if (filtered.length === 0) {
         markDistilled(ctx.sessionId, ctx.messages.length);
-        return;
+        return {
+          projectPromotedFacts: 0,
+          userPromotedFacts: 0,
+          sessionScopedFacts: 0,
+          supersededFacts: 0,
+          candidateCount: candidates.length,
+          distillTokens: promptTokens,
+        };
       }
 
-      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);
       let totalTokens = promptTokens;
       let projectCount = 0;
       let userCount = 0;
