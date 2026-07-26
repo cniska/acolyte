@@ -90,7 +90,7 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
       "error.log": "",
     });
 
-    const files = await collectWorkspaceFiles(root);
+    const { files } = await collectWorkspaceFiles(root);
     expect(files).toContain("src/index.ts");
     expect(files).not.toContain("dist/bundle.js");
     expect(files).not.toContain("error.log");
@@ -105,7 +105,7 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
       "lib/foo.generated.ts": "",
     });
 
-    const files = await collectWorkspaceFiles(root);
+    const { files } = await collectWorkspaceFiles(root);
     expect(files).toContain("src/foo.ts");
     expect(files).not.toContain("src/foo.generated.ts");
     expect(files).toContain("lib/foo.generated.ts");
@@ -117,7 +117,7 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
       "src/index.ts": "",
     });
 
-    const files = await collectWorkspaceFiles(root);
+    const { files } = await collectWorkspaceFiles(root);
     expect(files).toContain(".github/workflows/ci.yml");
     expect(files).toContain("src/index.ts");
   });
@@ -129,7 +129,7 @@ describe("collectWorkspaceFiles — gitignore integration", () => {
       ".git/config": "",
     });
 
-    const files = await collectWorkspaceFiles(root);
+    const { files } = await collectWorkspaceFiles(root);
     expect(files).toContain("src/index.ts");
     expect(files.some((f) => f.startsWith("node_modules/"))).toBe(false);
     expect(files.some((f) => f.startsWith(".git/"))).toBe(false);

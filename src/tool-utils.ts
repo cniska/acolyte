@@ -110,7 +110,9 @@ export function isBinaryExtension(path: string): boolean {
   return BINARY_EXTENSIONS.has(path.slice(dot).toLowerCase());
 }
 
-export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Promise<string[]> {
+export type WorkspaceFiles = { files: string[]; truncated: boolean };
+
+export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000): Promise<WorkspaceFiles> {
   const out: string[] = [];
   const rootContext = await loadGitignoreContext(workspace);
   const rootContexts: GitignoreContext[] = rootContext ? [rootContext] : [];
@@ -118,7 +120,7 @@ export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000
     { abs: workspace, rel: "", contexts: rootContexts },
   ];
 
-  while (stack.length > 0 && out.length < maxEntries) {
+  while (stack.length > 0) {
     const current = stack.pop();
     if (!current) break;
     let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
@@ -140,13 +142,13 @@ export async function collectWorkspaceFiles(workspace: string, maxEntries = 5000
         const childContexts = childContext ? [...current.contexts, childContext] : current.contexts;
         stack.push({ abs, rel, contexts: childContexts });
       } else if (entry.isFile()) {
+        if (out.length >= maxEntries) return { files: out, truncated: true };
         out.push(rel);
       }
-      if (out.length >= maxEntries) break;
     }
   }
 
-  return out;
+  return { files: out, truncated: false };
 }
 
 function normalizeRelPath(value: string): string {
@@ -157,7 +159,7 @@ function normalizeRelPath(value: string): string {
 }
 
 export async function resolveSearchScopeFiles(workspace: string, paths: string[] | undefined): Promise<string[]> {
-  const allFiles = await collectWorkspaceFiles(workspace);
+  const { files: allFiles } = await collectWorkspaceFiles(workspace);
   const sandboxRoot = resolveWorkspaceSandboxRoot(workspace);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   if (normalizedPaths.length === 0) return allFiles;

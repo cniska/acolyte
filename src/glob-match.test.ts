@@ -43,6 +43,18 @@ describe("createPathMatcher", () => {
     expect(matched("src/**/*.tsx")).toEqual(["src/tui/tool-render.tsx", "src/tui/components.tsx"]);
   });
 
+  test("treats a trailing slash as a directory prefix", () => {
+    expect(matched("src/*/")).toEqual(["src/tui/tool-render.tsx", "src/tui/components.tsx"]);
+    expect(matched("src/**/")).toEqual([
+      "src/agent-toolkit.ts",
+      "src/file-toolkit.ts",
+      "src/file-ops.ts",
+      "src/cli-tool.ts",
+      "src/tui/tool-render.tsx",
+      "src/tui/components.tsx",
+    ]);
+  });
+
   test("an unanchored directory prefix matches nested directories", () => {
     expect(matched("tui/*.tsx")).toEqual(["src/tui/tool-render.tsx", "src/tui/components.tsx"]);
   });

@@ -35,11 +35,11 @@ const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
 export const DEFAULT_READ_CONTEXT_LINES = 20;
 
-export type FindFilesResult = { output: string; totalMatches: number };
+export type FindFilesResult = { output: string; totalMatches: number; truncated: boolean };
 
 export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<FindFilesResult> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
-  const allFiles = await collectWorkspaceFiles(workspace);
+  const { files: allFiles, truncated: workspaceTruncated } = await collectWorkspaceFiles(workspace);
   const multi = patterns.length > 1;
   const sections: string[] = [];
   let totalMatches = 0;
@@ -62,16 +62,22 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
     totalMatches += matched.length;
 
     if (multi) sections.push(`--- ${trimmed} ---`);
-    sections.push(ranked.length > 0 ? ranked.join("\n") : "No matches.");
-    if (matched.length > ranked.length) {
+    sections.push(
+      ranked.length > 0
+        ? ranked.join("\n")
+        : workspaceTruncated
+          ? "No matches in the scanned workspace files; the scan stopped at its limit."
+          : "No matches.",
+    );
+    if (workspaceTruncated || matched.length > ranked.length) {
       sections.push(
-        `(${matched.length} files matched, showing the first ${ranked.length}. Narrow the pattern to see the rest.)`,
+        `(${workspaceTruncated ? "At least " : ""}${matched.length} files matched, showing the first ${ranked.length}. Narrow the pattern to see the rest.)`,
       );
     }
   }
 
   if (sections.length === 0) sections.push("No matches."); // every pattern was blank
-  return { output: sections.join("\n"), totalMatches };
+  return { output: sections.join("\n"), totalMatches, truncated: workspaceTruncated };
 }
 
 /** Nothing is rejected here: the candidates are already confined to the workspace. */
