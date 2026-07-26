@@ -2,7 +2,16 @@ import { z } from "zod";
 import { type ChatMessage, messageSchema } from "./chat-contract";
 import { CodedError } from "./coded-error";
 import { CLOUD_ERROR_CODES, type CloudErrorCode } from "./error-contract";
-import { type MemoryRecord, type MemoryScope, type MemoryStore, memoryRecordSchema } from "./memory-contract";
+import {
+  type MemoryArchiveRecord,
+  type MemoryDisposition,
+  type MemoryDispositionKind,
+  type MemoryRecord,
+  type MemoryScope,
+  type MemoryStore,
+  memoryArchiveRecordSchema,
+  memoryRecordSchema,
+} from "./memory-contract";
 import { embeddingToBuffer } from "./memory-embedding";
 import { type Session, type SessionId, type SessionStore, sessionIdSchema, sessionSchema } from "./session-contract";
 
@@ -14,6 +23,9 @@ const ROUTES = {
     write: "/api/v1/memories",
     remove: (id: string) => `/api/v1/memories/${encodeURIComponent(id)}`,
     touchRecalled: "/api/v1/memories/touch-recalled",
+    retire: "/api/v1/memories/retire",
+    archive: "/api/v1/memories/archive",
+    restore: "/api/v1/memories/restore",
   },
   embeddings: {
     write: "/api/v1/memories/embeddings",
@@ -47,6 +59,7 @@ export class CloudApiError extends CodedError<CloudErrorCode, { status: number }
 }
 
 const memoryListSchema = z.array(memoryRecordSchema);
+const memoryArchiveListSchema = z.array(memoryArchiveRecordSchema);
 const sessionListSchema = z.array(sessionSchema);
 const embeddingsResponseSchema = z.object({ embeddings: z.record(z.string(), z.string()) });
 const activeSessionSchema = z.object({ id: z.string().nullable() });
@@ -69,6 +82,9 @@ export class CloudClient {
       list: (options) => this.getMemories(options),
       write: (record, scope) => this.writeMemory(record, scope),
       remove: (id) => this.removeMemory(id),
+      retire: (ids, disposition) => this.retireMemories(ids, disposition),
+      listArchive: (options) => this.getArchive(options),
+      restore: (ids) => this.restoreMemories(ids),
       touchRecalled: (ids) => this.touchRecalled(ids),
       writeEmbedding: (id, scopeKey, embedding) => this.writeEmbedding(id, scopeKey, embedding),
       removeEmbedding: (id) => this.removeEmbedding(id),
@@ -105,6 +121,27 @@ export class CloudClient {
 
   private async removeMemory(id: string): Promise<void> {
     await this.del(ROUTES.memories.remove(id));
+  }
+
+  private async retireMemories(ids: string[], disposition: MemoryDisposition): Promise<void> {
+    if (ids.length === 0) return;
+    await this.post(ROUTES.memories.retire, { body: { ids, disposition } });
+  }
+
+  private async getArchive(options?: {
+    scopeKey?: string;
+    kind?: string;
+    disposition?: MemoryDispositionKind;
+  }): Promise<readonly MemoryArchiveRecord[]> {
+    return this.get(ROUTES.memories.archive, {
+      schema: memoryArchiveListSchema,
+      params: { scopeKey: options?.scopeKey, kind: options?.kind, disposition: options?.disposition },
+    });
+  }
+
+  private async restoreMemories(ids: string[]): Promise<readonly MemoryRecord[]> {
+    if (ids.length === 0) return [];
+    return this.post(ROUTES.memories.restore, { schema: memoryListSchema, body: { ids } });
   }
 
   private async touchRecalled(ids: string[]): Promise<void> {

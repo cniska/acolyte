@@ -21,6 +21,11 @@ export interface MemoryEntry {
   readonly scope: MemoryScope;
 }
 
+export interface MemoryArchiveEntry extends MemoryEntry {
+  readonly retiredAt: IsoDateTimeString;
+  readonly disposition: MemoryDisposition;
+}
+
 export type RemoveMemoryResult = { kind: "removed"; entry: MemoryEntry } | { kind: "not_found"; id: string };
 
 export type MemoryCommitContext = {
@@ -84,11 +89,32 @@ export const memoryRecordSchema = z.object({
 });
 export type MemoryRecord = z.infer<typeof memoryRecordSchema>;
 
+export const memoryDispositionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("superseded"), by: z.array(memoryIdSchema).min(1) }),
+  z.object({ kind: z.literal("capacity") }),
+  z.object({ kind: z.literal("noise") }),
+]);
+export type MemoryDisposition = z.infer<typeof memoryDispositionSchema>;
+export type MemoryDispositionKind = MemoryDisposition["kind"];
+
+export const memoryArchiveRecordSchema = memoryRecordSchema.extend({
+  retiredAt: isoDateTimeSchema,
+  disposition: memoryDispositionSchema,
+});
+export type MemoryArchiveRecord = z.infer<typeof memoryArchiveRecordSchema>;
+
 export interface MemoryStore {
   readonly storage: MemoryStorage;
   list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
+  retire(ids: string[], disposition: MemoryDisposition): Promise<void>;
+  listArchive(options?: {
+    scopeKey?: string;
+    kind?: MemoryKind;
+    disposition?: MemoryDispositionKind;
+  }): Promise<readonly MemoryArchiveRecord[]>;
+  restore(ids: string[]): Promise<readonly MemoryRecord[]>;
   touchRecalled(ids: string[]): Promise<void>;
   writeEmbedding(id: string, scopeKey: string, embedding: Buffer): Promise<void>;
   removeEmbedding(id: string): Promise<void>;
@@ -103,6 +129,11 @@ export interface MemoryStore {
 
 export function safeScopeKey(scope: string): string | null {
   return /^(sess|user|proj)_[a-z0-9]+$/.test(scope) ? scope : null;
+}
+
+export function formatDisposition(disposition: MemoryDisposition): string {
+  if (disposition.kind === "superseded") return `superseded by ${disposition.by.join(", ")}`;
+  return disposition.kind;
 }
 
 export function scopeFromKey(key: string): MemoryScope {
