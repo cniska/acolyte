@@ -43,6 +43,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 - the distiller input leads with a task-activity digest — the files a write tool changed, the shell commands run and whether they failed, and non-command failures — derived from the turn's tool call log, so durable work facts survive even when the prose omits them
 - the observer extracts facts from conversations via `memory-observe(scope, content, topic?)` tool calls
+- the fact bar: one self-contained claim per call, about the work rather than the conversation, that could not be recovered by reading the code — decisions and their reasons, constraints the work discovered, project conventions, user preferences. Volatile specifics (line numbers, counts, directory listings, a constant's current value) and unrealized intentions are excluded, and a turn that establishes nothing durable commits nothing
 - each call produces one observation record with its own embedding
 - scope via the `scope` parameter:
   - `"project"` — project-scoped facts (architecture, tooling, conventions)
