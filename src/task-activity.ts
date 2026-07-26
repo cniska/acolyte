@@ -26,9 +26,14 @@ function argPaths(args: Record<string, unknown>): string[] {
 }
 
 // Digest of one turn's work, derived from the tool call log: files a write tool actually
-// changed, shell commands and whether they failed, and non-command failures. Reads are
-// exploration noise and excluded; the durable fact is what the turn changed and what broke.
-export function createTaskActivity(callLog: readonly ToolCallRecord[], writeTools: ReadonlySet<string>): TaskActivity {
+// changed, shell commands and whether they failed, and non-command failures. Discovery is
+// exploration noise and excluded — a failed read on a guessed path is not a durable fact —
+// so what survives is what the turn changed and what actually broke.
+export function createTaskActivity(
+  callLog: readonly ToolCallRecord[],
+  writeTools: ReadonlySet<string>,
+  discoveryTools: ReadonlySet<string> = new Set(),
+): TaskActivity {
   const filesChanged: string[] = [];
   const seenFiles = new Set<string>();
   const commands: TaskActivity["commands"] = [];
@@ -48,7 +53,7 @@ export function createTaskActivity(callLog: readonly ToolCallRecord[], writeTool
       }
     }
 
-    if (failed && !command) {
+    if (failed && !command && !discoveryTools.has(entry.toolName)) {
       errors.push({ tool: entry.toolName, detail: argPaths(entry.args)[0] ?? "" });
     }
   }
@@ -69,5 +74,8 @@ export function renderTaskActivity(activity: TaskActivity): string {
     const lines = activity.errors.map((e) => (e.detail ? `- ${e.tool}: ${e.detail}` : `- ${e.tool}`));
     sections.push(`Errors:\n${lines.join("\n")}`);
   }
-  return sections.join("\n\n");
+  // Single newline between sections: the distill input joins entries with a blank line, so a
+  // blank line here would make `Commands:`/`Errors:` read as top-level entries rather than
+  // part of the `observed:` one.
+  return sections.join("\n");
 }

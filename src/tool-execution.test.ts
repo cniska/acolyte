@@ -100,6 +100,19 @@ describe("per-tool timeout", () => {
     expect(session.callLog[0]).toMatchObject({ toolName: "shell-run", command: "bun test" });
   });
 
+  test("records the command from args when the tool throws", async () => {
+    const session = createSessionContext();
+    session.toolTimeoutMs = 500;
+    // A throwing tool produces no result, so args are the only surviving record of what ran —
+    // and a command that timed out is exactly the fact worth keeping.
+    await expect(
+      runTool(session, "shell-run", "call_1", { cmd: "bun", args: ["test"] }, async () => {
+        throw new Error("timeout");
+      }),
+    ).rejects.toThrow();
+    expect(session.callLog[0]).toMatchObject({ toolName: "shell-run", status: "failed", command: "bun test" });
+  });
+
   test("runs success pipeline stages in order", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;

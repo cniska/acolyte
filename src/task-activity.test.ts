@@ -3,6 +3,7 @@ import { createTaskActivity, renderTaskActivity } from "./task-activity";
 import type { ToolCallRecord } from "./tool-contract";
 
 const WRITE = new Set(["edit", "write"]);
+const DISCOVERY = new Set(["file-read", "file-search"]);
 
 function call(partial: Partial<ToolCallRecord> & { toolName: string }): ToolCallRecord {
   return { args: {}, status: "succeeded", ...partial };
@@ -67,6 +68,18 @@ describe("createTaskActivity", () => {
     const activity = createTaskActivity([call({ toolName: "gh-pr-create", args: {}, status: "failed" })], WRITE);
     expect(activity.errors).toEqual([{ tool: "gh-pr-create", detail: "" }]);
   });
+
+  test("failed discovery calls are excluded — a guessed path is not a durable fact", () => {
+    const activity = createTaskActivity(
+      [
+        call({ toolName: "file-read", args: { path: "src/nope.ts" }, status: "failed" }),
+        call({ toolName: "edit", args: { path: "src/a.ts" }, status: "failed" }),
+      ],
+      WRITE,
+      DISCOVERY,
+    );
+    expect(activity.errors).toEqual([{ tool: "edit", detail: "src/a.ts" }]);
+  });
 });
 
 describe("renderTaskActivity", () => {
@@ -80,7 +93,7 @@ describe("renderTaskActivity", () => {
       commands: [{ command: "bun test", failed: true }],
       errors: [{ tool: "edit", detail: "src/b.ts" }],
     });
-    expect(rendered).toBe("Files changed:\n- src/a.ts\n\nCommands:\n- bun test (failed)\n\nErrors:\n- edit: src/b.ts");
+    expect(rendered).toBe("Files changed:\n- src/a.ts\nCommands:\n- bun test (failed)\nErrors:\n- edit: src/b.ts");
   });
 
   test("renders a path-less error as the tool name alone", () => {

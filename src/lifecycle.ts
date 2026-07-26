@@ -14,7 +14,7 @@ import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller
 import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
-import { WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -158,7 +158,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET);
+  const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
   const distillTokens = estimateDistillPromptTokens(messages, output, activity);
   ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
