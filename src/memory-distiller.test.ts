@@ -103,7 +103,7 @@ describe("memoryDistiller", () => {
       expect(store.written).toHaveLength(0);
     });
 
-    test("skips consecutive duplicate observations", async () => {
+    test("skips a duplicate of any earlier observation, not just the latest", async () => {
       const store = createMockStore([
         {
           id: "mem_obs_prev",
@@ -111,6 +111,14 @@ describe("memoryDistiller", () => {
           kind: "observation",
           content: "prefers short answers",
           createdAt: "2026-03-04T10:00:00.000Z",
+          tokenEstimate: 6,
+        },
+        {
+          id: "mem_obs_newer",
+          scopeKey: "sess_test0001",
+          kind: "observation",
+          content: "the build runs on bun",
+          createdAt: "2026-03-04T11:00:00.000Z",
           tokenEstimate: 6,
         },
       ]);

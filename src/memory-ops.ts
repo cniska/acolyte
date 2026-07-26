@@ -116,8 +116,9 @@ export async function addObservation(
 
   const store = options.store ?? (await getMemoryStore());
   const existing = await store.list({ scopeKey });
-  const latest = existing.filter((e) => e.kind === "observation").slice(-1)[0];
-  if (latest && normalizeMemoryText(latest.content) === normalizeMemoryText(trimmed)) return null;
+  const normalized = normalizeMemoryText(trimmed);
+  const duplicate = existing.some((e) => e.kind === "observation" && normalizeMemoryText(e.content) === normalized);
+  if (duplicate) return null;
 
   const record: MemoryRecord = {
     id: `mem_${createId()}`,
