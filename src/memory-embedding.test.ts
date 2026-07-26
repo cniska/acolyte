@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
 import { CodedError } from "./coded-error";
 import { MEMORY_ERROR_CODES } from "./error-contract";
 import {
@@ -11,8 +10,10 @@ import {
   embedText,
   filterByTopicEmbedding,
   matchTopicsByEmbedding,
+  resolveEmbeddingTarget,
   tokenOverlap,
 } from "./memory-embedding";
+import { pinEmbeddingProviders } from "./test-utils";
 
 describe("cosineSimilarity", () => {
   test("identical vectors return 1", () => {
@@ -164,24 +165,61 @@ describe("embedding serialization", () => {
   });
 });
 
-describe("embedQuery", () => {
-  const config = appConfig as { embeddingModel: string };
-  const savedModel = config.embeddingModel;
-  const unsupported = "anthropic/claude-opus-4-1";
-  afterEach(() => {
-    config.embeddingModel = savedModel;
+describe("resolveEmbeddingTarget", () => {
+  let restore: () => void = () => {};
+  afterEach(() => restore());
+
+  test("uses the model's provider without rerouting through the gateway", () => {
+    restore = pinEmbeddingProviders({ openai: { apiKey: "sk-direct" }, vercel: { apiKey: "gw" } });
+    expect(resolveEmbeddingTarget("text-embedding-3-small")).toMatchObject({
+      provider: "openai",
+      model: "text-embedding-3-small",
+    });
   });
 
-  test("a provider without embedding support fails, naming the model", async () => {
-    config.embeddingModel = unsupported;
+  test("honors a provider named explicitly in the model id", () => {
+    restore = pinEmbeddingProviders({ openai: { apiKey: "sk-direct" }, vercel: { apiKey: "gw" } });
+    expect(resolveEmbeddingTarget("openai/text-embedding-3-small")).toMatchObject({
+      provider: "openai",
+      model: "openai/text-embedding-3-small",
+    });
+  });
+
+  test("does not fall back when the named provider has no key", () => {
+    restore = pinEmbeddingProviders({ vercel: { apiKey: "gw" } });
+    expect(resolveEmbeddingTarget("openai/text-embedding-3-small")).toBeNull();
+  });
+
+  test("does not route an unsupported provider through the gateway", () => {
+    restore = pinEmbeddingProviders({ vercel: { apiKey: "gw" } });
+    expect(resolveEmbeddingTarget("anthropic/claude-opus-4-1")).toBeNull();
+  });
+
+  test("an OpenAI subscription alone resolves nothing, since OAuth cannot embed", () => {
+    restore = pinEmbeddingProviders({ openai: { apiKey: undefined, baseUrl: "https://api.openai.com/v1" } });
+    expect(resolveEmbeddingTarget("text-embedding-3-small")).toBeNull();
+  });
+
+  test("a keyless local base URL resolves nothing, since every embeddings client needs a key", () => {
+    restore = pinEmbeddingProviders({ embeddingBaseUrl: "http://localhost:11434/v1" });
+    expect(resolveEmbeddingTarget("text-embedding-3-small")).toBeNull();
+  });
+});
+
+describe("embedQuery", () => {
+  let restore: () => void = () => {};
+  afterEach(() => restore());
+
+  test("fails when no provider can embed, naming the model", async () => {
+    restore = pinEmbeddingProviders({ embeddingModel: "anthropic/claude-opus-4-1" });
     const error = await embedQuery("any query").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CodedError);
     expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
-    expect((error as CodedError).message).toContain(unsupported);
+    expect((error as CodedError).message).toContain("anthropic/claude-opus-4-1");
   });
 
   test("optional enrichment still degrades to no vector", async () => {
-    config.embeddingModel = unsupported;
+    restore = pinEmbeddingProviders({ embeddingModel: "anthropic/claude-opus-4-1" });
     expect(await embedText("any query")).toBeNull();
   });
 });

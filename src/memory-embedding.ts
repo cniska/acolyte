@@ -1,11 +1,19 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import { defaultCredentials } from "./agent-model";
 import { appConfig } from "./app-config";
+import { unreachable } from "./assert";
 import { CodedError } from "./coded-error";
 import { errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
-import { bareModelId, type ProviderCredentials, providerFromModel } from "./provider-config";
+import {
+  bareModelId,
+  type EmbeddingProvider,
+  isEmbeddingProvider,
+  isEmbeddingProviderAvailable,
+  normalizeModel,
+  type ProviderCredentials,
+  providerFromModel,
+} from "./provider-config";
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`);
@@ -29,51 +37,65 @@ export function bufferToEmbedding(buf: Buffer): Float32Array {
   return new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
 }
 
-function createEmbeddingModel(qualifiedModel: string, providerCreds: ProviderCredentials) {
-  const provider = providerFromModel(qualifiedModel);
-  const modelId = bareModelId(qualifiedModel);
+type EmbeddingTarget = {
+  provider: EmbeddingProvider;
+  model: string;
+  apiKey: string | undefined;
+  baseUrl: string | undefined;
+};
 
-  switch (provider) {
-    case "openai": {
-      const openai = createOpenAI({
-        apiKey: providerCreds.apiKey,
-        ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-      });
-      return openai.embeddingModel(modelId);
-    }
-    case "google": {
-      const google = createGoogleGenerativeAI({
-        apiKey: providerCreds.apiKey,
-        ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-      });
-      return google.embeddingModel(modelId);
-    }
+function targetFor(provider: EmbeddingProvider, configuredModel: string): EmbeddingTarget | null {
+  const creds: ProviderCredentials = appConfig[provider] ?? {};
+  if (!isEmbeddingProviderAvailable(provider, creds)) return null;
+  // The gateway routes by provider/model, so the nominal provider has to survive in the id.
+  const model = provider === "vercel" ? normalizeModel(configuredModel) : configuredModel;
+  return { provider, model, apiKey: creds.apiKey, baseUrl: creds.baseUrl };
+}
+
+/**
+ * Embeddings follow the credentials that can actually serve them, not the model id's nominal
+ * provider: a subscription-only OpenAI setup still embeds through the Vercel gateway. The gateway
+ * is the default route, so it wins unless the model id names its provider explicitly.
+ */
+export function resolveEmbeddingTarget(configuredModel: string): EmbeddingTarget | null {
+  const { baseUrl, apiKey } = appConfig.embedding;
+  if (baseUrl) {
+    if (!apiKey) return null;
+    return { provider: "openai", model: configuredModel, apiKey, baseUrl };
+  }
+  const nominal = providerFromModel(configuredModel);
+  return isEmbeddingProvider(nominal) ? targetFor(nominal, configuredModel) : null;
+}
+
+function createEmbeddingModel(target: EmbeddingTarget) {
+  const settings = { apiKey: target.apiKey, ...(target.baseUrl ? { baseURL: target.baseUrl } : {}) };
+  switch (target.provider) {
+    case "openai":
+      return createOpenAI(settings).embeddingModel(bareModelId(target.model));
+    case "google":
+      return createGoogleGenerativeAI(settings).embeddingModel(bareModelId(target.model));
     case "vercel": {
-      const vercel = createOpenAI({
-        apiKey: providerCreds.apiKey,
-        ...(providerCreds.baseUrl ? { baseURL: providerCreds.baseUrl } : {}),
-      });
-      const gatewayModelId = qualifiedModel.startsWith("vercel/")
-        ? qualifiedModel.slice("vercel/".length)
-        : qualifiedModel;
-      return vercel.embeddingModel(gatewayModelId);
+      const gatewayModelId = target.model.startsWith("vercel/") ? target.model.slice("vercel/".length) : target.model;
+      return createOpenAI(settings).embeddingModel(gatewayModelId);
     }
     default:
-      return null;
+      return unreachable(target.provider);
   }
 }
 
-let cachedKey: string | null = null;
-let cachedModel: ReturnType<typeof createEmbeddingModel> = null;
+// appConfig's provider entries are mutated in place, so the cache compares copied values, not the live object.
+let cached: (EmbeddingTarget & { embeddingModel: ReturnType<typeof createEmbeddingModel> }) | null = null;
+
+function sameTarget(a: EmbeddingTarget, b: EmbeddingTarget): boolean {
+  return a.provider === b.provider && a.model === b.model && a.apiKey === b.apiKey && a.baseUrl === b.baseUrl;
+}
 
 function getEmbeddingModel() {
-  const qualifiedModel = appConfig.embeddingModel;
-  const providerCreds = defaultCredentials()[providerFromModel(qualifiedModel)] ?? {};
-  const key = JSON.stringify([qualifiedModel, providerCreds.baseUrl, providerCreds.apiKey]);
-  if (cachedKey === key && cachedModel) return cachedModel;
-  cachedModel = createEmbeddingModel(qualifiedModel, providerCreds);
-  cachedKey = key;
-  return cachedModel;
+  const target = resolveEmbeddingTarget(appConfig.embedding.model);
+  if (!target) return null;
+  if (cached && sameTarget(cached, target)) return cached.embeddingModel;
+  cached = { ...target, embeddingModel: createEmbeddingModel(target) };
+  return cached.embeddingModel;
 }
 
 const STOPWORDS = new Set([
@@ -203,7 +225,7 @@ export async function embedQuery(text: string): Promise<Float32Array> {
   if (!model) {
     throw new CodedError(
       MEMORY_ERROR_CODES.embeddingUnavailable,
-      `No embedding model: "${appConfig.embeddingModel}" resolves to a provider without embedding support, so memory recall cannot rank.`,
+      `No embedding provider for "${appConfig.embedding.model}": memory recall needs an API key.`,
     );
   }
   try {
@@ -214,7 +236,7 @@ export async function embedQuery(text: string): Promise<Float32Array> {
   } catch (error) {
     throw new CodedError(
       MEMORY_ERROR_CODES.embeddingUnavailable,
-      `Embedding request failed for "${appConfig.embeddingModel}": ${errorMessage(error)}`,
+      `Embedding request failed for "${appConfig.embedding.model}": ${errorMessage(error)}`,
       { cause: error },
     );
   }
@@ -224,7 +246,7 @@ export async function embedText(text: string): Promise<Float32Array | null> {
   try {
     return await embedQuery(text);
   } catch (error) {
-    log.warn("memory.embedding.failed", { model: appConfig.embeddingModel, error: errorMessage(error) });
+    log.warn("memory.embedding.failed", { model: appConfig.embedding.model, error: errorMessage(error) });
     return null;
   }
 }

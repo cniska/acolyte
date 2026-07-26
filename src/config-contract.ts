@@ -14,6 +14,14 @@ export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
 export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
 
 const nonEmptyStringSchema = z.string().trim().min(1);
+const embeddingBaseUrlSchema = nonEmptyStringSchema.refine((value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}, "must use HTTPS unless it targets localhost");
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
     (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),
@@ -33,6 +41,7 @@ export interface Config {
   replyTimeoutMs?: number;
   reasoning?: ReasoningLevel;
   embeddingModel?: string;
+  embeddingBaseUrl?: string;
   features?: FeatureFlags;
 }
 
@@ -49,6 +58,7 @@ export interface ResolvedConfig {
   replyTimeoutMs: number;
   reasoning?: ReasoningLevel;
   embeddingModel: string;
+  embeddingBaseUrl?: string;
   features: ResolvedFeatureFlags;
 }
 
@@ -63,6 +73,7 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   logFormat: logFormatSchema,
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
+  embeddingBaseUrl: embeddingBaseUrlSchema,
   distillModel: nonEmptyStringSchema,
   replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
   features: featureFlagsSchema,
@@ -87,6 +98,7 @@ export function toConfig(input: Record<string, unknown>): Config {
     replyTimeoutMs: parseField(parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS), input.replyTimeoutMs),
     reasoning: parseField(reasoningLevelSchema, input.reasoning),
     embeddingModel: parseField(nonEmptyStringSchema, input.embeddingModel),
+    embeddingBaseUrl: parseField(embeddingBaseUrlSchema, input.embeddingBaseUrl),
     features: parseField(featureFlagsSchema, input.features),
   };
 }

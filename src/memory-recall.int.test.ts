@@ -1,5 +1,4 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { appConfig } from "./app-config";
 import { CodedError } from "./coded-error";
 import { MEMORY_ERROR_CODES } from "./error-contract";
 import type { MemoryRecord } from "./memory-contract";
@@ -7,19 +6,16 @@ import type { ScopeContext } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId } from "./resource-id";
-import { tempDb } from "./test-utils";
+import { pinEmbeddingProviders, tempDb } from "./test-utils";
 
-const config = appConfig as { embeddingModel: string };
 const NO_EMBEDDING_SUPPORT = "anthropic/claude-opus-4-1";
-let savedModel: string;
+let restoreProviders: () => void;
 
+// No provider credentials at all, so nothing can embed and recall has to fail rather than rank.
 beforeAll(() => {
-  savedModel = config.embeddingModel;
-  config.embeddingModel = NO_EMBEDDING_SUPPORT;
+  restoreProviders = pinEmbeddingProviders({ embeddingModel: NO_EMBEDDING_SUPPORT });
 });
-afterAll(() => {
-  config.embeddingModel = savedModel;
-});
+afterAll(() => restoreProviders());
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-recall-", createSqliteMemoryStore);
 afterEach(cleanupStores);
@@ -40,8 +36,8 @@ function createRecord(): MemoryRecord {
 
 describe("recall without an embedding", () => {
   test("fails with the embedding-unavailable code instead of returning records", async () => {
-    const store = await createStore();
-    await store.write(createRecord(), "user");
+    const store = createStore();
+    await store.write(createRecord());
 
     const error = await searchMemories("any query", ctx, { store }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CodedError);
@@ -50,8 +46,8 @@ describe("recall without an embedding", () => {
   });
 
   test("marks nothing as recalled", async () => {
-    const store = await createStore();
-    await store.write(createRecord(), "user");
+    const store = createStore();
+    await store.write(createRecord());
     const touched: string[] = [];
     const realTouch = store.touchRecalled.bind(store);
     store.touchRecalled = async (ids) => {
@@ -64,7 +60,7 @@ describe("recall without an embedding", () => {
   });
 
   test("an empty corpus still returns no records rather than failing", async () => {
-    const store = await createStore();
+    const store = createStore();
     expect(await searchMemories("any query", ctx, { store })).toEqual([]);
   });
 });

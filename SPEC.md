@@ -67,7 +67,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ### 2.5 Options / configuration
 
-- **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding and distill models, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
+- **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding model and optional embedding base URL, distill model, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
 - **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, parallel workspaces, cloud sync, and MCP. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
 - **FR-38** — Reasoning level (`low`/`medium`/`high`) is accepted and mapped to the selected provider's native reasoning control.
 - **FR-39** — Locale selects the UI language; an unset locale defaults to English, and an unavailable locale falls back rather than failing.
@@ -94,7 +94,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-3** — The model can search and add memory records at runtime.
 - **MEM-4** — After each request, a background distillation step extracts durable observations from the conversation and from a record of the turn's own work — the files it changed, the commands it ran and whether they failed — and commits them at the appropriate scope, tagged with an optional single-word topic. An observation is one self-contained claim about the work that could not be recovered by reading the code; a turn that establishes nothing durable commits nothing.
 - **MEM-5** — Recall is scope-guarded: a record is returned only if the caller's context could have written to its scope — session facts only to their own session, project facts only to the current project, user facts always visible.
-- **MEM-6** — Recall ranks records by relevance combining semantic similarity and keyword overlap; when the query cannot be embedded, ranking would collapse to keyword overlap alone, so recall fails with a classified error naming the cause rather than returning results ranked on a partial signal.
+- **MEM-6** — Recall ranks records by relevance combining semantic similarity and keyword overlap; when the query cannot be embedded, recall fails with a classified error naming the cause rather than returning results ranked on the remaining partial signal.
 - **MEM-7** — Memory commit at finalize is best-effort background work; a commit failure is recorded observably and never fails or delays the user-facing response.
 - **MEM-8** — Exact-duplicate observations are not stored twice.
 - **MEM-9** — With the AGENTS.md-sync flag enabled, the project's AGENTS.md is committed as a deterministic project memory record and recalled on demand instead of being injected into the prompt.
@@ -132,7 +132,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **SEC-3** — A boundary violation returns a structured tool error with a stable sandbox-violation code and kind, not a raw exception.
 - **SEC-4** — Shell execution runs an argv command without shell-string evaluation, validates the command path and path-like arguments against the workspace boundary, and runs with a restricted environment allowlist. (This is command-level, not kernel-level, isolation.)
 - **SEC-5** — There is no per-tool approval prompt; trust is granted in advance at task start, and the workspace boundary is the enforced limit.
-- **SEC-6** — Provider API keys are read from the process environment first, then a private credentials file with owner-only permissions; an environment value always overrides a stored key.
+- **SEC-6** — Provider API keys and the dedicated embedding API key are read from the process environment first, then a private credentials file with owner-only permissions; an environment value always overrides a stored key. Secrets are never configuration values.
 - **SEC-7** — Subscription (OAuth) tokens are stored separately from API keys with owner-only permissions and refresh automatically; logout can remove a key, a subscription, or both for a provider, and replacing stored credentials asks for confirmation.
 - **SEC-8** — MCP is disabled by default and opt-in per repository; HTTP MCP servers must use HTTPS except for localhost, and stdio MCP subprocesses receive only a minimal environment allowlist plus explicitly configured variables.
 - **SEC-9** — Acolyte has no product telemetry: trace events, logs, and memory remain on the local machine (or the user's own cloud when cloud sync is enabled) and are never uploaded to Acolyte.

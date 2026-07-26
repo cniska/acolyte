@@ -35,7 +35,11 @@ export const appConfig = {
   model: fileConfig.model,
   reasoning: fileConfig.reasoning,
   distillModel: fileConfig.distillModel,
-  embeddingModel: fileConfig.embeddingModel,
+  embedding: {
+    model: fileConfig.embeddingModel,
+    baseUrl: fileConfig.embeddingBaseUrl,
+    apiKey: env.ACOLYTE_EMBEDDING_API_KEY ?? credentials.embeddingApiKey,
+  },
   cloudUrl: env.ACOLYTE_CLOUD_URL ?? credentials.cloudUrl,
   cloudToken: env.ACOLYTE_CLOUD_TOKEN ?? credentials.cloudToken,
 } as const;

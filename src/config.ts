@@ -133,6 +133,7 @@ function serializeToml(config: Config): string {
   if (typeof config.replyTimeoutMs === "number") lines.push(`replyTimeoutMs = ${config.replyTimeoutMs}`);
   if (config.reasoning) lines.push(`reasoning = ${JSON.stringify(config.reasoning)}`);
   if (config.embeddingModel) lines.push(`embeddingModel = ${JSON.stringify(config.embeddingModel)}`);
+  if (config.embeddingBaseUrl) lines.push(`embeddingBaseUrl = ${JSON.stringify(config.embeddingBaseUrl)}`);
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
@@ -166,6 +167,7 @@ function resolveConfig(config: Config): ResolvedConfig {
     replyTimeoutMs: config.replyTimeoutMs ?? defaults.replyTimeoutMs,
     reasoning: config.reasoning,
     embeddingModel: config.embeddingModel ?? defaults.embeddingModel,
+    embeddingBaseUrl: config.embeddingBaseUrl,
     features: resolvedFeatures,
   };
 }

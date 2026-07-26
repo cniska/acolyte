@@ -4,7 +4,6 @@ import {
   type FakeProviderServer,
   startFakeProviderServer,
 } from "../scripts/fake-provider-server";
-import { appConfig } from "./app-config";
 import { CodedError } from "./coded-error";
 import { MEMORY_ERROR_CODES } from "./error-contract";
 import type { MemoryRecord } from "./memory-contract";
@@ -13,29 +12,21 @@ import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
 import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
-import { tempDb } from "./test-utils";
+import { pinEmbeddingProviders, tempDb } from "./test-utils";
 
-const config = appConfig as { embeddingModel: string };
-const openai = appConfig.openai as { baseUrl: string; apiKey: string | undefined };
 let fake: FakeProviderServer;
-let savedModel: string;
-let savedBaseUrl: string;
-let savedApiKey: string | undefined;
+let restoreProviders: () => void;
 
 beforeAll(() => {
-  savedModel = config.embeddingModel;
-  savedBaseUrl = openai.baseUrl;
-  savedApiKey = openai.apiKey;
   fake = startFakeProviderServer();
-  config.embeddingModel = "text-embedding-3-large";
-  openai.baseUrl = fake.baseUrl;
-  openai.apiKey = "fake-key";
+  restoreProviders = pinEmbeddingProviders({
+    embeddingModel: "openai/text-embedding-3-large",
+    openai: { apiKey: "fake-key", baseUrl: fake.baseUrl },
+  });
 });
 afterAll(() => {
   fake.stop();
-  config.embeddingModel = savedModel;
-  openai.baseUrl = savedBaseUrl;
-  openai.apiKey = savedApiKey;
+  restoreProviders();
 });
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);

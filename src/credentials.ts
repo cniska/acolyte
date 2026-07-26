@@ -11,11 +11,13 @@ const CREDENTIALS_FILE = "credentials";
 const KEY_MAP = {
   cloudUrl: "ACOLYTE_CLOUD_URL",
   cloudToken: "ACOLYTE_CLOUD_TOKEN",
+  embeddingApiKey: "ACOLYTE_EMBEDDING_API_KEY",
 } as const;
 
 export type Credentials = {
   cloudUrl?: string;
   cloudToken?: string;
+  embeddingApiKey?: string;
 };
 
 function credentialsPath(env?: Env): string {
@@ -29,6 +31,8 @@ function parseCredentials(content: string): Credentials {
   const token = getDotenvValue(entries, KEY_MAP.cloudToken);
   if (url) creds.cloudUrl = url;
   if (token) creds.cloudToken = token;
+  const embeddingApiKey = getDotenvValue(entries, KEY_MAP.embeddingApiKey);
+  if (embeddingApiKey) creds.embeddingApiKey = embeddingApiKey;
   return creds;
 }
 

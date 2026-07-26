@@ -88,6 +88,18 @@ ollama pull <model>
 acolyte config set --project model openai-compatible/<model>
 ```
 
+## Local embeddings
+
+Keep chat on its configured provider while routing semantic memory to an OpenAI-compatible embedding endpoint:
+
+```bash
+acolyte config set --project embeddingModel nomic-embed-text
+acolyte config set --project embeddingBaseUrl http://localhost:11434/v1
+ACOLYTE_EMBEDDING_API_KEY=ollama acolyte run "..."
+```
+
+`embeddingBaseUrl` is an explicit route for embedding requests only. Its API key is read from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. HTTP is allowed only for localhost; remote endpoints must use HTTPS.
+
 ## Localization
 
 - `locale`: active UI language (defaults to `en`).
@@ -173,6 +185,7 @@ acolyte config set features.syncAgents true
 | `vercelBaseUrl` | Vercel AI Gateway base URL |
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
+| `embeddingBaseUrl` | explicit OpenAI-compatible embedding API base URL |
 | `distillModel` | model used for memory distillation |
 | `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
