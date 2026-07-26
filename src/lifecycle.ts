@@ -299,7 +299,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   });
 
   if (!ctx.result) return deps.phaseFinalize(ctx);
-  if (input.runControl?.shouldYield()) {
+  if (ctx.runControl?.shouldYield()) {
     ctx.debug("lifecycle.yield", {});
     if (!ctx.result.text.trim()) {
       ctx.result = {
@@ -314,7 +314,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   // A cancelled run (client disconnect or daemon shutdown) is never delivered, so it must not
   // leave a trace in history or memory — committing an answer the user never saw is the
   // divergence this guards against. Finalize for resource cleanup, but accept nothing.
-  if (input.runControl?.signal.aborted) {
+  if (ctx.runControl?.signal.aborted) {
     ctx.debug("lifecycle.cancelled", {});
     return deps.phaseFinalize(ctx);
   }

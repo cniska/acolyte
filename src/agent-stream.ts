@@ -64,12 +64,14 @@ export function createAgentStream(
     });
     options.installSideEffectSink?.((chunk) => streamController.enqueue(chunk));
 
+    const cancelled = (): boolean => options.abortSignal?.aborted === true;
+
     const resultPromise = (async (): Promise<GenerateResult> => {
       let finishReason: LanguageModelV4FinishReason | undefined;
 
       const runSteps = async (): Promise<void> => {
         while (true) {
-          if (options.abortSignal?.aborted) break;
+          if (cancelled()) break;
           loopIteration++;
           if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
           log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
@@ -167,7 +169,7 @@ export function createAgentStream(
 
             const toolResultParts: LanguageModelV4ToolResultPart[] = [];
             for (const tc of pendingToolCalls) {
-              if (options.abortSignal?.aborted) break;
+              if (cancelled()) break;
               allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
               const tool = toolsByName.get(tc.toolName);
               if (!tool) {
@@ -230,7 +232,7 @@ export function createAgentStream(
           }
 
           // A cancelled run is never delivered, so the completion gate must not reopen it.
-          if (options.abortSignal?.aborted) break;
+          if (cancelled()) break;
 
           // A step is terminal when the model emitted no tool calls (native end_turn) OR it
           // emitted tool calls but finished with a non-tool-calls reason (degenerate; terminate
@@ -273,7 +275,7 @@ export function createAgentStream(
       } catch (error) {
         // Aborting a call in flight rejects it. That rejection is the cancellation itself,
         // not a run failure, so end the stream quietly — the caller discards the result.
-        if (!options.abortSignal?.aborted) throw error;
+        if (!cancelled()) throw error;
         log.debug("agent-stream.cancelled", { iteration: loopIteration });
       } finally {
         options.installSideEffectSink?.(null);
