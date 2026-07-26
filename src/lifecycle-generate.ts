@@ -31,6 +31,7 @@ import {
 } from "./lifecycle-contract";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
 import { providerFromModel } from "./provider-config";
+import type { ActiveSkill } from "./skill-contract";
 import type { StreamError } from "./stream-error";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
@@ -114,10 +115,11 @@ export function createRunAgent(input: {
   workspace: string | undefined;
   model: string;
   tools: Toolset;
+  activeSkills: ActiveSkill[];
 }): Agent {
   return createAgent({
     model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt),
+    instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt, input.activeSkills),
     tools: input.tools as Record<string, ToolDefinition>,
   });
 }

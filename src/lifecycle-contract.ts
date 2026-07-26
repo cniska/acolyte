@@ -9,6 +9,7 @@ import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
 import type { AuthRoute } from "./provider-config";
+import type { ActiveSkill } from "./skill-contract";
 import type {
   SessionContext,
   SkillActivatedListener,
@@ -83,6 +84,7 @@ export type PhasePrepareResult = {
   session: SessionContext;
   tools: Toolset;
   baseAgentInput: string;
+  skillsForPrompt: ActiveSkill[];
   promptUsage: PromptUsage;
 };
 export type GenerateOptions = { timeoutMs: number };

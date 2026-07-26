@@ -4,9 +4,9 @@ Acolyte plans each model call before assembly. It reserves known prompt costs fi
 
 ## Per-call input limit
 
-Before generation, Acolyte accounts for the system prompt, tool definitions, current user message, active skills, available-skill roster, suggestions, and history. The configured input limit applies to each model call, not to a cumulative turn total.
+Before generation, Acolyte accounts for the system prompt, tool definitions, current user message, active skills, available-skill roster, suggestions, and history. The configured input limit applies to each model call, not to a cumulative turn total. Active-skill guidance rides in the system prompt so it sits inside the provider's cached prefix, reused across a turn's model calls rather than re-billed on each one; the composed input carries only a short line naming the active skills and their token cost.
 
-If the final composition exceeds the limit, the request fails with a breakdown of system, tool, and message token counts. This catches an oversized prompt before it reaches the provider.
+If the final composition exceeds the limit, the request fails with a breakdown of system, tool, and message token counts. This catches an oversized prompt before it reaches the provider. A single active skill that cannot fit is instead dropped best-effort — recorded to the trace as `lifecycle.skill.dropped` and noted to the model so it can deactivate or proceed knowingly — rather than failing the whole request.
 
 ## Context window behavior
 
