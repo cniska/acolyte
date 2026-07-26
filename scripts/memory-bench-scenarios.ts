@@ -531,18 +531,21 @@ const locomoDistilledAdapter: DatasetAdapter = {
     const runner = async (systemPrompt: string, userContent: string): Promise<string> => {
       const qualifiedModel = normalizeModel(appConfig.distillModel);
       const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
-      const result = await model.doGenerate({
+      const { stream } = await model.doStream({
         prompt: [
           { role: "system", content: systemPrompt },
           { role: "user", content: [{ type: "text", text: userContent }] },
         ],
-        temperature: 0,
       });
-      return result.content
-        .filter((part): part is { type: "text"; text: string } => part.type === "text")
-        .map((part) => part.text)
-        .join("")
-        .trim();
+      const reader = stream.getReader();
+      let text = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
+        if (value.type === "text-delta") text += value.delta;
+      }
+      return text.trim();
     };
 
     const cacheDir = join(dir, "distilled");
