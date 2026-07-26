@@ -47,6 +47,8 @@ All tool calls run through the execution layer which ensures:
 
 Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore negation patterns.
 
+`file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally.
+
 ## Tool result cache
 
 Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`) are cached. Identical calls return the cached result without re-executing. Bounded `file-read` windows are keyed by `aroundLine` and `contextLines`, so full reads and windowed reads cache independently while still invalidating together by path.

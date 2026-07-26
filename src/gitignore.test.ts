@@ -90,6 +90,12 @@ describe("double star **", () => {
     expect(ignored(["a/**/b"], "a/x/b")).toBe(true);
     expect(ignored(["a/**/b"], "a/x/y/b")).toBe(true);
   });
+
+  test("internal /**/ spans whole directories, not part of a segment", () => {
+    expect(ignored(["a/**/b"], "a/xb")).toBe(false);
+    expect(ignored(["src/**/test"], "src/latest")).toBe(false);
+    expect(ignored(["src/**/test"], "src/test")).toBe(true);
+  });
 });
 
 describe("anchored patterns", () => {

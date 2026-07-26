@@ -50,7 +50,7 @@ describe("searchFiles", () => {
 describe("findFiles", () => {
   test("finds files by pattern in workspace", async () => {
     const result = await findFiles(WORKSPACE, ["package.json"]);
-    expect(result).toContain("package.json");
+    expect(result.output).toContain("package.json");
   });
 
   test("rejects empty patterns", async () => {

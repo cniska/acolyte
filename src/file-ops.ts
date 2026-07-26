@@ -1,6 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
+import { createPathMatcher } from "./glob-match";
 import { createToolError } from "./tool-error";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
@@ -34,38 +35,49 @@ const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
 export const DEFAULT_READ_CONTEXT_LINES = 20;
 
-export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<string> {
+export type FindFilesResult = { output: string; totalMatches: number };
+
+export async function findFiles(workspace: string, patterns: string[], maxResults = 40): Promise<FindFilesResult> {
   if (patterns.length === 0) throw new Error("At least one pattern is required");
   const allFiles = await collectWorkspaceFiles(workspace);
   const multi = patterns.length > 1;
   const sections: string[] = [];
+  let totalMatches = 0;
 
   for (const pattern of patterns) {
     const trimmed = pattern.trim();
     if (!trimmed) continue;
-    const needle = trimmed
-      .replace(/^\.\/+/, "")
-      .replace(/[*?]+/g, "")
-      .toLowerCase();
+    const relativePattern = toWorkspaceRelativePattern(trimmed, workspace);
+    const needle = relativePattern.replace(/^\.\/+/, "").toLowerCase();
+    const matches = createPathMatcher(relativePattern);
 
-    const ranked = allFiles
-      .filter((path) => path.toLowerCase().includes(needle))
-      .sort((a, b) => {
-        const aLower = a.toLowerCase();
-        const bLower = b.toLowerCase();
-        const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
-        const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-        if (aScore !== bScore) return aScore - bScore;
-        return a.length - b.length;
-      })
-      .slice(0, maxResults)
-      .map((path) => `./${path}`);
+    const rank = (path: string) => {
+      const lower = path.toLowerCase();
+      if (lower === needle) return 0;
+      if (lower.endsWith(`/${needle}`)) return 1;
+      return 2;
+    };
+    const matched = allFiles.filter(matches).sort((a, b) => rank(a) - rank(b) || a.length - b.length);
+    const ranked = matched.slice(0, maxResults).map((path) => `./${path}`);
+    totalMatches += matched.length;
 
     if (multi) sections.push(`--- ${trimmed} ---`);
     sections.push(ranked.length > 0 ? ranked.join("\n") : "No matches.");
+    if (matched.length > ranked.length) {
+      sections.push(
+        `(${matched.length} files matched, showing the first ${ranked.length}. Narrow the pattern to see the rest.)`,
+      );
+    }
   }
 
-  return sections.join("\n");
+  if (sections.length === 0) sections.push("No matches."); // every pattern was blank
+  return { output: sections.join("\n"), totalMatches };
+}
+
+/** Nothing is rejected here: the candidates are already confined to the workspace. */
+function toWorkspaceRelativePattern(pattern: string, workspace: string): string {
+  const prefix = workspace.endsWith("/") ? workspace : `${workspace}/`;
+  return pattern.startsWith(prefix) ? `/${pattern.slice(prefix.length)}` : pattern;
 }
 
 export async function searchFiles(

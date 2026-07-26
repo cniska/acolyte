@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createGlobMatcher } from "./glob-match";
 
 type CompiledPattern = {
-  regex: RegExp;
+  matches: (path: string) => boolean;
   negated: boolean;
   dirOnly: boolean;
 };
@@ -11,44 +12,6 @@ export type GitignoreContext = {
   patterns: CompiledPattern[];
   dir: string;
 };
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-}
-
-function globToRegex(glob: string, anchored: boolean): string {
-  let re = anchored ? "^" : "(^|/)";
-
-  if (glob.startsWith("**/")) {
-    re += "(.+/)?"; // leading **/ — any number of leading directories
-    glob = glob.slice(3);
-  }
-
-  for (const [token] of glob.matchAll(/\/\*\*\/|\/\*\*|\*\*|\*|\?|\[[^\]]*\]|\[|[^*?[/]+|\//g)) {
-    switch (token) {
-      case "/**/":
-        re += "/(.+/)?";
-        break; // zero or more intermediate directories
-      case "/**":
-        re += "/.*";
-        break; // slash + anything
-      case "**":
-        re += ".*";
-        break; // anything including slashes
-      case "*":
-        re += "[^/]*";
-        break; // anything within one segment
-      case "?":
-        re += "[^/]";
-        break; // exactly one non-separator character
-      default:
-        re += token.startsWith("[") && token.endsWith("]") ? token.replace(/^\[!/, "[^") : escapeRegex(token);
-    }
-  }
-
-  re += "(/|$)";
-  return re;
-}
 
 type ParsedPattern = {
   glob: string;
@@ -81,8 +44,8 @@ function compileGitignorePattern(raw: string): CompiledPattern | null {
   const parsed = parseGitignorePattern(raw);
   if (!parsed) return null;
   try {
-    const regex = new RegExp(globToRegex(parsed.glob, parsed.anchored));
-    return { regex, negated: parsed.negated, dirOnly: parsed.dirOnly };
+    const matches = createGlobMatcher(parsed.glob, parsed.anchored);
+    return { matches, negated: parsed.negated, dirOnly: parsed.dirOnly };
   } catch {
     return null;
   }
@@ -109,7 +72,7 @@ export function isIgnoredByPatterns(contexts: GitignoreContext[], absPath: strin
 
     for (const pattern of ctx.patterns) {
       if (pattern.dirOnly && !isDir) continue;
-      if (pattern.regex.test(rel)) {
+      if (pattern.matches(rel)) {
         ignored = !pattern.negated;
       }
     }
