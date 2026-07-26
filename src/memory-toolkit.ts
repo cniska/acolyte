@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type MemoryRecord, memoryScopeSchema, scopeFromKey } from "./memory-contract";
-import { addMemory, addObservation, removeMemory, resolveScopeKey, type ScopeContext } from "./memory-ops";
+import { addMemory, addObservation, resolveScopeKey, type ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -114,34 +114,10 @@ function createMemoryAddTool(input: ToolkitInput) {
   });
 }
 
-function createMemoryRemoveTool(input: ToolkitInput) {
-  return createTool({
-    id: "memory-remove",
-    toolkit: "memory",
-    category: "meta",
-    description: "Remove a memory by its ID. Use after finding stale or incorrect memories via memory-search.",
-    instruction: "Use `memory-remove` to clean up outdated or incorrect memories found via `memory-search`.",
-    inputSchema: z.object({
-      id: z.string().min(1),
-    }),
-    outputSchema: z.object({
-      kind: z.literal("memory-remove"),
-      result: z.enum(["removed", "not_found"]),
-    }),
-    execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "memory-remove", toolCallId, toolInput, async () => {
-        const result = await removeMemory(toolInput.id);
-        return { kind: "memory-remove" as const, result: result.kind === "removed" ? "removed" : result.kind };
-      });
-    },
-  });
-}
-
 export function createMemoryToolkit(input: ToolkitInput) {
   return {
     memorySearch: createMemorySearchTool(input),
     memoryAdd: createMemoryAddTool(input),
-    memoryRemove: createMemoryRemoveTool(input),
     memoryObserve: createMemoryObserveTool(input),
   };
 }

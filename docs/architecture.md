@@ -100,7 +100,7 @@ Memory Engine
 
 - Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns
 - **pipeline seams:** normalization is strategy-injectable behind registry contracts
-- **on-demand access:** the model uses memory toolkit tools (`memory-search`, `memory-add`, `memory-remove`) to access and manage memory at runtime instead of upfront injection
+- **on-demand access:** the model uses memory toolkit tools (`memory-search`, `memory-add`) to access memory at runtime instead of upfront injection
 - **integration:** commit is best-effort background work at finalize; memory access is on-demand via toolkit
 - **details:** see [Memory](./memory.md)
 

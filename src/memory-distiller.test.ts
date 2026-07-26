@@ -9,6 +9,7 @@ import {
   DISTILLER_PROMPT,
   parseToolCall,
   renderKnownFacts,
+  selectKnownFactsWithinBudget,
   selectSupersessionCandidates,
   validateSupersedes,
 } from "./memory-distiller";
@@ -480,6 +481,31 @@ describe("renderKnownFacts", () => {
       },
     ]);
     expect(rendered).toBe("known:\nmem_known00001 (project): the build runs on bun");
+  });
+});
+
+describe("selectKnownFactsWithinBudget", () => {
+  test("keeps complete entries within the candidate token budget", () => {
+    const candidates = [
+      {
+        id: "mem_large00001",
+        scopeKey: "proj_abc123",
+        kind: "observation" as const,
+        content: "large ".repeat(1_000),
+        createdAt: "2026-03-04T10:00:00.000Z",
+        tokenEstimate: 1_000,
+      },
+      {
+        id: "mem_small00001",
+        scopeKey: "proj_abc123",
+        kind: "observation" as const,
+        content: "small fact",
+        createdAt: "2026-03-04T10:00:00.000Z",
+        tokenEstimate: 2,
+      },
+    ];
+
+    expect(selectKnownFactsWithinBudget(candidates, 20).map((record) => record.id)).toEqual(["mem_small00001"]);
   });
 });
 

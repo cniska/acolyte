@@ -149,6 +149,8 @@ export const TRACE_EVENT_CATALOG: Record<TraceEventName, TraceEventDefinition> =
     "user_promoted_facts",
     "session_scoped_facts",
     "dropped_untagged_facts",
+    "superseded_facts",
+    "candidate_count",
     "distill_tokens",
     "activity_files",
     "activity_commands",

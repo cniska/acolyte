@@ -16,7 +16,7 @@ Distill preserves durable knowledge; history pruning handles bulky transcript/to
 ingest → normalize → commit
 ```
 
-- **Memory Toolkit**: on-demand tools (`memory-search`, `memory-add`, `memory-remove`) that the model invokes when it needs context instead of upfront injection
+- **Memory Toolkit**: on-demand tools (`memory-search`, `memory-add`) that the model invokes when it needs context instead of upfront injection
 - **Memory Distiller**: extracts and commits observations from conversations after each request
 - **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory
 
@@ -60,7 +60,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 ## Retirement
 
-Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm` and `memory-remove`, and it is the only operation that destroys a record.
+Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm`, and it is the only operation that destroys a record.
 
 Distillation is the first caller: a superseding observation retires what it replaced. Capacity and noise retirement have no caller yet.
 
@@ -81,7 +81,7 @@ Surfaces:
 ## Runtime guarantees
 
 - commit scheduling is best-effort background work at lifecycle finalize
-- commits are serialized per session per process through a keyed task queue seam
+- commits are serialized per session and durable scope per process through a keyed task queue seam
 - agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget, conversational turns prioritized over tool payloads)
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `superseded`, `candidates`)
@@ -143,7 +143,6 @@ The memory toolkit (`memory-toolkit.ts`) exposes three tools:
 
 - **memory-search**: search stored memories by query, with optional scope filter. Uses semantic ranking when embeddings are available.
 - **memory-add**: add a new stored memory with content and scope (`user` or `project`).
-- **memory-remove**: remove a stored memory by ID.
 
 These tools are the primary interface for the model to access and manage memory at runtime.
 

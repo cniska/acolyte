@@ -270,6 +270,19 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
+  test("restore rejects the archived flag", async () => {
+    let called = false;
+    const { deps } = createDeps({
+      commandError: () => {
+        called = true;
+      },
+    });
+
+    await memoryMode(["restore", "--archived", "mem_abc"], deps);
+
+    expect(called).toBe(true);
+  });
+
   test("restore reports when nothing matched", async () => {
     const { deps, output } = createDeps({
       ops: createOps({ restore: async () => [] }),

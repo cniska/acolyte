@@ -96,6 +96,15 @@ export function renderKnownFacts(candidates: readonly MemoryRecord[]): string {
   return `known:\n${lines.join("\n")}`;
 }
 
+export function selectKnownFactsWithinBudget(candidates: readonly MemoryRecord[], maxTokens: number): MemoryRecord[] {
+  const selected: MemoryRecord[] = [];
+  for (const candidate of candidates) {
+    const next = [...selected, candidate];
+    if (estimateTokens(renderKnownFacts(next)) <= maxTokens) selected.push(candidate);
+  }
+  return selected;
+}
+
 /**
  * The one seam the undecided recall-as-DNA question can reshape: how existing facts reach the
  * distiller. Everything downstream consumes the returned records and nothing else.
@@ -268,7 +277,8 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const start = Math.max(alreadyDistilled, ctx.messages.length - policy.contextMessageWindow, 0);
       const recentMessages = ctx.messages.slice(start);
       const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
-      const candidates = await selectSupersessionCandidates(ctx, distillInput, { store: ds, policy });
+      const foundCandidates = await selectSupersessionCandidates(ctx, distillInput, { store: ds, policy });
+      const candidates = selectKnownFactsWithinBudget(foundCandidates, policy.recallCandidateTokenLimit);
       const known = renderKnownFacts(candidates);
       const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
 
@@ -326,6 +336,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         userPromotedFacts: userCount,
         sessionScopedFacts: sessionCount,
         supersededFacts: supersededCount,
+        candidateCount: candidates.length,
         distillTokens: totalTokens,
       };
     },

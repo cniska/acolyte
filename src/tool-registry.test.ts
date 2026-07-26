@@ -25,7 +25,6 @@ describe("toolsets", () => {
       "listUndo",
       "memoryAdd",
       "memoryObserve",
-      "memoryRemove",
       "memorySearch",
       "readFile",
       "restoreUndo",
@@ -115,7 +114,6 @@ describe("localization baseline", () => {
     const sessionSearchInstruction = toolDefinitionsById["session-search"]?.instruction ?? "";
     const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
-    const memoryRemoveInstruction = toolDefinitionsById["memory-remove"]?.instruction ?? "";
 
     expectIntent(readInstruction, [
       ["file-read", "before", "file-edit", "code-edit"],
@@ -159,6 +157,5 @@ describe("localization baseline", () => {
     expectIntent(sessionSearchInstruction, [["session-search"], ["keyword"], ["older history"]]);
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
-    expectIntent(memoryRemoveInstruction, [["memory-remove"], ["outdated"], ["memory-search"]]);
   });
 });

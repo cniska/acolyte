@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ChatResponse } from "./api";
-import { runLifecycle, scheduleMemoryCommit } from "./lifecycle";
+import { memoryCommitQueueKeys, runLifecycle, scheduleMemoryCommit } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
 import { createLifecycleDeps, createLifecycleInput } from "./test-utils";
 
@@ -178,7 +178,7 @@ describe("scheduleMemoryCommit", () => {
         calls.push({ sessionId: ctx.sessionId });
         return undefined;
       },
-      async (_key: string, job: () => Promise<void>) => {
+      async (_keys: readonly string[], job: () => Promise<void>) => {
         await job();
       },
     );
@@ -204,7 +204,7 @@ describe("scheduleMemoryCommit", () => {
       },
       undefined,
       async () => undefined,
-      async (_key: string, job: () => Promise<void>) => {
+      async (_keys: readonly string[], job: () => Promise<void>) => {
         await job();
       },
     );
@@ -230,7 +230,7 @@ describe("scheduleMemoryCommit", () => {
       async () => {
         throw new Error("commit failed");
       },
-      async (_key: string, job: () => Promise<void>) => {
+      async (_keys: readonly string[], job: () => Promise<void>) => {
         await job();
       },
     );
@@ -259,7 +259,7 @@ describe("scheduleMemoryCommit", () => {
       },
       undefined,
       async () => undefined,
-      async (_key: string, job: () => Promise<void>) => {
+      async (_keys: readonly string[], job: () => Promise<void>) => {
         await job();
       },
     );
@@ -277,6 +277,8 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(0);
     expect(done?.fields?.session_scoped_facts).toBe(0);
     expect(done?.fields?.dropped_untagged_facts).toBe(0);
+    expect(done?.fields?.superseded_facts).toBe(0);
+    expect(done?.fields?.candidate_count).toBe(0);
     expect(done?.fields?.distill_tokens).toBe(0);
   });
 
@@ -297,8 +299,10 @@ describe("scheduleMemoryCommit", () => {
         userPromotedFacts: 1,
         sessionScopedFacts: 3,
         droppedUntaggedFacts: 4,
+        supersededFacts: 5,
+        candidateCount: 6,
       }),
-      async (_key: string, job: () => Promise<void>) => {
+      async (_keys: readonly string[], job: () => Promise<void>) => {
         await job();
       },
     );
@@ -310,6 +314,27 @@ describe("scheduleMemoryCommit", () => {
     expect(done?.fields?.user_promoted_facts).toBe(1);
     expect(done?.fields?.session_scoped_facts).toBe(3);
     expect(done?.fields?.dropped_untagged_facts).toBe(4);
+    expect(done?.fields?.superseded_facts).toBe(5);
+    expect(done?.fields?.candidate_count).toBe(6);
+  });
+
+  test("uses shared project and user queue keys across sessions", () => {
+    const first = memoryCommitQueueKeys({
+      sessionId: "sess_first0001",
+      resourceId: "proj_shared0001",
+      messages: [],
+      output: "done",
+    });
+    const second = memoryCommitQueueKeys({
+      sessionId: "sess_second001",
+      resourceId: "proj_shared0001",
+      messages: [],
+      output: "done",
+    });
+
+    expect(first).toContain("proj_shared0001");
+    expect(second).toContain("proj_shared0001");
+    expect(first.find((key) => key.startsWith("user_"))).toBe(second.find((key) => key.startsWith("user_")));
   });
 });
 

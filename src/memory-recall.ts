@@ -44,6 +44,7 @@ export async function searchMemories(
     limit?: number;
     store?: MemoryStore;
     policy?: MemoryPolicy;
+    embed?: typeof embedText;
     // Distillation reads the corpus to supersede within it, which is not the model recalling a
     // fact; counting it would inflate the recall evidence a retirement pass is meant to weigh.
     touch?: boolean;
@@ -63,9 +64,9 @@ export async function searchMemories(
   const filtered = all.filter((r) => allowed.has(r.scopeKey));
   if (filtered.length === 0) return [];
 
-  const queryEmbedding = await embedText(query);
+  const queryEmbedding = await (options?.embed ?? embedText)(query);
   if (!queryEmbedding) {
-    const fallback = filtered.slice(0, limit);
+    const fallback = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
     await touchRecalled(fallback.map((r) => r.id));
     return [...fallback];
   }

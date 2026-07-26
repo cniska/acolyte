@@ -54,7 +54,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 
 ## Memory
 
-- on-demand memory toolkit (`memory-search`, `memory-add`, `memory-remove`)
+- on-demand memory toolkit (`memory-search`, `memory-add`)
 - three-scope persistent memory (session, project, user)
 - memory recalled on-demand via tools (not injected into the system prompt)
 - automatic observation via distiller (tool-based, runs after generation)
