@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { appConfig } from "../src/app-config";
 import { aggregateMetrics, computeQueryMetrics, ndcgAtK, recallAtK } from "./memory-bench-metrics";
 import { parseDatasetId } from "./memory-bench-scenarios";
-import { parseArgs } from "./run-memory-bench";
+import { applyModelOverrides, parseArgs } from "./run-memory-bench";
 
 describe("parseArgs", () => {
   test("applies defaults", () => {
@@ -42,6 +43,16 @@ describe("parseArgs", () => {
 
   test("rejects unknown flags", () => {
     expect(() => parseArgs(["--verbose"])).toThrow("Unknown argument: --verbose");
+  });
+
+  test("applies the embedding model override to the embedding configuration", () => {
+    const previousModel = appConfig.embedding.model;
+    try {
+      applyModelOverrides({ embeddingModel: "openai/text-embedding-3-large", distillModel: null });
+      expect(appConfig.embedding.model).toBe("openai/text-embedding-3-large");
+    } finally {
+      (appConfig.embedding as { model: string }).model = previousModel;
+    }
   });
 });
 

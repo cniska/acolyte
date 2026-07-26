@@ -140,6 +140,15 @@ function printUsage(): void {
   );
 }
 
+export function applyModelOverrides(args: Pick<MemoryBenchArgs, "embeddingModel" | "distillModel">): void {
+  if (args.embeddingModel) {
+    (appConfig.embedding as { model: string }).model = args.embeddingModel;
+  }
+  if (args.distillModel) {
+    (appConfig as { distillModel: string }).distillModel = args.distillModel;
+  }
+}
+
 function safeIsoDate(value: string): string {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "2024-01-01T00:00:00.000Z" : d.toISOString();
@@ -271,13 +280,8 @@ async function runDataset(
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  if (args.embeddingModel) {
-    (appConfig as { embeddingModel: string }).embeddingModel = args.embeddingModel;
-  }
-  if (args.distillModel) {
-    (appConfig as { distillModel: string }).distillModel = args.distillModel;
-  }
-  const embeddingModel = appConfig.embeddingModel;
+  applyModelOverrides(args);
+  const embeddingModel = appConfig.embedding.model;
   const dataDir = defaultDataDir();
   const results: Record<string, DatasetResult> = {};
 

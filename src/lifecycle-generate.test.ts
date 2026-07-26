@@ -3,7 +3,7 @@ import type { LanguageModelV4, LanguageModelV4Message, LanguageModelV4StreamPart
 import type { StreamOptions } from "./agent-contract";
 import { createAgentStream } from "./agent-stream";
 import type { StreamEvent } from "./client-contract";
-import { TOOL_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, MEMORY_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
@@ -316,6 +316,65 @@ describe("phaseGenerate", () => {
     expect(toolResult).toMatchObject({ type: "tool-result", toolName: "file-edit", isError: true });
     const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
     expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
+  });
+
+  test("emits the embedding-unavailable kind for a failed memory search", async () => {
+    const streamEvents: StreamEvent[] = [];
+    const ctx = createRunContext({
+      emit: (event) => streamEvents.push(event),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "memory-search", args: { query: "auth" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "memory-search",
+                result: {
+                  error: {
+                    message: "Embedding request failed",
+                    code: MEMORY_ERROR_CODES.embeddingUnavailable,
+                  },
+                },
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Memory is unavailable.", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const toolResult = streamEvents.find((event) => event.type === "tool-result");
+    expect(toolResult).toMatchObject({
+      type: "tool-result",
+      toolName: "memory-search",
+      isError: true,
+      error: {
+        code: MEMORY_ERROR_CODES.embeddingUnavailable,
+        kind: ERROR_KINDS.embeddingUnavailable,
+      },
+    });
   });
 
   test("marks nonzero command results as failed", async () => {
