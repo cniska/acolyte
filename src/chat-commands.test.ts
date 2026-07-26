@@ -351,6 +351,28 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "No retired memory.")).toBe(true);
   });
 
+  test("dispatchSlashCommand renders an archive listing failure", async () => {
+    const memoryApi = createMemoryApi({
+      listArchivedMemories: async () => {
+        throw new Error("archive unavailable");
+      },
+    });
+    const { rows, stop } = await runCommand("/memory --archived", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "archive unavailable")).toBe(true);
+  });
+
+  test("dispatchSlashCommand renders an active listing failure", async () => {
+    const memoryApi = createMemoryApi({
+      listMemories: async () => {
+        throw new Error("memory unavailable");
+      },
+    });
+    const { rows, stop } = await runCommand("/memory", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "memory unavailable")).toBe(true);
+  });
+
   test("dispatchSlashCommand validates /memory extra args", async () => {
     const { rows, stop } = await runCommand("/memory all extra");
     expect(stop).toBe(true);

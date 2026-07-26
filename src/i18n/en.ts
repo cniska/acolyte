@@ -14,6 +14,7 @@ export const EN_MESSAGES = {
   "chat.memory.archive.none": "No retired memory.",
   "chat.memory.header.all": "Memory {count}",
   "chat.memory.header.scope": "{scope} memory {count}",
+  "chat.memory.list.failed": "Failed to list memory.",
   "chat.memory.none": "No {scope}memory saved yet.",
   "chat.memory.rm.failed": "Failed to remove memory.",
   "chat.memory.rm.not_found": "No memory found for id: {id}",

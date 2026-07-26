@@ -85,8 +85,25 @@ async function handleMemoryList(
     return { stop: true, userText: text };
   }
   const resolvedScope = scope === "all" ? undefined : scope;
-  if (archived) return await renderArchivedList(ctx, memoryApi, scope, resolvedScope);
+  try {
+    if (archived) return await renderArchivedList(ctx, memoryApi, scope, resolvedScope);
+    return await renderMemoryList(ctx, memoryApi, scope, resolvedScope);
+  } catch (error) {
+    ctx.setRows((current) => [
+      ...current,
+      createRow("system", error instanceof Error ? error.message : t("chat.memory.list.failed")),
+    ]);
+    return { stop: true, userText: text };
+  }
+}
 
+async function renderMemoryList(
+  ctx: CommandContext,
+  memoryApi: ReturnType<typeof resolveMemoryApi>,
+  scope: MemoryContextScope,
+  resolvedScope: MemoryScope | undefined,
+): Promise<CommandResult> {
+  const { text } = ctx;
   const memories = await memoryApi.listMemories({ scope: resolvedScope });
   if (memories.length === 0) {
     const emptyLabel = scope === "all" ? "" : `${scope} `;
