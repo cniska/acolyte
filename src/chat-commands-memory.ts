@@ -9,8 +9,8 @@ import { dispatchSubcommandGroup } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
-import type { MemoryScope } from "./memory-contract";
-import { addMemory, listMemories, removeMemory } from "./memory-ops";
+import { formatDisposition, type MemoryScope } from "./memory-contract";
+import { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 
 type MemoryContextScope = "all" | "user" | "project";
 
@@ -28,11 +28,13 @@ export function resolveMemoryApi(ctx: CommandContext): {
   listMemories: typeof listMemories;
   addMemory: typeof addMemory;
   removeMemory: typeof removeMemory;
+  listArchivedMemories: typeof listArchivedMemories;
 } {
   return {
     listMemories,
     addMemory,
     removeMemory,
+    listArchivedMemories,
     ...ctx.memoryApi,
   };
 }
@@ -74,11 +76,15 @@ async function handleMemoryList(
 ): Promise<CommandResult> {
   const { text } = ctx;
   const scope: MemoryContextScope = parsed.sub === "" ? "all" : (parsed.sub as MemoryContextScope);
-  if (parsed.args.length > 0) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project]"))]);
+  const archived = parsed.args.includes("--archived");
+  if (parsed.args.some((arg) => arg !== "--archived")) {
+    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project] [--archived]"))]);
     return { stop: true, userText: text };
   }
-  const memories = await memoryApi.listMemories({ scope: scope === "all" ? undefined : scope });
+  const resolvedScope = scope === "all" ? undefined : scope;
+  if (archived) return await renderArchivedList(ctx, memoryApi, scope, resolvedScope);
+
+  const memories = await memoryApi.listMemories({ scope: resolvedScope });
   if (memories.length === 0) {
     const emptyLabel = scope === "all" ? "" : `${scope} `;
     ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);
@@ -91,6 +97,29 @@ async function handleMemoryList(
     scope === "all"
       ? t("chat.memory.header.all", { count: memories.length })
       : t("chat.memory.header.scope", { scope: scopeLabel(scope), count: memories.length });
+  ctx.setRows((current) => [...current, createRow("system", { header, sections: [], list })]);
+  return { stop: true, userText: text };
+}
+
+async function renderArchivedList(
+  ctx: CommandContext,
+  memoryApi: ReturnType<typeof resolveMemoryApi>,
+  scope: MemoryContextScope,
+  resolvedScope: MemoryScope | undefined,
+): Promise<CommandResult> {
+  const { text } = ctx;
+  const archived = await memoryApi.listArchivedMemories({ scope: resolvedScope });
+  if (archived.length === 0) {
+    ctx.setRows((current) => [...current, createRow("system", t("chat.memory.archive.none"))]);
+    return { stop: true, userText: text };
+  }
+  const list = archived
+    .slice(0, 10)
+    .map((entry) => `${entry.scope}:${entry.id} [${formatDisposition(entry.disposition)}] ${entry.content}`);
+  const header =
+    scope === "all"
+      ? t("chat.memory.archive.header.all", { count: archived.length })
+      : t("chat.memory.archive.header.scope", { scope: scopeLabel(scope), count: archived.length });
   ctx.setRows((current) => [...current, createRow("system", { header, sections: [], list })]);
   return { stop: true, userText: text };
 }

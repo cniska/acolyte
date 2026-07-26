@@ -98,6 +98,9 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-7** — Memory commit at finalize is best-effort background work; a commit failure is recorded observably and never fails or delays the user-facing response.
 - **MEM-8** — Exact-duplicate observations are not stored twice.
 - **MEM-9** — With the AGENTS.md-sync flag enabled, the project's AGENTS.md is committed as a deterministic project memory record and recalled on demand instead of being injected into the prompt.
+- **MEM-10** — A record leaves the active set only by retirement, which moves it to an archive rather than deleting it, and records why it left: superseded by named successor records, retired under capacity pressure, or judged not a fact. Explicit deletion remains available to the user and is the only operation that destroys a record.
+- **MEM-11** — Retirement carries lineage: a superseded record names every successor that replaced it, so merging many records into one and splitting one into many are both recoverable.
+- **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
 
 ## 4. Lifecycle & completion requirements (LC)
 

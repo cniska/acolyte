@@ -27,6 +27,27 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
       createdAt: "9999-01-01T00:00:00.000Z",
       lastRecalledAt: null,
     }),
+    listArchived: async () => [
+      {
+        id: "mem_gone",
+        kind: "observation" as const,
+        content: "the src directory has 40 files",
+        scope: "project" as const,
+        createdAt: "9999-01-01T00:00:00.000Z",
+        lastRecalledAt: null,
+        retiredAt: "9999-01-02T00:00:00.000Z",
+        disposition: { kind: "noise" as const },
+      },
+    ],
+    restore: async (ids) =>
+      ids.map((id) => ({
+        id,
+        kind: "observation" as const,
+        content: "restored fact",
+        scope: "project" as const,
+        createdAt: "9999-01-01T00:00:00.000Z",
+        lastRecalledAt: null,
+      })),
     ...overrides,
   };
 }
@@ -137,6 +158,124 @@ describe("cli-memory", () => {
     });
     await memoryMode(["add"], deps);
     expect(called).toBe(true);
+  });
+
+  test("list --archived reads the archive instead of the active set", async () => {
+    let listCalled = false;
+    let archivedScope: string | undefined = "sentinel";
+    const { deps, output } = createDeps({
+      ops: createOps({
+        list: async () => {
+          listCalled = true;
+          return [];
+        },
+        listArchived: async (scope) => {
+          archivedScope = scope;
+          return [
+            {
+              id: "mem_gone",
+              kind: "observation",
+              content: "the src directory has 40 files",
+              scope: "project",
+              createdAt: "9999-01-01T00:00:00.000Z",
+              lastRecalledAt: null,
+              retiredAt: "9999-01-02T00:00:00.000Z",
+              disposition: { kind: "noise" },
+            },
+          ];
+        },
+      }),
+    });
+    await memoryMode(["list", "--archived"], deps);
+    expect(listCalled).toBe(false);
+    expect(archivedScope).toBeUndefined();
+    expect(output()).toContain("mem_gone");
+    expect(output()).toContain("noise");
+  });
+
+  test("list --archived honors a scope argument", async () => {
+    let archivedScope: string | undefined;
+    const { deps } = createDeps({
+      ops: createOps({
+        listArchived: async (scope) => {
+          archivedScope = scope;
+          return [];
+        },
+      }),
+    });
+    await memoryMode(["list", "project", "--archived"], deps);
+    expect(archivedScope).toBe("project");
+  });
+
+  test("list --archived shows superseding lineage", async () => {
+    const { deps, output } = createDeps({
+      ops: createOps({
+        listArchived: async () => [
+          {
+            id: "mem_old",
+            kind: "observation",
+            content: "half a fact",
+            scope: "project",
+            createdAt: "9999-01-01T00:00:00.000Z",
+            lastRecalledAt: null,
+            retiredAt: "9999-01-02T00:00:00.000Z",
+            disposition: { kind: "superseded", by: ["mem_new"] },
+          },
+        ],
+      }),
+    });
+    await memoryMode(["list", "--archived"], deps);
+    expect(output()).toContain("superseded by mem_new");
+  });
+
+  test("empty archive reports the archive is empty", async () => {
+    const { deps, output } = createDeps({
+      ops: createOps({ listArchived: async () => [] }),
+    });
+    await memoryMode(["list", "--archived"], deps);
+    expect(output()).toContain("No retired memories.");
+  });
+
+  test("restore passes ids through and reports what came back", async () => {
+    let receivedIds: readonly string[] = [];
+    const { deps, output } = createDeps({
+      ops: createOps({
+        restore: async (ids) => {
+          receivedIds = ids;
+          return ids.map((id) => ({
+            id,
+            kind: "observation" as const,
+            content: "restored fact",
+            scope: "project" as const,
+            createdAt: "9999-01-01T00:00:00.000Z",
+            lastRecalledAt: null,
+          }));
+        },
+      }),
+    });
+    await memoryMode(["restore", "mem_abc", "mem_def"], deps);
+    expect(receivedIds).toEqual(["mem_abc", "mem_def"]);
+    expect(output()).toContain("mem_abc, mem_def");
+  });
+
+  test("restore with no ids calls commandError", async () => {
+    let called = false;
+    const { deps } = createDeps({
+      commandError: (name) => {
+        expect(name).toBe("memory");
+        called = true;
+      },
+    });
+    await memoryMode(["restore"], deps);
+    expect(called).toBe(true);
+  });
+
+  test("restore reports when nothing matched", async () => {
+    const { deps, output } = createDeps({
+      ops: createOps({ restore: async () => [] }),
+    });
+    await memoryMode(["restore", "mem_missing"], deps);
+    expect(output()).toContain("mem_missing");
   });
 
   test("unknown subcommand calls commandError", async () => {

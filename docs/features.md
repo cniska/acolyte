@@ -62,6 +62,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - Semantic recall with embeddings and cosine similarity ranking
 - Hybrid retrieval scoring (cosine similarity + TF-IDF token overlap) with search result re-ranking
 - Topic tags on observations for filtered recall
+- retirement to a restorable archive instead of deletion, with the reason and successor lineage recorded (`--archived`, `acolyte memory restore`)
 
 ## Safety and control
 

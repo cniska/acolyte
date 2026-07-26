@@ -53,6 +53,24 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - dedup: an observation matching any existing one in the same scope is skipped at write time; scopes dedup independently, so the same fact can be held at both project and session scope
 - the distiller sees only messages added since its last commit for that session, so a turn's work is never re-read
 
+## Retirement
+
+A record leaves the active set by retirement, never by deletion. Retirement moves the row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm` and `memory-remove`, and it is the only operation that destroys a record.
+
+Every retirement carries a disposition saying why the record left:
+
+- `superseded` — one or more successor records replaced it. `by` lists every successor id, so a merge (many archived, one successor) and a split (one archived, many successors) share the same lineage shape
+- `capacity` — retired under capacity pressure
+- `noise` — judged not a fact
+
+Restoring moves the row back and regenerates its embedding, since retirement dropped it and an unembedded record is unrecallable.
+
+Surfaces:
+
+- `/memory [scope] --archived` and `acolyte memory list [scope] --archived` — the archive with each record's disposition and lineage
+- `acolyte memory restore <id>...` — return records to the active set
+- debug events `memory.retire` and `memory.restore`
+
 ## Runtime guarantees
 
 - commit scheduling is best-effort background work at lifecycle finalize
