@@ -1,6 +1,6 @@
 ---
 name: style-review
-description: Review code style, naming, patterns, and consistency. Use when reviewing code quality or style drift.
+description: Review naming, patterns, and convention consistency against the codebase. Use when the concern is style and readability, not logic or structure.
 ---
 
 # Style Review

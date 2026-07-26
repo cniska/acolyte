@@ -60,6 +60,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | SessionState | Aggregate session state (`sessions[]`, `activeSessionId`) |
 | SessionStore | Read/write/create interface for session persistence |
 | Skill | Declarative prompt extension defined in a `SKILL.md` file with metadata and compatibility constraints |
+| Skill Roster | Ambient per-turn line listing the activatable (non-active) skills and their descriptions, from which the model selects via `skill-activate`; the selection surface, distinct from the loaded-skill store |
 | Step Budget | Per-turn tool-call limit inlined into tool execution to prevent runaway loops |
 | Storage | The persistence mechanism a `*Store` uses for memory and session records — `sqlite` (local) or `cloud` |
 | Task | Lifecycle work request moving through accept, queue, run, and terminal states |

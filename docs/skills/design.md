@@ -1,6 +1,6 @@
 ---
 name: design
-description: Design stable interfaces that are hard to misuse. Use when defining contracts, module boundaries, or public APIs.
+description: Design interfaces that are hard to misuse and stable under change. Use when defining a contract, module boundary, public API, or schema.
 ---
 
 # Design
