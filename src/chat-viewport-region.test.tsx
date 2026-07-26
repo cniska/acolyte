@@ -168,7 +168,9 @@ test("queued messages live region renders below the pending indicator", () => {
 
           ◆ Working… (5s)
 
+
           ❯ next up
+
 
         ╭${"─".repeat(56)}╮
         │ ❯${" ".repeat(54)}│

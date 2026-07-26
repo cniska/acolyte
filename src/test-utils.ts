@@ -256,6 +256,7 @@ export function createClient(overrides?: {
 
 export type MessageHandlerHarness = {
   handleMessage: (raw: string) => Promise<void>;
+  startAssistantTurn: (userText: string) => Promise<void>;
   rows: ChatRow[];
   /** Every row that was ever present, even after clearTranscript. */
   allRows: ChatRow[];
@@ -270,6 +271,7 @@ export type MessageHandlerHarness = {
     setCurrentSessionIds: string[];
     tokenUsageSnapshots: SessionTokenUsageEntry[][];
     runningUsageSets: Array<{ inputTokens: number; outputTokens: number } | null>;
+    requeued: string[];
     order: string[];
   };
   interrupt: {
@@ -279,7 +281,6 @@ export type MessageHandlerHarness = {
 };
 
 export function createMessageHandlerHarness(overrides?: {
-  isPending?: boolean;
   client?: Client;
   session?: Session;
   sessionState?: SessionState;
@@ -297,6 +298,7 @@ export function createMessageHandlerHarness(overrides?: {
     setCurrentSessionIds: [] as string[],
     tokenUsageSnapshots: [] as SessionTokenUsageEntry[][],
     runningUsageSets: [] as Array<{ inputTokens: number; outputTokens: number } | null>,
+    requeued: [] as string[],
     // Ordered log of the turn-commit lifecycle setters, for asserting batching.
     order: [] as string[],
   };
@@ -304,7 +306,7 @@ export function createMessageHandlerHarness(overrides?: {
   const sessionState =
     overrides?.sessionState ?? createSessionState({ activeSessionId: session.id, sessions: [session] });
   const tokenUsage = overrides?.tokenUsage ?? session.tokenUsage ?? [];
-  const { handleSubmit: handleMessage } = createMessageHandler({
+  const { handleSubmit: handleMessage, startAssistantTurn } = createMessageHandler({
     client: overrides?.client ?? createClient({ status: async () => ({}) }),
     sessionState,
     currentSession: session,
@@ -331,7 +333,10 @@ export function createMessageHandlerHarness(overrides?: {
     openResumePanel: () => {},
     openModelPanel: () => {},
     tokenUsage,
-    isPending: overrides?.isPending ?? false,
+    isPending: () => false,
+    requeueMessage: (message) => {
+      calls.requeued.push(message);
+    },
     setInputHistory: () => {
       calls.setInputHistory += 1;
     },
@@ -370,7 +375,7 @@ export function createMessageHandlerHarness(overrides?: {
       rows.splice(0, rows.length);
     },
   });
-  return { handleMessage, rows, allRows, session, sessionState, calls, interrupt };
+  return { handleMessage, startAssistantTurn, rows, allRows, session, sessionState, calls, interrupt };
 }
 
 export type PickerHandlerSpies = {

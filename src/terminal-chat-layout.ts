@@ -401,7 +401,10 @@ export function layoutPending(input: {
     shimmerOffset += line.length;
     return { spans: [marker, ...body] };
   });
+  // Padding is asymmetric because the trailing inter-section separator supplies the fourth row:
+  // 2 above and 1 here render as the 2-and-2 of the sent user row this becomes when the queue drains.
   for (const message of presentation.queuedMessages) {
+    lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push(
       ...wrapTerminalProse(message, Math.max(24, input.columns - 2)).map((line, index) => ({
@@ -411,6 +414,7 @@ export function layoutPending(input: {
         ],
       })),
     );
+    lines.push({ spans: [{ text: "", role: "plain" }] });
   }
   return { lines };
 }

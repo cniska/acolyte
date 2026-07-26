@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { PendingState } from "./client-contract";
 import { useInterval, useSyncEffect } from "./tui/effects";
 
@@ -12,7 +12,8 @@ function nextPendingFrame(current: number, frameCount: number): number {
 export type PendingStateResult = {
   pendingState: PendingState | null;
   setPendingState: (next: PendingState | null) => void;
-  isPending: boolean;
+  /** Live: true from the moment pending is set, before React commits the render. */
+  isPending: () => boolean;
   pendingFrame: number;
   pendingStartedAt: number | null;
   ctrlCPending: boolean;
@@ -24,8 +25,16 @@ export type PendingStateResult = {
 };
 
 export function usePendingState(): PendingStateResult {
-  const [pendingState, setPendingState] = useState<PendingState | null>(null);
-  const isPending = pendingState !== null;
+  const [pendingState, setPendingStateValue] = useState<PendingState | null>(null);
+  // The turn-end drain resubmits the queued message before React commits the cleared
+  // pending state, so the guard it passes through cannot read a render-derived value.
+  const pendingStateRef = useRef<PendingState | null>(null);
+  const setPendingState = useCallback((next: PendingState | null) => {
+    pendingStateRef.current = next;
+    setPendingStateValue(next);
+  }, []);
+  const isPending = useCallback(() => pendingStateRef.current !== null, []);
+  const showPending = pendingState !== null;
   const [pendingFrame, setPendingFrame] = useState(0);
   const [pendingStartedAt, setPendingStartedAt] = useState<number | null>(null);
   const [ctrlCPending, setCtrlCPending] = useState(false);
@@ -33,17 +42,17 @@ export function usePendingState(): PendingStateResult {
   const [runningUsage, setRunningUsage] = useState<{ inputTokens: number; outputTokens: number } | null>(null);
 
   useSyncEffect(() => {
-    if (isPending) {
+    if (showPending) {
       setPendingStartedAt((current) => current ?? Date.now());
     } else {
       setPendingStartedAt(null);
       setPendingFrame(0);
     }
-  }, [isPending]);
+  }, [showPending]);
 
   useInterval(
     () => setPendingFrame((current) => nextPendingFrame(current, PENDING_PULSE_FRAMES)),
-    isPending ? PENDING_ANIMATION_INTERVAL_MS : null,
+    showPending ? PENDING_ANIMATION_INTERVAL_MS : null,
   );
 
   return {

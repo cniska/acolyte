@@ -15,7 +15,7 @@ import { resumeActiveTranscript, useScenePromotion } from "./chat-promotion";
 import { createMessage } from "./chat-session";
 import { createSkillActivator } from "./chat-skill-activator";
 import { statusTokenTotals } from "./chat-status-line";
-import { drainQueueOnTurnEnd, enqueueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
+import { drainQueueOnTurnEnd, enqueueQueuedMessage, requeueQueuedMessage, resolveQueueSubmit } from "./chat-submit";
 import { projectActiveTranscript, type TranscriptRow } from "./chat-transcript-contract";
 import { createTranscriptPublisher } from "./chat-transcript-publisher";
 import type { ChatViewportPresentationInput } from "./chat-viewport-contract";
@@ -315,6 +315,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     openModelPanel,
     tokenUsage,
     isPending,
+    requeueMessage: (message) => setQueuedMessages((current) => requeueQueuedMessage(current, message)),
     setInputHistory,
     setInputHistoryIndex,
     setInputHistoryDraft,
@@ -353,7 +354,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     value,
     setValue,
     applyingHistoryRef,
-    isPending,
+    isPending: pendingState !== null,
     cursor: input.cursor,
     atQuery,
     atSuggestions,
@@ -422,9 +423,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
         setValue(resolved.value);
         return;
       }
-      const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending });
+      const pending = isPending();
+      const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending: pending });
       if (queueDecision.kind === "ignore") return;
-      if (isPending) {
+      if (pending) {
         setQueuedMessages((current) => enqueueQueuedMessage(current, queueDecision.value));
         setValue("");
         return;

@@ -38,7 +38,10 @@ type CreateMessageHandlerInput = {
   openResumePanel: () => void;
   openModelPanel: () => void | Promise<void>;
   tokenUsage: SessionTokenUsageEntry[];
-  isPending: boolean;
+  // Injected rather than tracked here: the handler is recreated every render, so any
+  // turn state it owned would read idle in the instance the composer holds.
+  isPending: () => boolean;
+  requeueMessage: (text: string) => void;
   setInputHistory: (updater: (current: string[]) => string[]) => void;
   setInputHistoryIndex: (next: number) => void;
   setInputHistoryDraft: (next: string) => void;
@@ -262,9 +265,13 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
 
   const handler = async (raw: string): Promise<void> => {
     const text = raw.trim();
-    const busy = turnState === "running" || input.isPending;
-    log.debug("chat.handler", { text, turnState, isPending: input.isPending });
-    if (!text || (busy && !text.startsWith("/"))) return;
+    const busy = turnState === "running" || input.isPending();
+    log.debug("chat.handler", { text, turnState, busy });
+    if (!text) return;
+    if (busy && !text.startsWith("/")) {
+      input.requeueMessage(text);
+      return;
+    }
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
       if (corrections.length === 1) return handler(corrections[0]);

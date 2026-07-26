@@ -15,6 +15,33 @@ import {
   testUuid,
 } from "./test-utils";
 
+// A turn that stays in flight until the interrupt fires, so tests can submit while busy.
+const abortableClient = (): ReturnType<typeof createClient> =>
+  createClient({
+    replyStream: async (input) =>
+      await new Promise((_, reject) => {
+        const abort = (): void => {
+          const error = new Error("Aborted");
+          error.name = "AbortError";
+          reject(error);
+        };
+        if (input.signal?.aborted) {
+          abort();
+          return;
+        }
+        input.signal?.addEventListener("abort", abort, { once: true });
+      }),
+    status: async () => ({}),
+  });
+
+// The interrupt handler is registered a few awaits into the turn, so wait for it
+// before firing rather than racing the turn's own setup.
+const interruptTurn = async (interrupt: { registered: boolean; fire: () => void }, turn: Promise<void>) => {
+  while (!interrupt.registered) await new Promise((resolve) => setTimeout(resolve, 1));
+  interrupt.fire();
+  await turn;
+};
+
 describe("chat message handler", () => {
   test("resolveNaturalRememberDirective parses user and project forms", () => {
     expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
@@ -60,18 +87,47 @@ describe("chat message handler", () => {
     expect(calls.setShowHelp).toEqual([]);
   });
 
-  test("ignores input while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
+  test("requeues input it cannot run instead of dropping it", async () => {
+    const { handleMessage, startAssistantTurn, interrupt, calls } = createMessageHandlerHarness({
+      client: abortableClient(),
+    });
+    const turn = startAssistantTurn("long running turn");
+
     await handleMessage("hello");
+
+    expect(calls.requeued).toEqual(["hello"]);
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
+    await interruptTurn(interrupt, turn);
+  });
+
+  test("a message queued mid-turn runs once the turn is interrupted", async () => {
+    const { handleMessage, startAssistantTurn, interrupt, calls } = createMessageHandlerHarness({
+      client: abortableClient(),
+    });
+    const turn = startAssistantTurn("long running turn");
+    await handleMessage("queued mid-turn");
+    expect(calls.requeued).toEqual(["queued mid-turn"]);
+
+    await interruptTurn(interrupt, turn);
+    const drained = handleMessage("queued mid-turn");
+
+    expect(calls.requeued).toEqual(["queued mid-turn"]);
+    expect(calls.setInputHistory).toBe(1);
+    await interruptTurn(interrupt, drained);
   });
 
   test("handles slash command while thinking", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness({ isPending: true });
+    const { handleMessage, startAssistantTurn, interrupt, calls } = createMessageHandlerHarness({
+      client: abortableClient(),
+    });
+    const turn = startAssistantTurn("long running turn");
+
     await handleMessage("/sessions");
+
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
+    await interruptTurn(interrupt, turn);
   });
 
   test("ignores unknown single-token slash commands", async () => {
@@ -499,7 +555,8 @@ describe("chat message handler", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isPending: false,
+      isPending: () => false,
+      requeueMessage: () => {},
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
@@ -580,7 +637,8 @@ describe("chat message handler", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isPending: false,
+      isPending: () => false,
+      requeueMessage: () => {},
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
@@ -730,7 +788,8 @@ describe("chat message handler", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isPending: false,
+      isPending: () => false,
+      requeueMessage: () => {},
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
@@ -1036,7 +1095,8 @@ describe("chat message handler", () => {
       openResumePanel: () => {},
       openModelPanel: () => {},
       tokenUsage: [],
-      isPending: false,
+      isPending: () => false,
+      requeueMessage: () => {},
       setInputHistory: () => {},
       setInputHistoryIndex: () => {},
       setInputHistoryDraft: () => {},
