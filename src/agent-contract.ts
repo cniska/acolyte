@@ -81,7 +81,6 @@ export type Agent = {
 export type OnBeforeFinishResult = LanguageModelV4Message[];
 
 export type StreamOptions = {
-  temperature?: number;
   reasoning?: ReasoningLevel;
   providerOptions?: SharedV4ProviderOptions;
   preCallInputTokenLimit?: number;

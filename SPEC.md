@@ -67,7 +67,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ### 2.5 Options / configuration
 
-- **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, temperature, reasoning level, provider base URLs, locale, log format, embedding and distill models, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
+- **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding and distill models, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
 - **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, parallel workspaces, cloud sync, and MCP. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
 - **FR-38** — Reasoning level (`low`/`medium`/`high`) is accepted and mapped to the selected provider's native reasoning control.
 - **FR-39** — Locale selects the UI language; an unset locale defaults to English, and an unavailable locale falls back rather than failing.

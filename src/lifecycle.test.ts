@@ -20,19 +20,18 @@ describe("runLifecycle", () => {
     expect(response).toEqual({ model: "gpt-5-mini", outputStreamed: true, output: "Generated output" });
   });
 
-  test("threads reasoning and temperature from input into the run context", async () => {
-    let captured: { reasoning?: string; temperature?: number } | undefined;
+  test("threads reasoning from input into the run context", async () => {
+    let captured: { reasoning?: string } | undefined;
     const deps = createLifecycleDeps({
-      phaseGenerate: mock(async (ctx: { reasoning?: string; temperature?: number; result?: unknown }) => {
-        captured = { reasoning: ctx.reasoning, temperature: ctx.temperature };
+      phaseGenerate: mock(async (ctx: { reasoning?: string; result?: unknown }) => {
+        captured = { reasoning: ctx.reasoning };
         ctx.result = { text: "ok", toolCalls: [] };
       }),
     });
 
-    await runLifecycle(createLifecycleInput({ reasoning: "high", temperature: 0.3, workspace: process.cwd() }), deps);
+    await runLifecycle(createLifecycleInput({ reasoning: "high", workspace: process.cwd() }), deps);
 
     expect(captured?.reasoning).toBe("high");
-    expect(captured?.temperature).toBe(0.3);
   });
 
   test("accounts memory tokens when distilling", async () => {

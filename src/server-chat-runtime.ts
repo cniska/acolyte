@@ -283,7 +283,6 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       workspace: workspaceResolution.workspacePath,
       features: config.features,
       reasoning: config.reasoning,
-      temperature: config.temperature,
       authRoute: authRouteForModel(chatRequest.model, providerCredentials),
       taskId: handlers.taskId,
       runControl,

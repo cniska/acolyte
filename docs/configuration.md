@@ -166,7 +166,6 @@ acolyte config set features.syncAgents true
 | `port` | daemon server port (default: 6767) |
 | `locale` | UI language (default: `en`) |
 | `model` | model |
-| `temperature` | generation temperature (`0.0` to `2.0`) |
 | `reasoning` | reasoning level for supported models (`low`, `medium`, `high`) |
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |

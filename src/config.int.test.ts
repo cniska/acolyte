@@ -178,7 +178,6 @@ describe("config store", () => {
         'googleBaseUrl = "https://google.example.com"',
 
         'logFormat = "json"',
-        "temperature = 0.3",
         "replyTimeoutMs = 220000",
       ].join("\n"),
       "utf8",
@@ -190,7 +189,6 @@ describe("config store", () => {
     expect(loaded.model).toBe("openai/gpt-5-mini");
 
     expect(loaded.logFormat).toBe("json");
-    expect(loaded.temperature).toBe(0.3);
     expect(loaded.replyTimeoutMs).toBe(220000);
   });
 
@@ -217,35 +215,11 @@ describe("config store", () => {
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.temperature).toBeUndefined();
     expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
 
     expect(resolved.logFormat).toBe("logfmt");
     expect(resolved.replyTimeoutMs).toBe(180000);
-  });
-
-  test("readResolvedConfigSync uses top-level temperature when set", () => {
-    const home = createDir("acolyte-config-home-");
-    const dataDir = configDir({ HOME: home });
-    mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.2\n', "utf8");
-
-    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
-    expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.temperature).toBe(0.2);
-    expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
-  });
-
-  test("readResolvedConfigSync uses top-level temperature from config", () => {
-    const home = createDir("acolyte-config-home-");
-    const dataDir = configDir({ HOME: home });
-    mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), 'model = "anthropic/claude-sonnet-4"\n\ntemperature = 0.1\n', "utf8");
-
-    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
-    expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.temperature).toBe(0.1);
   });
 
   test("setConfigValue rejects internal config keys", async () => {
@@ -379,37 +353,37 @@ describe("config store", () => {
       "Invalid value for port",
     );
 
-    await expect(setConfigValue("temperature", "3", { env: { HOME: home }, cwd: project })).rejects.toThrow(
-      "Invalid value for temperature",
+    await expect(setConfigValue("reasoning", "extreme", { env: { HOME: home }, cwd: project })).rejects.toThrow(
+      "Invalid value for reasoning",
     );
     await expect(setConfigValue("locale", "xx", { env: { HOME: home }, cwd: project })).rejects.toThrow(
       "Invalid value for locale",
     );
   });
 
-  test("setConfigValue supports top-level temperature", async () => {
+  test("setConfigValue supports top-level reasoning", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.2", { env: { HOME: home }, cwd: project, scope: "project" });
+    await setConfigValue("reasoning", "high", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
-    expect(loaded.temperature).toBe(0.2);
+    expect(loaded.reasoning).toBe("high");
   });
 
-  test("unsetConfigValue removes temperature key", async () => {
+  test("unsetConfigValue removes reasoning key", async () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     const projectDataDir = join(project, ".acolyte");
     mkdirSync(projectDataDir, { recursive: true });
 
-    await setConfigValue("temperature", "0.4", { env: { HOME: home }, cwd: project, scope: "project" });
-    await unsetConfigValue("temperature", { env: { HOME: home }, cwd: project, scope: "project" });
+    await setConfigValue("reasoning", "medium", { env: { HOME: home }, cwd: project, scope: "project" });
+    await unsetConfigValue("reasoning", { env: { HOME: home }, cwd: project, scope: "project" });
 
     const loaded = await readConfigForScope("project", { env: { HOME: home }, cwd: project });
-    expect(loaded.temperature).toBeUndefined();
+    expect(loaded.reasoning).toBeUndefined();
   });
 
   test("unsetConfigValue removes key only from targeted project scope", async () => {

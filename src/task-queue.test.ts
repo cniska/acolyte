@@ -29,6 +29,38 @@ describe("task queue", () => {
     expect(events).toEqual(["start-1", "end-1", "start-2", "end-2"]);
   });
 
+  test("does not surface a failed job as an unhandled rejection", async () => {
+    const queue = createInMemoryTaskQueue();
+    const rejections: unknown[] = [];
+    const onUnhandled = (reason: unknown) => rejections.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      await queue
+        .enqueue("sess_fail0001", async () => {
+          throw new Error("boom");
+        })
+        .catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(rejections).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
+  test("recovers for the same key after a job fails", async () => {
+    const queue = createInMemoryTaskQueue();
+    let ran = false;
+    await queue
+      .enqueue("sess_recover01", async () => {
+        throw new Error("boom");
+      })
+      .catch(() => {});
+    await queue.enqueue("sess_recover01", async () => {
+      ran = true;
+    });
+    expect(ran).toBe(true);
+  });
+
   test("allows different keys to run independently", async () => {
     const queue = createInMemoryTaskQueue();
     const events: string[] = [];

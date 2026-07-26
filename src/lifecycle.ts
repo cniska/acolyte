@@ -121,7 +121,6 @@ function createRunContext(
     toolCallStartedAt: new Map(),
     sideEffectSink: null,
     reasoning: input.reasoning,
-    temperature: input.temperature,
     authRoute: input.authRoute,
   };
 

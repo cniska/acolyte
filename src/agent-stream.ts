@@ -98,7 +98,6 @@ export function createAgentStream(
           try {
             streamResult = await model.doStream({
               prompt: messages,
-              temperature: options.temperature,
               tools: functionTools.length > 0 ? functionTools : undefined,
               toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
               ...(options.reasoning ? { reasoning: options.reasoning } : {}),
