@@ -583,3 +583,150 @@ describe("onBeforeNextCall hook", () => {
     });
   });
 });
+
+describe("cancellation", () => {
+  const noopRateLimiter: RateLimiter = {
+    async beforeCall() {},
+    onResponse() {},
+    onError() {
+      return { shouldRetry: false, delayMs: 0 };
+    },
+    reset() {},
+    state() {
+      return {
+        requestsRemaining: undefined,
+        tokensRemaining: undefined,
+        requestsResetMs: undefined,
+        tokensResetMs: undefined,
+      };
+    },
+  };
+
+  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
+    return {
+      type: "finish",
+      finishReason: { unified: reason, raw: reason },
+      usage: {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      },
+    };
+  }
+
+  function scriptedModel(turns: LanguageModelV4StreamPart[][], calls: Array<Record<string, unknown>>): LanguageModelV4 {
+    let call = 0;
+    return {
+      specificationVersion: "v3",
+      provider: "test",
+      modelId: "test-model",
+      supportedUrls: {},
+      async doStream(args: Record<string, unknown>) {
+        calls.push(args);
+        const parts = turns[call] ?? [];
+        call += 1;
+        return {
+          stream: new ReadableStream<LanguageModelV4StreamPart>({
+            start(controller) {
+              for (const part of parts) controller.enqueue(part);
+              controller.close();
+            },
+          }),
+        };
+      },
+    } as unknown as LanguageModelV4;
+  }
+
+  function countingTool(onExecute: () => void): ToolDefinition {
+    return {
+      id: "noop",
+      toolkit: "test",
+      category: "execute",
+      description: "noop",
+      instruction: "noop",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        onExecute();
+        return { result: { kind: "noop" } };
+      },
+    };
+  }
+
+  test("stops the loop after the step in which cancellation arrives", async () => {
+    const controller = new AbortController();
+    const calls: Array<Record<string, unknown>> = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+      [{ type: "tool-call", toolCallId: "tc_2", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+    let executions = 0;
+    const tool = countingTool(() => {
+      executions += 1;
+      controller.abort();
+    });
+    const model = scriptedModel(turns, calls);
+    const stream = createAgentStream(model, "sys", { noop: tool }, noopRateLimiter);
+
+    const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
+    await getFullOutput();
+
+    expect(calls.length).toBe(1);
+    expect(executions).toBe(1);
+  });
+
+  test("skips remaining tool calls of a step once cancelled", async () => {
+    const controller = new AbortController();
+    const calls: Array<Record<string, unknown>> = [];
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" },
+        { type: "tool-call", toolCallId: "tc_2", toolName: "noop", input: "{}" },
+        finishPart("tool-calls"),
+      ],
+    ];
+    let executions = 0;
+    const tool = countingTool(() => {
+      executions += 1;
+      controller.abort();
+    });
+    const model = scriptedModel(turns, calls);
+    const stream = createAgentStream(model, "sys", { noop: tool }, noopRateLimiter);
+
+    const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
+    await getFullOutput();
+
+    expect(executions).toBe(1);
+  });
+
+  test("does not call the model at all when already cancelled", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const calls: Array<Record<string, unknown>> = [];
+    const model = scriptedModel([[finishPart("stop")]], calls);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
+    await getFullOutput();
+
+    expect(calls.length).toBe(0);
+  });
+
+  test("hands the signal to the provider call so an in-flight request aborts", async () => {
+    const controller = new AbortController();
+    const calls: Array<Record<string, unknown>> = [];
+    const model = scriptedModel([[finishPart("stop")]], calls);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+
+    const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
+    await getFullOutput();
+
+    expect(calls[0]?.abortSignal).toBe(controller.signal);
+  });
+});

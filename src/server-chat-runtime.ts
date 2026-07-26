@@ -287,7 +287,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {
-        if (runControl?.isCancelled()) return;
+        if (runControl?.signal.aborted) return;
         if (field(event, "type") === "tool-output")
           debug.log("tool-stream-forward", {
             task_id: handlers.taskId ?? null,
@@ -326,14 +326,14 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
               dropped_events: traceSinkDropped,
               request_id: requestId,
             });
-            if (!runControl?.isCancelled()) handlers.onEvent(notice);
+            if (!runControl?.signal.aborted) handlers.onEvent(notice);
           } catch {
             // A failed notice must not crash the request the sink only observes.
           }
         }
       },
     });
-    if (runControl?.isCancelled()) {
+    if (runControl?.signal.aborted) {
       log.info("chat request cancelled", {
         request_id: requestId,
         task_id: handlers.taskId ?? null,
@@ -360,7 +360,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     });
     handlers.onDone(reply);
   } catch (error) {
-    if (runControl?.isCancelled()) return;
+    if (runControl?.signal.aborted) return;
     const payload = streamErrorPayload(error);
     log.error("chat stream failed", {
       request_id: requestId,

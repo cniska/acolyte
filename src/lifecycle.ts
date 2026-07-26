@@ -106,6 +106,7 @@ function createRunContext(
     soulPrompt: input.soulPrompt,
     projectRulesPrompt: input.projectRulesPrompt,
     features: input.features,
+    runControl: input.runControl,
     emit: params.emit,
     debug: params.debug,
     tools: params.prepared.tools,
@@ -313,7 +314,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
   // A cancelled run (client disconnect or daemon shutdown) is never delivered, so it must not
   // leave a trace in history or memory — committing an answer the user never saw is the
   // divergence this guards against. Finalize for resource cleanup, but accept nothing.
-  if (input.runControl?.isCancelled()) {
+  if (input.runControl?.signal.aborted) {
     ctx.debug("lifecycle.cancelled", {});
     return deps.phaseFinalize(ctx);
   }

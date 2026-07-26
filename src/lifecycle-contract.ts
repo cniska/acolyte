@@ -98,13 +98,15 @@ export type Effect = {
 
 export type RunControl = {
   shouldYield: () => boolean;
-  isCancelled: () => boolean;
+  /** Cancellation for the run. `aborted` is the single source of truth; the signal also reaches
+   *  the provider call so an in-flight request stops rather than running to completion. */
+  signal: AbortSignal;
 };
 
 export function createRunControl(overrides?: Partial<RunControl>): RunControl {
   return {
     shouldYield: overrides?.shouldYield ?? (() => false),
-    isCancelled: overrides?.isCancelled ?? (() => false),
+    signal: overrides?.signal ?? new AbortController().signal,
   };
 }
 
@@ -131,6 +133,7 @@ export type RunContext = {
   readonly soulPrompt: string;
   readonly projectRulesPrompt?: string;
   readonly features: ResolvedFeatureFlags;
+  readonly runControl?: RunControl;
   readonly emit: (event: StreamEvent) => void;
   readonly debug: (event: LifecycleEventName, fields?: Record<string, unknown>) => void;
   readonly tools: Toolset;

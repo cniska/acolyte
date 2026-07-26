@@ -13,7 +13,7 @@ import type { TaskRegistry } from "./task-registry";
 const RPC_MAX_QUEUED_TASKS_PER_CONNECTION = 25;
 
 type ActiveRpcChatState = {
-  aborted: boolean;
+  abort: AbortController;
   taskId: TaskId;
 };
 
@@ -108,14 +108,14 @@ function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcD
     method: "WS",
     taskId: input.taskId,
     runControl: createRunControl({
-      isCancelled: () => input.state.aborted,
+      signal: input.state.abort.signal,
       shouldYield: () => rpcQueuePolicy.shouldYield(queue),
     }),
     onEvent: (event) => {
-      if (!input.state.aborted) input.emitEvent(event);
+      if (!input.state.abort.signal.aborted) input.emitEvent(event);
     },
     onDone: (reply) => {
-      if (input.state.aborted) return;
+      if (input.state.abort.signal.aborted) return;
       deps.transitionTaskState(
         input.taskId,
         {
@@ -127,7 +127,7 @@ function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcD
       input.emitDone(reply);
     },
     onError: (payload) => {
-      if (input.state.aborted) return;
+      if (input.state.abort.signal.aborted) return;
       deps.transitionTaskState(
         input.taskId,
         { state: "failed", summary: payload.errorMessage },
@@ -164,7 +164,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       return;
     }
 
-    const state: ActiveRpcChatState = { aborted: false, taskId: nextTaskId() };
+    const state: ActiveRpcChatState = { abort: new AbortController(), taskId: nextTaskId() };
     const startResult = rpcQueuePolicy.onStart({
       runningChatId: ctx.wsData.runningChatId,
       queue: ctx.wsData.queue,
@@ -206,7 +206,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
     const requestId = msg.payload.requestId;
     const activeState = ctx.wsData.activeChats.get(requestId);
     if (activeState) {
-      activeState.aborted = true;
+      activeState.abort.abort();
       deps.transitionTaskState(
         activeState.taskId,
         { state: "cancelled", summary: "Cancelled by client request." },
@@ -253,7 +253,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         queued_task_count: ws.data.queue.length,
       });
       for (const [requestId, state] of ws.data.activeChats.entries()) {
-        state.aborted = true;
+        state.abort.abort();
         deps.transitionTaskState(
           state.taskId,
           { state: "cancelled", summary: "Connection closed before completion." },
@@ -266,7 +266,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         });
       }
       for (const item of ws.data.queue) {
-        item.state.aborted = true;
+        item.state.abort.abort();
         deps.transitionTaskState(
           item.state.taskId,
           { state: "cancelled", summary: "Connection closed while queued." },

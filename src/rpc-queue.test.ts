@@ -7,12 +7,18 @@ import {
   removeQueuedChatById,
 } from "./rpc-queue";
 
+function abortedController(): AbortController {
+  const controller = new AbortController();
+  controller.abort();
+  return controller;
+}
+
 describe("rpc queue", () => {
   test("removeQueuedChatById removes target and reindexes remaining queue", () => {
     const queue: QueuedRpcChatEntry[] = [
-      { id: "chat_1", state: { aborted: false } },
-      { id: "chat_2", state: { aborted: false } },
-      { id: "chat_3", state: { aborted: false } },
+      { id: "chat_1", state: { abort: new AbortController() } },
+      { id: "chat_2", state: { abort: new AbortController() } },
+      { id: "chat_3", state: { abort: new AbortController() } },
     ];
 
     const result = removeQueuedChatById(queue, "chat_2");
@@ -26,7 +32,7 @@ describe("rpc queue", () => {
   });
 
   test("removeQueuedChatById returns no-op result when request is missing", () => {
-    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { aborted: false } }];
+    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { abort: new AbortController() } }];
     const result = removeQueuedChatById(queue, "missing");
     expect(result.removed).toBe(false);
     expect(queue.map((item) => item.id)).toEqual(["chat_1"]);
@@ -35,8 +41,8 @@ describe("rpc queue", () => {
 
   test("queuePositionUpdates returns 1-based positions for queued chats", () => {
     const queue: QueuedRpcChatEntry[] = [
-      { id: "chat_1", state: { aborted: false } },
-      { id: "chat_2", state: { aborted: false } },
+      { id: "chat_1", state: { abort: new AbortController() } },
+      { id: "chat_2", state: { abort: new AbortController() } },
     ];
 
     expect(queuePositionUpdates(queue)).toEqual([
@@ -48,9 +54,9 @@ describe("rpc queue", () => {
   test("dequeueNextQueuedChat returns first non-aborted entry and updates positions", () => {
     type Entry = QueuedRpcChatEntry & { requestId: string };
     const queue: Entry[] = [
-      { id: "chat_1", state: { aborted: true }, requestId: "req_1" },
-      { id: "chat_2", state: { aborted: false }, requestId: "req_2" },
-      { id: "chat_3", state: { aborted: false }, requestId: "req_3" },
+      { id: "chat_1", state: { abort: abortedController() }, requestId: "req_1" },
+      { id: "chat_2", state: { abort: new AbortController() }, requestId: "req_2" },
+      { id: "chat_3", state: { abort: new AbortController() }, requestId: "req_3" },
     ];
 
     const result = dequeueNextQueuedChat(queue);
@@ -67,8 +73,8 @@ describe("rpc queue", () => {
     expect(emptyResult.updates).toEqual([]);
 
     const abortedOnly: QueuedRpcChatEntry[] = [
-      { id: "chat_1", state: { aborted: true } },
-      { id: "chat_2", state: { aborted: true } },
+      { id: "chat_1", state: { abort: abortedController() } },
+      { id: "chat_2", state: { abort: abortedController() } },
     ];
     const abortedResult = dequeueNextQueuedChat(abortedOnly);
     expect(abortedResult.next).toBeNull();
@@ -80,12 +86,12 @@ describe("rpc queue", () => {
     const policy = createSerialPerConnectionQueuePolicy({
       queueFullError: (maxQueued) => `full:${maxQueued}`,
     });
-    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { aborted: false } }];
+    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { abort: new AbortController() } }];
 
     const result = policy.onStart({
       runningChatId: "chat_running",
       queue,
-      entry: { id: "chat_2", state: { aborted: false } },
+      entry: { id: "chat_2", state: { abort: new AbortController() } },
       maxQueued: 25,
     });
 
@@ -97,12 +103,12 @@ describe("rpc queue", () => {
     const policy = createSerialPerConnectionQueuePolicy({
       queueFullError: (maxQueued) => `full:${maxQueued}`,
     });
-    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { aborted: false } }];
+    const queue: QueuedRpcChatEntry[] = [{ id: "chat_1", state: { abort: new AbortController() } }];
 
     const result = policy.onStart({
       runningChatId: "chat_running",
       queue,
-      entry: { id: "chat_2", state: { aborted: false } },
+      entry: { id: "chat_2", state: { abort: new AbortController() } },
       maxQueued: 1,
     });
 

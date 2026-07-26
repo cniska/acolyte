@@ -82,6 +82,8 @@ export type OnBeforeFinishResult = LanguageModelV4Message[];
 
 export type StreamOptions = {
   reasoning?: ReasoningLevel;
+  /** Cancellation for the whole run: aborts the in-flight provider call and ends the tool loop. */
+  abortSignal?: AbortSignal;
   providerOptions?: SharedV4ProviderOptions;
   preCallInputTokenLimit?: number;
   // Installed for the lifetime of one stream so tool-raised effects enqueue onto `fullStream`;
