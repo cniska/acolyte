@@ -1,4 +1,3 @@
-import { estimateTokens } from "./agent-input";
 import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
@@ -14,6 +13,7 @@ import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
+import { estimateTokens } from "./token-estimate";
 
 export interface MemoryOptions {
   scope?: MemoryScope;

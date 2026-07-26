@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ensureRealTokenEncoder, estimateTokens } from "./agent-input";
+import { ensureRealTokenEncoder, estimateTokens } from "./token-estimate";
 
 describe("estimateTokens (real tokenizer)", () => {
   test("initializes tokenizer", async () => {

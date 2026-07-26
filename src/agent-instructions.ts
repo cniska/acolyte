@@ -18,12 +18,13 @@ const CORE_INSTRUCTIONS = [
   "Make reasonable assumptions to keep momentum; ask only when ambiguity or risk truly blocks progress.",
 ];
 
-const TOOL_IDS = toolIds();
 const PROJECT_RULES_PRECEDENCE = "Project rules take precedence over generic guidance when they conflict.";
 
 function createRuntimeInstructions(workspace?: string): string {
   const lines: string[] = [];
-  for (const toolId of TOOL_IDS) {
+  // Read at call time, not module scope: the registry is built during its own module
+  // evaluation, so an import-time read is a TDZ crash whenever a cycle reaches here first.
+  for (const toolId of toolIds()) {
     const tool = toolDefinitionsById[toolId];
     if (tool?.instruction) lines.push(`- ${tool.instruction}`);
   }

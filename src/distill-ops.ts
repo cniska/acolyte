@@ -1,4 +1,4 @@
-import { estimateTokens } from "./agent-input";
+import { estimateTokens } from "./token-estimate";
 
 export type DistillScope = "session" | "project" | "user";
 

@@ -1,5 +1,5 @@
 import type { LanguageModelV4FunctionTool, LanguageModelV4Message } from "@ai-sdk/provider";
-import { estimateTokens } from "./agent-input";
+import { estimateTokens } from "./token-estimate";
 
 export type PromptSize = {
   total: number;

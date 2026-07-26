@@ -1,6 +1,5 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
-import { estimateTokens } from "./agent-input";
 import { appConfig } from "./app-config";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
@@ -18,6 +17,7 @@ import { getMemoryStore } from "./memory-store";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
+import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
 const MEMORY_OBSERVE_TOOL = toFunctionTool({

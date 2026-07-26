@@ -1,6 +1,5 @@
 import type { LanguageModelV4Message } from "@ai-sdk/provider";
 import type { Agent, GenerateResult, StreamChunk } from "./agent-contract";
-import { estimateTokens } from "./agent-input";
 import { createInstructions } from "./agent-instructions";
 import { renderBudgetNotice } from "./agent-reminders";
 import { createAgent } from "./agent-stream";
@@ -33,6 +32,7 @@ import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache
 import { providerFromModel } from "./provider-config";
 import type { ActiveSkill } from "./skill-contract";
 import type { StreamError } from "./stream-error";
+import { estimateTokens } from "./token-estimate";
 import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
 import { renderToolOutput } from "./tool-output-render";

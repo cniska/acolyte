@@ -1,7 +1,7 @@
-import { estimateTokens } from "./agent-input";
 import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
+import { estimateTokens } from "./token-estimate";
 import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 

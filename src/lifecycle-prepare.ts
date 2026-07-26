@@ -1,5 +1,6 @@
-import { createAgentInput, estimateTokens } from "./agent-input";
+import { createAgentInput } from "./agent-input";
 import type { PhasePrepareInput, PhasePrepareResult } from "./lifecycle-contract";
+import { estimateTokens } from "./token-estimate";
 import { toolsForAgent } from "./tool-registry";
 
 /** Approximate overhead for BASE_INSTRUCTIONS + runtime instructions. */

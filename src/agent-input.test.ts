@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createAgentInput, setTokenEncoder } from "./agent-input";
+import { createAgentInput } from "./agent-input";
 import type { ChatRequest } from "./api";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { loadSkills, resetSkillCache } from "./skill-ops";
+import { setTokenEncoder } from "./token-estimate";
 
 const defaultOptions = {
   contextMaxTokens: defaultLifecyclePolicy.contextMaxTokens,

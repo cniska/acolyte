@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { estimateTokens } from "./agent-input";
 import { log } from "./log";
 import type { MemoryStore } from "./memory-contract";
 import { getMemoryStore } from "./memory-store";
 import { projectResourceIdFromWorkspace } from "./resource-id";
+import { estimateTokens } from "./token-estimate";
 
 export const AGENTS_MD_MEMORY_ID = "mem_agentsmd";
 

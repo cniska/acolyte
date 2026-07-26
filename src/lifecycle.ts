@@ -1,4 +1,3 @@
-import { ensureRealTokenEncoder } from "./agent-input";
 import { errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createErrorStats } from "./error-handling";
 import { t } from "./i18n";
@@ -13,6 +12,7 @@ import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { createInMemoryTaskQueue } from "./task-queue";
+import { ensureRealTokenEncoder } from "./token-estimate";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
