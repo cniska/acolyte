@@ -554,6 +554,24 @@ describe("findFiles", () => {
     expect(result.result.output).toContain("45 files matched, showing the first 40");
   });
 
+  test("says so rather than returning nothing for a blank pattern", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "   " }, "call_find_blank");
+    expect(result.result.output).toBe("No matches.");
+    expect(result.result.matches).toBe(0);
+  });
+
+  test("ranks an exact path above the same name nested deeper", async () => {
+    const workspace = dirs.createDir("acolyte-find-rank-");
+    await mkdir(join(workspace, "sub"), { recursive: true });
+    await writeFile(join(workspace, "package.json"), "{}\n", "utf8");
+    await writeFile(join(workspace, "sub", "package.json"), "{}\n", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "package.json" }, "call_find_rank");
+    expect(result.result.paths[0]).toBe("./package.json");
+  });
+
   test("reports an uncapped result as complete", async () => {
     const workspace = await workspaceWithToolkits();
     const { tools } = toolsForAgent({ workspace });

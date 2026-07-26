@@ -51,14 +51,13 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
     const needle = relativePattern.replace(/^\.\/+/, "").toLowerCase();
     const matches = createPathMatcher(relativePattern);
 
-    const matched = allFiles.filter(matches).sort((a, b) => {
-      const aLower = a.toLowerCase();
-      const bLower = b.toLowerCase();
-      const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
-      const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-      if (aScore !== bScore) return aScore - bScore;
-      return a.length - b.length;
-    });
+    const rank = (path: string) => {
+      const lower = path.toLowerCase();
+      if (lower === needle) return 0;
+      if (lower.endsWith(`/${needle}`)) return 1;
+      return 2;
+    };
+    const matched = allFiles.filter(matches).sort((a, b) => rank(a) - rank(b) || a.length - b.length);
     const ranked = matched.slice(0, maxResults).map((path) => `./${path}`);
     totalMatches += matched.length;
 
@@ -71,14 +70,11 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
     }
   }
 
+  if (sections.length === 0) sections.push("No matches."); // every pattern was blank
   return { output: sections.join("\n"), totalMatches };
 }
 
-/**
- * An absolute pattern inside the workspace becomes root-anchored; every other leading slash already
- * means "anchored at the workspace root", so it passes through. Nothing needs rejecting here — the
- * candidates are already confined to the workspace, so a pattern can only ever match inside it.
- */
+/** Nothing is rejected here: the candidates are already confined to the workspace. */
 function toWorkspaceRelativePattern(pattern: string, workspace: string): string {
   const prefix = workspace.endsWith("/") ? workspace : `${workspace}/`;
   return pattern.startsWith(prefix) ? `/${pattern.slice(prefix.length)}` : pattern;

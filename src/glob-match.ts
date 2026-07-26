@@ -35,11 +35,7 @@ export function globToRegex(glob: string, anchored: boolean): string {
   return re;
 }
 
-/**
- * Redundant star runs mean the same thing as one `**` but each extra one compiles to another
- * adjacent `.*`, and adjacent `.*` backtrack catastrophically: `**` eight times took 7s on a single
- * path before this collapse. Patterns are model-supplied, so the cost has to be bounded here.
- */
+/** Adjacent `.*` backtrack catastrophically — eight of them took 7s on one path. */
 function collapseStars(glob: string): string {
   return glob.replace(/\*{2,}/g, "**").replace(/\*\*(?:\/\*\*)+/g, "**");
 }
