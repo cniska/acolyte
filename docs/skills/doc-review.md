@@ -1,6 +1,6 @@
 ---
 name: doc-review
-description: Review docs for drift, missing updates, and terminology changes. Use when code changes should be reflected in documentation.
+description: Review docs the change touched for drift — stale terms, contracts, and behavior. Use when a diff may have made documentation inaccurate.
 ---
 
 # Documentation Review

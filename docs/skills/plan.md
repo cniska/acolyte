@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Design a feature or behavior change through dialogue. Use when asked to plan, scope, design, or break down work before coding.
+description: Scope and break down a feature or change through dialogue before coding. Use when a task is ambiguous or large enough to need a shared plan first.
 ---
 
 # Plan

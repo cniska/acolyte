@@ -1,6 +1,6 @@
 ---
 name: git
-description: Manage commits, branches, and change history. Use when committing, branching, or managing version control.
+description: Manage commits, branches, and history — atomic commits, clean history. Use when committing, branching, or rewriting history before a push.
 ---
 
 # Git

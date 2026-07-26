@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Review architecture, boundaries, and design consistency. Use when reviewing module boundaries, extension seams, or contract drift.
+description: Review boundaries, indirection pressure, and contract integrity. Use when reviewing module structure, extension seams, or unnecessary layers.
 ---
 
 # Architecture Review

@@ -10,6 +10,10 @@ These are specialized for Acolyte from the tool-agnostic set at [cniska/skills](
 
 Multiple skills can be active in one session. The agent can load one or more in a single call, and the active set is shown in the status line.
 
+## Descriptions
+
+The agent selects a skill from the roster — the per-turn line of names and `description`s — with nothing else to match on, so the `description` is the whole selection signal. Each follows one shape: `<imperative capability>. Use when <precise, observable trigger>.` The first sentence says what the skill does; the second gives a trigger phrased to fire exactly when the skill applies and stay quiet otherwise, naming the boundary against neighboring skills (build vs tdd, plan vs design, style-review vs the other review dimensions). Keep it under the roster's 250-character cap.
+
 ## Skills
 
 | Phase | Skill | Description |
