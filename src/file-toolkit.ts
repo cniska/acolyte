@@ -34,7 +34,7 @@ function createFindFilesTool(input: ToolkitInput) {
     toolkit: "file",
     category: "search",
     description:
-      "Find files by name or path pattern. The pattern is a glob (`*`, `?`, `**`, `[abc]`, `{a,b}`) matched against workspace-relative paths, or a case-insensitive substring when it has no wildcard. A leading `/` anchors at the workspace root. Results are capped, and a cap notice reports the full match count. To search file contents use `file-search` instead.",
+      "Find files by name or path pattern. The pattern is a glob (`*`, `?`, `**`, `[abc]`, `{a,b}`) matched against workspace-relative paths, or a case-insensitive substring when it has no wildcard. A leading `/` anchors at the workspace root. Results are capped: the result cap reports the full match count, while a workspace scan cap reports a lower bound. To search file contents use `file-search` instead.",
     instruction: "Use `file-find` to locate files by name/path pattern.",
     inputSchema: z.object({
       pattern: z.string().min(1),
@@ -50,14 +50,14 @@ function createFindFilesTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "file-find", toolCallId, toolInput, async (callId) => {
         const patterns = [toolInput.pattern];
-        const { output, totalMatches } = await findFiles(input.workspace, patterns);
+        const { output, totalMatches, truncated } = await findFiles(input.workspace, patterns);
         const paths = findResultPaths(output);
         emitParts(findSummaryParts(paths, patterns, "tool.label.file_find"), "file-find", input.onOutput, callId);
         return {
           kind: "file-find" as const,
           pattern: toolInput.pattern,
           matches: totalMatches,
-          truncated: paths.length < totalMatches,
+          truncated: truncated || paths.length < totalMatches,
           paths,
           output,
         };

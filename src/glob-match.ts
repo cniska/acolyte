@@ -145,11 +145,12 @@ const MAX_BRACE_ALTERNATIVES = 64;
  */
 export function createPathMatcher(pattern: string): (path: string) => boolean {
   const normalized = pattern.replace(/^\.\/+/, "");
-  if (!normalized.startsWith("/") && !WILDCARD.test(normalized)) {
-    const needle = normalized.toLowerCase();
+  const directoryPattern = normalized.endsWith("/") ? `${normalized}**` : normalized;
+  if (!directoryPattern.startsWith("/") && !WILDCARD.test(directoryPattern)) {
+    const needle = directoryPattern.toLowerCase();
     return (path) => path.toLowerCase().includes(needle);
   }
-  const matchers = expandBraces(normalized).map(compileGlob);
+  const matchers = expandBraces(directoryPattern).map(compileGlob);
   return (path) => matchers.some((matches) => matches(path));
 }
 

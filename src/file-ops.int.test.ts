@@ -554,6 +554,38 @@ describe("findFiles", () => {
     expect(result.result.output).toContain("45 files matched, showing the first 40");
   });
 
+  test("reports when the workspace scan withholds matches", async () => {
+    const workspace = dirs.createDir("acolyte-find-scan-cap-");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 5001 }, (_, i) =>
+        writeFile(join(workspace, "src", `mod-${String(i).padStart(4, "0")}.ts`), "export const x = 1;\n", "utf8"),
+      ),
+    );
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/*.ts" }, "call_find_scan_capped");
+    expect(result.result.paths).toHaveLength(40);
+    expect(result.result.matches).toBe(5000);
+    expect(result.result.truncated).toBe(true);
+    expect(result.result.output).toContain("At least 5000 files matched, showing the first 40");
+  });
+
+  test("does not report no matches as complete when the workspace scan is capped", async () => {
+    const workspace = dirs.createDir("acolyte-find-scan-no-match-");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 5000 }, (_, i) =>
+        writeFile(join(workspace, "src", `mod-${String(i).padStart(4, "0")}.ts`), "export const x = 1;\n", "utf8"),
+      ),
+    );
+    await writeFile(join(workspace, "src", "target.ts"), "export const target = 1;\n", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "target.ts" }, "call_find_scan_no_match");
+    expect(result.result.matches).toBe(0);
+    expect(result.result.truncated).toBe(true);
+    expect(result.result.output).toContain("No matches in the scanned workspace files");
+  });
+
   test("says so rather than returning nothing for a blank pattern", async () => {
     const workspace = await workspaceWithToolkits();
     const { tools } = toolsForAgent({ workspace });
