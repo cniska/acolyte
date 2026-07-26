@@ -10,6 +10,7 @@ import {
   type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
+  memoryDispositionSchema,
   type RemoveMemoryResult,
   scopeFromKey,
 } from "./memory-contract";
@@ -210,8 +211,9 @@ export async function retireMemories(
   const trimmed = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
   if (trimmed.length === 0) return [];
 
+  const validated = memoryDispositionSchema.parse(disposition);
   const store = options.store ?? (await getMemoryStore());
-  const retired = await store.retire(trimmed, disposition);
+  const retired = await store.retire(trimmed, validated);
   log.debug("memory.retire", { ids: retired.join(" "), count: retired.length, disposition: disposition.kind });
   return retired;
 }

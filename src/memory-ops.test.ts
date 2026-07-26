@@ -141,6 +141,16 @@ describe("retirement ops", () => {
     store.close();
   });
 
+  test("retiring rejects a superseded disposition naming no successor", async () => {
+    const store = await seededStore();
+    await expect(
+      retireMemories(["mem_drop00001"], { kind: "superseded", by: [] } as never, { store }),
+    ).rejects.toThrow();
+    expect(await listMemories({ scope: "user", store })).toHaveLength(2);
+    expect(await listArchivedMemories({ scope: "user", store })).toHaveLength(0);
+    store.close();
+  });
+
   test("retiring nothing is a no-op", async () => {
     const store = await seededStore();
     expect(await retireMemories([], { kind: "noise" }, { store })).toEqual([]);
