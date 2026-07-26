@@ -525,12 +525,19 @@ describe("findFiles", () => {
     expect(result.result.paths).toEqual(["./src/file-ops.ts"]);
   });
 
-  test("rejects an absolute pattern outside the workspace", async () => {
+  test("anchors a leading-slash pattern at the workspace root", async () => {
     const workspace = await workspaceWithToolkits();
     const { tools } = toolsForAgent({ workspace });
-    await expect(tools.findFiles.execute({ pattern: "/etc/*.conf" }, "call_find_outside")).rejects.toThrow(
-      "outside the workspace",
-    );
+    const result = await tools.findFiles.execute({ pattern: "/src/*-toolkit.ts" }, "call_find_root_anchored");
+    expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
+  });
+
+  test("matches nothing for an absolute pattern outside the workspace", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "/etc/*.conf" }, "call_find_outside");
+    expect(result.result.paths).toEqual([]);
+    expect(result.result.matches).toBe(0);
   });
 
   test("reports how many matches were withheld when results are capped", async () => {

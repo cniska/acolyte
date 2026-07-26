@@ -111,6 +111,18 @@ describe("createPathMatcher", () => {
     expect(() => createPathMatcher(exploded)).toThrow("more than 64 alternatives");
   });
 
+  test("collapses redundant star runs instead of backtracking on them", () => {
+    // Each extra adjacent `.*` multiplied match time ~7x: 8 of them took 7.45s on one path.
+    const start = Date.now();
+    expect(matched(`${"**".repeat(40)}Z`)).toEqual([]);
+    expect(Date.now() - start).toBeLessThan(500);
+  });
+
+  test("a collapsed star run still matches like a single one", () => {
+    expect(matched("src/****/*.tsx")).toEqual(matched("src/**/*.tsx"));
+    expect(matched("src/**/**/*.tsx")).toEqual(matched("src/**/*.tsx"));
+  });
+
   test("caps the work done, not just the result, for a combinatorial pattern", () => {
     // 2^30 expansions: eager cross-product exhausts memory before any cap can reject it.
     expect(() => createPathMatcher(`${"{a,b}".repeat(30)}*`)).toThrow("more than 64 alternatives");

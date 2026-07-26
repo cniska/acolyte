@@ -2,6 +2,7 @@ import { escapeRegex } from "./string-utils";
 
 export function globToRegex(glob: string, anchored: boolean): string {
   let re = anchored ? "^" : "(^|/)";
+  glob = collapseStars(glob);
 
   if (glob.startsWith("**/")) {
     re += "(.+/)?"; // leading **/ — any number of leading directories
@@ -32,6 +33,15 @@ export function globToRegex(glob: string, anchored: boolean): string {
 
   re += "(/|$)";
   return re;
+}
+
+/**
+ * Redundant star runs mean the same thing as one `**` but each extra one compiles to another
+ * adjacent `.*`, and adjacent `.*` backtrack catastrophically: `**` eight times took 7s on a single
+ * path before this collapse. Patterns are model-supplied, so the cost has to be bounded here.
+ */
+function collapseStars(glob: string): string {
+  return glob.replace(/\*{2,}/g, "**").replace(/\*\*(?:\/\*\*)+/g, "**");
 }
 
 const WILDCARD = /[*?[{]/;

@@ -1,5 +1,5 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { createPathMatcher } from "./glob-match";
 import { createToolError } from "./tool-error";
@@ -74,13 +74,14 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
   return { output: sections.join("\n"), totalMatches };
 }
 
+/**
+ * An absolute pattern inside the workspace becomes root-anchored; every other leading slash already
+ * means "anchored at the workspace root", so it passes through. Nothing needs rejecting here — the
+ * candidates are already confined to the workspace, so a pattern can only ever match inside it.
+ */
 function toWorkspaceRelativePattern(pattern: string, workspace: string): string {
-  if (!isAbsolute(pattern)) return pattern;
   const prefix = workspace.endsWith("/") ? workspace : `${workspace}/`;
-  if (pattern === workspace || !pattern.startsWith(prefix)) {
-    throw new Error(`Pattern is outside the workspace: ${pattern}`);
-  }
-  return `/${pattern.slice(prefix.length)}`; // leading slash anchors the remainder at the workspace root
+  return pattern.startsWith(prefix) ? `/${pattern.slice(prefix.length)}` : pattern;
 }
 
 export async function searchFiles(
