@@ -93,12 +93,14 @@ acolyte config set --project model openai-compatible/<model>
 Keep chat on its configured provider while routing semantic memory to an OpenAI-compatible embedding endpoint:
 
 ```bash
-acolyte config set --project embeddingModel nomic-embed-text
-acolyte config set --project embeddingBaseUrl http://localhost:11434/v1
+acolyte config set embeddingModel nomic-embed-text
+acolyte config set embeddingBaseUrl http://localhost:11434/v1
 ACOLYTE_EMBEDDING_API_KEY=ollama acolyte run "..."
 ```
 
-`embeddingBaseUrl` is an explicit route for embedding requests only. Its API key is read from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. HTTP is allowed only for localhost; remote endpoints must use HTTPS.
+`embeddingBaseUrl` is a user-scoped route for embedding requests only. Its API key is read from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. HTTP is allowed only for localhost; remote endpoints must use HTTPS.
+
+It is deliberately not project-scoped: a repository-controlled config must not redirect memory queries or a private embedding credential to an arbitrary endpoint.
 
 ## Localization
 

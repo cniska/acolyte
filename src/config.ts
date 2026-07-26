@@ -57,6 +57,11 @@ function shallowMerge<T extends object>(base: T, override: T): T {
   return merged;
 }
 
+function mergeConfig(userConfig: Config, projectConfig: Config): Config {
+  const { embeddingBaseUrl: _, ...projectSafe } = projectConfig;
+  return shallowMerge(userConfig, projectSafe);
+}
+
 function resolvePaths(options?: ConfigOptions): {
   userDataDir: string;
   userJsonPath: string;
@@ -193,7 +198,7 @@ export async function readConfig(options?: ConfigOptions): Promise<Config> {
   } catch (error) {
     throw wrapError("project", error);
   }
-  return shallowMerge(userConfig, projectConfig);
+  return mergeConfig(userConfig, projectConfig);
 }
 
 export function readConfigSync(options?: ConfigOptions): Config {
@@ -209,7 +214,7 @@ export function readConfigSync(options?: ConfigOptions): Config {
   } catch (error) {
     throw wrapError("project", error);
   }
-  return shallowMerge(userConfig, projectConfig);
+  return mergeConfig(userConfig, projectConfig);
 }
 
 export async function writeConfig(config: Config, options?: ConfigOptions): Promise<void> {
@@ -239,6 +244,9 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
 
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
+  if (key === "embeddingBaseUrl" && scope === "project") {
+    throw new Error("embeddingBaseUrl is user-scoped");
+  }
   const dotted = parseDottedKey(key);
   if (dotted) {
     const schema = CONFIG_SET_SCHEMAS[dotted.section];
@@ -270,6 +278,9 @@ export async function setConfigValue(key: string, value: string, options?: Confi
 
 export async function unsetConfigValue(key: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
+  if (key === "embeddingBaseUrl" && scope === "project") {
+    throw new Error("embeddingBaseUrl is user-scoped");
+  }
   const dotted = parseDottedKey(key);
   if (dotted) {
     const current = await readConfigForScope(scope, options);
