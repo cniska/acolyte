@@ -40,6 +40,7 @@ export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode | Me
 
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
+  embeddingUnavailable: "embedding_unavailable",
   timeout: "timeout",
   fileNotFound: "file_not_found",
   budgetExhausted: "budget_exhausted",

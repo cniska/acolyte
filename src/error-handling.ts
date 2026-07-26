@@ -1,6 +1,12 @@
 import type { z } from "zod";
 import { CodedError } from "./coded-error";
-import { ERROR_KINDS, type ErrorCode, type ErrorKind, LIFECYCLE_ERROR_CODES } from "./error-contract";
+import {
+  ERROR_KINDS,
+  type ErrorCode,
+  type ErrorKind,
+  LIFECYCLE_ERROR_CODES,
+  MEMORY_ERROR_CODES,
+} from "./error-contract";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
 import { extractToolErrorCode } from "./tool-error";
@@ -53,6 +59,11 @@ export function categoryFromErrorKind(kind?: string): ErrorCategory | undefined 
 
 export function errorKindFromCategory(category: ErrorCategory): ErrorKind {
   return ERROR_MAP.find((e) => e.category === category)?.kind ?? ERROR_KINDS.unknown;
+}
+
+export function errorKindFromErrorCode(code?: string): ErrorKind | undefined {
+  if (code === MEMORY_ERROR_CODES.embeddingUnavailable) return ERROR_KINDS.embeddingUnavailable;
+  return ERROR_MAP.find((e) => e.code === code)?.kind;
 }
 
 export function errorCodeFromCategory(category: ErrorCategory): ErrorCode {
@@ -125,7 +136,7 @@ export function createStreamError(input: {
     (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(errorCode) ?? kindCategory ?? "other";
-  const errorKind = input.kind ?? errorKindFromCategory(category);
+  const errorKind = input.kind ?? errorKindFromErrorCode(errorCode) ?? errorKindFromCategory(category);
   return {
     errorCode,
     category,

@@ -3,7 +3,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { appConfig } from "./app-config";
 import { unreachable } from "./assert";
 import { CodedError } from "./coded-error";
-import { errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
 import {
   bareModelId,
@@ -225,6 +225,7 @@ export async function embedQuery(text: string): Promise<Float32Array> {
     throw new CodedError(
       MEMORY_ERROR_CODES.embeddingUnavailable,
       `No embedding provider for "${appConfig.embedding.model}": memory recall needs an API key.`,
+      { kind: ERROR_KINDS.embeddingUnavailable },
     );
   }
   try {
@@ -236,7 +237,7 @@ export async function embedQuery(text: string): Promise<Float32Array> {
     throw new CodedError(
       MEMORY_ERROR_CODES.embeddingUnavailable,
       `Embedding request failed for "${appConfig.embedding.model}": ${errorMessage(error)}`,
-      { cause: error },
+      { cause: error, kind: ERROR_KINDS.embeddingUnavailable },
     );
   }
 }

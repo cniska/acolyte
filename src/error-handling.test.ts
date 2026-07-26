@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { LIFECYCLE_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, MEMORY_ERROR_CODES, TOOL_ERROR_CODES } from "./error-contract";
 import {
   categoryFromErrorCode,
   categoryFromErrorKind,
@@ -78,6 +78,20 @@ describe("error handling helpers", () => {
       code: LIFECYCLE_ERROR_CODES.timeout,
       category: "timeout",
       kind: "timeout",
+      source: "server",
+    });
+  });
+
+  test("createStreamError preserves the embedding-unavailable kind", () => {
+    const detail = createStreamError({
+      message: "memory recall needs an API key",
+      code: MEMORY_ERROR_CODES.embeddingUnavailable,
+      source: "server",
+    });
+    expect(detail.error).toMatchObject({
+      code: MEMORY_ERROR_CODES.embeddingUnavailable,
+      category: "other",
+      kind: ERROR_KINDS.embeddingUnavailable,
       source: "server",
     });
   });

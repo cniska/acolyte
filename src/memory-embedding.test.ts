@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CodedError } from "./coded-error";
-import { MEMORY_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, MEMORY_ERROR_CODES } from "./error-contract";
 import {
   bufferToEmbedding,
   computeIdf,
@@ -215,6 +215,7 @@ describe("embedQuery", () => {
     const error = await embedQuery("any query").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CodedError);
     expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
+    expect((error as CodedError).kind).toBe(ERROR_KINDS.embeddingUnavailable);
     expect((error as CodedError).message).toContain("anthropic/claude-opus-4-1");
   });
 
