@@ -55,7 +55,9 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 ## Retirement
 
-A record leaves the active set by retirement, never by deletion. Retirement moves the row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm` and `memory-remove`, and it is the only operation that destroys a record.
+Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm` and `memory-remove`, and it is the only operation that destroys a record.
+
+This is the mechanism, not yet a behavior: no caller retires anything today, so the archive fills only once convergence writes to it.
 
 Every retirement carries a disposition saying why the record left:
 
