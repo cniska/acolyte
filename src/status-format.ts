@@ -4,7 +4,6 @@ import { t } from "./i18n";
 import type { StatusFields } from "./status-contract";
 
 const STATUS_KEY_LABEL_MAP: Record<string, string> = {
-  active_skill: t("status.label.active_skill"),
   capabilities: t("status.label.capabilities"),
   cloud_url: t("status.label.cloud_url"),
   cloud_user: t("status.label.cloud_user"),
@@ -16,6 +15,12 @@ const STATUS_KEY_LABEL_MAP: Record<string, string> = {
   service: t("status.label.service"),
   tasks_running: t("status.label.tasks_running"),
   tasks_total: t("status.label.tasks_total"),
+  "resources.config.collisions": t("status.label.resources.config.collisions"),
+  "resources.prompt.agents": t("status.label.resources.prompt.agents"),
+  "resources.skills.invalid": t("status.label.resources.skills.invalid"),
+  "resources.skills.duplicates": t("status.label.resources.skills.duplicates"),
+  "resources.skills.read_errors": t("status.label.resources.skills.read_errors"),
+  "resources.skills.status": t("status.label.resources.skills.status"),
 };
 
 export function formatStatus(fields: StatusFields): string {

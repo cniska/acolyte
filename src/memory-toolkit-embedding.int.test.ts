@@ -34,6 +34,7 @@ function rec(scopeKey: string, content: string): MemoryRecord {
 
 function fakeCloudStore(records: MemoryRecord[]): MemoryStore {
   return {
+    storage: "cloud",
     async list() {
       return records;
     },

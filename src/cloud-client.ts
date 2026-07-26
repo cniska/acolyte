@@ -65,6 +65,7 @@ export class CloudClient {
 
   get memory(): MemoryStore {
     return {
+      storage: "cloud",
       list: (options) => this.getMemories(options),
       write: (record, scope) => this.writeMemory(record, scope),
       remove: (id) => this.removeMemory(id),

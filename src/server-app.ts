@@ -5,6 +5,7 @@ import { mapQuotaErrorMessage } from "./error-messages";
 import { t } from "./i18n";
 import { errorToLogFields, log } from "./log";
 import { closeAllMcpSessions } from "./mcp-session";
+import { getMemoryStore } from "./memory-store";
 import { readOAuthTokensSync } from "./oauth-store";
 import { formatServerCapabilities, PROTOCOL_VERSION } from "./protocol";
 import { collectProviderStatus } from "./provider-status";
@@ -81,6 +82,17 @@ function transitionTaskState(
   });
 }
 
+async function memoryStatusSummary(): Promise<string | null> {
+  try {
+    const store = await getMemoryStore();
+    const count = (await store.list()).length;
+    return t("status.memory.summary", { storage: store.storage, count });
+  } catch (error) {
+    log.debug("status.memory.summary_failed", errorToLogFields(error));
+    return null;
+  }
+}
+
 async function createStatusPayload(): Promise<StatusPayload> {
   const { providers, providerAuth } = collectProviderStatus({
     anthropicApiKey: Boolean(appConfig.anthropic.apiKey),
@@ -92,12 +104,14 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
+  const memory = await memoryStatusSummary();
   const cloudUser = appConfig.cloudToken ? decodeTokenSubject(appConfig.cloudToken) : undefined;
   return {
     ok: true,
     providers,
     provider_auth: providerAuth,
     model,
+    ...(memory ? { memory } : {}),
     protocol_version: PROTOCOL_VERSION,
     capabilities: formatServerCapabilities(),
     service: `http://localhost:${PORT}`,

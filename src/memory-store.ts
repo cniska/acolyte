@@ -92,6 +92,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   );
 
   return {
+    storage: "sqlite",
     async list(options) {
       const { scopeKey, kind } = options ?? {};
       if (scopeKey && kind) {
@@ -182,9 +183,9 @@ async function resolveStore(): Promise<MemoryStore> {
   const { appConfig } = await import("./app-config");
   if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
     const { getCloudClient } = await import("./cloud-client");
-    log.debug("memory.store.opened", { provider: "cloud" });
+    log.debug("memory.store.opened", { storage: "cloud" });
     return (await getCloudClient()).memory;
   }
-  log.debug("memory.store.opened", { provider: "sqlite" });
+  log.debug("memory.store.opened", { storage: "sqlite" });
   return createSqliteMemoryStore();
 }

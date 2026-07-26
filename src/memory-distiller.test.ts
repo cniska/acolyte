@@ -18,6 +18,7 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
   const written: MemoryRecord[] = [];
   const removed: string[] = [];
   return {
+    storage: "sqlite",
     written,
     removed,
     async list(options?: { scopeKey?: string; kind?: MemoryKind }) {
