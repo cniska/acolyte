@@ -268,6 +268,27 @@ function defaultHandler(ctx: FakeProviderRequestContext): Record<string, unknown
 
 export function startFakeProviderServer(options: FakeProviderServerOptions = {}): FakeProviderServer {
   const handleRequest = options.handleRequest ?? defaultHandler;
+  // Deterministic bag-of-words vectors: similar text lands on similar vectors, so ranking
+  // is meaningful without a real provider.
+  const embeddingsResponse = async (req: Request): Promise<Response> => {
+    const body = (await req.json()) as { input?: unknown; model?: unknown };
+    const values = Array.isArray(body.input) ? body.input.map(s) : [s(body.input)];
+    const data = values.map((value, index) => {
+      const vector = new Array(64).fill(0);
+      for (const token of value
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)) {
+        let hash = 0;
+        for (let i = 0; i < token.length; i++) hash = (hash * 31 + token.charCodeAt(i)) | 0;
+        vector[Math.abs(hash) % 64] += 1;
+      }
+      return { object: "embedding", index, embedding: vector };
+    });
+    return new Response(JSON.stringify({ object: "list", data, model: s(body.model) || "fake-embedding" }), {
+      headers: { "content-type": "application/json" },
+    });
+  };
   const responseDelayMs = options.responseDelayMs ?? 0;
   let responseCounter = 0;
   const notFound = () =>
@@ -280,6 +301,9 @@ export function startFakeProviderServer(options: FakeProviderServerOptions = {})
     port: 0,
     async fetch(req) {
       const url = new URL(req.url);
+      if (url.pathname === "/v1/embeddings" && req.method === "POST") {
+        return await embeddingsResponse(req);
+      }
       if (url.pathname !== "/v1/responses" || req.method !== "POST") {
         return notFound();
       }

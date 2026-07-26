@@ -1,10 +1,21 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
 import type { MemoryRecord } from "./memory-contract";
+import * as realEmbedding from "./memory-embedding";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { tempDb } from "./test-utils";
+
+const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
+mock.module("./memory-embedding", () => ({
+  ...realEmbedding,
+  embedQuery: async () => QUERY_VEC,
+  embedText: async () => QUERY_VEC,
+}));
+afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
+
+const { searchMemories } = await import("./memory-toolkit");
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);
 afterEach(cleanupStores);

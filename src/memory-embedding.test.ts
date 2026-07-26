@@ -1,9 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { appConfig } from "./app-config";
+import { CodedError } from "./coded-error";
+import { MEMORY_ERROR_CODES } from "./error-contract";
 import {
   bufferToEmbedding,
   computeIdf,
   cosineSimilarity,
   embeddingToBuffer,
+  embedQuery,
+  embedText,
   filterByTopicEmbedding,
   matchTopicsByEmbedding,
   tokenOverlap,
@@ -156,5 +161,27 @@ describe("embedding serialization", () => {
     for (let i = 0; i < original.length; i++) {
       expect(restored[i]).toBeCloseTo(original[i]);
     }
+  });
+});
+
+describe("embedQuery", () => {
+  const config = appConfig as { embeddingModel: string };
+  const savedModel = config.embeddingModel;
+  const unsupported = "anthropic/claude-opus-4-1";
+  afterEach(() => {
+    config.embeddingModel = savedModel;
+  });
+
+  test("a provider without embedding support fails, naming the model", async () => {
+    config.embeddingModel = unsupported;
+    const error = await embedQuery("any query").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CodedError);
+    expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
+    expect((error as CodedError).message).toContain(unsupported);
+  });
+
+  test("optional enrichment still degrades to no vector", async () => {
+    config.embeddingModel = unsupported;
+    expect(await embedText("any query")).toBeNull();
   });
 });

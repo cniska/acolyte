@@ -9,6 +9,7 @@ import {
   bufferToEmbedding,
   computeIdf,
   cosineSimilarity,
+  embedQuery,
   embedText,
   filterByTopicEmbedding,
   matchTopicsByEmbedding,
@@ -64,12 +65,8 @@ export async function searchMemories(
   const filtered = all.filter((r) => allowed.has(r.scopeKey));
   if (filtered.length === 0) return [];
 
-  const queryEmbedding = await (options?.embed ?? embedText)(query);
-  if (!queryEmbedding) {
-    const fallback = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
-    await touchRecalled(fallback.map((r) => r.id));
-    return [...fallback];
-  }
+  const queryEmbedding = options?.embed ? await options.embed(query) : await embedQuery(query);
+  if (!queryEmbedding) return [];
 
   if (store.searchByEmbedding) {
     const oversample = (options?.scope ? limit * 2 : limit) * 2;

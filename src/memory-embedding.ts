@@ -2,6 +2,8 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { defaultCredentials } from "./agent-model";
 import { appConfig } from "./app-config";
+import { CodedError } from "./coded-error";
+import { errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
 import { bareModelId, providerFromModel } from "./provider-config";
 
@@ -196,16 +198,33 @@ export function computeIdf(documents: readonly string[]): Map<string, number> {
   return idf;
 }
 
-export async function embedText(text: string): Promise<Float32Array | null> {
+export async function embedQuery(text: string): Promise<Float32Array> {
   const model = getEmbeddingModel();
-  if (!model) return null;
+  if (!model) {
+    throw new CodedError(
+      MEMORY_ERROR_CODES.embeddingUnavailable,
+      `No embedding model: "${appConfig.embeddingModel}" resolves to a provider without embedding support, so memory recall cannot rank.`,
+    );
+  }
   try {
     const result = await model.doEmbed({ values: [text] });
     const raw = result.embeddings[0];
-    if (!raw) return null;
+    if (!raw) throw new Error("the embedding response carried no vector");
     return new Float32Array(raw);
   } catch (error) {
-    log.warn("memory.embedding.failed", { model: appConfig.embeddingModel, error: String(error) });
+    throw new CodedError(
+      MEMORY_ERROR_CODES.embeddingUnavailable,
+      `Embedding request failed for "${appConfig.embeddingModel}": ${errorMessage(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+export async function embedText(text: string): Promise<Float32Array | null> {
+  try {
+    return await embedQuery(text);
+  } catch (error) {
+    log.warn("memory.embedding.failed", { model: appConfig.embeddingModel, error: errorMessage(error) });
     return null;
   }
 }

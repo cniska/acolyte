@@ -4,10 +4,13 @@ import * as realEmbedding from "./memory-embedding";
 import type { ScopeContext } from "./memory-ops";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 
-// searchMemories reaches the searchByEmbedding branch only when embedText returns a
-// vector; stub it (and restore after, so it never leaks into other files' tests).
+// mock.module is process-global, so the afterAll restore keeps this out of other files' tests.
 const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
-mock.module("./memory-embedding", () => ({ ...realEmbedding, embedText: async () => QUERY_VEC }));
+mock.module("./memory-embedding", () => ({
+  ...realEmbedding,
+  embedQuery: async () => QUERY_VEC,
+  embedText: async () => QUERY_VEC,
+}));
 afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
 
 const { searchMemories } = await import("./memory-recall");
