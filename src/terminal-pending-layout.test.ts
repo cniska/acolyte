@@ -16,7 +16,24 @@ test("pending layout carries running details, blink frame, and queued rows", () 
   expect(scene.lines[0]?.spans.map((span) => span.text).join("")).toContain("Working… (1m 5s · 2 tools · ↑10 ↓2)");
   expect(scene.lines[0]?.spans[0]?.text).toBe("◇ ");
   expect(scene.lines[1]?.spans.map((span) => span.text).join("")).toBe("");
-  expect(scene.lines[2]?.spans.map((span) => span.text).join("")).toBe("❯ next task");
+  expect(scene.lines[2]?.spans.map((span) => span.text).join("")).toBe("");
+  expect(scene.lines[3]?.spans.map((span) => span.text).join("")).toBe("❯ next task");
+});
+
+test("each queued message is padded to a sent message's vertical rhythm", () => {
+  const rows = layoutPending({
+    presentation: {
+      state: { kind: "running", toolCalls: 0 },
+      frame: 0,
+      startedAt: 0,
+      queuedMessages: ["first", "second"],
+      runningUsage: null,
+    },
+    now: 0,
+    columns: 80,
+  }).lines.map((line) => line.spans.map((span) => span.text).join(""));
+
+  expect(rows.slice(1)).toEqual(["", "", "❯ first", "", "", "", "❯ second", ""]);
 });
 
 test("pending marker and text carry separate roles per kind", () => {
