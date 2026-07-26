@@ -1,6 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
+import { createPathMatcher } from "./glob-match";
 import { createToolError } from "./tool-error";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
@@ -43,29 +44,39 @@ export async function findFiles(workspace: string, patterns: string[], maxResult
   for (const pattern of patterns) {
     const trimmed = pattern.trim();
     if (!trimmed) continue;
-    const needle = trimmed
-      .replace(/^\.\/+/, "")
-      .replace(/[*?]+/g, "")
-      .toLowerCase();
+    const relativePattern = toWorkspaceRelativePattern(trimmed, workspace);
+    const needle = relativePattern.replace(/^\.\/+/, "").toLowerCase();
+    const matches = createPathMatcher(relativePattern);
 
-    const ranked = allFiles
-      .filter((path) => path.toLowerCase().includes(needle))
-      .sort((a, b) => {
-        const aLower = a.toLowerCase();
-        const bLower = b.toLowerCase();
-        const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
-        const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
-        if (aScore !== bScore) return aScore - bScore;
-        return a.length - b.length;
-      })
-      .slice(0, maxResults)
-      .map((path) => `./${path}`);
+    const matched = allFiles.filter(matches).sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      const aScore = aLower === needle ? 0 : aLower.endsWith(`/${needle}`) ? 1 : 2;
+      const bScore = bLower === needle ? 0 : bLower.endsWith(`/${needle}`) ? 1 : 2;
+      if (aScore !== bScore) return aScore - bScore;
+      return a.length - b.length;
+    });
+    const ranked = matched.slice(0, maxResults).map((path) => `./${path}`);
 
     if (multi) sections.push(`--- ${trimmed} ---`);
     sections.push(ranked.length > 0 ? ranked.join("\n") : "No matches.");
+    if (matched.length > ranked.length) {
+      sections.push(
+        `(${matched.length} files matched, showing the first ${ranked.length}. Narrow the pattern to see the rest.)`,
+      );
+    }
   }
 
   return sections.join("\n");
+}
+
+function toWorkspaceRelativePattern(pattern: string, workspace: string): string {
+  if (!isAbsolute(pattern)) return pattern;
+  const prefix = workspace.endsWith("/") ? workspace : `${workspace}/`;
+  if (pattern === workspace || !pattern.startsWith(prefix)) {
+    throw new Error(`Pattern is outside the workspace: ${pattern}`);
+  }
+  return `/${pattern.slice(prefix.length)}`; // leading slash anchors the remainder at the workspace root
 }
 
 export async function searchFiles(

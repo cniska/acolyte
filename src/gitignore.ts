@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { globToRegex } from "./glob-match";
 
 type CompiledPattern = {
   regex: RegExp;
@@ -11,44 +12,6 @@ export type GitignoreContext = {
   patterns: CompiledPattern[];
   dir: string;
 };
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-}
-
-function globToRegex(glob: string, anchored: boolean): string {
-  let re = anchored ? "^" : "(^|/)";
-
-  if (glob.startsWith("**/")) {
-    re += "(.+/)?"; // leading **/ — any number of leading directories
-    glob = glob.slice(3);
-  }
-
-  for (const [token] of glob.matchAll(/\/\*\*\/|\/\*\*|\*\*|\*|\?|\[[^\]]*\]|\[|[^*?[/]+|\//g)) {
-    switch (token) {
-      case "/**/":
-        re += "/(.+/)?";
-        break; // zero or more intermediate directories
-      case "/**":
-        re += "/.*";
-        break; // slash + anything
-      case "**":
-        re += ".*";
-        break; // anything including slashes
-      case "*":
-        re += "[^/]*";
-        break; // anything within one segment
-      case "?":
-        re += "[^/]";
-        break; // exactly one non-separator character
-      default:
-        re += token.startsWith("[") && token.endsWith("]") ? token.replace(/^\[!/, "[^") : escapeRegex(token);
-    }
-  }
-
-  re += "(/|$)";
-  return re;
-}
 
 type ParsedPattern = {
   glob: string;

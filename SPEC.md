@@ -36,7 +36,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ### 2.3 Feature coverage — tools
 
-- **FR-11** — File tools: find, search, and read files; create, edit, and delete files. Read-only file tools are gitignore-aware in what they surface.
+- **FR-11** — File tools: find, search, and read files; create, edit, and delete files. Read-only file tools are gitignore-aware in what they surface. File find matches its pattern as a path glob against workspace-relative paths, and as a case-insensitive substring when the pattern contains no wildcard; when its result cap withholds matches it reports the full match count rather than presenting a truncated list as complete.
 - **FR-12** — Query file tools (find/search/read/scan) present a search-oriented contract; mutation file tools (edit/create/delete) present a targeting-oriented contract. The two are not unified merely because they share an engine.
 - **FR-13** — AST-based structural code scanning and editing across supported source files; an edit against an unsupported file surfaces a structured error rather than a silent no-op.
 - **FR-14** — Git tools: status, diff, log, show, add, commit.

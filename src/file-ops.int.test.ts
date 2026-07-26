@@ -442,6 +442,100 @@ describe("searchFiles", () => {
   });
 });
 
+describe("findFiles", () => {
+  async function workspaceWithToolkits(): Promise<string> {
+    const workspace = dirs.createDir("acolyte-find-glob-");
+    await mkdir(join(workspace, "src", "tui"), { recursive: true });
+    for (const rel of [
+      "src/agent-toolkit.ts",
+      "src/file-toolkit.ts",
+      "src/file-ops.ts",
+      "src/cli-tool.ts",
+      "src/tui/tool-render.tsx",
+      "docs.md",
+    ]) {
+      await writeFile(join(workspace, rel), "export const x = 1;\n", "utf8");
+    }
+    return workspace;
+  }
+
+  test("matches a path prefix combined with a mid-segment wildcard", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools, session } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/*-toolkit.ts" }, "call_find_prefixed_glob");
+    expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
+    expect(session.callLog[0]?.toolName).toBe("file-find");
+  });
+
+  test("matches a bare wildcard pattern at any depth", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "*-toolkit.ts" }, "call_find_bare_glob");
+    expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
+  });
+
+  test("keeps a wildcard within one path segment", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/*tool*" }, "call_find_fragment_glob");
+    expect(result.result.paths.sort()).toEqual([
+      "./src/agent-toolkit.ts",
+      "./src/cli-tool.ts",
+      "./src/file-toolkit.ts",
+    ]);
+  });
+
+  test("matches a wildcard-free pattern as a substring", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "toolkit" }, "call_find_substring");
+    expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
+  });
+
+  test("expands brace alternation", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/**/*.{ts,tsx}" }, "call_find_braces");
+    expect(result.result.paths.sort()).toEqual([
+      "./src/agent-toolkit.ts",
+      "./src/cli-tool.ts",
+      "./src/file-ops.ts",
+      "./src/file-toolkit.ts",
+      "./src/tui/tool-render.tsx",
+    ]);
+  });
+
+  test("resolves an absolute pattern against the workspace root", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute(
+      { pattern: join(workspace, "src", "*-toolkit.ts") },
+      "call_find_absolute",
+    );
+    expect(result.result.paths.sort()).toEqual(["./src/agent-toolkit.ts", "./src/file-toolkit.ts"]);
+  });
+
+  test("rejects an absolute pattern outside the workspace", async () => {
+    const workspace = await workspaceWithToolkits();
+    const { tools } = toolsForAgent({ workspace });
+    await expect(tools.findFiles.execute({ pattern: "/etc/*.conf" }, "call_find_outside")).rejects.toThrow(
+      "outside the workspace",
+    );
+  });
+
+  test("reports how many matches were withheld when results are capped", async () => {
+    const workspace = dirs.createDir("acolyte-find-truncate-");
+    await mkdir(join(workspace, "src"), { recursive: true });
+    for (let i = 0; i < 45; i++) {
+      await writeFile(join(workspace, "src", `mod-${String(i).padStart(2, "0")}.ts`), "export const x = 1;\n", "utf8");
+    }
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.findFiles.execute({ pattern: "src/*.ts" }, "call_find_truncated");
+    expect(result.result.paths).toHaveLength(40);
+    expect(result.result.output).toContain("45 files matched, showing the first 40");
+  });
+});
+
 describe("createFile", () => {
   test("creates workspace files", async () => {
     const workspace = dirs.createDir("acolyte-create-ws-");
