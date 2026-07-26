@@ -3,8 +3,8 @@ import { CodedError } from "./coded-error";
 import { MEMORY_ERROR_CODES } from "./error-contract";
 import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders, tempDb } from "./test-utils";
 

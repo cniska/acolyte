@@ -5,7 +5,7 @@ import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
 import {
   createDistillInput,
-  createMemoryDistiller,
+  createMemoryDistiller as createMemoryDistillerWithDeps,
   DISTILLER_PROMPT,
   parseToolCall,
   renderKnownFacts,
@@ -15,6 +15,11 @@ import {
 } from "./memory-distiller";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
+const testEmbedding = new Float32Array([0.1, 0.2, 0.3]);
+
+function createMemoryDistiller(deps: Parameters<typeof createMemoryDistillerWithDeps>[0] = {}) {
+  return createMemoryDistillerWithDeps({ embed: async () => testEmbedding, ...deps });
+}
 
 function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },

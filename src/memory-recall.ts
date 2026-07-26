@@ -1,3 +1,5 @@
+import { CodedError } from "./coded-error";
+import { MEMORY_ERROR_CODES } from "./error-contract";
 import {
   createMemoryPolicy,
   type MemoryPolicy,
@@ -66,7 +68,9 @@ export async function searchMemories(
   if (filtered.length === 0) return [];
 
   const queryEmbedding = options?.embed ? await options.embed(query) : await embedQuery(query);
-  if (!queryEmbedding) return [];
+  if (!queryEmbedding) {
+    throw new CodedError(MEMORY_ERROR_CODES.embeddingUnavailable, "The embedding provider returned no query vector.");
+  }
 
   if (store.searchByEmbedding) {
     const oversample = (options?.scope ? limit * 2 : limit) * 2;

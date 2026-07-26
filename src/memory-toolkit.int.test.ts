@@ -10,7 +10,6 @@ import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { pinEmbeddingProviders, tempDb } from "./test-utils";
 
@@ -142,15 +141,17 @@ describe("searchMemories basics", () => {
     expect(results).toHaveLength(2);
   });
 
-  test("falls back to the most recent records when embeddings are unavailable", async () => {
+  test("fails when an injected embedding is unavailable", async () => {
     const store = createStore();
     await store.write(createRecord(userKey, "oldest fact", "stored", "2026-01-01T00:00:01.000Z"));
     await store.write(createRecord(userKey, "middle fact", "stored", "2026-01-01T00:00:02.000Z"));
     await store.write(createRecord(userKey, "newest fact", "stored", "2026-01-01T00:00:03.000Z"));
 
-    const results = await searchMemories("anything", ctx, { embed: async () => null, limit: 2, store });
-
-    expect(contents(results)).toEqual(["newest fact", "middle fact"]);
+    const error = await searchMemories("anything", ctx, { embed: async () => null, limit: 2, store }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(CodedError);
+    expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
   });
 
   test("returns an empty array for an empty store", async () => {
