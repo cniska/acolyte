@@ -41,6 +41,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 ## Distill behavior
 
+- the distiller input leads with a task-activity digest — the files a write tool changed, the shell commands run and whether they failed, and non-command failures — derived from the turn's tool call log, so durable work facts survive even when the prose omits them
 - the observer extracts facts from conversations via `memory-observe(scope, content, topic?)` tool calls
 - each call produces one observation record with its own embedding
 - scope via the `scope` parameter:

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
-import { createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
+import { createDistillInput, createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
@@ -54,6 +54,27 @@ function makeRunner(observations: DistillObservation[]) {
     return [];
   };
 }
+
+describe("createDistillInput", () => {
+  const messages = [{ role: "user", content: "fix the build" }];
+
+  test("leads with an observed entry when activity is present", () => {
+    const input = createDistillInput(messages, "done", {
+      filesChanged: ["src/a.ts"],
+      commands: [{ command: "bun test", failed: false }],
+      errors: [],
+    });
+    expect(input.startsWith("observed: Files changed:\n- src/a.ts")).toBe(true);
+    expect(input).toContain("user: fix the build");
+    expect(input).toContain("assistant: done");
+  });
+
+  test("omits the digest for empty or absent activity", () => {
+    const bare = createDistillInput(messages, "done");
+    expect(bare).toBe("user: fix the build\n\nassistant: done");
+    expect(createDistillInput(messages, "done", { filesChanged: [], commands: [], errors: [] })).toBe(bare);
+  });
+});
 
 describe("memoryDistiller", () => {
   describe("commit", () => {

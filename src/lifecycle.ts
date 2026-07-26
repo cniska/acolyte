@@ -11,9 +11,11 @@ import { resolveModel } from "./lifecycle-resolve";
 import { listMcpTools } from "./mcp-client";
 import type { MemoryCommitContext, MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
+import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
 import { WRITE_TOOL_SET } from "./tool-registry";
+import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
@@ -52,6 +54,9 @@ export function scheduleMemoryCommit(
     session_id: commitCtx.sessionId ?? null,
     message_count: commitCtx.messages.length,
     output_chars: commitCtx.output.length,
+    activity_files: commitCtx.activity?.filesChanged.length ?? 0,
+    activity_commands: commitCtx.activity?.commands.length ?? 0,
+    activity_errors: commitCtx.activity?.errors.length ?? 0,
   };
   debug("lifecycle.memory.commit_scheduled", debugFields);
   void enqueueFn(key, async () => {
@@ -153,7 +158,8 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const distillTokens = estimateDistillPromptTokens(messages, output);
+  const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET);
+  const distillTokens = estimateDistillPromptTokens(messages, output, activity);
   ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
@@ -162,6 +168,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
       workspace: ctx.workspace,
       messages,
       output,
+      activity,
     },
     ctx.debug,
     input.onMemoryCommit,
