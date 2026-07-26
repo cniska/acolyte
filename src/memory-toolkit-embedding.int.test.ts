@@ -1,19 +1,33 @@
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { type FakeProviderServer, startFakeProviderServer } from "../scripts/fake-provider-server";
+import { appConfig } from "./app-config";
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
-import * as realEmbedding from "./memory-embedding";
 import type { ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 
-// mock.module is process-global, so the afterAll restore keeps this out of other files' tests.
-const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
-mock.module("./memory-embedding", () => ({
-  ...realEmbedding,
-  embedQuery: async () => QUERY_VEC,
-  embedText: async () => QUERY_VEC,
-}));
-afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
+const config = appConfig as { embeddingModel: string };
+const openai = appConfig.openai as { baseUrl: string; apiKey: string | undefined };
+let fake: FakeProviderServer;
+let savedModel: string;
+let savedBaseUrl: string;
+let savedApiKey: string | undefined;
 
-const { searchMemories } = await import("./memory-recall");
+beforeAll(() => {
+  savedModel = config.embeddingModel;
+  savedBaseUrl = openai.baseUrl;
+  savedApiKey = openai.apiKey;
+  fake = startFakeProviderServer();
+  config.embeddingModel = "text-embedding-3-large";
+  openai.baseUrl = fake.baseUrl;
+  openai.apiKey = "fake-key";
+});
+afterAll(() => {
+  fake.stop();
+  config.embeddingModel = savedModel;
+  openai.baseUrl = savedBaseUrl;
+  openai.apiKey = savedApiKey;
+});
 
 const WS_ONE = "/ws/one";
 const projOne = projectResourceIdFromWorkspace(WS_ONE);
