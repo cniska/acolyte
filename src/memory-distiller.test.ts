@@ -7,6 +7,7 @@ import {
   createDistillInput,
   createMemoryDistiller,
   DISTILLER_PROMPT,
+  parseToolCall,
   renderKnownFacts,
   selectSupersessionCandidates,
   validateSupersedes,
@@ -754,5 +755,44 @@ describe("supersession", () => {
     };
     const candidates = await selectSupersessionCandidates(commitCtx, "any query", { store, policy: testPolicy });
     expect(candidates).toEqual([]);
+  });
+});
+
+describe("parseToolCall", () => {
+  const call = (input: unknown) => parseToolCall({ input: JSON.stringify(input) });
+
+  test("a well-formed call becomes an observation", () => {
+    expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual({
+      scope: "project",
+      content: "the loader owns retries",
+      topic: "loader",
+      supersedes: [],
+    });
+  });
+
+  test("malformed input yields no observation", () => {
+    expect(parseToolCall({ input: "not json" })).toBeNull();
+    expect(call({ content: "no scope given" })).toBeNull();
+    expect(call({ scope: "elsewhere", content: "an unknown scope" })).toBeNull();
+    expect(call({ scope: "project", content: "   " })).toBeNull();
+  });
+
+  test("a non-array supersedes yields no observation", () => {
+    expect(call({ scope: "project", content: "a fact", supersedes: "mem_one000001" })).toBeNull();
+    expect(call({ scope: "project", content: "a fact", supersedes: [1] })).toBeNull();
+  });
+
+  test("supersedes ids are trimmed and deduplicated", () => {
+    expect(
+      call({
+        scope: "project",
+        content: "a fact",
+        supersedes: [" mem_one000001 ", "mem_one000001", "  ", "mem_two000002"],
+      })?.supersedes,
+    ).toEqual(["mem_one000001", "mem_two000002"]);
+  });
+
+  test("a blank topic becomes no topic", () => {
+    expect(call({ scope: "user", content: "a fact", topic: "   " })?.topic).toBeNull();
   });
 });
