@@ -5,7 +5,7 @@ import { appConfig } from "./app-config";
 import { CodedError } from "./coded-error";
 import { errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
-import { bareModelId, providerFromModel } from "./provider-config";
+import { bareModelId, type ProviderCredentials, providerFromModel } from "./provider-config";
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`);
@@ -29,11 +29,9 @@ export function bufferToEmbedding(buf: Buffer): Float32Array {
   return new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
 }
 
-function createEmbeddingModel(qualifiedModel: string) {
-  const creds = defaultCredentials();
+function createEmbeddingModel(qualifiedModel: string, providerCreds: ProviderCredentials) {
   const provider = providerFromModel(qualifiedModel);
   const modelId = bareModelId(qualifiedModel);
-  const providerCreds = creds[provider] ?? {};
 
   switch (provider) {
     case "openai": {
@@ -65,14 +63,16 @@ function createEmbeddingModel(qualifiedModel: string) {
   }
 }
 
-let cachedModelId: string | null = null;
+let cachedKey: string | null = null;
 let cachedModel: ReturnType<typeof createEmbeddingModel> = null;
 
 function getEmbeddingModel() {
-  const modelId = appConfig.embeddingModel;
-  if (cachedModelId === modelId && cachedModel) return cachedModel;
-  cachedModel = createEmbeddingModel(modelId);
-  cachedModelId = modelId;
+  const qualifiedModel = appConfig.embeddingModel;
+  const providerCreds = defaultCredentials()[providerFromModel(qualifiedModel)] ?? {};
+  const key = JSON.stringify([qualifiedModel, providerCreds.baseUrl, providerCreds.apiKey]);
+  if (cachedKey === key && cachedModel) return cachedModel;
+  cachedModel = createEmbeddingModel(qualifiedModel, providerCreds);
+  cachedKey = key;
   return cachedModel;
 }
 
