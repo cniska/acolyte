@@ -5,61 +5,63 @@ import { createAgentStream } from "./agent-stream";
 import type { RateLimiter } from "./rate-limiter";
 import type { ToolDefinition } from "./tool-contract";
 
-describe("tool results are retained verbatim across steps", () => {
-  const noopRateLimiter: RateLimiter = {
-    async beforeCall() {},
-    onResponse() {},
-    onError() {
-      return { shouldRetry: false, delayMs: 0 };
-    },
-    reset() {},
-    state() {
-      return {
-        requestsRemaining: undefined,
-        tokensRemaining: undefined,
-        requestsResetMs: undefined,
-        tokensResetMs: undefined,
-      };
+const noopRateLimiter: RateLimiter = {
+  async beforeCall() {},
+  onResponse() {},
+  onError() {
+    return { shouldRetry: false, delayMs: 0 };
+  },
+  reset() {},
+  state() {
+    return {
+      requestsRemaining: undefined,
+      tokensRemaining: undefined,
+      requestsResetMs: undefined,
+      tokensResetMs: undefined,
+    };
+  },
+};
+
+function finishPart(reason: "tool-calls" | "stop" | "length"): LanguageModelV4StreamPart {
+  return {
+    type: "finish",
+    finishReason: { unified: reason, raw: reason },
+    usage: {
+      inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 1, text: 1, reasoning: 0 },
     },
   };
+}
 
-  function finishPart(reason: "tool-calls" | "stop" | "length"): LanguageModelV4StreamPart {
-    return {
-      type: "finish",
-      finishReason: { unified: reason, raw: reason },
-      usage: {
-        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: 1, text: 1, reasoning: 0 },
-      },
-    };
-  }
+function scriptedModel(
+  turns: LanguageModelV4StreamPart[][],
+  promptCapture: LanguageModelV4Message[][],
+  argsCapture?: Array<Record<string, unknown>>,
+): LanguageModelV4 {
+  let call = 0;
+  return {
+    specificationVersion: "v3",
+    provider: "test",
+    modelId: "test-model",
+    supportedUrls: {},
+    async doStream(args: { prompt: LanguageModelV4Message[] } & Record<string, unknown>) {
+      promptCapture.push(args.prompt.map((m) => ({ ...m })));
+      argsCapture?.push(args);
+      const parts = turns[call] ?? [];
+      call += 1;
+      return {
+        stream: new ReadableStream<LanguageModelV4StreamPart>({
+          start(controller) {
+            for (const part of parts) controller.enqueue(part);
+            controller.close();
+          },
+        }),
+      };
+    },
+  } as unknown as LanguageModelV4;
+}
 
-  function scriptedModel(
-    turns: LanguageModelV4StreamPart[][],
-    promptCapture: LanguageModelV4Message[][],
-  ): LanguageModelV4 {
-    let call = 0;
-    return {
-      specificationVersion: "v3",
-      provider: "test",
-      modelId: "test-model",
-      supportedUrls: {},
-      async doStream(args: { prompt: LanguageModelV4Message[] } & Record<string, unknown>) {
-        promptCapture.push(args.prompt.map((m) => ({ ...m })));
-        const parts = turns[call] ?? [];
-        call += 1;
-        return {
-          stream: new ReadableStream<LanguageModelV4StreamPart>({
-            start(controller) {
-              for (const part of parts) controller.enqueue(part);
-              controller.close();
-            },
-          }),
-        };
-      },
-    } as unknown as LanguageModelV4;
-  }
-
+describe("tool results are retained verbatim across steps", () => {
   function markerTool(marker: string): ToolDefinition {
     let call = 0;
     return {
@@ -110,62 +112,6 @@ describe("tool results are retained verbatim across steps", () => {
 });
 
 describe("onBeforeNextCall hook", () => {
-  const noopRateLimiter: RateLimiter = {
-    async beforeCall() {},
-    onResponse() {},
-    onError() {
-      return { shouldRetry: false, delayMs: 0 };
-    },
-    reset() {},
-    state() {
-      return {
-        requestsRemaining: undefined,
-        tokensRemaining: undefined,
-        requestsResetMs: undefined,
-        tokensResetMs: undefined,
-      };
-    },
-  };
-
-  function finishPart(reason: "tool-calls" | "stop" | "length"): LanguageModelV4StreamPart {
-    return {
-      type: "finish",
-      finishReason: { unified: reason, raw: reason },
-      usage: {
-        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: 1, text: 1, reasoning: 0 },
-      },
-    };
-  }
-
-  function scriptedModel(
-    turns: LanguageModelV4StreamPart[][],
-    promptCapture: LanguageModelV4Message[][],
-    argsCapture?: Array<Record<string, unknown>>,
-  ): LanguageModelV4 {
-    let call = 0;
-    return {
-      specificationVersion: "v3",
-      provider: "test",
-      modelId: "test-model",
-      supportedUrls: {},
-      async doStream(args: { prompt: LanguageModelV4Message[] } & Record<string, unknown>) {
-        promptCapture.push(args.prompt.map((m) => ({ ...m })));
-        argsCapture?.push(args);
-        const parts = turns[call] ?? [];
-        call += 1;
-        return {
-          stream: new ReadableStream<LanguageModelV4StreamPart>({
-            start(controller) {
-              for (const part of parts) controller.enqueue(part);
-              controller.close();
-            },
-          }),
-        };
-      },
-    } as unknown as LanguageModelV4;
-  }
-
   function echoTool(): ToolDefinition {
     return {
       id: "noop",
@@ -585,57 +531,6 @@ describe("onBeforeNextCall hook", () => {
 });
 
 describe("cancellation", () => {
-  const noopRateLimiter: RateLimiter = {
-    async beforeCall() {},
-    onResponse() {},
-    onError() {
-      return { shouldRetry: false, delayMs: 0 };
-    },
-    reset() {},
-    state() {
-      return {
-        requestsRemaining: undefined,
-        tokensRemaining: undefined,
-        requestsResetMs: undefined,
-        tokensResetMs: undefined,
-      };
-    },
-  };
-
-  function finishPart(reason: "tool-calls" | "stop"): LanguageModelV4StreamPart {
-    return {
-      type: "finish",
-      finishReason: { unified: reason, raw: reason },
-      usage: {
-        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: 1, text: 1, reasoning: 0 },
-      },
-    };
-  }
-
-  function scriptedModel(turns: LanguageModelV4StreamPart[][], calls: Array<Record<string, unknown>>): LanguageModelV4 {
-    let call = 0;
-    return {
-      specificationVersion: "v3",
-      provider: "test",
-      modelId: "test-model",
-      supportedUrls: {},
-      async doStream(args: Record<string, unknown>) {
-        calls.push(args);
-        const parts = turns[call] ?? [];
-        call += 1;
-        return {
-          stream: new ReadableStream<LanguageModelV4StreamPart>({
-            start(controller) {
-              for (const part of parts) controller.enqueue(part);
-              controller.close();
-            },
-          }),
-        };
-      },
-    } as unknown as LanguageModelV4;
-  }
-
   function countingTool(onExecute: () => void): ToolDefinition {
     return {
       id: "noop",
@@ -671,7 +566,7 @@ describe("cancellation", () => {
       executions += 1;
       controller.abort();
     });
-    const model = scriptedModel(turns, calls);
+    const model = scriptedModel(turns, [], calls);
     const stream = createAgentStream(model, "sys", { noop: tool }, noopRateLimiter);
 
     const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
@@ -696,7 +591,7 @@ describe("cancellation", () => {
       executions += 1;
       controller.abort();
     });
-    const model = scriptedModel(turns, calls);
+    const model = scriptedModel(turns, [], calls);
     const stream = createAgentStream(model, "sys", { noop: tool }, noopRateLimiter);
 
     const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
@@ -709,7 +604,7 @@ describe("cancellation", () => {
     const controller = new AbortController();
     controller.abort();
     const calls: Array<Record<string, unknown>> = [];
-    const model = scriptedModel([[finishPart("stop")]], calls);
+    const model = scriptedModel([[finishPart("stop")]], [], calls);
     const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
 
     const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
@@ -721,7 +616,7 @@ describe("cancellation", () => {
   test("hands the signal to the provider call so an in-flight request aborts", async () => {
     const controller = new AbortController();
     const calls: Array<Record<string, unknown>> = [];
-    const model = scriptedModel([[finishPart("stop")]], calls);
+    const model = scriptedModel([[finishPart("stop")]], [], calls);
     const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
 
     const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });

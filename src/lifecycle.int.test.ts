@@ -225,7 +225,7 @@ printf '%s\n' "$@" > "${formatLog}"
     });
 
     const debugEvents: string[] = [];
-    await runLifecycle(
+    const reply = await runLifecycle(
       createLifecycleInput({
         request: { model: "gpt-5-mini", message: "edit forever", history: [] },
         workspace,
@@ -234,6 +234,9 @@ printf '%s\n' "$@" > "${formatLog}"
       }),
     );
 
+    // Aborting the call in flight rejects it; that rejection is the cancellation, so it must not
+    // come back as a run failure.
+    expect(reply.error).toBeUndefined();
     expect(turnCount).toBe(1);
     expect(await readFile(join(workspace, "a.ts"), "utf8")).toBe("export const x = 1;\n");
     expect(debugEvents).toContain("lifecycle.cancelled");
