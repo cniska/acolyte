@@ -132,6 +132,8 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
   const commitScope = deps.commitScope ?? "session";
+  // In-memory: with scope-wide dedup, a mark lost on restart costs one redundant distill, not a duplicate.
+  const distilledThrough = new Map<string, number>();
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
       if (commitScope === "none") return;
@@ -139,9 +141,12 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       if (ctx.messages.length < policy.messageThreshold) return;
 
       const ds = deps.store ?? (await getCachedStore());
-      const recentMessages = ctx.messages.slice(-policy.contextMessageWindow);
+      const alreadyDistilled = ctx.sessionId ? (distilledThrough.get(ctx.sessionId) ?? 0) : 0;
+      const start = Math.max(alreadyDistilled, ctx.messages.length - policy.contextMessageWindow, 0);
+      const recentMessages = ctx.messages.slice(start);
       const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
       const observations = await runner(DISTILLER_PROMPT, distillInput);
+      if (ctx.sessionId) distilledThrough.set(ctx.sessionId, ctx.messages.length);
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);

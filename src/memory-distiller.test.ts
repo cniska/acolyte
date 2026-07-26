@@ -76,6 +76,70 @@ describe("createDistillInput", () => {
   });
 });
 
+describe("high-water mark", () => {
+  function captureRunner(seen: string[]) {
+    return async (_prompt: string, userContent: string): Promise<DistillObservation[]> => {
+      seen.push(userContent);
+      return [];
+    };
+  }
+
+  const turnOne = [
+    { role: "user", content: "turn one" },
+    { role: "assistant", content: "reply one" },
+  ];
+
+  test("a later commit re-sends nothing the distiller already saw", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: testPolicy,
+    });
+    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" });
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [...turnOne, { role: "user", content: "turn two" }],
+      output: "done two",
+    });
+    expect(seen[0]).toContain("turn one");
+    expect(seen[1]).toContain("turn two");
+    expect(seen[1]).not.toContain("turn one");
+  });
+
+  test("each session keeps its own mark", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: testPolicy,
+    });
+    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done" });
+    await distiller.commit({ sessionId: "sess_test0002", messages: turnOne, output: "done" });
+    expect(seen[1]).toContain("turn one");
+  });
+
+  test("the context window still caps how far back a first commit reaches", async () => {
+    const seen: string[] = [];
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: captureRunner(seen),
+      policy: createMemoryPolicy({ messageThreshold: 1, contextMessageWindow: 2 }),
+    });
+    await distiller.commit({
+      sessionId: "sess_test0001",
+      messages: [
+        { role: "user", content: "oldest" },
+        { role: "assistant", content: "middle" },
+        { role: "user", content: "newest" },
+      ],
+      output: "done",
+    });
+    expect(seen[0]).not.toContain("oldest");
+    expect(seen[0]).toContain("newest");
+  });
+});
+
 describe("memoryDistiller", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {
