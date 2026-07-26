@@ -65,23 +65,27 @@ function compileGlob(glob: string, anchored: boolean): RegExp {
  * compiler and git treats braces literally.
  */
 export function expandBraces(pattern: string): string[] {
-  const expanded = expandFirstBrace(pattern);
-  if (expanded.length > MAX_BRACE_ALTERNATIVES) {
-    throw new Error(`Glob pattern expands to more than ${MAX_BRACE_ALTERNATIVES} alternatives: ${pattern}`);
-  }
-  return expanded;
+  const expansions: string[] = [];
+  expandInto(pattern, pattern, expansions);
+  return expansions;
 }
 
-function expandFirstBrace(pattern: string): string[] {
+/** Depth-first so the cap bounds the work done, not merely the result returned. */
+function expandInto(pattern: string, original: string, expansions: string[]): void {
+  if (expansions.length >= MAX_BRACE_ALTERNATIVES) {
+    throw new Error(`Glob pattern expands to more than ${MAX_BRACE_ALTERNATIVES} alternatives: ${original}`);
+  }
   const open = pattern.indexOf("{");
-  if (open === -1) return [pattern];
-  const close = matchingBrace(pattern, open);
-  if (close === -1) return [pattern]; // unbalanced — the brace stays a literal
+  const close = open === -1 ? -1 : matchingBrace(pattern, open);
+  if (close === -1) {
+    expansions.push(pattern); // no brace, or an unbalanced one that stays literal
+    return;
+  }
   const prefix = pattern.slice(0, open);
   const suffix = pattern.slice(close + 1);
-  return splitAlternatives(pattern.slice(open + 1, close)).flatMap((alternative) =>
-    expandFirstBrace(`${prefix}${alternative}${suffix}`),
-  );
+  for (const alternative of splitAlternatives(pattern.slice(open + 1, close))) {
+    expandInto(`${prefix}${alternative}${suffix}`, original, expansions);
+  }
 }
 
 function matchingBrace(pattern: string, open: number): number {

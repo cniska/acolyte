@@ -102,4 +102,15 @@ describe("createPathMatcher", () => {
     const exploded = `${"{a,b}".repeat(7)}*`;
     expect(() => createPathMatcher(exploded)).toThrow("more than 64 alternatives");
   });
+
+  test("caps the work done, not just the result, for a combinatorial pattern", () => {
+    // 2^30 expansions: eager cross-product exhausts memory before any cap can reject it.
+    expect(() => createPathMatcher(`${"{a,b}".repeat(30)}*`)).toThrow("more than 64 alternatives");
+  });
+
+  test("reports the original pattern when rejecting an expansion", () => {
+    expect(() => createPathMatcher("src/{a,b}{c,d}{e,f}{g,h}{i,j}{k,l}{m,n}*")).toThrow(
+      "src/{a,b}{c,d}{e,f}{g,h}{i,j}{k,l}{m,n}*",
+    );
+  });
 });
