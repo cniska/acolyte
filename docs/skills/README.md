@@ -18,22 +18,22 @@ The agent selects a skill from the roster — the per-turn line of names and `de
 
 | Phase | Skill | Description |
 |-------|-------|------------|
-| **Plan** | [plan](plan.md) | Design through dialogue, slice vertically, clarify through questions |
-| **Build** | [build](build.md) | Vertical slices — implement, verify, commit, repeat |
-| | [tdd](tdd.md) | Red-green-refactor, mock at boundaries |
-| | [debug](debug.md) | Stop the line, reproduce, fix root cause, guard with test |
-| | [design](design.md) | Hard-to-misuse interfaces, contract first, validate at boundaries |
-| | [simplify](simplify.md) | Reduce complexity, Chesterton's Fence, preserve behavior |
-| | [git](git.md) | Atomic commits, clean history, rewrite before pushing |
-| | [deprecation](deprecation.md) | Build replacement first, migrate consumers, remove completely |
-| **Review** | [review](review.md) | Run all review dimensions, severity labels, fix-all policy |
-| | [correctness-review](correctness-review.md) | Logic bugs, edge cases, broken contracts |
-| | [style-review](style-review.md) | Local conventions, naming, control flow, readability |
-| | [architecture-review](architecture-review.md) | Boundaries, indirection pressure, contract integrity |
-| | [test-review](test-review.md) | Coverage gaps, edge cases, test quality |
-| | [security-review](security-review.md) | Trust boundaries, execution safety, concrete attack paths only |
-| | [doc-review](doc-review.md) | Drift detection, terminology, outdated names |
-| **Meta** | [agents-md](agents-md.md) | Create or update AGENTS.md project rules |
+| **Plan** | [Plan](plan.md) | Design through dialogue, slice vertically, clarify through questions |
+| **Build** | [Build](build.md) | Vertical slices — implement, verify, commit, repeat |
+| | [TDD](tdd.md) | Red-green-refactor, mock at boundaries |
+| | [Debug](debug.md) | Stop the line, reproduce, fix root cause, guard with test |
+| | [Design](design.md) | Hard-to-misuse interfaces, contract first, validate at boundaries |
+| | [Simplify](simplify.md) | Reduce complexity, Chesterton's Fence, preserve behavior |
+| | [Git](git.md) | Atomic commits, clean history, rewrite before pushing |
+| | [Deprecation](deprecation.md) | Build replacement first, migrate consumers, remove completely |
+| **Review** | [Review](review.md) | Run all review dimensions, severity labels, fix-all policy |
+| | [Correctness Review](correctness-review.md) | Logic bugs, edge cases, broken contracts |
+| | [Style Review](style-review.md) | Local conventions, naming, control flow, readability |
+| | [Architecture Review](architecture-review.md) | Boundaries, indirection pressure, contract integrity |
+| | [Test Review](test-review.md) | Coverage gaps, edge cases, test quality |
+| | [Security Review](security-review.md) | Trust boundaries, execution safety, concrete attack paths only |
+| | [Documentation Review](doc-review.md) | Drift detection, terminology, outdated names |
+| **Meta** | [AGENTS.md](agents-md.md) | Create or update AGENTS.md project rules |
 
 ## Principles
 
