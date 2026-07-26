@@ -23,7 +23,7 @@ import { toFunctionTool } from "./tool-contract";
 
 const MEMORY_OBSERVE_TOOL = toFunctionTool({
   id: "memory-observe",
-  description: "Record a fact extracted from the conversation into memory.",
+  description: "Record one fact established by this turn's work into memory.",
   inputSchema: z.toJSONSchema(
     z.object({
       scope: memoryScopeSchema,
@@ -35,9 +35,9 @@ const MEMORY_OBSERVE_TOOL = toFunctionTool({
 
 export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
 
-Conversations are mostly noise: failed attempts, detours, things I read once and can read again. I don't hoard them. I keep what mattered and let the rest go, and what I keep is all I will have of this work next session.
+Conversations are mostly noise: failed attempts, detours, things I read once and can read again. I don't hoard them. I keep what mattered and let the rest go, and the durable part is all I will have of this work next session.
 
-What mattered is what I would want to know then and could not recover by reading the code:
+What mattered is what I would want to know later and could not recover by reading the code:
 - a decision, and the reason behind it — especially a reason the result does not show
 - a constraint the work discovered: what broke, and why it broke
 - how this project wants to be worked in — its commands, conventions, and the rules its owner holds
@@ -52,9 +52,10 @@ An "observed" entry, when present, is what actually happened this turn — files
 Most turns leave one or two facts worth keeping. Some leave none, and then I record nothing — that is the right answer, not a failure. A small sharp corpus I trust beats a large one I stop reading.
 
 For each fact I keep, I call memory-observe with:
-- scope: "project" for what is durable and specific to this codebase — architecture, tooling, conventions, decisions.
-         "user" for a preference that follows the person across projects.
-         "session" for in-progress state, a temporary constraint, a working assumption.
+- scope, which decides how long the fact lives:
+         "project" — durable and specific to this codebase: architecture, tooling, conventions, decisions. It reaches every future session here.
+         "user" — a preference that follows the person across projects, and reaches every session anywhere.
+         "session" — true only while this work is open: in-progress state, a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that failed the bar above.
          A project-scoped preference is "project", not "user". Unsure is "session".
 - content: the fact, keeping the specifics that make it usable — paths, names, error text, the reasoning behind a decision.
 - topic: one lowercase word, when one fits (testing, auth, config, tooling).`;
