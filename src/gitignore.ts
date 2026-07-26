@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { globToRegex } from "./glob-match";
+import { createGlobMatcher } from "./glob-match";
 
 type CompiledPattern = {
-  regex: RegExp;
+  matches: (path: string) => boolean;
   negated: boolean;
   dirOnly: boolean;
 };
@@ -44,8 +44,8 @@ function compileGitignorePattern(raw: string): CompiledPattern | null {
   const parsed = parseGitignorePattern(raw);
   if (!parsed) return null;
   try {
-    const regex = new RegExp(globToRegex(parsed.glob, parsed.anchored));
-    return { regex, negated: parsed.negated, dirOnly: parsed.dirOnly };
+    const matches = createGlobMatcher(parsed.glob, parsed.anchored);
+    return { matches, negated: parsed.negated, dirOnly: parsed.dirOnly };
   } catch {
     return null;
   }
@@ -72,7 +72,7 @@ export function isIgnoredByPatterns(contexts: GitignoreContext[], absPath: strin
 
     for (const pattern of ctx.patterns) {
       if (pattern.dirOnly && !isDir) continue;
-      if (pattern.regex.test(rel)) {
+      if (pattern.matches(rel)) {
         ignored = !pattern.negated;
       }
     }
