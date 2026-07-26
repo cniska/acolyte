@@ -50,7 +50,8 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
   - `"session"` — session-scoped facts (in-progress state, temporary constraints)
   - if a preference is project-scoped, use `"project"` not `"user"`
 - topic via the optional `topic` parameter — single-word label (e.g. testing, auth, config)
-- dedup: exact duplicate observations are skipped at write time
+- dedup: an observation matching any existing one in the same scope is skipped at write time; scopes dedup independently, so the same fact can be held at both project and session scope
+- the distiller sees only messages added since its last commit for that session, so a turn's work is never re-read
 
 ## Runtime guarantees
 
