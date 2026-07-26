@@ -21,8 +21,6 @@ export type QueueSubmitResolution =
       value: string;
     };
 
-export type QueueDeliveryPolicy = "one-at-a-time" | "all";
-
 type ResolveSubmitInput = {
   value: string;
   cursor?: number;
@@ -56,9 +54,8 @@ export function resolveQueueSubmit(input: { value: string; isPending: boolean })
   return { kind: "submit", value: input.value };
 }
 
-export function enqueueQueuedMessage(current: string[], next: string, policy: QueueDeliveryPolicy): string[] {
-  if (policy === "all") return [...current, next];
-  return [next];
+export function enqueueQueuedMessage(current: string[], next: string): string[] {
+  return [...current, next];
 }
 
 export function dequeueQueuedMessage(current: string[]): { next: string | undefined; rest: string[] } {
@@ -68,8 +65,7 @@ export function dequeueQueuedMessage(current: string[]): { next: string | undefi
 
 // The submit runs once, outside the setQueue updater, so a StrictMode double-invoke of the
 // updater cannot resubmit the queued command. Read the head from the caller's snapshot; the
-// updater only drains it. submit and setQueue must stay synchronous and adjacent — an await
-// between them would let a message queued in the gap be dropped by one-at-a-time replace.
+// updater only drains it.
 export function drainQueueOnTurnEnd(params: {
   queue: string[];
   submit: (message: string) => void;

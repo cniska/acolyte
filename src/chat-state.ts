@@ -33,8 +33,6 @@ import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 import type { PromotedSceneSlice } from "./tui/scene-viewport";
 
-const QUEUE_DELIVERY_POLICY = "one-at-a-time" as const;
-
 /** Debounce for the git-status refresh; coalesces rapid pending-state churn. */
 const GIT_REFRESH_DEBOUNCE_MS = 300;
 
@@ -427,7 +425,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
       const queueDecision = resolveQueueSubmit({ value: resolved.value, isPending });
       if (queueDecision.kind === "ignore") return;
       if (isPending) {
-        setQueuedMessages((current) => enqueueQueuedMessage(current, queueDecision.value, QUEUE_DELIVERY_POLICY));
+        setQueuedMessages((current) => enqueueQueuedMessage(current, queueDecision.value));
         setValue("");
         return;
       }
