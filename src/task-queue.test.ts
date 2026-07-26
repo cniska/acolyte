@@ -88,4 +88,30 @@ describe("task queue", () => {
     expect(events).toContain("end-a");
     expect(events).toContain("end-b");
   });
+
+  test("serializes jobs that share a durable scope", async () => {
+    const queue = createInMemoryTaskQueue();
+    const events: string[] = [];
+    let releaseFirst: (() => void) | undefined;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const first = queue.enqueueMany(["sess_one", "proj_shared", "user_shared"], async () => {
+      events.push("start-1");
+      await firstGate;
+      events.push("end-1");
+    });
+    const second = queue.enqueueMany(["sess_two", "proj_shared", "user_shared"], async () => {
+      events.push("start-2");
+      events.push("end-2");
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(events).toEqual(["start-1"]);
+    invariant(releaseFirst, "expected release function");
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(events).toEqual(["start-1", "end-1", "start-2", "end-2"]);
+  });
 });

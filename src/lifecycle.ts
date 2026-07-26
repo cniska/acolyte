@@ -11,6 +11,7 @@ import { resolveModel } from "./lifecycle-resolve";
 import { listMcpTools } from "./mcp-client";
 import { defaultMemoryPolicy, type MemoryCommitContext, type MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
+import { resolveScopeKey } from "./memory-ops";
 import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
@@ -45,12 +46,12 @@ export function scheduleMemoryCommit(
   debug: RunContext["debug"],
   onCommit?: (metrics: MemoryCommitMetrics) => void,
   commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitDistiller,
-  enqueueFn: (key: string, job: () => Promise<void>) => Promise<void> = (key, job) =>
-    memoryCommitQueue.enqueue(key, job),
+  enqueueFn: (keys: readonly string[], job: () => Promise<void>) => Promise<void> = (keys, job) =>
+    memoryCommitQueue.enqueueMany(keys, job),
 ): void {
-  const key = commitCtx.sessionId ?? "session:unknown";
+  const queueKeys = memoryCommitQueueKeys(commitCtx);
   const debugFields = {
-    queue_key: key,
+    queue_key: commitCtx.sessionId ?? "session:unknown",
     session_id: commitCtx.sessionId ?? null,
     message_count: commitCtx.messages.length,
     output_chars: commitCtx.output.length,
@@ -59,7 +60,7 @@ export function scheduleMemoryCommit(
     activity_errors: commitCtx.activity?.errors.length ?? 0,
   };
   debug("lifecycle.memory.commit_scheduled", debugFields);
-  void enqueueFn(key, async () => {
+  void enqueueFn(queueKeys, async () => {
     const metrics = await commitFn(commitCtx);
     if (metrics) onCommit?.(metrics);
     debug("lifecycle.memory.commit_done", {
@@ -68,6 +69,8 @@ export function scheduleMemoryCommit(
       user_promoted_facts: metrics?.userPromotedFacts ?? 0,
       session_scoped_facts: metrics?.sessionScopedFacts ?? 0,
       dropped_untagged_facts: metrics?.droppedUntaggedFacts ?? 0,
+      superseded_facts: metrics?.supersededFacts ?? 0,
+      candidate_count: metrics?.candidateCount ?? 0,
       distill_tokens: metrics?.distillTokens ?? 0,
     });
   }).catch((error) => {
@@ -76,6 +79,15 @@ export function scheduleMemoryCommit(
       message: errorMessage(error),
     });
   });
+}
+
+export function memoryCommitQueueKeys(commitCtx: MemoryCommitContext): string[] {
+  const keys = [
+    commitCtx.sessionId ?? "session:unknown",
+    resolveScopeKey("project", commitCtx, { strict: true }),
+    resolveScopeKey("user", commitCtx, { strict: true }),
+  ];
+  return [...new Set(keys.filter((key): key is string => Boolean(key)))];
 }
 
 function createRunContext(
@@ -160,8 +172,9 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     { role: "user", content: ctx.request.message },
   ];
   const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
-  // Upper bound: the commit runs in the background, so the turn can only estimate. The distiller
-  // never sends more than one window and usually far less, having already seen the earlier turns.
+  // The commit runs in the background, so the turn can only estimate, and this one is a floor: it
+  // covers at most one window and omits the recall candidates the distiller is shown, whose size is
+  // known only once the commit runs. Exact accounting needs the real usage carried back from it.
   const distillTokens = estimateDistillPromptTokens(
     messages.slice(-defaultMemoryPolicy.contextMessageWindow),
     output,

@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { appConfig } from "../src/app-config";
 import type { MemoryRecord } from "../src/memory-contract";
 import { embeddingToBuffer, embedText } from "../src/memory-embedding";
+import { searchMemories } from "../src/memory-recall";
 import { createSqliteMemoryStore } from "../src/memory-store";
-import { searchMemories } from "../src/memory-toolkit";
 import { type AggregateMetrics, aggregateMetrics, computeQueryMetrics, type QueryResult } from "./memory-bench-metrics";
 import {
   type DatasetScenario,

@@ -43,14 +43,18 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     return;
   }
   const json = hasBoolFlag(args, "--json");
-  const archived = hasBoolFlag(args, "--archived");
-  const [subcommand, ...rest] = stripFlag(stripFlag(args, "--json"), "--archived");
+  const withoutJson = stripFlag(args, "--json");
+  const bareArchived = withoutJson[0] === "--archived";
+  const subcommand = bareArchived ? undefined : withoutJson[0];
+  const rest = withoutJson.slice(1);
   const validScopes = new Set(["all", "user", "project"]);
 
   if (subcommand === "list" || !subcommand) {
     const usage = formatUsage("acolyte memory list [all|user|project] [--archived]");
-    const scopeRaw = subcommand === "list" ? rest[0] : undefined;
-    if (subcommand === "list" && rest.length > 1) {
+    const archived = bareArchived || hasBoolFlag(rest, "--archived");
+    const listArgs = stripFlag(rest, "--archived");
+    const scopeRaw = subcommand === "list" ? listArgs[0] : undefined;
+    if (subcommand === "list" && listArgs.length > 1) {
       commandError("memory", usage);
       return;
     }

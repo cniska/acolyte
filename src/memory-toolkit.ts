@@ -1,31 +1,7 @@
 import { z } from "zod";
-import {
-  createMemoryPolicy,
-  type MemoryPolicy,
-  type MemoryRecord,
-  type MemoryScope,
-  type MemoryStore,
-  memoryScopeSchema,
-  scopeFromKey,
-} from "./memory-contract";
-import {
-  bufferToEmbedding,
-  computeIdf,
-  cosineSimilarity,
-  embedText,
-  filterByTopicEmbedding,
-  matchTopicsByEmbedding,
-  tokenOverlap,
-} from "./memory-embedding";
-import {
-  addMemory,
-  addObservation,
-  removeMemory,
-  resolveScopeKey,
-  type ScopeContext,
-  visibleScopeKeys,
-} from "./memory-ops";
-import { getMemoryStore } from "./memory-store";
+import { type MemoryRecord, memoryScopeSchema, scopeFromKey } from "./memory-contract";
+import { addMemory, addObservation, resolveScopeKey, type ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -55,86 +31,6 @@ function createMemoryObserveTool(input: ToolkitInput) {
       });
     },
   });
-}
-
-async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string, Float32Array>> {
-  const topics = new Set<string>();
-  for (const r of records) {
-    if (r.topic) topics.add(r.topic);
-  }
-  const result = new Map<string, Float32Array>();
-  for (const topic of topics) {
-    const vec = await embedText(topic);
-    if (vec) result.set(topic, vec);
-  }
-  return result;
-}
-
-function allowedScopeKeys(ctx: ScopeContext, scope?: MemoryScope): Set<string> {
-  if (!scope) return visibleScopeKeys(ctx);
-  const key = resolveScopeKey(scope, ctx, { strict: true });
-  return new Set(key ? [key] : []);
-}
-
-export async function searchMemories(
-  query: string,
-  ctx: ScopeContext,
-  options?: { scope?: MemoryScope; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
-): Promise<MemoryRecord[]> {
-  const store = options?.store ?? (await getMemoryStore());
-  const limit = options?.limit ?? 10;
-  const policy = options?.policy ?? createMemoryPolicy();
-  const allowed = allowedScopeKeys(ctx, options?.scope);
-  if (allowed.size === 0) return [];
-
-  const all = await store.list();
-  const filtered = all.filter((r) => allowed.has(r.scopeKey));
-  if (filtered.length === 0) return [];
-
-  const queryEmbedding = await embedText(query);
-  if (!queryEmbedding) {
-    const fallback = filtered.slice(0, limit);
-    await store.touchRecalled(fallback.map((r) => r.id));
-    return [...fallback];
-  }
-
-  if (store.searchByEmbedding) {
-    const oversample = (options?.scope ? limit * 2 : limit) * 2;
-    const raw = await store.searchByEmbedding(queryEmbedding, { limit: oversample });
-    const scoped = raw.filter((r) => allowed.has(r.scopeKey));
-    const pgTopicEmbeddings = await embedTopics(scoped);
-    const pgMatchedTopics = matchTopicsByEmbedding(queryEmbedding, pgTopicEmbeddings, policy.topicThreshold);
-    const pgTopicFiltered = filterByTopicEmbedding(scoped, pgMatchedTopics, policy.minTopicFilterSize);
-    const idf = computeIdf(pgTopicFiltered.map((r) => r.content));
-    const rescored = pgTopicFiltered.map((record, rank) => {
-      const positionScore = 1 - rank / pgTopicFiltered.length;
-      const overlap = tokenOverlap(query, record.content, idf);
-      return { record, score: positionScore * policy.cosineWeight + overlap * policy.tokenWeight };
-    });
-    rescored.sort((a, b) => b.score - a.score);
-    const results = rescored.slice(0, limit).map((s) => s.record);
-    await store.touchRecalled(results.map((r) => r.id));
-    return results;
-  }
-
-  const topicEmbeddings = await embedTopics(filtered);
-  const matchedTopics = matchTopicsByEmbedding(queryEmbedding, topicEmbeddings, policy.topicThreshold);
-  const topicFiltered = filterByTopicEmbedding(filtered, matchedTopics, policy.minTopicFilterSize);
-  const ids = topicFiltered.map((r) => r.id);
-  const embeddings = await store.getEmbeddings(ids);
-  const idf = computeIdf(topicFiltered.map((r) => r.content));
-
-  const scored = topicFiltered.map((record) => {
-    const buf = embeddings.get(record.id);
-    const cosine = buf ? cosineSimilarity(queryEmbedding, bufferToEmbedding(buf)) : 0;
-    const overlap = tokenOverlap(query, record.content, idf);
-    const score = cosine * policy.cosineWeight + overlap * policy.tokenWeight;
-    return { record, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  const results = scored.slice(0, limit).map((s) => s.record);
-  await store.touchRecalled(results.map((r) => r.id));
-  return results;
 }
 
 function createMemorySearchTool(input: ToolkitInput) {
@@ -218,34 +114,10 @@ function createMemoryAddTool(input: ToolkitInput) {
   });
 }
 
-function createMemoryRemoveTool(input: ToolkitInput) {
-  return createTool({
-    id: "memory-remove",
-    toolkit: "memory",
-    category: "meta",
-    description: "Remove a memory by its ID. Use after finding stale or incorrect memories via memory-search.",
-    instruction: "Use `memory-remove` to clean up outdated or incorrect memories found via `memory-search`.",
-    inputSchema: z.object({
-      id: z.string().min(1),
-    }),
-    outputSchema: z.object({
-      kind: z.literal("memory-remove"),
-      result: z.enum(["removed", "not_found"]),
-    }),
-    execute: async (toolInput, toolCallId) => {
-      return runTool(input.session, "memory-remove", toolCallId, toolInput, async () => {
-        const result = await removeMemory(toolInput.id);
-        return { kind: "memory-remove" as const, result: result.kind === "removed" ? "removed" : result.kind };
-      });
-    },
-  });
-}
-
 export function createMemoryToolkit(input: ToolkitInput) {
   return {
     memorySearch: createMemorySearchTool(input),
     memoryAdd: createMemoryAddTool(input),
-    memoryRemove: createMemoryRemoveTool(input),
     memoryObserve: createMemoryObserveTool(input),
   };
 }

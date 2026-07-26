@@ -7,8 +7,8 @@ import {
 import { appConfig } from "./app-config";
 import { createMemoryPolicy } from "./memory-contract";
 import { createMemoryDistiller } from "./memory-distiller";
+import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { tempDb } from "./test-utils";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1 });

@@ -91,16 +91,18 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **MEM-1** — Memory persists across sessions in three scopes: session, project, and user.
 - **MEM-2** — Memory is retrieved on demand through memory tools the model invokes when it needs context; durable memory is never injected wholesale into the system prompt.
-- **MEM-3** — The model can search, add, and remove memory records at runtime.
+- **MEM-3** — The model can search and add memory records at runtime.
 - **MEM-4** — After each request, a background distillation step extracts durable observations from the conversation and from a record of the turn's own work — the files it changed, the commands it ran and whether they failed — and commits them at the appropriate scope, tagged with an optional single-word topic. An observation is one self-contained claim about the work that could not be recovered by reading the code; a turn that establishes nothing durable commits nothing.
 - **MEM-5** — Recall is scope-guarded: a record is returned only if the caller's context could have written to its scope — session facts only to their own session, project facts only to the current project, user facts always visible.
 - **MEM-6** — Recall ranks records by relevance combining semantic similarity and keyword overlap; when embeddings are unavailable, it falls back to recency rather than failing.
 - **MEM-7** — Memory commit at finalize is best-effort background work; a commit failure is recorded observably and never fails or delays the user-facing response.
 - **MEM-8** — Exact-duplicate observations are not stored twice.
 - **MEM-9** — With the AGENTS.md-sync flag enabled, the project's AGENTS.md is committed as a deterministic project memory record and recalled on demand instead of being injected into the prompt.
-- **MEM-10** — Retiring a record moves it to an archive rather than deleting it, and records why it left: superseded by named successor records, retired under capacity pressure, or judged not a fact. Retirement never destroys a record; explicit removal, whether by the user or by the model, is the only operation that does.
-- **MEM-11** — Retirement carries lineage: a superseded record names every successor that replaced it, so merging many records into one and splitting one into many are both recoverable.
+- **MEM-10** — Retiring a record moves it to an archive rather than deleting it, and records why it left: superseded by named successor records, retired under capacity pressure, or judged not a fact. Retirement never destroys a record; explicit user removal is the only operation that does.
+- **MEM-11** — Retirement carries lineage: a superseded record names every successor that replaced it, so merging many records into one and splitting one into many are both recoverable. Commits that can converge on a project or user scope are serialized for that scope.
 - **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
+- **MEM-13** — Distillation sees the facts already held that are relevant to the turn, so a new observation can replace them instead of duplicating them: it may record nothing when a fact is already held, or record a sharper, corrected, merged, or split version that supersedes the records it replaces. Reading the corpus for this purpose does not count as recalling it.
+- **MEM-14** — A supersession is honored only for records that distillation was shown and that share the scope being written to, and only when a successor record was actually stored.
 
 ## 4. Lifecycle & completion requirements (LC)
 

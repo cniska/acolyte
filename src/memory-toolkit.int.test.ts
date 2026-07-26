@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { tempDb } from "./test-utils";
 
@@ -18,14 +18,19 @@ const userKey = defaultUserResourceId();
 const ctx: ScopeContext = { sessionId: "sess_alpha", workspace: WS_ONE };
 
 let seq = 0;
-function createRecord(scopeKey: string, content: string, kind: MemoryRecord["kind"] = "stored"): MemoryRecord {
+function createRecord(
+  scopeKey: string,
+  content: string,
+  kind: MemoryRecord["kind"] = "stored",
+  createdAt = `2026-01-01T00:00:${String(seq + 1).padStart(2, "0")}.000Z`,
+): MemoryRecord {
   seq += 1;
   return {
     id: `mem_${String(seq).padStart(4, "0")}`,
     scopeKey,
     kind,
     content,
-    createdAt: `2026-01-01T00:00:${String(seq).padStart(2, "0")}.000Z`,
+    createdAt,
     tokenEstimate: 4,
   };
 }
@@ -112,6 +117,17 @@ describe("searchMemories basics", () => {
     await store.write(createRecord(userKey, "gamma fact"));
     const results = await searchMemories("anything", ctx, { limit: 2, store });
     expect(results).toHaveLength(2);
+  });
+
+  test("falls back to the most recent records when embeddings are unavailable", async () => {
+    const store = createStore();
+    await store.write(createRecord(userKey, "oldest fact", "stored", "2026-01-01T00:00:01.000Z"));
+    await store.write(createRecord(userKey, "middle fact", "stored", "2026-01-01T00:00:02.000Z"));
+    await store.write(createRecord(userKey, "newest fact", "stored", "2026-01-01T00:00:03.000Z"));
+
+    const results = await searchMemories("anything", ctx, { embed: async () => null, limit: 2, store });
+
+    expect(contents(results)).toEqual(["newest fact", "middle fact"]);
   });
 
   test("returns an empty array for an empty store", async () => {

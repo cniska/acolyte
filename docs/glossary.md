@@ -43,10 +43,11 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Lifecycle Policy | Centralized limits and defaults for lifecycle behavior |
 | Lifecycle State | Internal task-scoped runtime state used during the lifecycle pass |
 | Memory Distiller | Extracts and commits observations from conversations after each request |
+| Memory Corpus | Active, recallable memory records across the scopes visible to a request; archived records are excluded |
 | Memory Engine | Top-level memory capability that maintains continuity across turns |
 | Memory Pipeline | Internal memory flow from ingest through commit |
 | Memory Policy | Centralized limits and defaults for memory behavior |
-| Memory Toolkit | On-demand tools (`memory-search`, `memory-add`, `memory-remove`) the model invokes to access memory at runtime |
+| Memory Toolkit | On-demand tools (`memory-search`, `memory-add`) the model invokes to access memory at runtime |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
 | Observation | Memory record kind for facts extracted from conversations via `memory-observe` tool calls |

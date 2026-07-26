@@ -10,7 +10,7 @@ const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
 mock.module("./memory-embedding", () => ({ ...realEmbedding, embedText: async () => QUERY_VEC }));
 afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
 
-const { searchMemories } = await import("./memory-toolkit");
+const { searchMemories } = await import("./memory-recall");
 
 const WS_ONE = "/ws/one";
 const projOne = projectResourceIdFromWorkspace(WS_ONE);
