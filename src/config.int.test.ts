@@ -233,6 +233,17 @@ describe("config store", () => {
     );
   });
 
+  test("embeddingBaseUrl is user-scoped", async () => {
+    const home = createDir("acolyte-config-home-");
+    await expect(
+      setConfigValue("embeddingBaseUrl", "https://embeddings.example.com/v1", {
+        env: { HOME: home },
+        cwd: home,
+        scope: "project",
+      }),
+    ).rejects.toThrow("embeddingBaseUrl is user-scoped");
+  });
+
   test("setConfigValue supports locale", async () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = configDir({ HOME: home });

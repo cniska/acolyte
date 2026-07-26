@@ -1,10 +1,32 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+import {
+  EMBED_FAILURE_TRIGGER,
+  type FakeProviderServer,
+  startFakeProviderServer,
+} from "../scripts/fake-provider-server";
+import { CodedError } from "./coded-error";
+import { MEMORY_ERROR_CODES } from "./error-contract";
 import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
-import { tempDb } from "./test-utils";
+import { pinEmbeddingProviders, tempDb } from "./test-utils";
+
+let fake: FakeProviderServer;
+let restoreProviders: () => void;
+
+beforeAll(() => {
+  fake = startFakeProviderServer();
+  restoreProviders = pinEmbeddingProviders({
+    embeddingModel: "openai/text-embedding-3-large",
+    openai: { apiKey: "fake-key", baseUrl: fake.baseUrl },
+  });
+});
+afterAll(() => {
+  fake.stop();
+  restoreProviders();
+});
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);
 afterEach(cleanupStores);
@@ -119,20 +141,34 @@ describe("searchMemories basics", () => {
     expect(results).toHaveLength(2);
   });
 
-  test("falls back to the most recent records when embeddings are unavailable", async () => {
+  test("fails when an injected embedding is unavailable", async () => {
     const store = createStore();
     await store.write(createRecord(userKey, "oldest fact", "stored", "2026-01-01T00:00:01.000Z"));
     await store.write(createRecord(userKey, "middle fact", "stored", "2026-01-01T00:00:02.000Z"));
     await store.write(createRecord(userKey, "newest fact", "stored", "2026-01-01T00:00:03.000Z"));
 
-    const results = await searchMemories("anything", ctx, { embed: async () => null, limit: 2, store });
-
-    expect(contents(results)).toEqual(["newest fact", "middle fact"]);
+    const error = await searchMemories("anything", ctx, { embed: async () => null, limit: 2, store }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(CodedError);
+    expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
   });
 
   test("returns an empty array for an empty store", async () => {
     const store = createStore();
     const results = await searchMemories("anything", ctx, { store });
     expect(results).toEqual([]);
+  });
+});
+
+describe("searchMemories when the embedding request fails", () => {
+  test("wraps the provider failure, preserving its cause", async () => {
+    const store = createStore();
+    await store.write(createRecord(userKey, "a fact worth recalling"));
+
+    const error = await searchMemories(EMBED_FAILURE_TRIGGER, ctx, { store }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CodedError);
+    expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
+    expect((error as CodedError).cause).toBeDefined();
   });
 });

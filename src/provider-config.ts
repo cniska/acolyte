@@ -91,3 +91,16 @@ export function isProviderAvailable(provider: Provider, credentials: ProviderCre
   if (credentials.baseUrl && isOpenAICompatibleBaseUrl(credentials.baseUrl)) return true;
   return Boolean(credentials.apiKey);
 }
+
+export const EMBEDDING_PROVIDERS = ["openai", "google", "vercel"] as const;
+export type EmbeddingProvider = (typeof EMBEDDING_PROVIDERS)[number];
+
+export function isEmbeddingProvider(provider: Provider): provider is EmbeddingProvider {
+  return (EMBEDDING_PROVIDERS as readonly Provider[]).includes(provider);
+}
+
+// Every embeddings client requires a key even against a local OpenAI-compatible server, so unlike
+// isProviderAvailable neither an OAuth subscription nor a bare base URL counts here.
+export function isEmbeddingProviderAvailable(provider: Provider, credentials: ProviderCredentials): boolean {
+  return isEmbeddingProvider(provider) && Boolean(credentials.apiKey);
+}

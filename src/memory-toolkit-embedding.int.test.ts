@@ -1,16 +1,25 @@
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { type FakeProviderServer, startFakeProviderServer } from "../scripts/fake-provider-server";
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
-import * as realEmbedding from "./memory-embedding";
 import type { ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { pinEmbeddingProviders } from "./test-utils";
 
-// searchMemories reaches the searchByEmbedding branch only when embedText returns a
-// vector; stub it (and restore after, so it never leaks into other files' tests).
-const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
-mock.module("./memory-embedding", () => ({ ...realEmbedding, embedText: async () => QUERY_VEC }));
-afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
+let fake: FakeProviderServer;
+let restoreProviders: () => void;
 
-const { searchMemories } = await import("./memory-recall");
+beforeAll(() => {
+  fake = startFakeProviderServer();
+  restoreProviders = pinEmbeddingProviders({
+    embeddingModel: "openai/text-embedding-3-large",
+    openai: { apiKey: "fake-key", baseUrl: fake.baseUrl },
+  });
+});
+afterAll(() => {
+  fake.stop();
+  restoreProviders();
+});
 
 const WS_ONE = "/ws/one";
 const projOne = projectResourceIdFromWorkspace(WS_ONE);

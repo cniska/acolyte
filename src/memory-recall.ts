@@ -1,3 +1,5 @@
+import { CodedError } from "./coded-error";
+import { ERROR_KINDS, MEMORY_ERROR_CODES } from "./error-contract";
 import {
   createMemoryPolicy,
   type MemoryPolicy,
@@ -9,6 +11,7 @@ import {
   bufferToEmbedding,
   computeIdf,
   cosineSimilarity,
+  embedQuery,
   embedText,
   filterByTopicEmbedding,
   matchTopicsByEmbedding,
@@ -64,11 +67,11 @@ export async function searchMemories(
   const filtered = all.filter((r) => allowed.has(r.scopeKey));
   if (filtered.length === 0) return [];
 
-  const queryEmbedding = await (options?.embed ?? embedText)(query);
+  const queryEmbedding = options?.embed ? await options.embed(query) : await embedQuery(query);
   if (!queryEmbedding) {
-    const fallback = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
-    await touchRecalled(fallback.map((r) => r.id));
-    return [...fallback];
+    throw new CodedError(MEMORY_ERROR_CODES.embeddingUnavailable, "The embedding provider returned no query vector.", {
+      kind: ERROR_KINDS.embeddingUnavailable,
+    });
   }
 
   if (store.searchByEmbedding) {

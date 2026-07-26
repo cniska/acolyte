@@ -86,7 +86,7 @@ Surfaces:
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
 - commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `superseded`, `candidates`)
 - distill record writes use the configured storage backend for atomic persistence
-- hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
+- hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). A query that cannot be embedded fails recall with a classified error naming the cause
 
 ## Recall
 
@@ -108,6 +108,10 @@ Both the local SQLite and cloud backends use this hybrid scoring. The cloud path
 When observations have topic tags (assigned through the `topic` field of `memory-observe`), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
 
 Weights and thresholds are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`, `topicThreshold`, `minTopicFilterSize`).
+
+### Embedding endpoint
+
+By default, embeddings use the explicitly selected provider and its credentials. `embeddingBaseUrl` instead routes embedding requests only to an OpenAI-compatible endpoint, leaving chat on its configured provider; its key comes from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. A query that cannot be embedded fails with a classified error rather than returning partially ranked results.
 
 ### Benchmark results
 
@@ -141,7 +145,7 @@ Two backends, selected via the `cloudSync` feature flag (default: SQLite):
 
 The memory toolkit (`memory-toolkit.ts`) exposes two tools:
 
-- **memory-search**: search stored memories by query, with optional scope filter. Uses semantic ranking when embeddings are available.
+- **memory-search**: search stored memories by query, with optional scope filter. Ranked semantically; fails with a classified error when the query cannot be embedded, so the model can distinguish an empty corpus from unavailable recall.
 - **memory-add**: add a new stored memory with content and scope (`user` or `project`).
 
 These tools are the primary interface for the model to access and manage memory at runtime.

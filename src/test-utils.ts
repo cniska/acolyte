@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ChatResponse } from "./api";
+import { appConfig } from "./app-config";
 import type { CommandContext } from "./chat-commands-contract";
 import type { ChatMessage, ChatRow } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
@@ -26,6 +27,42 @@ export function mockFetch(handler: (...args: Parameters<typeof fetch>) => Promis
   const fn = mock(handler);
   globalThis.fetch = fn as unknown as typeof fetch;
   return { fn, restore: () => (globalThis.fetch = previous) };
+}
+
+type MutableCredentials = { apiKey: string | undefined; baseUrl: string | undefined };
+
+/**
+ * Pins the embedding model and every provider credential, so a test never resolves against whatever
+ * keys the developer happens to have in their environment.
+ */
+export function pinEmbeddingProviders(overrides: {
+  embeddingModel?: string;
+  embeddingBaseUrl?: string;
+  embeddingApiKey?: string;
+  openai?: Partial<MutableCredentials>;
+  google?: Partial<MutableCredentials>;
+  vercel?: Partial<MutableCredentials>;
+}): () => void {
+  const embedding = appConfig.embedding as { model: string; baseUrl?: string; apiKey?: string };
+  const savedEmbedding = { ...embedding };
+  const providers = ["openai", "google", "vercel"] as const;
+  const saved = providers.map((p) => ({ ...(appConfig[p] as MutableCredentials) }));
+
+  if (overrides.embeddingModel) embedding.model = overrides.embeddingModel;
+  embedding.baseUrl = overrides.embeddingBaseUrl;
+  embedding.apiKey = overrides.embeddingApiKey;
+  for (const provider of providers) {
+    const creds = appConfig[provider] as MutableCredentials;
+    creds.apiKey = overrides[provider]?.apiKey;
+    creds.baseUrl = overrides[provider]?.baseUrl;
+  }
+
+  return () => {
+    Object.assign(embedding, savedEmbedding);
+    providers.forEach((provider, i) => {
+      Object.assign(appConfig[provider] as MutableCredentials, saved[i]);
+    });
+  };
 }
 
 export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs: () => void } {

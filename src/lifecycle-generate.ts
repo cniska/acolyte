@@ -12,6 +12,7 @@ import {
   type ErrorSource,
   errorCodeFromCategory,
   errorKindFromCategory,
+  errorKindFromErrorCode,
   parseError,
 } from "./error-handling";
 import { t } from "./i18n";
@@ -103,7 +104,7 @@ function streamErrorFrom(err: LifecycleError): StreamError | undefined {
   return createStreamError({
     message: err.message,
     code: err.code,
-    kind: err.category ? errorKindFromCategory(err.category) : undefined,
+    kind: errorKindFromErrorCode(err.code) ?? (err.category ? errorKindFromCategory(err.category) : undefined),
     source: err.source,
     tool: err.tool,
   }).error;

@@ -31,10 +31,16 @@ export const CLOUD_ERROR_CODES = {
 } as const;
 export type CloudErrorCode = (typeof CLOUD_ERROR_CODES)[keyof typeof CLOUD_ERROR_CODES];
 
-export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode;
+export const MEMORY_ERROR_CODES = {
+  embeddingUnavailable: "E_EMBEDDING_UNAVAILABLE",
+} as const;
+export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
+
+export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode | MemoryErrorCode;
 
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
+  embeddingUnavailable: "embedding_unavailable",
   timeout: "timeout",
   fileNotFound: "file_not_found",
   budgetExhausted: "budget_exhausted",

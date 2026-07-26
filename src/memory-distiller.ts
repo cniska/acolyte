@@ -15,6 +15,7 @@ import {
   memoryScopeSchema,
   scopeFromKey,
 } from "./memory-contract";
+import type { embedText } from "./memory-embedding";
 import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { getMemoryStore } from "./memory-store";
@@ -112,7 +113,7 @@ export function selectKnownFactsWithinBudget(candidates: readonly MemoryRecord[]
 export async function selectSupersessionCandidates(
   ctx: MemoryCommitContext,
   query: string,
-  options: { store: MemoryStore; policy: MemoryPolicy },
+  options: { store: MemoryStore; policy: MemoryPolicy; embed?: typeof embedText },
 ): Promise<readonly MemoryRecord[]> {
   const scopeCtx: ScopeContext = {
     sessionId: ctx.sessionId,
@@ -125,6 +126,7 @@ export async function selectSupersessionCandidates(
       store: options.store,
       policy: options.policy,
       touch: false,
+      embed: options.embed,
     });
     return found.filter((record) => !isHostManaged(record));
   } catch (error) {
@@ -251,6 +253,7 @@ export type DistillerDeps = {
   runner: DistillRunner;
   policy: MemoryPolicy;
   commitScope: DistillScope | "none";
+  embed: typeof embedText;
 };
 
 export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
@@ -277,7 +280,11 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const start = Math.max(alreadyDistilled, ctx.messages.length - policy.contextMessageWindow, 0);
       const recentMessages = ctx.messages.slice(start);
       const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
-      const foundCandidates = await selectSupersessionCandidates(ctx, distillInput, { store: ds, policy });
+      const foundCandidates = await selectSupersessionCandidates(ctx, distillInput, {
+        store: ds,
+        policy,
+        embed: deps.embed,
+      });
       const candidates = selectKnownFactsWithinBudget(foundCandidates, policy.recallCandidateTokenLimit);
       const known = renderKnownFacts(candidates);
       const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
