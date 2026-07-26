@@ -77,4 +77,20 @@ describe("createInstructions", () => {
     expect(out).not.toContain("activated automatically");
     expect(out).not.toContain("auto-activation");
   });
+
+  test("renders active skill bodies verbatim after project rules", () => {
+    const out = createInstructions("Soul.", undefined, "Project rules.", [
+      { name: "build", instructions: "keep slices small." },
+      { name: "tdd", instructions: "red, green, refactor." },
+    ]);
+    expect(out).toContain("Active skill (build):\nkeep slices small.");
+    expect(out).toContain("Active skill (tdd):\nred, green, refactor.");
+    // Skill guidance ranks below project rules in precedence, so it renders after them.
+    expect(out.indexOf("Active skill (build):")).toBeGreaterThan(out.indexOf("Project rules."));
+  });
+
+  test("omits the skills section when no skills are active", () => {
+    const out = createInstructions("Soul.");
+    expect(out).not.toContain("Active skill (");
+  });
 });

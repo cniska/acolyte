@@ -50,7 +50,7 @@ describe("createAgentInput", () => {
     expect(input).not.toContain("…");
   });
 
-  test("includes skill context in input when activeSkills present", () => {
+  test("reserves skill budget and surfaces active skills without inlining bodies", () => {
     const req: ChatRequest = {
       model: "gpt-5-mini",
       message: "use repo conventions",
@@ -58,11 +58,12 @@ describe("createAgentInput", () => {
       activeSkills: [{ name: "build", instructions: "keep slices small." }],
     };
 
-    const { input, usage } = createAgentInput(req, defaultOptions);
-    expect(input).toContain("SYSTEM: Active skill (build)");
-    expect(input).toContain("keep slices small.");
+    const { input, skillsForPrompt, usage } = createAgentInput(req, defaultOptions);
+    // The body rides in the cached system prefix (createInstructions), not the volatile input.
+    expect(input).not.toContain("keep slices small.");
+    expect(input).toContain("SYSTEM: Active skills: build");
+    expect(skillsForPrompt).toEqual([{ name: "build", instructions: "keep slices small." }]);
     expect(usage.skillTokens).toBeGreaterThan(0);
-    expect(usage.messageTokens).toBeLessThan(usage.inputTokens);
   });
 
   test("reports provided tool token reservation in usage", () => {
@@ -93,14 +94,25 @@ describe("createAgentInput", () => {
     expect(input).not.toContain("HISTORY_SENTINEL");
   });
 
-  test("keeps pinned skill context before recent chat when budget is tight", () => {
-    const { input } = createAgentInput(
+  test("drops a skill that overflows the budget best-effort and notes it to the model", () => {
+    const { input, skillsForPrompt, droppedSkills } = createAgentInput(
+      req("go", [], { activeSkills: [{ name: "huge", instructions: "x".repeat(10_000) }] }),
+      { ...defaultOptions, contextMaxTokens: 200 },
+    );
+    expect(skillsForPrompt).toEqual([]);
+    expect(droppedSkills.map((d) => d.name)).toEqual(["huge"]);
+    expect(input).toContain("SYSTEM: Skill(s) not loaded (over budget): huge.");
+  });
+
+  test("reserves skill budget ahead of recent chat when budget is tight", () => {
+    const { input, skillsForPrompt } = createAgentInput(
       req("use repo conventions", [msg("user", "user", "x".repeat(10_000))], {
         activeSkills: [{ name: "build", instructions: "keep slices small." }],
       }),
       defaultOptions,
     );
-    expect(input).toContain("SYSTEM: Active skill (build)");
+    expect(skillsForPrompt).toEqual([{ name: "build", instructions: "keep slices small." }]);
+    expect(input).toContain("SYSTEM: Active skills: build");
     expect(input).toContain("USER: use repo conventions");
   });
 
@@ -325,7 +337,7 @@ describe("createAgentInput skill roster", () => {
     const { input } = createAgentInput(req("go", [], { activeSkills: [{ name: "build", instructions: "x" }] }), {
       ...defaultOptions,
     });
-    expect(input).toContain("SYSTEM: Active skill (build)");
+    expect(input).toContain("SYSTEM: Active skills: build");
     expect(input).not.toContain("- build:");
     // Other skills still appear, so the roster is present and only build was filtered.
     expect(input).toContain("- debug:");

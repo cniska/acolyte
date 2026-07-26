@@ -469,6 +469,7 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
       session: createSessionContext(),
       tools: {} as unknown as Toolset,
       baseAgentInput: "BASE_INPUT",
+      skillsForPrompt: [],
       promptUsage: {
         inputTokens: 0,
         inputBudgetTokens: 8000,

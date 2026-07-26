@@ -1,6 +1,8 @@
+import { renderActiveSkillBlock } from "./agent-instructions";
 import type { ChatRequest } from "./api";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { log } from "./log";
+import type { ActiveSkill } from "./skill-contract";
 import { getLoadedSkills } from "./skill-ops";
 
 type TokenEncoder = { encode(input: string): { length: number } };
@@ -215,11 +217,42 @@ function skillRosterLine(activeSkills: ChatRequest["activeSkills"], contextMaxTo
   return `${header}\n${kept.join("\n")}`;
 }
 
+type DroppedSkill = { name: string; tokens: number; remaining: number };
+type FittedSkill = { skill: ActiveSkill; tokens: number };
+
+function formatTokenCount(tokens: number): string {
+  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : `${tokens}`;
+}
+
+// Reserve budget for the system-prefix skill bodies so history fits around them. Overflow is
+// pathological (a few k against 170k) — drop best-effort, never a hard request failure.
+function fitActiveSkills(
+  activeSkills: ActiveSkill[],
+  budget: PromptTokenBudget,
+): { fitted: FittedSkill[]; dropped: DroppedSkill[]; fittedTokens: number } {
+  const fitted: FittedSkill[] = [];
+  const dropped: DroppedSkill[] = [];
+  let fittedTokens = 0;
+  for (const skill of activeSkills) {
+    const tokens = estimateTokens(renderActiveSkillBlock(skill));
+    if (tokens > budget.remaining()) {
+      dropped.push({ name: skill.name, tokens, remaining: budget.remaining() });
+      continue;
+    }
+    budget.consume(tokens);
+    fitted.push({ skill, tokens });
+    fittedTokens += tokens;
+  }
+  return { fitted, dropped, fittedTokens };
+}
+
 export function createAgentInput(
   req: ChatRequest,
   options: { systemPromptTokens?: number; toolTokens?: number; contextMaxTokens: number },
 ): {
   input: string;
+  skillsForPrompt: ActiveSkill[];
+  droppedSkills: DroppedSkill[];
   usage: {
     inputTokens: number;
     inputBudgetTokens: number;
@@ -247,15 +280,25 @@ export function createAgentInput(
   const userTokens = estimateTokens(userLine);
   tokenBudget.consume(userTokens);
 
-  for (const skill of req.activeSkills ?? []) {
-    const skillLine = `SYSTEM: Active skill (${skill.name}):\n${skill.instructions}`;
-    const skillTokens = estimateTokens(skillLine);
-    if (skillTokens > tokenBudget.remaining()) {
-      log.warn("skill context dropped", { skill: skill.name, tokens: skillTokens, remaining: tokenBudget.remaining() });
-    } else {
-      lines.push(skillLine);
-      tokenBudget.consume(skillTokens);
-      includedSkillTokens += skillTokens;
+  const skillFit = fitActiveSkills(req.activeSkills ?? [], tokenBudget);
+  includedSkillTokens = skillFit.fittedTokens;
+
+  if (skillFit.dropped.length > 0) {
+    // Unconditional: a dropped skill means the model lacks guidance it believes is active, so this
+    // must never be silently skipped (the ~20-token note yields to nothing; the real overflow
+    // backstop is estimatePromptSize). The full drop is also on the trace via lifecycle-prepare.
+    const note = `SYSTEM: Skill(s) not loaded (over budget): ${skillFit.dropped.map((d) => d.name).join(", ")}.`;
+    lines.push(note);
+    tokenBudget.consume(estimateTokens(note));
+  }
+
+  if (skillFit.fitted.length > 0) {
+    const summary = skillFit.fitted.map((f) => `${f.skill.name} (${formatTokenCount(f.tokens)})`).join(", ");
+    const costLine = `SYSTEM: Active skills: ${summary} — skill-deactivate when no longer needed.`;
+    const costTokens = estimateTokens(costLine);
+    if (costTokens <= tokenBudget.remaining()) {
+      lines.push(costLine);
+      tokenBudget.consume(costTokens);
     }
   }
 
@@ -318,6 +361,8 @@ export function createAgentInput(
   // options.systemPromptTokens and returned as usage.systemPromptTokens.
   return {
     input,
+    skillsForPrompt: skillFit.fitted.map((f) => f.skill),
+    droppedSkills: skillFit.dropped,
     usage: {
       inputTokens,
       inputBudgetTokens: contextMaxTokens,
@@ -325,7 +370,7 @@ export function createAgentInput(
       toolTokens: requestedToolTokens,
       skillTokens: includedSkillTokens,
       memoryTokens: 0,
-      messageTokens: Math.max(0, inputTokens - includedSkillTokens),
+      messageTokens: inputTokens,
       includedHistoryMessages: usedIds.size,
       totalHistoryMessages: req.history.length,
     },

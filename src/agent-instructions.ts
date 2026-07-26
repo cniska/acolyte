@@ -1,3 +1,4 @@
+import type { ActiveSkill } from "./skill-contract";
 import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
@@ -33,12 +34,28 @@ function createRuntimeInstructions(workspace?: string): string {
   return lines.join("\n");
 }
 
-export function createInstructions(soulPrompt: string, workspace?: string, projectRulesPrompt = ""): string {
+// System message, not the volatile user turn: skill bodies land in the cached prefix
+// (`applyPromptCacheMarkers`) — cache-read across a turn's calls, not re-billed every call.
+export function renderActiveSkillBlock(skill: ActiveSkill): string {
+  return `Active skill (${skill.name}):\n${skill.instructions}`;
+}
+
+function createSkillsSection(activeSkills: ActiveSkill[]): string {
+  return activeSkills.map(renderActiveSkillBlock).join("\n\n");
+}
+
+export function createInstructions(
+  soulPrompt: string,
+  workspace?: string,
+  projectRulesPrompt = "",
+  activeSkills: ActiveSkill[] = [],
+): string {
   const coreInstructions = CORE_INSTRUCTIONS.map((p) => `- ${p}`).join("\n");
   const runtimeInstructions = createRuntimeInstructions(workspace);
   const projectRulesSection =
     projectRulesPrompt.trim().length > 0 ? `${PROJECT_RULES_PRECEDENCE}\n\n${projectRulesPrompt}` : "";
-  const sections = [soulPrompt, coreInstructions, projectRulesSection, runtimeInstructions].filter(
+  const skillsSection = createSkillsSection(activeSkills);
+  const sections = [soulPrompt, coreInstructions, projectRulesSection, skillsSection, runtimeInstructions].filter(
     (section) => section.trim().length > 0,
   );
   return sections.join("\n\n");

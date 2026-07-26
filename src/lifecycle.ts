@@ -91,6 +91,7 @@ function createRunContext(
     workspace: input.workspace,
     model: params.model,
     tools: params.prepared.tools,
+    activeSkills: params.prepared.skillsForPrompt,
   });
 
   const ctx: RunContext = {

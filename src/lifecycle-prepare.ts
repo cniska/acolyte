@@ -62,5 +62,19 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     });
   }
 
-  return { session, tools, baseAgentInput, promptUsage: requestInput.usage };
+  for (const dropped of requestInput.droppedSkills) {
+    input.debug("lifecycle.skill.dropped", {
+      skill_name: dropped.name,
+      tokens: dropped.tokens,
+      remaining: dropped.remaining,
+    });
+  }
+
+  return {
+    session,
+    tools,
+    baseAgentInput,
+    skillsForPrompt: requestInput.skillsForPrompt,
+    promptUsage: requestInput.usage,
+  };
 }

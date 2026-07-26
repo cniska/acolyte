@@ -114,6 +114,54 @@ describe("phasePrepare", () => {
     expect(prepared.session.activeSkills).not.toBe(activeSkills);
   });
 
+  test("threads fitted active skills to skillsForPrompt", () => {
+    const activeSkills = [{ name: "build", instructions: "slice it small" }];
+    const prepared = phasePrepare({
+      request: { model: "gpt-5-mini", message: "go", history: [], activeSkills },
+      workspace: undefined,
+      taskId: "task_fit",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: defaultLifecyclePolicy,
+      debug: () => {},
+      onOutput: () => {},
+      onTasklist: () => {},
+      onSkillActivated: () => {},
+      onSkillDeactivated: () => {},
+      mcpListings: [],
+    });
+    expect(prepared.skillsForPrompt).toEqual(activeSkills);
+  });
+
+  test("drops an oversized skill best-effort and emits lifecycle.skill.dropped", () => {
+    const events: { event: string; fields?: Record<string, unknown> }[] = [];
+    const prepared = phasePrepare({
+      request: {
+        model: "gpt-5-mini",
+        message: "go",
+        history: [],
+        activeSkills: [{ name: "huge", instructions: "x".repeat(4000) }],
+      },
+      workspace: undefined,
+      taskId: "task_dropskill",
+      soulPrompt: "",
+      model: "gpt-5-mini",
+      policy: { ...defaultLifecyclePolicy, contextMaxTokens: 200 },
+      debug: (event, fields) => events.push({ event, fields }),
+      onOutput: () => {},
+      onTasklist: () => {},
+      onSkillActivated: () => {},
+      onSkillDeactivated: () => {},
+      mcpListings: [],
+    });
+    expect(prepared.skillsForPrompt).toEqual([]);
+    const dropped = events.find((e) => e.event === "lifecycle.skill.dropped");
+    expect(dropped?.fields?.skill_name).toBe("huge");
+    // The skill stays authoritative in session state even when its body did not fit this turn —
+    // the model's recourse is the "not loaded" note plus skill-deactivate, not host removal.
+    expect(prepared.session.activeSkills?.map((s) => s.name)).toEqual(["huge"]);
+  });
+
   test("activating a skill merges onto the seeded set instead of dropping it", () => {
     const prepared = phasePrepare({
       request: {
