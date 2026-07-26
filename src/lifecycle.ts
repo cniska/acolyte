@@ -160,8 +160,9 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     { role: "user", content: ctx.request.message },
   ];
   const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
-  // Upper bound: the commit runs in the background, so the turn can only estimate. The distiller
-  // never sends more than one window and usually far less, having already seen the earlier turns.
+  // The commit runs in the background, so the turn can only estimate, and this one is a floor: it
+  // covers at most one window and omits the recall candidates the distiller is shown, whose size is
+  // known only once the commit runs. Exact accounting needs the real usage carried back from it.
   const distillTokens = estimateDistillPromptTokens(
     messages.slice(-defaultMemoryPolicy.contextMessageWindow),
     output,

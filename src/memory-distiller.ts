@@ -1,5 +1,6 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
+import { AGENTS_MD_MEMORY_ID } from "./agents-memory-sync";
 import { appConfig } from "./app-config";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
@@ -15,8 +16,8 @@ import {
   scopeFromKey,
 } from "./memory-contract";
 import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { getMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -24,17 +25,17 @@ import { renderTaskActivity, type TaskActivity } from "./task-activity";
 import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
+const MEMORY_OBSERVE_INPUT_SCHEMA = z.object({
+  scope: memoryScopeSchema,
+  content: z.string().trim().min(1),
+  topic: z.string().optional(),
+  supersedes: z.array(z.string()).default([]),
+});
+
 const MEMORY_OBSERVE_TOOL = toFunctionTool({
   id: "memory-observe",
   description: "Record one fact established by this turn's work into memory.",
-  inputSchema: z.toJSONSchema(
-    z.object({
-      scope: memoryScopeSchema,
-      content: z.string().min(1),
-      topic: z.string().optional(),
-      supersedes: z.array(z.string()).optional(),
-    }),
-  ) as Record<string, unknown>,
+  inputSchema: z.toJSONSchema(MEMORY_OBSERVE_INPUT_SCHEMA) as Record<string, unknown>,
 });
 
 export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
@@ -82,9 +83,16 @@ export type DistillObservation = {
   supersedes: readonly string[];
 };
 
+// The AGENTS.md record is a projection of a file, not a fact anyone wrote: the file is its truth,
+// and its sync short-circuits on an unchanged snapshot, so a supersession would drop the project's
+// rules from recall until AGENTS.md next changes.
+function isHostManaged(record: MemoryRecord): boolean {
+  return record.id === AGENTS_MD_MEMORY_ID;
+}
+
 export function renderKnownFacts(candidates: readonly MemoryRecord[]): string {
   if (candidates.length === 0) return "";
-  const lines = candidates.map((r) => `${r.id} (${scopeFromKey(r.scopeKey)}): ${r.content}`);
+  const lines = candidates.map((r) => `${r.id} (${scopeFromKey(r.scopeKey)}): ${normalizeMemoryText(r.content)}`);
   return `known:\n${lines.join("\n")}`;
 }
 
@@ -103,12 +111,13 @@ export async function selectSupersessionCandidates(
     resourceId: ctx.resourceId,
   };
   try {
-    return await searchMemories(query, scopeCtx, {
+    const found = await searchMemories(query, scopeCtx, {
       limit: options.policy.recallCandidateLimit,
       store: options.store,
       policy: options.policy,
       touch: false,
     });
+    return found.filter((record) => !isHostManaged(record));
   } catch (error) {
     // Distillation without candidates still writes correct new facts; it just cannot supersede.
     log.warn("memory.distill.candidates_failed", { error: String(error) });
@@ -131,8 +140,13 @@ export function estimateDistillPromptTokens(
   messages: readonly { role: string; content: string }[],
   output: string,
   activity?: TaskActivity,
+  candidates: readonly MemoryRecord[] = [],
 ): number {
-  return estimateTokens(DISTILLER_PROMPT) + estimateTokens(createDistillInput(messages, output, activity));
+  return (
+    estimateTokens(DISTILLER_PROMPT) +
+    estimateTokens(createDistillInput(messages, output, activity)) +
+    estimateTokens(renderKnownFacts(candidates))
+  );
 }
 
 let cachedStore: MemoryStore | null = null;
@@ -146,24 +160,17 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
 
-function parseToolCall(call: LanguageModelV4ToolCall): DistillObservation | null {
+export function parseToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation | null {
   try {
-    const args = JSON.parse(call.input) as {
-      scope?: unknown;
-      content?: unknown;
-      topic?: unknown;
-      supersedes?: unknown;
+    const parsed = MEMORY_OBSERVE_INPUT_SCHEMA.safeParse(JSON.parse(call.input));
+    if (!parsed.success) return null;
+    const { scope, content, topic, supersedes } = parsed.data;
+    return {
+      scope,
+      content,
+      topic: topic?.trim() ? topic.trim().toLowerCase() : null,
+      supersedes: [...new Set(supersedes.map((id) => id.trim()).filter(Boolean))],
     };
-    if (typeof args.content !== "string" || !args.content.trim()) return null;
-    const scope = args.scope as DistillScope;
-    if (scope !== "session" && scope !== "project" && scope !== "user") return null;
-    const topic = typeof args.topic === "string" && args.topic.trim() ? args.topic.trim().toLowerCase() : null;
-    const supersedes = Array.isArray(args.supersedes)
-      ? args.supersedes
-          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
-          .map((id) => id.trim())
-      : [];
-    return { scope, content: args.content, topic, supersedes };
   } catch {
     return null;
   }
@@ -202,6 +209,25 @@ function commitFact(ds: MemoryStore, key: string, content: string, topic: string
  * A supersession the model asked for is honored only if it names a record it was actually shown
  * and one it could have written itself — otherwise the model could retire facts it never saw.
  */
+async function retireSuperseded(ds: MemoryStore, successorsBySuperseded: Map<string, string[]>): Promise<number> {
+  let count = 0;
+  for (const [supersededId, successors] of successorsBySuperseded) {
+    try {
+      const retired = await retireMemories(
+        [supersededId],
+        { kind: "superseded", by: [...new Set(successors)] },
+        { store: ds },
+      );
+      count += retired.length;
+    } catch (error) {
+      // The successor is already stored, so a failed retirement leaves the corpus redundant rather
+      // than wrong, and the facts this turn established are not worth losing to it.
+      log.warn("memory.distill.retire_failed", { id: supersededId, error: String(error) });
+    }
+  }
+  return count;
+}
+
 export function validateSupersedes(
   requested: readonly string[],
   shown: readonly MemoryRecord[],
@@ -253,12 +279,12 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         return;
       }
 
-      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity);
+      const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);
       let totalTokens = promptTokens;
       let projectCount = 0;
       let userCount = 0;
       let sessionCount = 0;
-      let supersededCount = 0;
+      const successorsBySuperseded = new Map<string, string[]>();
 
       for (const obs of filtered) {
         const factKey = resolveScopeKey(obs.scope, ctx, { strict: true });
@@ -266,21 +292,26 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
         if (!clamped) continue;
         const record = await commitFact(ds, factKey, clamped, obs.topic);
-        totalTokens += record?.tokenEstimate ?? 0;
+        // No record means the write was deduplicated away: nothing was promoted, and a supersession
+        // with nothing to point at would archive a fact into a dangling lineage.
+        if (!record) continue;
+        totalTokens += record.tokenEstimate;
         if (obs.scope === "project") projectCount++;
         else if (obs.scope === "user") userCount++;
         else sessionCount++;
 
-        // No successor means the write was deduped away, and a supersession with nothing to point
-        // at would archive the fact into a dangling lineage.
-        if (!record) continue;
-        const superseded = validateSupersedes(obs.supersedes, candidates, factKey);
-        if (superseded.length === 0) continue;
-        const retired = await retireMemories(superseded, { kind: "superseded", by: [record.id] }, { store: ds });
-        supersededCount += retired.length;
+        for (const id of validateSupersedes(obs.supersedes, candidates, factKey)) {
+          const successors = successorsBySuperseded.get(id) ?? [];
+          successors.push(record.id);
+          successorsBySuperseded.set(id, successors);
+        }
       }
       // Only once the facts are persisted: a store failure must leave those messages re-readable.
       markDistilled(ctx.sessionId, ctx.messages.length);
+
+      // After every write, and grouped by superseded id: a split names all of its successors, and
+      // retiring one record cannot cost the facts a later observation would still have written.
+      const supersededCount = await retireSuperseded(ds, successorsBySuperseded);
 
       log.debug("memory.distill.commit_done", {
         session: sessionCount,

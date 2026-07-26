@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { AGENTS_MD_MEMORY_ID } from "./agents-memory-sync";
 import type { MemoryDisposition, MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
@@ -595,8 +596,148 @@ describe("supersession", () => {
       policy: testPolicy,
     });
     const metrics = await distiller.commit(commitCtx);
-    expect(store.retired[0]?.ids).toEqual(["mem_stale00001", "mem_stale00002"]);
+    const successor = store.written[0]?.id ?? "";
+    expect(store.retired.flatMap((call) => [...call.ids])).toEqual(["mem_stale00001", "mem_stale00002"]);
+    for (const call of store.retired) {
+      expect(call.disposition).toEqual({ kind: "superseded", by: [successor] });
+    }
     expect(metrics?.supersededFacts).toBe(2);
+  });
+
+  test("a split names every successor in the retired record's lineage", async () => {
+    const store = createMockStore([{ ...existing, content: "the backstop classifies and reopens" }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        {
+          scope: "project",
+          content: "the backstop classifies the terminal step",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
+        {
+          scope: "project",
+          content: "the backstop reopens once per reason",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+
+    expect(store.written).toHaveLength(2);
+    expect(store.retired).toHaveLength(1);
+    expect(store.retired[0]?.ids).toEqual(["mem_stale00001"]);
+    expect(store.retired[0]?.disposition).toEqual({
+      kind: "superseded",
+      by: store.written.map((r) => r.id),
+    });
+    expect(metrics?.supersededFacts).toBe(1);
+  });
+
+  test("never supersedes the host-managed AGENTS.md record", async () => {
+    const store = createMockStore([
+      {
+        id: AGENTS_MD_MEMORY_ID,
+        scopeKey: "proj_abc123",
+        kind: "stored",
+        content: "Project rules (AGENTS.md):\nverify before every commit",
+        createdAt: "2026-03-04T10:00:00.000Z",
+        tokenEstimate: 12,
+      },
+    ]);
+    let seen = "";
+    const distiller = createMemoryDistiller({
+      store,
+      runner: async (_prompt, userContent) => {
+        seen = userContent;
+        return [
+          {
+            scope: "project",
+            content: "verify runs before every commit",
+            topic: null,
+            supersedes: [AGENTS_MD_MEMORY_ID],
+          },
+        ];
+      },
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+
+    expect(seen).not.toContain(AGENTS_MD_MEMORY_ID);
+    expect(store.retired).toHaveLength(0);
+    expect(metrics?.supersededFacts).toBe(0);
+  });
+
+  test("supersedes a user-authored stored record", async () => {
+    const store = createMockStore([
+      {
+        id: "mem_stored0001",
+        scopeKey: "proj_abc123",
+        kind: "stored",
+        content: "the old convention",
+        createdAt: "2026-03-04T10:00:00.000Z",
+        tokenEstimate: 4,
+      },
+    ]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        { scope: "project", content: "the convention changed", topic: null, supersedes: ["mem_stored0001"] },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(metrics?.supersededFacts).toBe(1);
+  });
+
+  test("a deduplicated write is not counted as promoted", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([{ scope: "project", content: existing.content, topic: null, supersedes: [] }]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(store.written).toHaveLength(0);
+    expect(metrics?.projectPromotedFacts).toBe(0);
+  });
+
+  test("a retirement failure keeps the facts the turn established", async () => {
+    const store = createMockStore([{ ...existing }]);
+    store.retire = async () => {
+      throw new Error("archive unavailable");
+    };
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        { scope: "project", content: "a sharper version of the fact", topic: null, supersedes: ["mem_stale00001"] },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(store.written).toHaveLength(1);
+    expect(metrics?.projectPromotedFacts).toBe(1);
+    expect(metrics?.supersededFacts).toBe(0);
+  });
+
+  test("the candidate limit comes from policy", async () => {
+    const store = createMockStore(
+      Array.from({ length: 5 }, (_, i) => ({ ...existing, id: `mem_many0000${i}`, content: `fact ${i}` })),
+    );
+    let seen = "";
+    const distiller = createMemoryDistiller({
+      store,
+      runner: async (_prompt, userContent) => {
+        seen = userContent;
+        return [];
+      },
+      policy: createMemoryPolicy({ messageThreshold: 1, recallCandidateLimit: 2 }),
+    });
+    await distiller.commit(commitCtx);
+    expect(seen).toContain("mem_many00000");
+    expect(seen).not.toContain("mem_many00002");
   });
 
   test("reading the corpus to supersede does not count as recalling it", async () => {
