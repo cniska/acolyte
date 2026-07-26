@@ -441,4 +441,21 @@ describe("chat-message-handler-stream: presentation stays in sync on prune", () 
     expect(harness.rows).toHaveLength(0);
     expect(harness.presentation).toHaveLength(0);
   });
+
+  test("tool output seals preceding assistant prose in the presentation", () => {
+    const harness = createDualHarness();
+    const state = createMessageStreamState(harness);
+    state.onDelta("Reading the file first.");
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "file-read",
+      content: { kind: "tool-header", labelKey: "tool.label.file_read", detail: "a.ts" },
+    });
+
+    expect(harness.presentation).toMatchObject([
+      { kind: "assistant", status: "complete", content: { kind: "message", text: "Reading the file first." } },
+      { kind: "tool", status: "active" },
+    ]);
+    state.dispose();
+  });
 });

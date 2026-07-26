@@ -194,32 +194,15 @@ export function createMessageStreamState(input: {
 
       const existingRowId = toolRowIdByCallId.get(entry.toolCallId);
       if (!existingRowId) {
-        // New tool call: seal any in-progress agent row and append tool row in one atomic update.
-        // Drain first so backlog folds into agentContent before it is read as the pending prose.
-        drainBacklog();
-        const pendingContent = agentContent;
-        const pendingRowId = activeRowId;
-        activeRowId = null;
-        agentContent = "";
+        // A tool row can only follow finalized prose. The semantic transcript uses that status
+        // to preserve the front-anchored promotion boundary across subsequent turns.
+        sealAgentRow();
         const rowId = `row_${createId()}`;
         toolRowIdByCallId.set(entry.toolCallId, rowId);
         pendingToolRowIds.add(rowId);
         lastNoticeKey = null;
-        // Decide (and track) any fallback assistant row OUTSIDE the updater, for
-        // the same pure-updater reason as flush().
-        const fallbackAssistantId =
-          !(pendingContent && pendingRowId) && pendingContent.trim().length > 0 ? `row_${createId()}` : null;
-        if (fallbackAssistantId) agentRowIds.push(fallbackAssistantId);
         input.setRows((current) => {
-          let rows = current;
-          if (pendingContent && pendingRowId) {
-            rows = rows.map((row) => (row.id === pendingRowId ? { ...row, content: pendingContent } : row));
-          } else if (fallbackAssistantId) {
-            rows = current.some((row) => row.id === fallbackAssistantId)
-              ? rows.map((row) => (row.id === fallbackAssistantId ? { ...row, content: pendingContent } : row))
-              : [...rows, { id: fallbackAssistantId, kind: "assistant" as const, content: pendingContent }];
-          }
-          return [...rows, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
+          return [...current, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
         });
         upsertTranscriptRow({
           id: rowId,
