@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
+import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { tempDb } from "./test-utils";
 
