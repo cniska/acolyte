@@ -27,6 +27,14 @@ export class RpcClient implements Client {
     return new URL(rpcUrlFromApiUrl(this.apiUrl)).toString();
   }
 
+  private readonly openSockets = new Set<WebSocket>();
+
+  // Quitting must not leave work running: the daemon cancels a connection's tasks when
+  // it closes, but an in-flight request holds its socket open until the reply lands.
+  close(): void {
+    for (const socket of [...this.openSockets]) this.closeSocket(socket);
+  }
+
   private async openSocket(): Promise<WebSocket> {
     const url = this.rpcUrl();
     const protocols = this.apiKey ? [`bearer.${this.apiKey}`] : undefined;
@@ -48,6 +56,8 @@ export class RpcClient implements Client {
         if (settled) return;
         settled = true;
         cleanup();
+        this.openSockets.add(socket);
+        socket.addEventListener("close", () => this.openSockets.delete(socket), { once: true });
         resolve(socket);
       };
       const onError = () => {
@@ -62,6 +72,7 @@ export class RpcClient implements Client {
   }
 
   private closeSocket(ws: WebSocket): void {
+    this.openSockets.delete(ws);
     try {
       ws.close();
     } catch {

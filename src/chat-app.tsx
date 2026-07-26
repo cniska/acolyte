@@ -98,6 +98,7 @@ export async function runChat(
     // resumes, so it stays clean-exit-only.
     await props.persist();
   } finally {
+    props.client.close();
     setLogSink(null);
   }
 }

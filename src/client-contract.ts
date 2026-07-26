@@ -107,6 +107,8 @@ export interface Client {
   }): Promise<ChatResponse>;
   status(): Promise<StatusFields>;
   taskStatus(input: { taskId: TaskId }): Promise<TaskRecord | null>;
+  /** Release the connection. The server cancels a connection's tasks when it closes. */
+  close(): void;
 }
 
 export type RemoteErrorMetadata = {

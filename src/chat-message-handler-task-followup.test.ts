@@ -12,6 +12,7 @@ describe("chat-message-handler-task-followup", () => {
         },
         status: async () => ({}),
         taskStatus: async () => null,
+        close: () => {},
       },
       remoteTaskId: "task_1",
       setRows: (updater) => {
