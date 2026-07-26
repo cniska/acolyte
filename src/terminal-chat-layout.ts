@@ -407,7 +407,7 @@ export function layoutPending(input: {
     lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push({ spans: [{ text: "", role: "plain" }] });
     lines.push(
-      ...wrapTerminalProse(message, Math.max(24, input.columns - 2)).map((line, index) => ({
+      ...wrapUserText(message, Math.max(24, input.columns - 2)).map((line, index) => ({
         spans: [
           { text: index === 0 ? "❯ " : "  ", role: "muted" as const },
           { text: line, role: "muted" as const },

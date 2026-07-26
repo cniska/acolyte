@@ -53,6 +53,13 @@ describe("chat submit helpers", () => {
     });
   });
 
+  test("resolveQueueSubmit preserves indentation while thinking", () => {
+    expect(resolveQueueSubmit({ value: "    queued message", isPending: true })).toEqual({
+      kind: "submit",
+      value: "    queued message",
+    });
+  });
+
   test("resolveQueueSubmit submits slash commands while thinking", () => {
     expect(resolveQueueSubmit({ value: "/status", isPending: true })).toEqual({
       kind: "submit",

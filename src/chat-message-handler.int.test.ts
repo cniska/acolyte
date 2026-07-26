@@ -87,15 +87,28 @@ describe("chat message handler", () => {
     expect(calls.setShowHelp).toEqual([]);
   });
 
+  test("preserves leading indentation in the committed user row", async () => {
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async () => ({ model: "gpt-5-mini", outputStreamed: false, output: "indented" }),
+      }),
+    });
+
+    await handleMessage("    Reply with exactly: indented");
+
+    expect(rows.find((row) => row.kind === "user")?.content).toBe("    Reply with exactly: indented");
+  });
+
   test("requeues input it cannot run instead of dropping it", async () => {
     const { handleMessage, startAssistantTurn, interrupt, calls } = createMessageHandlerHarness({
       client: abortableClient(),
     });
     const turn = startAssistantTurn("long running turn");
 
-    await handleMessage("hello");
+    await handleMessage("    hello");
 
-    expect(calls.requeued).toEqual(["hello"]);
+    expect(calls.requeued).toEqual(["    hello"]);
     expect(calls.setInputHistory).toBe(0);
     expect(calls.setValue).toEqual([]);
     await interruptTurn(interrupt, turn);
