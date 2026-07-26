@@ -56,7 +56,7 @@ Per-connection serial execution — one active task at a time, others queue up.
 
 - one `runningChatId` per connection
 - `runControl.shouldYield()` checked during lifecycle — allows preemption for queued tasks
-- `runControl.isCancelled()` checked at worker start
+- `runControl.signal` carries the connection's `AbortController`; aborting it stops the run in flight, not just its delivery
 - global `rpcQueuedTaskCount` for monitoring across all connections
 
 ## Storage

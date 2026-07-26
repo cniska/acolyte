@@ -209,6 +209,7 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
     const reasoning = ctx.reasoning;
     const streamOutput = await ctx.agent.stream(prompt, {
       preCallInputTokenLimit: ctx.policy.contextMaxTokens,
+      ...(ctx.runControl ? { abortSignal: ctx.runControl.signal } : {}),
       installSideEffectSink: (sink) => {
         ctx.sideEffectSink = sink;
       },

@@ -373,7 +373,7 @@ describe("runLifecycle cancel", () => {
     await runLifecycle(
       {
         ...baseInput,
-        runControl: createRunControl({ isCancelled: () => true }),
+        runControl: createRunControl({ signal: AbortSignal.abort() }),
         onDebug: (entry) => events.push(entry.event),
       },
       deps,

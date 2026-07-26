@@ -1,4 +1,4 @@
-export type QueuedRpcChatState = { aborted: boolean };
+export type QueuedRpcChatState = { abort: AbortController };
 
 export type QueuedRpcChatEntry = {
   id: string;
@@ -41,7 +41,7 @@ export type QueueDequeueResult<T extends QueuedRpcChatEntry> = {
 export function dequeueNextQueuedChat<T extends QueuedRpcChatEntry>(queue: T[]): QueueDequeueResult<T> {
   while (queue.length > 0) {
     const next = queue.shift();
-    if (!next || next.state.aborted) continue;
+    if (!next || next.state.abort.signal.aborted) continue;
     return { next, updates: queuePositionUpdates(queue) };
   }
   return { next: null, updates: [] };
@@ -50,7 +50,7 @@ export function dequeueNextQueuedChat<T extends QueuedRpcChatEntry>(queue: T[]):
 export function removeQueuedChatById(queue: QueuedRpcChatEntry[], requestId: string): QueueAbortResult {
   const index = queue.findIndex((item) => item.id === requestId);
   if (index === -1) return { removed: false, updates: [] };
-  queue[index].state.aborted = true;
+  queue[index].state.abort.abort();
   queue.splice(index, 1);
   return {
     removed: true,

@@ -1090,7 +1090,9 @@ describe("server rpc websocket queue", () => {
               expect(activeTask.id).toBe(activeTaskId);
               expect(activeTask.state).toBe("cancelled");
               expect(queuedTask.id).toBe(queuedTaskId);
-              expect(queuedTask.state).toBe("queued");
+              // Cancelling the active run releases the connection, so the queued task may already
+              // have been dequeued. Either way it must not inherit the active task's cancellation.
+              expect(["queued", "running"]).toContain(queuedTask.state as string);
               resolve();
               return;
             }

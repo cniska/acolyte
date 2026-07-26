@@ -203,6 +203,46 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(debugEvents).toContain("lifecycle.yield");
   });
 
+  test("cancelling stops the loop instead of running the remaining steps", async () => {
+    const controller = new AbortController();
+    let turnCount = 0;
+    setupFakeProvider((ctx) => {
+      turnCount += 1;
+      // Cancel while the first step is in flight, as an Escape-interrupt does.
+      controller.abort();
+      const toolName = pickFunctionToolName(ctx.body.tools, "file-edit", ["edit"]);
+      return createToolCallsPayload(ctx.model, ctx.responseCounter, [
+        {
+          id: `fc_${ctx.responseCounter}`,
+          callId: `call_${ctx.responseCounter}`,
+          name: toolName,
+          args: JSON.stringify({
+            path: join(workspace, "a.ts"),
+            edits: [{ find: "export const x = 1;", replace: "export const x = 999;" }],
+          }),
+        },
+      ]);
+    });
+
+    const debugEvents: string[] = [];
+    const reply = await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "edit forever", history: [] },
+        workspace,
+        runControl: createRunControl({ signal: controller.signal }),
+        onDebug: (entry) => debugEvents.push(entry.event),
+      }),
+    );
+
+    // Aborting the call in flight rejects it; that rejection is the cancellation, so it must not
+    // come back as a run failure.
+    expect(reply.error).toBeUndefined();
+    expect(turnCount).toBe(1);
+    expect(await readFile(join(workspace, "a.ts"), "utf8")).toBe("export const x = 1;\n");
+    expect(debugEvents).toContain("lifecycle.cancelled");
+    expect(debugEvents).not.toContain("lifecycle.memory.commit_scheduled");
+  });
+
   test("runControl yield replaces empty output", async () => {
     setupFakeProvider((ctx) => {
       return createMessagePayload(ctx.model, ctx.responseCounter, "  ");

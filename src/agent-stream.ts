@@ -64,10 +64,14 @@ export function createAgentStream(
     });
     options.installSideEffectSink?.((chunk) => streamController.enqueue(chunk));
 
+    const cancelled = (): boolean => options.abortSignal?.aborted === true;
+
     const resultPromise = (async (): Promise<GenerateResult> => {
       let finishReason: LanguageModelV4FinishReason | undefined;
-      try {
+
+      const runSteps = async (): Promise<void> => {
         while (true) {
+          if (cancelled()) break;
           loopIteration++;
           if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
           log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
@@ -100,6 +104,7 @@ export function createAgentStream(
               prompt: messages,
               tools: functionTools.length > 0 ? functionTools : undefined,
               toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
+              ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
               ...(options.reasoning ? { reasoning: options.reasoning } : {}),
               ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
             });
@@ -164,6 +169,7 @@ export function createAgentStream(
 
             const toolResultParts: LanguageModelV4ToolResultPart[] = [];
             for (const tc of pendingToolCalls) {
+              if (cancelled()) break;
               allToolCalls.push({ toolCallId: tc.toolCallId, toolName: tc.toolName, args: tc.input });
               const tool = toolsByName.get(tc.toolName);
               if (!tool) {
@@ -225,6 +231,9 @@ export function createAgentStream(
             messages.push({ role: "tool", content: toolResultParts });
           }
 
+          // A cancelled run is never delivered, so the completion gate must not reopen it.
+          if (cancelled()) break;
+
           // A step is terminal when the model emitted no tool calls (native end_turn) OR it
           // emitted tool calls but finished with a non-tool-calls reason (degenerate; terminate
           // rather than loop).
@@ -233,8 +242,12 @@ export function createAgentStream(
 
           if (isTerminalStep) {
             const extras =
-              options.onBeforeFinish?.({ messages, text: stepText, answerText, finishReason: finishReason?.unified }) ??
-              [];
+              options.onBeforeFinish?.({
+                messages,
+                text: stepText,
+                answerText,
+                finishReason: finishReason?.unified,
+              }) ?? [];
             if (extras.length > 0) {
               // On a no-tool-call step the assistant text has not been pushed yet; push it so the
               // reopen nudge has context. On a tool step, assistant+tool messages are already pushed.
@@ -255,23 +268,32 @@ export function createAgentStream(
           const extras = options.onBeforeNextCall?.(messages) ?? [];
           for (const msg of extras) messages.push(msg);
         }
+      };
 
-        log.debug("agent-stream.complete", {
-          iterations: loopIteration,
-          total_tool_calls: allToolCalls.length,
-          text_length: answerText.length,
-          finish_reason: finishReason?.unified ?? "unknown",
-        });
-        streamController.close();
-        return {
-          text: answerText,
-          textStreamed: answerText.trim().length > 0,
-          toolCalls: allToolCalls,
-          ...(finishReason ? { finishReason: finishReason.unified } : {}),
-        };
+      try {
+        await runSteps();
+      } catch (error) {
+        // Aborting a call in flight rejects it. That rejection is the cancellation itself,
+        // not a run failure, so end the stream quietly — the caller discards the result.
+        if (!cancelled()) throw error;
+        log.debug("agent-stream.cancelled", { iteration: loopIteration });
       } finally {
         options.installSideEffectSink?.(null);
       }
+
+      log.debug("agent-stream.complete", {
+        iterations: loopIteration,
+        total_tool_calls: allToolCalls.length,
+        text_length: answerText.length,
+        finish_reason: finishReason?.unified ?? "unknown",
+      });
+      streamController.close();
+      return {
+        text: answerText,
+        textStreamed: answerText.trim().length > 0,
+        toolCalls: allToolCalls,
+        ...(finishReason ? { finishReason: finishReason.unified } : {}),
+      };
     })().catch((error) => {
       try {
         streamController.error(error);
