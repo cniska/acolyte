@@ -40,7 +40,9 @@ function fakeCloudStore(records: MemoryRecord[]): MemoryStore {
     },
     async write() {},
     async remove() {},
-    async retire() {},
+    async retire() {
+      return [];
+    },
     async listArchive() {
       return [];
     },

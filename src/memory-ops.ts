@@ -202,23 +202,18 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   return { kind: "not_found", id: trimmed };
 }
 
-export interface RetireMemoryOptions extends MemoryOptions {
-  sessionId?: string;
-  resourceId?: ResourceId;
-}
-
 export async function retireMemories(
   ids: readonly string[],
   disposition: MemoryDisposition,
-  options: RetireMemoryOptions = {},
+  options: MemoryOptions = {},
 ): Promise<readonly string[]> {
   const trimmed = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
   if (trimmed.length === 0) return [];
 
   const store = options.store ?? (await getMemoryStore());
-  await store.retire(trimmed, disposition);
-  log.debug("memory.retire", { ids: trimmed.join(" "), count: trimmed.length, disposition: disposition.kind });
-  return trimmed;
+  const retired = await store.retire(trimmed, disposition);
+  log.debug("memory.retire", { ids: retired.join(" "), count: retired.length, disposition: disposition.kind });
+  return retired;
 }
 
 export async function listArchivedMemories(

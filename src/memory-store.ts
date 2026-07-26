@@ -55,8 +55,8 @@ const MIGRATIONS: Migration[] = [
         last_recalled_at TEXT,
         topic TEXT,
         retired_at TEXT NOT NULL,
-        disposition TEXT NOT NULL,
-        superseded_by TEXT
+        disposition TEXT NOT NULL CHECK (disposition IN ('superseded', 'capacity', 'noise')),
+        superseded_by TEXT CHECK ((disposition = 'superseded') = (superseded_by IS NOT NULL))
       );
       CREATE INDEX IF NOT EXISTS idx_archive_scope_key ON memory_archive(scope_key);
       CREATE INDEX IF NOT EXISTS idx_archive_disposition ON memory_archive(disposition);
@@ -174,22 +174,30 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       removeEmbStmt.run(id);
     },
     async retire(ids, disposition) {
-      if (ids.length === 0) return;
-      const placeholders = ids.map(() => "?").join(",");
+      if (ids.length === 0) return [];
+      const requested = ids.map(() => "?").join(",");
+      const found = db
+        .prepare<{ id: string }, string[]>(`SELECT id FROM memories WHERE id IN (${requested})`)
+        .all(...ids)
+        .map((row) => row.id);
+      if (found.length === 0) return [];
+
+      const placeholders = found.map(() => "?").join(",");
       const retiredAt = new Date().toISOString();
       const by = disposition.kind === "superseded" ? JSON.stringify(disposition.by) : null;
       db.transaction(() => {
         db.run(
-          `INSERT OR REPLACE INTO memory_archive
+          `INSERT INTO memory_archive
              (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic,
               retired_at, disposition, superseded_by)
            SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic, ?, ?, ?
              FROM memories WHERE id IN (${placeholders})`,
-          [retiredAt, disposition.kind, by, ...ids],
+          [retiredAt, disposition.kind, by, ...found],
         );
-        db.run(`DELETE FROM memories WHERE id IN (${placeholders})`, ids);
-        db.run(`DELETE FROM memory_embeddings WHERE id IN (${placeholders})`, ids);
+        db.run(`DELETE FROM memories WHERE id IN (${placeholders})`, found);
+        db.run(`DELETE FROM memory_embeddings WHERE id IN (${placeholders})`, found);
       })();
+      return found;
     },
     async listArchive(options) {
       const { scopeKey, kind, disposition } = options ?? {};
@@ -225,7 +233,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       const foundPlaceholders = found.map(() => "?").join(",");
       db.transaction(() => {
         db.run(
-          `INSERT OR REPLACE INTO memories
+          `INSERT INTO memories
              (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic)
            SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic
              FROM memory_archive WHERE id IN (${foundPlaceholders})`,

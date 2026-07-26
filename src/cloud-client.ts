@@ -10,6 +10,7 @@ import {
   type MemoryScope,
   type MemoryStore,
   memoryArchiveRecordSchema,
+  memoryIdSchema,
   memoryRecordSchema,
 } from "./memory-contract";
 import { embeddingToBuffer } from "./memory-embedding";
@@ -60,6 +61,7 @@ export class CloudApiError extends CodedError<CloudErrorCode, { status: number }
 
 const memoryListSchema = z.array(memoryRecordSchema);
 const memoryArchiveListSchema = z.array(memoryArchiveRecordSchema);
+const retiredIdsSchema = z.object({ retired: z.array(memoryIdSchema) });
 const sessionListSchema = z.array(sessionSchema);
 const embeddingsResponseSchema = z.object({ embeddings: z.record(z.string(), z.string()) });
 const activeSessionSchema = z.object({ id: z.string().nullable() });
@@ -123,9 +125,13 @@ export class CloudClient {
     await this.del(ROUTES.memories.remove(id));
   }
 
-  private async retireMemories(ids: string[], disposition: MemoryDisposition): Promise<void> {
-    if (ids.length === 0) return;
-    await this.post(ROUTES.memories.retire, { body: { ids, disposition } });
+  private async retireMemories(ids: string[], disposition: MemoryDisposition): Promise<readonly string[]> {
+    if (ids.length === 0) return [];
+    const { retired } = await this.post(ROUTES.memories.retire, {
+      schema: retiredIdsSchema,
+      body: { ids, disposition },
+    });
+    return retired;
   }
 
   private async getArchive(options?: {

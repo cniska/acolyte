@@ -108,7 +108,7 @@ export interface MemoryStore {
   list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
-  retire(ids: string[], disposition: MemoryDisposition): Promise<void>;
+  retire(ids: string[], disposition: MemoryDisposition): Promise<readonly string[]>;
   listArchive(options?: {
     scopeKey?: string;
     kind?: MemoryKind;

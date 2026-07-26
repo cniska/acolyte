@@ -35,7 +35,9 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
       const idx = records.findIndex((r) => r.id === id);
       if (idx >= 0) records.splice(idx, 1);
     },
-    async retire() {},
+    async retire() {
+      return [];
+    },
     async listArchive() {
       return [];
     },
