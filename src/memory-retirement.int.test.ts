@@ -1,19 +1,30 @@
 import { Database } from "bun:sqlite";
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { type FakeProviderServer, startFakeProviderServer } from "../scripts/fake-provider-server";
 import type { MemoryRecord } from "./memory-contract";
-import * as realEmbedding from "./memory-embedding";
+import { embeddingToBuffer } from "./memory-embedding";
+import { restoreMemories, retireMemories } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { defaultUserResourceId } from "./resource-id";
+import { pinEmbeddingProviders } from "./test-utils";
 
-// Restoring must re-embed, so the vector has to come from a stub rather than a live provider.
-const RESTORED_VEC = new Float32Array([0.4, 0.5, 0.6]);
-mock.module("./memory-embedding", () => ({ ...realEmbedding, embedText: async () => RESTORED_VEC }));
-afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
+let fake: FakeProviderServer;
+let restoreProviders: () => void;
 
-const { restoreMemories, retireMemories } = await import("./memory-ops");
+beforeAll(() => {
+  fake = startFakeProviderServer();
+  restoreProviders = pinEmbeddingProviders({
+    embeddingModel: "openai/text-embedding-3-large",
+    openai: { apiKey: "fake-key", baseUrl: fake.baseUrl },
+  });
+});
+afterAll(() => {
+  fake.stop();
+  restoreProviders();
+});
 
 const scopeKey = defaultUserResourceId();
 
@@ -32,7 +43,7 @@ describe("retirement embedding lifecycle", () => {
   test("retiring drops the embedding and restoring regenerates it", async () => {
     const store = createSqliteMemoryStore(":memory:");
     await store.write(record("mem_embedded01", "a recallable fact"));
-    await store.writeEmbedding("mem_embedded01", scopeKey, realEmbedding.embeddingToBuffer(RESTORED_VEC));
+    await store.writeEmbedding("mem_embedded01", scopeKey, embeddingToBuffer(new Float32Array([0.4, 0.5, 0.6])));
     expect(await store.getEmbedding("mem_embedded01")).not.toBeNull();
 
     await retireMemories(["mem_embedded01"], { kind: "noise" }, { store });
@@ -43,7 +54,7 @@ describe("retirement embedding lifecycle", () => {
     expect(regenerated).not.toBeNull();
     if (!regenerated) throw new Error("expected a regenerated embedding");
     const vec = new Float32Array(regenerated.buffer, regenerated.byteOffset, regenerated.byteLength / 4);
-    expect(vec[0]).toBeCloseTo(0.4);
+    expect(vec).toHaveLength(64);
     store.close();
   });
 
