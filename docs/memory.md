@@ -109,6 +109,10 @@ When observations have topic tags (assigned through the `topic` field of `memory
 
 Weights and thresholds are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`, `topicThreshold`, `minTopicFilterSize`).
 
+### Embedding endpoint
+
+By default, embeddings use the explicitly selected provider and its credentials. `embeddingBaseUrl` instead routes embedding requests only to an OpenAI-compatible endpoint, leaving chat on its configured provider; its key comes from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. A query that cannot be embedded fails with a classified error rather than returning partially ranked results.
+
 ### Benchmark results
 
 Measured on LoCoMo (10 conversations, 1650 queries, 2541 observations) with `text-embedding-3-small`:
