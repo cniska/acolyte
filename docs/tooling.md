@@ -47,7 +47,7 @@ All tool calls run through the execution layer which ensures:
 
 Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore negation patterns.
 
-`file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. A trailing slash searches beneath matching directories. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally. File discovery retains at most 5,000 paths; when that cap or the result cap withholds matches, `file-find` reports the shown count as a lower bound.
+`file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. A trailing slash searches beneath matching directories. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally. File discovery retains at most 5,000 paths; when that cap withholds matches, `file-find` reports the shown count as a lower bound. Its result cap reports the full match count.
 
 ## Tool result cache
 
