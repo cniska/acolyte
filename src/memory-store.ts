@@ -3,7 +3,14 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { type Migration, migrateUp } from "./db-migrate";
 import { log } from "./log";
-import { type MemoryRecord, type MemoryStore, safeScopeKey, scopeFromKey } from "./memory-contract";
+import {
+  type MemoryArchiveRecord,
+  type MemoryRecord,
+  type MemoryStore,
+  memoryDispositionSchema,
+  safeScopeKey,
+  scopeFromKey,
+} from "./memory-contract";
 import { dataDir } from "./paths";
 
 const MIGRATIONS: Migration[] = [
@@ -34,6 +41,27 @@ const MIGRATIONS: Migration[] = [
     version: 2,
     up: `ALTER TABLE memories ADD COLUMN topic TEXT;`,
   },
+  {
+    version: 3,
+    up: `
+      CREATE TABLE IF NOT EXISTS memory_archive (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        scope_key TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        token_estimate INTEGER NOT NULL,
+        last_recalled_at TEXT,
+        topic TEXT,
+        retired_at TEXT NOT NULL,
+        disposition TEXT NOT NULL CHECK (disposition IN ('superseded', 'capacity', 'noise')),
+        superseded_by TEXT CHECK ((disposition = 'superseded') = (superseded_by IS NOT NULL))
+      );
+      CREATE INDEX IF NOT EXISTS idx_archive_scope_key ON memory_archive(scope_key);
+      CREATE INDEX IF NOT EXISTS idx_archive_disposition ON memory_archive(disposition);
+    `,
+  },
 ];
 
 type MemoryRow = {
@@ -47,6 +75,21 @@ type MemoryRow = {
   last_recalled_at: string | null;
   topic: string | null;
 };
+
+type ArchiveRow = MemoryRow & {
+  retired_at: string;
+  disposition: string;
+  superseded_by: string | null;
+};
+
+function rowToArchiveRecord(row: ArchiveRow): MemoryArchiveRecord {
+  const by = row.superseded_by ? (JSON.parse(row.superseded_by) as unknown) : undefined;
+  return {
+    ...rowToRecord(row),
+    retiredAt: row.retired_at,
+    disposition: memoryDispositionSchema.parse({ kind: row.disposition, ...(by ? { by } : {}) }),
+  };
+}
 
 function rowToRecord(row: MemoryRow): MemoryRecord {
   return {
@@ -129,6 +172,76 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     async remove(id) {
       removeStmt.run(id);
       removeEmbStmt.run(id);
+    },
+    async retire(ids, disposition) {
+      if (ids.length === 0) return [];
+      const requested = ids.map(() => "?").join(",");
+      const found = db
+        .prepare<{ id: string }, string[]>(`SELECT id FROM memories WHERE id IN (${requested})`)
+        .all(...ids)
+        .map((row) => row.id);
+      if (found.length === 0) return [];
+
+      const placeholders = found.map(() => "?").join(",");
+      const retiredAt = new Date().toISOString();
+      const by = disposition.kind === "superseded" ? JSON.stringify(disposition.by) : null;
+      db.transaction(() => {
+        db.run(
+          `INSERT INTO memory_archive
+             (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic,
+              retired_at, disposition, superseded_by)
+           SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic, ?, ?, ?
+             FROM memories WHERE id IN (${placeholders})`,
+          [retiredAt, disposition.kind, by, ...found],
+        );
+        db.run(`DELETE FROM memories WHERE id IN (${placeholders})`, found);
+        db.run(`DELETE FROM memory_embeddings WHERE id IN (${placeholders})`, found);
+      })();
+      return found;
+    },
+    async listArchive(options) {
+      const { scopeKey, kind, disposition } = options ?? {};
+      if (scopeKey && !safeScopeKey(scopeKey)) return [];
+      const clauses: string[] = [];
+      const params: string[] = [];
+      if (scopeKey) {
+        clauses.push("scope_key = ?");
+        params.push(scopeKey);
+      }
+      if (kind) {
+        clauses.push("kind = ?");
+        params.push(kind);
+      }
+      if (disposition) {
+        clauses.push("disposition = ?");
+        params.push(disposition);
+      }
+      const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+      return db
+        .prepare<ArchiveRow, string[]>(`SELECT * FROM memory_archive ${where} ORDER BY retired_at ASC`)
+        .all(...params)
+        .map(rowToArchiveRecord);
+    },
+    async restore(ids) {
+      if (ids.length === 0) return [];
+      const placeholders = ids.map(() => "?").join(",");
+      const rows = db
+        .prepare<ArchiveRow, string[]>(`SELECT * FROM memory_archive WHERE id IN (${placeholders})`)
+        .all(...ids);
+      if (rows.length === 0) return [];
+      const found = rows.map((row) => row.id);
+      const foundPlaceholders = found.map(() => "?").join(",");
+      db.transaction(() => {
+        db.run(
+          `INSERT INTO memories
+             (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic)
+           SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic
+             FROM memory_archive WHERE id IN (${foundPlaceholders})`,
+          found,
+        );
+        db.run(`DELETE FROM memory_archive WHERE id IN (${foundPlaceholders})`, found);
+      })();
+      return rows.map(rowToRecord);
     },
     async writeEmbedding(id, scope, embedding) {
       if (!safeScopeKey(scope)) return;

@@ -40,6 +40,15 @@ function fakeCloudStore(records: MemoryRecord[]): MemoryStore {
     },
     async write() {},
     async remove() {},
+    async retire() {
+      return [];
+    },
+    async listArchive() {
+      return [];
+    },
+    async restore() {
+      return [];
+    },
     async touchRecalled() {},
     async writeEmbedding() {},
     async removeEmbedding() {},

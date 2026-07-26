@@ -1,7 +1,7 @@
 import type { ChatRow } from "./chat-contract";
 import type { Client } from "./client-contract";
 import type { ConfigScope } from "./config-contract";
-import type { addMemory, listMemories, removeMemory } from "./memory-ops";
+import type { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 export type CommandResult = {
@@ -31,11 +31,12 @@ export type CommandContext = {
   resumeTranscript: (session: Session) => void;
   clearTranscript: (sessionId?: string) => void;
   tokenUsage: SessionTokenUsageEntry[];
-  memoryApi?: {
+  memoryApi?: Partial<{
     listMemories: typeof listMemories;
     addMemory: typeof addMemory;
     removeMemory: typeof removeMemory;
-  };
+    listArchivedMemories: typeof listArchivedMemories;
+  }>;
 };
 
 export type SlashCommand = {

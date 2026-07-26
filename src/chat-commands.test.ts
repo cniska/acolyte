@@ -3,7 +3,7 @@ import { appConfig, setModel } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
-import type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
+import type { MemoryArchiveEntry, MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
 import { createCommandContext, createMessage, createSession, createSessionState } from "./test-utils";
 
@@ -14,6 +14,7 @@ function createMemoryApi(overrides?: {
     options?: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope },
   ) => Promise<MemoryEntry>;
   removeMemory?: (id: string, options?: MemoryOptions) => Promise<RemoveMemoryResult>;
+  listArchivedMemories?: (options?: MemoryOptions) => Promise<MemoryArchiveEntry[]>;
 }) {
   return {
     listMemories: overrides?.listMemories ?? (async () => []),
@@ -28,6 +29,7 @@ function createMemoryApi(overrides?: {
         lastRecalledAt: null,
       })),
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
+    listArchivedMemories: overrides?.listArchivedMemories ?? (async () => []),
   };
 }
 
@@ -267,10 +269,114 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "Usage: /memory [add|rm|all|user|project]")).toBe(true);
   });
 
+  test("dispatchSlashCommand handles bare /memory --archived", async () => {
+    let receivedScope: string | undefined = "sentinel";
+    let listedActive = false;
+    const memoryApi = createMemoryApi({
+      listMemories: async () => {
+        listedActive = true;
+        return [];
+      },
+      listArchivedMemories: async (options) => {
+        receivedScope = options?.scope;
+        return [
+          {
+            id: "mem_gone",
+            kind: "observation" as const,
+            scope: "project" as const,
+            content: "a listing nobody needed",
+            createdAt: "2026-02-21T00:00:00.000Z",
+            lastRecalledAt: null,
+            retiredAt: "2026-02-22T00:00:00.000Z",
+            disposition: { kind: "noise" as const },
+          },
+        ];
+      },
+    });
+    const { rows, stop } = await runCommand("/memory --archived", { memoryApi });
+    expect(stop).toBe(true);
+    expect(listedActive).toBe(false);
+    expect(receivedScope).toBeUndefined();
+    expect(
+      rows.some(
+        (row) =>
+          isCommandOutput(row.content) &&
+          row.content.header === "Retired memory 1" &&
+          row.content.list?.some((line) => line.includes("[noise]")),
+      ),
+    ).toBe(true);
+  });
+
+  test("dispatchSlashCommand scopes /memory project --archived", async () => {
+    let receivedScope = "";
+    const memoryApi = createMemoryApi({
+      listArchivedMemories: async (options) => {
+        receivedScope = options?.scope ?? "";
+        return [];
+      },
+    });
+    const { stop } = await runCommand("/memory project --archived", { memoryApi });
+    expect(stop).toBe(true);
+    expect(receivedScope).toBe("project");
+  });
+
+  test("dispatchSlashCommand shows superseding lineage in the archive", async () => {
+    const memoryApi = createMemoryApi({
+      listArchivedMemories: async () => [
+        {
+          id: "mem_old",
+          kind: "observation" as const,
+          scope: "project" as const,
+          content: "half a fact",
+          createdAt: "2026-02-21T00:00:00.000Z",
+          lastRecalledAt: null,
+          retiredAt: "2026-02-22T00:00:00.000Z",
+          disposition: { kind: "superseded" as const, by: ["mem_new"] },
+        },
+      ],
+    });
+    const { rows } = await runCommand("/memory --archived", { memoryApi });
+    expect(
+      rows.some(
+        (row) =>
+          isCommandOutput(row.content) && row.content.list?.some((line) => line.includes("superseded by mem_new")),
+      ),
+    ).toBe(true);
+  });
+
+  test("dispatchSlashCommand reports an empty archive", async () => {
+    const memoryApi = createMemoryApi();
+    const { rows, stop } = await runCommand("/memory --archived", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "No retired memory.")).toBe(true);
+  });
+
+  test("dispatchSlashCommand renders an archive listing failure", async () => {
+    const memoryApi = createMemoryApi({
+      listArchivedMemories: async () => {
+        throw new Error("archive unavailable");
+      },
+    });
+    const { rows, stop } = await runCommand("/memory --archived", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "archive unavailable")).toBe(true);
+  });
+
+  test("dispatchSlashCommand renders an active listing failure", async () => {
+    const memoryApi = createMemoryApi({
+      listMemories: async () => {
+        throw new Error("memory unavailable");
+      },
+    });
+    const { rows, stop } = await runCommand("/memory", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.content === "memory unavailable")).toBe(true);
+  });
+
   test("dispatchSlashCommand validates /memory extra args", async () => {
     const { rows, stop } = await runCommand("/memory all extra");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project] [--archived]")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory add and saves selected scope", async () => {

@@ -1,11 +1,16 @@
 import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
+  type MemoryArchiveEntry,
+  type MemoryArchiveRecord,
+  type MemoryDisposition,
+  type MemoryDispositionKind,
   type MemoryEntry,
   type MemoryKind,
   type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
+  memoryDispositionSchema,
   type RemoveMemoryResult,
   scopeFromKey,
 } from "./memory-contract";
@@ -47,6 +52,10 @@ function toMemoryEntry(record: {
     lastRecalledAt: record.lastRecalledAt ?? null,
     scope: scopeFromKey(record.scopeKey),
   };
+}
+
+function toMemoryArchiveEntry(record: MemoryArchiveRecord): MemoryArchiveEntry {
+  return { ...toMemoryEntry(record), retiredAt: record.retiredAt, disposition: record.disposition };
 }
 
 export async function listMemories(options: MemoryOptions = {}): Promise<MemoryEntry[]> {
@@ -194,8 +203,63 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   return { kind: "not_found", id: trimmed };
 }
 
+export async function retireMemories(
+  ids: readonly string[],
+  disposition: MemoryDisposition,
+  options: MemoryOptions = {},
+): Promise<readonly string[]> {
+  const trimmed = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (trimmed.length === 0) return [];
+
+  const validated = memoryDispositionSchema.parse(disposition);
+  const store = options.store ?? (await getMemoryStore());
+  const retired = await store.retire(trimmed, validated);
+  log.debug("memory.retire", { ids: retired.join(" "), count: retired.length, disposition: disposition.kind });
+  return retired;
+}
+
+export async function listArchivedMemories(
+  options: MemoryOptions & { disposition?: MemoryDispositionKind } = {},
+): Promise<MemoryArchiveEntry[]> {
+  const { scope, workspace, disposition } = options;
+  const store = options.store ?? (await getMemoryStore());
+  const keys = scopeKeysForScope(scope, workspace);
+  const entries: MemoryArchiveEntry[] = [];
+  for (const key of keys) {
+    const records = await store.listArchive({ scopeKey: key, disposition });
+    entries.push(...records.map(toMemoryArchiveEntry));
+  }
+  entries.sort((a, b) => b.retiredAt.localeCompare(a.retiredAt));
+  return entries;
+}
+
+export async function restoreMemories(
+  ids: readonly string[],
+  options: MemoryOptions = {},
+): Promise<readonly MemoryEntry[]> {
+  const trimmed = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (trimmed.length === 0) return [];
+
+  const store = options.store ?? (await getMemoryStore());
+  const restored = await store.restore(trimmed);
+  log.debug("memory.restore", { ids: restored.map((record) => record.id).join(" "), count: restored.length });
+
+  // Retirement drops the embedding, so a restored record is unrecallable until it is re-embedded.
+  for (const record of restored) {
+    try {
+      const vec = await embedText(record.content);
+      if (vec) await store.writeEmbedding(record.id, record.scopeKey, embeddingToBuffer(vec));
+    } catch (error) {
+      log.warn("memory.restore.embed_failed", { id: record.id, error: String(error) });
+    }
+  }
+  return restored.map(toMemoryEntry);
+}
+
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope }),
   add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
   remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope }),
+  listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope }),
+  restore: (ids: readonly string[]) => restoreMemories(ids),
 };

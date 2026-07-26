@@ -303,9 +303,14 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   memory: {
     help: {
       command: "memory",
-      usage: "acolyte memory <list|add> [options]",
+      usage: "acolyte memory <list|add|restore> [options]",
       description: t("cli.help.desc.memory"),
-      examples: ["acolyte memory list", 'acolyte memory add --project "prefer bun run verify"'],
+      examples: [
+        "acolyte memory list",
+        'acolyte memory add --project "prefer bun run verify"',
+        "acolyte memory list --archived",
+        "acolyte memory restore mem_abc123",
+      ],
     },
     handler: (args) =>
       memoryMode(args, {
