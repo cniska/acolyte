@@ -53,9 +53,8 @@ function targetFor(provider: EmbeddingProvider, configuredModel: string): Embedd
 }
 
 /**
- * Embeddings follow the credentials that can actually serve them, not the model id's nominal
- * provider: a subscription-only OpenAI setup still embeds through the Vercel gateway. The gateway
- * is the default route, so it wins unless the model id names its provider explicitly.
+ * Embeddings follow their model id's nominal provider. The gateway is selected only by an explicit
+ * `vercel/` model id, while a dedicated base URL always uses its own key and OpenAI-compatible API.
  */
 export function resolveEmbeddingTarget(configuredModel: string): EmbeddingTarget | null {
   const { baseUrl, apiKey } = appConfig.embedding;
