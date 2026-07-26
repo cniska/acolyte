@@ -1,3 +1,7 @@
+// A query carrying this marker makes the embeddings route fail, so tests can reach the
+// provider-failure path without mutating shared provider config.
+export const EMBED_FAILURE_TRIGGER = "trigger-embed-failure";
+
 export type FakeProviderServer = {
   baseUrl: string;
   stop: () => void;
@@ -268,11 +272,16 @@ function defaultHandler(ctx: FakeProviderRequestContext): Record<string, unknown
 
 export function startFakeProviderServer(options: FakeProviderServerOptions = {}): FakeProviderServer {
   const handleRequest = options.handleRequest ?? defaultHandler;
-  // Deterministic bag-of-words vectors: similar text lands on similar vectors, so ranking
-  // is meaningful without a real provider.
+  // Bag-of-words buckets rather than arbitrary vectors, so similar text scores as similar.
   const embeddingsResponse = async (req: Request): Promise<Response> => {
     const body = (await req.json()) as { input?: unknown; model?: unknown };
     const values = Array.isArray(body.input) ? body.input.map(s) : [s(body.input)];
+    if (values.some((value) => value.includes(EMBED_FAILURE_TRIGGER))) {
+      return new Response(JSON.stringify({ error: { message: "embedding backend unavailable" } }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
     const data = values.map((value, index) => {
       const vector = new Array(64).fill(0);
       for (const token of value

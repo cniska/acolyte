@@ -1,21 +1,42 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+import {
+  EMBED_FAILURE_TRIGGER,
+  type FakeProviderServer,
+  startFakeProviderServer,
+} from "../scripts/fake-provider-server";
+import { appConfig } from "./app-config";
+import { CodedError } from "./coded-error";
+import { MEMORY_ERROR_CODES } from "./error-contract";
 import type { MemoryRecord } from "./memory-contract";
-import * as realEmbedding from "./memory-embedding";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
+import { searchMemories } from "./memory-toolkit";
 import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { tempDb } from "./test-utils";
 
-const QUERY_VEC = new Float32Array([0.1, 0.2, 0.3]);
-mock.module("./memory-embedding", () => ({
-  ...realEmbedding,
-  embedQuery: async () => QUERY_VEC,
-  embedText: async () => QUERY_VEC,
-}));
-afterAll(() => mock.module("./memory-embedding", () => realEmbedding));
+const config = appConfig as { embeddingModel: string };
+const openai = appConfig.openai as { baseUrl: string; apiKey: string | undefined };
+let fake: FakeProviderServer;
+let savedModel: string;
+let savedBaseUrl: string;
+let savedApiKey: string | undefined;
 
-const { searchMemories } = await import("./memory-toolkit");
+beforeAll(() => {
+  savedModel = config.embeddingModel;
+  savedBaseUrl = openai.baseUrl;
+  savedApiKey = openai.apiKey;
+  fake = startFakeProviderServer();
+  config.embeddingModel = "text-embedding-3-large";
+  openai.baseUrl = fake.baseUrl;
+  openai.apiKey = "fake-key";
+});
+afterAll(() => {
+  fake.stop();
+  config.embeddingModel = savedModel;
+  openai.baseUrl = savedBaseUrl;
+  openai.apiKey = savedApiKey;
+});
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);
 afterEach(cleanupStores);
@@ -145,5 +166,17 @@ describe("searchMemories basics", () => {
     const store = createStore();
     const results = await searchMemories("anything", ctx, { store });
     expect(results).toEqual([]);
+  });
+});
+
+describe("searchMemories when the embedding request fails", () => {
+  test("wraps the provider failure, preserving its cause", async () => {
+    const store = createStore();
+    await store.write(createRecord(userKey, "a fact worth recalling"));
+
+    const error = await searchMemories(EMBED_FAILURE_TRIGGER, ctx, { store }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CodedError);
+    expect((error as CodedError).code).toBe(MEMORY_ERROR_CODES.embeddingUnavailable);
+    expect((error as CodedError).cause).toBeDefined();
   });
 });
