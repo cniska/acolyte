@@ -101,6 +101,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-10** — Retiring a record moves it to an archive rather than deleting it, and records why it left: superseded by named successor records, retired under capacity pressure, or judged not a fact. Retirement never destroys a record; explicit removal, whether by the user or by the model, is the only operation that does.
 - **MEM-11** — Retirement carries lineage: a superseded record names every successor that replaced it, so merging many records into one and splitting one into many are both recoverable.
 - **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
+- **MEM-13** — Distillation sees the facts already held that are relevant to the turn, so a new observation can replace them instead of duplicating them: it may record nothing when a fact is already held, or record a sharper, corrected, merged, or split version that supersedes the records it replaces. Reading the corpus for this purpose does not count as recalling it.
+- **MEM-14** — A supersession is honored only for records that distillation was shown and that share the scope being written to, and only when a successor record was actually stored.
 
 ## 4. Lifecycle & completion requirements (LC)
 

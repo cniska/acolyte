@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type { MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
+import type { MemoryDisposition, MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
-import { createDistillInput, createMemoryDistiller, DISTILLER_PROMPT } from "./memory-distiller";
+import {
+  createDistillInput,
+  createMemoryDistiller,
+  DISTILLER_PROMPT,
+  renderKnownFacts,
+  selectSupersessionCandidates,
+  validateSupersedes,
+} from "./memory-distiller";
 
 const testPolicy = createMemoryPolicy({ messageThreshold: 1, maxOutputTokens: 200 });
 
@@ -14,13 +21,24 @@ function createTestDistiller(
   return createMemoryDistiller({ store, runner, policy: testPolicy, ...options });
 }
 
-function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written: MemoryRecord[]; removed: string[] } {
+type RetireCall = { ids: readonly string[]; disposition: MemoryDisposition };
+
+function createMockStore(records: MemoryRecord[] = []): MemoryStore & {
+  written: MemoryRecord[];
+  removed: string[];
+  retired: RetireCall[];
+  touched: string[];
+} {
   const written: MemoryRecord[] = [];
   const removed: string[] = [];
+  const retired: RetireCall[] = [];
+  const touched: string[] = [];
   return {
     storage: "sqlite",
     written,
     removed,
+    retired,
+    touched,
     async list(options?: { scopeKey?: string; kind?: MemoryKind }) {
       return records.filter(
         (r) => (!options?.scopeKey || r.scopeKey === options.scopeKey) && (!options?.kind || r.kind === options.kind),
@@ -35,8 +53,14 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
       const idx = records.findIndex((r) => r.id === id);
       if (idx >= 0) records.splice(idx, 1);
     },
-    async retire() {
-      return [];
+    async retire(ids, disposition) {
+      retired.push({ ids, disposition });
+      const present = ids.filter((id) => records.some((r) => r.id === id));
+      for (const id of present) {
+        const idx = records.findIndex((r) => r.id === id);
+        if (idx >= 0) records.splice(idx, 1);
+      }
+      return present;
     },
     async listArchive() {
       return [];
@@ -44,7 +68,9 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & { written:
     async restore() {
       return [];
     },
-    async touchRecalled() {},
+    async touchRecalled(ids) {
+      touched.push(...ids);
+    },
     async writeEmbedding() {},
     async removeEmbedding() {},
     async getEmbedding() {
@@ -127,7 +153,7 @@ describe("high-water mark", () => {
       store,
       runner: async (_prompt, userContent) => {
         seen.push(userContent);
-        return [{ scope: "session", content: "a durable fact", topic: null }];
+        return [{ scope: "session", content: "a durable fact", topic: null, supersedes: [] }];
       },
       policy: testPolicy,
     });
@@ -180,7 +206,10 @@ describe("memoryDistiller", () => {
   describe("commit", () => {
     test("skips when no sessionId", async () => {
       const store = createMockStore();
-      const source = createTestDistiller(store, makeRunner([{ scope: "session", content: "a fact", topic: null }]));
+      const source = createTestDistiller(
+        store,
+        makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
+      );
       await source.commit({
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
         output: "response",
@@ -192,7 +221,7 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
-        runner: makeRunner([{ scope: "session", content: "a fact", topic: null }]),
+        runner: makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
         policy: createMemoryPolicy({ messageThreshold: 5 }),
       });
       await source.commit({
@@ -224,7 +253,7 @@ describe("memoryDistiller", () => {
       ]);
       const source = createTestDistiller(
         store,
-        makeRunner([{ scope: "session", content: "prefers short answers", topic: null }]),
+        makeRunner([{ scope: "session", content: "prefers short answers", topic: null, supersedes: [] }]),
       );
       await source.commit({
         sessionId: "sess_test0001",
@@ -252,8 +281,8 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project uses Vitest", topic: "testing" },
-          { scope: "project", content: "repo has 18k lines of code", topic: null },
+          { scope: "project", content: "project uses Vitest", topic: "testing", supersedes: [] },
+          { scope: "project", content: "repo has 18k lines of code", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
@@ -273,9 +302,9 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "repo uses Bun", topic: null },
-          { scope: "user", content: "prefers short answers", topic: null },
-          { scope: "session", content: "fix failing tests", topic: null },
+          { scope: "project", content: "repo uses Bun", topic: null, supersedes: [] },
+          { scope: "user", content: "prefers short answers", topic: null, supersedes: [] },
+          { scope: "session", content: "fix failing tests", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
@@ -298,11 +327,11 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project fact one", topic: null },
-          { scope: "project", content: "project fact two", topic: null },
-          { scope: "user", content: "user fact one", topic: null },
-          { scope: "session", content: "session fact one", topic: null },
-          { scope: "project", content: "project fact three", topic: null },
+          { scope: "project", content: "project fact one", topic: null, supersedes: [] },
+          { scope: "project", content: "project fact two", topic: null, supersedes: [] },
+          { scope: "user", content: "user fact one", topic: null, supersedes: [] },
+          { scope: "session", content: "session fact one", topic: null, supersedes: [] },
+          { scope: "project", content: "project fact three", topic: null, supersedes: [] },
         ]),
       );
       const metrics = await source.commit({
@@ -323,9 +352,9 @@ describe("memoryDistiller", () => {
       const source = createMemoryDistiller({
         store,
         runner: makeRunner([
-          { scope: "project", content: "a project fact", topic: null },
-          { scope: "session", content: "a session fact", topic: null },
-          { scope: "user", content: "a user fact", topic: null },
+          { scope: "project", content: "a project fact", topic: null, supersedes: [] },
+          { scope: "session", content: "a session fact", topic: null, supersedes: [] },
+          { scope: "user", content: "a user fact", topic: null, supersedes: [] },
         ]),
         policy: testPolicy,
         commitScope: "project",
@@ -350,11 +379,11 @@ describe("memoryDistiller", () => {
         {
           name: "good_scoped_output",
           observations: [
-            { scope: "project" as const, content: "uses bun test", topic: null },
-            { scope: "user" as const, content: "prefers concise responses", topic: null },
-            { scope: "session" as const, content: "fixing failing memory tests", topic: null },
-            { scope: "session" as const, content: "stabilize memory quality", topic: null },
-            { scope: "session" as const, content: "add regression coverage", topic: null },
+            { scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] },
+            { scope: "user" as const, content: "prefers concise responses", topic: null, supersedes: [] },
+            { scope: "session" as const, content: "fixing failing memory tests", topic: null, supersedes: [] },
+            { scope: "session" as const, content: "stabilize memory quality", topic: null, supersedes: [] },
+            { scope: "session" as const, content: "add regression coverage", topic: null, supersedes: [] },
           ],
           expectedMetrics: {
             projectPromotedFacts: 1,
@@ -365,7 +394,7 @@ describe("memoryDistiller", () => {
         },
         {
           name: "only_project_observations",
-          observations: [{ scope: "project" as const, content: "uses bun test", topic: null }],
+          observations: [{ scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] }],
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
@@ -392,5 +421,197 @@ describe("memoryDistiller", () => {
         expect(store.written.length, fixture.name).toBe(fixture.expectedWriteCount);
       }
     });
+  });
+});
+
+describe("validateSupersedes", () => {
+  const shown: MemoryRecord[] = [
+    {
+      id: "mem_shown00001",
+      scopeKey: "proj_abc123",
+      kind: "observation",
+      content: "a project fact",
+      createdAt: "2026-03-04T10:00:00.000Z",
+      tokenEstimate: 3,
+    },
+    {
+      id: "mem_shown00002",
+      scopeKey: "user_abc123",
+      kind: "observation",
+      content: "a user fact",
+      createdAt: "2026-03-04T10:00:00.000Z",
+      tokenEstimate: 3,
+    },
+  ];
+
+  test("keeps an id that was shown in the target scope", () => {
+    expect(validateSupersedes(["mem_shown00001"], shown, "proj_abc123")).toEqual(["mem_shown00001"]);
+  });
+
+  test("drops an id that was never shown", () => {
+    expect(validateSupersedes(["mem_neverseen1"], shown, "proj_abc123")).toEqual([]);
+  });
+
+  test("drops a shown id belonging to another scope", () => {
+    expect(validateSupersedes(["mem_shown00002"], shown, "proj_abc123")).toEqual([]);
+  });
+
+  test("deduplicates repeated ids", () => {
+    expect(validateSupersedes(["mem_shown00001", "mem_shown00001"], shown, "proj_abc123")).toEqual(["mem_shown00001"]);
+  });
+});
+
+describe("renderKnownFacts", () => {
+  test("renders nothing when there are no candidates", () => {
+    expect(renderKnownFacts([])).toBe("");
+  });
+
+  test("names each candidate with its id and scope", () => {
+    const rendered = renderKnownFacts([
+      {
+        id: "mem_known00001",
+        scopeKey: "proj_abc123",
+        kind: "observation",
+        content: "the build runs on bun",
+        createdAt: "2026-03-04T10:00:00.000Z",
+        tokenEstimate: 5,
+      },
+    ]);
+    expect(rendered).toBe("known:\nmem_known00001 (project): the build runs on bun");
+  });
+});
+
+describe("supersession", () => {
+  const existing: MemoryRecord = {
+    id: "mem_stale00001",
+    scopeKey: "proj_abc123",
+    kind: "observation",
+    content: "the terminal-step backstop lives somewhere in lifecycle",
+    createdAt: "2026-03-04T10:00:00.000Z",
+    tokenEstimate: 8,
+  };
+  const commitCtx = {
+    sessionId: "sess_test0001",
+    resourceId: "proj_abc123" as const,
+    messages: [{ role: "user", content: "hello" }],
+    output: "done",
+  };
+
+  test("shows existing facts to the distiller with their ids", async () => {
+    const store = createMockStore([{ ...existing }]);
+    let seen = "";
+    const distiller = createMemoryDistiller({
+      store,
+      runner: async (_prompt, userContent) => {
+        seen = userContent;
+        return [];
+      },
+      policy: testPolicy,
+    });
+    await distiller.commit(commitCtx);
+    expect(seen).toContain("known:");
+    expect(seen).toContain("mem_stale00001");
+  });
+
+  test("retires a superseded fact naming the new record as its successor", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        {
+          scope: "project",
+          content: "src/lifecycle-completion.ts owns the terminal-step backstop",
+          topic: "lifecycle",
+          supersedes: ["mem_stale00001"],
+        },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+
+    expect(store.retired).toHaveLength(1);
+    expect(store.retired[0]?.ids).toEqual(["mem_stale00001"]);
+    const successor = store.written.find((r) => r.content.startsWith("src/lifecycle-completion.ts"));
+    expect(successor).toBeDefined();
+    expect(store.retired[0]?.disposition).toEqual({ kind: "superseded", by: [successor?.id ?? ""] });
+    expect(metrics?.supersededFacts).toBe(1);
+  });
+
+  test("ignores a supersession naming a record the distiller was not shown", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        { scope: "project", content: "a brand new project fact", topic: null, supersedes: ["mem_neverseen1"] },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(store.retired).toHaveLength(0);
+    expect(metrics?.supersededFacts).toBe(0);
+  });
+
+  test("ignores a supersession that crosses scopes", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        { scope: "user", content: "prefers short answers", topic: null, supersedes: ["mem_stale00001"] },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(store.retired).toHaveLength(0);
+    expect(metrics?.supersededFacts).toBe(0);
+  });
+
+  test("retires nothing when the successor was deduplicated away", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        { scope: "project", content: existing.content, topic: null, supersedes: ["mem_stale00001"] },
+      ]),
+      policy: testPolicy,
+    });
+    await distiller.commit(commitCtx);
+    expect(store.written).toHaveLength(0);
+    expect(store.retired).toHaveLength(0);
+  });
+
+  test("merges several facts into one successor", async () => {
+    const second: MemoryRecord = { ...existing, id: "mem_stale00002", content: "the backstop classifies finishReason" };
+    const store = createMockStore([{ ...existing }, second]);
+    const distiller = createMemoryDistiller({
+      store,
+      runner: makeRunner([
+        {
+          scope: "project",
+          content: "src/lifecycle-completion.ts owns the backstop and classifies finishReason",
+          topic: null,
+          supersedes: ["mem_stale00001", "mem_stale00002"],
+        },
+      ]),
+      policy: testPolicy,
+    });
+    const metrics = await distiller.commit(commitCtx);
+    expect(store.retired[0]?.ids).toEqual(["mem_stale00001", "mem_stale00002"]);
+    expect(metrics?.supersededFacts).toBe(2);
+  });
+
+  test("reading the corpus to supersede does not count as recalling it", async () => {
+    const store = createMockStore([{ ...existing }]);
+    const distiller = createMemoryDistiller({ store, runner: makeRunner([]), policy: testPolicy });
+    await distiller.commit(commitCtx);
+    expect(store.touched).toEqual([]);
+  });
+
+  test("a candidate lookup failure yields no candidates rather than throwing", async () => {
+    const store = createMockStore([{ ...existing }]);
+    store.list = async () => {
+      throw new Error("store unreachable");
+    };
+    const candidates = await selectSupersessionCandidates(commitCtx, "any query", { store, policy: testPolicy });
+    expect(candidates).toEqual([]);
   });
 });

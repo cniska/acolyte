@@ -53,12 +53,16 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 - topic via the optional `topic` parameter — single-word label (e.g. testing, auth, config)
 - dedup: an observation matching any existing one in the same scope is skipped at write time; scopes dedup independently, so the same fact can be held at both project and session scope
 - the distiller sees only messages added since its last commit for that session, so a turn's work is never re-read
+- the distiller also sees the facts it already holds that are relevant to the turn — up to `policy.recallCandidateLimit`, fetched through the same hybrid recall, each shown with its id — so it can skip a fact already held, or record a sharper, corrected, merged, or split version that supersedes what it replaces via `memory-observe(supersedes)`
+- this read does not mark those records recalled: distillation reading the corpus to converge it is not the model recalling a fact, and counting it would inflate the evidence a retirement pass weighs
+- a supersession is honored only for ids the distiller was shown, in the scope being written to, and only when a successor was actually stored — so a deduplicated write supersedes nothing rather than leaving a dangling lineage
+- candidate selection is isolated in `selectSupersessionCandidates`; a candidate lookup failure yields no candidates instead of failing the commit
 
 ## Retirement
 
 Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm` and `memory-remove`, and it is the only operation that destroys a record.
 
-This is the mechanism, not yet a behavior: no caller retires anything today, so the archive fills only once convergence writes to it.
+Distillation is the first caller: a superseding observation retires what it replaced. Capacity and noise retirement have no caller yet.
 
 Every retirement carries a disposition saying why the record left:
 
@@ -80,7 +84,7 @@ Surfaces:
 - commits are serialized per session per process through a keyed task queue seam
 - agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget, conversational turns prioritized over tool payloads)
 - debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
-- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`)
+- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `superseded`, `candidates`)
 - distill record writes use the configured storage backend for atomic persistence
 - hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). Falls back to recency when embeddings are unavailable
 

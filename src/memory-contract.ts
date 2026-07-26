@@ -42,6 +42,7 @@ export type MemoryCommitMetrics = {
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
   droppedUntaggedFacts?: number;
+  supersededFacts?: number;
   distillTokens?: number;
 };
 
@@ -49,6 +50,7 @@ export type MemoryPolicy = {
   messageThreshold: number;
   maxOutputTokens: number;
   contextMessageWindow: number;
+  recallCandidateLimit: number;
   cosineWeight: number;
   tokenWeight: number;
   topicThreshold: number;
@@ -59,6 +61,7 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   messageThreshold: 4,
   maxOutputTokens: 1_000,
   contextMessageWindow: 20,
+  recallCandidateLimit: 20,
   cosineWeight: 0.8,
   tokenWeight: 0.2,
   topicThreshold: 0.6,

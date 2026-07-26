@@ -9,11 +9,14 @@ import {
   type MemoryCommitMetrics,
   type MemoryDistiller,
   type MemoryPolicy,
+  type MemoryRecord,
   type MemoryStore,
   memoryScopeSchema,
+  scopeFromKey,
 } from "./memory-contract";
-import { addObservation, resolveScopeKey } from "./memory-ops";
+import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } from "./memory-ops";
 import { getMemoryStore } from "./memory-store";
+import { searchMemories } from "./memory-toolkit";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -29,6 +32,7 @@ const MEMORY_OBSERVE_TOOL = toFunctionTool({
       scope: memoryScopeSchema,
       content: z.string().min(1),
       topic: z.string().optional(),
+      supersedes: z.array(z.string()).optional(),
     }),
   ) as Record<string, unknown>,
 });
@@ -51,6 +55,16 @@ An "observed" entry, when present, is what actually happened this turn — files
 
 Most turns leave one or two facts worth keeping. Some leave none, and then I record nothing — that is the right answer, not a failure. A small sharp corpus I trust beats a large one I stop reading.
 
+When a "known" block is present, those are facts I already hold, each with an id. I read them before I write anything, because the corpus should sharpen rather than accumulate:
+- already there, unchanged — I record nothing. A second copy in different words is the worst thing I can add.
+- I can now state it better, more precisely, or with the reason it was missing — I record the sharper version and name the id it replaces in supersedes.
+- what I learned contradicts one — I record what is true now and supersede the one that is stale.
+- several of them are really one fact — I record the single sharp version and supersede all of them.
+- one of them is really two — I record each part separately, and each names the compound it came from.
+- genuinely new — I record it and supersede nothing.
+
+I only ever supersede an id from that block, and only from the same scope I am writing to. What I supersede is not deleted; it is kept with a note that this new fact replaced it, so I can be wrong about this and lose nothing.
+
 For each fact I keep, I call memory-observe with:
 - scope, which decides how long the fact lives:
          "project" — durable and specific to this codebase: architecture, tooling, conventions, decisions. It reaches every future session here.
@@ -58,9 +72,49 @@ For each fact I keep, I call memory-observe with:
          "session" — true only while this work is open: in-progress state, a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that failed the bar above.
          A project-scoped preference is "project", not "user". Unsure is "session".
 - content: the fact, keeping the specifics that make it usable — paths, names, error text, the reasoning behind a decision.
-- topic: one lowercase word, when one fits (testing, auth, config, tooling).`;
+- topic: one lowercase word, when one fits (testing, auth, config, tooling).
+- supersedes: the ids this fact replaces, when it replaces any. Omitted otherwise.`;
 
-export type DistillObservation = { scope: DistillScope; content: string; topic: string | null };
+export type DistillObservation = {
+  scope: DistillScope;
+  content: string;
+  topic: string | null;
+  supersedes: readonly string[];
+};
+
+export function renderKnownFacts(candidates: readonly MemoryRecord[]): string {
+  if (candidates.length === 0) return "";
+  const lines = candidates.map((r) => `${r.id} (${scopeFromKey(r.scopeKey)}): ${r.content}`);
+  return `known:\n${lines.join("\n")}`;
+}
+
+/**
+ * The one seam the undecided recall-as-DNA question can reshape: how existing facts reach the
+ * distiller. Everything downstream consumes the returned records and nothing else.
+ */
+export async function selectSupersessionCandidates(
+  ctx: MemoryCommitContext,
+  query: string,
+  options: { store: MemoryStore; policy: MemoryPolicy },
+): Promise<readonly MemoryRecord[]> {
+  const scopeCtx: ScopeContext = {
+    sessionId: ctx.sessionId,
+    workspace: ctx.workspace,
+    resourceId: ctx.resourceId,
+  };
+  try {
+    return await searchMemories(query, scopeCtx, {
+      limit: options.policy.recallCandidateLimit,
+      store: options.store,
+      policy: options.policy,
+      touch: false,
+    });
+  } catch (error) {
+    // Distillation without candidates still writes correct new facts; it just cannot supersede.
+    log.warn("memory.distill.candidates_failed", { error: String(error) });
+    return [];
+  }
+}
 
 export function createDistillInput(
   messages: readonly { role: string; content: string }[],
@@ -94,12 +148,22 @@ export type DistillRunner = (systemPrompt: string, userContent: string) => Promi
 
 function parseToolCall(call: LanguageModelV4ToolCall): DistillObservation | null {
   try {
-    const args = JSON.parse(call.input) as { scope?: unknown; content?: unknown; topic?: unknown };
+    const args = JSON.parse(call.input) as {
+      scope?: unknown;
+      content?: unknown;
+      topic?: unknown;
+      supersedes?: unknown;
+    };
     if (typeof args.content !== "string" || !args.content.trim()) return null;
     const scope = args.scope as DistillScope;
     if (scope !== "session" && scope !== "project" && scope !== "user") return null;
     const topic = typeof args.topic === "string" && args.topic.trim() ? args.topic.trim().toLowerCase() : null;
-    return { scope, content: args.content, topic };
+    const supersedes = Array.isArray(args.supersedes)
+      ? args.supersedes
+          .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+          .map((id) => id.trim())
+      : [];
+    return { scope, content: args.content, topic, supersedes };
   } catch {
     return null;
   }
@@ -130,9 +194,21 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
   return observations;
 }
 
-async function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<number> {
-  const record = await addObservation(key, content, { topic, store: ds });
-  return record?.tokenEstimate ?? 0;
+function commitFact(ds: MemoryStore, key: string, content: string, topic: string | null): Promise<MemoryRecord | null> {
+  return addObservation(key, content, { topic, store: ds });
+}
+
+/**
+ * A supersession the model asked for is honored only if it names a record it was actually shown
+ * and one it could have written itself — otherwise the model could retire facts it never saw.
+ */
+export function validateSupersedes(
+  requested: readonly string[],
+  shown: readonly MemoryRecord[],
+  scopeKey: string,
+): string[] {
+  const eligible = new Map(shown.filter((record) => record.scopeKey === scopeKey).map((r) => [r.id, r]));
+  return [...new Set(requested)].filter((id) => eligible.has(id));
 }
 
 export type DistillerDeps = {
@@ -166,7 +242,9 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const start = Math.max(alreadyDistilled, ctx.messages.length - policy.contextMessageWindow, 0);
       const recentMessages = ctx.messages.slice(start);
       const distillInput = createDistillInput(recentMessages, ctx.output, ctx.activity);
-      const observations = await runner(DISTILLER_PROMPT, distillInput);
+      const candidates = await selectSupersessionCandidates(ctx, distillInput, { store: ds, policy });
+      const known = renderKnownFacts(candidates);
+      const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
 
       const filtered =
         commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
@@ -180,16 +258,26 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       let projectCount = 0;
       let userCount = 0;
       let sessionCount = 0;
+      let supersededCount = 0;
 
       for (const obs of filtered) {
         const factKey = resolveScopeKey(obs.scope, ctx, { strict: true });
         if (!factKey) continue;
         const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
         if (!clamped) continue;
-        totalTokens += await commitFact(ds, factKey, clamped, obs.topic);
+        const record = await commitFact(ds, factKey, clamped, obs.topic);
+        totalTokens += record?.tokenEstimate ?? 0;
         if (obs.scope === "project") projectCount++;
         else if (obs.scope === "user") userCount++;
         else sessionCount++;
+
+        // No successor means the write was deduped away, and a supersession with nothing to point
+        // at would archive the fact into a dangling lineage.
+        if (!record) continue;
+        const superseded = validateSupersedes(obs.supersedes, candidates, factKey);
+        if (superseded.length === 0) continue;
+        const retired = await retireMemories(superseded, { kind: "superseded", by: [record.id] }, { store: ds });
+        supersededCount += retired.length;
       }
       // Only once the facts are persisted: a store failure must leave those messages re-readable.
       markDistilled(ctx.sessionId, ctx.messages.length);
@@ -198,12 +286,15 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         session: sessionCount,
         project: projectCount,
         user: userCount,
+        superseded: supersededCount,
+        candidates: candidates.length,
       });
 
       return {
         projectPromotedFacts: projectCount,
         userPromotedFacts: userCount,
         sessionScopedFacts: sessionCount,
+        supersededFacts: supersededCount,
         distillTokens: totalTokens,
       };
     },

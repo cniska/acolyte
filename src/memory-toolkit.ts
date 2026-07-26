@@ -79,11 +79,23 @@ function allowedScopeKeys(ctx: ScopeContext, scope?: MemoryScope): Set<string> {
 export async function searchMemories(
   query: string,
   ctx: ScopeContext,
-  options?: { scope?: MemoryScope; limit?: number; store?: MemoryStore; policy?: MemoryPolicy },
+  options?: {
+    scope?: MemoryScope;
+    limit?: number;
+    store?: MemoryStore;
+    policy?: MemoryPolicy;
+    // Distillation reads the corpus to supersede within it, which is not the model recalling a
+    // fact; counting it would inflate the recall evidence a retirement pass is meant to weigh.
+    touch?: boolean;
+  },
 ): Promise<MemoryRecord[]> {
   const store = options?.store ?? (await getMemoryStore());
   const limit = options?.limit ?? 10;
   const policy = options?.policy ?? createMemoryPolicy();
+  const touch = options?.touch ?? true;
+  const touchRecalled = async (ids: string[]): Promise<void> => {
+    if (touch) await store.touchRecalled(ids);
+  };
   const allowed = allowedScopeKeys(ctx, options?.scope);
   if (allowed.size === 0) return [];
 
@@ -94,7 +106,7 @@ export async function searchMemories(
   const queryEmbedding = await embedText(query);
   if (!queryEmbedding) {
     const fallback = filtered.slice(0, limit);
-    await store.touchRecalled(fallback.map((r) => r.id));
+    await touchRecalled(fallback.map((r) => r.id));
     return [...fallback];
   }
 
@@ -113,7 +125,7 @@ export async function searchMemories(
     });
     rescored.sort((a, b) => b.score - a.score);
     const results = rescored.slice(0, limit).map((s) => s.record);
-    await store.touchRecalled(results.map((r) => r.id));
+    await touchRecalled(results.map((r) => r.id));
     return results;
   }
 
@@ -133,7 +145,7 @@ export async function searchMemories(
   });
   scored.sort((a, b) => b.score - a.score);
   const results = scored.slice(0, limit).map((s) => s.record);
-  await store.touchRecalled(results.map((r) => r.id));
+  await touchRecalled(results.map((r) => r.id));
   return results;
 }
 
