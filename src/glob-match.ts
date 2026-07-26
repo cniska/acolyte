@@ -92,10 +92,11 @@ function matchFrom(tokens: Token[], ti: number, path: string, si: number, visite
     case "globstar":
       return matchRun(tokens, ti, path, si, visited, true);
     case "globstarSlash": {
+      // Directories only: the tail may resume right after this separator, or after a later one — never mid-segment.
       if (path[si] !== "/") return false;
-      for (let j = si + 1; j <= path.length; j++) {
-        if (matchFrom(tokens, ti + 1, path, j, visited)) return true;
-        if (j < path.length && path[j] === "/" && matchFrom(tokens, ti + 1, path, j + 1, visited)) return true;
+      if (matchFrom(tokens, ti + 1, path, si + 1, visited)) return true;
+      for (let j = si + 1; j < path.length; j++) {
+        if (path[j] === "/" && matchFrom(tokens, ti + 1, path, j + 1, visited)) return true;
       }
       return false;
     }

@@ -34,6 +34,11 @@ describe("createPathMatcher", () => {
     expect(matched("src/*.tsx")).toEqual([]);
   });
 
+  test("a middle double wildcard spans whole directories, never part of a segment", () => {
+    const paths = ["a/b", "a/x/b", "a/x/y/b", "a/xb", "a/bx"];
+    expect(paths.filter(createPathMatcher("/a/**/b"))).toEqual(["a/b", "a/x/b", "a/x/y/b"]);
+  });
+
   test("double wildcard crosses path separators", () => {
     expect(matched("src/**/*.tsx")).toEqual(["src/tui/tool-render.tsx", "src/tui/components.tsx"]);
   });
