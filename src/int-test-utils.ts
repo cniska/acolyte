@@ -88,18 +88,3 @@ export async function withCliTestEnv<T>(fn: (env: CliTestEnv) => Promise<T>): Pr
     await rm(workspaceDir, { recursive: true, force: true });
   }
 }
-
-type TestHttpHandler = (request: Request) => Response | Promise<Response>;
-
-export async function withTestHttpServer<T>(handler: TestHttpHandler, fn: (baseUrl: string) => Promise<T>): Promise<T> {
-  const server = Bun.serve({
-    port: 0,
-    fetch: handler,
-  });
-  const baseUrl = `http://127.0.0.1:${server.port}`;
-  try {
-    return await fn(baseUrl);
-  } finally {
-    server.stop(true);
-  }
-}

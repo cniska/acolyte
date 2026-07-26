@@ -1,7 +1,8 @@
 import type { ChatRequest } from "./api";
 import { HTTP_STATUS } from "./http-status";
 import { log } from "./log";
-import type { RunChatHandlers, StatusPayload } from "./server-contract";
+import type { RunChatHandlers } from "./server-contract";
+import type { StatusPayload } from "./status-contract";
 
 type ServerHttpDeps = {
   createStatusPayload: () => Promise<StatusPayload>;

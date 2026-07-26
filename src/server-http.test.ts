@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
-import type { RunChatHandlers, StatusPayload } from "./server-contract";
+import type { RunChatHandlers } from "./server-contract";
 import { createServerFetchHandler } from "./server-http";
+import type { StatusPayload } from "./status-contract";
 
 function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHandler>[0]> = {}) {
   return {

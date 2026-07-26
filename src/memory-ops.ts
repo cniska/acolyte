@@ -15,8 +15,6 @@ import { getMemoryStore } from "./memory-store";
 import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 
-export type { MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
-
 export interface MemoryOptions {
   scope?: MemoryScope;
   workspace?: string;

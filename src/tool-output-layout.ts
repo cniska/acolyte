@@ -15,7 +15,6 @@ export const segmentRoleSchema = z.enum([
   "dim",
   "stream-tag",
 ]);
-export type SegmentRole = z.infer<typeof segmentRoleSchema>;
 
 export const layoutSegmentSchema = z.object({ role: segmentRoleSchema, text: z.string() });
 export type LayoutSegment = z.infer<typeof layoutSegmentSchema>;

@@ -4,8 +4,9 @@ import { createRunControl } from "./lifecycle-contract";
 import { log } from "./log";
 import { type RpcRequestId, rpcClientMessageSchema, rpcRequestIdSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
-import type { RunChatHandlers, StatusPayload, StreamErrorPayload } from "./server-contract";
+import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
+import type { StatusPayload } from "./status-contract";
 import { type TaskId, type TaskState, type TaskTransitionReason, taskIdSchema } from "./task-contract";
 import type { TaskRegistry } from "./task-registry";
 

@@ -93,11 +93,6 @@ export interface SessionTokenUsageEntry {
   readonly modelCalls?: number;
 }
 
-export const sessionStateSchema = z.object({
-  sessions: z.array(sessionSchema),
-  activeSessionId: sessionIdSchema.optional(),
-});
-
 export interface SessionState {
   sessions: Session[];
   activeSessionId?: SessionId;

@@ -11,7 +11,6 @@ export const headerPresentationSchema = z.object({
   version: z.string(),
   sessionId: z.string(),
 });
-export type HeaderPresentation = z.infer<typeof headerPresentationSchema>;
 
 export const pendingPresentationSchema = z.object({
   state: pendingStateSchema,
@@ -89,7 +88,6 @@ export const viewportSectionSchema = z.object({
   kind: viewportSectionKindSchema,
   finalized: z.boolean(),
 });
-export type ViewportSection = z.infer<typeof viewportSectionSchema>;
 
 export const viewportPickerInputSchema = z.discriminatedUnion("kind", [
   z.object({

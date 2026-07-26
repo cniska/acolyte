@@ -1,17 +1,11 @@
 import { extname } from "node:path";
 import { z } from "zod";
 import { unreachable } from "./assert";
-import {
-  type MarkupToken,
-  sanitizeAssistantContent,
-  segmentAssistantContent,
-  tokenize,
-  wrapAssistantContent,
-  wrapUserText,
-} from "./chat-content";
+import { sanitizeAssistantContent, segmentAssistantContent, wrapAssistantContent, wrapUserText } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
+import { type MarkupToken, tokenize } from "./chat-tokenizer";
 import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import { highlightCode, resolveLanguage } from "./code-highlight";

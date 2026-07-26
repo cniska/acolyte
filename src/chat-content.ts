@@ -1,5 +1,3 @@
-export { type MarkupToken, tokenize } from "./chat-tokenizer";
-
 export type AssistantSegment =
   | { kind: "prose"; text: string }
   | { kind: "code"; lang: string; text: string; closed: boolean };

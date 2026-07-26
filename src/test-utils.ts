@@ -1,6 +1,5 @@
 import { expect, mock } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ChatResponse } from "./api";
@@ -43,10 +42,6 @@ export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs:
       }
     },
   };
-}
-
-export async function createTempDir(prefix: string): Promise<string> {
-  return mkdtemp(join(tmpdir(), prefix));
 }
 
 export function tempDb<T extends { close(): void }>(
@@ -139,21 +134,6 @@ function toJSONDeep(value: unknown): unknown {
   const output: Record<string, unknown> = {};
   for (const [key, nested] of Object.entries(value)) output[key] = toJSONDeep(nested);
   return output;
-}
-
-export function expectJSON(actual: unknown): {
-  toDeepEqual: (expected: unknown) => void;
-  toMatchObject: (expected: Record<string, unknown>) => void;
-} {
-  const actualJSON = toJSONDeep(actual);
-  return {
-    toDeepEqual(expected: unknown): void {
-      expect(actualJSON).toEqual(toJSONDeep(expected));
-    },
-    toMatchObject(expected: Record<string, unknown>): void {
-      expect(actualJSON).toMatchObject(toJSONDeep(expected) as Record<string, unknown>);
-    },
-  };
 }
 
 export function expectToThrowJSON(fn: () => unknown): {

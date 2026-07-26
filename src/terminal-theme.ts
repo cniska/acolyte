@@ -62,7 +62,6 @@ export const terminalStyleSchema = z.object({
   dim: z.boolean().optional(),
   inverse: z.boolean().optional(),
 });
-export type TerminalStyle = z.infer<typeof terminalStyleSchema>;
 
 export const terminalThemeSchema = z.object({ styles: z.record(terminalStyleRoleSchema, terminalStyleSchema) });
 export type TerminalTheme = z.infer<typeof terminalThemeSchema>;

@@ -12,7 +12,6 @@ export const terminalCursorSchema = z.object({
   row: z.number().int().nonnegative(),
   column: z.number().int().nonnegative(),
 });
-export type TerminalCursor = z.infer<typeof terminalCursorSchema>;
 export const terminalSceneSectionSchema = z.object({
   id: z.string().min(1),
   lineStart: z.number().int().nonnegative(),

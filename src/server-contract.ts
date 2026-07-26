@@ -5,8 +5,6 @@ import type { MemoryCommitMetrics } from "./memory-contract";
 import type { StreamError } from "./stream-error";
 import type { TaskId } from "./task-contract";
 
-export type { StatusPayload } from "./status-contract";
-
 export type StreamErrorPayload = {
   errorMessage: string;
   errorId?: ErrorId;

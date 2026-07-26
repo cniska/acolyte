@@ -1,4 +1,3 @@
-import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { unreachable } from "./assert";
 import {
@@ -8,10 +7,10 @@ import {
   wordBoundaryLeft,
   wordBoundaryRight,
 } from "./input-controller";
-import { buildPromptDisplayLines, cursorLineIndex, moveLineDown, moveLineUp, softWrapLine } from "./prompt-display";
+import { cursorLineIndex, moveLineDown, moveLineUp } from "./prompt-display";
 import type { PromptAction } from "./prompt-keymap";
 import { resolvePromptAction } from "./prompt-keymap";
-import { Box, Text, useInput } from "./tui";
+import { useInput } from "./tui";
 
 const META_PREFIX_WINDOW_MS = 150;
 
@@ -241,81 +240,4 @@ export function usePromptInput({
 export function PromptInputHandler(props: PromptInputProps): null {
   usePromptInput(props);
   return null;
-}
-
-export function PromptInput(props: PromptInputProps): React.JSX.Element {
-  const {
-    value,
-    placeholder = "",
-    focus = true,
-    caretVisible = true,
-    linePrefixFirst = "",
-    linePrefixRest = "",
-    wrapWidth,
-  } = props;
-  const { effectiveCursor } = usePromptInput(props);
-
-  if (value.length === 0 && placeholder.length > 0) {
-    return (
-      <Text>
-        {linePrefixFirst}
-        {focus ? (
-          <>
-            <Text inverse={caretVisible} dimColor={!caretVisible}>
-              {placeholder[0] ?? " "}
-            </Text>
-            <Text dimColor>{placeholder.slice(1)}</Text>
-          </>
-        ) : (
-          <Text dimColor>{placeholder}</Text>
-        )}
-      </Text>
-    );
-  }
-
-  if (!focus) {
-    const logicalLines = value.split("\n");
-    const allSegments: string[] = [];
-    for (const line of logicalLines) {
-      const wrapped = wrapWidth ? softWrapLine(line, wrapWidth) : [line];
-      allSegments.push(...wrapped);
-    }
-    let lineOffset = 0;
-    const readonlyLines = allSegments.map((line) => {
-      const key = `prompt-readonly-line-${lineOffset}-${line}`;
-      lineOffset += line.length + 1;
-      return { key, line };
-    });
-    return (
-      <Box flexDirection="column">
-        {readonlyLines.map((entry, index) => (
-          <Text key={entry.key}>
-            {index === 0 ? linePrefixFirst : linePrefixRest}
-            {entry.line}
-          </Text>
-        ))}
-      </Box>
-    );
-  }
-  const lines = buildPromptDisplayLines(value, effectiveCursor, wrapWidth);
-  let lineOffset = 0;
-  const focusLines = lines.map((line) => {
-    const content = `${line.before}${line.cursor ?? ""}${line.after}`;
-    const key = `prompt-focus-line-${lineOffset}-${content}`;
-    lineOffset += content.length + 1;
-    return { key, line };
-  });
-
-  return (
-    <Box flexDirection="column">
-      {focusLines.map((entry, index) => (
-        <Text key={entry.key}>
-          {index === 0 ? linePrefixFirst : linePrefixRest}
-          {entry.line.before}
-          {entry.line.cursor !== null ? <Text inverse={caretVisible}>{entry.line.cursor}</Text> : null}
-          {entry.line.after}
-        </Text>
-      ))}
-    </Box>
-  );
 }

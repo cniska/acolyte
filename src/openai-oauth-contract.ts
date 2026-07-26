@@ -13,7 +13,6 @@ export const oauthTokenResponseSchema = z.object({
   refresh_token: z.string().optional(),
   expires_in: z.number(),
 });
-export type OAuthTokenResponse = z.infer<typeof oauthTokenResponseSchema>;
 
 const chatgptAccountClaimSchema = z.looseObject({
   chatgpt_account_id: z.string().optional(),
@@ -24,4 +23,3 @@ export const oauthJwtClaimsSchema = z.looseObject({
   "https://api.openai.com/auth": chatgptAccountClaimSchema.optional(),
   organizations: z.array(z.looseObject({ id: z.string() })).optional(),
 });
-export type OAuthJwtClaims = z.infer<typeof oauthJwtClaimsSchema>;
