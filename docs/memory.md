@@ -62,7 +62,7 @@ The observation model is inspired by [Mastra's Observational Memory](https://mas
 
 Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm`, and it is the only operation that destroys a record.
 
-Distillation is the first caller: a superseding observation retires what it replaced. Capacity and noise retirement have no caller yet.
+Distillation and explicit consolidation retire records. Consolidation operates only on durable user and project scopes. It batches tagged records by topic, clusters untagged records by embedding similarity when embeddings are available, and leaves unclustered untagged records alone. Its private `memory-merge` model call can write successor observations tied to shown IDs or archive shown noise. It writes every successor before retiring its sources, and shares the durable-scope queue with distillation.
 
 Every retirement carries a disposition saying why the record left:
 
@@ -157,6 +157,7 @@ These tools are the primary interface for the model to access and manage memory 
 - `src/memory-store.ts` — SQLite-backed MemoryStore implementation and store factory
 - `src/cloud-client.ts` — cloud API MemoryStore implementation (feature-flagged)
 - `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
+- `src/memory-consolidator.ts` — durable-scope convergence batches and private merge runner
 - `src/memory-toolkit.ts` — on-demand memory tools (search, add)
 - `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering
 

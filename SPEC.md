@@ -103,6 +103,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
 - **MEM-13** — Distillation sees the facts already held that are relevant to the turn, so a new observation can replace them instead of duplicating them: it may record nothing when a fact is already held, or record a sharper, corrected, merged, or split version that supersedes the records it replaces. Reading the corpus for this purpose does not count as recalling it.
 - **MEM-14** — A supersession is honored only for records that distillation was shown and that share the scope being written to, and only when a successor record was actually stored.
+- **MEM-15** — User and project memory can be consolidated into a smaller durable corpus. Consolidation serializes with distillation for its scope, batches tagged records by topic and untagged records only when embeddings establish similarity, writes every successor before retiring a shown source, and archives model-judged noise rather than deleting it.
 
 ## 4. Lifecycle & completion requirements (LC)
 

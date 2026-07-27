@@ -47,12 +47,21 @@ export type MemoryCommitMetrics = {
   distillTokens?: number;
 };
 
+export type MemoryConsolidationMetrics = {
+  batches: number;
+  createdFacts: number;
+  supersededFacts: number;
+  retiredNoiseFacts: number;
+};
+
 export type MemoryPolicy = {
   messageThreshold: number;
   maxOutputTokens: number;
   contextMessageWindow: number;
   recallCandidateLimit: number;
   recallCandidateTokenLimit: number;
+  consolidationBatchSize: number;
+  consolidationSimilarityThreshold: number;
   cosineWeight: number;
   tokenWeight: number;
   topicThreshold: number;
@@ -65,6 +74,8 @@ export const defaultMemoryPolicy: MemoryPolicy = {
   contextMessageWindow: 20,
   recallCandidateLimit: 20,
   recallCandidateTokenLimit: 20_000,
+  consolidationBatchSize: 20,
+  consolidationSimilarityThreshold: 0.8,
   cosineWeight: 0.8,
   tokenWeight: 0.2,
   topicThreshold: 0.6,
@@ -102,6 +113,20 @@ export const memoryDispositionSchema = z.discriminatedUnion("kind", [
 ]);
 export type MemoryDisposition = z.infer<typeof memoryDispositionSchema>;
 export type MemoryDispositionKind = MemoryDisposition["kind"];
+
+export const memoryMergeResultSchema = z.object({
+  successors: z
+    .array(
+      z.object({
+        content: z.string().trim().min(1),
+        topic: z.string().trim().min(1).nullable().optional(),
+        supersedes: z.array(memoryIdSchema).min(1),
+      }),
+    )
+    .default([]),
+  noise: z.array(memoryIdSchema).default([]),
+});
+export type MemoryMergeResult = z.infer<typeof memoryMergeResultSchema>;
 
 export const memoryArchiveRecordSchema = memoryRecordSchema.extend({
   retiredAt: isoDateTimeSchema,
