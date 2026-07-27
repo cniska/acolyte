@@ -3,13 +3,20 @@ import { formatUsage } from "./cli-help";
 import { type CliOutput, createJsonOutput, createTextOutput, fitFlexColumn } from "./cli-output";
 import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
-import { formatDisposition, type MemoryArchiveEntry, type MemoryEntry, type MemoryScope } from "./memory-contract";
+import {
+  formatDisposition,
+  type MemoryArchiveEntry,
+  type MemoryConsolidationMetrics,
+  type MemoryEntry,
+  type MemoryScope,
+} from "./memory-contract";
 
 type MemoryOps = {
   list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
   add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
   listArchived: (scope?: MemoryScope) => Promise<MemoryArchiveEntry[]>;
   restore: (ids: readonly string[]) => Promise<readonly MemoryEntry[]>;
+  consolidate: (scope: "user" | "project") => Promise<MemoryConsolidationMetrics>;
 };
 
 function isArchiveEntry(row: MemoryEntry | MemoryArchiveEntry): row is MemoryArchiveEntry {
@@ -89,6 +96,33 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     printDim(t("cli.memory.restored", { count: restored.length, ids: restored.map((e) => e.id).join(", ") }));
+    return;
+  }
+
+  if (subcommand === "consolidate") {
+    const scope = rest[0] ?? "all";
+    if (rest.length > 1 || !validScopes.has(scope)) {
+      commandError("memory", formatUsage("acolyte memory consolidate [all|user|project]"));
+      return;
+    }
+    const scopes = scope === "all" ? (["user", "project"] as const) : [scope as "user" | "project"];
+    const results = await Promise.all(scopes.map((item) => ops.consolidate(item)));
+    const metrics = results.reduce<MemoryConsolidationMetrics>(
+      (total, result) => ({
+        batches: total.batches + result.batches,
+        createdFacts: total.createdFacts + result.createdFacts,
+        supersededFacts: total.supersededFacts + result.supersededFacts,
+        retiredNoiseFacts: total.retiredNoiseFacts + result.retiredNoiseFacts,
+      }),
+      { batches: 0, createdFacts: 0, supersededFacts: 0, retiredNoiseFacts: 0 },
+    );
+    printDim(
+      t("cli.memory.consolidated", {
+        scope,
+        created: metrics.createdFacts,
+        retired: metrics.supersededFacts + metrics.retiredNoiseFacts,
+      }),
+    );
     return;
   }
 

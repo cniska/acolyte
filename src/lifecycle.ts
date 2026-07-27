@@ -12,16 +12,14 @@ import { listMcpTools } from "./mcp-client";
 import { defaultMemoryPolicy, type MemoryCommitContext, type MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { resolveScopeKey } from "./memory-ops";
+import { memoryTaskQueue } from "./memory-scheduling";
 import { createTaskActivity } from "./task-activity";
-import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
 import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
-
-const memoryCommitQueue = createInMemoryTaskQueue();
 
 export type LifecycleDeps = {
   resolveModel: typeof resolveModel;
@@ -47,7 +45,7 @@ export function scheduleMemoryCommit(
   onCommit?: (metrics: MemoryCommitMetrics) => void,
   commitFn: (ctx: MemoryCommitContext) => Promise<MemoryCommitMetrics | undefined> = commitDistiller,
   enqueueFn: (keys: readonly string[], job: () => Promise<void>) => Promise<void> = (keys, job) =>
-    memoryCommitQueue.enqueueMany(keys, job),
+    memoryTaskQueue.enqueueMany(keys, job),
 ): void {
   const queueKeys = memoryCommitQueueKeys(commitCtx);
   const debugFields = {

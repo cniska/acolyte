@@ -1,5 +1,6 @@
 import { normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
+import { consolidateMemories } from "./memory-consolidator";
 import {
   type MemoryArchiveEntry,
   type MemoryArchiveRecord,
@@ -256,10 +257,17 @@ export async function restoreMemories(
   return restored.map(toMemoryEntry);
 }
 
+export async function consolidateMemory(scope: "user" | "project", options: AddMemoryOptions = {}) {
+  const scopeKey = resolveScopeKey(scope, options);
+  if (!scopeKey) throw new Error(`Cannot resolve scope key for scope "${scope}"`);
+  return consolidateMemories(scopeKey);
+}
+
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope }),
   add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
   remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope }),
   listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope }),
   restore: (ids: readonly string[]) => restoreMemories(ids),
+  consolidate: (scope: "user" | "project") => consolidateMemory(scope),
 };

@@ -1,165 +1,108 @@
 # Memory
 
-Acolyte preserves durable context across sessions with on-demand retrieval, scoped observations, semantic recall, and background distillation.
+Acolyte memory preserves durable context across coding sessions through scoped observations and on-demand recall.
 
-## Goal
+## Design
 
-Memory should be invisible and reliable: carry forward important context without user-facing compaction workflows.
-Distill preserves durable knowledge; history pruning handles bulky transcript/tool-output payloads.
-
-## Model
-
-- **Memory Engine**: top-level continuity capability
-- **Memory Pipeline**: staged flow:
+Memory is small, scoped, and retrievable. The model decides when to search it, and the distiller keeps only facts that would be costly to rediscover. Conversation history and tool output remain transcript data; memory holds durable facts about the work and the person doing it.
 
 ```text
-ingest → normalize → commit
+Turn and task activity
+  -> distiller
+  -> scoped observation and embedding
+  -> on-demand recall in a later turn
 ```
 
-- **Memory Toolkit**: on-demand tools (`memory-search`, `memory-add`) that the model invokes when it needs context instead of upfront injection
-- **Memory Distiller**: extracts and commits observations from conversations after each request
-- **Resource ID**: canonical cross-session identity key (`proj_*` or `user_*`) used for resource-scoped memory
+## Records and scopes
 
-### On-demand access
+Memory has two record kinds:
 
-The model uses the memory toolkit to search for relevant context when it determines it needs it. Memory is not injected into the system prompt.
+- **Stored**: A fact explicitly added by a user or the `memory-add` tool.
+- **Observation**: A fact extracted from completed work by the distiller.
 
-## Sources
+Each record belongs to one scope:
 
-The observer runs after each request and promotes facts to the appropriate scope via `memory-observe` tool calls.
+| Scope | Holds | Visible to |
+|---|---|---|
+| `session` | In-progress state and temporary constraints | The current session only |
+| `project` | Architecture, tooling, conventions, and decisions | Sessions in the current project |
+| `user` | Preferences that follow the user across projects | Every session |
 
-Memory kinds in storage: `stored` (explicit user/tool-created), `observation` (distill-extracted facts).
+The canonical resource IDs are `sess_*`, `proj_*`, and `user_*`.
 
-## Controls
+## Writing memory
 
-- Memory behavior is runtime policy-driven, not request-scoped
-- Distill and recall costs are reported under the single `memory` usage metric
+After a completed request, the distiller examines the new conversation content and a task-activity digest. The digest records files changed, commands run and whether they failed, and other tool failures, so durable work facts can survive when the final response omits them.
 
-## Inspiration
+The distiller writes observations through `memory-observe(scope, content, topic?)`. A useful observation is one self-contained claim about the work that cannot be recovered by reading the code: a decision and its reason, a discovered constraint, a project convention, or a user preference. Volatile details such as line numbers, file listings, and unrealized intentions do not belong in memory.
 
-The observation model is inspired by [Mastra's Observational Memory](https://mastra.ai/docs/memory/observational-memory). Acolyte adapts this idea with explicit scope promotion via `memory-observe` tool calls and on-demand retrieval via the memory toolkit.
+Observations are deduplicated within their scope and receive an embedding. A `topic` is an optional single-word label, such as `testing`, `auth`, or `config`.
 
-## Distill behavior
+Before writing, the distiller can inspect relevant existing records without marking them as recalled. It may write nothing, or write a sharper, corrected, merged, or split successor. A successor retires only records the distiller was shown, in its own scope, and only after the successor was stored.
 
-- the distiller input leads with a task-activity digest — the files a write tool changed, the shell commands run and whether they failed, and non-command failures — derived from the turn's tool call log, so durable work facts survive even when the prose omits them
-- the observer extracts facts from conversations via `memory-observe(scope, content, topic?)` tool calls
-- the fact bar: one self-contained claim per call, about the work rather than the conversation, that could not be recovered by reading the code — decisions and their reasons, constraints the work discovered, project conventions, user preferences. Volatile specifics (line numbers, counts, directory listings, a constant's current value) and unrealized intentions are excluded, and a turn that establishes nothing durable commits nothing
-- each call produces one observation record with its own embedding
-- scope via the `scope` parameter:
-  - `"project"` — project-scoped facts (architecture, tooling, conventions)
-  - `"user"` — user-scoped facts (preferences that carry across projects)
-  - `"session"` — session-scoped facts (in-progress state, temporary constraints)
-  - if a preference is project-scoped, use `"project"` not `"user"`
-- topic via the optional `topic` parameter — single-word label (e.g. testing, auth, config)
-- dedup: an observation matching any existing one in the same scope is skipped at write time; scopes dedup independently, so the same fact can be held at both project and session scope
-- the distiller sees only messages added since its last commit for that session, so a turn's work is never re-read
-- the distiller also sees the facts it already holds that are relevant to the turn — up to `policy.recallCandidateLimit`, fetched through the same hybrid recall, each shown with its id — so it can skip a fact already held, or record a sharper, corrected, merged, or split version that supersedes what it replaces via `memory-observe(supersedes)`
-- this read does not mark those records recalled: distillation reading the corpus to converge it is not the model recalling a fact, and counting it would inflate the evidence a retirement pass weighs
-- a supersession is honored only for ids the distiller was shown, in the scope being written to, and only when a successor was actually stored — so a deduplicated write supersedes nothing rather than leaving a dangling lineage
-- candidate selection is isolated in `selectSupersessionCandidates`; a candidate lookup failure yields no candidates instead of failing the commit
+## Recalling memory
 
-## Retirement
+The model calls `memory-search` when prior context is useful. Durable memory is never injected wholesale into the system prompt. `memory-add` lets the model explicitly save a user- or project-scoped fact.
 
-Retirement moves a row from `memories` to `memory_archive` and drops its embedding; the active table *is* the active set, so no recall path needs a status filter. Deletion stays available as `/memory rm`, and it is the only operation that destroys a record.
+Recall first limits records to scopes the caller could write. It then ranks them with cosine similarity and TF-IDF weighted token overlap. Topic embedding matches narrow the candidate set when enough matching records exist; otherwise recall uses the full visible corpus. A missing query embedding returns a classified error rather than a partially ranked result.
 
-Distillation is the first caller: a superseding observation retires what it replaced. Capacity and noise retirement have no caller yet.
+The SQLite and cloud backends use the same hybrid ranking policy. The cloud backend uses pgvector to pre-filter candidates before applying token-overlap re-ranking.
 
-Every retirement carries a disposition saying why the record left:
+Embedding requests use the selected provider. An `embeddingBaseUrl` routes only embeddings to an OpenAI-compatible API; its credential comes from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. See [Configuration](configuration.md) for provider setup.
 
-- `superseded` — one or more successor records replaced it. `by` lists every successor id, so a merge (many archived, one successor) and a split (one archived, many successors) share the same lineage shape
-- `capacity` — retired under capacity pressure
-- `noise` — judged not a fact
+## Retirement and restore
 
-Restoring moves the row back and regenerates its embedding, since retirement dropped it and an unembedded record is unrecallable.
+Retirement moves a record from the active set to `memory_archive` and drops its embedding. It never destroys the record; `/memory rm` is the only destructive memory operation.
 
-Surfaces:
+| Disposition | Meaning |
+|---|---|
+| `superseded` | One or more successor records replaced it. The archive records every successor ID. |
+| `capacity` | The record left under capacity pressure. |
+| `noise` | The record was judged not to be a durable fact. |
 
-- `/memory [scope] --archived` and `acolyte memory list [scope] --archived` — the archive with each record's disposition and lineage
-- `acolyte memory restore <id>...` — return records to the active set
-- debug events `memory.retire` and `memory.restore`
+Archived records are excluded from active listing and recall. Restoring a record returns it to the active set and regenerates its embedding.
 
-## Runtime guarantees
+Distillation and explicit consolidation retire records. Consolidation operates only on durable user and project scopes. It batches tagged records by topic, clusters untagged records by embedding similarity when embeddings are available, and leaves unclustered untagged records alone. Its private `memory-merge` model call can write successor observations tied to shown IDs or archive shown noise. It writes every successor before retiring its sources and shares the durable-scope queue with distillation.
 
-- commit scheduling is best-effort background work at lifecycle finalize
-- commits are serialized per session and durable scope per process through a keyed task queue seam
-- agent input assembly applies deterministic rolling history fitting (newest-first, truncate-to-fit under remaining budget, conversational turns prioritized over tool payloads)
-- debug observability uses lifecycle-scoped events (`lifecycle.memory.load_*`, `lifecycle.memory.commit_*`) through standard debug channels
-- commit debug includes promotion counters (`project_promoted_facts`, `user_promoted_facts`, `session_scoped_facts`, `superseded`, `candidates`)
-- distill record writes use the configured storage backend for atomic persistence
-- hybrid recall: entries scored by cosine similarity + TF-IDF weighted token overlap (see below). A query that cannot be embedded fails recall with a classified error naming the cause
+Use `/memory [scope] --archived` or `acolyte memory list [scope] --archived` to inspect the archive, `acolyte memory restore <id>...` to restore records, and `/memory consolidate [all|user|project]` or `acolyte memory consolidate [all|user|project]` to converge durable scopes. Debug events include `memory.retire` and `memory.restore`.
 
-## Recall
+## Runtime behavior
 
-Recall is scoped to the caller's context before ranking — a record is returned only if the caller could have written to its scope:
+- **Best effort**: Distillation runs in lifecycle finalize and cannot delay or fail the user-facing response.
+- **Serialization**: Commits for a session and durable scope are serialized in-process through a keyed queue.
+- **Observability**: Lifecycle debug events record memory loads and commits; commit metrics include promotion, supersession, candidate, and token counts.
+- **Storage**: Writes use the configured backend for atomic persistence.
 
-- `"session"` — the current session's own facts (when a session id is known); other sessions are never returned
-- `"project"` — facts for the current project, derived from the workspace; other projects are never returned
-- `"user"` — always visible
+## Storage
 
-An explicit `scope` argument narrows recall to that single scope.
+Memory uses SQLite by default: `memory.db` in the data directory, with `memories` and `memory_embeddings` tables, BLOB vectors, and WAL mode. With the `cloudSync` feature flag, it uses the cloud Postgres and pgvector backend configured by `acolyte login`. See [Paths](paths.md) and [Cloud](cloud.md).
 
-Memory records are embedded at write time using the provider embedding API. At query time, entries are scored by a weighted blend of two signals:
+## Benchmarks
 
-- **Cosine similarity** (weight 0.8) — semantic relevance via embedding distance
-- **TF-IDF token overlap** (weight 0.2) — exact keyword matching where rare tokens like proper nouns and tool names score higher than common words
-
-Both the local SQLite and cloud backends use this hybrid scoring. The cloud path uses native pgvector cosine distance to pre-filter candidates, then applies token overlap to re-rank the shortlist.
-
-When observations have topic tags (assigned through the `topic` field of `memory-observe`), the search pipeline filters to matching topics before scoring. Topic matching uses embedding similarity between the query and stored topic labels. If the filtered set is too small, the pipeline falls back to the full corpus.
-
-Weights and thresholds are defined in `MemoryPolicy` (`cosineWeight`, `tokenWeight`, `topicThreshold`, `minTopicFilterSize`).
-
-### Embedding endpoint
-
-By default, embeddings use the explicitly selected provider and its credentials. `embeddingBaseUrl` instead routes embedding requests only to an OpenAI-compatible endpoint, leaving chat on its configured provider; its key comes from `ACOLYTE_EMBEDDING_API_KEY` or the private credentials file, never project configuration. A query that cannot be embedded fails with a classified error rather than returning partially ranked results.
-
-### Benchmark results
-
-Measured on LoCoMo (10 conversations, 1650 queries, 2541 observations) with `text-embedding-3-small`:
+Measured on LoCoMo, 10 conversations, 1,650 queries, and 2,541 observations with `text-embedding-3-small`:
 
 | Configuration | R@5 | NDCG@5 |
-|---|---|---|
+|---|---:|---:|
 | Pure cosine, raw turns | 0.599 | 0.480 |
 | Pure cosine, observations | 0.650 | 0.580 |
 | Hybrid scoring | 0.669 | 0.602 |
 | Hybrid + TF-IDF | 0.705 | 0.651 |
 | Hybrid + TF-IDF (large model) | 0.722 | 0.652 |
 
-Input quality (distillation) accounts for a larger gain than any retrieval algorithm.
-
-Harness: `scripts/run-memory-bench.ts`. Adapters: `scripts/memory-bench-scenarios.ts`.
-
-## Storage
-
-Two backends, selected via the `cloudSync` feature flag (default: SQLite):
-
-- **SQLite** (default): `memory.db` in the data directory (see [Paths](paths.md)), `memories` + `memory_embeddings` tables, BLOB vectors, WAL mode
-- **Cloud** (feature-flagged): configured via `acolyte login`, backed by Postgres + pgvector. See [Cloud](cloud.md).
-
-## Extension seams
-
-- compose sources via `createMemoryRegistry()`
-- keep lifecycle contract stable while swapping strategies/storage behind sources
-
-## Memory toolkit
-
-The memory toolkit (`memory-toolkit.ts`) exposes two tools:
-
-- **memory-search**: search stored memories by query, with optional scope filter. Ranked semantically; fails with a classified error when the query cannot be embedded, so the model can distinguish an empty corpus from unavailable recall.
-- **memory-add**: add a new stored memory with content and scope (`user` or `project`).
-
-These tools are the primary interface for the model to access and manage memory at runtime.
+Input quality from distillation accounts for a larger gain than any retrieval algorithm. The harness is `scripts/run-memory-bench.ts`; its scenarios are in `scripts/memory-bench-scenarios.ts`.
 
 ## Key files
 
-- `src/memory-ops.ts` — top-level memory operations (list, add, remove)
-- `src/memory-contract.ts` — type definitions for entries, scopes, records, and MemoryStore interface
-- `src/memory-store.ts` — SQLite-backed MemoryStore implementation and store factory
-- `src/cloud-client.ts` — cloud API MemoryStore implementation (feature-flagged)
-- `src/memory-distiller.ts` — memory distiller, observer prompt, commit pipeline
-- `src/memory-toolkit.ts` — on-demand memory tools (search, add)
-- `src/memory-embedding.ts` — provider embedding API wrapper, cosine similarity, TF-IDF, and topic filtering
+- `src/memory-contract.ts`: Memory schemas, records, scopes, and storage contract.
+- `src/memory-ops.ts`: User-facing memory operations.
+- `src/memory-distiller.ts`: Observation prompt and commit pipeline.
+- `src/memory-consolidator.ts`: Durable-scope convergence batches and private merge runner.
+- `src/memory-recall.ts`: Scope filtering and hybrid ranking.
+- `src/memory-toolkit.ts`: Model-facing search and add tools.
+- `src/memory-store.ts`: SQLite store and store factory.
+- `src/cloud-client.ts`: Feature-flagged cloud store.
+- `src/memory-embedding.ts`: Embedding, scoring, and topic filtering.
 
 ## Further reading
 
-[Nothing Forgotten](https://crisu.me/blog/nothing-forgotten) — why context compaction is the wrong approach to AI memory
+[Nothing Forgotten](https://crisu.me/blog/nothing-forgotten) explains why context compaction is the wrong model for AI memory.
