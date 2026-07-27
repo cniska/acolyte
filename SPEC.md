@@ -57,7 +57,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration.
 - **FR-27** — `acolyte auth [provider]` authenticates a provider by API key or, where supported, subscription, and reports/removes credentials (see §5 SEC).
 - **FR-28** — `acolyte config list|set|unset` reads and writes runtime configuration at user or project scope.
-- **FR-29** — `acolyte memory list|add` manages persistent memory notes (see §3 MEM).
+- **FR-29** — `acolyte memory list|add|restore|consolidate` manages persistent memory notes and their archive (see §3 MEM).
 - **FR-30** — `acolyte logs` tails and filters the daemon log by count, level, session, and time window.
 - **FR-31** — `acolyte trace [list] | trace task <id>` inspects task timelines (see §8 OBS).
 - **FR-32** — `acolyte tool <tool-id> [args...]` runs a single tool directly, still subject to the workspace boundary.

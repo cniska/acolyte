@@ -76,6 +76,7 @@ Surfaces:
 
 - `/memory [scope] --archived` and `acolyte memory list [scope] --archived` — the archive with each record's disposition and lineage
 - `acolyte memory restore <id>...` — return records to the active set
+- `/memory consolidate [all|user|project]` and `acolyte memory consolidate [all|user|project]` — manually converge durable scopes; both default to all
 - debug events `memory.retire` and `memory.restore`
 
 ## Runtime guarantees
