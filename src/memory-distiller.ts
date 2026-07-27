@@ -13,6 +13,7 @@ import {
   type MemoryRecord,
   type MemoryStore,
   memoryScopeSchema,
+  memoryTopicSchema,
   scopeFromKey,
 } from "./memory-contract";
 import type { embedText } from "./memory-embedding";
@@ -29,7 +30,7 @@ import { toFunctionTool } from "./tool-contract";
 const MEMORY_OBSERVE_INPUT_SCHEMA = z.object({
   scope: memoryScopeSchema,
   content: z.string().trim().min(1),
-  topic: z.string().optional(),
+  topic: memoryTopicSchema.or(z.string().regex(/^\s*$/)).optional(),
   supersedes: z.array(z.string()).default([]),
 });
 

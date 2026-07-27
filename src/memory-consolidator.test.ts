@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createConsolidationBatches, createMemoryConsolidator } from "./memory-consolidator";
 import type { MemoryDisposition, MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
-import { createMemoryPolicy } from "./memory-contract";
+import { createMemoryPolicy, memoryMergeResultSchema } from "./memory-contract";
 import { embeddingToBuffer } from "./memory-embedding";
 
 type RetireCall = { ids: readonly string[]; disposition: MemoryDisposition };
@@ -75,6 +75,14 @@ function createStore(records: MemoryRecord[]) {
 }
 
 describe("memory consolidation", () => {
+  test("rejects a multi-word successor topic", () => {
+    expect(
+      memoryMergeResultSchema.safeParse({
+        successors: [{ content: "Use Bun.", topic: "build tooling", supersedes: ["mem_known0001"] }],
+      }).success,
+    ).toBe(false);
+  });
+
   test("persists a successor before archiving every superseded source", async () => {
     const source = [
       record("mem_old000001", "tests run with bun", "tooling"),

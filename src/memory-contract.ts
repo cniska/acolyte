@@ -93,6 +93,7 @@ export interface MemoryDistiller {
 
 export const memoryKindSchema = z.enum(["observation", "stored"]);
 export type MemoryKind = z.infer<typeof memoryKindSchema>;
+export const memoryTopicSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 export const memoryRecordSchema = z.object({
   id: memoryIdSchema,
@@ -119,7 +120,7 @@ export const memoryMergeResultSchema = z.object({
     .array(
       z.object({
         content: z.string().trim().min(1),
-        topic: z.string().trim().min(1).nullable().optional(),
+        topic: memoryTopicSchema.nullable().optional(),
         supersedes: z.array(memoryIdSchema).min(1),
       }),
     )
