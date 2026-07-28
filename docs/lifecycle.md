@@ -8,10 +8,10 @@ resolve → prepare → generate → finalize
 
 ## Phase contracts
 
-- **resolve**: pick model and policy
-- **prepare**: build base agent input, tools, session context, and policy state
-- **generate**: run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
-- **finalize**: accept the terminal step, emit final response and summary events
+- **resolve** — pick model and policy
+- **prepare** — build base agent input, tools, session context, and policy state
+- **generate** — run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
+- **finalize** — accept the terminal step, emit final response and summary events
 
 ## Terminal-step classification
 

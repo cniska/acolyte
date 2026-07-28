@@ -17,8 +17,8 @@ Turn and task activity
 
 Memory has two record kinds:
 
-- **Stored**: A fact explicitly added by a user or the `memory-add` tool.
-- **Observation**: A fact extracted from completed work by the distiller.
+- **Stored** — A fact explicitly added by a user or the `memory-add` tool.
+- **Observation** — A fact extracted from completed work by the distiller.
 
 Each record belongs to one scope:
 
@@ -68,17 +68,16 @@ Use `/memory [scope] --archived` or `acolyte memory list [scope] --archived` to 
 
 ## Runtime behavior
 
-- **Best effort**: Distillation runs in lifecycle finalize and cannot delay or fail the user-facing response.
-- **Serialization**: Commits for a session and durable scope are serialized in-process through a keyed queue.
-- **Observability**: Lifecycle debug events record memory loads and commits; commit metrics include promotion, supersession, candidate, and token counts.
-- **Storage**: Writes use the configured backend for atomic persistence.
+- **Best effort** — distillation runs in lifecycle finalize and cannot delay or fail the user-facing response.
+- **Serialization** — commits for a session and durable scope are serialized in-process through a keyed queue.
+- **Observability** — lifecycle debug events record memory loads and commits; commit metrics include promotion, supersession, candidate, and token counts.
+- **Storage** — writes use the configured backend for atomic persistence.
 
 ## Storage
 
 Memory uses SQLite by default: `memory.db` in the data directory, with `memories` and `memory_embeddings` tables, BLOB vectors, and WAL mode. With the `cloudSync` feature flag, it uses the cloud Postgres and pgvector backend configured by `acolyte login`. See [Paths](paths.md) and [Cloud](cloud.md).
 
 ## Benchmarks
-
 Measured on LoCoMo, 10 conversations, 1,650 queries, and 2,541 observations with `text-embedding-3-small`:
 
 | Configuration | R@5 | NDCG@5 |
@@ -93,14 +92,14 @@ Input quality from distillation accounts for a larger gain than any retrieval al
 
 ## Key files
 
-- `src/memory-contract.ts`: Memory schemas, records, scopes, and storage contract.
-- `src/memory-ops.ts`: User-facing memory operations.
-- `src/memory-distiller.ts`: Observation prompt and commit pipeline.
-- `src/memory-recall.ts`: Scope filtering and hybrid ranking.
-- `src/memory-toolkit.ts`: Model-facing search and add tools.
-- `src/memory-store.ts`: SQLite store and store factory.
-- `src/cloud-client.ts`: Feature-flagged cloud store.
-- `src/memory-embedding.ts`: Embedding, scoring, and topic filtering.
+- `src/memory-contract.ts` — memory schemas, records, scopes, and storage contract.
+- `src/memory-ops.ts` — user-facing memory operations.
+- `src/memory-distiller.ts` — observation prompt and commit pipeline.
+- `src/memory-recall.ts` — scope filtering and hybrid ranking.
+- `src/memory-toolkit.ts` — model-facing search and add tools.
+- `src/memory-store.ts` — SQLite store and store factory.
+- `src/cloud-client.ts` — feature-flagged cloud store.
+- `src/memory-embedding.ts` — embedding, scoring, and topic filtering.
 
 ## Further reading
 

@@ -9,13 +9,13 @@ All metrics are extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 ## Methodology
 
 - **Source lines** = total lines in included source files, including code, comments, and blanks
-- Code, comment, and blank line counts are reported separately; comment classification is based on leading comment markers
-- Test files, known generated directories, and source files over **10k lines** are excluded
-- Metrics normalized **per 1k source lines** where applicable
-- Dependencies are direct declarations detected in the included project manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
-- Each project is measured from a fresh shallow clone of its origin's default branch
-- Snapshot revisions tie each result to the exact source measured
-- Projects are ordered by language (TypeScript, Rust, Go), with Acolyte first and others alphabetical within each language
+- code, comment, and blank line counts are reported separately; comment classification is based on leading comment markers
+- test files, known generated directories, and source files over **10k lines** are excluded
+- metrics normalized **per 1k source lines** where applicable
+- dependencies are direct declarations detected in the included project manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
+- each project is measured from a fresh shallow clone of its origin's default branch
+- snapshot revisions tie each result to the exact source measured
+- projects are ordered by language (TypeScript, Rust, Go), with Acolyte first and others alphabetical within each language
 
 These are structural signals, not measures of model quality, runtime correctness, or task success. Repository-wide counts are especially difficult to compare when a project includes multiple clients, products, or bundled applications.
 
@@ -136,11 +136,11 @@ Acolyte has the highest `.safeParse()` call density among the TypeScript project
 
 At this snapshot, Acolyte has:
 
-- The lowest measured TypeScript escape-hatch density
-- The smallest average module size and lowest large-file density
-- The fewest runtime dependencies
-- The highest measured TypeScript validation-call density
-- A 1.03 test-to-source line ratio
+- the lowest measured TypeScript escape-hatch density
+- the smallest average module size and lowest large-file density
+- the fewest runtime dependencies
+- the highest measured TypeScript validation-call density
+- a 1.03 test-to-source line ratio
 
 These signals describe source structure and engineering patterns. They do not rank model quality or user-visible reliability.
 

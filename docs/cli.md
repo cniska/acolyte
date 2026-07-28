@@ -4,23 +4,23 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 
 ## Commands
 
-- `acolyte`: start interactive chat
-- `acolyte auth [provider]`: authenticate a provider (API key or subscription); `--key`, `--subscription`, `--logout`
-- `acolyte login`: authenticate with the cloud (feature-flagged: `features.cloudSync`)
-- `acolyte logout`: remove cloud credentials (feature-flagged: `features.cloudSync`)
-- `acolyte resume [id]`: continue a previous session
-- `acolyte run "<prompt>"`: one-shot execution
-- `acolyte run --file <path> "<prompt>"`: one-shot with file context
-- `acolyte history`: list sessions
-- `acolyte start|stop|restart|ps`: manage server lifecycle
-- `acolyte status`: show server status
-- `acolyte memory list|add|restore`: manage memory and its archive
-- `acolyte config list|set|unset`: manage configuration
-- `acolyte skill <name> [prompt]`: run a prompt with an active skill
-- `acolyte logs`: view server logs
-- `acolyte tool <tool-id> [args...]`: run a tool directly
-- `acolyte trace list|task <id>`: inspect server lifecycle traces
-- `acolyte update`: update to latest version
+- `acolyte` — start interactive chat
+- `acolyte auth [provider]` — authenticate a provider (API key or subscription); `--key`, `--subscription`, `--logout`
+- `acolyte login` — authenticate with the cloud (feature-flagged: `features.cloudSync`)
+- `acolyte logout` — remove cloud credentials (feature-flagged: `features.cloudSync`)
+- `acolyte resume [id]` — continue a previous session
+- `acolyte run "<prompt>"` — one-shot execution
+- `acolyte run --file <path> "<prompt>"` — one-shot with file context
+- `acolyte history` — list sessions
+- `acolyte start|stop|restart|ps` — manage server lifecycle
+- `acolyte status` — show server status
+- `acolyte memory list|add|restore` — manage memory and its archive
+- `acolyte config list|set|unset` — manage configuration
+- `acolyte skill <name> [prompt]` — run a prompt with an active skill
+- `acolyte logs` — view server logs
+- `acolyte tool <tool-id> [args...]` — run a tool directly
+- `acolyte trace list|task <id>` — inspect server lifecycle traces
+- `acolyte update` — update to latest version
 
 Run `acolyte <command> help` for detailed usage.
 

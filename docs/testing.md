@@ -12,8 +12,8 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 ## Unit test boundary
 
 - `*.test.ts` and `*.test.tsx` should avoid filesystem writes, subprocesses, and network calls.
-- If a test needs real fs/process/network behavior, use `*.int.test.ts` instead.
-- Prefer mocks for UI/layout-focused unit tests.
+- if a test needs real fs/process/network behavior, use `*.int.test.ts` instead.
+- prefer mocks for UI/layout-focused unit tests.
 
 ## TUI unit testing
 
@@ -23,7 +23,7 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 ## Integration test boundary
 
 - Tool integration tests must dispatch through `toolsForAgent({ workspace })` and call `tools.<name>.execute()`, not the underlying function directly. This exercises budget checks, hooks, caching, and call logging — the same path production uses.
-- Effect integration tests must wire handlers via `attachLifecycleEffectHandlers(ctx, session)` and verify behavior through debug events, not call `effect.run()` directly.
+- effect integration tests must wire handlers via `attachLifecycleEffectHandlers(ctx, session)` and verify behavior through debug events, not call `effect.run()` directly.
 - Direct function calls (e.g., `editFile()`, `runShellCommand()`) belong in unit tests when testing the function contract itself. Integration tests test wiring.
 
 ## Test suites
@@ -32,14 +32,14 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 
 ## Commands
 
-- Full baseline: `bun run verify`
-- All tests: `bun test`
-- Unit only: `bun run test:unit`
-- Integration only: `bun run test:int`
-- Visual only: `bun run test:tui`
-- Perf baseline: `bun run test:perf`
-- Behavior harness: `bun run behavior:run --model anthropic/claude-sonnet-4-6`
-- Coverage report (unit tests only): `bun run test:coverage`
+- full baseline: `bun run verify`
+- all tests: `bun test`
+- unit only: `bun run test:unit`
+- integration only: `bun run test:int`
+- visual only: `bun run test:tui`
+- perf baseline: `bun run test:perf`
+- behavior harness: `bun run behavior:run --model anthropic/claude-sonnet-4-6`
+- coverage report (unit tests only): `bun run test:coverage`
 
 ## Behavior harness
 

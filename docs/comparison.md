@@ -53,10 +53,10 @@ Every Acolyte request flows through four phases, each implemented as its own mod
 resolve → prepare → generate → finalize
 ```
 
-- **resolve**: pick model and policy
-- **prepare**: wire tools and session context
-- **generate**: run the model with tool calls; effects apply per tool result
-- **finalize**: accept the terminal step, persist results, and emit the response
+- **resolve** — pick model and policy
+- **prepare** — wire tools and session context
+- **generate** — run the model with tool calls; effects apply per tool result
+- **finalize** — accept the terminal step, persist results, and emit the response
 
 The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces one per-turn tool-call limit to prevent runaway loops.
 

@@ -25,13 +25,13 @@ Hooks:
 React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
-- **reconciler:** React's `react-reconciler` drives updates against a TUI DOM tree
-- **TUI DOM:** lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes)
-- **serialize:** walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions
-- **render loop:** on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion is re-rendered (see [Frozen Overflow](glossary.md)). Erase and repaint are atomic within a single DEC 2026 synchronized output block to prevent flicker
-- **resize:** a debounced resize listener resets frozen overflow state and triggers a re-render with updated dimensions
-- **focus repair:** on terminal focus-in (tab switch), frozen overflow state is invalidated and the active region is repainted via the normal commit path
-- **DEC 2026:** synchronized output (BSU/ESU) wraps all terminal writes to prevent partial-frame rendering. Skipped in tmux where DEC 2026 is not supported
+- **reconciler** — React's `react-reconciler` drives updates against a TUI DOM tree
+- **TUI DOM** — lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes)
+- **serialize** — walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions
+- **render loop** — on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion is re-rendered (see [Frozen Overflow](glossary.md)). Erase and repaint are atomic within a single DEC 2026 synchronized output block to prevent flicker
+- **resize** — a debounced resize listener resets frozen overflow state and triggers a re-render with updated dimensions
+- **focus repair** — on terminal focus-in (tab switch), frozen overflow state is invalidated and the active region is repainted via the normal commit path
+- **DEC 2026** — synchronized output (BSU/ESU) wraps all terminal writes to prevent partial-frame rendering. Skipped in tmux where DEC 2026 is not supported
 
 ## Input handling
 
@@ -41,20 +41,20 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 
 ## Chat commands
 
-- `/new`: start new session
-- `/clear`: clear transcript
-- `/resume`: resume a previous session
-- `/sessions`: show sessions
-- `/workspaces`: manage parallel workspaces (feature-flagged)
-- `/model [id]`: change model
-- `/status`: show server status
-- `/usage`: show token usage
-- `/memory [all|user|project]`: show memory notes
-- `/memory add [--user|--project] <text>`: save memory note
-- `/memory rm <id-prefix>`: remove memory note
-- `/skill <name>`: run a skill command
-- `/skills`: show skills picker
-- `/exit`: exit chat
+- `/new` — start new session
+- `/clear` — clear transcript
+- `/resume` — resume a previous session
+- `/sessions` — show sessions
+- `/workspaces` — manage parallel workspaces (feature-flagged)
+- `/model [id]` — change model
+- `/status` — show server status
+- `/usage` — show token usage
+- `/memory [all|user|project]` — show memory notes
+- `/memory add [--user|--project] <text>` — save memory note
+- `/memory rm <id-prefix>` — remove memory note
+- `/skill <name>` — run a skill command
+- `/skills` — show skills picker
+- `/exit` — exit chat
 
 ## File attachments
 
@@ -67,11 +67,11 @@ Use `@path` in chat input to attach file or directory context:
 
 ## Design constraints
 
-- **Minimal primitive set.** Every new prop becomes renderer debt. Add only what's needed.
-- **Layout rules are a product contract.** Add tests before adding layout semantics.
+- **Minimal primitive set** — every new prop becomes renderer debt. Add only what's needed.
+- **Layout rules are a product contract** — add tests before adding layout semantics.
 - **No "Ink, but homegrown."** If a feature doesn't materially help Acolyte's UX, don't add it.
-- **Centralized input handling.** Terminal key parsing gets fragile fast — keep it in one place.
-- **Terminal edge cases.** Wide glyphs, combining characters, ANSI length vs display width all need care. `stripAnsiLength`, `padLine`, and `clipLine` in `serialize.ts` handle width calculations.
+- **Centralized input handling** — terminal key parsing gets fragile fast — keep it in one place.
+- **Terminal edge cases** — wide glyphs, combining characters, ANSI length vs display width all need care. `stripAnsiLength`, `padLine`, and `clipLine` in `serialize.ts` handle width calculations.
 
 ## Testing
 
@@ -87,12 +87,12 @@ Use `@path` in chat input to attach file or directory context:
 
 ## Key files
 
-- `src/tui/index.ts` — Public API surface.
+- `src/tui/index.ts` — public API surface.
 - `src/tui/components.tsx` — `Box`, `Text`, `Static` primitives.
 - `src/tui/dom.ts` — TUI DOM node types.
-- `src/tui/serialize.ts` — Tree-to-string serialization with static/active split.
-- `src/tui/render.ts` — Terminal render loop, raw mode, cursor management.
-- `src/tui/input.ts` — Raw stdin dispatcher.
+- `src/tui/serialize.ts` — tree-to-string serialization with static/active split.
+- `src/tui/render.ts` — terminal render loop, raw mode, cursor management.
+- `src/tui/input.ts` — raw stdin dispatcher.
 - `src/tui/context.ts` — `AppContext`, `InputContext`, `KeyEvent`.
 - `src/tui/hooks.ts` — `useApp`, `useInput`.
 - `src/tui/host-config.ts` — React reconciler host config.

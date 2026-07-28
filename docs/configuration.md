@@ -3,8 +3,8 @@
 Acolyte merges user and project configuration for models, providers, localization, logging, memory, lifecycle behavior, and feature flags.
 
 Paths (see [Paths](paths.md) for platform-specific details):
-- User: config dir + `config.toml`
-- Project: `<cwd>/.acolyte/config.toml`
+- user: config dir + `config.toml`
+- project: `<cwd>/.acolyte/config.toml`
 
 ## Common commands
 
@@ -74,9 +74,9 @@ The models your subscription serves then route through it. Other OpenAI models f
 
 Each provider has a configurable base URL with a sensible default:
 
-- `openaiBaseUrl`: OpenAI API base (default: `https://api.openai.com/v1`). Set to a local endpoint for OpenAI-compatible providers (Ollama, vLLM, etc.).
-- `anthropicBaseUrl`: Anthropic API base (default: `https://api.anthropic.com/v1`). Must end with `/v1`.
-- `googleBaseUrl`: Google AI API base (default: `https://generativelanguage.googleapis.com`).
+- `openaiBaseUrl` — OpenAI API base (default: `https://api.openai.com/v1`). Set to a local endpoint for OpenAI-compatible providers (Ollama, vLLM, etc.).
+- `anthropicBaseUrl` — Anthropic API base (default: `https://api.anthropic.com/v1`). Must end with `/v1`.
+- `googleBaseUrl` — Google AI API base (default: `https://generativelanguage.googleapis.com`).
 
 ## Local models
 
@@ -104,12 +104,12 @@ It is deliberately not project-scoped: a repository-controlled config must not r
 
 ## Localization
 
-- `locale`: active UI language (defaults to `en`).
+- `locale` — active UI language (defaults to `en`).
 - English messages are defined in `src/i18n/en.ts`. Additional locales are loaded from `src/i18n/locales/*.json` at startup.
 
 ## Logging
 
-- `logFormat`: log output format (`logfmt` | `json`, default: `logfmt`).
+- `logFormat` — log output format (`logfmt` | `json`, default: `logfmt`).
 
 `logfmt` emits one `key=value` line per entry:
 

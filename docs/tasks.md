@@ -63,7 +63,7 @@ Per-connection serial execution — one active task at a time, others queue up.
 
 - in-memory `TaskStore` (Map-based, not persisted across restarts)
 - max 1000 tasks by default, oldest terminal tasks evicted first
-- `TaskRecord`: `{ id, state, createdAt, updatedAt }` — immutable, replaced on transition
+- `TaskRecord` — `{ id, state, createdAt, updatedAt }` — immutable, replaced on transition
 
 ## Task vs session
 

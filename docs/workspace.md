@@ -40,8 +40,8 @@ Acolyte has no per-tool approval layer. Once a task begins, tools can work withi
 
 Boundary violations are returned as structured tool errors:
 
-- `code`: `E_SANDBOX_VIOLATION`
-- `kind`: `sandbox_violation`
+- `code` — `E_SANDBOX_VIOLATION`
+- `kind` — `sandbox_violation`
 
 ## Workspace profile
 

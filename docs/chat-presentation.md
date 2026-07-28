@@ -49,31 +49,31 @@ A section is **finalized** only when its bytes can never change. Streaming prose
 finalized section → immutable slice → terminal scrollback → removed from active scene
 ```
 
-- **Commit once:** a promoted slice's physical lines are exactly what rendered live.
-- **Keep the tail small:** promoted slices leave the active scene, so repainting only rebuilds active transcript content.
-- **Promote sections, not lines:** resize changes line indices on rewrap; whole sections remain stable.
-- **Resume semantically:** sessions persist transcript rows, not physical scenes. Resume re-lays them out under current constraints.
+- **Commit once** — a promoted slice's physical lines are exactly what rendered live.
+- **Keep the tail small** — promoted slices leave the active scene, so repainting only rebuilds active transcript content.
+- **Promote sections, not lines** — resize changes line indices on rewrap; whole sections remain stable.
+- **Resume semantically** — sessions persist transcript rows, not physical scenes. Resume re-lays them out under current constraints.
 
 ## Layout ownership
 
-- **One owner:** layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, composer geometry, and cursor coordinates.
-- **Local coordinates:** sub-layouts receive only a width budget and lay out from column zero. Composition alone applies physical insets and frames.
-- **Shared tool layout:** CLI output and interactive chat consume the same tool layout, preserving ordering, headers, diff gutters, fitting, and truncation.
-- **One truncation rule:** content exceeding any width budget, terminal-wide or nested, receives a trailing ellipsis through the grapheme-aware layout helper.
+- **One owner** — layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, composer geometry, and cursor coordinates.
+- **Local coordinates** — sub-layouts receive only a width budget and lay out from column zero. Composition alone applies physical insets and frames.
+- **Shared tool layout** — CLI output and interactive chat consume the same tool layout, preserving ordering, headers, diff gutters, fitting, and truncation.
+- **One truncation rule** — content exceeding any width budget, terminal-wide or nested, receives a trailing ellipsis through the grapheme-aware layout helper.
 
 ## Input ownership
 
-- **Controller:** owns logical composer text and cursor through a geometry-free reducer: insert, delete, word motion, clear, and absolute cursor placement.
-- **Layout:** resolves visual up/down motion to a logical offset before dispatch and is the sole owner of caret coordinates.
-- **Scene:** draws the caret with the `cursor` role, so its column cannot disagree with rendered wrapping.
+- **Controller** — owns logical composer text and cursor through a geometry-free reducer: insert, delete, word motion, clear, and absolute cursor placement.
+- **Layout** — resolves visual up/down motion to a logical offset before dispatch and is the sole owner of caret coordinates.
+- **Scene** — draws the caret with the `cursor` role, so its column cannot disagree with rendered wrapping.
 
 ## Invariants
 
 - **Semantic state** contains no React nodes, ANSI values, palette colors, glyphs, terminal widths, wrapped strings, or layout calculations.
-- **Single geometry owner:** one module owns all display-cell measurement, wrapping, gutters, markers, borders, fill, ellipsis, composer geometry, and cursor coordinates.
-- **Fixed theme boundary:** layout selects finite semantic style roles; the fixed internal theme resolves them to terminal-neutral styles; the renderer serializes styles to ANSI. This is not user-configurable theming.
-- **Promotion integrity:** only immutable finalized sections enter scrollback, and their physical lines are exactly what rendered live; they are never mutated after commit.
-- **No parallel presentation systems:** chat cannot keep React-owned geometry alongside scene-owned geometry for the same section.
+- **Single geometry owner** — one module owns all display-cell measurement, wrapping, gutters, markers, borders, fill, ellipsis, composer geometry, and cursor coordinates.
+- **Fixed theme boundary** — layout selects finite semantic style roles; the fixed internal theme resolves them to terminal-neutral styles; the renderer serializes styles to ANSI. This is not user-configurable theming.
+- **Promotion integrity** — only immutable finalized sections enter scrollback, and their physical lines are exactly what rendered live; they are never mutated after commit.
+- **No parallel presentation systems** — chat cannot keep React-owned geometry alongside scene-owned geometry for the same section.
 
 ## Key files
 

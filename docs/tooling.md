@@ -8,9 +8,9 @@ lifecycle → budget → cache → toolkit → registry
 
 ## Layers
 
-- **budget**: step-budget check (`checkStepBudget()`) inlined into tool execution
-- **toolkit**: domain tool definitions (see table below)
-- **registry**: tool registration and agent-facing tool surface
+- **budget** — step-budget check (`checkStepBudget()`) inlined into tool execution
+- **toolkit** — domain tool definitions (see table below)
+- **registry** — tool registration and agent-facing tool surface
 
 ## Toolkits
 
@@ -53,10 +53,10 @@ Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore
 
 Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`) are cached. Identical calls return the cached result without re-executing. Bounded `file-read` windows are keyed by `aroundLine` and `contextLines`, so full reads and windowed reads cache independently while still invalidating together by path.
 
-- **Key**: deterministic `toolName:stableJSON(args)` — object keys sorted for stability
-- **Invalidation**: write tools (`file-edit`, `file-create`, `file-delete`) evict entries with overlapping paths; `shell-run` clears the entire cache
-- **L1 (in-memory)**: per-task LRU with a default cap of 256 entries, discarded when the task ends
-- **L2 (SQLite)**: persists path-tracked entries (`file-read`, `code-scan`) across tasks within a session in `tool.db` (see [Paths](paths.md)), cleared on session switch
+- **Key** — deterministic `toolName:stableJSON(args)` — object keys sorted for stability
+- **Invalidation** — write tools (`file-edit`, `file-create`, `file-delete`) evict entries with overlapping paths; `shell-run` clears the entire cache
+- **L1 (in-memory)** — per-task LRU with a default cap of 256 entries, discarded when the task ends
+- **L2 (SQLite)** — persists path-tracked entries (`file-read`, `code-scan`) across tasks within a session in `tool.db` (see [Paths](paths.md)), cleared on session switch
 
 This reduces redundant I/O and avoids re-sending identical tool results to the model.
 

@@ -28,17 +28,17 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - single-pass lifecycle with `resolve`/`prepare`/`generate`/`finalize` phases
 - native `end_turn` completion (turn ends on a step with no tool calls)
 - pre/post-tool-call effect pipeline (auto-install deps, format, lint)
-- Workspace profile detection with auto-detected install, lint, format, and test commands
-- Configurable model reasoning level (low, medium, high) with provider-specific mapping
-- Multi-provider support (OpenAI, Anthropic, Google, Vercel)
-- Unified provider auth via `acolyte auth` — API key or subscription (OpenAI OAuth), global credentials, status and logout
-- Provider rate limit awareness with sliding window pacing and exponential backoff
-- Provider prompt-cache awareness with cached input token reporting
-- Proactive token budgeting with system prompt reservation and priority-based allocation
-- Step budget enforcement for cost protection
-- Two-tier result cache for read-only and search tools with cross-task persistence
-- Streaming progress output with real-time token usage
-- Inline tasklist for multi-step tasks
+- workspace profile detection with auto-detected install, lint, format, and test commands
+- configurable model reasoning level (low, medium, high) with provider-specific mapping
+- multi-provider support (OpenAI, Anthropic, Google, Vercel)
+- unified provider auth via `acolyte auth` — API key or subscription (OpenAI OAuth), global credentials, status and logout
+- provider rate limit awareness with sliding window pacing and exponential backoff
+- provider prompt-cache awareness with cached input token reporting
+- proactive token budgeting with system prompt reservation and priority-based allocation
+- step budget enforcement for cost protection
+- two-tier result cache for read-only and search tools with cross-task persistence
+- streaming progress output with real-time token usage
+- inline tasklist for multi-step tasks
 
 ## Tools
 

@@ -8,41 +8,41 @@ Define the stable request/response contract between client and server so transpo
 
 ## Contract shape
 
-- Request: one task payload (`message`, `history`, `sessionId`, runtime options).
-- Stream: ordered event sequence for progress and tool activity.
-- Final reply: single terminal payload with assistant output and usage metadata.
+- request: one task payload (`message`, `history`, `sessionId`, runtime options).
+- stream: ordered event sequence for progress and tool activity.
+- final reply: single terminal payload with assistant output and usage metadata.
 
 ## Event model
 
 Events are append-only and ordered per request.
 
-- `status`: lifecycle/status updates for UI progress
-- `reasoning`: optional model reasoning text
-- `tool-call`: tool invocation start (id, name, args)
-- `tool-output`: incremental tool output for the call id
-- `tool-result`: tool completion (success/error, structured error detail)
-- `text-delta`: assistant text stream chunks
-- `usage`: token usage for the current generation step
-- `tasklist`: inline task list with group ID, title, and items
-- `error`: terminal stream error
+- `status` — lifecycle/status updates for UI progress
+- `reasoning` — optional model reasoning text
+- `tool-call` — tool invocation start (id, name, args)
+- `tool-output` — incremental tool output for the call id
+- `tool-result` — tool completion (success/error, structured error detail)
+- `text-delta` — assistant text stream chunks
+- `usage` — token usage for the current generation step
+- `tasklist` — inline task list with group ID, title, and items
+- `error` — terminal stream error
 
 ## Invariants
 
-- Every request completes with either a `chat.done` or `chat.error` RPC message.
+- every request completes with either a `chat.done` or `chat.error` RPC message.
 - `tool-output`/`tool-result` reference a prior `tool-call` id.
-- Unknown event fields are ignored by clients (forward compatibility).
-- Error detail payloads are structured and stable.
+- unknown event fields are ignored by clients (forward compatibility).
+- error detail payloads are structured and stable.
 
 ## Versioning
 
-- The protocol is versioned and negotiated by capability handshake.
-- Additive changes are preferred; breaking changes require version bump.
+- the protocol is versioned and negotiated by capability handshake.
+- additive changes are preferred; breaking changes require version bump.
 
 ## Transport stance
 
-- Transport is an implementation detail.
+- transport is an implementation detail.
 - HTTP+SSE and WebSocket RPC are both supported.
-- New transports must preserve this contract and ordering guarantees.
+- new transports must preserve this contract and ordering guarantees.
 
 ## RPC baseline (WebSocket)
 
@@ -75,7 +75,7 @@ Server responses:
 
 Queue semantics:
 
-- Only one chat request runs per connection at a time.
-- Additional `chat.start` requests are accepted and reported as `chat.queued` with a 1-based position.
-- Queue positions are re-emitted on queue changes (abort/dequeue) so clients can keep ordering accurate.
+- only one chat request runs per connection at a time.
+- additional `chat.start` requests are accepted and reported as `chat.queued` with a 1-based position.
+- queue positions are re-emitted on queue changes (abort/dequeue) so clients can keep ordering accurate.
 - `chat.abort` targets request id, while task lifecycle/state uses task id.

@@ -21,8 +21,8 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 CLI → client → server → lifecycle → model + tools
 ```
 
-- **execution model:** one active task per session, with ordered queued tasks
-- **yielding:** lifecycle only yields at safe checkpoints (never mid-step)
+- **execution model** — one active task per session, with ordered queued tasks
+- **yielding** — lifecycle only yields at safe checkpoints (never mid-step)
 
 ## TUI
 
@@ -31,7 +31,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 ```
 
 - custom React reconciler for terminal rendering
-- **details:** see [TUI](./tui.md) for the renderer, [Chat Presentation](./chat-presentation.md) for the chat-state-to-terminal pipeline
+- **details** — see [TUI](./tui.md) for the renderer, [Chat Presentation](./chat-presentation.md) for the chat-state-to-terminal pipeline
 
 ## Daemon flow
 
@@ -39,16 +39,16 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 client → rpc server → task queue → lifecycle worker
 ```
 
-- **rpc server:** accepts requests, exposes task/status streams, and routes to queue/lifecycle
-- **task queue:** enforces ordering, capacity, and cancellation boundaries
-- **lifecycle worker:** executes accepted tasks through lifecycle phases
+- **rpc server** — accepts requests, exposes task/status streams, and routes to queue/lifecycle
+- **task queue** — enforces ordering, capacity, and cancellation boundaries
+- **lifecycle worker** — executes accepted tasks through lifecycle phases
 
 ## Session flow
 
-- **create or resume:** resolve target session from ID prefix or active session
-- **lock:** acquire session lock to prevent concurrent modification
-- **persist:** save session state at checkpoints during chat
-- **details:** see [Sessions](./sessions.md)
+- **create or resume** — resolve target session from ID prefix or active session
+- **lock** — acquire session lock to prevent concurrent modification
+- **persist** — save session state at checkpoints during chat
+- **details** — see [Sessions](./sessions.md)
 
 ## Task flow
 
@@ -56,11 +56,11 @@ client → rpc server → task queue → lifecycle worker
 accept → queue → run → complete|fail|cancel
 ```
 
-- **accept:** validate request and assign `task_id`
-- **queue:** hold until runnable under queue policy
-- **run:** execute lifecycle for active task
-- **complete|fail|cancel:** emit terminal state and persist task outcome
-- **details:** see [Tasks](./tasks.md)
+- **accept** — validate request and assign `task_id`
+- **queue** — hold until runnable under queue policy
+- **run** — execute lifecycle for active task
+- **complete|fail|cancel** — emit terminal state and persist task outcome
+- **details** — see [Tasks](./tasks.md)
 
 ## Tool layering
 
@@ -68,11 +68,11 @@ accept → queue → run → complete|fail|cancel
 lifecycle → budget → cache → toolkit → registry
 ```
 
-- **budget:** step-budget check inlined into tool execution
-- **cache:** per-task reuse layer for read-only and search tool results
-- **toolkit:** domain tool definitions
-- **registry:** toolkit registration and agent-facing tool surface
-- **details:** see [Tooling](./tooling.md)
+- **budget** — step-budget check inlined into tool execution
+- **cache** — per-task reuse layer for read-only and search tool results
+- **toolkit** — domain tool definitions
+- **registry** — toolkit registration and agent-facing tool surface
+- **details** — see [Tooling](./tooling.md)
 
 ## Lifecycle flow
 
@@ -80,15 +80,15 @@ lifecycle → budget → cache → toolkit → registry
 resolve → prepare → generate → finalize
 ```
 
-- **resolve:** pick model and policy (sync, not a full phase)
-- **prepare:** build inputs, context, and tools
-- **generate:** run model + tool calls (one pass, effects applied per-tool-result)
-- **finalize:** accept the terminal step, persist outputs, emit final response
+- **resolve** — pick model and policy (sync, not a full phase)
+- **prepare** — build inputs, context, and tools
+- **generate** — run model + tool calls (one pass, effects applied per-tool-result)
+- **finalize** — accept the terminal step, persist outputs, emit final response
 
-- **model-host protocol:** model completes with a native `end_turn` (a step with no tool calls); that step's text is the final response, backstopped by finish-reason classification (incomplete finishes reopen once then error; unrecoverable finishes error immediately)
-- **host/model boundary:** host provides runtime structure; model decides how to complete the task
-- **scheduling:** yield checks happen between lifecycle decisions, never mid-step
-- **details:** see [Lifecycle](./lifecycle.md)
+- **model-host protocol** — model completes with a native `end_turn` (a step with no tool calls); that step's text is the final response, backstopped by finish-reason classification (incomplete finishes reopen once then error; unrecoverable finishes error immediately)
+- **host/model boundary** — host provides runtime structure; model decides how to complete the task
+- **scheduling** — yield checks happen between lifecycle decisions, never mid-step
+- **details** — see [Lifecycle](./lifecycle.md)
 
 ## Memory engine
 
@@ -98,11 +98,11 @@ Memory Engine
   → Memory Toolkit (search, add) — on-demand access
 ```
 
-- Memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns
-- **pipeline seams:** normalization is strategy-injectable behind registry contracts
-- **on-demand access:** the model uses memory toolkit tools (`memory-search`, `memory-add`) to access memory at runtime instead of upfront injection
-- **integration:** commit is best-effort background work at finalize; memory access is on-demand via toolkit
-- **details:** see [Memory](./memory.md)
+- memory Engine composes source strategy, pipeline stages, and distill behavior to provide continuity across turns
+- **pipeline seams** — normalization is strategy-injectable behind registry contracts
+- **on-demand access** — the model uses memory toolkit tools (`memory-search`, `memory-add`) to access memory at runtime instead of upfront injection
+- **integration** — commit is best-effort background work at finalize; memory access is on-demand via toolkit
+- **details** — see [Memory](./memory.md)
 
 ## Dependency injection
 
@@ -113,16 +113,16 @@ Memory Engine
 
 ## Contracts
 
-- **error handling:** tools emit failures/error codes; lifecycle surfaces them for the model to decide
-- **step budget:** inlined into tool execution; blocks calls when budget is exhausted
-- **protocol:** transport contract is transport-agnostic; see `docs/protocol.md`
+- **error handling** — tools emit failures/error codes; lifecycle surfaces them for the model to decide
+- **step budget** — inlined into tool execution; blocks calls when budget is exhausted
+- **protocol** — transport contract is transport-agnostic; see `docs/protocol.md`
 
 ## Observability and state
 
-- **observability:** lifecycle emits ordered debug events per request (calls, tool results, effect decisions, summaries, errors). Events are dual-written to logfmt (`server.log` in state dir) and SQLite (`trace.db` in data dir); the CLI queries SQLite for indexed trace lookups. See [Paths](paths.md) for platform-specific locations
-- **runtime config:** loaded from user/project config
-- **state ownership:** chat/session state and memory are persisted outside lifecycle and passed in as inputs
-- **task trace:** RPC emits task-state transitions with stable `task_id`:
+- **observability** — lifecycle emits ordered debug events per request (calls, tool results, effect decisions, summaries, errors). Events are dual-written to logfmt (`server.log` in state dir) and SQLite (`trace.db` in data dir); the CLI queries SQLite for indexed trace lookups. See [Paths](paths.md) for platform-specific locations
+- **runtime config** — loaded from user/project config
+- **state ownership** — chat/session state and memory are persisted outside lifecycle and passed in as inputs
+- **task trace** — RPC emits task-state transitions with stable `task_id`:
 ```text
 accepted → queued → running → completed|failed|cancelled
 ```

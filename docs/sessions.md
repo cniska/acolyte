@@ -16,12 +16,12 @@ Acolyte sessions persist conversation history, model selection, token usage, and
 create or resume → lock → chat → persist → release
 ```
 
-- **create**: new session with empty messages, assigned `sess_*` ID
-- **resume**: load existing session by ID prefix or active session
-- **lock**: file-based PID lock prevents concurrent modification (file store only)
-- **chat**: messages appended, model invoked, tool calls executed
-- **persist**: save session state at checkpoints via `SessionStore.saveSession()`
-- **release**: unlock on exit
+- **create** — new session with empty messages, assigned `sess_*` ID
+- **resume** — load existing session by ID prefix or active session
+- **lock** — file-based PID lock prevents concurrent modification (file store only)
+- **chat** — messages appended, model invoked, tool calls executed
+- **persist** — save session state at checkpoints via `SessionStore.saveSession()`
+- **release** — unlock on exit
 
 ## Active session
 

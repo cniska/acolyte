@@ -72,6 +72,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 
 - Docs live in `docs/`. One H1 per doc (page title); H1 title case, H2+ sentence case.
 - Never hard-wrap Markdown paragraphs or bullets.
+- Bullets: a full sentence is capitalized and takes a period; a noun-phrase fragment stays lowercase and unpunctuated, unless it opens with an acronym or proper noun.
 - The first sentence is the SEO description consumed by [acolyte.sh](https://acolyte.sh); make it a single plain-text, 80–180-character summary of the page.
 - Start each doc with a one-sentence summary and organize it around reader questions; use headings, short paragraphs, tables, or diagrams to break dense material.
 - Before completing a docs change, read it against the affected code and adjacent canonical docs; update terminology and user-facing surfaces everywhere they are documented.

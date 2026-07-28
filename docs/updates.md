@@ -23,7 +23,7 @@ Releases follow [semver](https://semver.org). Patch and minor releases are alway
 Some features ship behind flags while they stabilize. When a flag is no longer needed, we remove it deliberately:
 
 - If a flag is user-settable (config/env/CLI): first deprecate it by making it a no-op and emitting a warning. Then remove it after one or more releases. Removal is documented in the release notes for that version.
-- If a flag is internal-only and not user-settable: it may be removed without a deprecation window.
+- if a flag is internal-only and not user-settable: it may be removed without a deprecation window.
 
 ## Release process
 

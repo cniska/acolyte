@@ -6,12 +6,12 @@ Acolyte records each request as an ordered, task-scoped event stream. The local 
 
 Every event carries a sequence number and is associated with its request, task, and session where available. The typed event catalog covers:
 
-- Task acceptance, queueing, start, completion, and state transitions
-- Workspace detection and sandbox resolution
-- Lifecycle preparation, generation, window drops, and errors
-- Tool calls, results, errors, cache decisions, and budget blocks
-- Format, lint, and install effects
-- Memory commits, active skill context, and the final lifecycle summary
+- task acceptance, queueing, start, completion, and state transitions
+- workspace detection and sandbox resolution
+- lifecycle preparation, generation, window drops, and errors
+- tool calls, results, errors, cache decisions, and budget blocks
+- format, lint, and install effects
+- memory commits, active skill context, and the final lifecycle summary
 
 The final summary includes model-call and tool-call counts, read/search/write totals, memory and session searches, duplicate discovery calls, budget exhaustion, and error state.
 
