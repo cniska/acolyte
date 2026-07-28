@@ -80,7 +80,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 ## Testing
 
 - Layout: unit `*.test.ts`, integration `*.int.test.ts`. Run: unit `bun run test:unit`, integration `bun run test:int`, visual `bun run test:tui`.
-- Unit tests are pure: mock boundary effects (filesystem, subprocess, network) instead of exercising them.
-- A test needing real filesystem/process/network behavior goes in `*.int.test.ts`, never `*.test.ts`.
+- Unit tests are pure: mock the application's boundary effects (filesystem, subprocess, network) instead of exercising them.
+- A test needing real filesystem/process/network behavior goes in `*.int.test.ts`, never `*.test.ts`. The exception is a `scripts/` shell script, whose subject under test *is* the process: run it directly from a `*.test.ts` beside it.
 - Integration tests use real server/lifecycle/tool wiring with a fake provider for model calls.
 - Visual tests snapshot stable TUI rendering and interaction.
