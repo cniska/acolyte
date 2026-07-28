@@ -10,7 +10,7 @@ import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import { t } from "./i18n";
 import { formatDisposition, type MemoryScope } from "./memory-contract";
-import { addMemory, consolidateMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
+import { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 
 type MemoryContextScope = "all" | "user" | "project";
 
@@ -31,45 +31,14 @@ export function resolveMemoryApi(ctx: CommandContext): {
   addMemory: typeof addMemory;
   removeMemory: typeof removeMemory;
   listArchivedMemories: typeof listArchivedMemories;
-  consolidateMemory: typeof consolidateMemory;
 } {
   return {
     listMemories,
     addMemory,
     removeMemory,
     listArchivedMemories,
-    consolidateMemory,
     ...ctx.memoryApi,
   };
-}
-
-async function handleMemoryConsolidate(
-  ctx: CommandContext,
-  memoryApi: ReturnType<typeof resolveMemoryApi>,
-  parsed: ParsedCommand,
-): Promise<CommandResult> {
-  const { text } = ctx;
-  const scope = parsed.args[0] ?? "all";
-  if (parsed.args.length > 1 || !isMemoryContextScope(scope)) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory consolidate [all|user|project]"))]);
-    return { stop: true, userText: text };
-  }
-  const scopes = scope === "all" ? (["user", "project"] as const) : [scope];
-  try {
-    const results = await Promise.all(scopes.map((item) => memoryApi.consolidateMemory(item)));
-    const created = results.reduce((total, result) => total + result.createdFacts, 0);
-    const retired = results.reduce((total, result) => total + result.supersededFacts + result.retiredNoiseFacts, 0);
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", t("chat.memory.consolidated", { scope, created, retired })),
-    ]);
-  } catch (error) {
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", error instanceof Error ? error.message : t("chat.memory.consolidate.failed")),
-    ]);
-  }
-  return { stop: true, userText: text };
 }
 
 async function handleMemoryRemove(
@@ -232,21 +201,13 @@ function createMemoryGroup(ctx: CommandContext, memoryApi: ReturnType<typeof res
         run: (parsed) => handleMemoryAdd(ctx, memoryApi, parsed),
       },
       {
-        name: "consolidate",
-        match: (sub) => sub === "consolidate",
-        run: (parsed) => handleMemoryConsolidate(ctx, memoryApi, parsed),
-      },
-      {
         name: "list",
         match: (sub) => sub === "" || sub === ARCHIVED_FLAG || isMemoryContextScope(sub),
         run: (parsed) => handleMemoryList(ctx, memoryApi, parsed),
       },
     ],
     fallback: async () => {
-      ctx.setRows((current) => [
-        ...current,
-        createRow("system", formatUsage("/memory [add|rm|consolidate|all|user|project]")),
-      ]);
+      ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [add|rm|all|user|project]"))]);
       return { stop: true, userText: ctx.text };
     },
   };

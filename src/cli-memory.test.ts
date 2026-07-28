@@ -48,7 +48,6 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
         createdAt: "9999-01-01T00:00:00.000Z",
         lastRecalledAt: null,
       })),
-    consolidate: async () => ({ batches: 0, createdFacts: 0, supersededFacts: 0, retiredNoiseFacts: 0 }),
     ...overrides,
   };
 }
@@ -290,39 +289,6 @@ describe("cli-memory", () => {
     });
     await memoryMode(["restore", "mem_missing"], deps);
     expect(output()).toContain("mem_missing");
-  });
-
-  test("consolidate defaults to both durable scopes and reports its result", async () => {
-    const scopes: string[] = [];
-    const { deps, output } = createDeps({
-      ops: createOps({
-        consolidate: async (scope) => {
-          scopes.push(scope);
-          return { batches: 1, createdFacts: 2, supersededFacts: 1, retiredNoiseFacts: 1 };
-        },
-      }),
-    });
-
-    await memoryMode(["consolidate"], deps);
-
-    expect(scopes).toEqual(["user", "project"]);
-    expect(output()).toBe("Consolidated all memory: 4 facts created, 4 retired.");
-  });
-
-  test("consolidate accepts a durable scope", async () => {
-    const scopes: string[] = [];
-    const { deps } = createDeps({
-      ops: createOps({
-        consolidate: async (scope) => {
-          scopes.push(scope);
-          return { batches: 0, createdFacts: 0, supersededFacts: 0, retiredNoiseFacts: 0 };
-        },
-      }),
-    });
-
-    await memoryMode(["consolidate", "project"], deps);
-
-    expect(scopes).toEqual(["project"]);
   });
 
   test("unknown subcommand calls commandError", async () => {

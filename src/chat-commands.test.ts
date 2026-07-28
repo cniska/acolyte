@@ -3,14 +3,8 @@ import { appConfig, setModel } from "./app-config";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import type { ConfigScope } from "./config-contract";
-import type {
-  MemoryArchiveEntry,
-  MemoryConsolidationMetrics,
-  MemoryEntry,
-  MemoryScope,
-  RemoveMemoryResult,
-} from "./memory-contract";
-import type { consolidateMemory, MemoryOptions } from "./memory-ops";
+import type { MemoryArchiveEntry, MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
+import type { MemoryOptions } from "./memory-ops";
 import { createCommandContext, createMessage, createSession, createSessionState } from "./test-utils";
 
 function createMemoryApi(overrides?: {
@@ -21,7 +15,6 @@ function createMemoryApi(overrides?: {
   ) => Promise<MemoryEntry>;
   removeMemory?: (id: string, options?: MemoryOptions) => Promise<RemoveMemoryResult>;
   listArchivedMemories?: (options?: MemoryOptions) => Promise<MemoryArchiveEntry[]>;
-  consolidateMemory?: typeof consolidateMemory;
 }) {
   return {
     listMemories: overrides?.listMemories ?? (async () => []),
@@ -37,14 +30,6 @@ function createMemoryApi(overrides?: {
       })),
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
     listArchivedMemories: overrides?.listArchivedMemories ?? (async () => []),
-    consolidateMemory:
-      overrides?.consolidateMemory ??
-      (async (): Promise<MemoryConsolidationMetrics> => ({
-        batches: 0,
-        createdFacts: 0,
-        supersededFacts: 0,
-        retiredNoiseFacts: 0,
-      })),
   };
 }
 
@@ -281,7 +266,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|consolidate|all|user|project]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|all|user|project]")).toBe(true);
   });
 
   test("dispatchSlashCommand handles bare /memory --archived", async () => {
@@ -419,36 +404,6 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.kind === "system" && row.content === "Saved project memory: use bun verify")).toBe(
       true,
     );
-  });
-
-  test("dispatchSlashCommand consolidates both durable memory scopes by default", async () => {
-    const scopes: string[] = [];
-    const memoryApi = createMemoryApi({
-      consolidateMemory: async (scope) => {
-        scopes.push(scope);
-        return { batches: 1, createdFacts: 1, supersededFacts: 1, retiredNoiseFacts: 0 };
-      },
-    });
-
-    const { rows, stop } = await runCommand("/memory consolidate", { memoryApi });
-
-    expect(stop).toBe(true);
-    expect(scopes).toEqual(["user", "project"]);
-    expect(rows.some((row) => row.content === "Consolidated all memory: 2 facts created, 2 retired.")).toBe(true);
-  });
-
-  test("dispatchSlashCommand consolidates a requested durable scope", async () => {
-    const scopes: string[] = [];
-    const memoryApi = createMemoryApi({
-      consolidateMemory: async (scope) => {
-        scopes.push(scope);
-        return { batches: 0, createdFacts: 0, supersededFacts: 0, retiredNoiseFacts: 0 };
-      },
-    });
-
-    await runCommand("/memory consolidate project", { memoryApi });
-
-    expect(scopes).toEqual(["project"]);
   });
 
   test("dispatchSlashCommand updates model via /model <id>", async () => {

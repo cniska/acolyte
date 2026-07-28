@@ -57,7 +57,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration.
 - **FR-27** — `acolyte auth [provider]` authenticates a provider by API key or, where supported, subscription, and reports/removes credentials (see §5 SEC).
 - **FR-28** — `acolyte config list|set|unset` reads and writes runtime configuration at user or project scope.
-- **FR-29** — `acolyte memory list|add|restore|consolidate` manages persistent memory notes and their archive (see §3 MEM).
+- **FR-29** — `acolyte memory list|add|restore` manages persistent memory notes and their archive (see §3 MEM).
 - **FR-30** — `acolyte logs` tails and filters the daemon log by count, level, session, and time window.
 - **FR-31** — `acolyte trace [list] | trace task <id>` inspects task timelines (see §8 OBS).
 - **FR-32** — `acolyte tool <tool-id> [args...]` runs a single tool directly, still subject to the workspace boundary.
@@ -103,7 +103,6 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
 - **MEM-13** — Distillation sees the facts already held that are relevant to the turn, so a new observation can replace them instead of duplicating them: it may record nothing when a fact is already held, or record a sharper, corrected, merged, or split version that supersedes the records it replaces. Reading the corpus for this purpose does not count as recalling it.
 - **MEM-14** — A supersession is honored only for records that distillation was shown and that share the scope being written to, and only when a successor record was actually stored.
-- **MEM-15** — User and project memory can be consolidated into a smaller durable corpus. Consolidation serializes with distillation for its scope, batches tagged records by topic and untagged records only when embeddings establish similarity, writes every successor before retiring a shown source, and archives model-judged noise rather than deleting it.
 
 ## 4. Lifecycle & completion requirements (LC)
 

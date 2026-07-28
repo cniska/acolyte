@@ -62,9 +62,9 @@ Retirement moves a record from the active set to `memory_archive` and drops its 
 
 Archived records are excluded from active listing and recall. Restoring a record returns it to the active set and regenerates its embedding.
 
-Distillation and explicit consolidation retire records. Consolidation operates only on durable user and project scopes. It batches tagged records by topic, clusters untagged records by embedding similarity when embeddings are available, and leaves unclustered untagged records alone. Its private `memory-merge` model call can write successor observations tied to shown IDs or archive shown noise. It writes every successor before retiring its sources and shares the durable-scope queue with distillation.
+Distillation retires records when fresh work establishes a sharper, corrected, merged, or split successor.
 
-Use `/memory [scope] --archived` or `acolyte memory list [scope] --archived` to inspect the archive, `acolyte memory restore <id>...` to restore records, and `/memory consolidate [all|user|project]` or `acolyte memory consolidate [all|user|project]` to converge durable scopes. Debug events include `memory.retire` and `memory.restore`.
+Use `/memory [scope] --archived` or `acolyte memory list [scope] --archived` to inspect the archive, and `acolyte memory restore <id>...` to restore records. Debug events include `memory.retire` and `memory.restore`.
 
 ## Runtime behavior
 
@@ -96,7 +96,6 @@ Input quality from distillation accounts for a larger gain than any retrieval al
 - `src/memory-contract.ts`: Memory schemas, records, scopes, and storage contract.
 - `src/memory-ops.ts`: User-facing memory operations.
 - `src/memory-distiller.ts`: Observation prompt and commit pipeline.
-- `src/memory-consolidator.ts`: Durable-scope convergence batches and private merge runner.
 - `src/memory-recall.ts`: Scope filtering and hybrid ranking.
 - `src/memory-toolkit.ts`: Model-facing search and add tools.
 - `src/memory-store.ts`: SQLite store and store factory.

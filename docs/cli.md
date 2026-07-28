@@ -14,7 +14,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 - `acolyte history`: list sessions
 - `acolyte start|stop|restart|ps`: manage server lifecycle
 - `acolyte status`: show server status
-- `acolyte memory list|add|restore|consolidate`: manage memory and its archive
+- `acolyte memory list|add|restore`: manage memory and its archive
 - `acolyte config list|set|unset`: manage configuration
 - `acolyte skill <name> [prompt]`: run a prompt with an active skill
 - `acolyte logs`: view server logs
@@ -57,7 +57,6 @@ acolyte memory list --json
 acolyte memory add --user "<text>"
 acolyte memory add --project "<text>"
 acolyte memory restore <id>...
-acolyte memory consolidate [all|user|project]
 ```
 
 ## Config commands

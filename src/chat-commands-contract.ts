@@ -1,7 +1,7 @@
 import type { ChatRow } from "./chat-contract";
 import type { Client } from "./client-contract";
 import type { ConfigScope } from "./config-contract";
-import type { addMemory, consolidateMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
+import type { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 export type CommandResult = {
@@ -36,7 +36,6 @@ export type CommandContext = {
     addMemory: typeof addMemory;
     removeMemory: typeof removeMemory;
     listArchivedMemories: typeof listArchivedMemories;
-    consolidateMemory: typeof consolidateMemory;
   }>;
 };
 
