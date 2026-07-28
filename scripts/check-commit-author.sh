@@ -28,7 +28,7 @@ lower_name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]
 lower_name="${lower_name# }"
 lower_name="${lower_name% }"
 case "$lower_name" in
-  "your name" | "yourname" | "test user")
+  "your name" | "yourname")
     echo "error: commit $role name is a placeholder: $name" >&2
     echo "  set a real identity: git config user.name / git config user.email" >&2
     exit 1
