@@ -93,6 +93,20 @@ describe("pre-push hook", () => {
     expect(stderr).toContain("committer name is a placeholder");
   });
 
+  test("rejects a placeholder author email on a new branch", async () => {
+    await commit("feat: add a thing", { name: "Real Name", email: "test@example.com" }, realIdentity);
+    const { code, stderr } = await runHookOnNewRef();
+    expect(code).toBe(1);
+    expect(stderr).toContain("author email uses a reserved placeholder domain");
+  });
+
+  test("rejects a placeholder committer email on a new branch", async () => {
+    await commit("feat: add a thing", realIdentity, { name: "Real Name", email: "test@example.com" });
+    const { code, stderr } = await runHookOnNewRef();
+    expect(code).toBe(1);
+    expect(stderr).toContain("committer email uses a reserved placeholder domain");
+  });
+
   test("reports the offending commit id", async () => {
     await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();

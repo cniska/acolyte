@@ -41,7 +41,7 @@ fi
 lower_email=$(printf '%s' "$email" | tr '[:upper:]' '[:lower:]')
 domain="${lower_email##*@}"
 
-if ! [[ "$lower_email" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] && [ "$domain" != "localhost" ]; then
+if ! [[ "$lower_email" =~ ^[^@[:space:]]+@([[:alnum:]]([[:alnum:]-]*[[:alnum:]])?\.)+[[:alpha:]]{2,}$ ]] && [ "$domain" != "localhost" ]; then
   echo "error: commit $role email is not a valid address: $email" >&2
   exit 1
 fi
