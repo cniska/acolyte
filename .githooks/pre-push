@@ -11,9 +11,9 @@ while read -r local_ref local_oid remote_ref remote_oid; do
   fi
   if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
     # New ref — only check commits not already on the remote
-    range="$local_oid --not --remotes=$remote"
+    range=("$local_oid" --not --remotes="$remote")
   else
-    range="$remote_oid..$local_oid"
+    range=("$remote_oid..$local_oid")
   fi
   while IFS= read -r oid; do
     subject=$(git log -1 --format='%s' "$oid")
@@ -22,7 +22,7 @@ while read -r local_ref local_oid remote_ref remote_oid; do
       echo "  commit: $oid" >&2
       exit 1
     }
-  done < <(git rev-list "$range" 2>/dev/null)
+  done < <(git rev-list "${range[@]}")
 done
 
 bun run verify
