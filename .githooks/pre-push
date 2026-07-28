@@ -22,6 +22,18 @@ while read -r local_ref local_oid remote_ref remote_oid; do
       echo "  commit: $oid" >&2
       exit 1
     }
+    author_name=$(git log -1 --format='%an' "$oid")
+    author_email=$(git log -1 --format='%ae' "$oid")
+    committer_name=$(git log -1 --format='%cn' "$oid")
+    committer_email=$(git log -1 --format='%ce' "$oid")
+    bash "$root/scripts/check-commit-author.sh" "$author_name" "$author_email" author || {
+      echo "  commit: $oid" >&2
+      exit 1
+    }
+    bash "$root/scripts/check-commit-author.sh" "$committer_name" "$committer_email" committer || {
+      echo "  commit: $oid" >&2
+      exit 1
+    }
   done < <(git rev-list "${range[@]}")
 done
 

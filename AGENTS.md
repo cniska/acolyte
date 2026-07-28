@@ -37,7 +37,7 @@ These must always hold.
 
 ## Commits
 
-Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters, ASCII only. No issue references or links in the subject (`(#123)`, `Fixes #123`) — those belong in the PR body. Commits must be signed (SSH signing, repo-wide `commit.gpgsign`).
+Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`. Single-line subject, no body, under 72 characters, ASCII only. No issue references or links in the subject (`(#123)`, `Fixes #123`) — those belong in the PR body. Commits must be signed (SSH signing, repo-wide `commit.gpgsign`). Author and committer must be a real identity: the pre-push hook rejects reserved placeholder domains (`example.com`, `.invalid`, `.test`, `localhost`).
 
 ## Pull requests
 
@@ -48,7 +48,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 - End with `Fixes #N` when an issue matches the work.
 - Fold related changes into one PR; keep unrelated work separate.
 - Never push or open a PR without explicit approval.
-- Merges are squash-only; the PR title becomes the squash commit subject, so it must satisfy the commit format above. `main` is protected against force-pushes and deletions, requires linear history and signed commits, and the pre-push hook enforces commit format.
+- Merges are squash-only; the PR title becomes the squash commit subject, so it must satisfy the commit format above. `main` is protected against force-pushes and deletions, requires linear history and signed commits, and the pre-push hook enforces commit format and author identity.
 
 ## Code
 
