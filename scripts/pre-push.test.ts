@@ -9,12 +9,19 @@ const REPO = process.cwd();
 let dir = "";
 
 function hookEnv(useFakeBun = true): Record<string, string> {
-  return { ...process.env, PATH: useFakeBun ? `${join(dir, "bin")}:${process.env.PATH}` : process.env.PATH };
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  return { ...env, PATH: useFakeBun ? `${join(dir, "bin")}:${env.PATH}` : (env.PATH ?? "") };
 }
 
 async function git(args: string[], cwd = dir): Promise<void> {
-  const proc = Bun.spawn(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawn(["git", ...args], { cwd, env: hookEnv(false), stdout: "pipe", stderr: "pipe" });
   if ((await proc.exited) !== 0) throw new Error(`git ${args.join(" ")}: ${await new Response(proc.stderr).text()}`);
+}
+
+function gitOutput(args: string[]): string {
+  return Bun.spawnSync(["git", ...args], { cwd: dir, env: hookEnv(false) })
+    .stdout.toString()
+    .trim();
 }
 
 type Identity = { name: string; email: string };
@@ -44,7 +51,7 @@ async function runHookOnNewRef(
   useFakeBun = true,
   remote = "origin",
 ): Promise<{ code: number; stderr: string }> {
-  const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+  const head = gitOutput(["rev-parse", "HEAD"]);
   const proc = Bun.spawn(["bash", ".githooks/pre-push", remote], {
     cwd: dir,
     env: hookEnv(useFakeBun),
@@ -141,7 +148,7 @@ describe("pre-push hook", () => {
 
   test("reports the offending commit id", async () => {
     await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
-    const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    const head = gitOutput(["rev-parse", "HEAD"]);
     const { stderr } = await runHookOnNewRef();
     expect(stderr).toContain(head);
   });
@@ -156,7 +163,7 @@ describe("pre-push hook", () => {
 
   test("excludes commits already on the remote from a new branch", async () => {
     await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
-    const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    const remoteTip = gitOutput(["rev-parse", "HEAD"]);
     await git(["remote", "add", "origin", "https://example.com/acolyte.git"]);
     await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
     await commit("feat: branch", realIdentity);
@@ -168,7 +175,7 @@ describe("pre-push hook", () => {
 
   test("checks remote ancestors on a direct URL push", async () => {
     await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
-    const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    const remoteTip = gitOutput(["rev-parse", "HEAD"]);
     await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
     await commit("feat: branch", realIdentity);
 
