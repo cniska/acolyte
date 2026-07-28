@@ -8,8 +8,8 @@ const REPO = process.cwd();
 
 let dir = "";
 
-function hookEnv(): Record<string, string> {
-  return { ...process.env, PATH: `${join(dir, "bin")}:${process.env.PATH}` };
+function hookEnv(useFakeBun = true): Record<string, string> {
+  return { ...process.env, PATH: useFakeBun ? `${join(dir, "bin")}:${process.env.PATH}` : process.env.PATH };
 }
 
 async function git(args: string[], cwd = dir): Promise<void> {
@@ -39,11 +39,11 @@ async function commit(subject: string, author: Identity, committer = author): Pr
 
 // Pushing a brand-new branch is the case that regressed: the rev-list range is
 // multi-token, so quoting it collapsed the loop and every commit went unchecked.
-async function runHookOnNewRef(remoteOid = ZERO): Promise<{ code: number; stderr: string }> {
+async function runHookOnNewRef(remoteOid = ZERO, useFakeBun = true): Promise<{ code: number; stderr: string }> {
   const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
   const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
     cwd: dir,
-    env: hookEnv(),
+    env: hookEnv(useFakeBun),
     stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${remoteOid}\n`),
     stdout: "pipe",
     stderr: "pipe",
@@ -119,6 +119,13 @@ describe("pre-push hook", () => {
     const { code, stderr } = await runHookOnNewRef();
     expect(code).toBe(1);
     expect(stderr).toContain(message);
+  });
+
+  test("rejects malformed punycode author email", async () => {
+    await commit("feat: add a thing", { name: "Real Name", email: "real@xn--a.com" }, realIdentity);
+    const { code, stderr } = await runHookOnNewRef(ZERO, false);
+    expect(code).toBe(1);
+    expect(stderr).toContain("author email is not a valid address");
   });
 
   test("reports the offending commit id", async () => {

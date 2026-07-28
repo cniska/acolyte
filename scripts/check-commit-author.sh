@@ -46,6 +46,11 @@ if ! [[ "$lower_email" =~ ^[^@[:space:]]+@([[:alnum:]]([[:alnum:]-]*[[:alnum:]])
   exit 1
 fi
 
+if [[ "$domain" == *"xn--"* ]] && ! bun -e 'import { domainToUnicode } from "node:url"; if (!domainToUnicode(process.argv[1])) process.exit(1)' "$domain"; then
+  echo "error: commit $role email is not a valid address: $email" >&2
+  exit 1
+fi
+
 placeholder=0
 case "$domain" in
   example.com | example.net | example.org | localhost) placeholder=1 ;;
