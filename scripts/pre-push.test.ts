@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -8,24 +8,31 @@ const REPO = process.cwd();
 
 let dir = "";
 
+function hookEnv(): Record<string, string> {
+  return { ...process.env, PATH: `${join(dir, "bin")}:${process.env.PATH}` };
+}
+
 async function git(args: string[], cwd = dir): Promise<void> {
   const proc = Bun.spawn(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
   if ((await proc.exited) !== 0) throw new Error(`git ${args.join(" ")}: ${await new Response(proc.stderr).text()}`);
 }
 
-async function commit(subject: string, name: string, email: string): Promise<void> {
+type Identity = { name: string; email: string };
+
+async function commit(subject: string, author: Identity, committer = author): Promise<void> {
   await Bun.write(join(dir, `file-${Date.now()}-${Math.random()}.txt`), "x");
   await git(["add", "-A"]);
   await git([
     "-c",
-    `user.name=${name}`,
+    `user.name=${committer.name}`,
     "-c",
-    `user.email=${email}`,
+    `user.email=${committer.email}`,
     "-c",
     "commit.gpgsign=false",
     "commit",
     "-m",
     subject,
+    `--author=${author.name} <${author.email}>`,
     "--no-verify",
   ]);
 }
@@ -36,6 +43,7 @@ async function runHookOnNewRef(): Promise<{ code: number; stderr: string }> {
   const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
   const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
     cwd: dir,
+    env: hookEnv(),
     stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${ZERO}\n`),
     stdout: "pipe",
     stderr: "pipe",
@@ -49,6 +57,9 @@ beforeEach(async () => {
   await git(["init", "-q", "-b", "main"]);
   await mkdir(join(dir, ".githooks"));
   await mkdir(join(dir, "scripts"));
+  await mkdir(join(dir, "bin"));
+  await Bun.write(join(dir, "bin", "bun"), "#!/bin/sh\nexit 0\n");
+  await chmod(join(dir, "bin", "bun"), 0o755);
   await cp(join(REPO, ".githooks/pre-push"), join(dir, ".githooks/pre-push"));
   for (const script of ["check-commit-message.sh", "check-commit-author.sh"]) {
     await cp(join(REPO, "scripts", script), join(dir, "scripts", script));
@@ -60,44 +71,52 @@ afterEach(async () => {
 });
 
 describe("pre-push hook", () => {
-  test("rejects a placeholder author on a new branch", async () => {
-    await commit("feat: add a thing", "Test User", "test@example.com");
-    const { code, stderr } = await runHookOnNewRef();
-    expect(code).toBe(1);
-    expect(stderr).toContain("reserved placeholder domain");
+  const realIdentity = { name: "Real Name", email: "real@example.dev" };
+
+  test("accepts a valid commit on a new branch", async () => {
+    await commit("feat: add a thing", realIdentity);
+    const { code } = await runHookOnNewRef();
+    expect(code).toBe(0);
   });
 
-  test("rejects a malformed subject on a new branch", async () => {
-    await commit("no conventional prefix", "Real Name", "real@example.dev");
+  test("rejects a placeholder author on a new branch", async () => {
+    await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const { code, stderr } = await runHookOnNewRef();
     expect(code).toBe(1);
-    expect(stderr).toContain("Conventional Commit format");
+    expect(stderr).toContain("author name is a placeholder");
+  });
+
+  test("rejects a placeholder committer on a new branch", async () => {
+    await commit("feat: add a thing", realIdentity, { name: "Your Name", email: "real@example.dev" });
+    const { code, stderr } = await runHookOnNewRef();
+    expect(code).toBe(1);
+    expect(stderr).toContain("committer name is a placeholder");
   });
 
   test("reports the offending commit id", async () => {
-    await commit("feat: add a thing", "Test User", "test@example.com");
+    await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
     const { stderr } = await runHookOnNewRef();
     expect(stderr).toContain(head);
   });
 
   test("checks every commit, not only the tip", async () => {
-    await commit("feat: first", "Test User", "test@example.com");
-    await commit("feat: second", "Real Name", "real@example.dev");
+    await commit("feat: first", { name: "Your Name", email: "real@example.dev" }, realIdentity);
+    await commit("feat: second", realIdentity);
     const { code, stderr } = await runHookOnNewRef();
     expect(code).toBe(1);
-    expect(stderr).toContain("reserved placeholder domain");
+    expect(stderr).toContain("author name is a placeholder");
   });
 
   test("skips a deleted ref", async () => {
-    await commit("feat: add a thing", "Test User", "test@example.com");
+    await commit("feat: add a thing", realIdentity);
     const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
       cwd: dir,
+      env: hookEnv(),
       stdin: new TextEncoder().encode(`(delete) ${ZERO} refs/heads/topic ${ZERO}\n`),
       stdout: "pipe",
       stderr: "pipe",
     });
-    const stderr = await new Response(proc.stderr).text();
-    expect(stderr).not.toContain("reserved placeholder domain");
+    expect(await proc.exited).toBe(0);
   });
 });

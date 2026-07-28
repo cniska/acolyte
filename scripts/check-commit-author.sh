@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: check-commit-author.sh <name> <email> [role]
 #
 # Rules:
-#   - Name and email must be non-empty
+#   - Name and email must be non-empty and not placeholders
 #   - Email must not use a reserved placeholder domain (RFC 2606, RFC 6761):
 #     example.com/.net/.org, *.example, *.invalid, *.test, *.localhost, localhost
 #   - Email must look like local@domain.tld
@@ -23,6 +23,15 @@ if [ -z "$name" ]; then
   echo "error: commit $role name is empty." >&2
   exit 1
 fi
+
+lower_name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
+case "$lower_name" in
+  "your name" | "yourname" | "test user")
+    echo "error: commit $role name is a placeholder: $name" >&2
+    echo "  set a real identity: git config user.name / git config user.email" >&2
+    exit 1
+    ;;
+esac
 
 if [ -z "$email" ]; then
   echo "error: commit $role email is empty." >&2
