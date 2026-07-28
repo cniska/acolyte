@@ -39,12 +39,12 @@ async function commit(subject: string, author: Identity, committer = author): Pr
 
 // Pushing a brand-new branch is the case that regressed: the rev-list range is
 // multi-token, so quoting it collapsed the loop and every commit went unchecked.
-async function runHookOnNewRef(): Promise<{ code: number; stderr: string }> {
+async function runHookOnNewRef(remoteOid = ZERO): Promise<{ code: number; stderr: string }> {
   const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
   const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
     cwd: dir,
     env: hookEnv(),
-    stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${ZERO}\n`),
+    stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${remoteOid}\n`),
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -71,7 +71,7 @@ afterEach(async () => {
 });
 
 describe("pre-push hook", () => {
-  const realIdentity = { name: "Real Name", email: "real@example.dev" };
+  const realIdentity = { name: "Real Name", email: "real@example.xn--p1ai" };
 
   test("accepts a valid commit on a new branch", async () => {
     await commit("feat: add a thing", realIdentity);
@@ -107,6 +107,20 @@ describe("pre-push hook", () => {
     expect(stderr).toContain("committer email uses a reserved placeholder domain");
   });
 
+  test.each([
+    ["TEST@Example.COM", "reserved placeholder domain"],
+    ["real@sub.example.org", "reserved placeholder domain"],
+    ["real@host.invalid", "reserved placeholder domain"],
+    ["real@host.test", "reserved placeholder domain"],
+    ["real@host.localhost", "reserved placeholder domain"],
+    ["real@example..com", "not a valid address"],
+  ])("rejects invalid author email %s", async (email, message) => {
+    await commit("feat: add a thing", { name: "Real Name", email }, realIdentity);
+    const { code, stderr } = await runHookOnNewRef();
+    expect(code).toBe(1);
+    expect(stderr).toContain(message);
+  });
+
   test("reports the offending commit id", async () => {
     await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
@@ -120,6 +134,26 @@ describe("pre-push hook", () => {
     const { code, stderr } = await runHookOnNewRef();
     expect(code).toBe(1);
     expect(stderr).toContain("author name is a placeholder");
+  });
+
+  test("excludes commits already on the remote from a new branch", async () => {
+    await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
+    const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
+    await commit("feat: branch", realIdentity);
+
+    const { code } = await runHookOnNewRef();
+
+    expect(code).toBe(0);
+  });
+
+  test("fails closed when the remote tip is unavailable locally", async () => {
+    await commit("feat: add a thing", realIdentity);
+
+    const { code, stderr } = await runHookOnNewRef("1".repeat(40));
+
+    expect(code).toBe(1);
+    expect(stderr).toContain("cannot enumerate commits");
   });
 
   test("skips a deleted ref", async () => {

@@ -15,6 +15,13 @@ while read -r local_ref local_oid remote_ref remote_oid; do
   else
     range=("$remote_oid..$local_oid")
   fi
+  if ! commits=$(git rev-list "${range[@]}"); then
+    echo "error: cannot enumerate commits for $local_ref." >&2
+    exit 1
+  fi
+  if [ -z "$commits" ]; then
+    continue
+  fi
   while IFS= read -r oid; do
     subject=$(git log -1 --format='%s' "$oid")
     body=$(git log -1 --format='%b' "$oid")
@@ -34,7 +41,7 @@ while read -r local_ref local_oid remote_ref remote_oid; do
       echo "  commit: $oid" >&2
       exit 1
     }
-  done < <(git rev-list "${range[@]}")
+  done <<< "$commits"
 done
 
 bun run verify
