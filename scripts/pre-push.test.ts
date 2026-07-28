@@ -39,9 +39,13 @@ async function commit(subject: string, author: Identity, committer = author): Pr
 
 // Pushing a brand-new branch is the case that regressed: the rev-list range is
 // multi-token, so quoting it collapsed the loop and every commit went unchecked.
-async function runHookOnNewRef(remoteOid = ZERO, useFakeBun = true): Promise<{ code: number; stderr: string }> {
+async function runHookOnNewRef(
+  remoteOid = ZERO,
+  useFakeBun = true,
+  remote = "origin",
+): Promise<{ code: number; stderr: string }> {
   const head = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
-  const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
+  const proc = Bun.spawn(["bash", ".githooks/pre-push", remote], {
     cwd: dir,
     env: hookEnv(useFakeBun),
     stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${remoteOid}\n`),
@@ -81,6 +85,13 @@ describe("pre-push hook", () => {
 
   test("rejects a placeholder author on a new branch", async () => {
     await commit("feat: add a thing", { name: "Your Name", email: "real@example.dev" }, realIdentity);
+    const { code, stderr } = await runHookOnNewRef();
+    expect(code).toBe(1);
+    expect(stderr).toContain("author name is a placeholder");
+  });
+
+  test("rejects a placeholder author with repeated whitespace", async () => {
+    await commit("feat: add a thing", { name: "Your  Name", email: "real@example.dev" }, realIdentity);
     const { code, stderr } = await runHookOnNewRef();
     expect(code).toBe(1);
     expect(stderr).toContain("author name is a placeholder");
@@ -150,6 +161,17 @@ describe("pre-push hook", () => {
     await commit("feat: branch", realIdentity);
 
     const { code } = await runHookOnNewRef();
+
+    expect(code).toBe(0);
+  });
+
+  test("excludes known remote commits on a direct URL push", async () => {
+    await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
+    const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
+    await commit("feat: branch", realIdentity);
+
+    const { code } = await runHookOnNewRef(ZERO, true, "https://example.com/acolyte.git");
 
     expect(code).toBe(0);
   });
