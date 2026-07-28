@@ -52,7 +52,6 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/memory [all|user|project]`: show memory notes
 - `/memory add [--user|--project] <text>`: save memory note
 - `/memory rm <id-prefix>`: remove memory note
-- `/memory consolidate [all|user|project]`: converge durable memory; defaults to all
 - `/skill <name>`: run a skill command
 - `/skills`: show skills picker
 - `/exit`: exit chat
