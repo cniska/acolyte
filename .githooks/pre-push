@@ -14,7 +14,9 @@ while read -r local_ref local_oid remote_ref remote_oid; do
     if git remote get-url "$remote" >/dev/null 2>&1; then
       range=("$local_oid" --not --remotes="$remote")
     else
-      range=("$local_oid" --not --remotes)
+      # A direct URL has no local tracking namespace, so validate every ancestor
+      # rather than excluding commits that may belong only to another remote.
+      range=("$local_oid")
     fi
   else
     range=("$remote_oid..$local_oid")

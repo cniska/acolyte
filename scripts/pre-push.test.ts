@@ -157,6 +157,7 @@ describe("pre-push hook", () => {
   test("excludes commits already on the remote from a new branch", async () => {
     await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
+    await git(["remote", "add", "origin", "https://example.com/acolyte.git"]);
     await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
     await commit("feat: branch", realIdentity);
 
@@ -165,15 +166,16 @@ describe("pre-push hook", () => {
     expect(code).toBe(0);
   });
 
-  test("excludes known remote commits on a direct URL push", async () => {
+  test("checks remote ancestors on a direct URL push", async () => {
     await commit("feat: remote", { name: "Your Name", email: "real@example.dev" }, realIdentity);
     const remoteTip = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim();
     await git(["update-ref", "refs/remotes/origin/main", remoteTip]);
     await commit("feat: branch", realIdentity);
 
-    const { code } = await runHookOnNewRef(ZERO, true, "https://example.com/acolyte.git");
+    const { code, stderr } = await runHookOnNewRef(ZERO, true, "https://example.com/acolyte.git");
 
-    expect(code).toBe(0);
+    expect(code).toBe(1);
+    expect(stderr).toContain("author name is a placeholder");
   });
 
   test("fails closed when the remote tip is unavailable locally", async () => {
