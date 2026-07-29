@@ -21,7 +21,6 @@ function createGhPrViewTool(input: ToolkitInput) {
     toolkit: "gh",
     category: "search",
     description: "View the pull request associated with the current branch.",
-    instruction: "Use `gh-pr-view` to check PR status before creating or editing.",
     inputSchema: z.object({}).optional(),
     outputSchema: z.object({
       kind: z.literal("gh-pr-view"),
@@ -56,7 +55,6 @@ function createGhPrCreateTool(input: ToolkitInput) {
     toolkit: "gh",
     category: "write",
     description: "Create a pull request for the current branch.",
-    instruction: "Use `gh-pr-create` after pushing the branch. Requires title and body.",
     inputSchema: z.object({
       title: z.string().min(1),
       body: z.string().min(1),
@@ -93,7 +91,6 @@ function createGhPrEditTool(input: ToolkitInput) {
     toolkit: "gh",
     category: "write",
     description: "Edit the title or body of an existing pull request.",
-    instruction: "Use `gh-pr-edit` to update PR title or body. Requires PR number.",
     inputSchema: z.object({
       number: z.number().int(),
       title: z.string().min(1).optional(),
@@ -125,7 +122,6 @@ function createGhIssueCreateTool(input: ToolkitInput) {
     toolkit: "gh",
     category: "write",
     description: "Create a GitHub issue.",
-    instruction: "Use `gh-issue-create` to file bugs or feature requests. Requires title and body.",
     inputSchema: z.object({
       title: z.string().min(1),
       body: z.string().min(1),
@@ -166,7 +162,6 @@ function createGhIssueListTool(input: ToolkitInput) {
     toolkit: "gh",
     category: "search",
     description: "List GitHub issues for the current repository.",
-    instruction: "Use `gh-issue-list` to check for duplicates before creating issues.",
     inputSchema: z.object({
       state: z.enum(["open", "closed", "all"]).optional(),
       limit: z.number().int().min(1).max(100).optional(),

@@ -36,22 +36,40 @@ describe("createInstructions", () => {
     }
   });
 
-  test("includes tool and runtime instructions", () => {
+  test("hoists the tool handoffs", () => {
     const out = createInstructions("Soul.");
     expectIntent(out, [
-      ["code-scan", "ast pattern"],
-      ["code-edit", "ast-aware refactors", "file-edit", "plain text edits"],
-      ["target", "local", "member"],
-      ["withinSymbol"],
-      ["refine scope/rule", "current file evidence"],
-      ["latest direct", "file-read"],
-      ["batch same-file edits"],
-      ["diff preview", "bounded changes", "stop"],
-      ["file-create", "full content"],
-      ["file-find", "name/path pattern"],
-      ["file-search", "text/regex"],
-      ["shell-run", "repository commands", "the user asked for"],
+      ["`code-scan` before `code-edit`"],
+      ["re-read a file with `file-read` immediately before editing"],
+      ["`tasklist-create` once", "then `tasklist-update`"],
     ]);
+  });
+
+  // A tool that only describes itself belongs in its own description, next to its schema.
+  // These lines were in the prompt for every turn; each one's absence is the contract.
+  test("does not restate what a tool's own description says", () => {
+    const out = createInstructions("Soul.");
+    for (const restatement of [
+      "to locate files by name/path pattern",
+      "for text/regex content search",
+      "with full content directly",
+      "to remove a file",
+      "when repo-wide state matters",
+      "for committed history",
+      "to stage edited files before commit",
+      "only when the user explicitly asks",
+      "to check PR status",
+      "check for duplicates",
+      "for external information",
+      "to read specific URLs",
+      "for AST-aware refactors",
+      "do not chase unrelated failures",
+      "to validate touched behavior",
+      "to discover recent undo checkpoints",
+      "so cache invalidation",
+    ]) {
+      expect(out).not.toContain(restatement);
+    }
   });
 
   test("appends project rules as a separate prompt block", () => {

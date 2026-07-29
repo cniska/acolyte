@@ -96,7 +96,6 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
     toolkit: "git",
     category: "search",
     description: "Show working tree status (short format with branch) for the current repository.",
-    instruction: "Use `git-status` when repo-wide state matters. Skip it for already-understood file-scoped edits.",
     outputSchema: z.object({
       kind: z.literal("git-status"),
       output: z.string(),
@@ -124,8 +123,6 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
     toolkit: "git",
     category: "search",
     description: "Show unstaged changes (unified diff) for the repository or a specific file path.",
-    instruction:
-      "Use `git-diff` when git-level diff context matters. For bounded file edits, rely on write-tool previews unless the user asks for git verification.",
     outputSchema: z.object({
       kind: z.literal("git-diff"),
       path: z.string().optional(),
@@ -166,7 +163,6 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
     toolkit: "git",
     category: "search",
     description: "Show recent commits in compact one-line form (optionally scoped to a file/path).",
-    instruction: "Use `git-log` for committed history (optionally scoped by path), not for uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-log"),
       path: z.string().optional(),
@@ -199,8 +195,6 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
     toolkit: "git",
     category: "search",
     description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
-    instruction:
-      "Use `git-show` for committed history at a ref (optionally scoped by path), not for uncommitted edits.",
     outputSchema: z.object({
       kind: z.literal("git-show"),
       ref: z.string().optional(),
@@ -247,7 +241,6 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
     category: "write",
     description:
       "Stage tracked/untracked files. Prefer explicit `paths` scoped to files edited in the current task. Use `all=true` only when explicitly needed.",
-    instruction: "Use `git-add` to stage edited files before commit. Prefer explicit paths over `all=true`.",
     outputSchema: z.object({
       kind: z.literal("git-add"),
       all: z.boolean().optional(),
@@ -282,8 +275,8 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
     id: "git-commit",
     toolkit: "git",
     category: "write",
-    description: "Create a git commit with a required subject line and optional body lines.",
-    instruction: "Use `git-commit` only when the user explicitly asks. Set `message` to the subject line.",
+    description:
+      "Create a git commit with a required subject line and optional body lines. I commit only when you ask for it.",
     outputSchema: z.object({
       kind: z.literal("git-commit"),
       message: z.string().min(1),

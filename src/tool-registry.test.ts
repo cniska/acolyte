@@ -92,72 +92,55 @@ describe("localization baseline", () => {
     expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
     expect(renderToolOutput({ kind: "no-output" })).toBe("(No output)");
   });
+});
 
-  test("tool instructions encode behavioral intent by tool type", () => {
-    const readInstruction = toolDefinitionsById["file-read"]?.instruction ?? "";
-    const editInstruction = toolDefinitionsById["file-edit"]?.instruction ?? "";
-    const editCodeInstruction = toolDefinitionsById["code-edit"]?.instruction ?? "";
-    const searchInstruction = toolDefinitionsById["file-search"]?.instruction ?? "";
-    const findInstruction = toolDefinitionsById["file-find"]?.instruction ?? "";
-    const createInstruction = toolDefinitionsById["file-create"]?.instruction ?? "";
-    const deleteInstruction = toolDefinitionsById["file-delete"]?.instruction ?? "";
-    const gitStatusInstruction = toolDefinitionsById["git-status"]?.instruction ?? "";
-    const gitDiffInstruction = toolDefinitionsById["git-diff"]?.instruction ?? "";
-    const gitLogInstruction = toolDefinitionsById["git-log"]?.instruction ?? "";
-    const gitShowInstruction = toolDefinitionsById["git-show"]?.instruction ?? "";
-    const runCommandInstruction = toolDefinitionsById["shell-run"]?.instruction ?? "";
-    const runTestsInstruction = toolDefinitionsById["test-run"]?.instruction ?? "";
-    const webSearchInstruction = toolDefinitionsById["web-search"]?.instruction ?? "";
-    const webFetchInstruction = toolDefinitionsById["web-fetch"]?.instruction ?? "";
-    const tasklistCreateInstruction = toolDefinitionsById["tasklist-create"]?.instruction ?? "";
-    const tasklistUpdateInstruction = toolDefinitionsById["tasklist-update"]?.instruction ?? "";
-    const sessionSearchInstruction = toolDefinitionsById["session-search"]?.instruction ?? "";
-    const memorySearchInstruction = toolDefinitionsById["memory-search"]?.instruction ?? "";
-    const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
+describe("model-facing tool text", () => {
+  // A tool's instruction is hoisted into the system prompt for every turn, whether or not the
+  // tool gets used. Only a handoff between two tools earns that: anything a tool can say about
+  // itself belongs in its own description, next to its schema.
+  test("only cross-tool handoffs are hoisted into the system prompt", () => {
+    const hoisted = toolIds().filter((id) => toolDefinitionsById[id]?.instruction);
+    expect(hoisted.sort()).toEqual(["code-scan", "file-read", "tasklist-create"]);
 
-    expectIntent(readInstruction, [
-      ["Read whole files", "file-read"],
-      ["offset", "limit", "ceiling"],
-      ["Re-read", "target file", "before editing"],
-    ]);
-    // The window vocabulary is gone from the prompt surface, not merely de-emphasized.
-    expect(readInstruction).not.toContain("aroundLine");
-    expect(readInstruction).not.toContain("contextLines");
-    expectIntent(findInstruction, [["file-find", "locate files"]]);
-    expectIntent(createInstruction, [["file-create", "full content"]]);
-    expectIntent(deleteInstruction, [["file-delete"]]);
-    expectIntent(editInstruction, [
-      ["latest direct", "file-read"],
-      ["batch same-file edits"],
-      ["diff preview", "bounded changes", "stop"],
-      ["code-edit", "structural", "refactors"],
-    ]);
-    expectIntent(editCodeInstruction, [["ast-aware refactors"], ["target", "local", "member"], ["withinsymbol"]]);
-    expectIntent(searchInstruction, [["text/regex"], ["scope", "path"], ["edit from that evidence"]]);
-    expectIntent(gitStatusInstruction, [["repo-wide state"], ["file-scoped edits"]]);
-    expectIntent(gitDiffInstruction, [["git-level diff context"], ["write-tool previews"]]);
-    expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);
-    expectIntent(gitShowInstruction, [["committed history"], ["uncommitted edits"]]);
-    expectIntent(runCommandInstruction, [["the user asked for"], ["repository commands"]]);
-    expectIntent(runTestsInstruction, [
-      ["validate touched behavior"],
-      ["create or update related tests"],
-      ["narrowest related tests"],
-      ["widen scope", "user asks"],
-      ["do not chase unrelated failures"],
-    ]);
-    expectIntent(webSearchInstruction, [["external information"], ["not available in the repository"]]);
-    expectIntent(webFetchInstruction, [["read specific urls"]]);
-    expectIntent(tasklistCreateInstruction, [["tasklist-create"], ["multi-step tasks"], ["tasklist-update"]]);
-    expectIntent(tasklistUpdateInstruction, [["tasklist-update"], ["status"], ["tasklist-create"]]);
-    // session-search hoists nothing: its description ships the trigger with the schema.
-    expect(sessionSearchInstruction).toBe("");
+    for (const id of hoisted) {
+      const instruction = toolDefinitionsById[id]?.instruction ?? "";
+      const named = toolIds().filter((other) => instruction.includes(`\`${other}\``));
+      expect(named).toContain(id);
+      expect(named.length).toBeGreaterThan(1);
+    }
+  });
+
+  // A parameter fact belongs on the parameter, where it reaches the model inside the property
+  // being filled and dies with the field it documents.
+  test("parameter contracts ship on their own parameters", () => {
+    const described = (id: string, param: string): string => {
+      const properties = (
+        toolDefinitionsById[id]?.inputSchema as { properties?: Record<string, { description?: string }> }
+      )?.properties;
+      return properties?.[param]?.description ?? "";
+    };
+    expectIntent(described("undo-restore", "checkpointId"), [["undo-list"]]);
+    expectIntent(described("undo-restore", "paths"), [["undo-list"]]);
+    expectIntent(described("file-read", "offset"), [["too large to read whole"]]);
+  });
+
+  // Whether to commit at all is the user's call, and no other surface carries it: soul.md is
+  // silent, and a workspace without an equivalent project rule would lose it entirely.
+  test("git-commit states that committing waits for the user", () => {
+    expectIntent(toolDefinitionsById["git-commit"]?.description ?? "", [["only when you ask"]]);
+  });
+
+  // Vocabulary a tool no longer supports must be gone from the schema surface, not merely
+  // de-emphasized, and a tool's trigger ships with its schema rather than in the system prompt.
+  test("tool descriptions carry each tool's own contract", () => {
+    const readDescription = toolDefinitionsById["file-read"]?.description ?? "";
+    expect(readDescription).not.toContain("aroundLine");
+    expect(readDescription).not.toContain("contextLines");
+    expectIntent(readDescription, [["offset"], ["limit"], ["token ceiling"]]);
     expectIntent(toolDefinitionsById["session-search"]?.description ?? "", [
       ["keyword"],
       ["already in context"],
       ["rather than asking the user to repeat"],
     ]);
-    expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
-    expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
   });
 });

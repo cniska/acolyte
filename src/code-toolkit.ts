@@ -47,7 +47,7 @@ function createScanCodeTool(input: ToolkitInput) {
     category: "search",
     description: "Scan a file or directory for structural code patterns using AST matching.",
     instruction:
-      "Use `code-scan` for AST pattern search. Use it to map structural targets before `code-edit`. For plain text/regex searches, use `file-search`. Matches include `enclosingSymbol`; reuse it as `withinSymbol` in follow-up `code-edit`.",
+      "Map structural targets with `code-scan` before `code-edit`, and reuse a match's `enclosingSymbol` as the `withinSymbol` of the edit.",
     inputSchema: z.object({
       path: z.string().min(1),
       pattern: z.string().min(1),
@@ -107,15 +107,6 @@ function createEditCodeTool(input: ToolkitInput) {
     category: "write",
     description:
       'Edit code structurally with AST-aware operations. Pass `edits` as operation objects like {op:"rename", from, to, withinSymbol?, target?} or {op:"replace", rule, replacement, within?, withinSymbol?}. For `replace`, `rule` may be a string/pattern object shorthand or a recursive ast-grep rule object. `path` is a single code file. For non-code files use `file-edit`.',
-    instruction: [
-      "Use `code-edit` for AST-aware refactors; use `file-edit` for plain text edits.",
-      "Prefer explicit `rename` or `replace` operations.",
-      "For ambiguous local/member renames, set `target` to `local` or `member`.",
-      "Use `withinSymbol` to keep edits scoped.",
-      "Read the target file directly before editing.",
-      "If `code-edit` reports no matches, refine scope/rule from current file evidence instead of broadening blindly.",
-      "Use the diff preview to confirm bounded changes and stop.",
-    ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z.array(editCodeEditSchema).min(1),

@@ -13,8 +13,6 @@ function createActivateSkillTool(input: ToolkitInput) {
     toolkit: "skill",
     category: "meta",
     description: "Activate one or more skills by name to load structured guidance into context.",
-    instruction:
-      "Use `skill-activate` with one or more skill names to load their structured guidance; the available skills are listed each turn.",
     inputSchema: z.object({
       names: z.array(z.string().min(1)).min(1),
       args: z.string().optional(),
@@ -65,7 +63,6 @@ function createDeactivateSkillTool(input: ToolkitInput) {
     toolkit: "skill",
     category: "meta",
     description: "Deactivate one or more active skills by name when their guidance no longer applies.",
-    instruction: "Use `skill-deactivate` with one or more active skill names to drop their guidance from context.",
     inputSchema: z.object({
       names: z.array(z.string().min(1)).min(1),
     }),

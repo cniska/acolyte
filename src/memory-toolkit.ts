@@ -12,7 +12,6 @@ function createMemoryObserveTool(input: ToolkitInput) {
     toolkit: "memory",
     category: "meta",
     description: "Record a fact extracted from the conversation into memory.",
-    instruction: "Use `memory-observe` to persist facts extracted from the conversation into the memory store.",
     inputSchema: z.object({
       scope: memoryScopeSchema,
       content: z.string().min(1),
@@ -38,9 +37,8 @@ function createMemorySearchTool(input: ToolkitInput) {
     id: "memory-search",
     toolkit: "memory",
     category: "meta",
-    description: "Search all memories by relevance. Returns entries ranked by semantic similarity to the query.",
-    instruction:
-      "Use `memory-search` to recall prior context, decisions, or facts before starting work that might overlap with previous sessions.",
+    description:
+      "Search all memories by relevance, ranked by semantic similarity to the query. Prior context, decisions, and facts from earlier sessions are reachable only here, so search before work that may overlap with them.",
     inputSchema: z.object({
       query: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
       scope: memoryScopeSchema.optional(),
@@ -93,9 +91,7 @@ function createMemoryAddTool(input: ToolkitInput) {
     toolkit: "memory",
     category: "meta",
     description:
-      "Store a new memory. Use project scope for workspace-specific facts and user scope for cross-project preferences.",
-    instruction:
-      "Use `memory-add` to persist important findings, decisions, or corrections that should survive across sessions.",
+      "Store a finding, decision, or correction that should survive across sessions. Use project scope for workspace-specific facts and user scope for cross-project preferences.",
     inputSchema: z.object({
       content: z.string().min(1),
       scope: memoryScopeSchema.extract(["user", "project"]),

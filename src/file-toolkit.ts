@@ -27,7 +27,6 @@ function createFindFilesTool(input: ToolkitInput) {
     category: "search",
     description:
       "Find files by name or path pattern. The pattern is a glob (`*`, `?`, `**`, `[abc]`, `{a,b}`) matched against workspace-relative paths, or a case-insensitive substring when it has no wildcard. A leading `/` anchors at the workspace root. Results are capped: the result cap reports the full match count, while a workspace scan cap reports a lower bound. To search file contents use `file-search` instead.",
-    instruction: "Use `file-find` to locate files by name/path pattern.",
     inputSchema: z.object({
       pattern: z.string().min(1),
     }),
@@ -65,8 +64,6 @@ function createSearchFilesTool(input: ToolkitInput) {
     category: "search",
     description:
       "Search file contents for a text or regex pattern. Optionally scope with `path` (file or directory). To locate files by name use `file-find` instead.",
-    instruction:
-      "Use `file-search` for text/regex content search. Narrow scope with `path`. If needed text is already visible in `file-read`, edit from that evidence instead of re-searching.",
     inputSchema: z.object({
       pattern: z.string().min(1),
       path: z.string().min(1).optional(),
@@ -108,10 +105,8 @@ function createReadFileTool(input: ToolkitInput) {
     category: "read",
     description:
       "Read a text file. I return the whole file as numbered lines under a `Lines: start-end of total` header. A file over the token ceiling fails with its line count; re-read it with `offset` (the 1-based first line) and `limit` (how many lines) to select the part you need. A file over the byte ceiling is not readable at any range — search it with `file-search`.",
-    instruction: [
-      "Read whole files with `file-read`; reach for offset and limit only when a read fails the token ceiling.",
-      "Re-read the target file immediately before editing it.",
-    ].join(" "),
+    instruction:
+      "Re-read a file with `file-read` immediately before editing it, and take the snippets and line numbers you pass to `file-edit` or `code-edit` from that read.",
     inputSchema: z.object({
       path: z.string().min(1),
       offset: z
@@ -179,20 +174,15 @@ function createEditFileTool(input: ToolkitInput) {
     category: "write",
     description:
       "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `file-read` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `file-create`. For code renames or structural edits use `code-edit`.",
-    instruction: [
-      "Use `file-edit` for bounded text edits.",
-      "Use exact {find, replace} snippets from the latest direct `file-read` of that file.",
-      "Keep edits tight and batch same-file edits in one call.",
-      "For larger blocks use {startLine, endLine, replace} with 1-based lines from the latest `file-read`.",
-      "Use the diff preview to confirm bounded changes and stop.",
-      "Use `code-edit` for structural AST-aware refactors.",
-    ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
         .array(
           z.union([
-            z.object({ find: z.string().min(1), replace: z.string() }),
+            z.object({
+              find: z.string().min(1),
+              replace: z.string(),
+            }),
             z.object({
               startLine: z.number().int().min(1, "Line numbers must be >= 1"),
               endLine: z.number().int().min(1, "Line numbers must be >= 1"),
@@ -234,7 +224,6 @@ function createCreateFileTool(input: ToolkitInput) {
     category: "write",
     description:
       "Create a new file with full content. For editing existing files, use `file-edit` or `code-edit` instead.",
-    instruction: "For new files, call `file-create` with full content directly.",
     inputSchema: z.object({
       path: z.string().min(1),
       content: z.string(),
@@ -277,7 +266,6 @@ function createDeleteFileTool(input: ToolkitInput) {
     toolkit: "file",
     category: "write",
     description: "Delete a file from the file system.",
-    instruction: "Use `file-delete` to remove a file.",
     inputSchema: z.object({
       path: z.string().min(1),
     }),

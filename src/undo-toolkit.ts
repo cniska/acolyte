@@ -9,8 +9,6 @@ function createUndoListTool(input: ToolkitInput) {
     toolkit: "undo",
     category: "meta",
     description: "List recent undo checkpoints for the current session (if enabled).",
-    instruction:
-      "Use `undo-list` to discover recent undo checkpoints. If undo checkpoints are disabled, it will return an empty list.",
     inputSchema: z.object({
       limit: z.number().int().min(1).max(50).optional(),
     }),
@@ -59,14 +57,9 @@ function createUndoRestoreTool(input: ToolkitInput) {
     toolkit: "undo",
     category: "write",
     description: "Restore files to the pre-write state captured in an undo checkpoint.",
-    instruction: [
-      "Use `undo-restore` to revert a specific checkpoint.",
-      "You must pass `checkpointId` and the list of `paths` from `undo-list` so cache invalidation can be targeted.",
-      "If there are conflicts, do not retry blindly; inspect diffs and choose a different recovery path.",
-    ].join(" "),
     inputSchema: z.object({
-      checkpointId: z.string().min(1),
-      paths: z.array(z.string().min(1)).min(1),
+      checkpointId: z.string().min(1).describe("Checkpoint id from `undo-list`."),
+      paths: z.array(z.string().min(1)).min(1).describe("The paths recorded on that checkpoint's `undo-list` entry."),
     }),
     outputSchema: z.object({
       kind: z.literal("undo-restore"),
