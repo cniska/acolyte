@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { installClientLogSink, runChat } from "./chat-app";
-import { getCachedRepoPathCandidates, invalidateRepoPathCandidates } from "./chat-file-ref";
+import { collectRepoPathCandidates, getCachedRepoPathCandidates, invalidateRepoPathCandidates } from "./chat-file-ref";
 import { log, setLogSink } from "./log";
 import { stateDir } from "./paths";
 import type { Session, SessionId, SessionState } from "./session-contract";
@@ -30,13 +30,26 @@ describe("chat-ui integration helpers", () => {
     expect(refreshed).toContain("sum.rs");
   });
 
-  test("getCachedRepoPathCandidates keeps gitignored files mentionable", async () => {
+  test("collectRepoPathCandidates does not consult gitignore", async () => {
     const root = dirs.createDir("acolyte-at-gitignored-");
     await mkdir(join(root, "docs", "notes"), { recursive: true });
     await writeFile(join(root, ".gitignore"), "docs/notes\n", "utf8");
     await writeFile(join(root, "docs", "notes", "plan.md"), "plan", "utf8");
-    invalidateRepoPathCandidates(root);
-    expect(await getCachedRepoPathCandidates(root)).toContain("docs/notes/plan.md");
+    expect(await collectRepoPathCandidates(root)).toContain("docs/notes/plan.md");
+  });
+
+  test("collectRepoPathCandidates reports sibling directories found before the cap", async () => {
+    const root = dirs.createDir("acolyte-at-cap-");
+    await mkdir(join(root, "aaa"), { recursive: true });
+    await mkdir(join(root, "zzz"), { recursive: true });
+    await writeFile(join(root, "aaa", "keep.txt"), "keep", "utf8");
+    for (const name of ["1.txt", "2.txt", "3.txt", "4.txt"]) {
+      await writeFile(join(root, "zzz", name), name, "utf8");
+    }
+
+    const candidates = await collectRepoPathCandidates(root, 3);
+    expect(candidates.length).toBeLessThanOrEqual(4);
+    expect(candidates).toContain("aaa/");
   });
 
   test("getCachedRepoPathCandidates skips nested checkouts", async () => {
