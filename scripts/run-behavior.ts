@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { stateDir } from "../src/paths";
+import { gitEnv } from "../src/test-utils";
 import {
   BEHAVIOR_SCENARIO_BY_ID,
   BEHAVIOR_SCENARIO_LIST,
@@ -317,19 +318,9 @@ function printUsage(): void {
 async function createBehaviorWorkspace(scenarioId: BehaviorScenarioId): Promise<string> {
   const workspace = await mkdtemp(join(tmpdir(), `acolyte-behavior-${scenarioId}-`));
   await mkdir(workspace, { recursive: true });
-  await runTimedCommand(["git", "init", "-b", "main"], process.env as Record<string, string>, 10_000, workspace);
-  await runTimedCommand(
-    ["git", "config", "user.email", "behavior@example.com"],
-    process.env as Record<string, string>,
-    10_000,
-    workspace,
-  );
-  await runTimedCommand(
-    ["git", "config", "user.name", "Behavior Harness"],
-    process.env as Record<string, string>,
-    10_000,
-    workspace,
-  );
+  await runTimedCommand(["git", "init", "-b", "main"], gitEnv(), 10_000, workspace);
+  await runTimedCommand(["git", "config", "user.email", "behavior@example.com"], gitEnv(), 10_000, workspace);
+  await runTimedCommand(["git", "config", "user.name", "Behavior Harness"], gitEnv(), 10_000, workspace);
   return workspace;
 }
 
@@ -352,8 +343,8 @@ async function runScenario(
   const scenario = BEHAVIOR_SCENARIO_BY_ID[scenarioId];
   const workspace = await createBehaviorWorkspace(scenario.id);
   await scenario.setup(workspace);
-  await runTimedCommand(["git", "add", "."], process.env as Record<string, string>, 10_000, workspace);
-  await runTimedCommand(["git", "commit", "-m", "baseline"], process.env as Record<string, string>, 10_000, workspace);
+  await runTimedCommand(["git", "add", "."], gitEnv(), 10_000, workspace);
+  await runTimedCommand(["git", "commit", "-m", "baseline"], gitEnv(), 10_000, workspace);
   const beforeLines = await readLogLines(behaviorEnv.daemonLogPath);
 
   const result = await runTimedCommand(
