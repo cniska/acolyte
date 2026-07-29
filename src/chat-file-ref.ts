@@ -138,33 +138,51 @@ export function extractAtReferencePaths(inputValue: string): string[] {
   return out;
 }
 
-async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_SCAN_ENTRIES): Promise<string[]> {
+type ScanEntries = Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>;
+
+async function readScanEntries(abs: string): Promise<ScanEntries | null> {
+  try {
+    const entries = await readdir(abs, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    return entries;
+  } catch {
+    return null;
+  }
+}
+
+// A directory holding a `.git` entry is its own checkout — a worktree, submodule, or
+// vendored clone — so its tree duplicates another repository rather than extending this
+// one. `.git` is a directory in a clone and a file in a worktree or submodule.
+function isNestedCheckout(entries: ScanEntries): boolean {
+  return entries.some((entry) => entry.name === ".git");
+}
+
+// Directories are classified when discovered rather than when popped, so a scan that hits
+// `maxEntries` deep in one subtree still reports the sibling directories it already found.
+export async function collectRepoPathCandidates(
+  root = process.cwd(),
+  maxEntries = MAX_SCAN_ENTRIES,
+): Promise<string[]> {
+  const rootEntries = await readScanEntries(root);
+  if (!rootEntries) return [];
   const out: string[] = [];
-  const stack: Array<{ abs: string; rel: string }> = [{ abs: root, rel: "" }];
+  const stack: Array<{ abs: string; rel: string; entries: ScanEntries }> = [
+    { abs: root, rel: "", entries: rootEntries },
+  ];
 
   while (stack.length > 0 && out.length < maxEntries) {
     const current = stack.pop();
     if (!current) break;
-    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
-    try {
-      entries = await readdir(current.abs, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
 
-    for (const entry of entries) {
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+    for (const entry of current.entries) {
+      if (entry.name === ".git" || (entry.isDirectory() && IGNORED_DIRS.has(entry.name))) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
       if (entry.isDirectory()) {
-        if (rel === ".git") {
-          out.push(".git/config");
-          out.push(".git/COMMIT_EDITMSG");
-          continue;
-        }
+        const entries = await readScanEntries(abs);
+        if (entries && isNestedCheckout(entries)) continue;
         out.push(`${rel}/`);
-        stack.push({ abs, rel });
+        if (entries) stack.push({ abs, rel, entries });
       } else if (entry.isFile()) {
         out.push(rel);
       }
