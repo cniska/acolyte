@@ -16,7 +16,9 @@ export type ToolDefinition<TInput = unknown, TOutput = unknown> = {
   readonly toolkit: string;
   readonly category: ToolCategory;
   readonly description: string;
-  readonly instruction: string;
+  // Optional: a tool whose description already carries its contract hoists nothing into
+  // the system prompt.
+  readonly instruction?: string;
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly execute: (input: TInput, toolCallId: string) => Promise<RunToolResult<TOutput>>;
