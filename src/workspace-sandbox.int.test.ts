@@ -1,11 +1,49 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdir, symlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { expectToThrowJSON, tempDir } from "./test-utils";
-import { clearWorkspaceSandboxCache, ensurePathWithinSandbox } from "./workspace-sandbox";
+import { clearWorkspaceSandboxCache, ensurePathWithinSandbox, resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 const dirs = tempDir();
+
+async function git(cwd: string, args: string[]): Promise<void> {
+  const proc = Bun.spawn(["git", "-c", "commit.gpgsign=false", "-C", cwd, ...args], {
+    stdout: "pipe",
+    stderr: "pipe",
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "T",
+      GIT_AUTHOR_EMAIL: "t@t.dev",
+      GIT_COMMITTER_NAME: "T",
+      GIT_COMMITTER_EMAIL: "t@t.dev",
+    },
+  });
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${await new Response(proc.stderr).text()}`);
+}
+
+async function createRepoWithWorktree(prefix: string, worktreeAt: (root: string, repo: string) => string) {
+  const root = dirs.createDir(prefix);
+  const repo = join(root, "repo");
+  await mkdir(repo, { recursive: true });
+  await writeFile(join(repo, "README.md"), "repo\n", "utf8");
+  await git(repo, ["init", "--initial-branch=main"]);
+  await git(repo, ["add", "."]);
+  await git(repo, ["commit", "-m", "init"]);
+
+  await mkdir(join(repo, "docs", "notes"), { recursive: true });
+  await writeFile(join(repo, "docs", "notes", "plan.md"), "plan\n", "utf8");
+
+  const worktree = worktreeAt(root, repo);
+  await mkdir(dirname(worktree), { recursive: true });
+  await git(repo, ["worktree", "add", "-b", "wt", worktree]);
+  await mkdir(join(worktree, "docs"), { recursive: true });
+  await symlink(join(repo, "docs", "notes"), join(worktree, "docs", "notes"));
+
+  clearWorkspaceSandboxCache();
+  return { root, repo, worktree };
+}
 
 afterAll(() => {
   clearWorkspaceSandboxCache();
@@ -71,6 +109,47 @@ describe("workspace-sandbox", () => {
 
     // Paths outside both the real and linked root are still blocked
     expectToThrowJSON(() => ensurePathWithinSandbox("/etc/hosts", linkedWorkspace)).toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
+  });
+
+  test("treats the enclosing repo as the boundary for a subdirectory workspace", async () => {
+    const { repo } = await createRepoWithWorktree("acolyte-sandbox-subdir-", (root) => join(root, "outside-wt"));
+    const workspace = join(repo, "docs");
+
+    expect(resolveWorkspaceSandboxRoot(workspace)).toBe(await realpath(repo));
+    expect(ensurePathWithinSandbox("../README.md", workspace)).toBe(join(repo, "README.md"));
+  });
+
+  test("treats the enclosing repo as the boundary for a nested worktree", async () => {
+    const { repo, worktree } = await createRepoWithWorktree("acolyte-sandbox-nested-wt-", (_root, repoRoot) =>
+      join(repoRoot, ".claude", "worktrees", "wt"),
+    );
+
+    expect(resolveWorkspaceSandboxRoot(worktree)).toBe(await realpath(repo));
+
+    // A project-owned path reached through the worktree's symlink resolves inside the repo.
+    expect(ensurePathWithinSandbox("docs/notes/plan.md", worktree)).toBe(join(worktree, "docs", "notes", "plan.md"));
+
+    // The primary checkout is part of the same project, so direct traversal reaches it too.
+    expect(ensurePathWithinSandbox("../../../README.md", worktree)).toBe(join(repo, "README.md"));
+
+    // Anything outside the repo stays blocked.
+    expectToThrowJSON(() => ensurePathWithinSandbox("/etc/hosts", worktree)).toMatchObject({
+      code: TOOL_ERROR_CODES.sandboxViolation,
+      kind: ERROR_KINDS.sandboxViolation,
+    });
+  });
+
+  test("keeps the worktree as the boundary when it sits outside the repo", async () => {
+    const { worktree } = await createRepoWithWorktree("acolyte-sandbox-outside-wt-", (root) =>
+      join(root, "outside-wt"),
+    );
+
+    expect(resolveWorkspaceSandboxRoot(worktree)).toBe(await realpath(worktree));
+
+    expectToThrowJSON(() => ensurePathWithinSandbox("docs/notes/plan.md", worktree)).toMatchObject({
       code: TOOL_ERROR_CODES.sandboxViolation,
       kind: ERROR_KINDS.sandboxViolation,
     });

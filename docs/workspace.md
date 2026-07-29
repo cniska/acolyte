@@ -21,10 +21,16 @@ The workspace detector infers ecosystem and commands (format/lint/test, package 
 
 ## Sandbox
 
-Tool filesystem access is scoped to the workspace root.
+Tool filesystem access is scoped to the sandbox boundary.
 
-Access inside the workspace is allowed. Access outside the workspace is denied.
+Access inside the boundary is allowed. Access outside it is denied.
 This rule is enforced across tool entry paths, including CLI tool mode (`acolyte tool ...`).
+
+When the workspace sits inside a git repository, the boundary is that repository's root; otherwise it is the workspace root. The repository is the project, so a workspace opened on a subdirectory can still reach the rest of it.
+
+Acolyte resolves the *outermost* enclosing repository. A worktree nested inside its repository — `wt` creates them under `.claude/worktrees/` — therefore resolves to the primary checkout, and project-owned paths reached from the worktree stay inside the boundary, including gitignored directories linked back to the primary checkout such as `docs/notes`. A worktree living outside its repository keeps its own root as the boundary and cannot follow such a link.
+
+File enumeration and search scoping stay keyed to the workspace root in every case, so discovery still sees only the workspace's own files.
 
 Path checks are fail-closed and use resolved-path validation (`realpath`) so symlink escapes are blocked. For paths that do not exist yet, validation resolves the nearest existing parent and enforces the same boundary.
 
@@ -63,7 +69,8 @@ Workspace and sandbox behavior is visible in lifecycle debug/trace events:
 
 - `lifecycle.workspace.profile`
 - `lifecycle.workspace.sandbox`
-- `lifecycle.sandbox.violation`
+
+A boundary violation surfaces as `lifecycle.error` carrying the sandbox-violation code and kind.
 
 ## Key files
 

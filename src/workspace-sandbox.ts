@@ -1,9 +1,10 @@
 import { lstatSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { field } from "./field";
 import { createToolError } from "./tool-error";
 
+const workspaceRootCache = new Map<string, string>();
 const sandboxRootCache = new Map<string, string>();
 const SANDBOX_VIOLATION_MESSAGES = {
   unresolvedPath: "Sandbox violation: cannot resolve path within workspace sandbox",
@@ -55,12 +56,46 @@ function isWithinSandboxRoot(targetPath: string, sandboxRoot: string): boolean {
   return !rel.startsWith("..") && !isAbsolute(rel);
 }
 
+function isRepoRoot(dir: string): boolean {
+  try {
+    lstatSync(join(dir, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// The outermost enclosing repository, so a worktree nested at `<repo>/.claude/worktrees/<name>`
+// resolves to the primary checkout it symlinks project-owned paths back to.
+function enclosingRepoRoot(workspaceRoot: string): string | null {
+  let outermost: string | null = null;
+  let current = workspaceRoot;
+  while (true) {
+    if (isRepoRoot(current)) outermost = current;
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return outermost === workspaceRoot ? null : outermost;
+}
+
+export function resolveWorkspaceRoot(workspace: string): string {
+  const resolvedWorkspace = resolve(workspace);
+  const cached = workspaceRootCache.get(resolvedWorkspace);
+  if (cached) return cached;
+
+  const workspaceRoot = resolveExistingPath(resolvedWorkspace);
+  workspaceRootCache.set(resolvedWorkspace, workspaceRoot);
+  return workspaceRoot;
+}
+
 export function resolveWorkspaceSandboxRoot(workspace: string): string {
   const resolvedWorkspace = resolve(workspace);
   const cached = sandboxRootCache.get(resolvedWorkspace);
   if (cached) return cached;
 
-  const sandboxRoot = resolveExistingPath(resolvedWorkspace);
+  const workspaceRoot = resolveWorkspaceRoot(workspace);
+  const sandboxRoot = enclosingRepoRoot(workspaceRoot) ?? workspaceRoot;
   sandboxRootCache.set(resolvedWorkspace, sandboxRoot);
   return sandboxRoot;
 }
@@ -89,5 +124,6 @@ export function ensurePathWithinSandbox(pathInput: string, workspace: string): s
 }
 
 export function clearWorkspaceSandboxCache(): void {
+  workspaceRootCache.clear();
   sandboxRootCache.clear();
 }

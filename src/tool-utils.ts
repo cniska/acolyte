@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { type GitignoreContext, isIgnoredByPatterns, loadGitignoreContext } from "./gitignore";
-import { ensurePathWithinSandbox, resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
+import { ensurePathWithinSandbox, resolveWorkspaceRoot } from "./workspace-sandbox";
 
 const DIFF_CONTEXT_RADIUS = 2;
 
@@ -160,7 +160,7 @@ function normalizeRelPath(value: string): string {
 
 export async function resolveSearchScopeFiles(workspace: string, paths: string[] | undefined): Promise<string[]> {
   const { files: allFiles } = await collectWorkspaceFiles(workspace);
-  const sandboxRoot = resolveWorkspaceSandboxRoot(workspace);
+  const workspaceRoot = resolveWorkspaceRoot(workspace);
   const normalizedPaths = (paths ?? []).map((path) => path.trim()).filter((path) => path.length > 0);
   if (normalizedPaths.length === 0) return allFiles;
   const include = new Set<string>();
@@ -173,7 +173,7 @@ export async function resolveSearchScopeFiles(workspace: string, paths: string[]
       continue;
     }
     const canonicalPath = await realpath(absPath);
-    const relPath = normalizeRelPath(relative(sandboxRoot, canonicalPath));
+    const relPath = normalizeRelPath(relative(workspaceRoot, canonicalPath));
     if (entryStat.isFile()) {
       if (relPath.length > 0) include.add(relPath);
       continue;

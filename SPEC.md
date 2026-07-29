@@ -127,7 +127,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 5. Security & sandbox requirements (SEC)
 
-- **SEC-1** — Tool filesystem access outside the resolved workspace root is denied; access within it is allowed. Enforcement applies on every tool entry path, including direct CLI tool mode.
+- **SEC-1** — Tool filesystem access outside the sandbox boundary is denied; access within it is allowed. Enforcement applies on every tool entry path, including direct CLI tool mode.
 - **SEC-2** — Path validation is fail-closed and resolves real paths so symlink escapes are blocked; for a not-yet-existing path, the nearest existing parent is validated against the same boundary.
 - **SEC-3** — A boundary violation returns a structured tool error with a stable sandbox-violation code and kind, not a raw exception.
 - **SEC-4** — Shell execution runs an argv command without shell-string evaluation, validates the command path and path-like arguments against the workspace boundary, and runs with a restricted environment allowlist. (This is command-level, not kernel-level, isolation.)
@@ -136,6 +136,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **SEC-7** — Subscription (OAuth) tokens are stored separately from API keys with owner-only permissions and refresh automatically; logout can remove a key, a subscription, or both for a provider, and replacing stored credentials asks for confirmation.
 - **SEC-8** — MCP is disabled by default and opt-in per repository; HTTP MCP servers must use HTTPS except for localhost, and stdio MCP subprocesses receive only a minimal environment allowlist plus explicitly configured variables.
 - **SEC-9** — Acolyte has no product telemetry: trace events, logs, and memory remain on the local machine (or the user's own cloud when cloud sync is enabled) and are never uploaded to Acolyte.
+- **SEC-10** — When the workspace sits inside a git repository, the sandbox boundary is that repository's root — the outermost enclosing repository, so a worktree nested in a repository resolves to the primary checkout and project-owned paths reached from it, including through a symlink, stay inside the boundary. Otherwise the boundary is the workspace root, which also covers a worktree living outside its repository. File enumeration and search scoping stay keyed to the workspace root in every case.
 
 ## 6. Protocol & task requirements (PR)
 
@@ -205,7 +206,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-4** — A turn whose terminal step is empty or truncated is reopened exactly once and, if it recurs, ends with a host-synthesized error that still shows any partial text; a content-filter or provider-error finish ends immediately with a host-synthesized error. (LC-3b, LC-3c, LC-4, LC-5)
 - **AC-5** — With the tool-call ceiling reached, the next tool call is blocked with the budget-exhausted code and message, a single high-water notice was emitted earlier that turn, and a fresh request starts the count at zero. (FR-4, LC-6, LC-7)
 - **AC-6** — A composed prompt exceeding the per-call input limit fails the call with a system/tools/messages token breakdown before reaching the provider. (LC-8, LC-9)
-- **AC-7** — A tool attempting to read or write outside the workspace root — including via a symlink and via `acolyte tool` — returns the structured sandbox-violation error and performs no I/O outside the boundary. (FR-5, FR-32, SEC-1, SEC-2, SEC-3, SEC-4)
+- **AC-7** — A tool attempting to read or write outside the sandbox boundary — including via a symlink and via `acolyte tool` — returns the structured sandbox-violation error and performs no I/O outside the boundary, while a worktree nested in its repository can reach project-owned paths in that repository. (FR-5, FR-32, SEC-1, SEC-2, SEC-3, SEC-4, SEC-10)
 - **AC-8** — An identical read/search tool call returns a cached result without re-execution; a subsequent write to an overlapping path, or any shell execution, causes the next such call to re-execute. (FR-4, FR-46)
 - **AC-9** — File discovery for find/search omits the always-ignored directories and honors nested gitignore, and a gitignore negation cannot re-include an always-ignored directory. (FR-11, FR-45)
 - **AC-10** — The model retrieves relevant prior context via a memory search scoped so that no other session's or project's records appear, and user-scoped records are always visible; after the request, a durable observation is committed in the background without delaying the response. (MEM-2, MEM-4, MEM-5, MEM-7)
