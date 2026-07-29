@@ -8,7 +8,7 @@ case "$suite" in
     bun run scripts/run-unit-tests.ts
     ;;
   int)
-    bun test src/*.int.test.ts src/*.int.test.tsx
+    bun test src/*.int.test.ts src/*.int.test.tsx scripts/*.int.test.ts
     ;;
   tui)
     bun test src/*.tui.test.ts src/*.tui.test.tsx

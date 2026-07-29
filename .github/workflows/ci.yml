@@ -30,6 +30,7 @@ jobs:
             code:
               - 'src/**'
               - 'scripts/**'
+              - '.githooks/**'
               - 'package.json'
               - 'bun.lock'
               - 'tsconfig.json'
@@ -45,8 +46,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # Squash merges land as "<title> (#N)", so validate the subject main will carry.
+      # The title reaches the shell through env, never interpolation -- a fork can name
+      # a PR anything.
       - name: Validate PR title
-        run: bash scripts/check-commit-message.sh "${{ github.event.pull_request.title }}"
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: bash scripts/check-commit-message.sh "$TITLE (#$NUMBER)"
+
+  # The pre-push hook enforces these locally, but a hook is skippable and absent on a
+  # fresh clone. Re-running them here surfaces a bypassed push, and covers direct-to-main
+  # pushes that never see a PR. Advisory until `Commits` is a required status check.
+  commits:
+    name: Commits
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # check-commit-author.sh resolves punycode domains through bun.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Check commit messages and identities
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        # An unusable range makes `git rev-list` fail, and check-commits.sh exits non-zero
+        # rather than reporting a clean run over nothing.
+        run: bash scripts/check-commits.sh "$BASE_SHA..$HEAD_SHA"
 
   verify:
     name: Verify
