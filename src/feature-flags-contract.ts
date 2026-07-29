@@ -13,8 +13,8 @@ export const featureFlagsSchema = z.object({
   syncAgents: parseBoolSchema.optional(),
   // When enabled, capture write-tool checkpoints under .acolyte/undo/<sessionId> and allow undo tools.
   undoCheckpoints: parseBoolSchema.optional(),
-  // When enabled, allow managing parallel workspaces (git worktrees) from chat commands.
-  parallelWorkspaces: parseBoolSchema.optional(),
+  // When enabled, allow managing workspaces (git worktrees) from chat commands.
+  workspaces: parseBoolSchema.optional(),
   // When enabled, use the cloud API for memory and session storage.
   cloudSync: parseBoolSchema.optional(),
   // When enabled, connect to MCP servers configured in .mcp.json.
@@ -26,7 +26,7 @@ export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 export const resolvedFeatureFlagsSchema = z.object({
   syncAgents: parseBoolSchema.optional().default(false),
   undoCheckpoints: parseBoolSchema.optional().default(false),
-  parallelWorkspaces: parseBoolSchema.optional().default(false),
+  workspaces: parseBoolSchema.optional().default(false),
   cloudSync: parseBoolSchema.optional().default(false),
   mcp: parseBoolSchema.optional().default(false),
 });

@@ -1,6 +1,22 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { isKnownSlashToken, shouldAutocompleteSlashSubmit, slashCommandHelp, suggestSlashCommands } from "./chat-slash";
+import { appConfig } from "./app-config";
+import {
+  chatSlashCommands,
+  isKnownSlashToken,
+  shouldAutocompleteSlashSubmit,
+  slashCommandHelp,
+  suggestSlashCommands,
+} from "./chat-slash";
 import { resetSkillCache } from "./skill-ops";
+
+function setWorkspacesEnabled(enabled: boolean): () => void {
+  const cfg = appConfig as unknown as { features: { workspaces: boolean } };
+  const prev = cfg.features.workspaces;
+  cfg.features.workspaces = enabled;
+  return () => {
+    cfg.features.workspaces = prev;
+  };
+}
 
 beforeEach(() => resetSkillCache());
 
@@ -39,13 +55,18 @@ describe("chat-slash helpers", () => {
   });
 
   test("suggestSlashCommands fuzzy-matches root and expands subcommands", () => {
-    expect(suggestSlashCommands("/mov")).toEqual([
-      "/model",
-      "/workspaces",
-      "/workspaces list",
-      "/workspaces new",
-      "/workspaces switch",
-    ]);
+    const restore = setWorkspacesEnabled(true);
+    try {
+      expect(suggestSlashCommands("/mov")).toEqual([
+        "/model",
+        "/workspaces",
+        "/workspaces list",
+        "/workspaces new",
+        "/workspaces switch",
+      ]);
+    } finally {
+      restore();
+    }
     expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
     expect(suggestSlashCommands("/memry")).toEqual([
       "/memory",
@@ -54,6 +75,37 @@ describe("chat-slash helpers", () => {
       "/memory list",
       "/memory all",
     ]);
+  });
+
+  test("workspaces commands are absent while the flag is off", () => {
+    const restore = setWorkspacesEnabled(false);
+    try {
+      expect(chatSlashCommands()).not.toContain("/workspaces");
+      expect(suggestSlashCommands("/w")).toEqual([]);
+      expect(suggestSlashCommands("/workspaces")).toEqual([]);
+      expect(suggestSlashCommands("/mov")).not.toContain("/workspaces");
+      expect(isKnownSlashToken("/workspaces")).toBe(false);
+      expect(isKnownSlashToken("/workspaces list")).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  test("workspaces commands are present while the flag is on", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      expect(chatSlashCommands()).toContain("/workspaces");
+      expect(suggestSlashCommands("/w")).toEqual([
+        "/workspaces",
+        "/workspaces list",
+        "/workspaces new",
+        "/workspaces switch",
+      ]);
+      expect(isKnownSlashToken("/workspaces")).toBe(true);
+      expect(isKnownSlashToken("/workspaces list")).toBe(true);
+    } finally {
+      restore();
+    }
   });
 
   test("suggestSlashCommands fuzzy-matches multi-token input", () => {

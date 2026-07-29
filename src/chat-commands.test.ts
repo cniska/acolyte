@@ -539,34 +539,40 @@ describe("chat-commands", () => {
   });
 
   describe("/workspaces", () => {
-    function setParallelWorkspacesEnabled(enabled: boolean): () => void {
-      const cfg = appConfig as unknown as { features: { parallelWorkspaces: boolean } };
-      const prev = cfg.features.parallelWorkspaces;
-      cfg.features.parallelWorkspaces = enabled;
+    function setWorkspacesEnabled(enabled: boolean): () => void {
+      const cfg = appConfig as unknown as { features: { workspaces: boolean } };
+      const prev = cfg.features.workspaces;
+      cfg.features.workspaces = enabled;
       return () => {
-        cfg.features.parallelWorkspaces = prev;
+        cfg.features.workspaces = prev;
       };
     }
 
-    test("is gated by features.parallelWorkspaces", async () => {
-      const restore = setParallelWorkspacesEnabled(false);
+    test("is unknown while features.workspaces is off", async () => {
+      const restore = setWorkspacesEnabled(false);
       try {
         const { rows, stop } = await runCommand("/workspaces");
         expect(stop).toBe(true);
-        expect(
-          rows.some(
-            (row) =>
-              row.content ===
-              "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true",
-          ),
-        ).toBe(true);
+        expect(rows.some((row) => row.content === "Unknown command: /workspaces")).toBe(true);
+        expect(rows.some((row) => typeof row.content === "string" && row.content.includes("config set"))).toBe(false);
+      } finally {
+        restore();
+      }
+    });
+
+    test("subcommands are unknown while features.workspaces is off", async () => {
+      const restore = setWorkspacesEnabled(false);
+      try {
+        const { rows, stop } = await runCommand("/workspaces list");
+        expect(stop).toBe(true);
+        expect(rows.some((row) => row.content === "Unknown command: /workspaces list")).toBe(true);
       } finally {
         restore();
       }
     });
 
     test("list renders existing workspace sessions", async () => {
-      const restore = setParallelWorkspacesEnabled(true);
+      const restore = setWorkspacesEnabled(true);
       try {
         const ws = createSession({
           id: "sess_ws1",

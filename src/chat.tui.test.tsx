@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SHORTCUT_ITEMS } from "./chat-layout";
+import { shortcutItems } from "./chat-layout";
 import type { ViewportPickerInput, ViewportSuggestionsInput } from "./chat-viewport-contract";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { layoutChatViewport, layoutFooterStatus, layoutHeader } from "./terminal-chat-layout";
@@ -91,7 +91,7 @@ function composerScene(overrides: InputPanelOverrides, columns: number) {
       input: { text: value, cursor: value.length },
       picker,
       suggestions,
-      help: overrides.showHelp ? { visible: true, entries: SHORTCUT_ITEMS } : { visible: false, entries: [] },
+      help: overrides.showHelp ? { visible: true, entries: shortcutItems() } : { visible: false, entries: [] },
       ctrlCPending: overrides.ctrlCPending ?? false,
       footer: overrides.statusLine ?? DEFAULT_STATUS_LINE,
     },
@@ -140,7 +140,6 @@ describe("chat tui visual regression: status line and help", () => {
     "     /clear              clear transcript",
     "     /resume <id>        resume session",
     "     /sessions           show sessions",
-    "     /workspaces         manage workspaces",
     "     /model              change model",
     "     /status             show server status",
     "     /memory [scope]     show memory notes",

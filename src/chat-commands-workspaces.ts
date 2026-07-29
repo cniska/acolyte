@@ -191,18 +191,13 @@ function createWorkspacesGroup(ctx: CommandContext): SubcommandGroup {
 }
 
 export function createWorkspacesCommands(ctx: CommandContext): SlashCommand[] {
+  if (!appConfig.features.workspaces) return [];
   const group = createWorkspacesGroup(ctx);
   return [
     {
       name: "workspaces",
       match: (value) => value === "/workspaces" || value.startsWith("/workspaces "),
-      run: () => {
-        if (!appConfig.features.parallelWorkspaces) {
-          ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.disabled"))]);
-          return Promise.resolve({ stop: true, userText: ctx.text });
-        }
-        return dispatchSubcommandGroup(group, ctx.resolvedText);
-      },
+      run: () => dispatchSubcommandGroup(group, ctx.resolvedText),
     },
   ];
 }

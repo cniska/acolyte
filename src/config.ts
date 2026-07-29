@@ -145,8 +145,7 @@ function serializeToml(config: Config): string {
     if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
     if (typeof config.features.undoCheckpoints === "boolean")
       lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
-    if (typeof config.features.parallelWorkspaces === "boolean")
-      lines.push(`parallelWorkspaces = ${config.features.parallelWorkspaces}`);
+    if (typeof config.features.workspaces === "boolean") lines.push(`workspaces = ${config.features.workspaces}`);
     if (typeof config.features.cloudSync === "boolean") lines.push(`cloudSync = ${config.features.cloudSync}`);
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
@@ -228,7 +227,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "undoCheckpoints", "parallelWorkspaces", "cloudSync"]),
+  features: new Set(["syncAgents", "undoCheckpoints", "workspaces", "cloudSync"]),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {

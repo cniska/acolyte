@@ -6,7 +6,7 @@ import { useSuggestions } from "./chat-effects";
 import { processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { type GitStatus, gitStatus, SHORTCUT_ITEMS } from "./chat-layout";
+import { type GitStatus, gitStatus, shortcutItems } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount, reduceModelPickerAction } from "./chat-picker";
@@ -197,7 +197,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
   const statusLine: FooterStatus = {
-    repo: git?.repo ?? basename(process.cwd()),
+    repo: git?.repo ?? basename(currentSession.workspace ?? process.cwd()),
     worktree: git?.worktree ?? null,
     branch: git?.branch ?? null,
     dirty: git?.dirty ?? false,
@@ -232,7 +232,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
         slashSuggestions,
         slashSuggestionIndex,
       }),
-      help: { visible: showHelp, entries: SHORTCUT_ITEMS },
+      help: { visible: showHelp, entries: showHelp ? shortcutItems() : [] },
       ctrlCPending,
       footer: statusLine,
     },
@@ -268,10 +268,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     async (cancelled) => {
       await Bun.sleep(GIT_REFRESH_DEBOUNCE_MS);
       if (cancelled()) return;
-      const result = await gitStatus();
+      const result = await gitStatus(currentSession.workspace);
       if (!cancelled()) setGit((previous) => result ?? previous);
     },
-    [pendingState],
+    [pendingState, currentSession.workspace],
   );
 
   const activateSkill = createSkillActivator({

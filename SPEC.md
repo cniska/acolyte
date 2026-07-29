@@ -68,7 +68,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 2.5 Options / configuration
 
 - **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding model and optional embedding base URL, distill model, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
-- **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, parallel workspaces, cloud sync, and MCP. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
+- **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, workspaces, cloud sync, and MCP. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
 - **FR-38** — Reasoning level (`low`/`medium`/`high`) is accepted and mapped to the selected provider's native reasoning control.
 - **FR-39** — Locale selects the UI language; an unset locale defaults to English, and an unavailable locale falls back rather than failing.
 - **FR-40** — Global update flags `--update` (force) and `--no-update` (skip) override the default startup update behavior; `--no-update` wins when both are present.
@@ -158,7 +158,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-5** — TUI state reads that depend on current state use the functional-update form so concurrent updates from streaming events and input handlers do not race on a stale value.
 - **TUI-6** — Only active input handlers receive key events; terminal key parsing is centralized, with unambiguous modifier reporting on terminals that support the enhanced keyboard protocol.
 - **TUI-7** — A live status line shows location, model, token usage, active skill, and PR context, updating token totals during a turn.
-- **TUI-8** — Slash commands cover session control (new, clear, resume, sessions), model change, status, usage, memory management, skill run and skills picker, and exit; the parallel-workspaces commands appear only when that flag is enabled.
+- **TUI-8** — Slash commands cover session control (new, clear, resume, sessions), model change, status, usage, memory management, skill run and skills picker, and exit; the workspaces commands appear only when that flag is enabled.
 - **TUI-9** — Fuzzy autocomplete is offered for file paths, sessions, commands, and skills.
 - **TUI-10** — A queued message typed while a turn is running is handled cooperatively and processed in order rather than dropped or interleaved mid-step.
 - **TUI-11** — A user message preserves its whitespace in the transcript: leading indentation and internal whitespace runs are kept (tabs expanded to fixed-width stops), and a wrapped line repeats its indentation on each continuation row. Inline markup — backtick `code`, bold, and file paths — renders styled, with its delimiters interpreted. A fenced code block renders syntax-highlighted like assistant output, its fence interpreted; unfenced text stays verbatim.

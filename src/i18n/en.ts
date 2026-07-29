@@ -121,8 +121,6 @@ export const EN_MESSAGES = {
   "cli.help.desc.start": "start server",
   "cli.help.desc.status": "show server status",
   "cli.help.desc.stop": "stop all servers",
-  "chat.workspaces.disabled":
-    "Workspaces are disabled. Enable with: acolyte config set --project features.parallelWorkspaces true",
   "chat.workspaces.created": "Created workspace {name}.",
   "chat.workspaces.create_failed": "Failed to create workspace: {reason}",
   "chat.workspaces.switched": "Switched to workspace {name}.",

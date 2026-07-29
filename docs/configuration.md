@@ -169,7 +169,7 @@ acolyte config set features.syncAgents true
 |------|-------------|
 | `syncAgents` | Sync `AGENTS.md` into a deterministic project memory record (`mem_agentsmd`). The model recalls it via `memory-search` instead of prompt injection. |
 | `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
-| `parallelWorkspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
+| `workspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
 | `cloudSync` | Use the cloud API for memory and session storage. Requires `acolyte login`. |
 | `mcp` | Opt-in: load MCP servers from `.mcp.json` and expose their tools to the agent. |
 
@@ -192,6 +192,6 @@ acolyte config set features.syncAgents true
 | `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
 | `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
-| `features.parallelWorkspaces` | opt-in: enable `/workspaces` chat commands |
+| `features.workspaces` | opt-in: enable `/workspaces` chat commands |
 | `features.cloudSync` | opt-in: use cloud API for memory and session storage |
 | `features.mcp` | opt-in: enable MCP servers from `.mcp.json` |
