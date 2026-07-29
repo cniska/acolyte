@@ -138,11 +138,7 @@ describe("localization baseline", () => {
     expectIntent(gitDiffInstruction, [["git-level diff context"], ["write-tool previews"]]);
     expectIntent(gitLogInstruction, [["committed history"], ["uncommitted edits"]]);
     expectIntent(gitShowInstruction, [["committed history"], ["uncommitted edits"]]);
-    expectIntent(runCommandInstruction, [
-      ["user explicitly asked"],
-      ["known repository commands"],
-      ["do not use it for file read/search/edit fallbacks"],
-    ]);
+    expectIntent(runCommandInstruction, [["the user asked for"], ["repository commands"]]);
     expectIntent(runTestsInstruction, [
       ["validate touched behavior"],
       ["create or update related tests"],
@@ -154,7 +150,13 @@ describe("localization baseline", () => {
     expectIntent(webFetchInstruction, [["read specific urls"]]);
     expectIntent(tasklistCreateInstruction, [["tasklist-create"], ["multi-step tasks"], ["tasklist-update"]]);
     expectIntent(tasklistUpdateInstruction, [["tasklist-update"], ["status"], ["tasklist-create"]]);
-    expectIntent(sessionSearchInstruction, [["session-search"], ["keyword"], ["older history"]]);
+    // session-search hoists nothing: its description ships the trigger with the schema.
+    expect(sessionSearchInstruction).toBe("");
+    expectIntent(toolDefinitionsById["session-search"]?.description ?? "", [
+      ["keyword"],
+      ["already in context"],
+      ["rather than asking the user to repeat"],
+    ]);
     expectIntent(memorySearchInstruction, [["memory-search"], ["recall"], ["prior context"]]);
     expectIntent(memoryAddInstruction, [["memory-add"], ["persist"], ["sessions"]]);
   });

@@ -3,27 +3,35 @@ import { createInstructions } from "./agent-instructions";
 import { expectIntent } from "./test-utils";
 
 describe("createInstructions", () => {
-  test("includes core instructions", () => {
+  test("carries the soul and the output contract", () => {
     const out = createInstructions("Soul.");
     expect(out).toContain("Soul.");
     expectIntent(out, [
-      ["this workspace", "this scope"],
-      ["dedicated project tools", "shell only when it helps"],
-      ["implementation intent is clear", "stay with it", "task is complete"],
-      ["asks for explanation or planning only", "answer directly"],
-      ["smallest", "root-cause", "matches local conventions"],
-      ["unrelated or speculative detours"],
-      ["changing behavior", "run related validation first"],
-      ["validation is blocked or unavailable", "skipped", "why"],
-      ["flowing prose", "leading with the outcome"],
-      ["match the shape to the task", "direct answer"],
+      ["Format as plain text", "backticks", "no headings or links"],
+      ["fenced code block", "never file contents"],
       ["Keep reasoning, structure, and how things connect in prose", "even when it names many files"],
       ["Use a list only", "short, flat set", "nothing to explain between them"],
-      ["Before your first tool call", "briefly state what you are about to do", "short updates at key moments"],
-      ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
-      ["Search and read files immediately", "never ask"],
-      ["references something you cannot see", "session-search"],
     ]);
+  });
+
+  // How Acolyte works lives in soul.md. Restating it here is what regrew the prompt past
+  // its pre-#97 size, so the absence is the contract.
+  test("does not restate how Acolyte works", () => {
+    const out = createInstructions("Soul.");
+    for (const restatement of [
+      "this workspace and this scope",
+      "dedicated project tools",
+      "stay with it until the task",
+      "smallest root-cause change",
+      "unrelated or speculative detours",
+      "run related validation first",
+      "Before your first tool call",
+      "reasonable assumptions",
+      "Search and read files immediately",
+      "references something you cannot see",
+    ]) {
+      expect(out).not.toContain(restatement);
+    }
   });
 
   test("includes tool and runtime instructions", () => {
@@ -40,8 +48,7 @@ describe("createInstructions", () => {
       ["file-create", "full content"],
       ["file-find", "name/path pattern"],
       ["file-search", "text/regex"],
-      ["shell-run", "user explicitly asked", "known repository commands"],
-      ["do not use it for file read/search/edit fallbacks"],
+      ["shell-run", "repository commands", "the user asked for"],
     ]);
   });
 
