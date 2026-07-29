@@ -21,33 +21,7 @@ while read -r local_ref local_oid remote_ref remote_oid; do
   else
     range=("$remote_oid..$local_oid")
   fi
-  if ! commits=$(git rev-list "${range[@]}"); then
-    echo "error: cannot enumerate commits for $local_ref." >&2
-    exit 1
-  fi
-  if [ -z "$commits" ]; then
-    continue
-  fi
-  while IFS= read -r oid; do
-    subject=$(git log -1 --format='%s' "$oid")
-    body=$(git log -1 --format='%b' "$oid")
-    bash "$root/scripts/check-commit-message.sh" "$subject" "$body" || {
-      echo "  commit: $oid" >&2
-      exit 1
-    }
-    author_name=$(git log -1 --format='%an' "$oid")
-    author_email=$(git log -1 --format='%ae' "$oid")
-    committer_name=$(git log -1 --format='%cn' "$oid")
-    committer_email=$(git log -1 --format='%ce' "$oid")
-    bash "$root/scripts/check-commit-author.sh" "$author_name" "$author_email" author || {
-      echo "  commit: $oid" >&2
-      exit 1
-    }
-    bash "$root/scripts/check-commit-author.sh" "$committer_name" "$committer_email" committer || {
-      echo "  commit: $oid" >&2
-      exit 1
-    }
-  done <<< "$commits"
+  bash "$root/scripts/check-commits.sh" "${range[@]}" || exit 1
 done
 
 bun run verify
