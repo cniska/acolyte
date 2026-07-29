@@ -40,8 +40,8 @@ export async function resolveGitRepoRoot(cwd = process.cwd()): Promise<string> {
   return root;
 }
 
-export function projectWorktreesDir(repoRoot: string): string {
-  const projId = projectResourceIdFromWorkspace(repoRoot);
+export function projectWorktreesDir(workspace: string): string {
+  const projId = projectResourceIdFromWorkspace(workspace);
   return join(dataDir(), "projects", projId, "worktrees");
 }
 

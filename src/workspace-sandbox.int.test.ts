@@ -10,6 +10,7 @@ import {
   resolveProjectRoot,
   resolveWorkspaceSandboxRoot,
 } from "./workspace-sandbox";
+import { projectWorktreesDir } from "./workspaces-ops";
 
 const dirs = tempDir();
 
@@ -177,6 +178,9 @@ describe("workspace-sandbox", () => {
     const repoId = projectResourceIdFromWorkspace(repo);
     expect(projectResourceIdFromWorkspace(join(repo, "docs"))).toBe(repoId);
     expect(projectResourceIdFromWorkspace(worktree)).toBe(repoId);
+
+    // Worktree storage and memory must name the same project.
+    expect(projectWorktreesDir(worktree)).toBe(projectWorktreesDir(repo));
   });
 
   test("identifies a path that is not a repository as itself", () => {

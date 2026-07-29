@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { createControlSequenceScrubber, parseExitCode, runShellCommand } from "./shell-ops";
+import { resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
 
 function scrubOnce(text: string): string {
   const scrubber = createControlSequenceScrubber();
@@ -57,7 +58,10 @@ describe("runShellCommand", () => {
   });
 
   test("blocks path traversal", async () => {
-    await expect(runShellCommand(WORKSPACE, { cmd: "cat", args: ["../../etc/passwd"] })).rejects.toMatchObject({
+    // Derived from the resolved boundary: a fixed `../../` depth escapes the workspace only when
+    // tests run from the repository root, and stays inside it from a nested worktree.
+    const traversal = relative(WORKSPACE, join(dirname(resolveWorkspaceSandboxRoot(WORKSPACE)), "passwd"));
+    await expect(runShellCommand(WORKSPACE, { cmd: "cat", args: [traversal] })).rejects.toMatchObject({
       code: TOOL_ERROR_CODES.sandboxViolation,
       kind: ERROR_KINDS.sandboxViolation,
     });
