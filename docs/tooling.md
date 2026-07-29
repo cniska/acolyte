@@ -47,7 +47,21 @@ All tool calls run through the execution layer which ensures:
 
 Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore negation patterns.
 
-`file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. A trailing slash searches beneath matching directories. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally. File discovery retains at most 5,000 paths; when that cap withholds matches, `file-find` reports the shown count as a lower bound. Its result cap reports the full match count.
+`file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. A trailing slash searches beneath matching directories. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally. File discovery retains at most 5,000 paths; when that cap withholds matches, `file-find` reports the shown count as a lower bound. Its result cap reports the full match count. An explicitly named file is searched even when gitignored; only directory and workspace scans apply the exclusion layers.
+
+## File reading
+
+`file-read` returns the whole file as numbered lines under a `Lines: start-end of total` header. The total counts lines holding content, and those line numbers are what `file-edit` accepts for line-range edits.
+
+Two ceilings bound a read, and they differ in the caller's remedy. `FILE_READ_MAX_BYTES` (5 MB) is checked by a `stat` before the read; a file over it is readable at no range and has to be searched instead. `FILE_READ_MAX_TOKENS` (20,000) is checked on the formatted output; a file over it is re-readable with `offset` and `limit`. Both throw a structured error naming the measured size rather than truncating.
+
+A log file is the case that separates them:
+
+| Log size | How the content is reached |
+|----------|---------------------------|
+| under the token ceiling | one whole-file read |
+| over the token ceiling, under the byte ceiling | the failed read reports the file's line count, which is what `offset` needs to reach the tail |
+| over the byte ceiling | `file-search` with the path |
 
 ## Query vs mutation tools
 
