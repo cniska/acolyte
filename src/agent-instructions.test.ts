@@ -11,6 +11,8 @@ describe("createInstructions", () => {
       ["fenced code block", "never file contents"],
       ["Keep reasoning, structure, and how things connect in prose", "even when it names many files"],
       ["Use a list only", "short, flat set", "nothing to explain between them"],
+      ["Before your first action", "what you are about to do"],
+      ["load-bearing", "as you find it", "not only in the final answer"],
     ]);
   });
 

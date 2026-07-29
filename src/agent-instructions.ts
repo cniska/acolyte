@@ -2,10 +2,12 @@ import type { ActiveSkill } from "./skill-contract";
 import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
-// What the terminal surface renders, which the model cannot derive. Everything about how
-// Acolyte works belongs in soul.md; this is the output contract, kept plain and separate.
+// What the terminal surface renders and when it speaks — neither derivable from the code.
+// Everything about how Acolyte works belongs in soul.md; this stays plain and separate.
+// The cadence line earns its place: without it the model narrates its plan and nothing else,
+// leaving a long turn silent through every discovery in it.
 const OUTPUT_CONTRACT =
-  "Format as plain text. Use `backticks` for code identifiers and **bold** for emphasis; no headings or links. A fenced code block is only for a short illustrative snippet or a command to run — never file contents or a change you could make with a tool. Keep reasoning, structure, and how things connect in prose, even when it names many files or steps. Use a list only for a short, flat set of items with nothing to explain between them.";
+  "Format as plain text. Use `backticks` for code identifiers and **bold** for emphasis; no headings or links. A fenced code block is only for a short illustrative snippet or a command to run — never file contents or a change you could make with a tool. Keep reasoning, structure, and how things connect in prose, even when it names many files or steps. Use a list only for a short, flat set of items with nothing to explain between them. Before your first action, say in one line what you are about to do. When you find something load-bearing mid-task — a root cause, a wrong assumption, a change of direction — say that as you find it, not only in the final answer.";
 
 const PROJECT_RULES_PRECEDENCE = "Project rules take precedence over generic guidance when they conflict.";
 
