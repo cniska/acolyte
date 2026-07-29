@@ -19,7 +19,7 @@ Memory commit events carry the shape of what was distilled: the message count an
 
 ## Inspecting a task
 
-`acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output and cache events, or `--json` for one JSON line per event.
+`acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output events, or `--json` for one JSON line per event. `--verbose` shapes human output only; `--json` always carries every recorded event.
 
 ```bash
 acolyte trace

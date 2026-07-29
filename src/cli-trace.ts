@@ -2,7 +2,6 @@ import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-a
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
-import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import type { LogLine } from "./log-parser";
 import { traceEventDisplayFields } from "./trace-event-catalog";
 import type { TraceReader } from "./trace-store";
@@ -230,7 +229,8 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const verbose = hasBoolFlag(args, "--verbose");
   const isJson = hasBoolFlag(args, "--json");
-  const out = isJson ? createJsonOutput({ verbose }) : createTextOutput({ verbose });
+  // `--verbose` shapes human output only; JSON has no verbosity, it carries the whole store.
+  const out = isJson ? createJsonOutput() : createTextOutput({ verbose });
 
   const positional = parsePositional(args, ["--lines", "-n"]);
   const subcommand = positional[0];
@@ -256,8 +256,9 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       }
       if (i > 0) out.addSeparator();
       if (out.verbose || isJson) {
+        // `--json` is the scripted-query interface, so it carries every stored event: filtering
+        // verbose-only events there silently misrepresents the store as missing them.
         for (const line of lines) {
-          if (!out.verbose && line.fields.event && VERBOSE_ONLY_EVENTS.has(line.fields.event)) continue;
           out.addRow(verboseRowData(line));
         }
       } else {

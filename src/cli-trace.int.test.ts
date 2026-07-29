@@ -469,6 +469,27 @@ describe("traceMode", () => {
     expect(text).toContain("lifecycle.tool.output");
   });
 
+  test("task subcommand --json carries verbose-only events without --verbose", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "file-read", path: "src/app.ts" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.001Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.output",
+      fields: { tool: "file-read" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1", "--json"], deps);
+
+    // A filtered export would misrepresent the store as missing the event entirely.
+    expect(output()).toContain("lifecycle.tool.output");
+  });
+
   test("task subcommand --verbose shows effect events with fields", async () => {
     const store = createTestStore();
     store.write({
