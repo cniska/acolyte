@@ -76,7 +76,7 @@ Codex provides operating-system sandbox policies with writable-directory restric
 
 ## Observability
 
-Each Acolyte request emits ordered, task-scoped events for task state, workspace resolution, lifecycle phases, tool calls and results, cache decisions, budget blocks, effects, memory commits, and its final summary.
+Each Acolyte request emits ordered, task-scoped events for task state, workspace resolution, lifecycle phases, tool calls and results, budget blocks, effects, memory commits, and its final summary.
 
 Events are written locally to logfmt and SQLite. The `acolyte trace` command queries SQLite to list recent tasks or render one task's compact tool timeline and summary:
 
@@ -87,7 +87,7 @@ timestamp=... task_id=task_abc123 event=lifecycle.eval.decision effect=lint acti
 timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 search=1 write=1
 ```
 
-`acolyte trace task <id> --verbose` includes tool output and cache events; `--json` returns raw event lines. The trace stays local and queryable by task ID, and Acolyte does not include a product telemetry client. This is separate from provider telemetry and external tracing services. See [Observability](./observability.md) for the full event model.
+`acolyte trace task <id> --verbose` includes tool output; `--json` returns raw event lines. The trace stays local and queryable by task ID, and Acolyte does not include a product telemetry client. This is separate from provider telemetry and external tracing services. See [Observability](./observability.md) for the full event model.
 
 ## Skills and extensibility
 

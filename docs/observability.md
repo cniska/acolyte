@@ -9,11 +9,11 @@ Every event carries a sequence number and is associated with its request, task, 
 - task acceptance, queueing, start, completion, and state transitions
 - workspace detection and sandbox resolution
 - lifecycle preparation, generation, window drops, and errors
-- tool calls, results, errors, cache decisions, and budget blocks
+- tool calls, results, errors, and budget blocks
 - format, lint, and install effects
 - memory commits, active skill context, and the final lifecycle summary
 
-The final summary includes model-call and tool-call counts, read/search/write totals, memory and session searches, duplicate discovery calls, budget exhaustion, and error state.
+The final summary includes model-call and tool-call counts, read/search/write totals, memory and session searches, pre-write discovery calls, budget exhaustion, and error state.
 
 Memory commit events carry the shape of what was distilled: the message count and output size, and the task-activity digest's coverage — how many changed files, commands, and failures the turn contributed.
 

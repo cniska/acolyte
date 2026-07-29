@@ -166,7 +166,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 8. Observability requirements (OBS)
 
-- **OBS-1** — Every request is recorded as an ordered, task-scoped trace covering lifecycle phases, tool calls with the arguments that determine what they return and with their results, errors, and cache decisions, budget blocks, memory loads and commits, and a final summary. Recording is local.
+- **OBS-1** — Every request is recorded as an ordered, task-scoped trace covering lifecycle phases, tool calls with the arguments that determine what they return and with their results, errors, budget blocks, memory loads and commits, and a final summary. Recording is local.
 - **OBS-2** — Traces are queryable after the fact: recent tasks are listable, and a single task's timeline and summary are renderable, with a machine-readable output mode.
 - **OBS-3** — Structured daemon logs are tailable and filterable by line count, level, session, and time window.
 
@@ -174,7 +174,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **NF-1** — The daemon starts automatically on client use and manages its own lifecycle; the CLI checks for a newer released binary at most once per startup-day, and on update downloads, verifies checksum, self-replaces, stops the running server, and re-execs.
 - **NF-2** — Installation is a single released binary for macOS and Linux via a one-line install script; no runtime toolchain install is required for end users.
-- **NF-3** — SQLite-backed stores (memory, trace, cache) apply versioned forward migrations automatically and cumulatively on startup, within transactions.
+- **NF-3** — SQLite-backed stores (memory and trace) apply versioned forward migrations automatically and cumulatively on startup, within transactions.
 - **NF-4** — Releases follow semantic versioning; patch and minor releases are always safe to apply.
 - **NF-5** — Errors are classified by a structured code/kind, never by matching message strings; error messages are descriptive enough for the model to act on.
 - **NF-6** — A failure in a non-critical subsystem does not fail the request: trace-store open/write failure warns once per session and continues; a memory commit failure is logged and swallowed; an effect (format/lint) failure is recorded and does not abort the tool result.
@@ -244,7 +244,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ### Policies chosen (not open)
 
-- **Storage defaults** — SQLite for memory/trace/cache and a JSON file for sessions are the defaults; Postgres/pgvector is selected only by the cloud-sync flag. (serves MEM-1, PR-8, NF-3, SEC-9)
+- **Storage defaults** — SQLite for memory and trace and a JSON file for sessions are the defaults; Postgres/pgvector is selected only by the cloud-sync flag. (serves MEM-1, PR-8, NF-3, SEC-9)
 - **Flat context ceiling** — the per-call input-token budget is a single fixed ceiling for all models rather than model-derived, because the product leans on on-demand memory over a large context window. (serves LC-8, LC-9, NF-7)
 - **Native completion over forced completion** — the host never fabricates or forces turn completion; its only completion gate is the terminal-step finish-reason backstop. (serves LC-2, LC-3)
 - **On-demand memory over context compaction** — durable and older context are retrieved by tool call, not injected or summarized into every prompt. (serves MEM-2, LC-13)
