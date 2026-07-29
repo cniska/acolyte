@@ -264,6 +264,54 @@ describe("phaseGenerate", () => {
     expect(debugEvents.some((event) => event.event === "lifecycle.tool_error.recovery")).toBe(false);
   });
 
+  test("records the read window on the tool call so a repeated read is distinguishable", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: {
+                toolCallId: "call_1",
+                toolName: "file-read",
+                args: { path: "src/a.ts", aroundLine: 120, contextLines: 40 },
+              },
+            },
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_2", toolName: "file-read", args: { path: "src/a.ts" } },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "read", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const calls = debugEvents.filter((event) => event.event === "lifecycle.tool.call");
+    expect(calls[0]?.fields).toMatchObject({ tool: "file-read", path: "src/a.ts", aroundLine: 120, contextLines: 40 });
+    expect(calls[1]?.fields).not.toHaveProperty("aroundLine");
+  });
+
   test("marks tool-error completion as failed in trace", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const streamEvents: StreamEvent[] = [];

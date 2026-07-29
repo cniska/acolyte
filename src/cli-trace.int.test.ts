@@ -216,6 +216,40 @@ describe("traceMode", () => {
     expect(text).not.toContain("lifecycle.tool.result");
   });
 
+  test("compact and json output distinguish a windowed read from a full read of the same path", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { model: "m" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "file-read", path: "src/foo.ts", aroundLine: "120", contextLines: "40" },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.200Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "file-read", path: "src/foo.ts" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1"], deps);
+    expect(output()).toContain("src/foo.ts @120±40");
+
+    const json = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1", "--json"], json.deps);
+    const rows = json
+      .output()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, string>);
+    expect(rows[1]).toMatchObject({ path: "src/foo.ts", around_line: "120", context_lines: "40" });
+    expect(rows[2]?.around_line).toBeUndefined();
+  });
+
   test("compact output shows BLOCKED for budget exhaustion", async () => {
     const store = createTestStore();
     store.write({

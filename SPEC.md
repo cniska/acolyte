@@ -166,7 +166,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 8. Observability requirements (OBS)
 
-- **OBS-1** — Every request is recorded as an ordered, task-scoped trace covering lifecycle phases, tool calls with their results, errors, and cache decisions, budget blocks, memory loads and commits, and a final summary. Recording is local.
+- **OBS-1** — Every request is recorded as an ordered, task-scoped trace covering lifecycle phases, tool calls with the arguments that determine what they return and with their results, errors, and cache decisions, budget blocks, memory loads and commits, and a final summary. Recording is local.
 - **OBS-2** — Traces are queryable after the fact: recent tasks are listable, and a single task's timeline and summary are renderable, with a machine-readable output mode.
 - **OBS-3** — Structured daemon logs are tailable and filterable by line count, level, session, and time window.
 

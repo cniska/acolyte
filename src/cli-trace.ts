@@ -62,8 +62,15 @@ function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
+/** A read window is what distinguishes a repeated read of a path from a different slice of it. */
+function readWindow(fields: Record<string, string>): string {
+  if (!fields.aroundLine) return "";
+  const context = fields.contextLines ? `±${fields.contextLines}` : "";
+  return ` @${fields.aroundLine}${context}`;
+}
+
 function extractToolArg(fields: Record<string, string>): string {
-  if (fields.path) return fields.path;
+  if (fields.path) return `${fields.path}${readWindow(fields)}`;
   if (fields.command) return truncate(fields.command, 40);
   if (fields.cmd) return truncate([fields.cmd, ...parsePaths(fields.args ?? "")].join(" "), 40);
   if (fields.pattern) return `"${fields.pattern}"`;
