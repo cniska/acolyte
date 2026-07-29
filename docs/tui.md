@@ -65,7 +65,7 @@ Use `@path` in chat input to attach file or directory context:
 @docs/ summarize the documentation
 ```
 
-Completion offers any path you can name in the workspace, including gitignored ones — unlike the file tools, which are gitignore-aware. Nested repository checkouts are left out: a directory holding a `.git` entry is a worktree, submodule, or vendored clone, so its tree duplicates another repository rather than extending this one.
+Completion offers gitignored paths too, unlike the file tools, which are gitignore-aware. Nested repository checkouts are left out: a directory holding a `.git` entry is a worktree, submodule, or vendored clone, so its tree duplicates another repository rather than extending this one.
 
 ## Design constraints
 
