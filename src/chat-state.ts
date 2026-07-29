@@ -232,7 +232,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
         slashSuggestions,
         slashSuggestionIndex,
       }),
-      help: { visible: showHelp, entries: shortcutItems() },
+      help: { visible: showHelp, entries: showHelp ? shortcutItems() : [] },
       ctrlCPending,
       footer: statusLine,
     },
