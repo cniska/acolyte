@@ -32,9 +32,9 @@ The boundary is the *outermost* enclosing git repository, or the workspace root 
 |---|---|---|
 | a repository root | itself | the common case |
 | a subdirectory of a repository | the repository root | one project, opened partway in |
-| a worktree nested in its repository | the primary checkout | project-owned paths linked back to it, such as a gitignored `docs/notes`, stay reachable |
+| a worktree nested in its repository | the primary checkout | project-owned paths linked back to it stay reachable |
 | a worktree outside its repository | the worktree | nothing above it belongs to the project |
-| any path under a git-tracked home | the workspace | `git init ~` must not turn one project's grant into everything the user owns |
+| any path under a git-tracked home | the workspace | a home repository must not turn one project's grant into everything the user owns |
 | not in a repository | the workspace | no project to widen to |
 
 File enumeration and search scoping stay keyed to the workspace root in every case, so discovery still sees only the workspace's own files.
