@@ -26,9 +26,16 @@ Tool filesystem access is scoped to the sandbox boundary.
 Access inside the boundary is allowed. Access outside it is denied.
 This rule is enforced across tool entry paths, including CLI tool mode (`acolyte tool ...`).
 
-When the workspace sits inside a git repository, the boundary is that repository's root; otherwise it is the workspace root. The repository is the project, so a workspace opened on a subdirectory can still reach the rest of it.
+The boundary is the *outermost* enclosing git repository, or the workspace root when there is none and when the only enclosing repository is at or above the home directory. The repository is the project, so the boundary is the project rather than whichever directory Acolyte was started in.
 
-Acolyte resolves the *outermost* enclosing repository. A worktree nested inside its repository — `wt` creates them under `.claude/worktrees/` — therefore resolves to the primary checkout, and project-owned paths reached from the worktree stay inside the boundary, including gitignored directories linked back to the primary checkout such as `docs/notes`. A worktree living outside its repository keeps its own root as the boundary and cannot follow such a link.
+| Workspace | Boundary | Why |
+|---|---|---|
+| a repository root | itself | the common case |
+| a subdirectory of a repository | the repository root | one project, opened partway in |
+| a worktree nested in its repository | the primary checkout | project-owned paths linked back to it, such as a gitignored `docs/notes`, stay reachable |
+| a worktree outside its repository | the worktree | nothing above it belongs to the project |
+| any path under a git-tracked home | the workspace | `git init ~` must not turn one project's grant into everything the user owns |
+| not in a repository | the workspace | no project to widen to |
 
 File enumeration and search scoping stay keyed to the workspace root in every case, so discovery still sees only the workspace's own files.
 

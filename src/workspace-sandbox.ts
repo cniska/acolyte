@@ -2,6 +2,7 @@ import { lstatSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { field } from "./field";
+import { resolveHomeDir } from "./paths";
 import { createToolError } from "./tool-error";
 
 const workspaceRootCache = new Map<string, string>();
@@ -65,13 +66,26 @@ function isRepoRoot(dir: string): boolean {
   }
 }
 
+// A repository at or above the home directory would rewrite the boundary from one project to
+// everything the user owns — a git-tracked dotfiles home, or a stray `git init ~`. The boundary
+// is the whole grant, so it never widens that far; such a workspace keeps its own root.
+function widensPastHome(candidate: string): boolean {
+  let home: string;
+  try {
+    home = realpathSync(resolveHomeDir());
+  } catch {
+    return false;
+  }
+  return isWithinSandboxRoot(home, candidate);
+}
+
 // The outermost enclosing repository, so a worktree nested at `<repo>/.claude/worktrees/<name>`
 // resolves to the primary checkout it symlinks project-owned paths back to.
 function enclosingRepoRoot(workspaceRoot: string): string | null {
   let outermost: string | null = null;
   let current = workspaceRoot;
   while (true) {
-    if (isRepoRoot(current)) outermost = current;
+    if (isRepoRoot(current) && !widensPastHome(current)) outermost = current;
     const parent = dirname(current);
     if (parent === current) break;
     current = parent;

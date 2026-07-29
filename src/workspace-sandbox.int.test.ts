@@ -29,6 +29,11 @@ async function git(cwd: string, args: string[]): Promise<void> {
   if (exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${await new Response(proc.stderr).text()}`);
 }
 
+async function mkdirGitRepo(dir: string): Promise<string> {
+  await mkdir(dir, { recursive: true });
+  return dir;
+}
+
 async function createRepoWithWorktree(prefix: string, worktreeAt: (root: string, repo: string) => string) {
   const root = dirs.createDir(prefix);
   const repo = join(root, "repo");
@@ -181,6 +186,33 @@ describe("workspace-sandbox", () => {
     // Neither existing nor a repository — memory scope must still resolve, not throw.
     expect(resolveProjectRoot("/ws/one")).toBe("/ws/one");
     expect(projectResourceIdFromWorkspace("/ws/one")).toBe(projectResourceIdFromWorkspace("/ws/one"));
+  });
+
+  test("never widens the boundary to a repository at or above the home directory", async () => {
+    const root = await realpath(dirs.createDir("acolyte-sandbox-git-home-"));
+    const home = join(root, "home");
+    const project = join(home, "code", "project");
+    await mkdir(project, { recursive: true });
+    await git(await mkdirGitRepo(home), ["init"]);
+    await git(await mkdirGitRepo(project), ["init"]);
+
+    const priorHome = process.env.HOME;
+    process.env.HOME = home;
+    clearWorkspaceSandboxCache();
+    try {
+      // The project's own repository still wins — it is below home.
+      expect(resolveWorkspaceSandboxRoot(project)).toBe(project);
+      expect(resolveProjectRoot(project)).toBe(project);
+
+      // A directory under a git-tracked home that is not itself a repository keeps its own root
+      // rather than widening to all of home.
+      const plain = join(home, "notes");
+      await mkdir(plain, { recursive: true });
+      expect(resolveWorkspaceSandboxRoot(plain)).toBe(plain);
+    } finally {
+      process.env.HOME = priorHome;
+      clearWorkspaceSandboxCache();
+    }
   });
 
   test("blocks symlink escapes for new files under symlinked directories", async () => {
