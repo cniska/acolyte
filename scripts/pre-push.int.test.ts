@@ -4,9 +4,11 @@ import { createGitFixture, type GitFixture, PLACEHOLDER_IDENTITY, REAL_IDENTITY,
 
 let fixture: GitFixture;
 
-function hookEnv(useFakeBun = true): Record<string, string> {
+function hookEnv(useFakeBun = true, overrides: Record<string, string> = {}): Record<string, string> {
   const base = fixture.env();
-  return useFakeBun ? fixture.env({ PATH: `${join(fixture.dir, "bin")}:${base.PATH}` }) : base;
+  return useFakeBun
+    ? fixture.env({ PATH: `${join(fixture.dir, "bin")}:${base.PATH}`, ...overrides })
+    : fixture.env(overrides);
 }
 
 // Pushing a brand-new branch is the case that regressed: the rev-list range is
@@ -81,6 +83,30 @@ describe("pre-push hook", () => {
 
     expect(code).toBe(1);
     expect(stderr).toContain("cannot enumerate commits");
+  });
+
+  test("does not hand git environment to verify", async () => {
+    await fixture.commit("feat: add a thing", REAL_IDENTITY);
+    const dump = join(fixture.dir, "verify-env.txt");
+    await Bun.write(join(fixture.dir, "bin", "bun"), `#!/bin/sh\nenv > ${dump}\nexit 0\n`);
+    Bun.spawnSync(["chmod", "755", join(fixture.dir, "bin", "bun")]);
+    const head = fixture.gitOutput(["rev-parse", "HEAD"]);
+
+    const proc = Bun.spawn(["bash", ".githooks/pre-push", "origin"], {
+      cwd: fixture.dir,
+      env: hookEnv(true, {
+        GIT_DIR: join(fixture.dir, ".git"),
+        GIT_WORK_TREE: fixture.dir,
+        GIT_INDEX_FILE: join(fixture.dir, ".git", "index"),
+      }),
+      stdin: new TextEncoder().encode(`refs/heads/topic ${head} refs/heads/topic ${ZERO}\n`),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    expect(await proc.exited).toBe(0);
+    const seen = await Bun.file(dump).text();
+    expect(seen).not.toMatch(/^GIT_/m);
   });
 
   test("skips a deleted ref", async () => {

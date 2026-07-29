@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { dedent, dedentString, expectIntent, expectToThrowJSON, normalizeIntentText, testUuid } from "./test-utils";
+import {
+  dedent,
+  dedentString,
+  expectIntent,
+  expectToThrowJSON,
+  gitEnv,
+  normalizeIntentText,
+  testUuid,
+} from "./test-utils";
 
 describe("test utils", () => {
   describe("dedentString", () => {
@@ -81,6 +89,33 @@ describe("test utils", () => {
           ["then", "stop"],
         ]),
       ).not.toThrow();
+    });
+  });
+
+  describe("gitEnv", () => {
+    test("drops inherited git state and keeps the rest", () => {
+      process.env.GIT_DIR = "/decoy/.git";
+      process.env.GIT_WORK_TREE = "/decoy";
+      try {
+        const env = gitEnv();
+        expect(env.GIT_DIR).toBeUndefined();
+        expect(env.GIT_WORK_TREE).toBeUndefined();
+        expect(env.PATH).toBe(process.env.PATH ?? "");
+      } finally {
+        delete process.env.GIT_DIR;
+        delete process.env.GIT_WORK_TREE;
+      }
+    });
+
+    test("applies git overrides on top of the scrubbed env", () => {
+      process.env.GIT_DIR = "/decoy/.git";
+      try {
+        const env = gitEnv({ GIT_AUTHOR_NAME: "T" });
+        expect(env.GIT_AUTHOR_NAME).toBe("T");
+        expect(env.GIT_DIR).toBeUndefined();
+      } finally {
+        delete process.env.GIT_DIR;
+      }
     });
   });
 

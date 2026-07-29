@@ -1,19 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { basename, join } from "node:path";
 import { useChatState } from "./chat-state";
-import { createClient, createSession, createSessionState, tempDir } from "./test-utils";
+import { createClient, createSession, createSessionState, gitEnv, tempDir } from "./test-utils";
 import { renderHook } from "./tui/test-utils";
 
 const dirs = tempDir();
 
 afterEach(dirs.cleanupDirs);
 
-// An inherited GIT_DIR/GIT_WORK_TREE would point these fixture commands at the real
-// repository, where `git init` re-initializes the shared gitdir as bare.
-const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
-
 async function git(cwd: string, args: string[]): Promise<void> {
-  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, env: gitEnv, stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, env: gitEnv(), stdout: "pipe", stderr: "pipe" });
   const stderr = await new Response(proc.stderr).text();
   if ((await proc.exited) !== 0) throw new Error(`git ${args.join(" ")} failed: ${stderr}`);
 }
@@ -76,6 +72,31 @@ describe("footer git context", () => {
     } finally {
       unmount();
     }
+  });
+
+  // Bun.spawn without an env option inherits the environment the process started with, so
+  // only a child process started with git state can exercise what the pre-push hook exposed.
+  test("resolves the workspace repository despite inherited git state", async () => {
+    const { name, worktree } = await createRepoWithWorktree();
+    const decoy = await createRepoWithWorktree();
+    const script = [
+      `const { gitStatus } = await import(${JSON.stringify(join(import.meta.dir, "chat-layout.tsx"))});`,
+      `console.log(JSON.stringify(await gitStatus(${JSON.stringify(worktree)})));`,
+    ].join("\n");
+
+    const proc = Bun.spawn({
+      cmd: ["bun", "-e", script],
+      env: gitEnv({ GIT_DIR: join(decoy.root, ".git"), GIT_WORK_TREE: decoy.root }),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    expect(await proc.exited, stderr).toBe(0);
+
+    const status = JSON.parse(stdout.trim());
+    expect(status.worktree).toBe(name);
+    expect(status.repo).not.toBe(basename(decoy.root));
   });
 
   test("survives a session whose workspace directory no longer exists", async () => {
