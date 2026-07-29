@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { invariant } from "./assert";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
-import { createToolCache } from "./tool-cache";
 import { runTool, withToolError } from "./tool-execution";
 import { createSessionContext } from "./tool-session";
 
@@ -140,34 +139,6 @@ describe("per-tool timeout", () => {
     expect(result).toEqual({ result: { ok: true }, effectOutput: "before output\nafter output" });
     expect(events).toEqual(["before-sync", "before-async", "execute", "after-sync", "after-async:call-log-0"]);
     expect(session.callLog).toHaveLength(1);
-  });
-
-  test("uses cached result without executing and records the call", async () => {
-    const session = createSessionContext();
-    session.toolTimeoutMs = 500;
-    session.cache = createToolCache(new Set(["file-read"]));
-    session.cache.set("file-read", { path: "src/app.ts" }, { result: { output: "cached" } });
-    const events: string[] = [];
-    session.onBeforeTool = () => {
-      events.push("before-sync");
-      return { append: "before output" };
-    };
-    session.onAfterTool = () => {
-      events.push("after-sync");
-      return { append: "after output" };
-    };
-    session.onAfterToolAsync = async () => {
-      events.push("after-async");
-    };
-
-    const result = await runTool(session, "file-read", "call_1", { path: "src/app.ts" }, async () => {
-      events.push("execute");
-      return { output: "fresh" };
-    });
-
-    expect(result).toEqual({ result: { output: "cached" } });
-    expect(events).toEqual(["before-sync", "after-async"]);
-    expect(session.callLog[0]).toMatchObject({ toolName: "file-read", status: "succeeded" });
   });
 
   test("reports failed executions to async effects before recording the failed call", async () => {

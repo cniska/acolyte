@@ -40,19 +40,6 @@ export type ToolkitInput = {
 
 export type RunToolResult<T = unknown> = { result: T; effectOutput?: string };
 
-export type ToolCacheEntry = {
-  result: unknown;
-};
-
-export type ToolCache = {
-  isCacheable(toolName: string): boolean;
-  get(toolName: string, args: Record<string, unknown>): ToolCacheEntry | undefined;
-  set(toolName: string, args: Record<string, unknown>, entry: ToolCacheEntry): void;
-  invalidateForWrite(toolName: string, args: Record<string, unknown>): void;
-  clear(): void;
-  stats(): { hits: number; misses: number; invalidations: number; evictions: number; size: number };
-};
-
 export type ToolCallStatus = "succeeded" | "failed";
 
 export type ToolCallRecord = {
@@ -92,7 +79,6 @@ export type SessionContext = {
   budgetNoticeAnnounced?: boolean;
   writeTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
-  cache?: ToolCache;
   featureFlags?: ResolvedFeatureFlags;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
   onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;

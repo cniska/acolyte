@@ -443,7 +443,7 @@ describe("traceMode", () => {
     expect(text).not.toContain("──");
   });
 
-  test("task subcommand --verbose shows tool.output and tool.cache events", async () => {
+  test("task subcommand --verbose shows tool.output events", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
@@ -458,12 +458,6 @@ describe("traceMode", () => {
       fields: { tool: "code-edit" },
     });
     store.write({
-      timestamp: "2026-01-01T00:00:00.002Z",
-      taskId: "task_1",
-      event: "lifecycle.tool.cache",
-      fields: { tool: "code-edit", hit: "false" },
-    });
-    store.write({
       timestamp: "2026-01-01T00:00:01.000Z",
       taskId: "task_1",
       event: "lifecycle.tool.result",
@@ -473,7 +467,6 @@ describe("traceMode", () => {
     await traceMode(["task", "task_1", "--verbose"], deps);
     const text = output();
     expect(text).toContain("lifecycle.tool.output");
-    expect(text).toContain("lifecycle.tool.cache");
   });
 
   test("task subcommand --verbose shows effect events with fields", async () => {

@@ -65,11 +65,10 @@ accept → queue → run → complete|fail|cancel
 ## Tool layering
 
 ```text
-lifecycle → budget → cache → toolkit → registry
+lifecycle → budget → toolkit → registry
 ```
 
 - **budget** — step-budget check inlined into tool execution
-- **cache** — per-task reuse layer for read-only and search tool results
 - **toolkit** — domain tool definitions
 - **registry** — toolkit registration and agent-facing tool surface
 - **details** — see [Tooling](./tooling.md)

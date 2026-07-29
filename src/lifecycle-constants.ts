@@ -1,4 +1,4 @@
-export const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output", "lifecycle.tool.cache"]);
+export const VERBOSE_ONLY_EVENTS = new Set<string>(["lifecycle.tool.output"]);
 
 export const MAX_TOOL_CALLS_PER_REQUEST = 300;
 export const BUDGET_NOTICE_FRACTION = 0.9;

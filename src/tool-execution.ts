@@ -3,15 +3,7 @@ import { ERROR_KINDS, errorMessage, LIFECYCLE_ERROR_CODES } from "./error-contra
 import { parseError } from "./error-handling";
 import { field } from "./field";
 import { formatShellCommand } from "./shell-ops";
-import type {
-  EffectOutput,
-  PostToolContext,
-  PreToolContext,
-  RunToolResult,
-  SessionContext,
-  ToolCache,
-  ToolCacheEntry,
-} from "./tool-contract";
+import type { EffectOutput, PostToolContext, PreToolContext, RunToolResult, SessionContext } from "./tool-contract";
 import { ToolError } from "./tool-error";
 import { checkStepBudget, recordCall } from "./tool-session";
 
@@ -147,21 +139,6 @@ function resolveTimeoutMs(session: SessionContext, options?: ToolRunInput<unknow
   return timeoutMs;
 }
 
-function readCachedResult<T>(
-  cache: ToolCache | undefined,
-  input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
-): ToolCacheEntry | undefined {
-  if (!cache?.isCacheable(input.toolId)) return undefined;
-  const cached = cache.get(input.toolId, input.args);
-  if (!cached) {
-    input.session.onDebug?.("lifecycle.tool.cache", { tool: input.toolId, hit: false, ...cache.stats() });
-    return undefined;
-  }
-
-  input.session.onDebug?.("lifecycle.tool.cache", { tool: input.toolId, hit: true, ...cache.stats() });
-  return cached;
-}
-
 function recordToolSuccess<T>(session: SessionContext, toolId: string, args: Record<string, unknown>, result: T): void {
   recordCall(session, toolId, args, hashResultValue(result), "succeeded", {
     exitCode: extractExitCode(result),
@@ -171,21 +148,6 @@ function recordToolSuccess<T>(session: SessionContext, toolId: string, args: Rec
 
 function recordToolFailure(session: SessionContext, toolId: string, args: Record<string, unknown>): void {
   recordCall(session, toolId, args, undefined, "failed", { command: commandFromArgs(args) });
-}
-
-async function returnCachedResult<T>(
-  input: Pick<ToolRunInput<T>, "session" | "toolId" | "toolCallId" | "args">,
-  result: T,
-): Promise<RunToolResult<T>> {
-  await runAfterToolEffects(input.session, {
-    toolId: input.toolId,
-    toolCallId: input.toolCallId,
-    args: input.args,
-    status: "succeeded",
-    result,
-  });
-  recordToolSuccess(input.session, input.toolId, input.args, result);
-  return { result };
 }
 
 async function executeToolTask<T>(input: ToolRunInput<T>, timeoutMs: number): Promise<ToolExecutionResult<T>> {
@@ -224,12 +186,6 @@ async function finalizeExecutedTool<T>(
   recordToolSuccess(input.session, input.toolId, input.args, execution.result);
 }
 
-function invalidateCacheAfterWrite(cache: ToolCache | undefined, toolId: string, args: Record<string, unknown>): void {
-  if (cache && !cache.isCacheable(toolId)) {
-    cache.invalidateForWrite(toolId, args);
-  }
-}
-
 export async function withToolError<T>(toolId: string, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
@@ -259,17 +215,10 @@ export async function runTool<T = unknown>(
     const input: ToolRunInput<T> = { session, toolId, toolCallId, args, execute, options };
     assertStepBudget(input);
     const { preOutput } = await runBeforeToolEffects(input);
-    const cache = session.cache;
     const timeoutMs = resolveTimeoutMs(session, options);
-    const cached = readCachedResult<T>(cache, input);
-    if (cached) return returnCachedResult(input, cached.result as T);
-
     let execution = await executeToolTask(input, timeoutMs);
     try {
       if (execution.taskFailed) throw execution.taskError;
-      if (cache?.isCacheable(toolId)) {
-        cache.set(toolId, args, { result: execution.result });
-      }
       const postOutput = session.onAfterTool?.({
         toolId,
         toolCallId,
@@ -284,7 +233,6 @@ export async function runTool<T = unknown>(
       throw error;
     } finally {
       await finalizeExecutedTool(input, execution);
-      if (!execution.taskFailed) invalidateCacheAfterWrite(cache, toolId, args);
     }
   });
 }

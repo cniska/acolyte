@@ -1,9 +1,9 @@
 # Tooling
 
-Acolyte routes every tool call through a layered execution path that enforces budgets, shapes errors, caches eligible results, and records execution.
+Acolyte routes every tool call through a layered execution path that enforces budgets, shapes errors, and records execution.
 
 ```text
-lifecycle → budget → cache → toolkit → registry
+lifecycle → budget → toolkit → registry
 ```
 
 ## Layers
@@ -49,17 +49,6 @@ Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore
 
 `file-find` matches a pattern against workspace-relative paths through `createPathMatcher` in `glob-match.ts` — a glob when the pattern has a wildcard, a substring when it does not. A trailing slash searches beneath matching directories. `gitignore.ts` shares the same glob compiler, so brace alternation is expanded outside it: git treats braces literally. File discovery retains at most 5,000 paths; when that cap withholds matches, `file-find` reports the shown count as a lower bound. Its result cap reports the full match count.
 
-## Tool result cache
-
-Read-only and search tools (`file-read`, `file-find`, `file-search`, `code-scan`) are cached. Identical calls return the cached result without re-executing. Bounded `file-read` windows are keyed by `aroundLine` and `contextLines`, so full reads and windowed reads cache independently while still invalidating together by path.
-
-- **Key** — deterministic `toolName:stableJSON(args)` — object keys sorted for stability
-- **Invalidation** — write tools (`file-edit`, `file-create`, `file-delete`) evict entries with overlapping paths; `shell-run` clears the entire cache
-- **L1 (in-memory)** — per-task LRU with a default cap of 256 entries, discarded when the task ends
-- **L2 (SQLite)** — persists path-tracked entries (`file-read`, `code-scan`) across tasks within a session in `tool.db` (see [Paths](paths.md)), cleared on session switch
-
-This reduces redundant I/O and avoids re-sending identical tool results to the model.
-
 ## Query vs mutation tools
 
 Tools are divided into two categories with fundamentally different design constraints.
@@ -94,7 +83,6 @@ Internal implementations may share compilers, rule objects, or AST helpers, but 
 - `src/tool-contract.ts` — session context (`SessionContext`), tool result types, and shared tool contracts
 - `src/tool-session.ts` — session factory, call recording, and step-budget check
 - `src/tool-execution.ts` — tool execution with budget enforcement and error shaping
-- `src/tool-cache.ts` — per-task result caching with stable key generation
 
 ## Further reading
 

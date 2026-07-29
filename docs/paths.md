@@ -12,7 +12,7 @@ Acolyte uses one XDG-style global layout on macOS and Linux. Environment variabl
 ## What goes where
 
 - **Config** — user-edited settings and credentials: `config.toml`, `credentials`, `oauth.json`
-- **Data** — persistent application data: `memory.db`, `sessions.json`, `trace.db`, `tool.db`, `projects/`
+- **Data** — persistent application data: `memory.db`, `sessions.json`, `trace.db`, `projects/`
 - **State** — runtime state that can be regenerated: `daemons/`, `locks/`, `client.log`, `update-check.json`
 
 ## Project scope

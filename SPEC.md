@@ -23,7 +23,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-1** — Given a natural-language prompt, the agent produces a response by interleaving model generation with tool calls against the user's workspace, streaming progress as it works.
 - **FR-2** — The agent runs as a persistent background daemon; the CLI client connects to it over a typed transport, and one daemon serves multiple clients.
 - **FR-3** — Each request executes as a single generation pass (model + tool loop) with no host-imposed multi-pass planning; the model, not the host, decides when the task is complete.
-- **FR-4** — Every tool invocation is funneled through one execution path that enforces the step budget, shapes errors into the shared error contract, records the call for observability and effects, and applies result caching; no tool bypasses this path.
+- **FR-4** — Every tool invocation is funneled through one execution path that enforces the step budget, shapes errors into the shared error contract, and records the call for observability and effects; no tool bypasses this path.
 - **FR-5** — Tool filesystem and command access is confined to a single resolved workspace root per request (see §5 SEC).
 
 ### 2.2 Input handling
@@ -83,7 +83,6 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 2.7 Edge cases requiring special handling
 
 - **FR-45** — File discovery excludes an always-ignored set (at minimum the VCS directory, dependency directory, and Acolyte's own state directory) that takes precedence over gitignore rules and cannot be re-included by a gitignore negation pattern.
-- **FR-46** — A read-only/search tool result is served from cache on an identical call without re-execution, and a stale result is never served after a mutation that could affect it: a write tool evicts cached entries tracking the written path and all pathless search results, and after a shell execution no previously cached result is served. Windowed and full reads of the same path cache independently yet invalidate together.
 - **FR-47** — An MCP server unreachable at task start is skipped with a warning and the request continues; it does not fail the task.
 - **FR-48** — A tool call that exceeds its timeout is terminated and surfaced as a structured timeout error, not left hanging.
 
@@ -185,7 +184,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 9.1 Testing
 
 - **NF-9** — A test suite ships and must pass before release, layered into unit (pure, boundary effects mocked), integration (real server/lifecycle/tool wiring with a fake model provider), and visual TUI snapshot suites, with the boundary between unit and integration enforced by file-suffix convention.
-- **NF-10** — Each §2.7 and lifecycle edge case has a dedicated test: the terminal-step classification and single-reopen policy (LC-3, LC-4), the per-turn budget reset and notice (LC-6, LC-7), the tool-execution funnel (FR-4), cache invalidation on write and shell (FR-46), the ignored-dirs precedence over gitignore (FR-45), symlink-escape denial (SEC-2), and TUI frozen-overflow rendering (TUI-4).
+- **NF-10** — Each §2.7 and lifecycle edge case has a dedicated test: the terminal-step classification and single-reopen policy (LC-3, LC-4), the per-turn budget reset and notice (LC-6, LC-7), the tool-execution funnel (FR-4), the ignored-dirs precedence over gitignore (FR-45), symlink-escape denial (SEC-2), and TUI frozen-overflow rendering (TUI-4).
 - **NF-11** — Filesystem, subprocess, and network boundaries are mocked in unit tests; behavior needing real such effects lives only in integration tests.
 - **NF-12** — Changes affecting agent behavior are validated by running the real agent, not tests alone, before release.
 
@@ -207,7 +206,6 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-5** — With the tool-call ceiling reached, the next tool call is blocked with the budget-exhausted code and message, a single high-water notice was emitted earlier that turn, and a fresh request starts the count at zero. (FR-4, LC-6, LC-7)
 - **AC-6** — A composed prompt exceeding the per-call input limit fails the call with a system/tools/messages token breakdown before reaching the provider. (LC-8, LC-9)
 - **AC-7** — A tool attempting to read or write outside the sandbox boundary — including via a symlink and via `acolyte tool` — returns the structured sandbox-violation error and performs no I/O outside the boundary, while a worktree nested in its repository can reach project-owned paths in that repository. (FR-5, FR-32, SEC-1, SEC-2, SEC-3, SEC-4, SEC-10)
-- **AC-8** — An identical read/search tool call returns a cached result without re-execution; a subsequent write to an overlapping path, or any shell execution, causes the next such call to re-execute. (FR-4, FR-46)
 - **AC-9** — File discovery for find/search omits the always-ignored directories and honors nested gitignore, and a gitignore negation cannot re-include an always-ignored directory. (FR-11, FR-45)
 - **AC-10** — The model retrieves relevant prior context via a memory search scoped so that no other session's or project's records appear, and user-scoped records are always visible; after the request, a durable observation is committed in the background without delaying the response. (MEM-2, MEM-4, MEM-5, MEM-7)
 - **AC-11** — Each tracked task exposes its state transitions through the defined state machine, an abort moves an active/queued task to cancelled, and closing the connection cancels its outstanding tasks. (PR-4, PR-5, PR-7)
@@ -252,5 +250,4 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **On-demand memory over context compaction** — durable and older context are retrieved by tool call, not injected or summarized into every prompt. (serves MEM-2, LC-13)
 - **Per-turn (not session-wide) budget** — the tool-call ceiling bounds a single generation pass and resets each request. (serves LC-6)
 - **No per-tool approval** — trust is granted in advance and bounded by the workspace sandbox rather than per-call prompts. (serves SEC-5)
-- **Conservative shell invalidation** — a shell execution currently clears the whole tool-result cache; the contract is only that no stale result is served (FR-46), so a future path-scoped invalidation may replace the full clear. (serves FR-46)
 - **Default daemon port and queue bounds** — a fixed default daemon port, one active task per connection, and a bounded per-connection queue are chosen defaults, the port being user-configurable. (serves FR-36, PR-5, PR-6)

@@ -82,10 +82,9 @@ describe("server chat runtime", () => {
     };
 
     logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.output" });
-    logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.cache" });
     logLifecycleDebugEntry({ ...base, event: "lifecycle.tool.call" });
 
-    expect(debugLogs).toHaveLength(2);
+    expect(debugLogs).toHaveLength(1);
     expect(infoLogs).toHaveLength(1);
     expect(infoLogs[0]).toBe("agent debug");
   });

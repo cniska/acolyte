@@ -11,8 +11,6 @@ import { createShellToolkit } from "./shell-toolkit";
 import { createSkillToolkit } from "./skill-toolkit";
 import { createTasklistToolkit } from "./tasklist-toolkit";
 import { createTestToolkit } from "./test-toolkit";
-import { createToolCache } from "./tool-cache";
-import { getDefaultToolCacheStore } from "./tool-cache-store";
 import type {
   SessionContext,
   SkillActivatedListener,
@@ -189,7 +187,6 @@ export function toolsForAgent(options?: {
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
   const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
-  session.cache = createToolCache(DISCOVERY_TOOL_SET, undefined, getDefaultToolCacheStore(options?.sessionId));
   const base = collectTools(
     workspace,
     session,
