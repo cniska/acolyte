@@ -197,7 +197,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
 
   const tokenTotals = statusTokenTotals(tokenUsage, runningUsage);
   const statusLine: FooterStatus = {
-    repo: git?.repo ?? basename(process.cwd()),
+    repo: git?.repo ?? basename(currentSession.workspace ?? process.cwd()),
     worktree: git?.worktree ?? null,
     branch: git?.branch ?? null,
     dirty: git?.dirty ?? false,
@@ -268,10 +268,10 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     async (cancelled) => {
       await Bun.sleep(GIT_REFRESH_DEBOUNCE_MS);
       if (cancelled()) return;
-      const result = await gitStatus();
+      const result = await gitStatus(currentSession.workspace);
       if (!cancelled()) setGit((previous) => result ?? previous);
     },
-    [pendingState],
+    [pendingState, currentSession.workspace],
   );
 
   const activateSkill = createSkillActivator({
