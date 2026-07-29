@@ -21,14 +21,21 @@ const GIT_ENV_KEYS = [
   "GIT_WORK_TREE",
 ] as const;
 
+// Inherited git state overrides an explicit cwd, so a subprocess would read whichever
+// repository the ambient GIT_DIR names instead of the workspace it was handed.
+export function envWithoutGitState(overrides?: Record<string, string>): Record<string, string> {
+  const env = { ...process.env } as Record<string, string>;
+  for (const key of GIT_ENV_KEYS) delete env[key];
+  if (overrides) Object.assign(env, overrides);
+  return env;
+}
+
 export async function runCommand(
   cmd: string[],
   workspace: string,
   envOverride?: Record<string, string>,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const env = { ...process.env };
-  for (const key of GIT_ENV_KEYS) delete env[key];
-  if (envOverride) Object.assign(env, envOverride);
+  const env = envWithoutGitState(envOverride);
   const proc = Bun.spawn({
     cmd,
     cwd: workspace,

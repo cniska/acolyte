@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import { chatSlashCommands, slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
+import { envWithoutGitState } from "./tool-utils";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */
 export const BREAKPOINT_TWO_COLUMN = 92;
@@ -46,7 +47,14 @@ async function git(cwd: string, args: string[]): Promise<string | null> {
   // A session outlives its workspace directory (a removed worktree), and spawning into a
   // missing cwd throws ENOENT synchronously — which would surface as a fatal chat exit.
   try {
-    const proc = Bun.spawn({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe", timeout: 5000 });
+    const proc = Bun.spawn({
+      cmd: ["git", ...args],
+      cwd,
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: 5000,
+      env: envWithoutGitState(),
+    });
     const [stdoutText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
     return (await proc.exited) === 0 ? stdoutText : null;
   } catch {
