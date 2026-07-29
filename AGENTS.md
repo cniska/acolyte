@@ -75,6 +75,7 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 - Bullets: a full sentence is capitalized and takes a period; a noun-phrase fragment stays lowercase and unpunctuated, unless it opens with an acronym or proper noun.
 - The first sentence is the SEO description consumed by [acolyte.sh](https://acolyte.sh); make it a single plain-text, 80–180-character summary of the page.
 - Start each doc with a one-sentence summary and organize it around reader questions; use headings, short paragraphs, tables, or diagrams to break dense material.
+- State the contract, not the reasoning behind it: cut any sentence a reader does not need in order to use the thing, and match the detail level of the sibling sections around it.
 - Before completing a docs change, read it against the affected code and adjacent canonical docs; update terminology and user-facing surfaces everywhere they are documented.
 - `docs/features.md`: shipped features only, one line each, user-visible wording.
 
