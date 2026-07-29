@@ -85,4 +85,5 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 - Unit tests are pure: mock the application's boundary effects (filesystem, subprocess, network) instead of exercising them.
 - A test needing real filesystem/process/network behavior goes in `*.int.test.ts`, never `*.test.ts`. The exception is a `scripts/` shell script, whose subject under test *is* the process: run it directly from a `*.test.ts` beside it.
 - Integration tests use real server/lifecycle/tool wiring with a fake provider for model calls.
+- A test that shells out to `git` builds its environment with `gitEnv` from `test-utils.ts`: an inherited `GIT_DIR` retargets the fixture's commands at this repository.
 - Visual tests snapshot stable TUI rendering and interaction.
