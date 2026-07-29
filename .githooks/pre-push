@@ -27,7 +27,7 @@ done
 # Git exports GIT_DIR and friends into hooks. verify runs the test suite, and a test that
 # shells out to git inherits them and operates on this repository instead of its own fixture.
 for key in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
-  unset "$key"
+  unset "$key" 2>/dev/null || true
 done
 
 bun run verify

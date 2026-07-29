@@ -106,9 +106,7 @@ describe("pre-push hook", () => {
 
     expect(await proc.exited).toBe(0);
     const seen = await Bun.file(dump).text();
-    expect(seen).not.toContain("GIT_DIR=");
-    expect(seen).not.toContain("GIT_WORK_TREE=");
-    expect(seen).not.toContain("GIT_INDEX_FILE=");
+    expect(seen).not.toMatch(/^GIT_/m);
   });
 
   test("skips a deleted ref", async () => {
