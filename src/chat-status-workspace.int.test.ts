@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { useChatState } from "./chat-state";
 import { createClient, createSession, createSessionState, tempDir } from "./test-utils";
 import { renderHook } from "./tui/test-utils";
@@ -71,7 +71,21 @@ describe("footer git context", () => {
     try {
       await Bun.sleep(600);
       expect(result.current.statusLine.worktree).toBeNull();
-      expect(result.current.statusLine.repo).not.toBe("acolyte");
+      expect(result.current.statusLine.repo).toBe(basename(root));
+      expect(result.current.statusLine.repo).not.toBe(basename(process.cwd()));
+    } finally {
+      unmount();
+    }
+  });
+
+  test("survives a session whose workspace directory no longer exists", async () => {
+    const { root } = await createRepoWithWorktree();
+    const removed = join(root, ".acolyte", "worktrees", "deleted-by-worktree-remove");
+    const { result, unmount } = statusFor(removed);
+    try {
+      await Bun.sleep(600);
+      expect(result.current.statusLine.worktree).toBeNull();
+      expect(result.current.statusLine.repo).toBe("deleted-by-worktree-remove");
     } finally {
       unmount();
     }

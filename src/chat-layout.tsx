@@ -43,9 +43,15 @@ export type GitStatus = {
 };
 
 async function git(cwd: string, args: string[]): Promise<string | null> {
-  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe", timeout: 5000 });
-  const [stdoutText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-  return (await proc.exited) === 0 ? stdoutText : null;
+  // A session outlives its workspace directory (a removed worktree), and spawning into a
+  // missing cwd throws ENOENT synchronously — which would surface as a fatal chat exit.
+  try {
+    const proc = Bun.spawn({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe", timeout: 5000 });
+    const [stdoutText] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+    return (await proc.exited) === 0 ? stdoutText : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function gitStatus(cwd = process.cwd()): Promise<GitStatus | null> {
