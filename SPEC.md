@@ -29,7 +29,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 2.2 Input handling
 
 - **FR-6** — Interactive chat accepts multi-line prompts.
-- **FR-7** — A prompt may attach file or directory context by `@path` reference; the referenced content is included in the request context.
+- **FR-7** — A prompt may attach file or directory context by `@path` reference; the referenced content is included in the request context. Completion candidates cover every workspace path the user can name, gitignored paths included, and exclude nested repository checkouts.
 - **FR-8** — A workspace path supplied to a request must exist and be a directory; otherwise the request is rejected with an actionable message. When none is supplied, the current working directory is used.
 - **FR-9** — Every value crossing a runtime boundary (transport payload, model response, configuration value, tool arguments) is validated before entering typed code; invalid input is rejected with a structured error rather than propagating.
 - **FR-10** — A malformed CLI invocation (unknown command, missing required argument) produces an actionable usage message and a non-zero exit, and near-miss command names produce a suggestion.

@@ -138,6 +138,13 @@ export function extractAtReferencePaths(inputValue: string): string[] {
   return out;
 }
 
+// A directory holding a `.git` entry is its own checkout — a worktree, submodule, or
+// vendored clone — so its tree duplicates another repository rather than extending this
+// one. `.git` is a directory in a clone and a file in a worktree or submodule.
+function isNestedCheckout(entries: Array<{ name: string }>): boolean {
+  return entries.some((entry) => entry.name === ".git");
+}
+
 async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_SCAN_ENTRIES): Promise<string[]> {
   const out: string[] = [];
   const stack: Array<{ abs: string; rel: string }> = [{ abs: root, rel: "" }];
@@ -151,19 +158,15 @@ async function collectRepoPathCandidates(root = process.cwd(), maxEntries = MAX_
     } catch {
       continue;
     }
+    if (current.rel && isNestedCheckout(entries)) continue;
+    if (current.rel) out.push(`${current.rel}/`);
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+      if (entry.name === ".git" || (entry.isDirectory() && IGNORED_DIRS.has(entry.name))) continue;
       const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
       const abs = join(current.abs, entry.name);
       if (entry.isDirectory()) {
-        if (rel === ".git") {
-          out.push(".git/config");
-          out.push(".git/COMMIT_EDITMSG");
-          continue;
-        }
-        out.push(`${rel}/`);
         stack.push({ abs, rel });
       } else if (entry.isFile()) {
         out.push(rel);

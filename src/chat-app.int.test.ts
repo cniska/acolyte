@@ -29,6 +29,48 @@ describe("chat-ui integration helpers", () => {
     const refreshed = await getCachedRepoPathCandidates(root);
     expect(refreshed).toContain("sum.rs");
   });
+
+  test("getCachedRepoPathCandidates keeps gitignored files mentionable", async () => {
+    const root = dirs.createDir("acolyte-at-gitignored-");
+    await mkdir(join(root, "docs", "notes"), { recursive: true });
+    await writeFile(join(root, ".gitignore"), "docs/notes\n", "utf8");
+    await writeFile(join(root, "docs", "notes", "plan.md"), "plan", "utf8");
+    invalidateRepoPathCandidates(root);
+    expect(await getCachedRepoPathCandidates(root)).toContain("docs/notes/plan.md");
+  });
+
+  test("getCachedRepoPathCandidates skips nested checkouts", async () => {
+    const root = dirs.createDir("acolyte-at-nested-");
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src", "own.ts"), "own", "utf8");
+    // A worktree and a submodule carry a `.git` file; a vendored clone a `.git` directory.
+    await mkdir(join(root, "worktrees", "feature", "src"), { recursive: true });
+    await writeFile(join(root, "worktrees", "feature", ".git"), "gitdir: /elsewhere", "utf8");
+    await writeFile(join(root, "worktrees", "feature", "src", "own.ts"), "copy", "utf8");
+    await mkdir(join(root, "vendor", "dep", ".git"), { recursive: true });
+    await writeFile(join(root, "vendor", "dep", "lib.ts"), "lib", "utf8");
+    invalidateRepoPathCandidates(root);
+
+    const candidates = await getCachedRepoPathCandidates(root);
+    expect(candidates).toContain("src/own.ts");
+    expect(candidates).not.toContain("worktrees/feature/src/own.ts");
+    expect(candidates).not.toContain("worktrees/feature/");
+    expect(candidates).not.toContain("vendor/dep/lib.ts");
+    expect(candidates).not.toContain("vendor/dep/");
+    expect(candidates).toContain("worktrees/");
+  });
+
+  test("getCachedRepoPathCandidates scans the workspace when it is itself a checkout", async () => {
+    const root = dirs.createDir("acolyte-at-checkout-root-");
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, ".git"), "gitdir: /elsewhere", "utf8");
+    await writeFile(join(root, "src", "own.ts"), "own", "utf8");
+    invalidateRepoPathCandidates(root);
+
+    const candidates = await getCachedRepoPathCandidates(root);
+    expect(candidates).toContain("src/own.ts");
+    expect(candidates).not.toContain(".git");
+  });
 });
 
 function withLogSinkEnv(
