@@ -81,6 +81,16 @@ export function tempDir(): { createDir: (prefix: string) => string; cleanupDirs:
   };
 }
 
+// An inherited GIT_DIR or GIT_WORK_TREE points a fixture's git commands at the real
+// repository, where `git init` re-initializes the shared gitdir as bare.
+export function gitEnv(overrides: Record<string, string> = {}): Record<string, string> {
+  const base = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))) as Record<
+    string,
+    string
+  >;
+  return { ...base, ...overrides };
+}
+
 export function tempDb<T extends { close(): void }>(
   prefix: string,
   factory: (dbPath: string) => T,

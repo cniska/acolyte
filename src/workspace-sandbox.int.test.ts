@@ -3,7 +3,7 @@ import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { projectResourceIdFromWorkspace } from "./resource-id";
-import { expectToThrowJSON, tempDir } from "./test-utils";
+import { expectToThrowJSON, gitEnv, tempDir } from "./test-utils";
 import {
   clearWorkspaceSandboxCache,
   ensurePathWithinSandbox,
@@ -18,13 +18,12 @@ async function git(cwd: string, args: string[]): Promise<void> {
   const proc = Bun.spawn(["git", "-c", "commit.gpgsign=false", "-C", cwd, ...args], {
     stdout: "pipe",
     stderr: "pipe",
-    env: {
-      ...process.env,
+    env: gitEnv({
       GIT_AUTHOR_NAME: "T",
       GIT_AUTHOR_EMAIL: "t@t.dev",
       GIT_COMMITTER_NAME: "T",
       GIT_COMMITTER_EMAIL: "t@t.dev",
-    },
+    }),
   });
   const exitCode = await proc.exited;
   if (exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${await new Response(proc.stderr).text()}`);

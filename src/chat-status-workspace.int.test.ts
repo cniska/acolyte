@@ -1,19 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { basename, join } from "node:path";
 import { useChatState } from "./chat-state";
-import { createClient, createSession, createSessionState, tempDir } from "./test-utils";
+import { createClient, createSession, createSessionState, gitEnv, tempDir } from "./test-utils";
 import { renderHook } from "./tui/test-utils";
 
 const dirs = tempDir();
 
 afterEach(dirs.cleanupDirs);
 
-// An inherited GIT_DIR/GIT_WORK_TREE would point these fixture commands at the real
-// repository, where `git init` re-initializes the shared gitdir as bare.
-const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
-
 async function git(cwd: string, args: string[]): Promise<void> {
-  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, env: gitEnv, stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawn({ cmd: ["git", ...args], cwd, env: gitEnv(), stdout: "pipe", stderr: "pipe" });
   const stderr = await new Response(proc.stderr).text();
   if ((await proc.exited) !== 0) throw new Error(`git ${args.join(" ")} failed: ${stderr}`);
 }
