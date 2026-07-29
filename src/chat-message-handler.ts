@@ -273,17 +273,22 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.requeueMessage(raw);
       return;
     }
+    const commitComposer = () => {
+      input.setInputHistory((current) => appendInputHistory(current, text));
+      input.setInputHistoryIndex(-1);
+      input.setInputHistoryDraft("");
+      input.setValue("");
+    };
+
     if (text.startsWith("/") && !text.includes(" ") && !isKnownSlashToken(text)) {
       const corrections = suggestSlashCommands(text);
       if (corrections.length === 1) return handler(corrections[0]);
+      commitComposer();
       input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
       return;
     }
     const naturalRememberDirective = resolveNaturalRememberDirective(text);
-    input.setInputHistory((current) => appendInputHistory(current, text));
-    input.setInputHistoryIndex(-1);
-    input.setInputHistoryDraft("");
-    input.setValue("");
+    commitComposer();
 
     if (text === "?") {
       input.setShowHelp((current) => !current);

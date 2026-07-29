@@ -143,11 +143,12 @@ describe("chat message handler", () => {
     await interruptTurn(interrupt, turn);
   });
 
-  test("ignores unknown single-token slash commands", async () => {
-    const { handleMessage, calls } = createMessageHandlerHarness();
+  test("clears the composer and records history for unknown single-token slash commands", async () => {
+    const { handleMessage, calls, allRows } = createMessageHandlerHarness();
     await handleMessage("/not-a-command");
-    expect(calls.setInputHistory).toBe(0);
-    expect(calls.setValue).toEqual([]);
+    expect(calls.setInputHistory).toBe(1);
+    expect(calls.setValue).toEqual([""]);
+    expect(allRows.at(-1)?.content).toContain("/not-a-command");
   });
 
   test("routes /status through message handler and renders status output row", async () => {
