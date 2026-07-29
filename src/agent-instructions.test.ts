@@ -1,8 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { createInstructions } from "./agent-instructions";
+import { loadSoulPrompt } from "./soul";
 import { expectIntent } from "./test-utils";
+import { estimateTokens } from "./token-estimate";
+
+// The prompt regrew past its pre-#97 size one hoisted line at a time because nothing in verify
+// objected to it growing. #97 brought it under 1,000 tokens; this holds that line, so the next
+// addition has to argue for itself or raise the number deliberately. Soul included, workspace
+// profile excluded: those lines are repo facts that vary per workspace.
+const PROMPT_TOKEN_BUDGET = 1000;
 
 describe("createInstructions", () => {
+  test("stays inside the prompt budget", () => {
+    expect(estimateTokens(createInstructions(loadSoulPrompt()))).toBeLessThan(PROMPT_TOKEN_BUDGET);
+  });
+
   test("carries the soul and the output contract", () => {
     const out = createInstructions("Soul.");
     expect(out).toContain("Soul.");
