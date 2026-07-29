@@ -12,6 +12,8 @@ export const TOOL_ERROR_CODES = {
   searchFilesEmptyScope: "E_SEARCH_FILES_EMPTY_SCOPE",
   searchFilesNoMatch: "E_SEARCH_FILES_NO_MATCH",
   scanCodeUnsupportedFile: "E_SCAN_CODE_UNSUPPORTED_FILE",
+  readFileTooLarge: "E_READ_FILE_TOO_LARGE",
+  readFileRangeInvalid: "E_READ_FILE_RANGE_INVALID",
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];

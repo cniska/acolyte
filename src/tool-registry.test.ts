@@ -116,13 +116,13 @@ describe("localization baseline", () => {
     const memoryAddInstruction = toolDefinitionsById["memory-add"]?.instruction ?? "";
 
     expectIntent(readInstruction, [
-      ["file-read", "before", "file-edit", "code-edit"],
-      ["file-search", "aroundLine"],
-      ["Default", "contextLines", "20"],
-      ["up to", "60"],
-      ["widen", "incrementally"],
-      ["re-read", "target file", "before editing"],
+      ["Read whole files", "file-read"],
+      ["offset", "limit", "ceiling"],
+      ["Re-read", "target file", "before editing"],
     ]);
+    // The window vocabulary is gone from the prompt surface, not merely de-emphasized.
+    expect(readInstruction).not.toContain("aroundLine");
+    expect(readInstruction).not.toContain("contextLines");
     expectIntent(findInstruction, [["file-find", "locate files"]]);
     expectIntent(createInstruction, [["file-create", "full content"]]);
     expectIntent(deleteInstruction, [["file-delete"]]);

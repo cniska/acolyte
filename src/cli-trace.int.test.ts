@@ -216,7 +216,7 @@ describe("traceMode", () => {
     expect(text).not.toContain("lifecycle.tool.result");
   });
 
-  test("compact and json output distinguish a windowed read from a full read of the same path", async () => {
+  test("compact and json output distinguish a ranged read from a full read of the same path", async () => {
     const store = createTestStore();
     store.write({
       timestamp: "2026-01-01T00:00:00.000Z",
@@ -228,7 +228,7 @@ describe("traceMode", () => {
       timestamp: "2026-01-01T00:00:00.100Z",
       taskId: "task_1",
       event: "lifecycle.tool.call",
-      fields: { tool: "file-read", path: "src/foo.ts", aroundLine: "120", contextLines: "40" },
+      fields: { tool: "file-read", path: "src/foo.ts", offset: "120", limit: "80" },
     });
     store.write({
       timestamp: "2026-01-01T00:00:00.200Z",
@@ -236,9 +236,17 @@ describe("traceMode", () => {
       event: "lifecycle.tool.call",
       fields: { tool: "file-read", path: "src/foo.ts" },
     });
+    // git-log takes path with limit too, where a read range would misdescribe the call.
+    store.write({
+      timestamp: "2026-01-01T00:00:00.300Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.call",
+      fields: { tool: "git-log", path: "src/foo.ts", limit: "20" },
+    });
     const { deps, output } = createDeps({ traceStore: store });
     await traceMode(["task", "task_1"], deps);
-    expect(output()).toContain("src/foo.ts @120±40");
+    expect(output()).toContain("src/foo.ts @120+80");
+    expect(output()).not.toContain("@1+20");
 
     const json = createDeps({ traceStore: store });
     await traceMode(["task", "task_1", "--json"], json.deps);
@@ -246,8 +254,8 @@ describe("traceMode", () => {
       .output()
       .split("\n")
       .map((line) => JSON.parse(line) as Record<string, string>);
-    expect(rows[1]).toMatchObject({ path: "src/foo.ts", around_line: "120", context_lines: "40" });
-    expect(rows[2]?.around_line).toBeUndefined();
+    expect(rows[1]).toMatchObject({ path: "src/foo.ts", offset: "120", limit: "80" });
+    expect(rows[2]?.offset).toBeUndefined();
   });
 
   test("compact output shows BLOCKED for budget exhaustion", async () => {

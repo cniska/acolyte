@@ -1,7 +1,8 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { createPathMatcher } from "./glob-match";
+import { estimateTokens } from "./token-estimate";
 import { createToolError } from "./tool-error";
 
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
@@ -22,9 +23,15 @@ export type LineRangeEdit = { startLine: number; endLine: number; replace: strin
 export type FileEdit = FindReplaceEdit | LineRangeEdit;
 
 export type FileReadOptions = {
-  maxLines?: number;
-  aroundLine?: number;
-  contextLines?: number;
+  offset?: number;
+  limit?: number;
+};
+
+export type FileReadResult = {
+  output: string;
+  totalLines: number;
+  startLine: number;
+  endLine: number;
 };
 
 const MAX_FIND_SNIPPET_LINES = 8;
@@ -33,7 +40,12 @@ const MAX_FIND_REPLACE_LINES = 24;
 const MAX_FIND_REPLACE_CHARS = 1600;
 const MAX_BATCH_EDIT_LINES = 32;
 const MAX_BATCH_EDIT_CHARS = 2400;
-export const DEFAULT_READ_CONTEXT_LINES = 20;
+// `readFileContent` materializes the whole file to slice lines, so this bounds daemon
+// memory rather than the model's budget — it never binds a legitimate whole-file read.
+export const FILE_READ_MAX_BYTES = 5 * 1024 * 1024;
+// ~12% of the flat per-call input budget, measured on the numbered output the model
+// actually receives so the line-number overhead counts against the ceiling, not on top.
+export const FILE_READ_MAX_TOKENS = 20_000;
 
 export type FindFilesResult = { output: string; totalMatches: number; truncated: boolean };
 
@@ -143,43 +155,58 @@ export async function searchFiles(
   return "No matches.";
 }
 
-export async function readFileContent(workspace: string, path: string, options: FileReadOptions = {}): Promise<string> {
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export async function readFileContent(
+  workspace: string,
+  path: string,
+  options: FileReadOptions = {},
+): Promise<FileReadResult> {
   const absPath = ensurePathWithinSandbox(path, workspace);
+  const { offset, limit } = options;
+  if (offset !== undefined && (!Number.isInteger(offset) || offset < 1)) {
+    throw createToolError(TOOL_ERROR_CODES.readFileRangeInvalid, `offset must be a line number >= 1, got ${offset}.`);
+  }
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+    throw createToolError(TOOL_ERROR_CODES.readFileRangeInvalid, `limit must be a line count >= 1, got ${limit}.`);
+  }
+  const { size } = await stat(absPath);
+  if (size > FILE_READ_MAX_BYTES) {
+    throw createToolError(
+      TOOL_ERROR_CODES.readFileTooLarge,
+      `File "${path}" is ${formatMegabytes(size)}, over the ${formatMegabytes(FILE_READ_MAX_BYTES)} byte ceiling, so no range of it can be read. Search it with file-search instead.`,
+    );
+  }
   const raw = await readFile(absPath, "utf8");
   const lines = raw.split("\n");
-  const { maxLines, aroundLine } = options;
-  const contextLines = aroundLine === undefined ? 0 : (options.contextLines ?? DEFAULT_READ_CONTEXT_LINES);
-  if (maxLines !== undefined && (!Number.isInteger(maxLines) || maxLines < 1)) {
-    throw new Error("maxLines must be >= 1");
-  }
-  if (aroundLine !== undefined && (!Number.isInteger(aroundLine) || aroundLine < 1)) {
-    throw new Error("aroundLine must be >= 1");
-  }
-  if (!Number.isInteger(contextLines) || contextLines < 0) {
-    throw new Error("contextLines must be >= 0");
-  }
-  const hasWindow = aroundLine !== undefined;
-  if (maxLines !== undefined && !hasWindow && lines.length > maxLines) {
-    throw new Error(
-      `File "${path}" is too large (${lines.length} lines). Use \`file-search\` or \`code-scan\` to find the relevant sections.`,
+  // A trailing newline terminates the last line rather than starting another one, and the
+  // reported total is a promise the model checks its own reads against.
+  if (lines[lines.length - 1] === "") lines.pop();
+  const totalLines = lines.length;
+  if (offset !== undefined && offset > totalLines) {
+    throw createToolError(
+      TOOL_ERROR_CODES.readFileRangeInvalid,
+      `offset (${offset}) is past the end of "${path}" (${totalLines} lines).`,
     );
   }
-  if (aroundLine !== undefined && aroundLine > lines.length) {
-    throw new Error(`aroundLine (${aroundLine}) exceeds file length (${lines.length})`);
-  }
-  const startLine = aroundLine === undefined ? 1 : Math.max(1, aroundLine - contextLines);
-  const endLine = aroundLine === undefined ? lines.length : aroundLine + contextLines;
-  const clampedEndLine = Math.min(endLine, lines.length);
-  const selectedLines = lines.slice(startLine - 1, clampedEndLine);
-  if (maxLines !== undefined && selectedLines.length > maxLines) {
-    throw new Error(
-      `Read window for "${path}" is too large (${selectedLines.length} lines). Use a smaller contextLines value.`,
+  if (totalLines === 0) return { output: `File: ${absPath}\nLines: 0-0 of 0`, totalLines: 0, startLine: 0, endLine: 0 };
+  const startLine = offset ?? 1;
+  const endLine = limit === undefined ? totalLines : Math.min(startLine + limit - 1, totalLines);
+  const numbered = lines.slice(startLine - 1, endLine).map((line, idx) => `${startLine + idx}: ${line}`);
+  const output = [`File: ${absPath}`, `Lines: ${startLine}-${endLine} of ${totalLines}`, ...numbered].join("\n");
+  const tokens = estimateTokens(output);
+  if (tokens > FILE_READ_MAX_TOKENS) {
+    const ranged = offset !== undefined || limit !== undefined;
+    throw createToolError(
+      TOOL_ERROR_CODES.readFileTooLarge,
+      ranged
+        ? `Lines ${startLine}-${endLine} of "${path}" are ~${tokens} tokens, over the ${FILE_READ_MAX_TOKENS}-token read ceiling. Narrow the range.`
+        : `File "${path}" is ~${tokens} tokens (${totalLines} lines), over the ${FILE_READ_MAX_TOKENS}-token read ceiling. Re-read it with offset and limit to select the lines you need.`,
     );
   }
-  const numbered = selectedLines.map((line, idx) => `${startLine + idx}: ${line}`);
-  const header = [`File: ${absPath}`];
-  if (hasWindow) header.push(`Lines: ${startLine}-${clampedEndLine} of ${lines.length}`);
-  return [...header, ...numbered].join("\n");
+  return { output, totalLines, startLine, endLine };
 }
 
 export async function editFile(input: {
@@ -232,7 +259,10 @@ export async function editFile(input: {
       if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
       if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
       const clampedEnd = Math.min(endLine, lines.length); // silently clamp — model almost always means "to end of file"
-      if (startLine === 1 && clampedEnd === lines.length && replace.trim().length === 0) {
+      // `lines` keeps the empty element a trailing newline produces; the guard has to compare
+      // against the lines that hold content, which is what a read reported to the model.
+      const contentLineCount = lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
+      if (startLine === 1 && clampedEnd >= contentLineCount && replace.trim().length === 0) {
         throw createToolError(
           TOOL_ERROR_CODES.editFileLineRangeTooLarge,
           "line-range edit would clear the entire file. Use a bounded range edit, or file-delete if the file should be removed.",

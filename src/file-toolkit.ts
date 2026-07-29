@@ -1,14 +1,6 @@
 import { isAbsolute, relative } from "node:path";
 import { z } from "zod";
-import {
-  DEFAULT_READ_CONTEXT_LINES,
-  deleteTextFile,
-  editFile,
-  findFiles,
-  readFileContent,
-  searchFiles,
-  writeTextFile,
-} from "./file-ops";
+import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
@@ -109,40 +101,42 @@ function createSearchFilesTool(input: ToolkitInput) {
   });
 }
 
-const FILE_READ_MAX_LINES = 10_000;
-
 function createReadFileTool(input: ToolkitInput) {
   return createTool({
     id: "file-read",
     toolkit: "file",
     category: "read",
     description:
-      "Read a text file. Prefer bounded windows with aroundLine after file-search; full-read only when broad context is necessary.",
+      "Read a text file. I return the whole file as numbered lines under a `Lines: start-end of total` header. A file over the token ceiling fails with its line count; re-read it with `offset` (the 1-based first line) and `limit` (how many lines) to select the part you need. A file over the byte ceiling is not readable at any range — search it with `file-search`.",
     instruction: [
-      "Use `file-read` before `file-edit` or `code-edit`.",
-      "After `file-search`, pass aroundLine from the matching line instead of reading the whole file.",
-      "Default contextLines is 20; widen contextLines incrementally up to 60 when local context is insufficient.",
-      "For named edits, re-read the target file immediately before editing.",
+      "Read whole files with `file-read`; reach for offset and limit only when a read fails the token ceiling.",
+      "Re-read the target file immediately before editing it.",
     ].join(" "),
     inputSchema: z.object({
       path: z.string().min(1),
-      aroundLine: z.number().int().min(1).optional(),
-      contextLines: z.number().int().min(0).max(60).optional(),
+      offset: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("1-based line to start from. Only for a file too large to read whole."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Number of lines to return. Only for a file too large to read whole."),
     }),
     outputSchema: z.object({
       kind: z.literal("file-read"),
       path: z.string().min(1),
-      aroundLine: z.number().int().min(1).optional(),
-      contextLines: z.number().int().min(0).max(60).optional(),
+      offset: z.number().int().min(1).optional(),
+      limit: z.number().int().min(1).optional(),
+      totalLines: z.number().int().nonnegative(),
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
-      const contextLines =
-        toolInput.aroundLine === undefined ? undefined : (toolInput.contextLines ?? DEFAULT_READ_CONTEXT_LINES);
-      const readInput =
-        toolInput.aroundLine === undefined
-          ? { path: toolInput.path }
-          : { path: toolInput.path, aroundLine: toolInput.aroundLine, contextLines };
+      const readInput = { path: toolInput.path, offset: toolInput.offset, limit: toolInput.limit };
       return runTool(input.session, "file-read", toolCallId, readInput, async (callId) => {
         input.onOutput({
           toolName: "file-read",
@@ -154,17 +148,17 @@ function createReadFileTool(input: ToolkitInput) {
           },
           toolCallId: callId,
         });
-        const output = await readFileContent(input.workspace, toolInput.path, {
-          maxLines: FILE_READ_MAX_LINES,
-          aroundLine: toolInput.aroundLine,
-          contextLines,
+        const read = await readFileContent(input.workspace, toolInput.path, {
+          offset: toolInput.offset,
+          limit: toolInput.limit,
         });
         return {
           kind: "file-read" as const,
           path: toolInput.path,
-          aroundLine: toolInput.aroundLine,
-          contextLines,
-          output,
+          offset: toolInput.offset,
+          limit: toolInput.limit,
+          totalLines: read.totalLines,
+          output: read.output,
         };
       });
     },
