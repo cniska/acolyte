@@ -1,3 +1,4 @@
+import { appConfig } from "./app-config";
 import { t } from "./i18n";
 import { getLoadedSkills } from "./skill-ops";
 
@@ -15,10 +16,28 @@ const CHAT_SLASH_COMMANDS = [
   "/exit",
 ] as const;
 
-const SUB_COMMANDS: Record<string, string[]> = {
+/** Slash commands whose surface is absent unless their feature flag is on. */
+const FLAGGED_COMMANDS: Record<string, keyof typeof appConfig.features> = {
+  "/workspaces": "workspaces",
+};
+
+function isEnabled(command: string): boolean {
+  const flag = FLAGGED_COMMANDS[command.split(" ")[0]];
+  return flag === undefined || appConfig.features[flag] === true;
+}
+
+const ALL_SUB_COMMANDS: Record<string, string[]> = {
   "/memory": ["/memory add", "/memory rm", "/memory list", "/memory all", "/memory user", "/memory project"],
   "/workspaces": ["/workspaces list", "/workspaces new", "/workspaces switch"],
 };
+
+function subCommands(): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(ALL_SUB_COMMANDS).filter(([root]) => isEnabled(root)));
+}
+
+export function chatSlashCommands(): string[] {
+  return CHAT_SLASH_COMMANDS.filter(isEnabled);
+}
 
 const SLASH_HELP: Record<string, string> = {
   "/new": t("chat.slash.help.new"),
@@ -47,8 +66,8 @@ const SUGGEST_MAX_DISTANCE = 3;
 
 function allSlashCommands(): string[] {
   const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
-  const subs = Object.values(SUB_COMMANDS).flat();
-  return [...CHAT_SLASH_COMMANDS, ...subs, ...skillCommands];
+  const subs = Object.values(subCommands()).flat();
+  return [...chatSlashCommands(), ...subs, ...skillCommands];
 }
 
 function editDistance(a: string, b: string): number {
@@ -69,8 +88,8 @@ function editDistance(a: string, b: string): number {
 }
 
 export function isKnownSlashToken(token: string): boolean {
-  if (CHAT_SLASH_COMMANDS.includes(token as (typeof CHAT_SLASH_COMMANDS)[number])) return true;
-  for (const subs of Object.values(SUB_COMMANDS)) {
+  if (chatSlashCommands().includes(token)) return true;
+  for (const subs of Object.values(subCommands())) {
     if (subs.includes(token)) return true;
   }
   if (token.startsWith("/")) {
@@ -88,11 +107,11 @@ function truncatedEditDistance(a: string, b: string): number {
 
 function rootCommands(): string[] {
   const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
-  return [...CHAT_SLASH_COMMANDS, ...skillCommands];
+  return [...chatSlashCommands(), ...skillCommands];
 }
 
 function commandWithSubs(root: string): string[] {
-  const subs = SUB_COMMANDS[root];
+  const subs = subCommands()[root];
   return subs ? [root, ...subs] : [root];
 }
 

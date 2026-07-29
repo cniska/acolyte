@@ -1,25 +1,35 @@
 import { basename } from "node:path";
-import { slashCommandHelp } from "./chat-slash";
+import { chatSlashCommands, slashCommandHelp } from "./chat-slash";
 import { t } from "./i18n";
 
 /** Terminal width at which help pane switches from 1 to 2 columns. */
 export const BREAKPOINT_TWO_COLUMN = 92;
 
-export const SHORTCUT_ITEMS = [
-  { key: "@path", description: t("chat.at_ref.mention_path") },
-  { key: "/new", description: slashCommandHelp("/new") },
-  { key: "/clear", description: slashCommandHelp("/clear") },
-  { key: "/resume <id>", description: slashCommandHelp("/resume") },
-  { key: "/sessions", description: slashCommandHelp("/sessions") },
-  { key: "/workspaces", description: slashCommandHelp("/workspaces") },
-  { key: "/model", description: slashCommandHelp("/model") },
-  { key: "/status", description: slashCommandHelp("/status") },
-  { key: "/memory [scope]", description: slashCommandHelp("/memory") },
-  { key: "/memory add <text>", description: slashCommandHelp("/memory add") },
-  { key: "/usage", description: slashCommandHelp("/usage") },
-  { key: "/skills", description: slashCommandHelp("/skills") },
-  { key: "/exit", description: slashCommandHelp("/exit") },
-] as const;
+export type ShortcutItem = { key: string; description: string };
+
+/** Help entries, resolved per call so flag-gated commands stay absent while their flag is off. */
+export function shortcutItems(): ShortcutItem[] {
+  const enabled = new Set(chatSlashCommands());
+  const items: ShortcutItem[] = [
+    { key: "@path", description: t("chat.at_ref.mention_path") },
+    { key: "/new", description: slashCommandHelp("/new") },
+    { key: "/clear", description: slashCommandHelp("/clear") },
+    { key: "/resume <id>", description: slashCommandHelp("/resume") },
+    { key: "/sessions", description: slashCommandHelp("/sessions") },
+    { key: "/workspaces", description: slashCommandHelp("/workspaces") },
+    { key: "/model", description: slashCommandHelp("/model") },
+    { key: "/status", description: slashCommandHelp("/status") },
+    { key: "/memory [scope]", description: slashCommandHelp("/memory") },
+    { key: "/memory add <text>", description: slashCommandHelp("/memory add") },
+    { key: "/usage", description: slashCommandHelp("/usage") },
+    { key: "/skills", description: slashCommandHelp("/skills") },
+    { key: "/exit", description: slashCommandHelp("/exit") },
+  ];
+  return items.filter((item) => {
+    const command = item.key.split(" ")[0];
+    return !command.startsWith("/") || enabled.has(command);
+  });
+}
 
 export type GitStatus = {
   /** Repo name (main working-tree root basename); null outside a git repo. */

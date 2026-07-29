@@ -10,19 +10,19 @@ async function runCommand(text: string, overrides: Parameters<typeof createComma
   return { ...spies, stop: result.stop, userText: result.userText };
 }
 
-function setParallelWorkspacesEnabled(enabled: boolean): () => void {
-  const cfg = appConfig as unknown as { features: { parallelWorkspaces: boolean } };
-  const prev = cfg.features.parallelWorkspaces;
-  cfg.features.parallelWorkspaces = enabled;
+function setWorkspacesEnabled(enabled: boolean): () => void {
+  const cfg = appConfig as unknown as { features: { workspaces: boolean } };
+  const prev = cfg.features.workspaces;
+  cfg.features.workspaces = enabled;
   return () => {
-    cfg.features.parallelWorkspaces = prev;
+    cfg.features.workspaces = prev;
   };
 }
 
 describe("chat-commands", () => {
   describe("/workspaces", () => {
     test("new reports errors from worktree creation instead of throwing", async () => {
-      const restore = setParallelWorkspacesEnabled(true);
+      const restore = setWorkspacesEnabled(true);
       try {
         const sessionState = createSessionState({ sessions: [], activeSessionId: undefined });
         const { createDir, cleanupDirs } = tempDir();

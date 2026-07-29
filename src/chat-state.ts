@@ -6,7 +6,7 @@ import { useSuggestions } from "./chat-effects";
 import { processInputSubmit } from "./chat-input-handlers";
 import { useInputState } from "./chat-input-state";
 import { useChatKeybindings } from "./chat-keybindings";
-import { type GitStatus, gitStatus, SHORTCUT_ITEMS } from "./chat-layout";
+import { type GitStatus, gitStatus, shortcutItems } from "./chat-layout";
 import { createMessageHandler } from "./chat-message-handler";
 import { usePendingState } from "./chat-pending";
 import { type PickerState, pickerItemCount, reduceModelPickerAction } from "./chat-picker";
@@ -232,7 +232,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
         slashSuggestions,
         slashSuggestionIndex,
       }),
-      help: { visible: showHelp, entries: SHORTCUT_ITEMS },
+      help: { visible: showHelp, entries: shortcutItems() },
       ctrlCPending,
       footer: statusLine,
     },

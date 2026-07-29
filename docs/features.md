@@ -83,6 +83,6 @@ Implemented but gated behind feature flags. See [Configuration](configuration.md
 
 - `syncAgents` — sync `AGENTS.md` into project memory for on-demand recall
 - `undoCheckpoints` — session-level undo via write-tool checkpoints
-- `parallelWorkspaces` — manage git worktrees and workspace-scoped sessions via `/workspaces`
+- `workspaces` — manage git worktrees and workspace-scoped sessions via `/workspaces`
 - `cloudSync` — portable memory and sessions across machines via `acolyte login` and `acolyte logout`
 - Postgres session storage backend and Postgres + pgvector memory backend (used by cloud tier)
