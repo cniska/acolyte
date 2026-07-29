@@ -264,7 +264,7 @@ describe("phaseGenerate", () => {
     expect(debugEvents.some((event) => event.event === "lifecycle.tool_error.recovery")).toBe(false);
   });
 
-  test("records the read window on the tool call so a repeated read is distinguishable", async () => {
+  test("records the read range on the tool call so a repeated read is distinguishable", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({
       request: { model: "gpt-5-mini", message: "test", history: [] },
@@ -282,7 +282,7 @@ describe("phaseGenerate", () => {
               payload: {
                 toolCallId: "call_1",
                 toolName: "file-read",
-                args: { path: "src/a.ts", aroundLine: 120, contextLines: 40 },
+                args: { path: "src/a.ts", offset: 120, limit: 80 },
               },
             },
             {
@@ -308,8 +308,8 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     const calls = debugEvents.filter((event) => event.event === "lifecycle.tool.call");
-    expect(calls[0]?.fields).toMatchObject({ tool: "file-read", path: "src/a.ts", aroundLine: 120, contextLines: 40 });
-    expect(calls[1]?.fields).not.toHaveProperty("aroundLine");
+    expect(calls[0]?.fields).toMatchObject({ tool: "file-read", path: "src/a.ts", offset: 120, limit: 80 });
+    expect(calls[1]?.fields).not.toHaveProperty("offset");
   });
 
   test("marks tool-error completion as failed in trace", async () => {

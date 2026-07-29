@@ -36,13 +36,12 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - provider prompt-cache awareness with cached input token reporting
 - proactive token budgeting with system prompt reservation and priority-based allocation
 - step budget enforcement for cost protection
-- two-tier result cache for read-only and search tools with cross-task persistence
 - streaming progress output with real-time token usage
 - inline tasklist for multi-step tasks
 
 ## Tools
 
-- find/search/read files with gitignore awareness
+- find/search/read files with gitignore awareness; reads return the whole file, with an explicit line range for files over the token ceiling
 - edit/create/delete files
 - AST-based structural code editing
 - git status/diff/log/show/add/commit
