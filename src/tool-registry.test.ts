@@ -127,7 +127,7 @@ describe("model-facing tool text", () => {
   // Whether to commit at all is the user's call, and no other surface carries it: soul.md is
   // silent, and a workspace without an equivalent project rule would lose it entirely.
   test("git-commit states that committing waits for the user", () => {
-    expectIntent(toolDefinitionsById["git-commit"]?.description ?? "", [["only when you ask"]]);
+    expectIntent(toolDefinitionsById["git-commit"]?.description ?? "", [["only when the user asks"]]);
   });
 
   // Vocabulary a tool no longer supports must be gone from the schema surface, not merely
