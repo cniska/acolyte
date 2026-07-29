@@ -2,6 +2,7 @@ import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
 import { domainIdSchema } from "./id-contract";
 import { type Env, resolveHomeDir } from "./paths";
+import { resolveProjectRoot } from "./workspace-sandbox";
 
 export const userResourceIdSchema = domainIdSchema("user");
 export type UserResourceId = z.infer<typeof userResourceIdSchema>;
@@ -25,8 +26,7 @@ function hashValue(value: string): string {
 }
 
 export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId {
-  const normalized = resolvePath(workspace);
-  return projectResourceIdSchema.parse(`proj_${hashValue(normalized)}`);
+  return projectResourceIdSchema.parse(`proj_${hashValue(resolveProjectRoot(workspace))}`);
 }
 
 export function defaultUserResourceId(env?: Env): UserResourceId {

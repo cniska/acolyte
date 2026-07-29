@@ -79,6 +79,14 @@ function enclosingRepoRoot(workspaceRoot: string): string | null {
   return outermost === workspaceRoot ? null : outermost;
 }
 
+// Project identity, so a subdirectory or a worktree shares one project scope with its
+// repository. Unlike the sandbox root this never resolves symlinks and never throws: a path
+// that is not a repository, or does not exist, identifies itself.
+export function resolveProjectRoot(workspace: string): string {
+  const resolvedWorkspace = resolve(workspace);
+  return enclosingRepoRoot(resolvedWorkspace) ?? resolvedWorkspace;
+}
+
 export function resolveWorkspaceRoot(workspace: string): string {
   const resolvedWorkspace = resolve(workspace);
   const cached = workspaceRootCache.get(resolvedWorkspace);

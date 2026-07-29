@@ -30,6 +30,8 @@ Each record belongs to one scope:
 
 The canonical resource IDs are `sess_*`, `proj_*`, and `user_*`.
 
+A project is identified by its repository root. Opening a workspace on a subdirectory, or on a worktree of the same repository, therefore reaches the same project memory as opening it on the repository root. A workspace that is not inside a repository identifies itself.
+
 ## Writing memory
 
 After a completed request, the distiller examines the new conversation content and a task-activity digest. The digest records files changed, commands run and whether they failed, and other tool failures, so durable work facts can survive when the final response omits them.

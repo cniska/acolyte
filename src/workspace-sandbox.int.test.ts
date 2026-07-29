@@ -2,8 +2,14 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
+import { projectResourceIdFromWorkspace } from "./resource-id";
 import { expectToThrowJSON, tempDir } from "./test-utils";
-import { clearWorkspaceSandboxCache, ensurePathWithinSandbox, resolveWorkspaceSandboxRoot } from "./workspace-sandbox";
+import {
+  clearWorkspaceSandboxCache,
+  ensurePathWithinSandbox,
+  resolveProjectRoot,
+  resolveWorkspaceSandboxRoot,
+} from "./workspace-sandbox";
 
 const dirs = tempDir();
 
@@ -153,6 +159,28 @@ describe("workspace-sandbox", () => {
       code: TOOL_ERROR_CODES.sandboxViolation,
       kind: ERROR_KINDS.sandboxViolation,
     });
+  });
+
+  test("identifies a subdirectory and a nested worktree as the same project", async () => {
+    const { repo, worktree } = await createRepoWithWorktree("acolyte-project-identity-", (_root, repoRoot) =>
+      join(repoRoot, ".claude", "worktrees", "wt"),
+    );
+
+    expect(resolveProjectRoot(join(repo, "docs"))).toBe(repo);
+    expect(resolveProjectRoot(worktree)).toBe(repo);
+
+    const repoId = projectResourceIdFromWorkspace(repo);
+    expect(projectResourceIdFromWorkspace(join(repo, "docs"))).toBe(repoId);
+    expect(projectResourceIdFromWorkspace(worktree)).toBe(repoId);
+  });
+
+  test("identifies a path that is not a repository as itself", () => {
+    const root = dirs.createDir("acolyte-project-identity-nonrepo-");
+
+    expect(resolveProjectRoot(root)).toBe(root);
+    // Neither existing nor a repository — memory scope must still resolve, not throw.
+    expect(resolveProjectRoot("/ws/one")).toBe("/ws/one");
+    expect(projectResourceIdFromWorkspace("/ws/one")).toBe(projectResourceIdFromWorkspace("/ws/one"));
   });
 
   test("blocks symlink escapes for new files under symlinked directories", async () => {

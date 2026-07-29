@@ -89,7 +89,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 3. Memory requirements (MEM)
 
-- **MEM-1** — Memory persists across sessions in three scopes: session, project, and user.
+- **MEM-1** — Memory persists across sessions in three scopes: session, project, and user. A project is identified by its repository root, so a workspace opened on a subdirectory or on a worktree shares one project scope with the repository; a workspace that is not in a repository identifies itself.
 - **MEM-2** — Memory is retrieved on demand through memory tools the model invokes when it needs context; durable memory is never injected wholesale into the system prompt.
 - **MEM-3** — The model can search and add memory records at runtime.
 - **MEM-4** — After each request, a background distillation step extracts durable observations from the conversation and from a record of the turn's own work — the files it changed, the commands it ran and whether they failed — and commits them at the appropriate scope, tagged with an optional single-word topic. An observation is one self-contained claim about the work that could not be recovered by reading the code; a turn that establishes nothing durable commits nothing.
