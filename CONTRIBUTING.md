@@ -14,7 +14,7 @@ Contributions are welcome. See [Local development](./README.md#local-development
 
 Run the [narrow relevant test suite](./README.md#testing) while iterating. Before opening a pull request, run the [full validation](./README.md#testing).
 
-`bun install` installs the pre-push hook, which runs the same validation before every push.
+`bun install` installs the pre-push hook, which runs the same validation before every push, and checks every outgoing commit's message format and author identity.
 
 ## Pull requests
 

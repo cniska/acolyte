@@ -11,9 +11,22 @@ while read -r local_ref local_oid remote_ref remote_oid; do
   fi
   if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
     # New ref — only check commits not already on the remote
-    range="$local_oid --not --remotes=$remote"
+    if git remote get-url "$remote" >/dev/null 2>&1; then
+      range=("$local_oid" --not --remotes="$remote")
+    else
+      # A direct URL has no local tracking namespace, so validate every ancestor
+      # rather than excluding commits that may belong only to another remote.
+      range=("$local_oid")
+    fi
   else
-    range="$remote_oid..$local_oid"
+    range=("$remote_oid..$local_oid")
+  fi
+  if ! commits=$(git rev-list "${range[@]}"); then
+    echo "error: cannot enumerate commits for $local_ref." >&2
+    exit 1
+  fi
+  if [ -z "$commits" ]; then
+    continue
   fi
   while IFS= read -r oid; do
     subject=$(git log -1 --format='%s' "$oid")
@@ -22,7 +35,19 @@ while read -r local_ref local_oid remote_ref remote_oid; do
       echo "  commit: $oid" >&2
       exit 1
     }
-  done < <(git rev-list "$range" 2>/dev/null)
+    author_name=$(git log -1 --format='%an' "$oid")
+    author_email=$(git log -1 --format='%ae' "$oid")
+    committer_name=$(git log -1 --format='%cn' "$oid")
+    committer_email=$(git log -1 --format='%ce' "$oid")
+    bash "$root/scripts/check-commit-author.sh" "$author_name" "$author_email" author || {
+      echo "  commit: $oid" >&2
+      exit 1
+    }
+    bash "$root/scripts/check-commit-author.sh" "$committer_name" "$committer_email" committer || {
+      echo "  commit: $oid" >&2
+      exit 1
+    }
+  done <<< "$commits"
 done
 
 bun run verify
