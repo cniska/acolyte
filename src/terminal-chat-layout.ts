@@ -601,7 +601,7 @@ export function layoutComposerStatus(input: {
         ...presentation.suggestions.candidates.map((candidate, index) => ({
           spans: [
             {
-              text: truncateToWidth(`  ${candidate.label}`, cw),
+              text: truncateToWidth(`${index === selected ? "› " : "  "}${candidate.label}`, cw),
               role: index === selected ? ("selected" as const) : ("plain" as const),
             },
           ],
@@ -616,7 +616,7 @@ export function layoutComposerStatus(input: {
         const label = truncateToWidth(candidate.command, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
         const help = candidate.help ?? "";
         if (index === selected)
-          return { spans: [{ text: truncateToWidth(`  ${label} ${help}`, cw), role: "selected" as const }] };
+          return { spans: [{ text: truncateToWidth(`› ${label} ${help}`, cw), role: "selected" as const }] };
         return {
           spans: [
             { text: `  ${label}`, role: "plain" as const },

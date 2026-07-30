@@ -167,7 +167,7 @@ describe("chat tui visual regression: status line and help", () => {
       slashSuggestions: ["/model"],
       slashSuggestionIndex: 0,
     });
-    expect(out).toBe(`${box(["❯ /model"])}\n     /model               change model`);
+    expect(out).toBe(`${box(["❯ /model"])}\n   › /model               change model`);
   });
 
   test("renders multiple slash suggestions with the selected command's help", () => {
@@ -179,7 +179,7 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(`${box(["❯ /status"], 80)}\n     /status              show server status\n     /stop`);
+    expect(out).toBe(`${box(["❯ /status"], 80)}\n   › /status              show server status\n     /stop`);
   });
 
   test("renders the ctrl-c exit hint below the composer", () => {
@@ -195,7 +195,7 @@ describe("chat tui visual regression: status line and help", () => {
       },
       80,
     );
-    expect(out).toBe(`${box(["❯ @src/chat-app.tsx"], 80)}\n     src/chat-state.ts\n     src/chat-app.tsx`);
+    expect(out).toBe(`${box(["❯ @src/chat-app.tsx"], 80)}\n     src/chat-state.ts\n   › src/chat-app.tsx`);
   });
 });
 

@@ -22,6 +22,27 @@ const footer = {
   skills: [],
 } as const;
 
+function composerRows(
+  suggestions: Parameters<typeof createChatViewportPresentation>[0]["composer"]["suggestions"],
+  columns: number,
+): string[] {
+  const presentation = createChatViewportPresentation({
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    activeTranscript: [],
+    pending: null,
+    composer: {
+      input: { text: "@", cursor: 1 },
+      picker: null,
+      suggestions,
+      help: { visible: false, entries: [] },
+      ctrlCPending: false,
+      footer,
+    },
+  });
+  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  return scene.lines.map((line) => line.spans.map((span) => span.text).join(""));
+}
+
 function composerRowWidths(
   suggestions: Parameters<typeof createChatViewportPresentation>[0]["composer"]["suggestions"],
   columns: number,
@@ -59,6 +80,23 @@ describe("composer suggestion clipping", () => {
     // The widest row is the composer box, whose right border sits at the last column
     // before the 1ch right gutter (trailing whitespace the renderer trims).
     expect(Math.max(...widths)).toBe(39);
+  });
+
+  test("marks the selected @-mention candidate with the picker's selector", () => {
+    const rows = composerRows(
+      { kind: "at", query: "a", candidates: ["AGENTS.md", "docs/skills/agents-md.md"], selected: 0 },
+      80,
+    );
+    expect(rows.some((row) => row.includes("› AGENTS.md"))).toBe(true);
+    expect(rows.some((row) => row.includes("  docs/skills/agents-md.md"))).toBe(true);
+    expect(rows.some((row) => row.includes("› docs/skills/agents-md.md"))).toBe(false);
+  });
+
+  test("marks the selected slash candidate with the picker's selector", () => {
+    const rows = composerRows({ kind: "slash", candidates: ["/model", "/memory"], selected: 1 }, 80);
+    expect(rows.some((row) => row.includes("› /memory"))).toBe(true);
+    expect(rows.some((row) => row.includes("  /model"))).toBe(true);
+    expect(rows.some((row) => row.includes("› /model"))).toBe(false);
   });
 
   test("clips overflowing slash-command suggestions to the terminal width", () => {
