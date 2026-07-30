@@ -46,9 +46,12 @@ export async function createDiff(input: {
         "git",
         "-c",
         "core.quotePath=false",
+        "-c",
+        "core.attributesFile=/dev/null",
         "diff",
         "--no-index",
         "--no-prefix",
+        "--no-ext-diff",
         "--indent-heuristic",
         `--unified=${DIFF_CONTEXT_LINES}`,
         "--",
@@ -56,7 +59,7 @@ export async function createDiff(input: {
         nextPath,
       ],
       root,
-      hermeticGitEnv({ GIT_CEILING_DIRECTORIES: root }),
+      hermeticGitEnv({ GIT_CEILING_DIRECTORIES: root, GIT_ATTR_NOSYSTEM: "1" }),
     );
     // `git diff --no-index` reports difference through its exit status: 0 identical, 1 differs.
     if (code > 1) throw new Error(stderr.trim() || "git diff failed");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDiff } from "./diff-ops";
@@ -33,8 +33,9 @@ describe("createDiff", () => {
   test("keeps the shared lines when a line moves to the end", async () => {
     const diff = await createDiff({ displayPath: "t.txt", previous: lines("A", "B", "C"), next: lines("B", "C", "A") });
 
+    // One line moved, so a minimal alignment keeps B and C as context. Asserting the counts
+    // rather than the row order pins the contract without pinning git's choice among ties.
     expect(counts(diff)).toEqual({ added: 1, removed: 1 });
-    expect(diff.split("\n").slice(-4)).toEqual(["-A", " B", " C", "+A"]);
   });
 
   test("stays proportional on a large file with one changed line", async () => {
@@ -171,10 +172,39 @@ describe("createDiff", () => {
 });
 
 describe("createDiff isolation", () => {
-  const previousTmpDir = process.env.TMPDIR;
+  const saved = { ...process.env };
   afterEach(() => {
-    if (previousTmpDir === undefined) delete process.env.TMPDIR;
-    else process.env.TMPDIR = previousTmpDir;
+    for (const key of ["TMPDIR", "XDG_CONFIG_HOME", "GIT_EXTERNAL_DIFF"]) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  });
+
+  test("ignores a user-level git attributes file", async () => {
+    const home = mkdtempSync(join(tmpdir(), "acolyte-xdg-"));
+    mkdirSync(join(home, "git"), { recursive: true });
+    // `* -diff` would otherwise replace every patch with "Binary files ... differ".
+    writeFileSync(join(home, "git", "attributes"), "* -diff\n", "utf8");
+    process.env.XDG_CONFIG_HOME = home;
+
+    const diff = await createDiff({ displayPath: "t.txt", previous: lines("a", "b"), next: lines("a", "B") });
+
+    expect(diff).not.toContain("Binary files");
+    expect(counts(diff)).toEqual({ added: 1, removed: 1 });
+  });
+
+  test("never runs an external diff program", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "acolyte-ext-"));
+    const marker = join(dir, "ran");
+    const script = join(dir, "ext.sh");
+    writeFileSync(script, `#!/bin/sh\ntouch ${marker}\necho EXTERNAL\n`, { encoding: "utf8", mode: 0o755 });
+    process.env.GIT_EXTERNAL_DIFF = script;
+
+    const diff = await createDiff({ displayPath: "t.txt", previous: lines("a", "b"), next: lines("a", "B") });
+
+    expect(existsSync(marker)).toBe(false);
+    expect(diff).not.toContain("EXTERNAL");
+    expect(counts(diff)).toEqual({ added: 1, removed: 1 });
   });
 
   test("ignores a surrounding repository's gitattributes", async () => {
