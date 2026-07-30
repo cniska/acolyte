@@ -60,7 +60,7 @@ export function isSourceFile(file: string, includeTests: boolean): boolean {
 
 function collectFiles(root: string, includeTests: boolean): string[] {
   const stats = statSync(root, { throwIfNoEntry: false });
-  if (!stats) return [];
+  if (!stats) throw new Error(`no such path: ${root}`);
   if (stats.isFile()) return isSourceFile(root, includeTests) ? [root] : [];
 
   const found: string[] = [];
@@ -85,7 +85,7 @@ function measure(
   let files = 0;
   for (const path of paths) {
     const root = resolve(baseDir, path);
-    const displayBase = dirname(root);
+    const displayBase = root === baseDir ? root : dirname(root);
     for (const file of collectFiles(root, includeTests)) {
       files += 1;
       metrics.push(...analyzeSource(relative(displayBase, file), readFileSync(file, "utf8")));
@@ -106,7 +106,9 @@ function releaseTags(limit: number | null): string[] {
   return limit === null ? tags : tags.slice(-limit);
 }
 
-function measureTag(tag: string, paths: string[], includeTests: boolean): ErosionReport {
+// A tag predating every measured path has nothing to archive, so it is reported as skipped
+// rather than aborting the curve for the tags that do have it.
+function measureTag(tag: string, paths: string[], includeTests: boolean): ErosionReport | null {
   const workDir = mkdtempSync(join(tmpdir(), "acolyte-erosion-"));
   const archive = join(workDir, "tree.tar");
   try {
@@ -117,6 +119,8 @@ function measureTag(tag: string, paths: string[], includeTests: boolean): Erosio
     execFileSync("tar", ["-x", "-f", archive, "-C", workDir]);
     const { metrics, files } = measure(workDir, paths, includeTests);
     return computeErosion(metrics, files);
+  } catch {
+    return null;
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }
@@ -160,12 +164,19 @@ export async function runErosion(argv: string[]): Promise<void> {
   const args = parseErosionArgs(argv);
 
   if (args.tags) {
-    const reports = releaseTags(args.limit).map((tag) => ({
+    const measured = releaseTags(args.limit).map((tag) => ({
       tag,
       report: measureTag(tag, args.paths, args.includeTests),
     }));
-    if (args.json) console.log(JSON.stringify(reports, null, 2));
+    const reports: TagReport[] = [];
+    const skipped: string[] = [];
+    for (const entry of measured) {
+      if (entry.report === null) skipped.push(entry.tag);
+      else reports.push({ tag: entry.tag, report: entry.report });
+    }
+    if (args.json) console.log(JSON.stringify({ reports, skipped }, null, 2));
     else printCurve(reports);
+    if (skipped.length > 0) console.log(`\nskipped (path absent at tag): ${skipped.join(", ")}`);
     return;
   }
 
@@ -179,5 +190,10 @@ export async function runErosion(argv: string[]): Promise<void> {
 }
 
 if (import.meta.main) {
-  await runErosion(process.argv.slice(2));
+  try {
+    await runErosion(process.argv.slice(2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
