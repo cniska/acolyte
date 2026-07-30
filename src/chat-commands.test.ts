@@ -123,6 +123,26 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
   });
 
+  test("dispatchSlashCommand handles /memory list", async () => {
+    const memoryApi = createMemoryApi();
+    const { rows, stop } = await runCommand("/memory list", { memoryApi });
+    expect(stop).toBe(true);
+    expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
+  });
+
+  test("dispatchSlashCommand scopes /memory list", async () => {
+    let receivedScope = "";
+    const memoryApi = createMemoryApi({
+      listMemories: async (options) => {
+        receivedScope = options?.scope ?? "";
+        return [];
+      },
+    });
+    const { stop } = await runCommand("/memory list project", { memoryApi });
+    expect(stop).toBe(true);
+    expect(receivedScope).toBe("project");
+  });
+
   test("dispatchSlashCommand handles scoped /memory with empty store", async () => {
     let receivedScope = "";
     const memoryApi = createMemoryApi({

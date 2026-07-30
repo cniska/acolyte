@@ -1,4 +1,4 @@
-import type { CommandContext, CommandResult, SlashCommand } from "./chat-commands-contract";
+import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { formatSessionList } from "./chat-commands-sessions";
 import { type ChatRow, createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
@@ -67,9 +67,5 @@ async function handleResume(ctx: CommandContext): Promise<CommandResult> {
   return { stop: true, userText: text };
 }
 
-export function createResumeCommands(ctx: CommandContext): SlashCommand[] {
-  return [
-    { name: "resume.panel", match: (value) => value === "/resume", run: () => handleResumePanel(ctx) },
-    { name: "resume", match: (value) => value.startsWith("/resume"), run: () => handleResume(ctx) },
-  ];
-}
+export const runResume: CommandHandler = (ctx, parsed) =>
+  parsed.args.length === 0 ? handleResumePanel(ctx) : handleResume(ctx);

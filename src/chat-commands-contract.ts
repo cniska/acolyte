@@ -1,6 +1,8 @@
+import { z } from "zod";
 import type { ChatRow } from "./chat-contract";
 import type { Client } from "./client-contract";
 import type { ConfigScope } from "./config-contract";
+import { featureFlagNameSchema } from "./feature-flags-contract";
 import type { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
@@ -39,29 +41,11 @@ export type CommandContext = {
   }>;
 };
 
-export type SlashCommand = {
-  name: string;
-  match: (value: string) => boolean;
-  run: () => Promise<CommandResult>;
-};
-
 export type ParsedCommand = {
   root: string;
   sub: string;
   args: string[];
   raw: string;
-};
-
-export type Subcommand = {
-  name: string;
-  match: (sub: string, args: string[]) => boolean;
-  run: (parsed: ParsedCommand) => Promise<CommandResult>;
-};
-
-export type SubcommandGroup = {
-  root: string;
-  subcommands: Subcommand[];
-  fallback: (parsed: ParsedCommand) => Promise<CommandResult>;
 };
 
 export function parseSlashCommand(text: string): ParsedCommand {
@@ -72,10 +56,36 @@ export function parseSlashCommand(text: string): ParsedCommand {
   return { root, sub, args, raw: text };
 }
 
-export function dispatchSubcommandGroup(group: SubcommandGroup, text: string): Promise<CommandResult> {
-  const parsed = parseSlashCommand(text);
-  for (const sub of group.subcommands) {
-    if (sub.match(parsed.sub, parsed.args)) return sub.run(parsed);
-  }
-  return group.fallback(parsed);
-}
+export const commandSourceSchema = z.enum(["builtin", "project", "user", "bundled"]);
+export type CommandSource = z.infer<typeof commandSourceSchema>;
+
+export const commandRefSchema = z.object({
+  name: z.string(),
+  source: commandSourceSchema,
+});
+export type CommandRef = z.infer<typeof commandRefSchema>;
+
+export const subcommandSpecSchema = z.object({
+  name: z.string(),
+  usage: z.string(),
+  helpKey: z.string(),
+});
+export type SubcommandSpec = z.infer<typeof subcommandSpecSchema>;
+
+export const commandSpecSchema = z.object({
+  name: z.string(),
+  source: commandSourceSchema,
+  helpKey: z.string(),
+  flag: featureFlagNameSchema.optional(),
+  subcommands: z.array(subcommandSpecSchema),
+});
+export type CommandSpec = z.infer<typeof commandSpecSchema>;
+
+export type CommandHandler = (ctx: CommandContext, parsed: ParsedCommand) => Promise<CommandResult>;
+
+export type CommandEntry = {
+  spec: CommandSpec;
+  /** Runs a bare root and any undeclared token, which arrives as the handler's first argument. */
+  run: CommandHandler;
+  runSub?: Record<string, CommandHandler>;
+};

@@ -1,3 +1,4 @@
+import type { CommandHandler } from "./chat-commands-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { alignCols, formatCompactNumber } from "./chat-format";
 import { t } from "./i18n";
@@ -63,3 +64,9 @@ export function usageRows(last: SessionTokenUsageEntry | null, all: SessionToken
   if (breakdown.length > 0) sections.push(breakdown);
   return [createRow("system", { header: t("chat.usage.header"), sections })];
 }
+
+export const runUsage: CommandHandler = async (ctx) => {
+  const last = ctx.tokenUsage.length > 0 ? ctx.tokenUsage[ctx.tokenUsage.length - 1] : null;
+  ctx.setRows((current) => [...current, ...usageRows(last, ctx.tokenUsage)]);
+  return { stop: true, userText: ctx.text };
+};

@@ -1,7 +1,12 @@
-import type { CommandContext, CommandResult } from "./chat-commands-contract";
+import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
 import { findSkillByName } from "./skill-ops";
+
+export const runSkillsPanel: CommandHandler = async (ctx) => {
+  await ctx.openSkillsPanel();
+  return { stop: true, userText: ctx.text };
+};
 
 export async function handleSkillActivation(ctx: CommandContext): Promise<CommandResult | null> {
   if (!ctx.activateSkill) return null;

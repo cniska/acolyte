@@ -1,13 +1,6 @@
 import type { z } from "zod";
 import { appConfig } from "./app-config";
-import type {
-  CommandContext,
-  CommandResult,
-  ParsedCommand,
-  SlashCommand,
-  SubcommandGroup,
-} from "./chat-commands-contract";
-import { dispatchSubcommandGroup } from "./chat-commands-contract";
+import type { CommandContext, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
 import { GLYPH_FILLED } from "./chat-glyphs";
@@ -16,7 +9,7 @@ import { t } from "./i18n";
 import { createSession } from "./session-store";
 import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceNameSchema } from "./workspaces-ops";
 
-async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
+export async function runWorkspacesList(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
   const { text } = ctx;
   if (parsed.args.length > 0) {
     ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces [list|new|switch] ..."))]);
@@ -48,7 +41,7 @@ async function handleList(ctx: CommandContext, parsed: ParsedCommand): Promise<C
   return { stop: true, userText: text };
 }
 
-async function handleNew(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
+export async function runWorkspacesNew(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
   const { text } = ctx;
   const args = parsed.args;
   const showUsage = (): CommandResult => {
@@ -148,7 +141,7 @@ async function handleNew(ctx: CommandContext, parsed: ParsedCommand): Promise<Co
   return { stop: true, userText: text };
 }
 
-async function handleSwitch(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
+export async function runWorkspacesSwitch(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
   const { text } = ctx;
   const nameArg = parsed.args[0];
   const name = workspaceNameSchema.safeParse(nameArg);
@@ -169,35 +162,4 @@ async function handleSwitch(ctx: CommandContext, parsed: ParsedCommand): Promise
   await ctx.persist();
   ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.switched", { name: name.data }))]);
   return { stop: true, userText: text };
-}
-
-function createWorkspacesGroup(ctx: CommandContext): SubcommandGroup {
-  return {
-    root: "workspaces",
-    subcommands: [
-      {
-        name: "list",
-        match: (sub) => sub === "list" || sub === "",
-        run: (parsed) => handleList(ctx, parsed),
-      },
-      { name: "new", match: (sub) => sub === "new", run: (parsed) => handleNew(ctx, parsed) },
-      { name: "switch", match: (sub) => sub === "switch", run: (parsed) => handleSwitch(ctx, parsed) },
-    ],
-    fallback: async () => {
-      ctx.setRows((current) => [...current, createRow("system", formatUsage("/workspaces [list|new|switch] ..."))]);
-      return { stop: true, userText: ctx.text };
-    },
-  };
-}
-
-export function createWorkspacesCommands(ctx: CommandContext): SlashCommand[] {
-  if (!appConfig.features.workspaces) return [];
-  const group = createWorkspacesGroup(ctx);
-  return [
-    {
-      name: "workspaces",
-      match: (value) => value === "/workspaces" || value.startsWith("/workspaces "),
-      run: () => dispatchSubcommandGroup(group, ctx.resolvedText),
-    },
-  ];
 }

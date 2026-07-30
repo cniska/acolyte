@@ -23,6 +23,12 @@ export const featureFlagsSchema = z.object({
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
 
+export const featureFlagNameSchema = z.enum(
+  Object.keys(featureFlagsSchema.shape) as [keyof FeatureFlags, ...(keyof FeatureFlags)[]],
+);
+
+export type FeatureFlagName = z.infer<typeof featureFlagNameSchema>;
+
 export const resolvedFeatureFlagsSchema = z.object({
   syncAgents: parseBoolSchema.optional().default(false),
   undoCheckpoints: parseBoolSchema.optional().default(false),
