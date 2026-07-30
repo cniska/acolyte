@@ -17,7 +17,7 @@ export type ParsedToolInput = { ok: true; input: Record<string, unknown> } | { o
 
 export function parseToolInput(rest: string[]): ParsedToolInput {
   if (rest.length === 0) return { ok: true, input: {} };
-  if (rest.length > 1) return { ok: false, message: t("cli.tool.usage") };
+  if (rest.length > 1) return { ok: false, message: `${t("cli.tool.too_many_args")} ${t("cli.tool.usage")}` };
 
   let parsed: unknown;
   try {

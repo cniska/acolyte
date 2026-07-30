@@ -215,6 +215,7 @@ export const EN_MESSAGES = {
   "cli.tool.invalid_input": "Invalid input for {tool}:",
   "cli.tool.invalid_json": "Invalid JSON input: {message}",
   "cli.tool.not_object": "Input must be a JSON object.",
+  "cli.tool.too_many_args": "Too many arguments. Pass the tool's input as one JSON object.",
   "cli.tool.unknown": "Unknown tool '{tool}'.",
   "cli.tool.usage": "Usage: acolyte tool <tool-id> ['<json-input>']",
   "error.connection.generic": "Cannot reach server at {url}. Check apiUrl and server availability.",

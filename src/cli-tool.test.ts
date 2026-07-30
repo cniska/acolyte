@@ -41,9 +41,10 @@ describe("parseToolInput", () => {
     }
   });
 
-  test("rejects more than one argument", () => {
+  test("rejects more than one argument and says why", () => {
     const parsed = parseToolInput(["src/**/*.ts", "extra"]);
     expect(parsed.ok).toBe(false);
+    expect(parsed.ok === false && parsed.message).toContain("Too many arguments.");
     expect(parsed.ok === false && parsed.message).toContain("Usage: acolyte tool");
   });
 });
