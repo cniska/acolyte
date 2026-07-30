@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { z } from "zod";
 import { printIndentedDim, printToolResult } from "./cli-format";
+import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
 import type { RunToolResult, ToolDefinition } from "./tool-contract";
 import { toolsForAgent } from "./tool-registry";
@@ -22,7 +23,7 @@ export function parseToolInput(rest: string[]): ParsedToolInput {
   try {
     parsed = JSON.parse(rest[0]);
   } catch (error) {
-    return { ok: false, message: t("cli.tool.invalid_json", { message: error instanceof Error ? error.message : "" }) };
+    return { ok: false, message: t("cli.tool.invalid_json", { message: errorMessage(error) }) };
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     return { ok: false, message: t("cli.tool.not_object") };
