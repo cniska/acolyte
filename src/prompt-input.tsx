@@ -31,12 +31,13 @@ export function PromptInputHandler({
   // stateRef is the source of truth for keystroke handling: props can lag a
   // render behind, so each render overwrites it and keystrokes between renders
   // reduce against it in turn.
-  const stateRef = useRef<InputControllerState>({ text: value, cursor });
+  const fromProps: InputControllerState = { text: value, cursor: Math.max(0, Math.min(cursor, value.length)) };
+  const stateRef = useRef(fromProps);
   onSubmitRef.current = onSubmit;
   onCursorLineRef.current = onCursorLine;
   onActionRef.current = onAction;
   wrapWidthRef.current = wrapWidth;
-  stateRef.current = { text: value, cursor: Math.max(0, Math.min(cursor, value.length)) };
+  stateRef.current = fromProps;
 
   const handleInput = useCallback((input: string, key: Parameters<Parameters<typeof useInput>[0]>[1]) => {
     const now = Date.now();

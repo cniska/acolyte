@@ -88,7 +88,7 @@ export function consumesMetaPrefix(action: PromptAction): boolean {
 }
 
 const NONE: PromptEditDecision = { kind: "none" };
-const edit = (action: InputEditAction): PromptEditDecision => ({ kind: "edit", action });
+const asEdit = (action: InputEditAction): PromptEditDecision => ({ kind: "edit", action });
 
 export function resolvePromptEdit(
   action: PromptAction,
@@ -102,34 +102,34 @@ export function resolvePromptEdit(
     case "submit":
       return { kind: "submit" };
     case "move_home":
-      return edit({ kind: "move", direction: "home" });
+      return asEdit({ kind: "move", direction: "home" });
     case "move_end":
-      return edit({ kind: "move", direction: "end" });
+      return asEdit({ kind: "move", direction: "end" });
     case "move_left":
-      return edit({ kind: "move", direction: "left" });
+      return asEdit({ kind: "move", direction: "left" });
     case "move_right":
-      return edit({ kind: "move", direction: "right" });
+      return asEdit({ kind: "move", direction: "right" });
     case "move_word_left":
-      return edit({ kind: "move-word", direction: "left" });
+      return asEdit({ kind: "move-word", direction: "left" });
     case "move_word_right":
-      return edit({ kind: "move-word", direction: "right" });
+      return asEdit({ kind: "move-word", direction: "right" });
     case "move_up":
-      return edit({ kind: "set-cursor", cursor: moveLineUp(text, cursor, wrapWidth) });
+      return asEdit({ kind: "set-cursor", cursor: moveLineUp(text, cursor, wrapWidth) });
     case "move_down":
-      return edit({ kind: "set-cursor", cursor: moveLineDown(text, cursor, wrapWidth) });
+      return asEdit({ kind: "set-cursor", cursor: moveLineDown(text, cursor, wrapWidth) });
     case "delete_word_back":
-      return cursor === 0 ? NONE : edit({ kind: "delete-word-backward" });
+      return cursor === 0 ? NONE : asEdit({ kind: "delete-word-backward" });
     case "clear_line":
-      return text.length === 0 ? NONE : edit({ kind: "clear" });
+      return text.length === 0 ? NONE : asEdit({ kind: "clear" });
     case "delete_back":
-      return cursor === 0 ? NONE : edit({ kind: "delete-backward" });
+      return cursor === 0 ? NONE : asEdit({ kind: "delete-backward" });
     case "delete_forward":
-      return cursor >= text.length ? NONE : edit({ kind: "delete-forward" });
+      return cursor >= text.length ? NONE : asEdit({ kind: "delete-forward" });
     // A lone "?" opens help instead of typing, so it reaches the buffer only as paste.
     case "insert":
       return text.length === 0 && action.text === "?" && !action.paste
         ? NONE
-        : edit({ kind: "insert", text: action.text });
+        : asEdit({ kind: "insert", text: action.text });
     default:
       return unreachable(action);
   }
