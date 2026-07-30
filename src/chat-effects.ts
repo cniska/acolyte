@@ -3,7 +3,7 @@ import { extractAtReferenceQuery, getCachedRepoPathCandidates, rankAtReferenceSu
 import { suggestSlashCommands } from "./chat-slash";
 import { useAsyncEffect, useSyncEffect } from "./tui/effects";
 
-export const SUGGESTION_LIMIT = 8;
+export const SUGGESTION_LIMIT = 10;
 
 export function clampSuggestionIndex(current: number, length: number): number {
   return Math.max(0, Math.min(current, Math.max(0, length - 1)));
@@ -16,16 +16,16 @@ export function useAtSuggestionsEffect(
 ): void {
   useAsyncEffect(
     async (cancelled) => {
+      // A new query is a new candidate list, so the selection returns to the top match. Clamping
+      // instead would carry an arrowed-to position onto an unrelated file.
+      setAtSuggestionIndex(0);
       if (atQuery === null) {
         setAtSuggestions([]);
-        setAtSuggestionIndex(0);
         return;
       }
       const candidates = await getCachedRepoPathCandidates();
       if (cancelled()) return;
-      const next = rankAtReferenceSuggestions(candidates, atQuery, SUGGESTION_LIMIT);
-      setAtSuggestions(next);
-      setAtSuggestionIndex((current) => clampSuggestionIndex(current, next.length));
+      setAtSuggestions(rankAtReferenceSuggestions(candidates, atQuery, SUGGESTION_LIMIT));
     },
     [atQuery, setAtSuggestionIndex, setAtSuggestions],
   );
@@ -48,9 +48,12 @@ export function useSuggestions(value: string, cursor?: number): SuggestionsState
   const [atSuggestions, setAtSuggestions] = useState<string[]>([]);
   const [atSuggestionIndex, setAtSuggestionIndex] = useState(0);
 
+  // Keyed on the candidates themselves, not the array identity a render rebuilds each pass, so
+  // arrowing down a stable list holds while a changed list returns to the top match.
+  const slashSuggestionKey = slashSuggestions.join("\n");
   useSyncEffect(() => {
-    setSlashSuggestionIndex((current) => clampSuggestionIndex(current, slashSuggestions.length));
-  }, [slashSuggestions]);
+    setSlashSuggestionIndex(0);
+  }, [slashSuggestionKey]);
 
   useAtSuggestionsEffect(atQuery, setAtSuggestions, setAtSuggestionIndex);
 
