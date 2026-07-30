@@ -1,105 +1,103 @@
-export function cursorLineIndex(value: string, cursorOffset: number, wrapWidth?: number): number {
-  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
-  if (!wrapWidth) return value.slice(0, clamped).split("\n").length - 1;
-  const lines = buildPromptDisplayLines(value, clamped, wrapWidth);
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i]?.cursor !== null) return i;
+const graphemes = new Intl.Segmenter();
+
+// Rows are measured in display cells, the unit the composer box is sized in, while offsets stay
+// string indices, the unit the cursor moves in.
+function cells(text: string): number {
+  return Bun.stringWidth(text);
+}
+
+export type PromptDisplayRow = { text: string; startOffset: number };
+
+// Rows tile the value exactly: every character sits in one row, so an offset maps to a row and
+// column by summing row lengths. The composer renders these same rows, so its geometry and the
+// input handler's line math cannot disagree.
+export function promptDisplayRows(value: string, wrapWidth?: number): PromptDisplayRow[] {
+  const rows: PromptDisplayRow[] = [];
+  let offset = 0;
+  for (const line of value.split("\n")) {
+    let lineOffset = offset;
+    for (const segment of wrapWidth ? softWrapLine(line, wrapWidth) : [line]) {
+      rows.push({ text: segment, startOffset: lineOffset });
+      lineOffset += segment.length;
+    }
+    offset += line.length + 1;
+  }
+  return rows;
+}
+
+function rowIndexAt(rows: PromptDisplayRow[], offset: number): number {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (offset >= (rows[i]?.startOffset ?? 0)) return i;
   }
   return 0;
 }
 
+function clampOffset(value: string, cursor: number): number {
+  return Math.max(0, Math.min(cursor, value.length));
+}
+
+export function cursorLineIndex(value: string, cursorOffset: number, wrapWidth?: number): number {
+  return rowIndexAt(promptDisplayRows(value, wrapWidth), clampOffset(value, cursorOffset));
+}
+
 export function moveLineUp(value: string, cursor: number, wrapWidth?: number): number {
-  if (wrapWidth) return moveVisualLine(value, cursor, wrapWidth, -1);
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const before = value.slice(0, clamped);
-  const currentLineStart = before.lastIndexOf("\n") + 1;
-  if (currentLineStart === 0) return cursor;
-  const column = clamped - currentLineStart;
-  const prevLineEnd = currentLineStart - 1;
-  const prevLineStart = before.lastIndexOf("\n", prevLineEnd - 1) + 1;
-  const prevLineLength = prevLineEnd - prevLineStart;
-  return prevLineStart + Math.min(column, prevLineLength);
+  return moveRow(value, cursor, wrapWidth, -1);
 }
 
 export function moveLineDown(value: string, cursor: number, wrapWidth?: number): number {
-  if (wrapWidth) return moveVisualLine(value, cursor, wrapWidth, 1);
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const before = value.slice(0, clamped);
-  const currentLineStart = before.lastIndexOf("\n") + 1;
-  const column = clamped - currentLineStart;
-  const nextNewline = value.indexOf("\n", clamped);
-  if (nextNewline === -1) return cursor;
-  const nextLineStart = nextNewline + 1;
-  const nextNextNewline = value.indexOf("\n", nextLineStart);
-  const nextLineLength = (nextNextNewline === -1 ? value.length : nextNextNewline) - nextLineStart;
-  return nextLineStart + Math.min(column, nextLineLength);
+  return moveRow(value, cursor, wrapWidth, 1);
 }
 
-function moveVisualLine(value: string, cursor: number, wrapWidth: number, direction: -1 | 1): number {
-  const clamped = Math.max(0, Math.min(cursor, value.length));
-  const displayLines = buildPromptDisplayLines(value, clamped, wrapWidth);
-  let currentIdx = 0;
-  for (let i = displayLines.length - 1; i >= 0; i--) {
-    if (displayLines[i]?.cursor !== null) {
-      currentIdx = i;
-      break;
-    }
+function moveRow(value: string, cursor: number, wrapWidth: number | undefined, direction: -1 | 1): number {
+  const clamped = clampOffset(value, cursor);
+  const rows = promptDisplayRows(value, wrapWidth);
+  const index = rowIndexAt(rows, clamped);
+  const current = rows[index];
+  const target = rows[index + direction];
+  if (!current || !target) return cursor;
+  const column = cells(current.text.slice(0, clamped - current.startOffset));
+  let used = 0;
+  let offset = target.startOffset;
+  for (const { segment } of graphemes.segment(target.text)) {
+    const segmentCells = cells(segment);
+    if (used + segmentCells > column) break;
+    used += segmentCells;
+    offset += segment.length;
   }
-  const targetIdx = currentIdx + direction;
-  if (targetIdx < 0 || targetIdx >= displayLines.length) return cursor;
-  let currentStartOffset = 0;
-  const logicalLines = value.split("\n");
-  let offset = 0;
-  outer: for (const line of logicalLines) {
-    const wrapped = softWrapLine(line, wrapWidth);
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      if (lineOffset <= clamped && clamped <= lineOffset + segment.length) {
-        currentStartOffset = lineOffset;
-        break outer;
-      }
-      lineOffset += segment.length;
-    }
-    offset += line.length + 1;
-  }
-  const column = clamped - currentStartOffset;
-
-  // Find target display line's start offset
-  let targetStartOffset = 0;
-  let displayIdx = 0;
-  offset = 0;
-  for (const line of logicalLines) {
-    const wrapped = softWrapLine(line, wrapWidth);
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      if (displayIdx === targetIdx) {
-        targetStartOffset = lineOffset;
-        const targetLength = segment.length;
-        return targetStartOffset + Math.min(column, targetLength);
-      }
-      lineOffset += segment.length;
-      displayIdx++;
-    }
-    offset += line.length + 1;
-  }
-  return cursor;
+  return offset;
 }
 
+// Greedy word wrap that never drops a character and never returns a row wider than `width` cells:
+// a run too long for any row is broken across rows, because the composer box cannot scroll
+// sideways. Only a single grapheme too wide for an empty row can exceed the width.
 export function softWrapLine(line: string, width: number): string[] {
-  if (width <= 0 || line.length <= width) return [line];
-  const words = line.split(/( +)/);
-  const result: string[] = [];
+  if (width <= 0 || cells(line) <= width) return [line];
+  const rows: string[] = [];
   let current = "";
-  for (const word of words) {
-    if (current.length + word.length <= width || current.length === 0) {
-      current += word;
-    } else {
-      result.push(current);
-      current = word.trimStart();
+  let used = 0;
+  const flush = () => {
+    rows.push(current);
+    current = "";
+    used = 0;
+  };
+  for (const token of line.split(/( +)/)) {
+    if (!token) continue;
+    const tokenCells = cells(token);
+    if (used > 0 && used + tokenCells > width && tokenCells <= width) flush();
+    if (used + tokenCells <= width) {
+      current += token;
+      used += tokenCells;
+      continue;
+    }
+    for (const { segment } of graphemes.segment(token)) {
+      const segmentCells = cells(segment);
+      if (used > 0 && used + segmentCells > width) flush();
+      current += segment;
+      used += segmentCells;
     }
   }
-  if (current.length > 0) result.push(current);
-  return result.length > 0 ? result : [""];
+  if (current.length > 0) rows.push(current);
+  return rows.length > 0 ? rows : [""];
 }
 
 export type PromptDisplayLine = {
@@ -109,38 +107,19 @@ export type PromptDisplayLine = {
 };
 
 export function buildPromptDisplayLines(value: string, cursorOffset: number, wrapWidth?: number): PromptDisplayLine[] {
-  const clamped = Math.max(0, Math.min(cursorOffset, value.length));
-  const logicalLines = value.split("\n");
-  const displayLines: { text: string; startOffset: number }[] = [];
-  let offset = 0;
-  for (let i = 0; i < logicalLines.length; i++) {
-    const line = logicalLines[i] ?? "";
-    const wrapped = wrapWidth ? softWrapLine(line, wrapWidth) : [line];
-    let lineOffset = offset;
-    for (const segment of wrapped) {
-      displayLines.push({ text: segment, startOffset: lineOffset });
-      lineOffset += segment.length;
-    }
-    offset += line.length + 1; // +1 for \n
-  }
-  let cursorDisplayLine = 0;
-  for (let i = displayLines.length - 1; i >= 0; i--) {
-    const dl = displayLines[i];
-    if (dl && clamped >= dl.startOffset) {
-      cursorDisplayLine = i;
-      break;
-    }
-  }
-  return displayLines.map((dl, index) => {
-    if (index !== cursorDisplayLine) return { before: dl.text, cursor: null, after: "" };
-    const col = clamped - dl.startOffset;
-    if (col < dl.text.length) {
+  const clamped = clampOffset(value, cursorOffset);
+  const rows = promptDisplayRows(value, wrapWidth);
+  const cursorRow = rowIndexAt(rows, clamped);
+  return rows.map((row, index) => {
+    if (index !== cursorRow) return { before: row.text, cursor: null, after: "" };
+    const column = clamped - row.startOffset;
+    if (column < row.text.length) {
       return {
-        before: dl.text.slice(0, col),
-        cursor: dl.text[col] ?? " ",
-        after: dl.text.slice(col + 1),
+        before: row.text.slice(0, column),
+        cursor: row.text[column] ?? " ",
+        after: row.text.slice(column + 1),
       };
     }
-    return { before: dl.text, cursor: " ", after: "" };
+    return { before: row.text, cursor: " ", after: "" };
   });
 }

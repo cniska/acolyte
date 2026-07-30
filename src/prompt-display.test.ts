@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildPromptDisplayLines, cursorLineIndex, moveLineDown, moveLineUp } from "./prompt-display";
+import {
+  buildPromptDisplayLines,
+  cursorLineIndex,
+  moveLineDown,
+  moveLineUp,
+  promptDisplayRows,
+  softWrapLine,
+} from "./prompt-display";
 
 describe("prompt input word navigation", () => {
   test("buildPromptDisplayLines resolves cursor on multiline input", () => {
@@ -90,5 +97,96 @@ describe("moveLineUp/Down with wrapWidth", () => {
   test("moves down across wrapped segments", () => {
     const result = moveLineDown("aaa bbb ccc ddd", 2, 8);
     expect(result).toBe(10);
+  });
+});
+
+describe("softWrapLine", () => {
+  const cases: Array<[string, string, number]> = [
+    ["a run no row can hold", "a".repeat(120), 112],
+    ["an over-long run mid-line", `see https://example.com/${"x".repeat(100)} end`, 112],
+    ["a wrap that falls on a space run", "word ".repeat(30).trim(), 112],
+    ["runs of spaces only", " ".repeat(30), 8],
+    ["a line ending in spaces", `${"word ".repeat(4)}     `, 12],
+  ];
+
+  for (const [label, line, width] of cases) {
+    test(`tiles the line and holds the width: ${label}`, () => {
+      const rows = softWrapLine(line, width);
+      expect(rows.join("")).toBe(line);
+      for (const row of rows) expect(row.length).toBeLessThanOrEqual(width);
+    });
+  }
+
+  test("breaks a run that exceeds the width instead of overflowing the row", () => {
+    expect(softWrapLine("a".repeat(20), 8)).toEqual(["aaaaaaaa", "aaaaaaaa", "aaaa"]);
+  });
+
+  test("keeps a word whole when it fits on the next row", () => {
+    expect(softWrapLine("aaa bbbbbb", 8)).toEqual(["aaa ", "bbbbbb"]);
+  });
+});
+
+describe("promptDisplayRows", () => {
+  test("every row's text is the value's own slice at its offset", () => {
+    const value = `${"word ".repeat(30).trim()}\n${"b".repeat(200)}\n`;
+    for (const row of promptDisplayRows(value, 112)) {
+      expect(value.slice(row.startOffset, row.startOffset + row.text.length)).toBe(row.text);
+    }
+  });
+});
+
+describe("wrapped rows the composer cannot scroll sideways", () => {
+  const long = "a".repeat(120);
+
+  test("a run wider than the row reports the row the cursor is really on", () => {
+    expect(cursorLineIndex(long, 120, 112)).toBe(1);
+    expect(cursorLineIndex(long, 0, 112)).toBe(0);
+  });
+
+  test("vertical motion crosses a hard-broken run", () => {
+    expect(moveLineDown(long, 0, 112)).toBe(112);
+    expect(moveLineUp(long, 115, 112)).toBe(3);
+  });
+});
+
+describe("cursor on a wrap boundary", () => {
+  const value = "word ".repeat(30).trim();
+  const boundary = promptDisplayRows(value, 112)[0]?.text.length ?? 0;
+
+  test("moving up from the first column of a wrapped row lands on the row above", () => {
+    expect(moveLineUp(value, boundary, 112)).toBe(0);
+  });
+
+  test("moving down and back up returns to where it started", () => {
+    const down = moveLineDown(value, 0, 112);
+    expect(down).toBe(boundary);
+    expect(moveLineUp(value, down, 112)).toBe(0);
+  });
+});
+
+describe("wide characters and grapheme clusters", () => {
+  test("a run of double-width characters wraps on cells, not code units", () => {
+    const line = "漢字".repeat(40);
+    const rows = softWrapLine(line, 20);
+    expect(rows.join("")).toBe(line);
+    for (const row of rows) expect(Bun.stringWidth(row)).toBeLessThanOrEqual(20);
+    expect(rows.length).toBeGreaterThan(1);
+  });
+
+  test("a multi-codepoint emoji is never split across rows", () => {
+    const family = "👨‍👩‍👧‍👦";
+    const line = family.repeat(10);
+    const rows = softWrapLine(line, 8);
+    expect(rows.join("")).toBe(line);
+    for (const row of rows) {
+      expect(Bun.stringWidth(row)).toBeLessThanOrEqual(8);
+      expect(row.length % family.length).toBe(0);
+    }
+  });
+
+  test("vertical motion holds the visual column across a double-width row", () => {
+    // "漢字" is 4 cells wide but 2 code units, so column 4 lands on the fifth character below.
+    expect(moveLineDown("漢字漢字\nabcdefgh", 2)).toBe(9);
+    expect(moveLineUp("漢字漢字\nabcdefgh", 9)).toBe(2);
   });
 });
