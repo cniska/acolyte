@@ -451,13 +451,13 @@ describe("cli visual regression", () => {
     {
       args: ["tool", "help"],
       output: dedent(`
-        Usage: acolyte tool <tool-id> [args...]
+        Usage: acolyte tool <tool-id> ['<json-input>']
 
         Description: run a tool directly
 
         Examples:
-          acolyte tool file-find "src/**/*.ts"
-          acolyte tool shell-run bun run verify
+          acolyte tool file-find '{"pattern":"src/**/*.ts"}'
+          acolyte tool git-status
       `),
     },
     {
