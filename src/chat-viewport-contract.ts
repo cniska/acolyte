@@ -78,7 +78,6 @@ export const composerPresentationContractSchema = z.object({
   suggestions: composerSuggestionsSchema,
   showHelp: z.boolean(),
   helpEntries: z.array(composerHelpEntrySchema),
-  helpBreakpoint: z.number().int().positive(),
 });
 export type ComposerPresentationContract = z.infer<typeof composerPresentationContractSchema>;
 

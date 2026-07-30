@@ -571,7 +571,7 @@ export function layoutComposerStatus(input: {
   const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
     const columnWidth = 2 + HELP_KEY_WIDTH + HELP_DESCRIPTION_WIDTH;
-    const helpColumns = cw >= presentation.helpBreakpoint && cw >= columnWidth * 2 ? 2 : 1;
+    const helpColumns = cw >= columnWidth * 2 ? 2 : 1;
     const rowsPerColumn =
       helpColumns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
     for (let row = 0; row < rowsPerColumn; row++) {

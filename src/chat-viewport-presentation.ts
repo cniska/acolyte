@@ -1,4 +1,3 @@
-import { BREAKPOINT_TWO_COLUMN } from "./chat-layout";
 import { slashCommandHelp } from "./chat-slash";
 import type {
   ChatViewportPresentation,
@@ -89,7 +88,6 @@ export function createChatViewportPresentation(input: ChatViewportPresentationIn
       suggestions,
       showHelp: input.composer.help.visible,
       helpEntries: [...input.composer.help.entries],
-      helpBreakpoint: BREAKPOINT_TWO_COLUMN,
     },
     footer: input.composer.footer,
     sections: [],
