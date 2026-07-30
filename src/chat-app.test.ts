@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { installClientLogSink } from "./chat-app";
 import {
   applyAtSuggestion,
   extractAtReferencePaths,
@@ -7,7 +8,41 @@ import {
   shouldAutocompleteAtSubmit,
 } from "./chat-file-ref";
 import { toRows } from "./chat-session";
+import { setLogSink } from "./log";
 import { createSession } from "./test-utils";
+
+describe("client console capture", () => {
+  test("a dependency's console write is logged, not printed", () => {
+    const debug = process.env.ACOLYTE_DEBUG;
+    delete process.env.ACOLYTE_DEBUG;
+    const originalError = console.error;
+    const lines: string[] = [];
+    let restore: (() => void) | null = null;
+    try {
+      restore = installClientLogSink();
+      // Installed after the capture so the log lines are observable; the sink is the only
+      // path the wrapped methods take — `console.*` in Bun writes straight to the terminal.
+      setLogSink((line) => lines.push(line));
+      expect(console.error).not.toBe(originalError);
+      console.error("Maximum update depth exceeded.\n    at Component (file.tsx:1:1)");
+      console.warn("deprecation notice");
+      console.trace("stack probe");
+    } finally {
+      restore?.();
+      setLogSink(() => {});
+      if (debug === undefined) delete process.env.ACOLYTE_DEBUG;
+      else process.env.ACOLYTE_DEBUG = debug;
+    }
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("source=console.error");
+    expect(lines[0]).toContain("level=error");
+    // A component stack stays one record, so client.log remains line-oriented.
+    expect(lines[0].trimEnd()).not.toContain("\n");
+    expect(lines[1]).toContain("level=warn");
+    expect(lines[2]).toContain("source=console.trace");
+    expect(console.error).toBe(originalError);
+  });
+});
 
 describe("chat-ui helpers", () => {
   test("extractAtReferenceQuery parses @prefix", () => {
