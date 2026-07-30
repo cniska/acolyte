@@ -20,7 +20,7 @@ curl -fsSL https://acolyte.sh/install | sh
 
 Installs the latest released binary for macOS and Linux. It keeps itself up to date automatically — see [Updates](docs/updates.md). To run from source instead, see [Local development](#local-development).
 
-Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and workspaces are Git worktrees.
+Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and `/workspaces` manages Git worktrees.
 
 ## Runtime model
 
