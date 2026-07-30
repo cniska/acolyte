@@ -86,6 +86,10 @@ const BOX_PAD = 1;
 // The column where content begins: transcript rows inset by the box's border+pad thickness so
 // their glyphs align with the boxed composer prompt, even though only the composer draws a frame.
 const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
+// Fixed, not measured: the description column must not move when the entry set changes — a flag
+// flips, a skill loads — so the key column is sized once to the widest usage form it must carry.
+const HELP_KEY_WIDTH = 46;
+const HELP_DESCRIPTION_WIDTH = 22;
 function contentWidth(columns: number): number {
   return Math.max(24, columns - 2 * CONTENT_COLUMN);
 }
@@ -564,7 +568,8 @@ export function layoutComposerStatus(input: {
   const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
   const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
-    const helpColumns = cw >= presentation.helpBreakpoint ? 2 : 1;
+    const columnWidth = 2 + HELP_KEY_WIDTH + HELP_DESCRIPTION_WIDTH;
+    const helpColumns = cw >= presentation.helpBreakpoint && cw >= columnWidth * 2 ? 2 : 1;
     const rowsPerColumn =
       helpColumns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
     for (let row = 0; row < rowsPerColumn; row++) {
@@ -576,8 +581,11 @@ export function layoutComposerStatus(input: {
         spans: entries.flatMap((entry) =>
           entry
             ? [
-                { text: `  ${entry.key.padEnd(20)}`, role: "plain" as const },
-                { text: entry.description.padEnd(22), role: "muted" as const },
+                {
+                  text: `  ${truncateToWidth(entry.key, HELP_KEY_WIDTH).padEnd(HELP_KEY_WIDTH)}`,
+                  role: "plain" as const,
+                },
+                { text: entry.description.padEnd(HELP_DESCRIPTION_WIDTH), role: "muted" as const },
               ]
             : [],
         ),

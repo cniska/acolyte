@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { chatSlashCommands, slashCommandHelp } from "./chat-slash";
+import { slashCommandRows } from "./chat-slash";
 import { t } from "./i18n";
 import { envWithoutGitState } from "./tool-utils";
 
@@ -10,26 +10,10 @@ export type ShortcutItem = { key: string; description: string };
 
 /** Help entries, resolved per call so flag-gated commands stay absent while their flag is off. */
 export function shortcutItems(): ShortcutItem[] {
-  const enabled = new Set(chatSlashCommands());
-  const items: ShortcutItem[] = [
+  return [
     { key: "@path", description: t("chat.at_ref.mention_path") },
-    { key: "/new", description: slashCommandHelp("/new") },
-    { key: "/clear", description: slashCommandHelp("/clear") },
-    { key: "/resume <id>", description: slashCommandHelp("/resume") },
-    { key: "/sessions", description: slashCommandHelp("/sessions") },
-    { key: "/workspaces", description: slashCommandHelp("/workspaces") },
-    { key: "/model", description: slashCommandHelp("/model") },
-    { key: "/status", description: slashCommandHelp("/status") },
-    { key: "/memory [scope]", description: slashCommandHelp("/memory") },
-    { key: "/memory add <text>", description: slashCommandHelp("/memory add") },
-    { key: "/usage", description: slashCommandHelp("/usage") },
-    { key: "/skills", description: slashCommandHelp("/skills") },
-    { key: "/exit", description: slashCommandHelp("/exit") },
+    ...slashCommandRows().map((row) => ({ key: row.usage, description: row.help })),
   ];
-  return items.filter((item) => {
-    const command = item.key.split(" ")[0];
-    return !command.startsWith("/") || enabled.has(command);
-  });
 }
 
 export type GitStatus = {

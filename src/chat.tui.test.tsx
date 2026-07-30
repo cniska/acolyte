@@ -135,18 +135,20 @@ describe("chat tui visual regression: status line and help", () => {
   });
 
   const HELP_SINGLE_COLUMN = [
-    "     @path               mention path",
-    "     /new                start new session",
-    "     /clear              clear transcript",
-    "     /resume <id>        resume session",
-    "     /sessions           show sessions",
-    "     /model              change model",
-    "     /status             show server status",
-    "     /memory [scope]     show memory notes",
-    "     /memory add <text>  add memory note",
-    "     /usage              show token usage",
-    "     /skills             show skills picker",
-    "     /exit               exit chat",
+    "     @path                                         mention path",
+    "     /new                                          start new session",
+    "     /clear                                        clear transcript",
+    "     /model <id>                                   change model",
+    "     /status                                       show server status",
+    "     /sessions                                     show sessions",
+    "     /skills                                       show skills picker",
+    "     /resume <session-id-prefix>                   resume session",
+    "     /memory                                       show memory notes",
+    "     /memory add [--user|--project] <memory text>  add memory note",
+    "     /memory rm <id-prefix>                        remove memory note",
+    "     /memory list [all|user|project] [--archived]  show memory notes",
+    "     /usage                                        show token usage",
+    "     /exit                                         exit chat",
   ];
 
   test("renders help pane without context", () => {

@@ -1,74 +1,36 @@
-import { appConfig } from "./app-config";
-import { t } from "./i18n";
+import { resolveCommandRegistry } from "./chat-command-registry";
+import { t, tDynamic } from "./i18n";
 import { getLoadedSkills } from "./skill-ops";
 
-const CHAT_SLASH_COMMANDS = [
-  "/new",
-  "/clear",
-  "/model",
-  "/status",
-  "/sessions",
-  "/workspaces",
-  "/skills",
-  "/resume",
-  "/memory",
-  "/usage",
-  "/exit",
-] as const;
-
-/** Slash commands whose surface is absent unless their feature flag is on. */
-const FLAGGED_COMMANDS: Record<string, keyof typeof appConfig.features> = {
-  "/workspaces": "workspaces",
+export type SlashCommandRow = {
+  /** What the user types to reach it, and what the completion menu offers. */
+  command: string;
+  /** The command with its argument form, for help and usage text. */
+  usage: string;
+  help: string;
 };
 
-function isEnabled(command: string): boolean {
-  const flag = FLAGGED_COMMANDS[command.split(" ")[0]];
-  return flag === undefined || appConfig.features[flag] === true;
+/** Every reachable command string, derived from the registry so the menu can only offer what dispatch owns. */
+export function slashCommandRows(): SlashCommandRow[] {
+  const rows: SlashCommandRow[] = [];
+  for (const entry of resolveCommandRegistry()) {
+    const command = `/${entry.spec.name}`;
+    rows.push({ command, usage: entry.spec.usage ?? command, help: tDynamic(entry.spec.helpKey) });
+    for (const sub of entry.spec.subcommands) {
+      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: tDynamic(sub.helpKey) });
+    }
+  }
+  for (const skill of getLoadedSkills()) {
+    rows.push({ command: `/${skill.name}`, usage: `/${skill.name}`, help: t("chat.slash.help.skill") });
+  }
+  return rows;
 }
 
-const ALL_SUB_COMMANDS: Record<string, string[]> = {
-  "/memory": ["/memory add", "/memory rm", "/memory list", "/memory all", "/memory user", "/memory project"],
-  "/workspaces": ["/workspaces list", "/workspaces new", "/workspaces switch"],
-};
-
-function subCommands(): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(ALL_SUB_COMMANDS).filter(([root]) => isEnabled(root)));
+export function slashCommandHelp(command: string): string {
+  return slashCommandRows().find((row) => row.command === command)?.help ?? "";
 }
-
-export function chatSlashCommands(): string[] {
-  return CHAT_SLASH_COMMANDS.filter(isEnabled);
-}
-
-const SLASH_HELP: Record<string, string> = {
-  "/new": t("chat.slash.help.new"),
-  "/clear": t("chat.slash.help.clear"),
-  "/model": t("chat.slash.help.model"),
-  "/status": t("chat.slash.help.status"),
-  "/sessions": t("chat.slash.help.sessions"),
-  "/workspaces": t("chat.slash.help.workspaces"),
-  "/workspaces list": t("chat.slash.help.workspaces.list"),
-  "/workspaces new": t("chat.slash.help.workspaces.new"),
-  "/workspaces switch": t("chat.slash.help.workspaces.switch"),
-  "/skills": t("chat.slash.help.skills"),
-  "/resume": t("chat.slash.help.resume"),
-  "/memory": t("chat.slash.help.memory"),
-  "/memory list": t("chat.slash.help.memory.list"),
-  "/memory add": t("chat.slash.help.memory.add"),
-  "/memory rm": t("chat.slash.help.memory.rm"),
-  "/memory all": t("chat.slash.help.memory.all"),
-  "/memory user": t("chat.slash.help.memory.user"),
-  "/memory project": t("chat.slash.help.memory.project"),
-  "/usage": t("chat.slash.help.usage"),
-  "/exit": t("chat.slash.help.exit"),
-};
 
 const SUGGEST_MAX_DISTANCE = 3;
-
-function allSlashCommands(): string[] {
-  const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
-  const subs = Object.values(subCommands()).flat();
-  return [...chatSlashCommands(), ...subs, ...skillCommands];
-}
 
 function editDistance(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
@@ -88,15 +50,7 @@ function editDistance(a: string, b: string): number {
 }
 
 export function isKnownSlashToken(token: string): boolean {
-  if (chatSlashCommands().includes(token)) return true;
-  for (const subs of Object.values(subCommands())) {
-    if (subs.includes(token)) return true;
-  }
-  if (token.startsWith("/")) {
-    const name = token.slice(1);
-    return getLoadedSkills().some((s) => s.name === name);
-  }
-  return false;
+  return slashCommandRows().some((row) => row.command === token);
 }
 
 /** Edit distance between `a` and `b` truncated to `a`'s length (tolerates partial input). */
@@ -105,21 +59,19 @@ function truncatedEditDistance(a: string, b: string): number {
   return editDistance(a, b.slice(0, a.length));
 }
 
-function rootCommands(): string[] {
-  const skillCommands = getLoadedSkills().map((s) => `/${s.name}`);
-  return [...chatSlashCommands(), ...skillCommands];
+function rootCommands(commands: string[]): string[] {
+  return commands.filter((command) => !command.includes(" "));
 }
 
-function commandWithSubs(root: string): string[] {
-  const subs = subCommands()[root];
-  return subs ? [root, ...subs] : [root];
+function commandWithSubs(commands: string[], root: string): string[] {
+  return commands.filter((command) => command === root || command.startsWith(`${root} `));
 }
 
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) return [];
   const candidate = inputValue.trimStart();
-  const all = allSlashCommands();
+  const all = slashCommandRows().map((row) => row.command);
 
   // Prefix matching (fast path)
   const prefixMatches = all.filter((command) => command.startsWith(candidate));
@@ -131,21 +83,19 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
 
   if (parts.length === 1) {
     // Single token: fuzzy-match against root commands, expand to include subcommands
-    const roots = rootCommands();
-    const fuzzy = roots
+    const fuzzy = rootCommands(all)
       .map((root) => ({ root, distance: truncatedEditDistance(candidate, root) }))
       .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
       .sort((a, b) => a.distance - b.distance);
-    return fuzzy.flatMap((item) => commandWithSubs(item.root)).slice(0, max);
+    return fuzzy.flatMap((item) => commandWithSubs(all, item.root)).slice(0, max);
   }
 
   // Multi-token: match first token against roots, second against subcommand words
   const [firstToken, ...rest] = parts;
   const subQuery = rest.join(" ");
-  const roots = rootCommands();
-  const matchedRoots = roots
+  const matchedRoots = rootCommands(all)
     .filter((root) => editDistance(firstToken, root) <= SUGGEST_MAX_DISTANCE)
-    .flatMap((root) => commandWithSubs(root));
+    .flatMap((root) => commandWithSubs(all, root));
   const subMatches = matchedRoots.filter((cmd) => {
     const cmdParts = cmd.split(" ");
     if (cmdParts.length < 2) return false;
@@ -162,12 +112,4 @@ export function shouldAutocompleteSlashSubmit(inputValue: string, selectedSugges
   if (trimmed === selectedSuggestion) return false;
   if (trimmed.length > selectedSuggestion.length) return false;
   return true;
-}
-
-export function slashCommandHelp(command: string): string {
-  const help = SLASH_HELP[command];
-  if (help) return help;
-  if (command.startsWith("/") && getLoadedSkills().some((s) => `/${s.name}` === command))
-    return t("chat.slash.help.skill");
-  return "";
 }
