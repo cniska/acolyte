@@ -683,6 +683,32 @@ describe("createFile", () => {
     expect(result.result.output).toContain("bytes=5");
     expect(session.callLog[0]?.toolName).toBe("file-create");
   });
+
+  test("reports a new file as not overwritten", async () => {
+    const workspace = dirs.createDir("acolyte-create-new-ws-");
+    const filePath = join(workspace, `test-new-${testUuid()}.txt`);
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.createFile.execute({ path: filePath, content: "hello" }, "call_create_new");
+    expect(result.result.output).toContain("overwritten=false");
+  });
+
+  test("reports a replaced file as overwritten", async () => {
+    const workspace = dirs.createDir("acolyte-create-replace-ws-");
+    const filePath = join(workspace, `test-replace-${testUuid()}.txt`);
+    await writeFile(filePath, "before\n", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.createFile.execute({ path: filePath, content: "after\n" }, "call_create_replace");
+    expect(result.result.output).toContain("overwritten=true");
+  });
+
+  test("reports an existing empty file as overwritten", async () => {
+    const workspace = dirs.createDir("acolyte-create-empty-ws-");
+    const filePath = join(workspace, `test-empty-${testUuid()}.txt`);
+    await writeFile(filePath, "", "utf8");
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.createFile.execute({ path: filePath, content: "filled\n" }, "call_create_empty");
+    expect(result.result.output).toContain("overwritten=true");
+  });
 });
 
 describe("deleteFile", () => {

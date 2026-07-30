@@ -353,19 +353,12 @@ export async function editFile(input: {
   ].join("\n");
 }
 
-export async function writeTextFile(input: {
-  workspace: string;
-  path: string;
-  content: string;
-  overwrite?: boolean;
-}): Promise<string> {
+export async function writeTextFile(input: { workspace: string; path: string; content: string }): Promise<string> {
   const absPath = ensurePathWithinSandbox(input.path, input.workspace);
-  const overwrite = input.overwrite ?? true;
   let previousContent: string | null = null;
 
   try {
     previousContent = await readFile(absPath, "utf8");
-    if (!overwrite) throw new Error("Target file already exists");
   } catch (error) {
     if (!(error instanceof Error) || !/ENOENT/.test(error.message)) throw error;
   }
@@ -377,7 +370,7 @@ export async function writeTextFile(input: {
   const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
-    `overwritten=${overwrite ? "true" : "false"}`,
+    `overwritten=${previousContent !== null ? "true" : "false"}`,
     "",
     diff,
   ];
