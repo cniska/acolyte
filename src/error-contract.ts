@@ -14,6 +14,7 @@ export const TOOL_ERROR_CODES = {
   scanCodeUnsupportedFile: "E_SCAN_CODE_UNSUPPORTED_FILE",
   readFileTooLarge: "E_READ_FILE_TOO_LARGE",
   readFileRangeInvalid: "E_READ_FILE_RANGE_INVALID",
+  gitUnavailable: "E_GIT_UNAVAILABLE",
 } as const;
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES];
@@ -46,6 +47,7 @@ export const ERROR_KINDS = {
   timeout: "timeout",
   fileNotFound: "file_not_found",
   budgetExhausted: "budget_exhausted",
+  gitUnavailable: "git_unavailable",
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
