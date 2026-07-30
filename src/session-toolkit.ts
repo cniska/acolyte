@@ -12,9 +12,7 @@ function createSessionSearchTool(input: ToolkitInput) {
     toolkit: "session",
     category: "search",
     description:
-      "Search the current session's conversation history by keyword. Returns matching messages in chronological order.",
-    instruction:
-      "Use `session-search` to find earlier conversation turns by keyword. The last few messages are included in context automatically; older history is only available through this tool.",
+      "Search the current session's conversation history by keyword. Returns matching messages in chronological order. The last few messages are already in context; anything older — a prior decision, an earlier error, a file discussed before — is reachable only here, so search for it rather than asking the user to repeat themselves.",
     inputSchema: z.object({
       query: z.string().min(1),
       limit: z.number().int().min(1).max(50).optional(),

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { formatMcpResult, isInsecureRemoteHttp, sanitizeDescription } from "./mcp-client";
+import { bindMcpTools, formatMcpResult, isInsecureRemoteHttp, sanitizeDescription } from "./mcp-client";
 import type { McpServerConfig } from "./mcp-contract";
+import { createSessionContext } from "./tool-session";
 
 describe("formatMcpResult", () => {
   test("concatenates text content blocks", () => {
@@ -112,5 +113,29 @@ describe("sanitizeDescription", () => {
 
   test("preserves newlines and tabs", () => {
     expect(sanitizeDescription("line1\nline2\ttab", "")).toBe("line1\nline2\ttab");
+  });
+});
+
+describe("bindMcpTools", () => {
+  // An MCP tool's instruction would be hoisted into the system prompt once per tool per
+  // server, restating a description that already ships with its schema.
+  test("binds tools without hoisting an instruction into the system prompt", () => {
+    const config = { name: "files", type: "stdio", command: "server" } as McpServerConfig;
+    const tools = bindMcpTools(
+      [
+        {
+          serverName: "files",
+          config,
+          tools: [{ name: "read_file", description: "Read a file.", inputSchema: { type: "object" } }],
+        },
+      ],
+      createSessionContext(),
+      new Set(),
+    );
+
+    const bound = Object.values(tools);
+    expect(bound).toHaveLength(1);
+    expect(bound[0]?.description).toBe("Read a file.");
+    expect(bound[0]?.instruction).toBeUndefined();
   });
 });

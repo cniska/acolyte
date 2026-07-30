@@ -136,7 +136,6 @@ function bindMcpToolDefinition(
     toolkit: "mcp",
     category: "network",
     description,
-    instruction: `Use ${toolId} to call the "${mcpTool.name}" tool on the "${serverName}" MCP server.`,
     inputSchema,
     outputSchema: z.object({
       kind: z.literal("mcp-call"),

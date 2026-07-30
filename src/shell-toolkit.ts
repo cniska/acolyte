@@ -10,9 +10,7 @@ function createRunCommandTool(input: ToolkitInput) {
     toolkit: "shell",
     category: "execute",
     description:
-      "Run a command in the repository and capture stdout/stderr without shell evaluation. Never use shell commands as fallbacks for file discovery/reading/editing when dedicated tools are available.",
-    instruction:
-      "Use `shell-run` for known repository commands such as documented build/test/verify steps, or when the user explicitly asked you to run a command. Provide a binary in `cmd` and arguments in `args`; shell operators/pipes/redirections are not supported. Do not use it for file read/search/edit fallbacks (`cat`, `head`, `tail`, `nl`, `ls`, `grep`, `sed`, `find`, `rg`, `wc`); use `file-read`, `file-search`, `file-find`, `file-edit`, or `code-edit`.",
+      "Run a command in the repository and capture stdout/stderr. Give a binary in `cmd` and its arguments in `args`: there is no shell, so operators, pipes, and redirection do not work. Never use a command as a fallback for file discovery, reading, or editing when a dedicated tool exists.",
     inputSchema: z.object({
       cmd: z.string().min(1),
       args: z.array(z.string()).optional(),

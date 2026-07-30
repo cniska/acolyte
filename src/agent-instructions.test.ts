@@ -1,48 +1,87 @@
 import { describe, expect, test } from "bun:test";
 import { createInstructions } from "./agent-instructions";
+import { loadSoulPrompt } from "./soul";
 import { expectIntent } from "./test-utils";
+import { estimateTokens } from "./token-estimate";
+
+// The prompt regrew past its pre-#97 size one hoisted line at a time because nothing in verify
+// objected to it growing. #97 brought it under 1,000 tokens; this holds that line, so the next
+// addition has to argue for itself or raise the number deliberately. Soul included, workspace
+// profile excluded: those lines are repo facts that vary per workspace.
+const PROMPT_TOKEN_BUDGET = 1000;
 
 describe("createInstructions", () => {
-  test("includes core instructions", () => {
+  test("stays inside the prompt budget", () => {
+    expect(estimateTokens(createInstructions(loadSoulPrompt()))).toBeLessThan(PROMPT_TOKEN_BUDGET);
+  });
+
+  test("carries the soul and the output contract", () => {
     const out = createInstructions("Soul.");
     expect(out).toContain("Soul.");
     expectIntent(out, [
-      ["this workspace", "this scope"],
-      ["dedicated project tools", "shell only when it helps"],
-      ["implementation intent is clear", "stay with it", "task is complete"],
-      ["asks for explanation or planning only", "answer directly"],
-      ["smallest", "root-cause", "matches local conventions"],
-      ["unrelated or speculative detours"],
-      ["changing behavior", "run related validation first"],
-      ["validation is blocked or unavailable", "skipped", "why"],
-      ["flowing prose", "leading with the outcome"],
-      ["match the shape to the task", "direct answer"],
+      ["Format as plain text", "backticks", "no headings or links"],
+      ["fenced code block", "never file contents"],
       ["Keep reasoning, structure, and how things connect in prose", "even when it names many files"],
       ["Use a list only", "short, flat set", "nothing to explain between them"],
-      ["Before your first tool call", "briefly state what you are about to do", "short updates at key moments"],
-      ["reasonable assumptions", "ambiguity or risk truly blocks progress"],
-      ["Search and read files immediately", "never ask"],
-      ["references something you cannot see", "session-search"],
+      ["Before your first action", "what you are about to do"],
+      ["load-bearing", "as you find it", "not only in the final answer"],
     ]);
   });
 
-  test("includes tool and runtime instructions", () => {
+  // How Acolyte works lives in soul.md. Restating it here is what regrew the prompt past
+  // its pre-#97 size, so the absence is the contract.
+  test("does not restate how Acolyte works", () => {
+    const out = createInstructions("Soul.");
+    for (const restatement of [
+      "this workspace and this scope",
+      "dedicated project tools",
+      "stay with it until the task",
+      "smallest root-cause change",
+      "unrelated or speculative detours",
+      "run related validation first",
+      "Before your first tool call",
+      "reasonable assumptions",
+      "Search and read files immediately",
+      "references something you cannot see",
+    ]) {
+      expect(out).not.toContain(restatement);
+    }
+  });
+
+  test("hoists the tool handoffs", () => {
     const out = createInstructions("Soul.");
     expectIntent(out, [
-      ["code-scan", "ast pattern"],
-      ["code-edit", "ast-aware refactors", "file-edit", "plain text edits"],
-      ["target", "local", "member"],
-      ["withinSymbol"],
-      ["refine scope/rule", "current file evidence"],
-      ["latest direct", "file-read"],
-      ["batch same-file edits"],
-      ["diff preview", "bounded changes", "stop"],
-      ["file-create", "full content"],
-      ["file-find", "name/path pattern"],
-      ["file-search", "text/regex"],
-      ["shell-run", "user explicitly asked", "known repository commands"],
-      ["do not use it for file read/search/edit fallbacks"],
+      ["`code-scan` before `code-edit`"],
+      ["re-read a file with `file-read` immediately before editing"],
+      ["`tasklist-create` once", "then `tasklist-update`"],
     ]);
+  });
+
+  // A tool that only describes itself belongs in its own description, next to its schema.
+  // These lines were in the prompt for every turn; each one's absence is the contract.
+  test("does not restate what a tool's own description says", () => {
+    const out = createInstructions("Soul.");
+    for (const restatement of [
+      "to locate files by name/path pattern",
+      "for text/regex content search",
+      "with full content directly",
+      "to remove a file",
+      "when repo-wide state matters",
+      "for committed history",
+      "to stage edited files before commit",
+      "only when the user explicitly asks",
+      "to check PR status",
+      "check for duplicates",
+      "for external information",
+      "to read specific URLs",
+      "for AST-aware refactors",
+      "do not chase unrelated failures",
+      "to validate touched behavior",
+      "to discover recent undo checkpoints",
+      "so cache invalidation",
+    ]) {
+      expect(out).not.toContain(restatement);
+    }
   });
 
   test("appends project rules as a separate prompt block", () => {

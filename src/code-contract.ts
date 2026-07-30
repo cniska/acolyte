@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 const editCodeScopeSchema = {
-  within: z.string().min(1).optional(),
-  withinSymbol: z.string().min(1).optional(),
+  within: z.string().min(1).optional().describe("Confines the edit to nodes matching this ast-grep pattern."),
+  withinSymbol: z.string().min(1).optional().describe("Confines the edit to one enclosing symbol, by name."),
 };
 
-export const editCodeRenameTargetSchema = z.enum(["local", "member"]);
+export const editCodeRenameTargetSchema = z
+  .enum(["local", "member"])
+  .describe("Picks the binding when a name matches both a local and a member.");
 const editCodePatternStrictnessSchema = z.enum(["cst", "smart", "ast", "relaxed", "signature"]);
 const editCodeRelationalStopByKeywordSchema = z.enum(["neighbor", "end"]);
 
