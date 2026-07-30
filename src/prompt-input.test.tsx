@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { createElement as h } from "react";
 import {
   createInputController,
@@ -17,6 +17,8 @@ type PressKey = Partial<KeyEvent>;
 
 type Harness = {
   press: (input: string, key?: PressKey) => void;
+  pressWithoutRender: (input: string, key?: PressKey) => void;
+  render: () => void;
   state: () => InputControllerState;
   actions: InputEditAction[];
   pastes: boolean[];
@@ -90,6 +92,10 @@ function mountControlled(initial = "", options: { wrapWidth?: number } = {}): Ha
       handler?.(input, { ...emptyKey(), ...key });
       flush();
     },
+    pressWithoutRender(input, key) {
+      handler?.(input, { ...emptyKey(), ...key });
+    },
+    render: flush,
     state: () => current,
     actions,
     pastes,
@@ -148,27 +154,6 @@ describe("PromptInputHandler: text entry", () => {
   });
 });
 
-describe("PromptInputHandler: help swallow", () => {
-  test("a lone '?' on an empty prompt is swallowed", () => {
-    const h = mount();
-    h.press("?");
-    expect(h.actions).toEqual([]);
-    expect(h.state()).toEqual({ text: "", cursor: 0 });
-  });
-
-  test("'?' inserts once the prompt is non-empty", () => {
-    const h = mount("a");
-    h.press("?");
-    expect(h.state()).toEqual({ text: "a?", cursor: 2 });
-  });
-
-  test("a pasted '?' on an empty prompt is not swallowed", () => {
-    const h = mount();
-    h.press("?", { paste: true });
-    expect(h.state()).toEqual({ text: "?", cursor: 1 });
-  });
-});
-
 describe("PromptInputHandler: deletion", () => {
   test("backspace deletes the char before the cursor", () => {
     const h = mount("ab");
@@ -177,13 +162,17 @@ describe("PromptInputHandler: deletion", () => {
     expect(h.actions).toEqual([{ kind: "delete-backward" }]);
   });
 
-  test("backspace at the start of the prompt is a no-op", () => {
+  /** The guard matrix lives with resolvePromptEdit; this pins that a suppressed
+   *  decision reaches neither onAction nor onCursorLine, which chat-state reads
+   *  as "the text did not change". */
+  test("a suppressed edit emits nothing at all", () => {
     const h = mount("ab");
-    h.press("", { leftArrow: true });
-    h.press("", { leftArrow: true });
-    h.actions.length = 0;
+    h.press("", { home: true });
+    h.cursorLines.length = 0;
     h.press("", { backspace: true });
-    expect(h.actions).toEqual([]);
+    expect(h.actions).toEqual([{ kind: "move", direction: "home" }]);
+    expect(h.cursorLines).toEqual([]);
+    expect(h.state()).toEqual({ text: "ab", cursor: 0 });
   });
 
   test("forward-delete removes the char after the cursor", () => {
@@ -191,13 +180,6 @@ describe("PromptInputHandler: deletion", () => {
     h.press("", { home: true });
     h.press("", { delete: true });
     expect(h.state()).toEqual({ text: "b", cursor: 0 });
-  });
-
-  test("forward-delete at the end is a no-op", () => {
-    const h = mount("ab");
-    h.actions.length = 0;
-    h.press("", { delete: true });
-    expect(h.actions).toEqual([]);
   });
 
   test("ctrl+w deletes the previous word", () => {
@@ -212,12 +194,6 @@ describe("PromptInputHandler: deletion", () => {
     h.press("u", { ctrl: true });
     expect(h.state()).toEqual({ text: "", cursor: 0 });
     expect(h.actions).toEqual([{ kind: "clear" }]);
-  });
-
-  test("ctrl+u on an empty line is a no-op", () => {
-    const h = mount("");
-    h.press("u", { ctrl: true });
-    expect(h.actions).toEqual([]);
   });
 });
 
@@ -296,5 +272,122 @@ describe("PromptInputHandler: meta prefix", () => {
     const h = mount("foo bar");
     h.press("", { backspace: true });
     expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+  });
+});
+
+/** The armed prefix is observable only through backspace, which resolves to
+ *  delete_word_back while it is live and delete_back once it is cleared. */
+describe("PromptInputHandler: meta prefix lifetime", () => {
+  test("an inert key clears the prefix", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("", { tab: true });
+    h.press("", { backspace: true });
+    expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+  });
+
+  test("a word deletion clears the prefix", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("w", { ctrl: true });
+    h.press("", { backspace: true });
+    expect(h.actions).toEqual([{ kind: "delete-word-backward" }, { kind: "delete-backward" }]);
+    expect(h.state()).toEqual({ text: "foo", cursor: 3 });
+  });
+
+  test("a forward delete clears the prefix even when suppressed as a no-op", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("", { delete: true });
+    h.press("", { backspace: true });
+    expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+  });
+
+  test("an insert clears the prefix", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("x");
+    h.press("", { backspace: true });
+    expect(h.actions).toEqual([{ kind: "insert", text: "x" }, { kind: "delete-backward" }]);
+  });
+
+  test("a horizontal move leaves the prefix armed", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("", { leftArrow: true });
+    h.press("", { backspace: true });
+    expect(h.actions.at(-1)).toEqual({ kind: "delete-word-backward" });
+  });
+
+  test("an end jump leaves the prefix armed", () => {
+    const h = mount("foo bar");
+    h.press("", { home: true });
+    h.press("", { escape: true });
+    h.press("", { end: true });
+    h.press("", { backspace: true });
+    expect(h.actions.at(-1)).toEqual({ kind: "delete-word-backward" });
+    expect(h.state()).toEqual({ text: "foo ", cursor: 4 });
+  });
+
+  test("a vertical move leaves the prefix armed", () => {
+    const h = mount("foo\nbar baz");
+    h.press("", { escape: true });
+    h.press("", { upArrow: true });
+    h.press("", { backspace: true });
+    expect(h.actions.at(-1)).toEqual({ kind: "delete-word-backward" });
+  });
+
+  test("the prefix expires once its window has passed", () => {
+    const clock = spyOn(Date, "now");
+    try {
+      clock.mockReturnValue(1_000);
+      const armed = mount("foo bar");
+      armed.press("", { escape: true });
+      clock.mockReturnValue(1_150);
+      armed.press("", { backspace: true });
+      expect(armed.actions).toEqual([{ kind: "delete-word-backward" }]);
+      armed.unmount();
+
+      clock.mockReturnValue(1_000);
+      const expired = mount("foo bar");
+      expired.press("", { escape: true });
+      clock.mockReturnValue(1_151);
+      expired.press("", { backspace: true });
+      expect(expired.actions).toEqual([{ kind: "delete-backward" }]);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  test("submit leaves the prefix armed", () => {
+    const h = mount("foo bar");
+    h.press("", { escape: true });
+    h.press("", { return: true });
+    h.press("", { backspace: true });
+    expect(h.submits).toEqual(["foo bar"]);
+    expect(h.actions).toEqual([{ kind: "delete-word-backward" }]);
+  });
+});
+
+describe("PromptInputHandler: keystrokes between renders", () => {
+  test("a second keystroke resolves against the first, not against stale props", () => {
+    const h = mount();
+    h.pressWithoutRender("a");
+    h.pressWithoutRender("?");
+    h.render();
+    expect(h.actions).toEqual([
+      { kind: "insert", text: "a" },
+      { kind: "insert", text: "?" },
+    ]);
+    expect(h.state()).toEqual({ text: "a?", cursor: 2 });
+  });
+
+  test("a no-op guard sees an edit that has not rendered yet", () => {
+    const h = mount("a");
+    h.pressWithoutRender("", { backspace: true });
+    h.pressWithoutRender("", { backspace: true });
+    h.render();
+    expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+    expect(h.state()).toEqual({ text: "", cursor: 0 });
   });
 });
