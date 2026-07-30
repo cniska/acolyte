@@ -364,6 +364,10 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     }
   },
 
+  "text-end"(ctx) {
+    ctx.emit({ type: "text-end" });
+  },
+
   "reasoning-delta"(ctx, chunk) {
     if (chunk.type !== "reasoning-delta") return;
     const text = chunk.payload?.text;

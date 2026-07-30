@@ -27,6 +27,7 @@ export interface ClientOptions {
 }
 
 const textDeltaEventSchema = z.object({ type: z.literal("text-delta"), text: z.string() });
+const textEndEventSchema = z.object({ type: z.literal("text-end") });
 const reasoningEventSchema = z.object({ type: z.literal("reasoning"), text: z.string() });
 const toolCallEventSchema = z.object({
   type: z.literal("tool-call"),
@@ -85,6 +86,7 @@ const noticeEventSchema = z.object({
 
 export const streamEventSchema = z.discriminatedUnion("type", [
   textDeltaEventSchema,
+  textEndEventSchema,
   reasoningEventSchema,
   toolCallEventSchema,
   toolOutputEventSchema,

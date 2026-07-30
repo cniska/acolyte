@@ -50,6 +50,7 @@ export type ModelUsagePayload = {
 export type StreamChunk =
   | { type: "step-start" }
   | { type: "text-delta"; payload: TextDeltaPayload }
+  | { type: "text-end" }
   | { type: "reasoning-delta"; payload: TextDeltaPayload }
   | { type: "tool-call"; payload: ToolCallPayload }
   | { type: "tool-result"; payload: ToolResultPayload }

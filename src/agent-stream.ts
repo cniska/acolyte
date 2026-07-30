@@ -126,13 +126,14 @@ export function createAgentStream(
           }> = [];
           finishReason = undefined;
           const stepTextParts: string[] = [];
+          const textBlocks = { paragraphPending: false };
           const reasoningBlocks = new Map<string, ReasoningBlock>();
 
           const reader = streamResult.stream.getReader();
           while (true) {
             const { done, value: part } = await reader.read();
             if (done) break;
-            emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, reasoningBlocks);
+            emitStreamPart(part, streamController, stepTextParts, pendingToolCalls, reasoningBlocks, textBlocks);
             if (part.type === "finish") {
               finishReason = part.finishReason;
               streamController.enqueue({
@@ -327,13 +328,29 @@ function emitStreamPart(
   textParts: string[],
   pendingToolCalls: Array<{ toolCallId: string; toolName: string; input: string }>,
   reasoningBlocks: Map<string, ReasoningBlock>,
+  textBlocks: { paragraphPending: boolean },
 ): void {
   switch (part.type) {
     case "text-delta": {
       if (part.delta.length > 0) {
+        if (textBlocks.paragraphPending) {
+          textBlocks.paragraphPending = false;
+          if (textParts.length > 0) textParts.push("\n\n");
+        }
         textParts.push(part.delta);
         controller.enqueue({ type: "text-delta", payload: { text: part.delta } });
       }
+      break;
+    }
+    // A block boundary is the only marker that one piece of prose ended and another began.
+    // Dropping it concatenates a preamble onto the answer that follows with no separator —
+    // on screen and in the history the model reads back. The break is owed to the next block
+    // and paid when its first text arrives, so an empty or absent following block leaves no
+    // trailing separator, and a `length` cutoff — which also ends a block — stitches its
+    // continuation onto the same sentence instead of opening a paragraph.
+    case "text-end": {
+      textBlocks.paragraphPending = true;
+      controller.enqueue({ type: "text-end" });
       break;
     }
     case "reasoning-start": {

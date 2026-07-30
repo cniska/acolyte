@@ -192,6 +192,51 @@ describe("chat-message-handler-stream", () => {
     state.dispose();
   });
 
+  test("a text-block boundary is a paragraph break within one row", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onEvent({ type: "text-delta", text: "I'll answer the latest turn directly." });
+    state.onEvent({ type: "text-end" });
+    state.onEvent({ type: "text-delta", text: "Testing received." });
+    state.onEvent({ type: "text-end" });
+    state.finalize();
+
+    expect(rows.filter((row) => row.kind === "assistant").map((row) => row.content)).toEqual([
+      "I'll answer the latest turn directly.\n\nTesting received.",
+    ]);
+    state.dispose();
+  });
+
+  test("a tool call between blocks drops the owed paragraph break", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onEvent({ type: "text-delta", text: "Let me read that." });
+    state.onEvent({ type: "text-end" });
+    state.onToolCall();
+    state.onEvent({ type: "text-delta", text: "It returns a scene." });
+    state.finalize();
+
+    expect(rows.filter((row) => row.kind === "assistant").map((row) => row.content)).toEqual([
+      "Let me read that.",
+      "It returns a scene.",
+    ]);
+    state.dispose();
+  });
+
+  test("a text-end before any prose opens no blank paragraph", () => {
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows });
+
+    state.onEvent({ type: "text-end" });
+    state.onEvent({ type: "text-delta", text: "Testing received." });
+    state.finalize();
+
+    expect(rows.filter((row) => row.kind === "assistant").map((row) => row.content)).toEqual(["Testing received."]);
+    state.dispose();
+  });
+
   test("leading newlines are stripped when creating new assistant row", () => {
     jest.useFakeTimers();
     const { rows, setRows } = createRowsHarness();

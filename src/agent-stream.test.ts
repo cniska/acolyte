@@ -625,3 +625,71 @@ describe("cancellation", () => {
     expect(calls[0]?.abortSignal).toBe(controller.signal);
   });
 });
+
+describe("consecutive text blocks", () => {
+  test("two blocks in one step stay separated in the answer", async () => {
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "I'll answer the latest turn directly." },
+        { type: "text-end", id: "t_1" },
+        { type: "text-start", id: "t_2" },
+        { type: "text-delta", id: "t_2", delta: "Testing received." },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, []);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { fullStream, getFullOutput } = await stream("hi", {});
+
+    const chunks: StreamChunk[] = [];
+    const reader = fullStream.getReader();
+    const drain = (async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+    })();
+    const output = await getFullOutput();
+    await drain;
+
+    expect(output.text).toBe("I'll answer the latest turn directly.\n\nTesting received.");
+    expect(chunks.filter((chunk) => chunk.type === "text-end")).toHaveLength(2);
+  });
+
+  test("an empty trailing block adds no separator", async () => {
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Testing received." },
+        { type: "text-end", id: "t_1" },
+        { type: "text-start", id: "t_2" },
+        { type: "text-end", id: "t_2" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, []);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", {});
+
+    expect((await getFullOutput()).text).toBe("Testing received.");
+  });
+
+  test("a single block carries no trailing separator", async () => {
+    const turns: LanguageModelV4StreamPart[][] = [
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "Testing received." },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, []);
+    const stream = createAgentStream(model, "sys", {}, noopRateLimiter);
+    const { getFullOutput } = await stream("hi", {});
+
+    expect((await getFullOutput()).text).toBe("Testing received.");
+  });
+});
