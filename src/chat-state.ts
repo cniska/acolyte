@@ -365,7 +365,6 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setSlashSuggestionIndex,
     setInputHistoryIndex,
     setInputHistoryDraft,
-    openSkillsPanel,
     showHelp,
     setShowHelp,
     interruptCurrentTurn: () => {

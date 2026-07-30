@@ -226,6 +226,13 @@ describe("resolvePromptEdit", () => {
         action: { kind: "insert", text: "?" },
       });
     });
+
+    test("a lone '$' on an empty buffer inserts", () => {
+      expect(resolvePromptEdit(insert("$"), { text: "", cursor: 0 })).toEqual({
+        kind: "edit",
+        action: { kind: "insert", text: "$" },
+      });
+    });
   });
 
   describe("movement", () => {
