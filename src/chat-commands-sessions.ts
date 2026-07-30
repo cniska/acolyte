@@ -1,3 +1,4 @@
+import type { CommandHandler } from "./chat-commands-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
 import { GLYPH_FILLED } from "./chat-glyphs";
@@ -24,3 +25,8 @@ export function sessionsRows(sessionState: SessionState, limit = 10): ChatRow[] 
     }),
   ];
 }
+
+export const runSessions: CommandHandler = async (ctx) => {
+  ctx.setRows((current) => [...current, ...sessionsRows(ctx.sessionState, 10)]);
+  return { stop: true, userText: ctx.text };
+};

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { setModel } from "./app-config";
-import type { CommandContext, CommandResult, SlashCommand } from "./chat-commands-contract";
+import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import { setConfigValue } from "./config";
@@ -54,9 +54,5 @@ async function handleModelSet(ctx: CommandContext): Promise<CommandResult> {
   return { stop: true, userText: text };
 }
 
-export function createModelCommands(ctx: CommandContext): SlashCommand[] {
-  return [
-    { name: "model.panel", match: (value) => value === "/model", run: () => handleModelPanel(ctx) },
-    { name: "model.set", match: (value) => value.startsWith("/model "), run: () => handleModelSet(ctx) },
-  ];
-}
+export const runModel: CommandHandler = (ctx, parsed) =>
+  parsed.args.length === 0 ? handleModelPanel(ctx) : handleModelSet(ctx);
