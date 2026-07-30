@@ -73,6 +73,7 @@ Completion offers gitignored paths too, unlike the file tools, which are gitigno
 
 ## Design constraints
 
+- **The renderer owns the terminal alone** — a foreign write shifts the cursor its erase depends on, so the chat client sinks logs and `console.*` while mounted.
 - **Minimal primitive set** — every new prop becomes renderer debt. Add only what's needed.
 - **Layout rules are a product contract** — add tests before adding layout semantics.
 - **No "Ink, but homegrown."** If a feature doesn't materially help Acolyte's UX, don't add it.

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { PromotedSliceView } from "./chat-promoted-slice";
 import { type ChatAppProps, useChatState } from "./chat-state";
 import { createChatViewportPresentation } from "./chat-viewport-presentation";
-import { setLogSink } from "./log";
+import { type LogLevel, log, setLogSink } from "./log";
 import { stateDir } from "./paths";
 import { PromptInputHandler } from "./prompt-input";
 import { layoutChatViewport, promptWrapWidth } from "./terminal-chat-layout";
@@ -66,21 +66,66 @@ function ChatApp(props: ChatAppProps) {
   );
 }
 
-export function installClientLogSink(): void {
+/** Every console method that writes output, mapped to the level it logs at. `console.*` in Bun
+ *  writes straight to the file descriptor, so a method left out here still reaches the frame. */
+const CONSOLE_LEVELS = {
+  debug: "debug",
+  dir: "debug",
+  dirxml: "debug",
+  error: "error",
+  group: "debug",
+  groupCollapsed: "debug",
+  info: "info",
+  log: "debug",
+  table: "debug",
+  timeEnd: "debug",
+  timeLog: "debug",
+  trace: "debug",
+  warn: "warn",
+} as const satisfies Record<string, LogLevel>;
+
+type CapturedConsoleMethod = keyof typeof CONSOLE_LEVELS;
+
+/** Route console output through the log sink for as long as the TUI owns the terminal. A
+ *  dependency that writes a diagnostic — React prints its nested-update warning this way —
+ *  otherwise lands mid-frame and shifts the cursor the renderer is tracking. Returns the
+ *  restore for the caller's teardown. */
+function captureConsole(): () => void {
+  // The per-method signatures (`dir`, `table`) differ, and every capture takes the same shape.
+  const target = console as unknown as Record<CapturedConsoleMethod, (...args: unknown[]) => void>;
+  const originals = new Map<CapturedConsoleMethod, (...args: unknown[]) => void>();
+  for (const method of Object.keys(CONSOLE_LEVELS) as CapturedConsoleMethod[]) {
+    originals.set(method, target[method]);
+    target[method] = (...args: unknown[]): void => {
+      // Newlines collapse so a component stack stays one logfmt record.
+      const message = args
+        .map(String)
+        .join(" ")
+        .replace(/\s*\n\s*/g, " ");
+      log[CONSOLE_LEVELS[method]](message, { source: `console.${method}` });
+    };
+  }
+  return () => {
+    for (const [method, original] of originals) target[method] = original;
+  };
+}
+
+export function installClientLogSink(): () => void {
   // The TUI owns stdout exclusively, so a sink is always installed to keep logs
   // off the frame; it writes to client.log under ACOLYTE_DEBUG, else swallows.
-  if (!process.env.ACOLYTE_DEBUG) {
-    setLogSink(() => {});
-    return;
-  }
-  const logPath = join(stateDir(), "client.log");
-  setLogSink((line) => {
-    try {
-      appendFileSync(logPath, line);
-    } catch {
-      // best-effort
-    }
-  });
+  const logPath = process.env.ACOLYTE_DEBUG ? join(stateDir(), "client.log") : null;
+  setLogSink(
+    logPath === null
+      ? () => {}
+      : (line) => {
+          try {
+            appendFileSync(logPath, line);
+          } catch {
+            // best-effort
+          }
+        },
+  );
+  return captureConsole();
 }
 
 export async function runChat(
@@ -88,7 +133,7 @@ export async function runChat(
   onMount?: (app: { flush: () => void; unmount: () => void }) => void,
   onFatalError?: (error: unknown) => void,
 ): Promise<void> {
-  installClientLogSink();
+  const restoreConsole = installClientLogSink();
   const app = render(<ChatApp {...props} />, { onFatalError });
   try {
     onMount?.(app);
@@ -103,6 +148,7 @@ export async function runChat(
   } finally {
     // Idempotent; repeated here so a throw above still releases the connection.
     props.client.close();
+    restoreConsole();
     setLogSink(null);
   }
 }

@@ -28,9 +28,11 @@ export function useInterval(callback: () => void, delayMs: number | null): void 
 }
 
 /**
- * Run a synchronous side effect when dependencies change. Use for state-sync
- * cases where render-time setState would cause infinite loops (e.g. syncing
- * derived arrays that produce new references each render).
+ * Run a synchronous side effect when dependencies change. Every dependency must be
+ * value-stable across renders — a dependency whose identity changes every render runs
+ * the effect after every commit, and a `setState` there sustains an update chain that
+ * trips React's nested-update limit, whose warning prints onto the terminal the
+ * renderer owns.
  *
  * Unlike other wrappers in this file, this does NOT use ref indirection —
  * the effect closure must capture its own values so React can correctly

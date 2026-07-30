@@ -127,8 +127,13 @@ function withLogSinkEnv(
 describe("client log sink", () => {
   test("keeps logs off stdout when ACOLYTE_DEBUG is unset", () => {
     withLogSinkEnv(({ stdout }) => {
-      installClientLogSink();
-      log.debug("chat.submit", { value: "hello", resolved: "submit" });
+      let restoreConsole: (() => void) | null = null;
+      try {
+        restoreConsole = installClientLogSink();
+        log.debug("chat.submit", { value: "hello", resolved: "submit" });
+      } finally {
+        restoreConsole?.();
+      }
       expect(stdout.join("")).not.toMatch(/level=debug/);
     });
   });
@@ -136,8 +141,13 @@ describe("client log sink", () => {
   test("diverts logs to client.log under ACOLYTE_DEBUG, never stdout", () => {
     withLogSinkEnv(
       ({ stdout }) => {
-        installClientLogSink();
-        log.debug("chat.submit", { value: "hello", resolved: "submit" });
+        let restoreConsole: (() => void) | null = null;
+        try {
+          restoreConsole = installClientLogSink();
+          log.debug("chat.submit", { value: "hello", resolved: "submit" });
+        } finally {
+          restoreConsole?.();
+        }
         expect(stdout.join("")).not.toMatch(/level=debug/);
         const logged = readFileSync(join(stateDir(), "client.log"), "utf8");
         expect(logged).toMatch(/level=debug/);

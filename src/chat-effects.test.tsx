@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { useState } from "react";
 import { clampSuggestionIndex, useSuggestions } from "./chat-effects";
-import { renderHook, wait } from "./tui/test-utils";
+import { driveHookCommits, renderHook, wait } from "./tui/test-utils";
 
 function suggestionsHarness(initial: string) {
   return renderHook(() => {
@@ -15,6 +15,23 @@ describe("chat effects helpers", () => {
     expect(clampSuggestionIndex(3, 2)).toBe(1);
     expect(clampSuggestionIndex(-2, 2)).toBe(0);
     expect(clampSuggestionIndex(0, 0)).toBe(0);
+  });
+
+  test("suggestions never schedule an update from a commit", () => {
+    const original = console.error;
+    const messages: string[] = [];
+    console.error = (...args: unknown[]): void => {
+      messages.push(args.map(String).join(" "));
+    };
+    try {
+      // Well past React's 50-commit nested-update limit.
+      driveHookCommits(200, () => {
+        useSuggestions("");
+      });
+    } finally {
+      console.error = original;
+    }
+    expect(messages.filter((message) => message.includes("Maximum update depth exceeded"))).toEqual([]);
   });
 });
 
