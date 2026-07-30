@@ -163,6 +163,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-10** — A queued message typed while a turn is running is handled cooperatively and processed in order rather than dropped or interleaved mid-step.
 - **TUI-11** — A user message preserves its whitespace in the transcript: leading indentation and internal whitespace runs are kept (tabs expanded to fixed-width stops), and a wrapped line repeats its indentation on each continuation row. Inline markup — backtick `code`, bold, and file paths — renders styled, with its delimiters interpreted. A fenced code block renders syntax-highlighted like assistant output, its fence interpreted; unfenced text stays verbatim.
 - **TUI-12** — Exiting the chat client releases its connection immediately, so an in-flight task is cancelled rather than left running to completion after the user has quit.
+- **TUI-13** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
 
 ## 8. Observability requirements (OBS)
 

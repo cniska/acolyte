@@ -39,7 +39,7 @@ The scene is the physical output of *lay out*. It contains no React nodes.
 | `sections` | `header`, one section per transcript row, optional `pending`, `composer`, and `footer`. |
 | `fill` | Optional line-level background role. |
 
-The scene is the only home for display-cell measurement, grapheme-safe wrapping, gutters, borders, background fill, and cursor geometry. A line fill paints from the first non-blank span to the row end, leaving leading indentation unpainted; diff bands can therefore span gutter, text, and trailing pad while span foregrounds remain independent.
+The scene is the only home for display-cell measurement, grapheme-safe wrapping, gutters, borders, background fill, and cursor geometry, apart from the composer's own row model below. A line fill paints from the first non-blank span to the row end, leaving leading indentation unpainted; diff bands can therefore span gutter, text, and trailing pad while span foregrounds remain independent.
 
 A section is **finalized** only when its bytes can never change. Streaming prose, active tools, pending rows, and mutable geometry are never finalized.
 
@@ -56,7 +56,8 @@ finalized section → immutable slice → terminal scrollback → removed from a
 
 ## Layout ownership
 
-- **One owner** — layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, composer geometry, and cursor coordinates.
+- **One owner** — layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, and cursor coordinates.
+- **Composer rows** — `prompt-display` wraps the typed prompt into rows that tile the text and fit the box interior in display cells, and maps a cursor offset to a row and column. Layout renders those rows and the input handler moves through them; neither re-derives the wrapping.
 - **Local coordinates** — sub-layouts receive only a width budget and lay out from column zero. Composition alone applies physical insets and frames.
 - **Shared tool layout** — CLI output and interactive chat consume the same tool layout, preserving ordering, headers, diff gutters, fitting, and truncation.
 - **One truncation rule** — content exceeding any width budget, terminal-wide or nested, receives a trailing ellipsis through the grapheme-aware layout helper.
