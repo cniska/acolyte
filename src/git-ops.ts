@@ -20,24 +20,22 @@ export function hermeticGitEnv(overrides?: Record<string, string>): Record<strin
 
 let gitVersion: string | null = null;
 
+function gitUnavailable(message: string) {
+  return createToolError(TOOL_ERROR_CODES.gitUnavailable, message, ERROR_KINDS.gitUnavailable);
+}
+
 async function readGitVersion(): Promise<string> {
-  const { code, stdout } = await runCommand(["git", "--version"], process.cwd(), hermeticGitEnv());
-  const version = stdout.trim();
+  // Spawning a name that is not on PATH throws rather than returning a status, so the missing-git
+  // case reaches here as ENOENT and has to be named before it escapes as an unclassified error.
+  const probe = await runCommand(["git", "--version"], process.cwd(), hermeticGitEnv()).catch(() => null);
+  const version = probe?.stdout.trim() ?? "";
   const parsed = version.match(/(\d+)\.(\d+)/);
-  if (code !== 0 || !parsed) {
-    throw createToolError(
-      TOOL_ERROR_CODES.gitUnavailable,
-      "The git executable is required and is not available on PATH. Install git 2.14 or newer.",
-      ERROR_KINDS.gitUnavailable,
-    );
+  if (probe === null || probe.code !== 0 || !parsed) {
+    throw gitUnavailable("The git executable is required and is not available on PATH. Install git 2.14 or newer.");
   }
   const [major, minor] = [Number(parsed[1]), Number(parsed[2])];
   if (major < MIN_GIT_VERSION[0] || (major === MIN_GIT_VERSION[0] && minor < MIN_GIT_VERSION[1])) {
-    throw createToolError(
-      TOOL_ERROR_CODES.gitUnavailable,
-      `The git executable is ${major}.${minor}; 2.14 or newer is required. Upgrade git.`,
-      ERROR_KINDS.gitUnavailable,
-    );
+    throw gitUnavailable(`The git executable is ${major}.${minor}; 2.14 or newer is required. Upgrade git.`);
   }
   return version;
 }
