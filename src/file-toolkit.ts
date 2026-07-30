@@ -241,7 +241,6 @@ function createCreateFileTool(input: ToolkitInput) {
           workspace: input.workspace,
           path: toolInput.path,
           content: toolInput.content,
-          overwrite: true,
         });
         const summaryParts = diffSummaryParts(toolInput.path, rawResult, "tool.label.file_create");
         const diffParts = numberedUnifiedDiffLines(rawResult);
