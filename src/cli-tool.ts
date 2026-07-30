@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { printToolResult } from "./cli-format";
 import { t } from "./i18n";
+import type { ToolDefinition } from "./tool-contract";
 import { toolsForAgent } from "./tool-registry";
 import { resolveWorkspaceProfile } from "./workspace-profile";
 
@@ -56,14 +57,7 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
   const { tools, session } = toolsForAgent({ workspace });
   session.workspaceProfile = resolveWorkspaceProfile(workspace);
 
-  const toolMap = tools as Record<
-    string,
-    {
-      id: string;
-      execute: (input: unknown, callId: string) => Promise<unknown>;
-    }
-  >;
-  const tool = Object.values(toolMap).find((entry) => entry.id === toolId);
+  const tool = Object.values<ToolDefinition>(tools).find((entry) => entry.id === toolId);
   if (!tool) {
     printError(t("cli.tool.usage"));
     process.exitCode = 1;

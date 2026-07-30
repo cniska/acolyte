@@ -34,7 +34,6 @@ import { providerFromModel } from "./provider-config";
 import type { ActiveSkill } from "./skill-contract";
 import type { StreamError } from "./stream-error";
 import { estimateTokens } from "./token-estimate";
-import type { ToolDefinition } from "./tool-contract";
 import { extractToolErrorCode } from "./tool-error";
 import { renderToolOutput } from "./tool-output-render";
 import type { Toolset } from "./tool-registry";
@@ -121,7 +120,7 @@ export function createRunAgent(input: {
   return createAgent({
     model: input.model,
     instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt, input.activeSkills),
-    tools: input.tools as Record<string, ToolDefinition>,
+    tools: input.tools,
   });
 }
 

@@ -23,9 +23,6 @@ import type { SessionContext } from "./tool-contract";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
 
-// biome-ignore lint/suspicious/noExplicitAny: MCP tools have open-world schemas
-type AnyToolDefinition = ToolDefinition<any, any>;
-
 const MCP_DESCRIPTION_MAX_CHARS = 512;
 
 export type McpToolListing = {
@@ -126,7 +123,7 @@ function bindMcpToolDefinition(
   config: McpServerConfig,
   session: SessionContext,
   sessionId?: string,
-): AnyToolDefinition {
+): ToolDefinition {
   const toolId = buildToolId(serverName, mcpTool.name);
   const inputSchema = (mcpTool.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>;
   const description = sanitizeDescription(mcpTool.description, `Call ${mcpTool.name} on MCP server "${serverName}"`);
@@ -144,9 +141,8 @@ function bindMcpToolDefinition(
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
-      return runTool(session, toolId, toolCallId, toolInput as Record<string, unknown>, async () => {
-        const args = toolInput as Record<string, unknown>;
-
+      const args = toolInput as Record<string, unknown>;
+      return runTool(session, toolId, toolCallId, args, async () => {
         if (sessionId) {
           // Reuse the persistent session connection (self-healing via onclose).
           const { client } = await getOrConnectClient(sessionId, serverName, config);
@@ -219,8 +215,8 @@ export function bindMcpTools(
   session: SessionContext,
   nativeToolIds: Set<string>,
   sessionId?: string,
-): Record<string, AnyToolDefinition> {
-  const toolMap: Record<string, AnyToolDefinition> = {};
+): Record<string, ToolDefinition> {
+  const toolMap: Record<string, ToolDefinition> = {};
 
   for (const { serverName, config, tools } of listings) {
     for (const mcpTool of tools) {
