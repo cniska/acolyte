@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
-import { printToolResult } from "./cli-format";
+import { z } from "zod";
+import { printIndentedDim, printToolResult } from "./cli-format";
+import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
-import type { ToolDefinition } from "./tool-contract";
+import type { RunToolResult, ToolDefinition } from "./tool-contract";
 import { toolsForAgent } from "./tool-registry";
 import { resolveWorkspaceProfile } from "./workspace-profile";
 
@@ -11,32 +13,30 @@ type ToolModeDeps = {
   commandHelp: (name: string) => void;
 };
 
-function tryParseJson(value: string): unknown {
+export type ParsedToolInput = { ok: true; input: Record<string, unknown> } | { ok: false; message: string };
+
+export function parseToolInput(rest: string[]): ParsedToolInput {
+  if (rest.length === 0) return { ok: true, input: {} };
+  if (rest.length > 1) return { ok: false, message: `${t("cli.tool.too_many_args")} ${t("cli.tool.usage")}` };
+
+  let parsed: unknown;
   try {
-    return JSON.parse(value);
-  } catch {
-    return value;
+    parsed = JSON.parse(rest[0]);
+  } catch (error) {
+    return { ok: false, message: t("cli.tool.invalid_json", { message: errorMessage(error) }) };
   }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, message: t("cli.tool.not_object") };
+  }
+  return { ok: true, input: parsed as Record<string, unknown> };
 }
 
-function coerceInput(toolId: string, rest: string[]): unknown {
-  if (rest.length === 0) return {};
-  if (rest.length === 1) {
-    const parsed = tryParseJson(rest[0]);
-    if (typeof parsed === "object" && parsed !== null) return parsed;
+export function formatToolBody(runResult: RunToolResult<unknown>): string {
+  const { result } = runResult;
+  if (result && typeof result === "object" && "output" in result) {
+    const { output } = result as { output: unknown };
+    if (typeof output === "string") return output;
   }
-  const joined = rest.join(" ");
-  if (toolId === "shell-run") return { cmd: rest[0], args: rest.slice(1) };
-  if (toolId === "file-find") return { patterns: [joined] };
-  if (toolId === "file-search") return { patterns: [joined] };
-  if (toolId === "file-read") return { paths: [{ path: joined }] };
-  if (toolId === "test-run") return { files: rest };
-  return { command: joined };
-}
-
-function resultToString(result: unknown): string {
-  if (typeof result === "string") return result;
-  if (result && typeof result === "object" && "output" in result) return String((result as { output: string }).output);
   return JSON.stringify(result, null, 2);
 }
 
@@ -52,27 +52,41 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
     process.exitCode = 1;
     return;
   }
+  const parsedInput = parseToolInput(rest);
+  if (!parsedInput.ok) {
+    printError(parsedInput.message);
+    process.exitCode = 1;
+    return;
+  }
 
   const workspace = resolve(process.cwd());
   const { tools, session } = toolsForAgent({ workspace });
   session.workspaceProfile = resolveWorkspaceProfile(workspace);
 
-  const tool = Object.values<ToolDefinition>(tools).find((entry) => entry.id === toolId);
+  const available = Object.values<ToolDefinition>(tools);
+  const tool = available.find((entry) => entry.id === toolId);
   if (!tool) {
-    printError(t("cli.tool.usage"));
+    printError(`${t("cli.tool.unknown", { tool: toolId })} ${t("cli.tool.usage")}`);
+    printIndentedDim(
+      available
+        .map((entry) => entry.id)
+        .sort()
+        .join(", "),
+    );
     process.exitCode = 1;
     return;
   }
 
   try {
-    // Bypass runTool intentionally — CLI tool invocations skip budget checks and cache for direct debugging.
-    const rawInput = coerceInput(toolId, rest);
-    const result = await tool.execute(rawInput, `cli_${toolId}`);
+    const runResult = await tool.execute(parsedInput.input, `cli_${toolId}`);
     const detail = rest.join(" ").slice(0, 60) || undefined;
-    printToolResult(toolId, resultToString(result), detail);
+    printToolResult(toolId, formatToolBody(runResult), detail);
   } catch (error) {
-    const message = error instanceof Error ? error.message : t("cli.tool.failed");
-    printError(message);
+    if (error instanceof z.ZodError) {
+      printError(`${t("cli.tool.invalid_input", { tool: toolId })}\n${z.prettifyError(error)}`);
+    } else {
+      printError(error instanceof Error ? error.message : t("cli.tool.failed"));
+    }
     process.exitCode = 1;
   }
 }

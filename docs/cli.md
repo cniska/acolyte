@@ -18,7 +18,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 - `acolyte config list|set|unset` — manage configuration
 - `acolyte skill <name> [prompt]` — run a prompt with an active skill
 - `acolyte logs` — view server logs
-- `acolyte tool <tool-id> [args...]` — run a tool directly
+- `acolyte tool <tool-id> ['<json-input>']` — run a tool directly, passing its input as one JSON object
 - `acolyte trace list|task <id>` — inspect server lifecycle traces
 - `acolyte update` — update to latest version
 

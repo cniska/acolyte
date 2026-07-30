@@ -118,6 +118,7 @@ describe("cli visual regression", () => {
           memory                 manage memory
           config                 manage config
           skill <name> [prompt]  run a prompt with an active skill
+          tool                   run a tool directly
           logs                   view server logs
           update                 check for and install updates
           trace                  inspect server lifecycle traces
@@ -451,13 +452,13 @@ describe("cli visual regression", () => {
     {
       args: ["tool", "help"],
       output: dedent(`
-        Usage: acolyte tool <tool-id> [args...]
+        Usage: acolyte tool <tool-id> ['<json-input>']
 
         Description: run a tool directly
 
         Examples:
-          acolyte tool file-find "src/**/*.ts"
-          acolyte tool shell-run bun run verify
+          acolyte tool file-find '{"pattern":"src/**/*.ts"}'
+          acolyte tool git-status
       `),
     },
     {

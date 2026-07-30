@@ -24,7 +24,9 @@ export function testEnvForHome(
   };
 }
 
-export async function runCliPlain(args: readonly string[], options: RunCliPlainOptions = {}): Promise<string> {
+export type CliRunOutcome = { code: number; stdout: string; stderr: string };
+
+export async function runCliOutcome(args: readonly string[], options: RunCliPlainOptions = {}): Promise<CliRunOutcome> {
   const env = {
     ...process.env,
     ...options.env,
@@ -42,8 +44,17 @@ export async function runCliPlain(args: readonly string[], options: RunCliPlainO
     new Response(proc.stderr).text(),
   ]);
   const code = await proc.exited;
-  if (code !== 0) throw new Error(`cli exited with code ${code}: ${stderrText}`);
-  return trimRightLines(stripAnsi(stdoutText)).replace(/^\n+/, "").replace(/\n+$/, "");
+  return {
+    code,
+    stdout: trimRightLines(stripAnsi(stdoutText)).replace(/^\n+/, "").replace(/\n+$/, ""),
+    stderr: stderrText,
+  };
+}
+
+export async function runCliPlain(args: readonly string[], options: RunCliPlainOptions = {}): Promise<string> {
+  const { code, stdout, stderr } = await runCliOutcome(args, options);
+  if (code !== 0) throw new Error(`cli exited with code ${code}: ${stderr}`);
+  return stdout;
 }
 
 export type CliTestEnv = {

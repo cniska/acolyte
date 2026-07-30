@@ -374,9 +374,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   tool: {
     help: {
       command: "tool",
-      usage: "acolyte tool <tool-id> [args...]",
+      usage: "acolyte tool <tool-id> ['<json-input>']",
       description: t("cli.help.desc.tool"),
-      examples: ['acolyte tool file-find "src/**/*.ts"', "acolyte tool shell-run bun run verify"],
+      examples: ['acolyte tool file-find \'{"pattern":"src/**/*.ts"}\'', "acolyte tool git-status"],
     },
     handler: (args) =>
       toolMode(args, {

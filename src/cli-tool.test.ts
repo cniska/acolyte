@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toolMode } from "./cli-tool";
+import { formatToolBody, parseToolInput, toolMode } from "./cli-tool";
 
 type ToolDeps = Parameters<typeof toolMode>[1];
 
@@ -14,20 +14,60 @@ function createDeps(overrides?: Partial<ToolDeps>): { deps: ToolDeps; errors: ()
   return { deps, errors: () => errors };
 }
 
-describe("cli-tool", () => {
-  test("unknown tool prints usage", async () => {
-    const { deps, errors } = createDeps();
-    await toolMode(["nonexistent"], deps);
-    expect(process.exitCode).toBe(1);
-    expect(errors().length).toBeGreaterThan(0);
-    process.exitCode = 0;
+describe("parseToolInput", () => {
+  test("treats zero arguments as empty input", () => {
+    expect(parseToolInput([])).toEqual({ ok: true, input: {} });
   });
 
+  test("passes a single JSON object through untouched", () => {
+    expect(parseToolInput(['{"path":"src/index.ts","offset":2}'])).toEqual({
+      ok: true,
+      input: { path: "src/index.ts", offset: 2 },
+    });
+  });
+
+  test("rejects malformed JSON and surfaces the parser message", () => {
+    const parsed = parseToolInput(["{not json"]);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.ok === false && parsed.message).toContain("Invalid JSON input:");
+    expect(parsed.ok === false && parsed.message.length).toBeGreaterThan("Invalid JSON input:".length);
+  });
+
+  test("rejects JSON that is not an object", () => {
+    for (const arg of ['"text"', "42", "[1,2]", "null"]) {
+      const parsed = parseToolInput([arg]);
+      expect(parsed.ok).toBe(false);
+      expect(parsed.ok === false && parsed.message).toBe("Input must be a JSON object.");
+    }
+  });
+
+  test("rejects more than one argument and says why", () => {
+    const parsed = parseToolInput(["src/**/*.ts", "extra"]);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.ok === false && parsed.message).toContain("Too many arguments.");
+    expect(parsed.ok === false && parsed.message).toContain("Usage: acolyte tool");
+  });
+});
+
+describe("formatToolBody", () => {
+  test("returns the result's output string without the envelope", () => {
+    const body = formatToolBody({ result: { kind: "git-status", output: "M src/cli-tool.ts" } });
+    expect(body).toBe("M src/cli-tool.ts");
+    expect(body).not.toContain("result");
+  });
+
+  test("pretty-prints a result carrying no output string", () => {
+    const body = formatToolBody({ result: { kind: "file-find", matches: 3 } });
+    expect(body).toBe('{\n  "kind": "file-find",\n  "matches": 3\n}');
+  });
+});
+
+describe("toolMode", () => {
   test("no arguments prints usage", async () => {
     const { deps, errors } = createDeps();
     await toolMode([], deps);
     expect(process.exitCode).toBe(1);
-    expect(errors().length).toBeGreaterThan(0);
+    expect(errors()[0]).toContain("Usage: acolyte tool");
     process.exitCode = 0;
   });
 
@@ -39,15 +79,15 @@ describe("cli-tool", () => {
         called = true;
       },
     });
-    await toolMode(["file-find", "*.ts"], deps);
+    await toolMode(["file-find", '{"pattern":"*.ts"}'], deps);
     expect(called).toBe(true);
   });
 
-  test("invalid input prints error", async () => {
+  test("malformed input fails before any tool runs", async () => {
     const { deps, errors } = createDeps();
-    await toolMode(["test-run"], deps);
+    await toolMode(["file-read", "{not json"], deps);
     expect(process.exitCode).toBe(1);
-    expect(errors().length).toBeGreaterThan(0);
+    expect(errors()[0]).toContain("Invalid JSON input:");
     process.exitCode = 0;
   });
 });

@@ -29,9 +29,7 @@ export function commandError(doc: CliCommandHelp | undefined, name: string, prin
 }
 
 export function createUsageCommandRows(docs: CliCommandHelp[]): Array<{ command: string; description: string }> {
-  return docs
-    .filter((entry) => entry.command !== "tool")
-    .map((entry) => ({ command: entry.command, description: entry.description }));
+  return docs.map((entry) => ({ command: entry.command, description: entry.description }));
 }
 
 export function createUsageOptionRows(): Array<{ option: string; description: string }> {
