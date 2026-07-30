@@ -1,4 +1,17 @@
 import { appConfig } from "./app-config";
+import {
+  CLEAR_SPEC,
+  EXIT_SPEC,
+  MEMORY_SPEC,
+  MODEL_SPEC,
+  NEW_SPEC,
+  RESUME_SPEC,
+  SESSIONS_SPEC,
+  SKILLS_SPEC,
+  STATUS_SPEC,
+  USAGE_SPEC,
+  WORKSPACES_SPEC,
+} from "./chat-command-specs";
 import type { CommandContext, CommandEntry, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { runMemoryAdd, runMemoryList, runMemoryRemove } from "./chat-commands-memory";
 import { runModel } from "./chat-commands-model";
@@ -11,77 +24,25 @@ import { runUsage } from "./chat-commands-usage";
 import { runWorkspacesList, runWorkspacesNew, runWorkspacesSwitch } from "./chat-commands-workspaces";
 
 const BUILTIN_COMMANDS: CommandEntry[] = [
+  { spec: NEW_SPEC, run: runNew },
+  { spec: CLEAR_SPEC, run: runClear },
+  { spec: MODEL_SPEC, run: runModel },
+  { spec: STATUS_SPEC, run: runStatus },
+  { spec: SESSIONS_SPEC, run: runSessions },
   {
-    spec: { name: "new", source: "builtin", helpKey: "chat.slash.help.new", subcommands: [] },
-    run: runNew,
-  },
-  {
-    spec: { name: "clear", source: "builtin", helpKey: "chat.slash.help.clear", subcommands: [] },
-    run: runClear,
-  },
-  {
-    spec: { name: "model", source: "builtin", helpKey: "chat.slash.help.model", usage: "/model <id>", subcommands: [] },
-    run: runModel,
-  },
-  {
-    spec: { name: "status", source: "builtin", helpKey: "chat.slash.help.status", subcommands: [] },
-    run: runStatus,
-  },
-  {
-    spec: { name: "sessions", source: "builtin", helpKey: "chat.slash.help.sessions", subcommands: [] },
-    run: runSessions,
-  },
-  {
-    spec: {
-      name: "workspaces",
-      source: "builtin",
-      helpKey: "chat.slash.help.workspaces",
-      flag: "workspaces",
-      subcommands: [
-        { name: "list", usage: "/workspaces list", helpKey: "chat.slash.help.workspaces.list" },
-        { name: "new", usage: "/workspaces new <name> [-- <prompt>]", helpKey: "chat.slash.help.workspaces.new" },
-        { name: "switch", usage: "/workspaces switch <name>", helpKey: "chat.slash.help.workspaces.switch" },
-      ],
-    },
+    spec: WORKSPACES_SPEC,
     run: runWorkspacesList,
     runSub: { list: runWorkspacesList, new: runWorkspacesNew, switch: runWorkspacesSwitch },
   },
+  { spec: SKILLS_SPEC, run: runSkillsPanel },
+  { spec: RESUME_SPEC, run: runResume },
   {
-    spec: { name: "skills", source: "builtin", helpKey: "chat.slash.help.skills", subcommands: [] },
-    run: runSkillsPanel,
-  },
-  {
-    spec: {
-      name: "resume",
-      source: "builtin",
-      helpKey: "chat.slash.help.resume",
-      usage: "/resume <session-id-prefix>",
-      subcommands: [],
-    },
-    run: runResume,
-  },
-  {
-    spec: {
-      name: "memory",
-      source: "builtin",
-      helpKey: "chat.slash.help.memory",
-      subcommands: [
-        { name: "add", usage: "/memory add [--user|--project] <memory text>", helpKey: "chat.slash.help.memory.add" },
-        { name: "rm", usage: "/memory rm <id-prefix>", helpKey: "chat.slash.help.memory.rm" },
-        { name: "list", usage: "/memory list [all|user|project] [--archived]", helpKey: "chat.slash.help.memory.list" },
-      ],
-    },
+    spec: MEMORY_SPEC,
     run: runMemoryList,
     runSub: { add: runMemoryAdd, rm: runMemoryRemove, list: runMemoryList },
   },
-  {
-    spec: { name: "usage", source: "builtin", helpKey: "chat.slash.help.usage", subcommands: [] },
-    run: runUsage,
-  },
-  {
-    spec: { name: "exit", source: "builtin", helpKey: "chat.slash.help.exit", subcommands: [] },
-    run: runExit,
-  },
+  { spec: USAGE_SPEC, run: runUsage },
+  { spec: EXIT_SPEC, run: runExit },
 ];
 
 /** Commands available right now: a flagged command is absent while its flag is off, never inert. */

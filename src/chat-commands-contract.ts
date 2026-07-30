@@ -57,6 +57,7 @@ export function parseSlashCommand(text: string): ParsedCommand {
 }
 
 export const commandSourceSchema = z.enum(["builtin", "project", "user", "bundled"]);
+export type CommandSource = z.infer<typeof commandSourceSchema>;
 
 export const subcommandSpecSchema = z.object({
   name: z.string(),

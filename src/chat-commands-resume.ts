@@ -1,3 +1,4 @@
+import { RESUME_SPEC, rootUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { formatSessionList } from "./chat-commands-sessions";
 import { type ChatRow, createRow } from "./chat-contract";
@@ -23,10 +24,7 @@ export function resolveResumeSession(sessionState: SessionState, text: string): 
 
 function resumeUsageRows(sessionState: SessionState): ChatRow[] {
   const recent = formatSessionList(sessionState, 6);
-  return [
-    createRow("system", formatUsage("/resume <session-id-prefix>")),
-    ...recent.map((line) => createRow("system", line)),
-  ];
+  return [createRow("system", formatUsage(rootUsage(RESUME_SPEC))), ...recent.map((line) => createRow("system", line))];
 }
 
 async function handleResumePanel(ctx: CommandContext): Promise<CommandResult> {

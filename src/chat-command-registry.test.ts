@@ -3,7 +3,6 @@ import { appConfig } from "./app-config";
 import { findCommandEntry, resolveCommandRegistry, runCommandEntry } from "./chat-command-registry";
 import type { CommandContext, CommandEntry, ParsedCommand } from "./chat-commands-contract";
 import { parseSlashCommand } from "./chat-commands-contract";
-import { chatSlashCommands } from "./chat-slash";
 
 function setWorkspacesEnabled(enabled: boolean): () => void {
   const cfg = appConfig as unknown as { features: { workspaces: boolean } };
@@ -89,17 +88,6 @@ describe("resolveCommandRegistry", () => {
       for (const sub of entry.spec.subcommands) {
         expect(entry.runSub?.[sub.name]).toBeFunction();
       }
-    }
-  });
-
-  test("holds an entry for every enumerated slash command", () => {
-    const restore = setWorkspacesEnabled(true);
-    try {
-      for (const command of chatSlashCommands()) {
-        expect(findCommandEntry(command.slice(1))?.spec.name).toBe(command.slice(1));
-      }
-    } finally {
-      restore();
     }
   });
 

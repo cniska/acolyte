@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
 import {
-  chatSlashCommands,
   isKnownSlashToken,
   shouldAutocompleteSlashSubmit,
   slashCommandHelp,
+  slashCommandRows,
   suggestSlashCommands,
 } from "./chat-slash";
 import { resetSkillCache } from "./skill-ops";
@@ -27,21 +27,12 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/memo")).toEqual([
-      "/memory",
-      "/memory add",
-      "/memory rm",
-      "/memory list",
-      "/memory all",
-    ]);
+    expect(suggestSlashCommands("/memo")).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
     expect(suggestSlashCommands("/memory l")).toEqual(["/memory list"]);
-    expect(suggestSlashCommands("/memory p")).toEqual(["/memory project"]);
-    expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
-    expect(suggestSlashCommands("/memory u")).toEqual(["/memory user"]);
+    expect(suggestSlashCommands("/memory a")).toEqual(["/memory add"]);
     expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model"]);
-    expect(suggestSlashCommands("/memory a")).toEqual(["/memory add", "/memory all"]);
     expect(suggestSlashCommands("/unknown")).toEqual([]);
     expect(suggestSlashCommands("plain")).toEqual([]);
   });
@@ -68,19 +59,12 @@ describe("chat-slash helpers", () => {
       restore();
     }
     expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
-    expect(suggestSlashCommands("/memry")).toEqual([
-      "/memory",
-      "/memory add",
-      "/memory rm",
-      "/memory list",
-      "/memory all",
-    ]);
+    expect(suggestSlashCommands("/memry")).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
   });
 
   test("workspaces commands are absent while the flag is off", () => {
     const restore = setWorkspacesEnabled(false);
     try {
-      expect(chatSlashCommands()).not.toContain("/workspaces");
       expect(suggestSlashCommands("/w")).toEqual([]);
       expect(suggestSlashCommands("/workspaces")).toEqual([]);
       expect(suggestSlashCommands("/mov")).not.toContain("/workspaces");
@@ -94,7 +78,6 @@ describe("chat-slash helpers", () => {
   test("workspaces commands are present while the flag is on", () => {
     const restore = setWorkspacesEnabled(true);
     try {
-      expect(chatSlashCommands()).toContain("/workspaces");
       expect(suggestSlashCommands("/w")).toEqual([
         "/workspaces",
         "/workspaces list",
@@ -131,6 +114,50 @@ describe("chat-slash helpers", () => {
     expect(isKnownSlashToken("/model work")).toBe(false);
     expect(isKnownSlashToken("/memory list")).toBe(true);
     expect(isKnownSlashToken("/unknown")).toBe(false);
+  });
+
+  test("every suggested command is a command the dispatcher owns", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      const queries = ["/", "/m", "/me", "/memory ", "/w", "/s", "/stauts", "/memry", "/mov"];
+      for (const query of queries) {
+        for (const suggestion of suggestSlashCommands(query, 20)) {
+          expect(isKnownSlashToken(suggestion)).toBe(true);
+        }
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  test("every declared help key resolves to a message", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      for (const row of slashCommandRows()) {
+        expect(row.help).not.toBe("");
+        expect(row.help.startsWith("chat.slash.help")).toBe(false);
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  test("a root offers exactly its declared subcommands", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      const offered = slashCommandRows()
+        .map((row) => row.command)
+        .filter((command) => command.startsWith("/memory"));
+      expect(offered).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("argument forms reach the help text rather than the menu", () => {
+    const list = slashCommandRows().find((row) => row.command === "/memory list");
+    expect(list?.usage).toBe("/memory list [all|user|project] [--archived]");
+    expect(suggestSlashCommands("/memory --archived")).toEqual([]);
   });
 
   test("slashCommandHelp returns short descriptions", () => {

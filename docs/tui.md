@@ -43,18 +43,20 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 
 - `/new` — start new session
 - `/clear` — clear transcript
-- `/resume` — resume a previous session
+- `/resume <session-id-prefix>` — resume a previous session
 - `/sessions` — show sessions
-- `/workspaces` — manage parallel workspaces (feature-flagged)
-- `/model [id]` — change model
+- `/workspaces [list|new|switch]` — manage parallel workspaces (feature-flagged)
+- `/model <id>` — change model
 - `/status` — show server status
 - `/usage` — show token usage
-- `/memory [all|user|project]` — show memory notes
+- `/memory list [all|user|project] [--archived]` — show memory notes
 - `/memory add [--user|--project] <text>` — save memory note
 - `/memory rm <id-prefix>` — remove memory note
 - `/skill <name>` — run a skill command
 - `/skills` — show skills picker
 - `/exit` — exit chat
+
+Every command, its subcommands, and its help text come from one descriptor per command (`chat-command-specs.ts`), so the completion menu, the `?` pane, and dispatch cannot disagree. The menu offers a command and its declared subcommands; argument forms like `--archived` appear in the `?` pane rather than as completions.
 
 ## File attachments
 

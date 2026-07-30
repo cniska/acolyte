@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { setModel } from "./app-config";
+import { MODEL_SPEC, rootUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
@@ -27,7 +28,7 @@ async function handleModelSet(ctx: CommandContext): Promise<CommandResult> {
   const { text, resolvedText } = ctx;
   const model = parseModelCommand(resolvedText);
   if (!model) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/model <id>"))]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(rootUsage(MODEL_SPEC)))]);
     return { stop: true, userText: text };
   }
   try {

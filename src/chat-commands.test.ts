@@ -286,7 +286,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand validates /memory scope usage", async () => {
     const { rows, stop } = await runCommand("/memory foo");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|all|user|project]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|list]")).toBe(true);
   });
 
   test("dispatchSlashCommand handles bare /memory --archived", async () => {
@@ -396,7 +396,7 @@ describe("chat-commands", () => {
   test("dispatchSlashCommand validates /memory extra args", async () => {
     const { rows, stop } = await runCommand("/memory all extra");
     expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [all|user|project] [--archived]")).toBe(true);
+    expect(rows.some((row) => row.content === "Usage: /memory list [all|user|project] [--archived]")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory add and saves selected scope", async () => {

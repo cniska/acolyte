@@ -1,3 +1,4 @@
+import { MEMORY_SPEC, rootUsage, subcommandUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
@@ -42,7 +43,7 @@ async function handleMemoryRemove(
   const { text } = ctx;
   const prefix = parsed.args[0];
   if (!prefix || parsed.args.length !== 1) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory rm <id-prefix>"))]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "rm")))]);
     return { stop: true, userText: text };
   }
   try {
@@ -74,11 +75,11 @@ async function handleMemoryList(
   const scopeTokens = parsed.args.filter((arg) => arg !== ARCHIVED_FLAG);
   const scopeToken = scopeTokens[0] ?? "";
   if (scopeToken !== "" && !isMemoryContextScope(scopeToken)) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [add|rm|all|user|project]"))]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(rootUsage(MEMORY_SPEC)))]);
     return { stop: true, userText: text };
   }
   if (scopeTokens.length > 1) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage("/memory [all|user|project] [--archived]"))]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "list")))]);
     return { stop: true, userText: text };
   }
   const scope: MemoryContextScope = scopeToken === "" ? "all" : scopeToken;
@@ -163,10 +164,7 @@ async function handleMemoryAdd(
   }
   const content = contentParts.join(" ").trim();
   if (!content) {
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", formatUsage("/memory add [--user|--project] <memory text>")),
-    ]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "add")))]);
     return { stop: true, userText: text };
   }
   try {

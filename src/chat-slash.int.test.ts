@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { shortcutItems } from "./chat-layout";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
@@ -19,6 +20,15 @@ describe("chat-slash with loaded skills", () => {
 
     const suggestions = suggestSlashCommands("/dog");
     expect(suggestions).toContain("/dogfood");
+  });
+
+  test("a skill is offered as a completion but stays out of the help pane", async () => {
+    const tmpDir = createDir("acolyte-slash-pane-");
+    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    expect(suggestSlashCommands("/dog")).toContain("/dogfood");
+    expect(shortcutItems().some((item) => item.key === "/dogfood")).toBe(false);
   });
 
   test("isKnownSlashToken recognizes skill names", async () => {
