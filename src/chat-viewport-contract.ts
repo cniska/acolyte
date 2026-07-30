@@ -3,7 +3,7 @@ import { transcriptRowSchema } from "./chat-transcript-contract";
 import { pendingStateSchema } from "./client-contract";
 import { footerStatusSchema } from "./footer-status-contract";
 import { inputControllerStateSchema } from "./input-controller";
-import { skillMetaSchema } from "./skill-contract";
+import { skillMetaSchema, skillSourceSchema } from "./skill-contract";
 
 export const headerPresentationSchema = z.object({
   title: z.string(),
@@ -28,7 +28,7 @@ export const composerPickerItemSchema = z.object({
   value: z.string(),
   detail: z.string().optional(),
   active: z.boolean().optional(),
-  source: z.enum(["bundled", "project"]).optional(),
+  source: skillSourceSchema.optional(),
 });
 export const composerPickerSchema = z.discriminatedUnion("kind", [
   z.object({

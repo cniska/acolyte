@@ -1,7 +1,6 @@
 import { findCommandEntry, runCommandEntry } from "./chat-command-registry";
 import type { CommandContext, CommandResult } from "./chat-commands-contract";
 import { parseSlashCommand } from "./chat-commands-contract";
-import { handleSkillActivation } from "./chat-commands-skill";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
 
@@ -12,8 +11,6 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   const entry = findCommandEntry(parsed.root);
   const running = entry ? runCommandEntry(entry, ctx, parsed) : null;
   if (running) return running;
-  const skillResult = await handleSkillActivation(ctx);
-  if (skillResult) return skillResult;
   ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
   return { stop: true, userText: text };
 }

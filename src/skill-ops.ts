@@ -1,11 +1,14 @@
-import { type Dirent, existsSync } from "node:fs";
+import { type Dirent, existsSync, statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
+import { isBuiltinCommandName } from "./chat-command-specs";
+import { resolveHomeDir } from "./paths";
 import {
   createEmptySkillLoadDiagnostics,
   type SkillLoadDiagnostics,
   type SkillMeta,
+  type SkillSource,
   validateSkillName,
 } from "./skill-contract";
 
@@ -62,27 +65,53 @@ function stripFrontmatter(input: string): string {
 
 const SKILL_DIR = ".agents/skills";
 
+/** `~/.agents/skills` stays outside the XDG layout so global skills are shared with every agent reading that convention. */
 async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; diagnostics: SkillLoadDiagnostics }> {
   const diagnostics = createEmptySkillLoadDiagnostics();
   const seen = new Set<string>();
   const found: SkillMeta[] = [];
-
-  const root = join(cwd, SKILL_DIR);
   diagnostics.scannedAt = new Date().toISOString();
-  if (!existsSync(root)) return { skills: [], diagnostics };
+
+  await scanSkillRoot(join(cwd, SKILL_DIR), "project", found, seen, diagnostics);
+  await scanSkillRoot(join(resolveHomeDir(), SKILL_DIR), "user", found, seen, diagnostics);
+
+  found.sort((a, b) => a.name.localeCompare(b.name));
+  diagnostics.loaded = found.length;
+  return { skills: found, diagnostics };
+}
+
+/** `readdir` reports a symlinked directory as a link, and populating a skill root by symlink is a supported layout. */
+function isSkillDir(root: string, entry: Dirent): boolean {
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try {
+    return statSync(join(root, entry.name)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function scanSkillRoot(
+  root: string,
+  source: Extract<SkillSource, "project" | "user">,
+  found: SkillMeta[],
+  seen: Set<string>,
+  diagnostics: SkillLoadDiagnostics,
+): Promise<void> {
+  if (!existsSync(root)) return;
 
   let dirs: Dirent[];
   try {
     dirs = await readdir(root, { withFileTypes: true });
   } catch {
     diagnostics.readErrors += 1;
-    return { skills: [], diagnostics };
+    return;
   }
 
   for (const entry of dirs) {
-    if (!entry.isDirectory()) continue;
+    if (!isSkillDir(root, entry)) continue;
     diagnostics.scannedDirs += 1;
-    const dirName = entry.name as string;
+    const dirName = entry.name;
     const skillPath = join(root, dirName, "SKILL.md");
     if (!existsSync(skillPath)) {
       diagnostics.missingSkillFiles += 1;
@@ -117,17 +146,13 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
         name,
         description,
         path: skillPath,
-        source: "project",
+        source,
       });
     } catch {
       diagnostics.readErrors += 1;
       // Skip unreadable skills.
     }
   }
-
-  found.sort((a, b) => a.name.localeCompare(b.name));
-  diagnostics.loaded = found.length;
-  return { skills: found, diagnostics };
 }
 
 let bundledSkillCache: { skills: SkillMeta[]; contentByName: Map<string, string> } | null = null;
@@ -152,9 +177,14 @@ function loadBundledSkills(): { skills: SkillMeta[]; contentByName: Map<string, 
   return bundledSkillCache;
 }
 
-function mergeSkills(bundled: SkillMeta[], project: SkillMeta[]): SkillMeta[] {
-  const projectNames = new Set(project.map((s) => s.name));
-  const merged = [...project, ...bundled.filter((s) => !projectNames.has(s.name))];
+function mergeSkills(bundled: SkillMeta[], scanned: SkillMeta[], diagnostics: SkillLoadDiagnostics): SkillMeta[] {
+  const scannedNames = new Set(scanned.map((s) => s.name));
+  const unshadowed = bundled.filter((s) => !scannedNames.has(s.name));
+  diagnostics.overrides = bundled.length - unshadowed.length;
+  // A bundled name colliding with a builtin is a packaging mistake, not user authority.
+  const kept = unshadowed.filter((s) => !isBuiltinCommandName(s.name));
+  diagnostics.builtinCollisions = unshadowed.length - kept.length;
+  const merged = [...scanned, ...kept];
   merged.sort((a, b) => a.name.localeCompare(b.name));
   return merged;
 }
@@ -164,7 +194,7 @@ let cachedSkillDiagnostics: SkillLoadDiagnostics = createEmptySkillLoadDiagnosti
 
 export async function loadSkills(cwd?: string): Promise<SkillMeta[]> {
   const result = await scanSkills(cwd);
-  cachedSkills = mergeSkills(loadBundledSkills().skills, result.skills);
+  cachedSkills = mergeSkills(loadBundledSkills().skills, result.skills, result.diagnostics);
   cachedSkillDiagnostics = result.diagnostics;
   return cachedSkills;
 }

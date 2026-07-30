@@ -1,7 +1,6 @@
 import { resolveCommandRegistry } from "./chat-command-registry";
 import type { CommandSource } from "./chat-commands-contract";
-import { t, tDynamic } from "./i18n";
-import { getLoadedSkills } from "./skill-ops";
+import { tDynamic } from "./i18n";
 
 export type SlashCommandRow = {
   /** What the user types to reach it, and what the completion menu offers. */
@@ -22,14 +21,6 @@ export function slashCommandRows(): SlashCommandRow[] {
     for (const sub of entry.spec.subcommands) {
       rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: tDynamic(sub.helpKey), source });
     }
-  }
-  for (const skill of getLoadedSkills()) {
-    rows.push({
-      command: `/${skill.name}`,
-      usage: `/${skill.name}`,
-      help: t("chat.slash.help.skill"),
-      source: skill.source,
-    });
   }
   return rows;
 }

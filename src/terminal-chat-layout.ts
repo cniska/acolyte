@@ -487,7 +487,9 @@ export function layoutComposerStatus(input: {
       // Skills are not windowed (no scrollOffset); render the full list, as legacy did.
       pickerItems = picker.items.map((item, index) => {
         const label = truncateToWidth(item.label, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
-        const detail = item.detail ?? "";
+        // Only an authored skill names its scope: a bundled one is what remains when nothing took the name.
+        const scope = item.source && item.source !== "bundled" ? `${item.source} · ` : "";
+        const detail = `${scope}${item.detail ?? ""}`;
         if (index === selectedRel) return row(index, `${label} ${detail}`);
         return {
           spans: [
