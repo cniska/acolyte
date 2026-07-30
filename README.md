@@ -92,7 +92,7 @@ bun run test:tui
 bun run test:perf
 ```
 
-`bun test` runs every test. `bun run verify` is the required full validation before a pull request. See [Testing](docs/testing.md) for test boundaries, naming, coverage, and the behavior harness.
+`bun test` runs every test. `bun run verify` is the required full validation before a pull request. See [Testing](docs/testing.md) for test boundaries, naming, and coverage.
 
 ## Repository layout
 

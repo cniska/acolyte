@@ -12,7 +12,6 @@
     "dev": "ACOLYTE_SERVER_RESTART=1 ./scripts/with-server.sh serve:watch bun run src/cli.ts",
     "dogfood": "bun run src/cli.ts stop; ACOLYTE_DEBUG=1 bun run src/cli.ts",
     "run": "bun run src/cli.ts run",
-    "behavior:run": "bun run scripts/run-behavior.ts",
     "perf:run": "bun run scripts/run-perf.ts",
     "memory-bench:run": "bun run scripts/run-memory-bench.ts",
     "erosion:run": "bun run scripts/run-erosion.ts",
