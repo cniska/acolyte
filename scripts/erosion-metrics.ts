@@ -40,9 +40,15 @@ function isDecision(node: ts.Node): boolean {
   return false;
 }
 
+function isFunctionLike(node: ts.Node): boolean {
+  if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)) return true;
+  if (ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) return true;
+  return ts.isFunctionExpression(node) || ts.isArrowFunction(node);
+}
+
 // A unit is what a reader calls "a function". Inline callbacks are folded into their
 // enclosing unit so that `.map(x => x + 1)` does not dilute the mass denominator.
-function isUnit(node: ts.Node): boolean {
+function isNamedUnit(node: ts.Node): boolean {
   if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)) return true;
   if (ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) return true;
   if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
@@ -55,7 +61,11 @@ function isUnit(node: ts.Node): boolean {
 function ownerName(node: ts.Node): string | null {
   const parent = node.parent;
   if (parent && ts.isClassDeclaration(parent) && parent.name) return parent.name.text;
-  if (parent && ts.isClassExpression(parent) && parent.name) return parent.name.text;
+  if (parent && ts.isClassExpression(parent)) {
+    if (parent.name) return parent.name.text;
+    const holder = parent.parent;
+    if (holder && ts.isVariableDeclaration(holder) && ts.isIdentifier(holder.name)) return holder.name.text;
+  }
   return null;
 }
 
@@ -77,7 +87,18 @@ function unitName(node: ts.Node): string {
     return owner ? `${owner}.${parent.name.text}` : parent.name.text;
   }
   if (parent && ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
+  if (parent && ts.isCallExpression(parent)) {
+    const label = calleeLabel(parent);
+    if (label) return `${label}() callback`;
+  }
   return "<anonymous>";
+}
+
+function calleeLabel(call: ts.CallExpression): string | null {
+  const callee = call.expression;
+  if (ts.isIdentifier(callee)) return callee.text;
+  if (ts.isPropertyAccessExpression(callee)) return callee.name.text;
+  return null;
 }
 
 function scriptKindFor(file: string): ts.ScriptKind {
@@ -90,29 +111,32 @@ function isCodeLine(line: string): boolean {
   return !(trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*"));
 }
 
-function collectUnits(source: ts.SourceFile): ts.Node[] {
-  const units: ts.Node[] = [];
-  const visit = (node: ts.Node): void => {
-    if (isUnit(node)) units.push(node);
-    node.forEachChild(visit);
+// An inline callback with no enclosing unit has nowhere to fold into, so it becomes its
+// own unit — otherwise its complexity would leave both sides of the ratio.
+function collectUnits(source: ts.SourceFile): Set<ts.Node> {
+  const units = new Set<ts.Node>();
+  const visit = (node: ts.Node, insideUnit: boolean): void => {
+    const unit = isNamedUnit(node) || (isFunctionLike(node) && !insideUnit);
+    if (unit) units.add(node);
+    node.forEachChild((child) => visit(child, insideUnit || unit));
   };
-  source.forEachChild(visit);
+  source.forEachChild((node) => visit(node, false));
   return units;
 }
 
-function walkOwnNodes(unit: ts.Node, visit: (node: ts.Node) => void): void {
+function walkOwnNodes(unit: ts.Node, units: Set<ts.Node>, visit: (node: ts.Node) => void): void {
   const step = (node: ts.Node): void => {
-    if (node !== unit && isUnit(node)) return;
+    if (node !== unit && units.has(node)) return;
     visit(node);
     node.forEachChild(step);
   };
   step(unit);
 }
 
-function nestedUnits(unit: ts.Node): ts.Node[] {
+function nestedUnits(unit: ts.Node, units: Set<ts.Node>): ts.Node[] {
   const nested: ts.Node[] = [];
   const step = (node: ts.Node, depth: number): void => {
-    if (isUnit(node) && depth > 0) {
+    if (units.has(node) && depth > 0) {
       nested.push(node);
       return;
     }
@@ -122,12 +146,12 @@ function nestedUnits(unit: ts.Node): ts.Node[] {
   return nested;
 }
 
-function ownLineNumbers(unit: ts.Node, source: ts.SourceFile): Set<number> {
+function ownLineNumbers(unit: ts.Node, units: Set<ts.Node>, source: ts.SourceFile): Set<number> {
   const start = source.getLineAndCharacterOfPosition(unit.getStart(source)).line;
   const end = source.getLineAndCharacterOfPosition(unit.end).line;
   const lines = new Set<number>();
   for (let line = start; line <= end; line++) lines.add(line);
-  for (const nested of nestedUnits(unit)) {
+  for (const nested of nestedUnits(unit, units)) {
     const nestedStart = source.getLineAndCharacterOfPosition(nested.getStart(source)).line;
     const nestedEnd = source.getLineAndCharacterOfPosition(nested.end).line;
     for (let line = nestedStart + 1; line <= nestedEnd; line++) lines.delete(line);
@@ -138,13 +162,14 @@ function ownLineNumbers(unit: ts.Node, source: ts.SourceFile): Set<number> {
 export function analyzeSource(file: string, text: string): FunctionMetric[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKindFor(file));
   const lines = text.split("\n");
-  return collectUnits(source).map((unit) => {
+  const units = collectUnits(source);
+  return [...units].map((unit) => {
     let cyclomatic = 1;
-    walkOwnNodes(unit, (node) => {
+    walkOwnNodes(unit, units, (node) => {
       if (isDecision(node)) cyclomatic += 1;
     });
     let sloc = 0;
-    for (const line of ownLineNumbers(unit, source)) {
+    for (const line of ownLineNumbers(unit, units, source)) {
       if (isCodeLine(lines[line] ?? "")) sloc += 1;
     }
     return {

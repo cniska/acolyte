@@ -86,6 +86,35 @@ describe("analyzeSource units", () => {
     expect(complexityOf(source, "inner")).toBe(2);
   });
 
+  test("a top-level callback with no enclosing unit is measured rather than dropped", () => {
+    const source = [
+      "const handlers = [",
+      "  (a: boolean) => (a ? 1 : 0),",
+      "  (b: boolean) => (b ? 2 : 0),",
+      "];",
+    ].join("\n");
+    const metrics = analyzeSource("sample.ts", source);
+    expect(metrics.length).toBe(2);
+    expect(metrics.map((metric) => metric.cyclomatic)).toEqual([2, 2]);
+  });
+
+  test("a module-scope IIFE is measured", () => {
+    const source = ["const value = (() => {", "  if (process.env.HOME) return 1;", "  return 0;", "})();"].join("\n");
+    const metrics = analyzeSource("sample.ts", source);
+    expect(metrics.length).toBe(1);
+    expect(metrics[0].cyclomatic).toBe(2);
+  });
+
+  test("a promoted callback is named after the call it is passed to", () => {
+    const source = ["register((a: boolean) => {", "  return a ? 1 : 0;", "});"].join("\n");
+    expect(analyzeSource("sample.ts", source).map((metric) => metric.name)).toEqual(["register() callback"]);
+  });
+
+  test("a method on a class expression is named after the binding", () => {
+    const source = ["const Store = class {", "  read(key: string) {", "    return key;", "  }", "};"].join("\n");
+    expect(analyzeSource("sample.ts", source).map((metric) => metric.name)).toEqual(["Store.read"]);
+  });
+
   test("methods and accessors are named after their class", () => {
     const source = [
       "class Store {",
