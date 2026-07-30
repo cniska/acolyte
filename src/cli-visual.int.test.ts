@@ -118,6 +118,7 @@ describe("cli visual regression", () => {
           memory                 manage memory
           config                 manage config
           skill <name> [prompt]  run a prompt with an active skill
+          tool                   run a tool directly
           logs                   view server logs
           update                 check for and install updates
           trace                  inspect server lifecycle traces

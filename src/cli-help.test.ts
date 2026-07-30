@@ -19,17 +19,17 @@ const authHelp: CliCommandHelp = {
 
 const toolHelp: CliCommandHelp = {
   command: "tool",
-  usage: "acolyte tool <tool-id> [args...]",
+  usage: "acolyte tool <tool-id> ['<json-input>']",
   description: "run a tool directly",
-  examples: ['acolyte tool file-find "src/**/*.ts"'],
+  examples: ['acolyte tool file-find \'{"pattern":"src/**/*.ts"}\''],
 };
 
 describe("cli-help", () => {
-  test("createUsageCommandRows excludes tool and includes core commands", () => {
+  test("createUsageCommandRows lists every registered command", () => {
     const rows = createUsageCommandRows([runHelp, authHelp, toolHelp]);
     expect(rows.some((row) => row.command.startsWith("auth"))).toBe(true);
     expect(rows.some((row) => row.command.startsWith("run"))).toBe(true);
-    expect(rows.some((row) => row.command.startsWith("tool"))).toBe(false);
+    expect(rows.some((row) => row.command.startsWith("tool"))).toBe(true);
   });
 
   test("createUsageOptionRows includes help and version options", () => {
