@@ -13,6 +13,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - slash commands and skill invocation
 - engineering skills for structured workflows (plan, build, review)
 - an always-available skill roster the agent activates and deactivates on demand
+- project and user skills, discovered from `.agents/skills` in the workspace and the home directory
 - configurable locale
 - multi-line input
 - custom terminal renderer with React reconciler and structured output

@@ -1,20 +1,22 @@
 import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { t } from "./i18n";
-import { findSkillByName } from "./skill-ops";
+import type { SkillMeta } from "./skill-contract";
 
 export const runSkillsPanel: CommandHandler = async (ctx) => {
   await ctx.openSkillsPanel();
   return { stop: true, userText: ctx.text };
 };
 
-export async function handleSkillActivation(ctx: CommandContext): Promise<CommandResult | null> {
-  if (!ctx.activateSkill) return null;
-  const [head, ...rest] = ctx.resolvedText.split(/\s+/);
-  const skillName = (head ?? "").slice(1);
-  const skill = findSkillByName(skillName);
-  if (!skill) return null;
-  const args = rest.join(" ").trim();
+export function createSkillHandler(skill: SkillMeta): CommandHandler {
+  return async (ctx, parsed) => activateSkill(ctx, skill, parsed.args.join(" ").trim());
+}
+
+async function activateSkill(ctx: CommandContext, skill: SkillMeta, args: string): Promise<CommandResult> {
+  if (!ctx.activateSkill) {
+    ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
+    return { stop: true, userText: ctx.text };
+  }
   const ok = await ctx.activateSkill(skill.name, args);
   if (!ok) {
     ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);

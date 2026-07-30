@@ -13,7 +13,7 @@ export function isActiveSkillsPayload(value: unknown): value is ActiveSkill[] {
   return activeSkillsSchema.safeParse(value).success;
 }
 
-export const skillSourceSchema = z.enum(["bundled", "project"]);
+export const skillSourceSchema = z.enum(["bundled", "user", "project"]);
 export type SkillSource = z.infer<typeof skillSourceSchema>;
 
 export const skillMetaSchema = z.object({
@@ -29,6 +29,8 @@ export const skillLoadDiagnosticsSchema = z.object({
   loaded: z.number().int().nonnegative(),
   invalid: z.number().int().nonnegative(),
   duplicates: z.number().int().nonnegative(),
+  overrides: z.number().int().nonnegative(),
+  builtinCollisions: z.number().int().nonnegative(),
   readErrors: z.number().int().nonnegative(),
   missingSkillFiles: z.number().int().nonnegative(),
   scannedAt: z.string().nullable(),
@@ -43,6 +45,8 @@ export function createEmptySkillLoadDiagnostics(): SkillLoadDiagnostics {
     loaded: 0,
     invalid: 0,
     duplicates: 0,
+    overrides: 0,
+    builtinCollisions: 0,
     readErrors: 0,
     missingSkillFiles: 0,
     scannedAt: null,

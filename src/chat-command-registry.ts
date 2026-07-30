@@ -18,10 +18,12 @@ import { runModel } from "./chat-commands-model";
 import { runResume } from "./chat-commands-resume";
 import { runClear, runExit, runNew } from "./chat-commands-session";
 import { runSessions } from "./chat-commands-sessions";
-import { runSkillsPanel } from "./chat-commands-skill";
+import { createSkillHandler, runSkillsPanel } from "./chat-commands-skill";
 import { runStatus } from "./chat-commands-status";
 import { runUsage } from "./chat-commands-usage";
 import { runWorkspacesList, runWorkspacesNew, runWorkspacesSwitch } from "./chat-commands-workspaces";
+import type { SkillMeta } from "./skill-contract";
+import { getLoadedSkills } from "./skill-ops";
 
 const BUILTIN_COMMANDS: CommandEntry[] = [
   { spec: NEW_SPEC, run: runNew },
@@ -45,9 +47,28 @@ const BUILTIN_COMMANDS: CommandEntry[] = [
   { spec: EXIT_SPEC, run: runExit },
 ];
 
-/** Commands available right now: a flagged command is absent while its flag is off, never inert. */
+function skillEntry(skill: SkillMeta): CommandEntry {
+  return {
+    spec: {
+      name: skill.name,
+      source: skill.source,
+      helpKey: "chat.slash.help.skill",
+      usage: `/${skill.name} [prompt]`,
+      subcommands: [],
+    },
+    run: createSkillHandler(skill),
+  };
+}
+
+/** A project or user skill takes a builtin's name: the user wrote it deliberately, so their authority wins. */
 export function resolveCommandRegistry(): CommandEntry[] {
-  return BUILTIN_COMMANDS.filter((entry) => entry.spec.flag === undefined || appConfig.features[entry.spec.flag]);
+  const skills = getLoadedSkills().map(skillEntry);
+  const shadowing = new Set(skills.filter((entry) => entry.spec.source !== "bundled").map((entry) => entry.spec.name));
+  const builtins = BUILTIN_COMMANDS.filter(
+    (entry) =>
+      (entry.spec.flag === undefined || appConfig.features[entry.spec.flag]) && !shadowing.has(entry.spec.name),
+  );
+  return [...builtins, ...skills];
 }
 
 export function findCommandEntry(name: string): CommandEntry | null {

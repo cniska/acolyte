@@ -1,12 +1,26 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
-import { findSkillByName, loadSkills, readSkillInstructions, resetSkillCache } from "./skill-ops";
+import {
+  findSkillByName,
+  getSkillLoadDiagnostics,
+  loadSkills,
+  readSkillInstructions,
+  resetSkillCache,
+} from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
+const originalHome = process.env.HOME;
+
+// The loader reads ~/.agents/skills, so every case owns its home directory rather than the developer's.
+beforeEach(() => {
+  process.env.HOME = createDir("acolyte-skills-home-");
+});
+
 afterEach(() => {
+  process.env.HOME = originalHome;
   resetSkillCache();
   cleanupDirs();
 });
@@ -125,5 +139,45 @@ describe("readSkillInstructions", () => {
     writeFileSync(file, "---\nname: demo\ndescription: Demo\n---\n\nDo: $ARGUMENTS", "utf8");
     const body = await readSkillInstructions(file, "");
     expect(body).toBe("Do: ");
+  });
+});
+
+describe("skill scopes", () => {
+  test("discovers a user skill from the home directory", async () => {
+    const home = createDir("acolyte-skills-user-");
+    process.env.HOME = home;
+    writeSkill(home, "globaldemo", "---\nname: globaldemo\ndescription: User scope\n---", "# User");
+
+    const skills = await loadSkills(createDir("acolyte-skills-cwd-"));
+    const found = skills.find((s) => s.name === "globaldemo");
+    expect(found?.source).toBe("user");
+    expect(found?.description).toBe("User scope");
+  });
+
+  test("a project skill wins the name and the user copy counts as a duplicate", async () => {
+    const home = createDir("acolyte-skills-user-dup-");
+    process.env.HOME = home;
+    writeSkill(home, "shared", "---\nname: shared\ndescription: User copy\n---", "# User");
+    const cwd = createDir("acolyte-skills-project-dup-");
+    writeSkill(cwd, "shared", "---\nname: shared\ndescription: Project copy\n---", "# Project");
+
+    const skills = await loadSkills(cwd);
+    const shared = skills.filter((s) => s.name === "shared");
+    expect(shared).toHaveLength(1);
+    expect(shared[0].source).toBe("project");
+    expect(shared[0].description).toBe("Project copy");
+    expect(getSkillLoadDiagnostics().duplicates).toBe(1);
+  });
+
+  test("a scanned skill replacing a bundled one is counted", async () => {
+    const cwd = createDir("acolyte-skills-override-");
+    const bundledName = BUNDLED_SKILLS[0].name;
+    writeSkill(cwd, bundledName, `---\nname: ${bundledName}\ndescription: Mine\n---`, "# Mine");
+
+    const skills = await loadSkills(cwd);
+    const replaced = skills.filter((s) => s.name === bundledName);
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0].source).toBe("project");
+    expect(getSkillLoadDiagnostics().overrides).toBe(1);
   });
 });

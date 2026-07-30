@@ -91,7 +91,7 @@ timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 s
 
 ## Skills and extensibility
 
-Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/`; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
+Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `<cwd>/.agents/skills/` for a project and `~/.agents/skills/` globally; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
 
 The other compared projects also document skills or equivalent skill and plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
 

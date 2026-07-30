@@ -19,6 +19,10 @@ Acolyte uses one XDG-style global layout on macOS and Linux. Environment variabl
 
 Project-scoped config is always at `<cwd>/.acolyte/config.toml`, regardless of platform. Project `.acolyte/` is workspace metadata, not global state.
 
+## Skills
+
+Skills load from `<cwd>/.agents/skills` and `~/.agents/skills`. Both sit outside the XDG layout because `.agents/` is the cross-tool SKILL.md convention, so global skills are shared with every agent that reads it.
+
 ## Key files
 
 - `src/paths.ts` — path resolution logic

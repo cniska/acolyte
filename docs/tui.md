@@ -52,11 +52,13 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/memory list [all|user|project] [--archived]` — show memory notes
 - `/memory add [--user|--project] <text>` — save memory note
 - `/memory rm <id-prefix>` — remove memory note
-- `/skill <name>` — run a skill command
+- `/<skill-name> [prompt]` — run a skill
 - `/skills` — show skills picker
 - `/exit` — exit chat
 
 Every command, its subcommands, and its help text come from one descriptor per command (`chat-command-specs.ts`), so the completion menu, the `?` pane, and dispatch cannot disagree. The menu offers a command and its declared subcommands; argument forms like `--archived` appear in the `?` pane rather than as completions.
+
+Skills load from `<cwd>/.agents/skills` and `~/.agents/skills` and are invoked by name. A project or user skill replaces a built-in command of the same name, and the `/skills` picker names the scope each one resolved from.
 
 ## File attachments
 
