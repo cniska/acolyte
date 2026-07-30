@@ -1,4 +1,4 @@
-import { type Dirent, existsSync } from "node:fs";
+import { type Dirent, existsSync, statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
@@ -80,6 +80,17 @@ async function scanSkills(cwd = process.cwd()): Promise<{ skills: SkillMeta[]; d
   return { skills: found, diagnostics };
 }
 
+/** `readdir` reports a symlinked directory as a link, and populating a skill root by symlink is a supported layout. */
+function isSkillDir(root: string, entry: Dirent): boolean {
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try {
+    return statSync(join(root, entry.name)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 async function scanSkillRoot(
   root: string,
   source: Extract<SkillSource, "project" | "user">,
@@ -98,9 +109,9 @@ async function scanSkillRoot(
   }
 
   for (const entry of dirs) {
-    if (!entry.isDirectory()) continue;
+    if (!isSkillDir(root, entry)) continue;
     diagnostics.scannedDirs += 1;
-    const dirName = entry.name as string;
+    const dirName = entry.name;
     const skillPath = join(root, dirName, "SKILL.md");
     if (!existsSync(skillPath)) {
       diagnostics.missingSkillFiles += 1;

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
 import {
@@ -167,6 +167,33 @@ describe("skill scopes", () => {
     expect(shared[0].source).toBe("project");
     expect(shared[0].description).toBe("Project copy");
     expect(getSkillLoadDiagnostics().duplicates).toBe(1);
+  });
+
+  test("discovers a user skill whose directory is a symlink", async () => {
+    const home = createDir("acolyte-skills-symlink-home-");
+    process.env.HOME = home;
+    const source = createDir("acolyte-skills-symlink-source-");
+    writeSkill(source, "linked", "---\nname: linked\ndescription: Linked scope\n---", "# Linked");
+    const userRoot = join(home, ".agents", "skills");
+    mkdirSync(userRoot, { recursive: true });
+    symlinkSync(join(source, ".agents", "skills", "linked"), join(userRoot, "linked"), "dir");
+
+    const skills = await loadSkills(createDir("acolyte-skills-symlink-cwd-"));
+    const found = skills.find((s) => s.name === "linked");
+    expect(found?.source).toBe("user");
+    expect(found?.description).toBe("Linked scope");
+  });
+
+  test("a broken symlink is skipped without counting as a missing skill file", async () => {
+    const home = createDir("acolyte-skills-broken-home-");
+    process.env.HOME = home;
+    const userRoot = join(home, ".agents", "skills");
+    mkdirSync(userRoot, { recursive: true });
+    symlinkSync(join(home, "nowhere"), join(userRoot, "dangling"), "dir");
+
+    const skills = await loadSkills(createDir("acolyte-skills-broken-cwd-"));
+    expect(skills).toHaveLength(BUNDLED_COUNT);
+    expect(getSkillLoadDiagnostics().missingSkillFiles).toBe(0);
   });
 
   test("a scanned skill replacing a bundled one is counted", async () => {
