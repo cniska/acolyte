@@ -25,8 +25,7 @@ import { createSessionContext } from "./tool-session";
 import { createUndoToolkit } from "./undo-toolkit";
 import { createWebToolkit } from "./web-toolkit";
 
-// biome-ignore lint/suspicious/noExplicitAny: ToolDefinition variance requires any here
-type ToolMap = Record<string, ToolDefinition<any>>;
+type ToolMap = Record<string, ToolDefinition>;
 
 type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
   ReturnType<typeof createCodeToolkit> &
@@ -44,8 +43,6 @@ type RegisteredToolkit = ReturnType<typeof createFileToolkit> &
 export type Toolset = {
   [Key in keyof RegisteredToolkit]: RegisteredToolkit[Key];
 };
-
-type AnyToolDefinition = ToolDefinition<unknown>;
 
 export const TOOLKIT_REGISTRY: {
   id: string;
@@ -133,12 +130,12 @@ function collectTools(
   return combined;
 }
 
-function asToolDefinitionsById(entries: ToolMap): Record<string, AnyToolDefinition> {
-  const byId: Record<string, AnyToolDefinition> = {};
+function asToolDefinitionsById(entries: ToolMap): Record<string, ToolDefinition> {
+  const byId: Record<string, ToolDefinition> = {};
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
-    byId[tool.id] = tool as AnyToolDefinition;
+    byId[tool.id] = tool;
   }
   return byId;
 }

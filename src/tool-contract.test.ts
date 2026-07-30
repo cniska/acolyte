@@ -19,7 +19,7 @@ describe("createTool", () => {
       },
     });
 
-    await tool.execute({ path: "src/index.ts", extra: 1 } as unknown as { path: string }, "call_1");
+    await tool.execute({ path: "src/index.ts", extra: 1 }, "call_1");
     expect(seen).toEqual({ path: "src/index.ts" });
   });
 
@@ -35,7 +35,7 @@ describe("createTool", () => {
       execute: async () => ({ result: { ok: true as const } }),
     });
 
-    await expect(tool.execute({ path: "" } as unknown as { path: string }, "call_2")).rejects.toThrow();
+    await expect(tool.execute({ path: "" }, "call_2")).rejects.toThrow();
   });
 
   test("passes through input for raw json schema tools", async () => {
@@ -58,7 +58,7 @@ describe("createTool", () => {
       },
     });
 
-    await tool.execute({ q: "hello", extra: true } as unknown as { q: string }, "call_3");
+    await tool.execute({ q: "hello", extra: true }, "call_3");
     expect(seen).toEqual({ q: "hello", extra: true });
   });
 
@@ -75,7 +75,7 @@ describe("createTool", () => {
     });
 
     const { result } = await tool.execute({}, "call_cap");
-    expect((result as { output: string }).output.length).toBe(500_000);
+    expect(result.output.length).toBe(500_000);
   });
 
   test("preserves output under safety cap", async () => {
@@ -92,7 +92,7 @@ describe("createTool", () => {
     });
 
     const { result } = await tool.execute({}, "call_no_cap");
-    expect((result as { output: string }).output).toBe(content);
+    expect(result.output).toBe(content);
   });
 
   test("stores json-schema form on tool definition", () => {
