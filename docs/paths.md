@@ -21,7 +21,7 @@ Project-scoped config is always at `<cwd>/.acolyte/config.toml`, regardless of p
 
 ## Skills
 
-Skills load from `<cwd>/.agents/skills` and `~/.agents/skills`. Both sit outside the XDG layout because `.agents/` is the cross-tool SKILL.md convention, so global skills are shared with every agent that reads it.
+Skills load from `<cwd>/.agents/skills` and `~/.agents/skills`, outside the XDG layout: `.agents/` is the cross-tool SKILL.md convention.
 
 ## Key files
 

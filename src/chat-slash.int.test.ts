@@ -31,6 +31,14 @@ describe("chat-slash with loaded skills", () => {
     expect(shortcutItems().some((item) => item.key === "/dogfood")).toBe(false);
   });
 
+  test("a skill is offered once", async () => {
+    const tmpDir = createDir("acolyte-slash-once-");
+    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/dogfood"]);
+  });
+
   test("isKnownSlashToken recognizes skill names", async () => {
     const tmpDir = createDir("acolyte-slash-known-");
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");

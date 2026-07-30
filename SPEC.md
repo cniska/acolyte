@@ -44,8 +44,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-16** — Shell command execution and workspace test execution through the detected test command.
 - **FR-17** — Web search and web fetch for external information.
 - **FR-18** — Session search over the current conversation's history, available to the model on demand.
-- **FR-19** — Skill activation/deactivation: a roster of skills is always advertised, and the model activates or deactivates them at runtime rather than all being injected upfront.
-- **FR-19a** — Skills are discovered from `<cwd>/.agents/skills` and `~/.agents/skills`. A name claimed in both resolves to the project copy; a project or user skill replaces a bundled skill of the same name, and a bundled skill never replaces a built-in command.
+- **FR-19** — Skill activation/deactivation: a roster of skills is always advertised, and the model activates or deactivates them at runtime rather than all being injected upfront. Skills are discovered from `.agents/skills` in the workspace and in the home directory; a name claimed in both resolves to the workspace copy, a project or user skill replaces a bundled skill of the same name, and a bundled skill never replaces a built-in command.
 - **FR-20** — Inline multi-step task checklist the model maintains and the client renders.
 - **FR-21** — MCP client: when enabled, external MCP servers (stdio or HTTP transport) are connected and their tools appear alongside native tools.
 
@@ -160,12 +159,12 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-6** — Only active input handlers receive key events; terminal key parsing is centralized, with unambiguous modifier reporting on terminals that support the enhanced keyboard protocol.
 - **TUI-7** — A live status line shows location, model, token usage, active skill, and PR context, updating token totals during a turn.
 - **TUI-8** — Slash commands cover session control (new, clear, resume, sessions), model change, status, usage, memory management, skill run and skills picker, and exit; the workspaces commands appear only when that flag is enabled. A skill runs as `/<skill-name>`, and a project or user skill of the same name replaces the built-in command.
-- **TUI-8a** — A command, its subcommands, and its help text come from one descriptor, so the completion menu offers only what dispatch can run. The menu lists a command and its declared subcommands; argument forms appear in the help pane.
 - **TUI-9** — Fuzzy autocomplete is offered for file paths, sessions, commands, and skills.
 - **TUI-10** — A queued message typed while a turn is running is handled cooperatively and processed in order rather than dropped or interleaved mid-step.
 - **TUI-11** — A user message preserves its whitespace in the transcript: leading indentation and internal whitespace runs are kept (tabs expanded to fixed-width stops), and a wrapped line repeats its indentation on each continuation row. Inline markup — backtick `code`, bold, and file paths — renders styled, with its delimiters interpreted. A fenced code block renders syntax-highlighted like assistant output, its fence interpreted; unfenced text stays verbatim.
 - **TUI-12** — Exiting the chat client releases its connection immediately, so an in-flight task is cancelled rather than left running to completion after the user has quit.
-- **TUI-13** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
+- **TUI-13** — A command, its subcommands, and its help text come from one descriptor, so the completion menu offers only what dispatch can run: it lists a command and its declared subcommands, while argument forms appear in the help pane.
+- **TUI-14** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
 
 ## 8. Observability requirements (OBS)
 
