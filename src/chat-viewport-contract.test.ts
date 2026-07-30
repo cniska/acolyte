@@ -21,7 +21,6 @@ test("viewport contracts require semantic sections and renderer-independent comp
       suggestions: { kind: "none" },
       showHelp: false,
       helpEntries: [],
-      helpBreakpoint: 92,
     },
     sections: [{ id: "composer", kind: "composer", finalized: false }],
   });

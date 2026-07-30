@@ -16,7 +16,6 @@ const base = {
   suggestions: { kind: "none" as const },
   showHelp: false,
   helpEntries: [],
-  helpBreakpoint: 92,
 };
 
 test("composer layout preserves box frame and continuation prompt", () => {

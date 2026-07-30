@@ -3,9 +3,6 @@ import { slashCommandRows } from "./chat-slash";
 import { t } from "./i18n";
 import { envWithoutGitState } from "./tool-utils";
 
-/** Terminal width at which help pane switches from 1 to 2 columns. */
-export const BREAKPOINT_TWO_COLUMN = 92;
-
 export type ShortcutItem = { key: string; description: string };
 
 /** Help entries, resolved per call so flag-gated commands stay absent while their flag is off. */

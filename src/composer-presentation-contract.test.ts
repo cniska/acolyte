@@ -27,7 +27,6 @@ test("composer contract preserves picker, suggestions, and help semantics", () =
     },
     showHelp: true,
     helpEntries: [{ key: "/model", description: "Change model" }],
-    helpBreakpoint: 92,
   });
   expect(parsed.success).toBe(true);
 });
