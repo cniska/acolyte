@@ -8,7 +8,7 @@ Acolyte sessions persist conversation history, model selection, token usage, and
 - one active task runs at a time per session
 - session state persists outside lifecycle and is passed in per request
 - messages are appended during chat and persisted at checkpoints
-- token usage is tracked per response with optional prompt and prompt-cache breakdowns
+- token usage is tracked per response with optional prompt and prompt-cache breakdowns; an interrupted or failed turn records the usage it streamed before it ended
 
 ## Lifecycle
 

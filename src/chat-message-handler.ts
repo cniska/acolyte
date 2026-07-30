@@ -5,6 +5,7 @@ import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
+import { createMessageId } from "./chat-session";
 import { addActiveSkill, removeActiveSkill } from "./chat-skill-activator";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import type { TranscriptRow } from "./chat-transcript-contract";
@@ -101,6 +102,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     input.setInterrupt(() => controller.abort());
     const pendingStartedAt = Date.now();
     const runningToolCallIds = new Set<string>();
+    // The turn's cumulative usage as last streamed. A turn that never resolves has no
+    // `turn.tokenEntry`, so this is the only record of what it spent.
+    const streamed: { usage: { inputTokens: number; outputTokens: number } | null } = { usage: null };
     const streamState = createMessageStreamState({
       setRows: input.setRows,
       setTranscriptPresentation: input.setTranscriptPresentation,
@@ -140,7 +144,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
               }
               break;
             case "usage":
-              input.setRunningUsage({ inputTokens: event.inputTokens, outputTokens: event.outputTokens });
+              streamed.usage = { inputTokens: event.inputTokens, outputTokens: event.outputTokens };
+              input.setRunningUsage(streamed.usage);
               break;
             case "tool-call":
               runningToolCallIds.add(event.toolCallId);
@@ -205,6 +210,24 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.setRunningUsage(null);
       await input.persist();
     } catch (error) {
+      // No resolved turn means no `turn.tokenEntry`, so the streamed total is the only
+      // record of what this turn spent. Commit it before any exit from this block, and
+      // clear the running counter in the same batch: the status line sums committed plus
+      // running, so a lingering running value double-counts the same tokens.
+      const streamedUsage = streamed.usage;
+      if (streamedUsage) {
+        input.currentSession.tokenUsage.push({
+          id: createMessageId(),
+          usage: {
+            inputTokens: streamedUsage.inputTokens,
+            outputTokens: streamedUsage.outputTokens,
+            totalTokens: streamedUsage.inputTokens + streamedUsage.outputTokens,
+          },
+        });
+        input.currentSession.updatedAt = input.nowIso();
+        input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
+      }
+      input.setRunningUsage(null);
       const remoteTaskId = remoteTaskIdFromError(error);
       if (!isAbortError(error) && remoteTaskId) {
         const followupController = new AbortController();
@@ -224,17 +247,17 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         }
       }
       const partialContent = streamState.streamedText().trim();
-      if (partialContent.length > 0) {
-        const partialMessage = input.createMessage("assistant", partialContent);
+      const partialMessage = partialContent.length > 0 ? input.createMessage("assistant", partialContent) : null;
+      if (partialMessage) {
         input.currentSession.messages.push(partialMessage);
         input.currentSession.updatedAt = input.nowIso();
-        await input.persist().catch(() => {});
       } else if (isAbortError(error)) {
         // No assistant content was generated — remove the orphaned user
         // message so the model doesn't try to answer it on the next turn.
         const idx = input.currentSession.messages.lastIndexOf(userMessage);
         if (idx >= 0) input.currentSession.messages.splice(idx, 1);
       }
+      if (partialMessage || streamedUsage) await input.persist().catch(() => {});
       if (isAbortError(error)) {
         streamState.finalize();
         input.setRows((current) => [

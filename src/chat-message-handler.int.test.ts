@@ -385,6 +385,94 @@ describe("chat message handler", () => {
     expect(calls.runningUsageSets.at(-1)).toBeNull();
   });
 
+  test("commits the streamed usage of an interrupted turn", async () => {
+    // Regression: an interrupted turn resolves no `turn.tokenEntry`, so its spend used
+    // to vanish from the session while the running counter kept the stale value.
+    const { startAssistantTurn, interrupt, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 40 });
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 340 });
+          return await new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 1200, outputTokens: 340, totalTokens: 1540 },
+    ]);
+    expect(calls.tokenUsageSnapshots.at(-1)).toEqual(session.tokenUsage);
+    const tokenIdx = calls.order.indexOf("token-commit");
+    expect(tokenIdx).toBeGreaterThanOrEqual(0);
+    expect(calls.order.indexOf("running-clear")).toBeGreaterThan(tokenIdx);
+    expect(calls.order.lastIndexOf("persist")).toBeGreaterThan(tokenIdx);
+    expect(calls.runningUsageSets.at(-1)).toBeNull();
+  });
+
+  test("commits the streamed usage of an interrupted turn that streamed prose", async () => {
+    const { startAssistantTurn, interrupt, session } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "partial answer" });
+          input.onEvent({ type: "usage", inputTokens: 900, outputTokens: 60 });
+          return await new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    expect(session.messages.at(-1)?.content).toBe("partial answer");
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 900, outputTokens: 60, totalTokens: 960 },
+    ]);
+  });
+
+  test("commits the streamed usage of a turn that fails mid-stream", async () => {
+    const { handleMessage, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "usage", inputTokens: 800, outputTokens: 120 });
+          throw new Error("provider exploded");
+        },
+      }),
+    });
+
+    await handleMessage("ask something expensive");
+
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 800, outputTokens: 120, totalTokens: 920 },
+    ]);
+    expect(calls.runningUsageSets.at(-1)).toBeNull();
+  });
+
   test("completion turn: streamed answer is not duplicated by the authoritative commit", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({

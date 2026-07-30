@@ -374,7 +374,9 @@ export function createMessageHandlerHarness(overrides?: {
     setValue: (next) => {
       calls.setValue.push(next);
     },
-    persist: async () => {},
+    persist: async () => {
+      calls.order.push("persist");
+    },
     exit: () => {},
     openSkillsPanel: async () => {},
     activateSkill: async () => true,

@@ -182,7 +182,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **NF-5** — Errors are classified by a structured code/kind, never by matching message strings; error messages are descriptive enough for the model to act on.
 - **NF-6** — A failure in a non-critical subsystem does not fail the request: trace-store open/write failure warns once per session and continues; a memory commit failure is logged and swallowed; an effect (format/lint) failure is recorded and does not abort the tool result.
 - **NF-7** — Sessions are bounded by per-call context pressure, not by a cumulative token cap, so long-lived sessions remain usable.
-- **NF-8** — Each completed request reports input, output, total, and input-budget token counts with a prompt breakdown separating system, tools, skills, memory, and messages.
+- **NF-8** — Each completed request reports input, output, total, and input-budget token counts with a prompt breakdown separating system, tools, skills, memory, and messages. An interrupted or failed request records the usage it streamed before it ended, so the session accounts for spend whether or not a turn completes.
 
 ### 9.1 Testing
 
