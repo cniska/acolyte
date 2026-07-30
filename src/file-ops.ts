@@ -377,7 +377,7 @@ export async function writeTextFile(input: {
   const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
-    `overwritten=${overwrite ? "true" : "false"}`,
+    `overwritten=${previousContent !== null ? "true" : "false"}`,
     "",
     diff,
   ];
