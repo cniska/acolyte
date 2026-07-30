@@ -17,7 +17,7 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 
 ## TUI unit testing
 
-- Headless input logic (keystroke → edit action → callbacks) is unit-tested at its seam: render the handler under a fake `InputContext` that captures the registered handler, then drive it with synthetic `KeyEvent`s. Byte-level key parsing stays in `prompt-keymap`'s own tests, so a handler test asserts behavior, not escape sequences.
+- Headless input logic (keystroke → edit action → callbacks) is unit-tested in two layers. Keyboard policy is pure and tested directly in `prompt-keymap`'s own tests: which chord a key means, and which edit that chord implies for a given buffer, including the guards that decide an edit is a no-op. The handler test covers only what the stateful shim owns — meta-prefix timing, state that outlives a render, and a suppressed edit emitting nothing — by rendering it under a fake `InputContext` that captures the registered handler and driving it with synthetic `KeyEvent`s. Byte-level key parsing stays in `tui/input`'s tests, so neither layer asserts escape sequences.
 - Layout parity between two render paths (the live tail vs. scrollback, or chat vs. CLI) is pinned by rendering both from one scene and asserting byte-equality, so a forked renderer cannot pass silently.
 
 ## Integration test boundary
