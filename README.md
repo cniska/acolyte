@@ -20,6 +20,8 @@ curl -fsSL https://acolyte.sh/install | sh
 
 Installs the latest released binary for macOS and Linux. It keeps itself up to date automatically — see [Updates](docs/updates.md). To run from source instead, see [Local development](#local-development).
 
+Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and workspaces are Git worktrees.
+
 ## Runtime model
 
 ```text
@@ -37,7 +39,7 @@ The codebase is TypeScript on Bun, with Zod validation at runtime boundaries and
 
 ## Local development
 
-Requires [Bun](https://bun.sh) and Git.
+Requires [Bun](https://bun.sh) and Git 2.14 or newer.
 
 ```bash
 git clone https://github.com/cniska/acolyte.git

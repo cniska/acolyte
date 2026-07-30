@@ -71,6 +71,8 @@ lifecycle → budget → toolkit → registry
 - **budget** — step-budget check inlined into tool execution
 - **toolkit** — domain tool definitions
 - **registry** — toolkit registration and agent-facing tool surface
+- **diff** — every file and code edit reported through `git diff --no-index` over scratch copies of its before and after content
+- **git** — `git-ops.ts` owns invocation; `hermeticGitEnv` pins the config Git reads, `requireGitVersion` requires 2.14 or newer
 - **details** — see [Tooling](./tooling.md)
 
 ## Lifecycle flow
