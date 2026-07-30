@@ -80,8 +80,9 @@ function unitName(node: ts.Node): string {
     const owner = ownerName(node);
     return owner ? `${owner}.${name}` : name;
   }
-  const parent = node.parent;
+  const parent = bindingParent(node);
   if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
+  if (parent && ts.isExportAssignment(parent)) return "default export";
   if (parent && ts.isPropertyDeclaration(parent) && ts.isIdentifier(parent.name)) {
     const owner = ownerName(parent);
     return owner ? `${owner}.${parent.name.text}` : parent.name.text;
@@ -92,6 +93,16 @@ function unitName(node: ts.Node): string {
     if (label) return `${label}() callback`;
   }
   return "<anonymous>";
+}
+
+// An IIFE is bound above the call that invokes it, while a callback argument is bound by
+// the call itself — which is what distinguishes `const x = (() => {})()` from `run(() => {})`.
+function bindingParent(node: ts.Node): ts.Node | undefined {
+  let current: ts.Node = node;
+  while (current.parent && ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  const parent = current.parent;
+  if (parent && ts.isCallExpression(parent) && parent.expression === current) return parent.parent;
+  return parent;
 }
 
 function calleeLabel(call: ts.CallExpression): string | null {
@@ -146,6 +157,8 @@ function nestedUnits(unit: ts.Node, units: Set<ts.Node>): ts.Node[] {
   return nested;
 }
 
+// Every physical line belongs to the innermost unit spanning it, so a line is never
+// counted twice across units and the reported SLOC matches the file.
 function ownLineNumbers(unit: ts.Node, units: Set<ts.Node>, source: ts.SourceFile): Set<number> {
   const start = source.getLineAndCharacterOfPosition(unit.getStart(source)).line;
   const end = source.getLineAndCharacterOfPosition(unit.end).line;
@@ -154,7 +167,7 @@ function ownLineNumbers(unit: ts.Node, units: Set<ts.Node>, source: ts.SourceFil
   for (const nested of nestedUnits(unit, units)) {
     const nestedStart = source.getLineAndCharacterOfPosition(nested.getStart(source)).line;
     const nestedEnd = source.getLineAndCharacterOfPosition(nested.end).line;
-    for (let line = nestedStart + 1; line <= nestedEnd; line++) lines.delete(line);
+    for (let line = nestedStart; line <= nestedEnd; line++) lines.delete(line);
   }
   return lines;
 }

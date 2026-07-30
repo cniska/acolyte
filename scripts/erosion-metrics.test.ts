@@ -36,6 +36,14 @@ describe("analyzeSource complexity", () => {
     expect(complexityOf(source, "f")).toBe(4);
   });
 
+  test("optional chaining is not a decision", () => {
+    expect(complexityOf("function f(a?: { b?: number }) {\n  return a?.b;\n}\n", "f")).toBe(1);
+  });
+
+  test("logical assignment counts as a decision", () => {
+    expect(complexityOf("function f(a: number | null) {\n  let b = a;\n  b ??= 1;\n  return b;\n}\n", "f")).toBe(2);
+  });
+
   test("case clauses count but an empty fallthrough and default do not", () => {
     const source = [
       "function f(kind: string) {",
@@ -98,11 +106,17 @@ describe("analyzeSource units", () => {
     expect(metrics.map((metric) => metric.cyclomatic)).toEqual([2, 2]);
   });
 
-  test("a module-scope IIFE is measured", () => {
+  test("a module-scope IIFE is measured and named after its binding", () => {
     const source = ["const value = (() => {", "  if (process.env.HOME) return 1;", "  return 0;", "})();"].join("\n");
     const metrics = analyzeSource("sample.ts", source);
     expect(metrics.length).toBe(1);
     expect(metrics[0].cyclomatic).toBe(2);
+    expect(metrics[0].name).toBe("value");
+  });
+
+  test("a default-exported function is named as the default export", () => {
+    const source = ["export default (a: boolean) => {", "  return a ? 1 : 0;", "};"].join("\n");
+    expect(analyzeSource("sample.ts", source).map((metric) => metric.name)).toEqual(["default export"]);
   });
 
   test("a promoted callback is named after the call it is passed to", () => {
@@ -144,8 +158,19 @@ describe("analyzeSource sloc", () => {
       "  return inner();",
       "}",
     ].join("\n");
-    const outer = analyzeSource("sample.ts", source).find((metric) => metric.name === "outer");
-    expect(outer?.sloc).toBe(4);
+    const metrics = analyzeSource("sample.ts", source);
+    expect(metrics.find((metric) => metric.name === "outer")?.sloc).toBe(3);
+    expect(metrics.find((metric) => metric.name === "inner")?.sloc).toBe(3);
+    expect(metrics.reduce((sum, metric) => sum + metric.sloc, 0)).toBe(6);
+  });
+
+  test("a line holding a single-line nested unit is counted once, by the nested unit", () => {
+    const source = ["function outer() {", "  const inner = () => 1;", "  return inner();", "}"].join("\n");
+    const metrics = analyzeSource("sample.ts", source);
+    const total = metrics.reduce((sum, metric) => sum + metric.sloc, 0);
+    expect(total).toBe(4);
+    expect(metrics.find((metric) => metric.name === "inner")?.sloc).toBe(1);
+    expect(metrics.find((metric) => metric.name === "outer")?.sloc).toBe(3);
   });
 
   test("mass weights complexity by the square root of sloc", () => {
