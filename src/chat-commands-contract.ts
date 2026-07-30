@@ -57,26 +57,20 @@ export function parseSlashCommand(text: string): ParsedCommand {
 }
 
 export const commandSourceSchema = z.enum(["builtin", "project", "user", "bundled"]);
-export type CommandSource = z.infer<typeof commandSourceSchema>;
-
-export const commandRefSchema = z.object({
-  name: z.string(),
-  source: commandSourceSchema,
-});
-export type CommandRef = z.infer<typeof commandRefSchema>;
 
 export const subcommandSpecSchema = z.object({
   name: z.string(),
   usage: z.string(),
   helpKey: z.string(),
 });
-export type SubcommandSpec = z.infer<typeof subcommandSpecSchema>;
 
 export const commandSpecSchema = z.object({
   name: z.string(),
   source: commandSourceSchema,
   helpKey: z.string(),
   flag: featureFlagNameSchema.optional(),
+  /** Argument form of the bare root. Absent means the root takes none, and extra tokens are not this command. */
+  usage: z.string().optional(),
   subcommands: z.array(subcommandSpecSchema),
 });
 export type CommandSpec = z.infer<typeof commandSpecSchema>;

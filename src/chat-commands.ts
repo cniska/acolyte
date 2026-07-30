@@ -10,7 +10,8 @@ export async function dispatchSlashCommand(ctx: CommandContext): Promise<Command
   if (!resolvedText.startsWith("/")) return { stop: false, userText: text };
   const parsed = parseSlashCommand(resolvedText);
   const entry = findCommandEntry(parsed.root);
-  if (entry) return runCommandEntry(entry, ctx, parsed);
+  const running = entry ? runCommandEntry(entry, ctx, parsed) : null;
+  if (running) return running;
   const skillResult = await handleSkillActivation(ctx);
   if (skillResult) return skillResult;
   ctx.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);

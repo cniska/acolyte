@@ -57,6 +57,27 @@ describe("runCommandEntry", () => {
   });
 });
 
+describe("runCommandEntry argument arity", () => {
+  const createBareEntry = (usage?: string): CommandEntry => ({
+    spec: { name: "bare", source: "builtin", helpKey: "chat.slash.help.new", usage, subcommands: [] },
+    run: async () => ({ stop: true, userText: "ran" }),
+  });
+
+  test("refuses extra tokens for a root that declares no arguments", () => {
+    expect(runCommandEntry(createBareEntry(), ctx, parseSlashCommand("/bare some idea"))).toBeNull();
+  });
+
+  test("accepts arguments for a root that declares a usage form", async () => {
+    const result = runCommandEntry(createBareEntry("/bare <id>"), ctx, parseSlashCommand("/bare abc"));
+    expect(await result).toEqual({ stop: true, userText: "ran" });
+  });
+
+  test("still runs a bare root that declares no arguments", async () => {
+    const result = runCommandEntry(createBareEntry(), ctx, parseSlashCommand("/bare"));
+    expect(await result).toEqual({ stop: true, userText: "ran" });
+  });
+});
+
 describe("resolveCommandRegistry", () => {
   test("holds exactly one entry per name", () => {
     const names = resolveCommandRegistry().map((entry) => entry.spec.name);

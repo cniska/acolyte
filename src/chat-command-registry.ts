@@ -20,7 +20,7 @@ const BUILTIN_COMMANDS: CommandEntry[] = [
     run: runClear,
   },
   {
-    spec: { name: "model", source: "builtin", helpKey: "chat.slash.help.model", subcommands: [] },
+    spec: { name: "model", source: "builtin", helpKey: "chat.slash.help.model", usage: "/model <id>", subcommands: [] },
     run: runModel,
   },
   {
@@ -51,7 +51,13 @@ const BUILTIN_COMMANDS: CommandEntry[] = [
     run: runSkillsPanel,
   },
   {
-    spec: { name: "resume", source: "builtin", helpKey: "chat.slash.help.resume", subcommands: [] },
+    spec: {
+      name: "resume",
+      source: "builtin",
+      helpKey: "chat.slash.help.resume",
+      usage: "/resume <session-id-prefix>",
+      subcommands: [],
+    },
     run: runResume,
   },
   {
@@ -87,14 +93,17 @@ export function findCommandEntry(name: string): CommandEntry | null {
   return resolveCommandRegistry().find((entry) => entry.spec.name === name) ?? null;
 }
 
+/** Null when the entry does not accept this input, so the caller reports an unknown command. */
 export function runCommandEntry(
   entry: CommandEntry,
   ctx: CommandContext,
   parsed: ParsedCommand,
-): Promise<CommandResult> {
+): Promise<CommandResult> | null {
   const declared = entry.spec.subcommands.some((sub) => sub.name === parsed.sub);
   const handler = declared ? entry.runSub?.[parsed.sub] : undefined;
   if (handler) return handler(ctx, parsed);
   const args = parsed.sub === "" ? parsed.args : [parsed.sub, ...parsed.args];
+  const takesArgs = entry.spec.usage !== undefined || entry.spec.subcommands.length > 0;
+  if (args.length > 0 && !takesArgs) return null;
   return entry.run(ctx, { ...parsed, sub: "", args });
 }
