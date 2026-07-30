@@ -60,7 +60,9 @@ export async function createDiff(input: {
     );
     // `git diff --no-index` reports difference through its exit status: 0 identical, 1 differs.
     if (code > 1) throw new Error(stderr.trim() || "git diff failed");
-    return stdout.trim();
+    // Only the terminating newline comes off: a trailing space is content on a diff line, and
+    // trimming it drops a whitespace-only row that the hunk header still counts.
+    return stdout.replace(/\n$/, "");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

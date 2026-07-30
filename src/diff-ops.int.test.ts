@@ -127,6 +127,27 @@ describe("createDiff", () => {
     expect(diff).toContain("\\ No newline at end of file");
   });
 
+  test("keeps a whitespace-only trailing context line", async () => {
+    const diff = await createDiff({ displayPath: "t.txt", previous: "a\nb\n   \n", next: "a\nB\n   \n" });
+
+    expect(diff.split("\n").slice(-4)).toEqual([" a", "-b", "+B", "    "]);
+  });
+
+  test("counts every row the hunk header claims", async () => {
+    const diff = await createDiff({ displayPath: "t.txt", previous: "a\nb\n   \n", next: "a\nB\n   \n" });
+    const [, oldCount, newCount] = diff.match(/@@ -\d+,(\d+) \+\d+,(\d+) @@/) ?? [];
+    const body = diff.split("\n").slice(diff.split("\n").findIndex((line) => line.startsWith("@@")) + 1);
+
+    expect(body.filter((line) => line.startsWith(" ") || line.startsWith("-"))).toHaveLength(Number(oldCount ?? 0));
+    expect(body.filter((line) => line.startsWith(" ") || line.startsWith("+"))).toHaveLength(Number(newCount ?? 0));
+  });
+
+  test("keeps a whitespace-only added line's content", async () => {
+    const diff = await createDiff({ displayPath: "t.txt", previous: "a\n", next: "a\n   \n" });
+
+    expect(diff.split("\n").at(-1)).toBe("+   ");
+  });
+
   test("keeps a nested path in the diff header", async () => {
     const diff = await createDiff({ displayPath: "src/deep/nested/t.txt", previous: lines("a"), next: lines("b") });
 
