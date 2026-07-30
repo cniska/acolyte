@@ -1,5 +1,50 @@
+import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
+import { createToolError } from "./tool-error";
 import { runCommand } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
+
+const MIN_GIT_VERSION = [2, 14] as const;
+
+// A user's own git config can rewrite diff output — `diff.noprefix` drops the a/ b/ prefixes,
+// `diff.external` replaces the engine outright — so anything Acolyte parses or renders has to
+// read from a config the user cannot reach. `envWithoutGitState` only unsets these keys, which
+// restores git's default of reading ~/.gitconfig; neutralizing them means setting them.
+export function hermeticGitEnv(overrides?: Record<string, string>): Record<string, string> {
+  return {
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_SYSTEM: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+    ...overrides,
+  };
+}
+
+let gitVersion: string | null = null;
+
+function gitUnavailable(message: string) {
+  return createToolError(TOOL_ERROR_CODES.gitUnavailable, message, ERROR_KINDS.gitUnavailable);
+}
+
+async function readGitVersion(): Promise<string> {
+  // Spawning a name that is not on PATH throws rather than returning a status, so the missing-git
+  // case reaches here as ENOENT and has to be named before it escapes as an unclassified error.
+  const probe = await runCommand(["git", "--version"], process.cwd(), hermeticGitEnv()).catch(() => null);
+  const version = probe?.stdout.trim() ?? "";
+  const parsed = version.match(/(\d+)\.(\d+)/);
+  if (probe === null || probe.code !== 0 || !parsed) {
+    throw gitUnavailable("The git executable is required and is not available on PATH. Install git 2.14 or newer.");
+  }
+  const [major, minor] = [Number(parsed[1]), Number(parsed[2])];
+  if (major < MIN_GIT_VERSION[0] || (major === MIN_GIT_VERSION[0] && minor < MIN_GIT_VERSION[1])) {
+    throw gitUnavailable(`The git executable is ${major}.${minor}; 2.14 or newer is required. Upgrade git.`);
+  }
+  return version;
+}
+
+export async function requireGitVersion(): Promise<string> {
+  if (gitVersion) return gitVersion;
+  gitVersion = await readGitVersion();
+  return gitVersion;
+}
 
 export async function gitStatusShort(workspace: string): Promise<string> {
   const { code, stdout, stderr } = await runCommand(["git", "status", "--short"], workspace);
@@ -13,7 +58,7 @@ export async function gitDiff(workspace: string, pathInput?: string, contextLine
     ensurePathWithinSandbox(pathInput, workspace);
     args.push("--", pathInput);
   }
-  const { code, stdout, stderr } = await runCommand(args, workspace);
+  const { code, stdout, stderr } = await runCommand(args, workspace, hermeticGitEnv());
   if (code !== 0) throw new Error(stderr.trim() || "git diff failed");
   return stdout.trim();
 }

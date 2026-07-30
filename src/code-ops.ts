@@ -10,10 +10,11 @@ import type {
   EditCodeRule,
   EditCodeRuleObject,
 } from "./code-contract";
+import { createDiff } from "./diff-ops";
 import { TOOL_ERROR_CODES } from "./error-contract";
 import { escapeRegex } from "./string-utils";
 import { createToolError } from "./tool-error";
-import { createDiff, displayPathForDiff, IGNORED_DIRS } from "./tool-utils";
+import { displayPathForDiff, IGNORED_DIRS } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -422,7 +423,11 @@ async function editCodeFile(absPath: string, workspace: string, edits: EditCodeE
   }
 
   await writeFile(absPath, current, "utf8");
-  const diff = createDiff(displayPathForDiff(absPath, workspace), original, current);
+  const diff = await createDiff({
+    displayPath: displayPathForDiff(absPath, workspace),
+    previous: original,
+    next: current,
+  });
   return { matches: totalMatches, affectedSymbols: Array.from(affectedSymbols), diff };
 }
 

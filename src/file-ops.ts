@@ -8,14 +8,8 @@ import { createToolError } from "./tool-error";
 /** Owner-only read/write. Use for files containing secrets or sensitive metadata. */
 export const PRIVATE_FILE_MODE = 0o600;
 
-import {
-  collectWorkspaceFiles,
-  createDiff,
-  createUnifiedDeleteDiff,
-  displayPathForDiff,
-  isBinaryExtension,
-  resolveSearchScopeFiles,
-} from "./tool-utils";
+import { createDiff } from "./diff-ops";
+import { collectWorkspaceFiles, displayPathForDiff, isBinaryExtension, resolveSearchScopeFiles } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
 export type FindReplaceEdit = { find: string; replace: string };
@@ -343,7 +337,7 @@ export async function editFile(input: {
   }
 
   const relativePath = displayPathForDiff(absPath, input.workspace);
-  const diff = createDiff(relativePath, raw, next);
+  const diff = await createDiff({ displayPath: relativePath, previous: raw, next });
   return [
     `path=${absPath}`,
     `edits=${input.edits.length}`,
@@ -366,7 +360,7 @@ export async function writeTextFile(input: { workspace: string; path: string; co
   await mkdir(dirname(absPath), { recursive: true });
   await writeFile(absPath, input.content, "utf8");
   const relativePath = displayPathForDiff(absPath, input.workspace);
-  const diff = createDiff(relativePath, previousContent, input.content);
+  const diff = await createDiff({ displayPath: relativePath, previous: previousContent, next: input.content });
   const parts = [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(input.content, "utf8")}`,
@@ -383,7 +377,7 @@ export async function deleteTextFile(input: { workspace: string; path: string; d
   const dryRun = input.dryRun ?? false;
   if (!dryRun) await unlink(absPath);
   const relativePath = displayPathForDiff(absPath, input.workspace);
-  const diff = createUnifiedDeleteDiff(relativePath, previousContent);
+  const diff = await createDiff({ displayPath: relativePath, previous: previousContent, next: null });
   return [
     `path=${absPath}`,
     `bytes=${Buffer.byteLength(previousContent, "utf8")}`,
