@@ -12,7 +12,10 @@ export type ShortcutItem = { key: string; description: string };
 export function shortcutItems(): ShortcutItem[] {
   return [
     { key: "@path", description: t("chat.at_ref.mention_path") },
-    ...slashCommandRows().map((row) => ({ key: row.usage, description: row.help })),
+    ...slashCommandRows()
+      // Skills stay out of the cheatsheet; `/skills` is their discovery surface, and a full roster would bury it.
+      .filter((row) => row.source === "builtin")
+      .map((row) => ({ key: row.usage, description: row.help })),
   ];
 }
 

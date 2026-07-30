@@ -1,4 +1,5 @@
 import { resolveCommandRegistry } from "./chat-command-registry";
+import type { CommandSource } from "./chat-commands-contract";
 import { t, tDynamic } from "./i18n";
 import { getLoadedSkills } from "./skill-ops";
 
@@ -8,6 +9,7 @@ export type SlashCommandRow = {
   /** The command with its argument form, for help and usage text. */
   usage: string;
   help: string;
+  source: CommandSource;
 };
 
 /** Every reachable command string, derived from the registry so the menu can only offer what dispatch owns. */
@@ -15,13 +17,19 @@ export function slashCommandRows(): SlashCommandRow[] {
   const rows: SlashCommandRow[] = [];
   for (const entry of resolveCommandRegistry()) {
     const command = `/${entry.spec.name}`;
-    rows.push({ command, usage: entry.spec.usage ?? command, help: tDynamic(entry.spec.helpKey) });
+    const source = entry.spec.source;
+    rows.push({ command, usage: entry.spec.usage ?? command, help: tDynamic(entry.spec.helpKey), source });
     for (const sub of entry.spec.subcommands) {
-      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: tDynamic(sub.helpKey) });
+      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: tDynamic(sub.helpKey), source });
     }
   }
   for (const skill of getLoadedSkills()) {
-    rows.push({ command: `/${skill.name}`, usage: `/${skill.name}`, help: t("chat.slash.help.skill") });
+    rows.push({
+      command: `/${skill.name}`,
+      usage: `/${skill.name}`,
+      help: t("chat.slash.help.skill"),
+      source: skill.source,
+    });
   }
   return rows;
 }

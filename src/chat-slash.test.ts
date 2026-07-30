@@ -130,6 +130,18 @@ describe("chat-slash helpers", () => {
     }
   });
 
+  test("every declared help key resolves to a message", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      for (const row of slashCommandRows()) {
+        expect(row.help).not.toBe("");
+        expect(row.help.startsWith("chat.slash.help")).toBe(false);
+      }
+    } finally {
+      restore();
+    }
+  });
+
   test("a root offers exactly its declared subcommands", () => {
     const restore = setWorkspacesEnabled(true);
     try {
