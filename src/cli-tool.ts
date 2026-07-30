@@ -80,7 +80,6 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
     const runResult = await tool.execute(parsedInput.input, `cli_${toolId}`);
     const detail = rest.join(" ").slice(0, 60) || undefined;
     printToolResult(toolId, formatToolBody(runResult), detail);
-    if (runResult.effectOutput) printIndentedDim(runResult.effectOutput);
   } catch (error) {
     if (error instanceof z.ZodError) {
       printError(`${t("cli.tool.invalid_input", { tool: toolId })}\n${z.prettifyError(error)}`);
