@@ -160,6 +160,14 @@ describe("PromptInputHandler: deletion", () => {
     h.press("", { backspace: true });
     expect(h.state()).toEqual({ text: "a", cursor: 1 });
     expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+    expect(h.pastes).toEqual([false]);
+  });
+
+  test("only an insert can report a paste, whatever the key carries", () => {
+    const h = mount("ab");
+    h.press("", { backspace: true, paste: true });
+    expect(h.actions).toEqual([{ kind: "delete-backward" }]);
+    expect(h.pastes).toEqual([false]);
   });
 
   /** The guard matrix lives with resolvePromptEdit; this pins that a suppressed
