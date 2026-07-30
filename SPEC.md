@@ -219,7 +219,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **D-1** — The `acolyte` CLI/daemon binary and its documented commands (§2.4).
 - **D-2** — The one-line install script producing a self-updating macOS/Linux binary. (NF-2)
-- **D-3** — The layered test suite (unit, integration, visual) and the behavior/perf/memory-benchmark harnesses. (NF-9)
+- **D-3** — The layered test suite (unit, integration, visual) and the perf/memory-benchmark harnesses. (NF-9)
 - **D-4** — Canonical documentation under `docs/` (architecture, lifecycle, tooling, memory, workspace, sessions, tasks, protocol, configuration, CLI, errors, observability, TUI) and `AGENTS.md` invariants/seams.
 - **D-5** — The bundled engineering-skill set (plan, build, review, and the others) available to the agent from first run.
 

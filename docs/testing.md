@@ -38,14 +38,7 @@ Acolyte separates pure unit tests, wired integration tests, stable TUI snapshots
 - integration only: `bun run test:int`
 - visual only: `bun run test:tui`
 - perf baseline: `bun run test:perf`
-- behavior harness: `bun run behavior:run --model anthropic/claude-sonnet-4-6`
 - coverage report (unit tests only): `bun run test:coverage`
-
-## Behavior harness
-
-- use `scripts/run-behavior.ts` for small real-model tuning tasks across bounded temporary workspaces
-- keep scenarios explicit, small, and manually inspectable; this harness is for behavioral comparison, not automatic scoring
-- prefer a few stable scenarios over many overlapping ones
 
 ## Perf policy
 
