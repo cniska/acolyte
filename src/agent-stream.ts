@@ -336,6 +336,19 @@ function emitStreamPart(
       }
       break;
     }
+    // A block boundary is the only marker that one piece of prose ended and another began.
+    // Dropping it concatenates a preamble onto the answer that follows with no separator —
+    // on screen and in the history the model reads back. The separator belongs to the block
+    // that starts, not the one that ends: a `length` cutoff also ends a block, and its
+    // continuation resumes the same sentence rather than opening a new paragraph.
+    case "text-start": {
+      if (textParts.length > 0) textParts.push("\n\n");
+      break;
+    }
+    case "text-end": {
+      controller.enqueue({ type: "text-end" });
+      break;
+    }
     case "reasoning-start": {
       const block = reasoningBlocks.get(part.id) ?? { text: "" };
       if (part.providerMetadata) block.providerOptions = { ...block.providerOptions, ...part.providerMetadata };

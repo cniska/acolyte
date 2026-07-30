@@ -12,6 +12,7 @@ export type MessageStreamState = {
    *  events (status/usage/reasoning) are ignored — the caller owns those. */
   onEvent: (event: StreamEvent) => void;
   onDelta: (delta: string) => void;
+  onTextEnd: () => void;
   onToolCall: () => void;
   onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
   onToolResult: (entry: {
@@ -51,6 +52,9 @@ export function createMessageStreamState(input: {
   // Text received but not yet revealed. The tick drips it into `agentContent`; every path
   // that reads `agentContent` as the authoritative prose must drain this first.
   let pendingText = "";
+  // A closed text block owes the next one a paragraph break. Held until that block actually
+  // starts, so the last block of a turn leaves no trailing blank line.
+  let paragraphPending = false;
   let tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Every agent row ID we've created, so dispose() can remove them on the error path. */
   const agentRowIds: string[] = [];
@@ -149,6 +153,7 @@ export function createMessageStreamState(input: {
       );
     activeRowId = null;
     agentContent = "";
+    paragraphPending = false;
   }
 
   const state: MessageStreamState = {
@@ -156,6 +161,9 @@ export function createMessageStreamState(input: {
       switch (event.type) {
         case "text-delta":
           state.onDelta(event.text);
+          break;
+        case "text-end":
+          state.onTextEnd();
           break;
         case "tool-call":
           state.onToolCall();
@@ -180,8 +188,19 @@ export function createMessageStreamState(input: {
 
     onDelta: (delta) => {
       if (delta.length === 0) return;
+      if (paragraphPending) {
+        paragraphPending = false;
+        if (agentContent.length > 0 || pendingText.length > 0) pendingText += "\n\n";
+      }
       pendingText += delta;
       scheduleTick();
+    },
+
+    // A block boundary is a paragraph break, not an interruption: nothing happened between
+    // the two blocks, so they stay one row. Sealing is reserved for a tool call, where the
+    // assistant genuinely stopped to do work.
+    onTextEnd: () => {
+      paragraphPending = true;
     },
 
     onToolCall: () => {

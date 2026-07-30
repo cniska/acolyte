@@ -22,6 +22,7 @@ Events are append-only and ordered per request.
 - `tool-output` — incremental tool output for the call id
 - `tool-result` — tool completion (success/error, structured error detail)
 - `text-delta` — assistant text stream chunks
+- `text-end` — end of a block of assistant text; the next block opens a new paragraph
 - `usage` — token usage for the current generation step
 - `tasklist` — inline task list with group ID, title, and items
 - `error` — terminal stream error

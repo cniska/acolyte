@@ -165,6 +165,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-12** — Exiting the chat client releases its connection immediately, so an in-flight task is cancelled rather than left running to completion after the user has quit.
 - **TUI-13** — A command, its subcommands, and its help text come from one descriptor, so the completion menu offers only what dispatch can run: it lists a command and its declared subcommands, while argument forms appear in the help pane.
 - **TUI-14** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
+- **TUI-15** — Consecutive blocks of assistant prose render as one transcript row separated by a paragraph break, and that break is preserved in the answer text kept for model history; a row is sealed only by an interruption such as a tool call, and text resumed after a length cutoff continues the same block rather than opening a new one.
 
 ## 8. Observability requirements (OBS)
 
