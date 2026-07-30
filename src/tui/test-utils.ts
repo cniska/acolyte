@@ -257,12 +257,7 @@ export function assertCursorAccounting(frames: string[][], columns: number, rows
   });
 }
 
-export function renderHook<T>(hookFn: () => T): { result: { current: T }; unmount: () => void } {
-  const result = {} as { current: T };
-  function App() {
-    result.current = hookFn();
-    return h("tui-text", null, "");
-  }
+function createHookContainer(node: ReactNode): { unmount: () => void } {
   const root = createElement("tui-root", {});
   setOnCommit(() => {});
   const container = reconciler.createContainer(
@@ -279,15 +274,54 @@ export function renderHook<T>(hookFn: () => T): { result: { current: T }; unmoun
     () => {},
     () => {},
   );
-  reconciler.updateContainerSync(h(App), container, null, null);
+  reconciler.updateContainerSync(node, container, null, null);
   reconciler.flushSyncWork();
   reconciler.flushPassiveEffects();
   return {
-    result,
     unmount() {
       reconciler.updateContainerSync(null, container, null, null);
       reconciler.flushSyncWork();
       setOnCommit(null);
     },
   };
+}
+
+export function renderHook<T>(hookFn: () => T): { result: { current: T }; unmount: () => void } {
+  const result = {} as { current: T };
+  function App() {
+    result.current = hookFn();
+    return h("tui-text", null, "");
+  }
+  const { unmount } = createHookContainer(h(App));
+  return { result, unmount };
+}
+
+/**
+ * Drive `steps` commits of a hook, queueing the next update before each passive flush so
+ * React's eager same-state bailout cannot swallow a no-op set — the streaming condition, where
+ * a drip's transcript update is always already pending by the time effects flush.
+ */
+export function driveHookCommits(steps: number, hookFn: () => void): void {
+  let version = 0;
+  const listeners = new Set<() => void>();
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+  function App() {
+    useSyncExternalStore(subscribe, () => version);
+    hookFn();
+    return h("tui-text", null, "");
+  }
+  const { unmount } = createHookContainer(h(App));
+  try {
+    for (let step = 0; step < steps; step++) {
+      reconciler.flushSyncWork();
+      version += 1;
+      for (const listener of listeners) listener();
+      reconciler.flushPassiveEffects();
+    }
+  } finally {
+    unmount();
+  }
 }
