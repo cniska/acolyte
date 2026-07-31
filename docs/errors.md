@@ -16,7 +16,7 @@ Lifecycle consumes tool errors generically through error categories. Step budget
 
 ## Transport boundary
 
-A turn whose transport dies mid-flight fails with `E_DAEMON_LOST` and kind `daemon_lost`, carrying the task id. The message states that the session survived and the turn can be sent again; the turn itself is never rebuilt from partial output.
+A turn whose transport dies mid-flight fails with `E_DAEMON_LOST` and kind `daemon_lost`, carrying the task id when one was assigned. The message states that the session survived and the turn can be sent again; the turn itself is never rebuilt from partial output.
 
 ## Design rule
 

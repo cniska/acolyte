@@ -8,7 +8,7 @@ import {
   rpcUrlFromApiUrl,
   validateFinalChatResponse,
 } from "./client-contract";
-import { ERROR_KINDS, TRANSPORT_ERROR_CODES } from "./error-contract";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES, TRANSPORT_ERROR_CODES } from "./error-contract";
 import { connectionHelpMessage } from "./error-messages";
 import { field } from "./field";
 import { t } from "./i18n";
@@ -204,11 +204,16 @@ export class RpcClient implements Client {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutMs = this.replyTimeoutMs;
     const RPC_ABORT_CLOSE_GRACE_MS = 120;
+    const WS_CLOSE_UNAUTHORIZED = 1008;
 
+    // Why the socket closed decides which error the turn fails with, and only this side knows
+    // when the close was its own doing.
+    let closedByTimeout = false;
     const resetTimeout = (): void => {
       if (typeof timeoutMs !== "number") return;
       if (timeoutId !== undefined) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
+        closedByTimeout = true;
         this.closeSocket(ws);
       }, timeoutMs);
     };
@@ -243,7 +248,7 @@ export class RpcClient implements Client {
         abortError.name = "AbortError";
         reject(abortError);
       };
-      const onClose = () => {
+      const onClose = (event: CloseEvent) => {
         cleanup();
         // Releasing the connection is a cancellation, not a dropped stream: classifying it
         // as a failure would start a remote-task followup that reopens a socket on exit.
@@ -252,6 +257,20 @@ export class RpcClient implements Client {
           abortError.name = "AbortError";
           abortError.taskId = acceptedTaskId;
           reject(abortError);
+          return;
+        }
+        if (closedByTimeout) {
+          reject(
+            createRemoteError(t("error.reply_timeout"), {
+              taskId: acceptedTaskId,
+              kind: ERROR_KINDS.timeout,
+              errorCode: LIFECYCLE_ERROR_CODES.timeout,
+            }),
+          );
+          return;
+        }
+        if (event.code === WS_CLOSE_UNAUTHORIZED) {
+          reject(createRemoteError(t("error.unauthorized"), { taskId: acceptedTaskId }));
           return;
         }
         reject(
