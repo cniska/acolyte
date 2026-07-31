@@ -83,7 +83,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
 }
 
 function normalizeRunOutput(value: string): string {
-  return value.replace(/Worked [0-9.]+s/g, "Worked <duration>");
+  return value.replace(/Worked for [0-9.]+m?s/g, "Worked for <duration>");
 }
 
 describe("cli visual regression", () => {

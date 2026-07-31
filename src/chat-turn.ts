@@ -111,6 +111,32 @@ type RunAssistantTurnParams = {
   createMessage: (role: ChatMessage["role"], content: string) => ChatMessage;
 };
 
+/**
+ * The footer line closing a turn, shared by the completed and interrupted paths so both
+ * report the same facts in the same shape.
+ */
+export function turnFooter(params: {
+  durationMs: number;
+  toolCount: number;
+  usage: { inputTokens: number; outputTokens: number } | null;
+  interrupted?: boolean;
+}): string {
+  const details: string[] = [];
+  if (params.toolCount > 0) details.push(t("unit.tool", { count: params.toolCount }));
+  const inputTokens = params.usage?.inputTokens ?? 0;
+  const outputTokens = params.usage?.outputTokens ?? 0;
+  if (inputTokens + outputTokens > 0)
+    details.push(
+      t("unit.token.arrows", {
+        input: formatCompactNumber(inputTokens),
+        output: formatCompactNumber(outputTokens),
+      }),
+    );
+  const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
+  const duration = formatDuration(params.durationMs);
+  return params.interrupted ? t("chat.interrupted", { duration, suffix }) : t("chat.worked", { duration, suffix });
+}
+
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{
   assistantMessage: ChatMessage;
   tokenEntry: SessionTokenUsageEntry;
@@ -147,23 +173,12 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
 
     modelCalls: reply.modelCalls,
   };
-  const durationMs = Date.now() - params.pendingStartedAt;
-  if (durationMs >= 300) {
-    const duration = formatDuration(durationMs);
-    const toolCount = reply.toolCalls?.length ?? 0;
-    const { inputTokens, outputTokens } = tokenEntry.usage;
-    const details: string[] = [];
-    if (toolCount > 0) details.push(t("unit.tool", { count: toolCount }));
-    if (inputTokens + outputTokens > 0)
-      details.push(
-        t("unit.token.arrows", {
-          input: formatCompactNumber(inputTokens),
-          output: formatCompactNumber(outputTokens),
-        }),
-      );
-    const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-    rows.push(createRow("status", t("chat.worked", { duration, suffix }), { outcome: "success", dim: true }));
-  }
+  const footer = turnFooter({
+    durationMs: Date.now() - params.pendingStartedAt,
+    toolCount: reply.toolCalls?.length ?? 0,
+    usage: tokenEntry.usage,
+  });
+  rows.push(createRow("status", footer, { outcome: "success", dim: true }));
 
   return {
     assistantMessage,

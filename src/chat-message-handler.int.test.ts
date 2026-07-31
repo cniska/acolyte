@@ -454,6 +454,40 @@ describe("chat message handler", () => {
     ]);
   });
 
+  test("closes an interrupted turn with the same footer a completed turn gets", async () => {
+    const { startAssistantTurn, interrupt, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: {} });
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 340 });
+          return await new Promise((_, reject) => {
+            // Reject on a delay so the turn outlives the footer's duration threshold.
+            const abort = (): void => {
+              setTimeout(() => {
+                const error = new Error("Aborted");
+                error.name = "AbortError";
+                reject(error);
+              }, 350);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    const last = rows[rows.length - 1];
+    expect(last?.kind).toBe("task");
+    expect(last?.style?.outcome).toBe("cancelled");
+    expect(last?.content).toMatch(/^Interrupted after [0-9.]+m?s \(1 tool · ↑1\.2k ↓340\)$/);
+  });
+
   test("commits the streamed usage of a turn that fails mid-stream", async () => {
     const { handleMessage, session, calls } = createMessageHandlerHarness({
       client: createClient({
@@ -687,7 +721,7 @@ describe("chat message handler", () => {
 
     const last = rows[rows.length - 1];
     expect(last?.kind).toBe("task");
-    expect(last?.content).toBe("Interrupted");
+    expect(last?.content).toMatch(/^Interrupted after /);
     expect(last?.style?.dim).toBe(true);
     expect(last?.style?.outcome).toBe("cancelled");
   });
@@ -774,11 +808,16 @@ describe("chat message handler", () => {
 
     await handleSubmit("Second question");
 
-    expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
+    const shape = rows.map((row) => {
+      const content = typeof row.content === "string" ? row.content : "";
+      return `${row.kind}:${content.replace(/(Interrupted after|Worked for) .*/, "$1 …")}`;
+    });
+    expect(shape).toEqual([
       "user:First question",
-      "task:Interrupted",
+      "task:Interrupted after …",
       "user:Second question",
       "assistant:Second answer.",
+      "status:Worked for …",
     ]);
   });
 
@@ -1224,7 +1263,11 @@ describe("chat message handler", () => {
     interruptHandler();
     await pending;
 
-    expect(rows.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
+    expect(
+      rows.some(
+        (r) => r.kind === "task" && typeof r.content === "string" && r.content.startsWith("Interrupted after "),
+      ),
+    ).toBe(true);
   });
 
   test("a blocked question ends the turn with no pending indicator", async () => {

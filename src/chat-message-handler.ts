@@ -14,6 +14,7 @@ import {
   applyUserTurn,
   createAtReferenceSuggestion,
   runAssistantTurn,
+  turnFooter,
   unresolvedPathRows,
 } from "./chat-turn";
 import type { Client, PendingState } from "./client-contract";
@@ -262,10 +263,16 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
         streamState.finalize();
         input.setRows((current) => [
           ...current,
-          createRow("task", t("chat.submit.interrupted"), {
-            dim: true,
-            outcome: "cancelled",
-          }),
+          createRow(
+            "task",
+            turnFooter({
+              durationMs: Date.now() - pendingStartedAt,
+              toolCount: runningToolCallIds.size,
+              usage: streamedUsage,
+              interrupted: true,
+            }),
+            { dim: true, outcome: "cancelled" },
+          ),
         ]);
       } else {
         streamState.dispose();
