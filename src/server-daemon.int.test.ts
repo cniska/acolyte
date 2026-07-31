@@ -550,9 +550,10 @@ describe("server daemon", () => {
         JSON.stringify({ pid: procB.pid, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
       );
 
-      const { stopped } = await stopAllLocalServers({ env });
-      expect(stopped).toHaveLength(2);
-      expect(stopped.map((s) => s.port).sort()).toEqual([9001, 9002]);
+      const results = await stopAllLocalServers({ env });
+      expect(results).toHaveLength(2);
+      expect(results.map((entry) => entry.port).sort()).toEqual([9001, 9002]);
+      expect(results.every((entry) => entry.result.kind === "stopped")).toBe(true);
     } finally {
       procA.kill();
       procB.kill();

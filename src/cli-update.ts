@@ -168,8 +168,9 @@ export async function stopServersForUpdate(
   deps: { stop?: typeof stopAllLocalServers; notify?: (message: string) => void } = {},
 ): Promise<void> {
   const { stop = stopAllLocalServers, notify = printDim } = deps;
-  const { refused } = await stop();
-  if (refused.length > 0) notify(t("cli.update.daemon_busy"));
+  const results = await stop();
+  if (results.some(({ result }) => result.kind === "refused")) notify(t("cli.update.daemon_busy"));
+  if (results.some(({ result }) => result.kind === "unresponsive")) notify(t("cli.update.daemon_left_running"));
 }
 
 async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {

@@ -211,6 +211,8 @@ export const EN_MESSAGES = {
   "cli.server.stopped": "Stopped server on port {port} (pid {pid})",
   "cli.update.daemon_busy":
     "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
+  "cli.update.daemon_left_running":
+    "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
   "cli.status.local_start_hint": "Server is not running. Start it with: acolyte start",
   "cli.tool.failed": "Tool command failed",
   "cli.tool.invalid_input": "Invalid input for {tool}:",

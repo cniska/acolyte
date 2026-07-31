@@ -177,7 +177,6 @@ async function requestGracefulShutdown(
     return { kind: "shutdown" };
   } catch {
     // A daemon may close the socket before its reply lands; if the port is free now, it stopped.
-    // Still listening means it is there and did not answer — which is not the same as absent.
     return (await isServerListening(apiUrl)) ? { kind: "unresponsive" } : { kind: "shutdown" };
   } finally {
     clearTimeout(timeoutId);
@@ -379,25 +378,27 @@ export async function stopAllLocalServers(input?: {
   apiKey?: string;
   env?: Env;
   force?: boolean;
-}): Promise<{ stopped: Array<{ port: number; pid: number }>; refused: Array<{ port: number; tasks: LiveTask[] }> }> {
+}): Promise<Array<{ port: number; result: StopResult }>> {
   const dir = daemonsDir(input?.env);
   let entries: string[];
   try {
     entries = await readdir(dir);
   } catch {
-    return { stopped: [], refused: [] };
+    return [];
   }
 
-  const stopped: Array<{ port: number; pid: number }> = [];
-  const refused: Array<{ port: number; tasks: LiveTask[] }> = [];
+  // Every outcome travels back, including the ones that stopped nothing: a caller that sees only
+  // its successes reports a daemon it left running as a clean stop.
+  const results: Array<{ port: number; result: StopResult }> = [];
   for (const entry of entries) {
     const port = portFromLockEntry(entry);
     if (port === undefined) continue;
-    const result = await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env, force: input?.force });
-    if (result.kind === "refused") refused.push({ port, tasks: result.tasks });
-    else if (result.kind === "stopped" && result.pid !== null) stopped.push({ port, pid: result.pid });
+    results.push({
+      port,
+      result: await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env, force: input?.force }),
+    });
   }
-  return { stopped, refused };
+  return results;
 }
 
 export async function listRunningDaemons(input?: {

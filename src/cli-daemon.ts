@@ -76,17 +76,15 @@ export async function stopMode(args: string[], deps: DaemonModeDeps): Promise<vo
   }
   const force = hasBoolFlag(args, "--force");
   if (stripFlag(args, "--force").length > 0) return deps.commandError("stop");
-  const { stopped, refused } = await deps.stopAllLocalServers({ apiKey: deps.apiKey, force });
-  if (stopped.length === 0 && refused.length === 0) {
+  const results = await deps.stopAllLocalServers({ apiKey: deps.apiKey, force });
+  const present = results.filter(({ result }) => result.kind !== "not_running");
+  if (present.length === 0) {
     // No daemon holds a lock file, but one may still be listening on the configured port.
     printStopResult(deps, deps.port, await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey, force }));
     return;
   }
-  for (const entry of refused) {
-    printRefusal(deps, entry.port, entry.tasks);
-  }
-  for (const entry of stopped) {
-    deps.printDim(t("cli.server.stopped", { port: entry.port, pid: entry.pid }));
+  for (const { port, result } of present) {
+    printStopResult(deps, port, result);
   }
 }
 

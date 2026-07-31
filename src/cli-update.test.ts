@@ -45,7 +45,7 @@ describe("stopServersForUpdate", () => {
     await stopServersForUpdate({
       stop: async (input) => {
         calls.push(input);
-        return { stopped: [], refused: [] };
+        return [];
       },
       notify: () => {},
     });
@@ -58,7 +58,7 @@ describe("stopServersForUpdate", () => {
     const notices: string[] = [];
 
     await stopServersForUpdate({
-      stop: async () => ({ stopped: [], refused: [{ port: 6767, tasks: [{ taskId: "task_abc", sessionId: null }] }] }),
+      stop: async () => [{ port: 6767, result: { kind: "refused", tasks: [{ taskId: "task_abc", sessionId: null }] } }],
       notify: (message) => notices.push(message),
     });
 
@@ -66,11 +66,25 @@ describe("stopServersForUpdate", () => {
     expect(notices[0]).toContain("acolyte restart");
   });
 
+  // Regression: a daemon that would not die was invisible here, so an update re-execed while the
+  // old server was still running and said nothing.
+  test("reports a daemon that would not stop", async () => {
+    const notices: string[] = [];
+
+    await stopServersForUpdate({
+      stop: async () => [{ port: 6767, result: { kind: "unresponsive" } }],
+      notify: (message) => notices.push(message),
+    });
+
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toContain("acolyte ps");
+  });
+
   test("stays quiet when every daemon stopped", async () => {
     const notices: string[] = [];
 
     await stopServersForUpdate({
-      stop: async () => ({ stopped: [{ port: 6767, pid: 1234 }], refused: [] }),
+      stop: async () => [{ port: 6767, result: { kind: "stopped", pid: 1234 } }],
       notify: (message) => notices.push(message),
     });
 
