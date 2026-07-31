@@ -11,9 +11,10 @@ import { errorText, formatMarkerLine, streamText, warningText, writeChunk } from
  * already emitted so growing tool output and streamed text print only their new tail —
  * the relocation of cli-prompt's hand-rolled `snapshotByCallId` logic.
  *
- * Every write goes through `writeLine`/`writeStream`, the sole owners of newline
- * discipline: streamed prose is the one emitter that can leave a line open, and any
- * whole-line emitter closes it first.
+ * Cursor state lives in `midLine`, owned by `endLine`/`writeLine`/`writeStream`: streamed
+ * prose is the one emitter that can leave a line open, and every whole-line emitter closes
+ * it first. The animated final answer is the one write outside that state machine, and only
+ * because it runs last, at line start, and terminates its own line.
  */
 export function createStdoutRowProjector(): {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
