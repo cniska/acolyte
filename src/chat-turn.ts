@@ -5,6 +5,7 @@ import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { extractAtReferencePaths } from "./chat-file-ref";
 import { formatCompactNumber } from "./chat-format";
+import { createTokenUsageEntry } from "./chat-session";
 import type { Client, StreamEvent } from "./client-contract";
 import { isParseable } from "./code-ops";
 import { formatDuration } from "./datetime";
@@ -166,13 +167,12 @@ export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<
   if (reply.error) {
     rows.push(createRow("system", reply.error, { text: palette.error }));
   }
-  const tokenEntry: SessionTokenUsageEntry = {
+  const tokenEntry = createTokenUsageEntry({
     id: assistantMessage.id,
     usage: reply.usage ?? estimateTokenUsageFallback(params.userText, reply.output),
     promptBreakdown: reply.promptBreakdown,
-
     modelCalls: reply.modelCalls,
-  };
+  });
   const footer = turnFooter({
     durationMs: Date.now() - params.pendingStartedAt,
     toolCount: reply.toolCalls?.length ?? 0,

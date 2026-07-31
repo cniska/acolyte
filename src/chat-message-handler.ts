@@ -5,7 +5,7 @@ import { invalidateRepoPathCandidates } from "./chat-file-ref";
 import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
-import { createMessageId } from "./chat-session";
+import { createTokenUsageEntry } from "./chat-session";
 import { addActiveSkill, removeActiveSkill } from "./chat-skill-activator";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import type { TranscriptRow } from "./chat-transcript-contract";
@@ -217,14 +217,7 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       // running, so a lingering running value double-counts the same tokens.
       const streamedUsage = streamed.usage;
       if (streamedUsage) {
-        input.currentSession.tokenUsage.push({
-          id: createMessageId(),
-          usage: {
-            inputTokens: streamedUsage.inputTokens,
-            outputTokens: streamedUsage.outputTokens,
-            totalTokens: streamedUsage.inputTokens + streamedUsage.outputTokens,
-          },
-        });
+        input.currentSession.tokenUsage.push(createTokenUsageEntry({ usage: streamedUsage }));
         input.currentSession.updatedAt = input.nowIso();
         input.setTokenUsage(() => [...input.currentSession.tokenUsage]);
       }
