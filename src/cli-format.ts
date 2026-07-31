@@ -7,7 +7,7 @@ import type { ToolOutputPart } from "./tool-output-contract";
 import { toolLabelKey } from "./tool-output-format";
 import { renderToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
-import { printDim, printToolHeader } from "./ui";
+import { dimText, printDim, printOutput, printToolHeader } from "./ui";
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
@@ -18,10 +18,15 @@ export function displayPath(pathInput: string): string {
 /** Columns every tool-output body line is indented under its header in run mode. */
 export const TOOL_BODY_INDENT = 2;
 
+export function formatIndentedDim(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => (line.length > 0 ? dimText(`${" ".repeat(TOOL_BODY_INDENT)}${line}`) : ""))
+    .join("\n");
+}
+
 export function printIndentedDim(content: string): void {
-  for (const line of content.split("\n")) {
-    printDim(line.length > 0 ? `${" ".repeat(TOOL_BODY_INDENT)}${line}` : "");
-  }
+  printOutput(formatIndentedDim(content));
 }
 
 export function printToolResult(toolId: string, raw: string, detail?: string): void {

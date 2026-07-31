@@ -8,7 +8,7 @@ import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
-import { printError, printOutput } from "./ui";
+import { printOutput } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
   if (session.title !== t("chat.session.default_title")) return;
@@ -50,7 +50,7 @@ export async function handlePrompt(
     streamState.finalize();
 
     if (reply.error) {
-      printError(reply.error);
+      projector.renderError(reply.error);
       return false;
     }
     await projector.renderReply(reply.output);
@@ -67,8 +67,8 @@ export async function handlePrompt(
     // A failed turn may leave a flush timer armed; dispose it so buffered text can't
     // write to stdout after we've returned (mirrors the TUI's non-abort catch).
     streamState.dispose();
-    if (!(error instanceof Error)) printError(t("error.prompt.request_failed"));
-    else printError(formatPromptError(error.message));
+    if (!(error instanceof Error)) projector.renderError(t("error.prompt.request_failed"));
+    else projector.renderError(formatPromptError(error.message));
     session.updatedAt = nowIso();
     return false;
   }
