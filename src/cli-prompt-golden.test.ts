@@ -80,7 +80,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
     // stream's tasklist event produces no rows. The final answer ("Updated the config.")
     // diverges from the streamed preview and appears in full.
     expect(out).toBe(
-      "❯ check config\n◆ Let me check the config.◆ tool.file_read.header src/config.ts\ntrace sink is dark\n\n\n\n◆ Updated the config.",
+      "❯ check config\n◆ Let me check the config.\n◆ tool.file_read.header src/config.ts\ntrace sink is dark\n\n\n◆ Updated the config.",
     );
   });
 
@@ -92,7 +92,7 @@ describe("cli-prompt golden output (output-path fold safety net)", () => {
         error: "Cannot finish yet: validation missing",
       }),
     );
-    expect(out).toBe("❯ fix\n◆ Trying the edit.Cannot finish yet: validation missing");
+    expect(out).toBe("❯ fix\n◆ Trying the edit.\nCannot finish yet: validation missing");
   });
 
   test("a lone detail-less tool header prints nothing until it has content", async () => {

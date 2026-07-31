@@ -196,6 +196,83 @@ describe("cli-prompt", () => {
     expect(output).toBe("❯ hi\n◆ Hello there.");
   });
 
+  // Regression: prose leaves its line open, so a tool row used to print onto the end of
+  // the sentence and the resumed answer then lost its indent and printed at column 0.
+  test("a tool row starts its own line after mid-line prose, and the answer resumes indented", async () => {
+    const client: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "Reading the file." });
+        input.onEvent({
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "file-read",
+          content: { kind: "tool-header", labelKey: "tool.file_read.header", detail: "src/a.ts" },
+        });
+        return {
+          outputStreamed: true,
+          output: "Reading the file. It exports one function.",
+          model: "gpt-5-mini",
+          toolCalls: ["file-read"],
+        };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+      close: () => {},
+    };
+
+    const { output } = await runPromptAndCapture("read a.ts", createTestSession(), client);
+
+    expect(output).toBe(
+      "❯ read a.ts\n◆ Reading the file.\n◆ tool.file_read.header src/a.ts\n\n\n   It exports one function.",
+    );
+  });
+
+  test("each assistant row after a tool row leads with its own marker", async () => {
+    const client: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "Opening the file." });
+        input.onEvent({
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "file-read",
+          content: { kind: "tool-header", labelKey: "tool.file_read.header", detail: "src/a.ts" },
+        });
+        input.onEvent({ type: "text-delta", text: "It exports one function." });
+        return {
+          outputStreamed: true,
+          output: "It exports one function.",
+          model: "gpt-5-mini",
+          toolCalls: ["file-read"],
+        };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+      close: () => {},
+    };
+
+    const { output } = await runPromptAndCapture("read a.ts", createTestSession(), client);
+
+    expect(output).toBe(
+      "❯ read a.ts\n◆ Opening the file.\n◆ tool.file_read.header src/a.ts\n◆ It exports one function.",
+    );
+  });
+
+  // Regression: a blocking error printed onto the end of the open prose line.
+  test("a blocking error starts its own line after mid-line prose", async () => {
+    const client: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "Trying the edit." });
+        return { outputStreamed: true, output: "", model: "gpt-5-mini", error: "validation missing" };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+      close: () => {},
+    };
+
+    const { output } = await runPromptAndCapture("fix", createTestSession(), client);
+    expect(output).toBe("❯ fix\n◆ Trying the edit.\nvalidation missing");
+  });
+
   // Regression: a notice appended while agent prose is still buffered used to render
   // before the prose (the flush timer had not fired yet), inverting their order.
   test("buffered prose flushes before a notice", async () => {
@@ -205,7 +282,7 @@ describe("cli-prompt", () => {
     ];
 
     const { output } = await runPromptAndCapture("hi", createTestSession(), createStreamingClient(events));
-    expect(output.indexOf("Alpha text.")).toBeLessThan(output.indexOf("trace sink is dark"));
+    expect(output).toBe("❯ hi\n◆ Alpha text.\ntrace sink is dark\n\n\n◆ done");
   });
 
   // Regression: a failed turn left the flush timer armed, so buffered text wrote to

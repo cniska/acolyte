@@ -8,7 +8,7 @@ export function setUiSink(sink: ((chunk: string) => void) | null): void {
   uiSink = sink;
 }
 
-function write(chunk: string): void {
+export function writeChunk(chunk: string): void {
   if (uiSink) {
     uiSink(chunk);
     return;
@@ -43,40 +43,44 @@ export function tokenizeStreamContent(content: string): string[] {
 
 export async function streamText(content: string): Promise<void> {
   for (const token of tokenizeStreamContent(content)) {
-    write(token);
+    writeChunk(token);
     if (!/^\s+$/.test(token)) await Bun.sleep(12);
   }
-  if (!content.endsWith("\n")) write("\n");
+  if (!content.endsWith("\n")) writeChunk("\n");
 }
 
 export function printDim(content: string): void {
-  write(`${color.dim(content)}\n`);
+  writeChunk(`${color.dim(content)}\n`);
 }
 
 /** A dimmed line led by a marker glyph, tinted `glyphColor` (hex) when set — else dim. */
-export function printMarkerLine(glyph: string, glyphColor: string | undefined, rest: string): void {
+export function formatMarkerLine(glyph: string, glyphColor: string | undefined, rest: string): string {
   const head = glyphColor ? `${hexToAnsi(glyphColor)}${glyph}\x1b[39m` : color.dim(glyph);
-  write(`${head} ${color.dim(rest)}\n`);
+  return `${head} ${color.dim(rest)}`;
 }
+
+export const warningText = (content: string): string => color.dim(color.yellow(content));
+
+export const errorText = (content: string): string => color.red(content);
 
 export function printToolHeader(title: string, detail?: string): void {
   const base = color.bold(color.white(title));
   const suffix = detail ? ` ${color.dim(detail)}` : "";
-  write(`${base}${suffix}\n`);
+  writeChunk(`${base}${suffix}\n`);
 }
 
 export function printOutput(content: string): void {
-  write(`${content}\n`);
+  writeChunk(`${content}\n`);
 }
 
 export function printWarning(content: string): void {
-  write(`${color.dim(color.yellow(content))}\n`);
+  writeChunk(`${warningText(content)}\n`);
 }
 
 export function printError(content: string): void {
-  write(`${color.red(content)}\n`);
+  writeChunk(`${errorText(content)}\n`);
 }
 
 export function clearScreen(): void {
-  write(ansi.clearScreen);
+  writeChunk(ansi.clearScreen);
 }
