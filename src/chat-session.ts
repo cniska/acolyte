@@ -1,11 +1,15 @@
-import type { ChatMessage, ChatRow } from "./chat-contract";
+import type { ChatMessage, ChatRow, MessageId } from "./chat-contract";
 import { nowIso } from "./datetime";
 import { remapDomainId } from "./id-contract";
 import { createId } from "./short-id";
 
+export function createMessageId(): MessageId {
+  return `msg_${createId()}`;
+}
+
 export function createMessage(role: ChatMessage["role"], content: string): ChatMessage {
   return {
-    id: `msg_${createId()}`,
+    id: createMessageId(),
     role,
     content,
     kind: "text",

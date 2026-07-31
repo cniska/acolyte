@@ -166,6 +166,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-13** — A command, its subcommands, and its help text come from one descriptor, so the completion menu offers only what dispatch can run: it lists a command and its declared subcommands, while argument forms appear in the help pane.
 - **TUI-14** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
 - **TUI-15** — Consecutive blocks of assistant prose render as one transcript row separated by a paragraph break, and that break is preserved in the answer text kept for model history; a row is sealed only by an interruption such as a tool call, and text resumed after a length cutoff continues the same block rather than opening a new one.
+- **TUI-16** — Every turn closes with one footer line reporting elapsed time, tool count, and token counts, however fast the turn was. An interrupted turn closes with the same line and the same detail, labelled as interrupted in the text rather than in colour alone.
 
 ## 8. Observability requirements (OBS)
 
@@ -182,7 +183,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **NF-5** — Errors are classified by a structured code/kind, never by matching message strings; error messages are descriptive enough for the model to act on.
 - **NF-6** — A failure in a non-critical subsystem does not fail the request: trace-store open/write failure warns once per session and continues; a memory commit failure is logged and swallowed; an effect (format/lint) failure is recorded and does not abort the tool result.
 - **NF-7** — Sessions are bounded by per-call context pressure, not by a cumulative token cap, so long-lived sessions remain usable.
-- **NF-8** — Each completed request reports input, output, total, and input-budget token counts with a prompt breakdown separating system, tools, skills, memory, and messages.
+- **NF-8** — Each completed request reports input, output, total, and input-budget token counts with a prompt breakdown separating system, tools, skills, memory, and messages. An interrupted or failed request records the usage it streamed before it ended, so the session accounts for spend whether or not a turn completes.
 
 ### 9.1 Testing
 

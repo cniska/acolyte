@@ -385,6 +385,128 @@ describe("chat message handler", () => {
     expect(calls.runningUsageSets.at(-1)).toBeNull();
   });
 
+  test("commits the streamed usage of an interrupted turn", async () => {
+    // Regression: an interrupted turn resolves no `turn.tokenEntry`, so its spend used
+    // to vanish from the session while the running counter kept the stale value.
+    const { startAssistantTurn, interrupt, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 40 });
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 340 });
+          return await new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 1200, outputTokens: 340, totalTokens: 1540 },
+    ]);
+    expect(calls.tokenUsageSnapshots.at(-1)).toEqual(session.tokenUsage);
+    const tokenIdx = calls.order.indexOf("token-commit");
+    expect(tokenIdx).toBeGreaterThanOrEqual(0);
+    expect(calls.order.indexOf("running-clear")).toBeGreaterThan(tokenIdx);
+    expect(calls.order.lastIndexOf("persist")).toBeGreaterThan(tokenIdx);
+    expect(calls.runningUsageSets.at(-1)).toBeNull();
+  });
+
+  test("commits the streamed usage of an interrupted turn that streamed prose", async () => {
+    const { startAssistantTurn, interrupt, session } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "text-delta", text: "partial answer" });
+          input.onEvent({ type: "usage", inputTokens: 900, outputTokens: 60 });
+          return await new Promise((_, reject) => {
+            const abort = (): void => {
+              const error = new Error("Aborted");
+              error.name = "AbortError";
+              reject(error);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    expect(session.messages.at(-1)?.content).toBe("partial answer");
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 900, outputTokens: 60, totalTokens: 960 },
+    ]);
+  });
+
+  test("closes an interrupted turn with the same footer a completed turn gets", async () => {
+    const { startAssistantTurn, interrupt, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "tool-call", toolCallId: "call_1", toolName: "file-read", args: {} });
+          input.onEvent({ type: "usage", inputTokens: 1200, outputTokens: 340 });
+          return await new Promise((_, reject) => {
+            // Reject on a delay so the turn outlives the footer's duration threshold.
+            const abort = (): void => {
+              setTimeout(() => {
+                const error = new Error("Aborted");
+                error.name = "AbortError";
+                reject(error);
+              }, 350);
+            };
+            if (input.signal?.aborted) {
+              abort();
+              return;
+            }
+            input.signal?.addEventListener("abort", abort, { once: true });
+          });
+        },
+      }),
+    });
+
+    await interruptTurn(interrupt, startAssistantTurn("long running turn"));
+
+    const last = rows[rows.length - 1];
+    expect(last?.kind).toBe("task");
+    expect(last?.style?.outcome).toBe("cancelled");
+    expect(last?.content).toMatch(/^Interrupted after [0-9.]+m?s \(1 tool · ↑1\.2k ↓340\)$/);
+  });
+
+  test("commits the streamed usage of a turn that fails mid-stream", async () => {
+    const { handleMessage, session, calls } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          input.onEvent({ type: "usage", inputTokens: 800, outputTokens: 120 });
+          throw new Error("provider exploded");
+        },
+      }),
+    });
+
+    await handleMessage("ask something expensive");
+
+    expect(session.tokenUsage.map((entry) => entry.usage)).toEqual([
+      { inputTokens: 800, outputTokens: 120, totalTokens: 920 },
+    ]);
+    expect(calls.runningUsageSets.at(-1)).toBeNull();
+  });
+
   test("completion turn: streamed answer is not duplicated by the authoritative commit", async () => {
     const { handleMessage, rows } = createMessageHandlerHarness({
       client: createClient({
@@ -599,7 +721,7 @@ describe("chat message handler", () => {
 
     const last = rows[rows.length - 1];
     expect(last?.kind).toBe("task");
-    expect(last?.content).toBe("Interrupted");
+    expect(last?.content).toMatch(/^Interrupted after /);
     expect(last?.style?.dim).toBe(true);
     expect(last?.style?.outcome).toBe("cancelled");
   });
@@ -686,11 +808,16 @@ describe("chat message handler", () => {
 
     await handleSubmit("Second question");
 
-    expect(rows.map((row) => `${row.kind}:${row.content}`)).toEqual([
+    const shape = rows.map((row) => {
+      const content = typeof row.content === "string" ? row.content : "";
+      return `${row.kind}:${content.replace(/(Interrupted after|Worked for) .*/, "$1 …")}`;
+    });
+    expect(shape).toEqual([
       "user:First question",
-      "task:Interrupted",
+      "task:Interrupted after …",
       "user:Second question",
       "assistant:Second answer.",
+      "status:Worked for …",
     ]);
   });
 
@@ -1136,7 +1263,11 @@ describe("chat message handler", () => {
     interruptHandler();
     await pending;
 
-    expect(rows.some((r) => r.kind === "task" && r.content === "Interrupted")).toBe(true);
+    expect(
+      rows.some(
+        (r) => r.kind === "task" && typeof r.content === "string" && r.content.startsWith("Interrupted after "),
+      ),
+    ).toBe(true);
   });
 
   test("a blocked question ends the turn with no pending indicator", async () => {
