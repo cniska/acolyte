@@ -42,6 +42,15 @@ Terminal states allow no further transitions. Idempotent transitions (same state
 | `abort_requested` | client sent `chat.abort` | → `cancelled` |
 | `connection_closed` | WebSocket disconnected | all active/queued → `cancelled` |
 
+## Shutdown
+
+A `running` task blocks shutdown.
+
+- `POST /v1/admin/shutdown` answers `{ ok: false, running: [{ taskId, sessionId }] }` with 409 while any task runs
+- `{ "force": true }` in the body stops the daemon regardless, abandoning the turn
+- `acolyte stop` asks first and signals with SIGTERM only when the daemon cannot answer
+- a refused `restart` starts no replacement; a self-update never forces
+
 ## Queue model
 
 Per-connection serial execution — one active task at a time, others queue up.
@@ -63,7 +72,7 @@ Per-connection serial execution — one active task at a time, others queue up.
 
 - in-memory `TaskStore` (Map-based, not persisted across restarts)
 - max 1000 tasks by default, oldest terminal tasks evicted first
-- `TaskRecord` — `{ id, state, createdAt, updatedAt }` — immutable, replaced on transition
+- `TaskRecord` — `{ id, state, createdAt, updatedAt, sessionId }` — immutable, replaced on transition
 
 ## Task vs session
 

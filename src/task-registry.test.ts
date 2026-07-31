@@ -79,6 +79,36 @@ describe("task registry", () => {
   });
 });
 
+describe("live tasks", () => {
+  test("reports only running tasks, carrying the session they belong to", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_live", { state: "running", sessionId: "sess_one" });
+    registry.transitionTask("task_queued", { state: "queued", sessionId: "sess_two" });
+    registry.transitionTask("task_done", { state: "running", sessionId: "sess_three" });
+    registry.transitionTask("task_done", { state: "completed" });
+
+    expect(registry.liveTasks()).toEqual([{ taskId: "task_live", sessionId: "sess_one" }]);
+  });
+
+  test("keeps the session across later transitions and reports none when idle", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_live", { state: "accepted", sessionId: "sess_one" });
+    registry.transitionTask("task_live", { state: "running" });
+
+    expect(registry.liveTasks()).toEqual([{ taskId: "task_live", sessionId: "sess_one" }]);
+
+    registry.transitionTask("task_live", { state: "completed" });
+    expect(registry.liveTasks()).toEqual([]);
+  });
+
+  test("reports a running task with no session as null rather than omitting it", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_live", { state: "running" });
+
+    expect(registry.liveTasks()).toEqual([{ taskId: "task_live", sessionId: null }]);
+  });
+});
+
 describe("task transition rules", () => {
   test("enforces transition allowlist", () => {
     expect(canTransitionTaskState("running", "completed")).toBe(true);

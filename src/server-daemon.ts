@@ -15,11 +15,14 @@ import {
 } from "./daemon-ops";
 import { field } from "./field";
 import { PRIVATE_FILE_MODE } from "./file-ops";
+import { HTTP_STATUS } from "./http-status";
 import { t } from "./i18n";
 import type { Env } from "./paths";
 import { PROTOCOL_VERSION } from "./protocol";
+import { type LiveTask, parseShutdownResponse, type ShutdownRequest } from "./shutdown-contract";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
+const SERVER_EXIT_TIMEOUT_MS = 3_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
 const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 
@@ -43,10 +46,11 @@ type LocalServerStatus = {
   port: number;
 };
 
-type StopResult = {
-  stopped: boolean;
-  pid: number | null;
-};
+export type StopResult =
+  | { kind: "stopped"; pid: number | null }
+  | { kind: "refused"; tasks: LiveTask[] }
+  | { kind: "unresponsive" }
+  | { kind: "not_running" };
 
 export function apiUrlForPort(port: number): string {
   return `http://127.0.0.1:${port}`;
@@ -95,17 +99,43 @@ async function waitForHealthyServerOrSpawnExit(
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
-async function requestGracefulShutdown(apiUrl: string, apiKey?: string): Promise<boolean> {
-  if (!(await isServerHealthy(apiUrl, apiKey))) return false;
+type GracefulShutdownOutcome = { kind: "shutdown" } | { kind: "refused"; tasks: LiveTask[] } | { kind: "unreachable" };
+
+async function waitForServerToExit(
+  apiUrl: string,
+  apiKey?: string,
+  timeoutMs = SERVER_EXIT_TIMEOUT_MS,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await isServerHealthy(apiUrl, apiKey))) return true;
+    await Bun.sleep(50);
+  }
+  return false;
+}
+
+async function requestGracefulShutdown(
+  apiUrl: string,
+  apiKey?: string,
+  force = false,
+): Promise<GracefulShutdownOutcome> {
+  if (!(await isServerHealthy(apiUrl, apiKey))) return { kind: "unreachable" };
   try {
-    await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
+    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
       method: "POST",
-      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
+      headers: {
+        "content-type": "application/json",
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({ force } satisfies ShutdownRequest),
     });
+    if (response.status === HTTP_STATUS.unauthorized) return { kind: "unreachable" };
+    const decision = parseShutdownResponse(await response.json());
+    if (decision && !decision.ok) return { kind: "refused", tasks: decision.running };
   } catch {
     // Server may close before the response completes — that's expected.
   }
-  return true;
+  return { kind: "shutdown" };
 }
 
 async function tryAcquireStartupLock(path: string, port: number): Promise<boolean> {
@@ -253,26 +283,41 @@ export async function localServerStatus(input: {
   return { running: false, pid: null, port };
 }
 
-export async function stopLocalServer(input: { port: number; apiKey?: string; env?: Env }): Promise<StopResult> {
-  const { port, apiKey, env } = input;
+export async function stopLocalServer(input: {
+  port: number;
+  apiKey?: string;
+  env?: Env;
+  force?: boolean;
+}): Promise<StopResult> {
+  const { port, apiKey, env, force = false } = input;
   const apiUrl = apiUrlForPort(port);
   const lockPath = serverLockPath(port, env);
   const lock = await readServerLock(lockPath);
 
-  if (!lock) {
-    if (await requestGracefulShutdown(apiUrl, apiKey)) return { stopped: true, pid: null };
-    return { stopped: false, pid: null };
+  // Ask before killing: only the daemon knows whether a turn is live, and a signal cannot ask.
+  const graceful = await requestGracefulShutdown(apiUrl, apiKey, force);
+  if (graceful.kind === "refused") return { kind: "refused", tasks: graceful.tasks };
+  if (graceful.kind === "shutdown") {
+    // The daemon closes its sockets after answering, and a caller that restarts would otherwise
+    // find the old server still healthy and attach to a process about to exit.
+    const exited = await waitForServerToExit(apiUrl, apiKey);
+    if (exited) {
+      await rm(lockPath, { force: true });
+      return { kind: "stopped", pid: lock?.pid ?? null };
+    }
+    // It accepted the request and stayed up; only its own PID can settle this.
+    if (!lock) return { kind: "unresponsive" };
+  } else if (!lock) {
+    // Nothing answered and nothing to signal.
+    return { kind: "not_running" };
   }
-
   try {
     if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
   } catch {
     // Ignore; lock cleanup still proceeds.
   }
   await rm(lockPath, { force: true });
-  // If the lock PID was dead but a server is still healthy (stale lock), shut it down.
-  if (!isProcessAlive(lock.pid)) await requestGracefulShutdown(apiUrl, apiKey);
-  return { stopped: true, pid: lock.pid };
+  return { kind: "stopped", pid: lock.pid };
 }
 
 function portFromLockEntry(entry: string): number | undefined {
@@ -286,25 +331,26 @@ function portFromLockEntry(entry: string): number | undefined {
 export async function stopAllLocalServers(input?: {
   apiKey?: string;
   env?: Env;
-}): Promise<Array<{ port: number; pid: number }>> {
+  force?: boolean;
+}): Promise<{ stopped: Array<{ port: number; pid: number }>; refused: Array<{ port: number; tasks: LiveTask[] }> }> {
   const dir = daemonsDir(input?.env);
   let entries: string[];
   try {
     entries = await readdir(dir);
   } catch {
-    return [];
+    return { stopped: [], refused: [] };
   }
 
   const stopped: Array<{ port: number; pid: number }> = [];
+  const refused: Array<{ port: number; tasks: LiveTask[] }> = [];
   for (const entry of entries) {
     const port = portFromLockEntry(entry);
     if (port === undefined) continue;
-    const result = await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env });
-    if (result.stopped && result.pid !== null) {
-      stopped.push({ port, pid: result.pid });
-    }
+    const result = await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env, force: input?.force });
+    if (result.kind === "refused") refused.push({ port, tasks: result.tasks });
+    else if (result.kind === "stopped" && result.pid !== null) stopped.push({ port, pid: result.pid });
   }
-  return stopped;
+  return { stopped, refused };
 }
 
 export async function listRunningDaemons(input?: {

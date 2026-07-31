@@ -11,15 +11,14 @@ function createDeps(overrides?: Partial<DaemonDeps>): { deps: DaemonDeps; output
     hasHelpFlag: () => false,
     port: 6767,
     printDim: (message) => lines.push(message),
-    requestLocalServerShutdown: async () => false,
     serverEntry: "src/server.ts",
     commandError: () => {},
     commandHelp: () => {},
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     listRunningDaemons: async () => [],
     localServerStatus: async () => ({ running: true, pid: 1234, port: 6767 }),
-    stopLocalServer: async () => ({ stopped: false, pid: null }),
-    stopAllLocalServers: async () => [],
+    stopLocalServer: async () => ({ kind: "not_running" }),
+    stopAllLocalServers: async () => ({ stopped: [], refused: [] }),
     ...overrides,
   };
   return { deps, output: () => lines.join("\n") };
@@ -50,7 +49,7 @@ describe("cli-daemon", () => {
 
   test("stop prints stopped for each daemon", async () => {
     const { deps, output } = createDeps({
-      stopAllLocalServers: async () => [{ port: 6767, pid: 1234 }],
+      stopAllLocalServers: async () => ({ stopped: [{ port: 6767, pid: 1234 }], refused: [] }),
     });
     await stopMode([], deps);
     expect(output()).toBe(
@@ -60,10 +59,10 @@ describe("cli-daemon", () => {
     );
   });
 
-  test("stop falls back to shutdown request when no managed daemons found", async () => {
+  test("stop falls back to the configured port when no daemon holds a lock", async () => {
     const { deps, output } = createDeps({
-      stopAllLocalServers: async () => [],
-      requestLocalServerShutdown: async () => true,
+      stopAllLocalServers: async () => ({ stopped: [], refused: [] }),
+      stopLocalServer: async () => ({ kind: "stopped", pid: null }),
     });
     await stopMode([], deps);
     expect(output()).toBe(
@@ -74,10 +73,7 @@ describe("cli-daemon", () => {
   });
 
   test("stop prints no servers running when nothing to stop", async () => {
-    const { deps, output } = createDeps({
-      stopAllLocalServers: async () => [],
-      requestLocalServerShutdown: async () => false,
-    });
+    const { deps, output } = createDeps();
     await stopMode([], deps);
     expect(output()).toBe(
       dedent(`
@@ -86,10 +82,83 @@ describe("cli-daemon", () => {
     );
   });
 
+  test("stop refuses while a turn is live and names the task and session", async () => {
+    const { deps, output } = createDeps({
+      stopAllLocalServers: async () => ({
+        stopped: [],
+        refused: [{ port: 6767, tasks: [{ taskId: "task_abc", sessionId: "sess_xyz" }] }],
+      }),
+    });
+    await stopMode([], deps);
+    expect(output()).toContain("task_abc (sess_xyz)");
+    expect(output()).toContain("--force");
+  });
+
+  test("stop --force passes force through and reports the stop", async () => {
+    const forced: boolean[] = [];
+    const { deps, output } = createDeps({
+      stopAllLocalServers: async (input) => {
+        forced.push(input?.force ?? false);
+        return { stopped: [{ port: 6767, pid: 1234 }], refused: [] };
+      },
+    });
+    await stopMode(["--force"], deps);
+    expect(forced).toEqual([true]);
+    expect(output()).toBe(
+      dedent(`
+        Stopped server on port 6767 (pid 1234)
+      `),
+    );
+  });
+
+  test("stop rejects an unknown argument", async () => {
+    let errored = "";
+    const { deps } = createDeps({ commandError: (name) => (errored = name) });
+    await stopMode(["--nope"], deps);
+    expect(errored).toBe("stop");
+  });
+
+  test("stop tells the user to intervene when the daemon will not go down", async () => {
+    const { deps, output } = createDeps({ stopLocalServer: async () => ({ kind: "unresponsive" }) });
+    await stopMode([], deps);
+    expect(output()).toBe(
+      dedent(`
+        Unable to stop server on port 6767. Stop it manually.
+      `),
+    );
+  });
+
+  test("restart does not start a replacement when the daemon will not go down", async () => {
+    let ensured = 0;
+    const { deps } = createDeps({
+      stopLocalServer: async () => ({ kind: "unresponsive" }),
+      ensureLocalServer: async () => {
+        ensured += 1;
+        return { port: 6767, pid: 5678, started: true };
+      },
+    });
+    await restartMode([], deps);
+    expect(ensured).toBe(0);
+  });
+
+  test("restart does not start a replacement when the stop is refused", async () => {
+    let ensured = 0;
+    const { deps, output } = createDeps({
+      stopLocalServer: async () => ({ kind: "refused", tasks: [{ taskId: "task_abc", sessionId: null }] }),
+      ensureLocalServer: async () => {
+        ensured += 1;
+        return { port: 6767, pid: 5678, started: true };
+      },
+    });
+    await restartMode([], deps);
+    expect(ensured).toBe(0);
+    expect(output()).toContain("task_abc");
+  });
+
   test("restart stops then starts on configured port", async () => {
     let ensured = 0;
     const { deps, output } = createDeps({
-      stopLocalServer: async () => ({ stopped: true, pid: 1234 }),
+      stopLocalServer: async () => ({ kind: "stopped", pid: 1234 }),
       ensureLocalServer: async () => {
         ensured += 1;
         return { port: 6767, pid: 5678, started: true };

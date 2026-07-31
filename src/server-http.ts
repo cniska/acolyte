@@ -2,6 +2,7 @@ import type { ChatRequest } from "./api";
 import { HTTP_STATUS } from "./http-status";
 import { log } from "./log";
 import type { RunChatHandlers } from "./server-contract";
+import { parseShutdownRequest, type ShutdownRequest, type ShutdownResponse } from "./shutdown-contract";
 import type { StatusPayload } from "./status-contract";
 
 type ServerHttpDeps = {
@@ -15,7 +16,7 @@ type ServerHttpDeps = {
     details: Record<string, string | number | boolean | null | undefined>,
     status?: number,
   ) => Response;
-  shutdownServer: () => void;
+  shutdownServer: (input: ShutdownRequest) => ShutdownResponse;
   upgradeToRpc: (req: Request) => boolean;
 };
 
@@ -57,12 +58,26 @@ async function handleStatus(ctx: RouteContext): Promise<Response | null> {
   return json(await ctx.deps.createStatusPayload());
 }
 
+/** Admin POSTs carry no body when they need no arguments, so an unreadable body means defaults. */
+async function readJsonBody(req: Request): Promise<unknown> {
+  try {
+    return await req.json();
+  } catch {
+    return {};
+  }
+}
+
 async function handleShutdown(ctx: RouteContext): Promise<Response | null> {
   if (ctx.url.pathname !== "/v1/admin/shutdown" || ctx.req.method !== "POST") return null;
   if (!ctx.deps.hasValidAuth(ctx.req)) return warnUnauthorized(ctx.url.pathname, ctx.req.method);
-  log.warn("server shutdown requested", { path: ctx.url.pathname, method: ctx.req.method });
-  ctx.deps.shutdownServer();
-  return json({ ok: true, shutdown: true });
+  const request = parseShutdownRequest(await readJsonBody(ctx.req));
+  log.warn("server shutdown requested", { path: ctx.url.pathname, method: ctx.req.method, force: request.force });
+  const decision = ctx.deps.shutdownServer(request);
+  if (!decision.ok) {
+    log.warn("server shutdown refused", { running_task_count: decision.running.length });
+    return json(decision, HTTP_STATUS.conflict);
+  }
+  return json(decision);
 }
 
 async function handleRpcUpgrade(ctx: RouteContext): Promise<Response | undefined | null> {

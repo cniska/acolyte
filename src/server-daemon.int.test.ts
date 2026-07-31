@@ -280,7 +280,89 @@ describe("server daemon", () => {
     });
     // No lock file written — server is running but lock is missing
     const result = await stopLocalServer({ port: server.port, env });
-    expect(result.stopped).toBe(true);
+    expect(result.kind).toBe("stopped");
+  });
+
+  test("stopLocalServer asks before signalling, so a live turn survives with its lock intact", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const running = [{ taskId: "task_abc", sessionId: "sess_xyz" }];
+    let signalled = false;
+    // A process that outlives the test stands in for the daemon, so a stray SIGTERM is observable.
+    const proc = Bun.spawn(["sleep", "60"], { detached: true });
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status") return compatibleStatusResponse();
+      if (url.pathname === "/v1/admin/shutdown") {
+        return Response.json({ ok: false, running }, { status: 409 });
+      }
+      return new Response("ok");
+    });
+    const lockPath = serverLockPath(server.port, env);
+    await mkdir(join(lockPath, ".."), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({ pid: proc.pid, port: server.port, startedAt: "2026-02-28T00:00:00.000Z" }),
+      "utf8",
+    );
+
+    try {
+      const result = await stopLocalServer({ port: server.port, env });
+
+      expect(result).toEqual({ kind: "refused", tasks: running });
+      await Bun.sleep(50);
+      signalled = !isProcessAlive(proc.pid);
+      expect(signalled).toBe(false);
+      // The daemon is still the owner of that port, so its lock must not be cleaned up.
+      await expect(Bun.file(lockPath).exists()).resolves.toBe(true);
+    } finally {
+      server.stop();
+      proc.kill();
+      await proc.exited.catch(() => {});
+    }
+  });
+
+  test("stopLocalServer with force stops a daemon that would otherwise refuse", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const forced: boolean[] = [];
+    const server = startTestServer(async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status") return compatibleStatusResponse();
+      if (url.pathname === "/v1/admin/shutdown") {
+        const body = (await req.json()) as { force?: boolean };
+        forced.push(body.force ?? false);
+        if (!body.force) return Response.json({ ok: false, running: [{ taskId: "task_abc", sessionId: null }] });
+        // A forced shutdown really exits, which is what the caller waits for.
+        server.stop();
+        return Response.json({ ok: true, shutdown: true });
+      }
+      return new Response("ok");
+    });
+
+    try {
+      const result = await stopLocalServer({ port: server.port, env, force: true });
+
+      expect(forced).toEqual([true]);
+      expect(result.kind).toBe("stopped");
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("stopLocalServer reports unresponsive when the daemon accepts shutdown but stays up", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status") return compatibleStatusResponse();
+      if (url.pathname === "/v1/admin/shutdown") return Response.json({ ok: true, shutdown: true });
+      return new Response("ok");
+    });
+
+    try {
+      // No lock file, so there is no pid to escalate to when it does not exit.
+      await expect(stopLocalServer({ port: server.port, env })).resolves.toEqual({ kind: "unresponsive" });
+    } finally {
+      server.stop();
+    }
   });
 
   test("stopLocalServer cleans up lock when pid is dead and endpoint is not healthy", async () => {
@@ -296,7 +378,7 @@ describe("server daemon", () => {
       }),
       "utf8",
     );
-    await expect(stopLocalServer({ port: 9, env })).resolves.toEqual({ stopped: true, pid: 999999 });
+    await expect(stopLocalServer({ port: 9, env })).resolves.toEqual({ kind: "stopped", pid: 999999 });
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 
@@ -322,7 +404,7 @@ describe("server daemon", () => {
       "utf8",
     );
     const result = await stopLocalServer({ port: server.port, env });
-    expect(result.stopped).toBe(true);
+    expect(result.kind).toBe("stopped");
     expect(shutdownCalled).toBe(true);
   });
 
@@ -342,7 +424,7 @@ describe("server daemon", () => {
     );
     try {
       const result = await stopLocalServer({ port: 9, env });
-      expect(result).toEqual({ stopped: true, pid: proc.pid });
+      expect(result).toEqual({ kind: "stopped", pid: proc.pid });
       await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
       await Bun.sleep(50);
       expect(isProcessAlive(proc.pid)).toBe(false);
@@ -434,7 +516,7 @@ describe("server daemon", () => {
         JSON.stringify({ pid: procB.pid, port: 9002, startedAt: "2026-01-01T00:00:00.000Z" }),
       );
 
-      const stopped = await stopAllLocalServers({ env });
+      const { stopped } = await stopAllLocalServers({ env });
       expect(stopped).toHaveLength(2);
       expect(stopped.map((s) => s.port).sort()).toEqual([9001, 9002]);
     } finally {

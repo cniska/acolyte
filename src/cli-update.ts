@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
+import { t } from "./i18n";
 import { stateDir } from "./paths";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi } from "./tui/styles";
@@ -172,7 +173,9 @@ async function performUpdate(currentVersion: string, update: UpdateInfo): Promis
   }
 
   renderDone(update.latest);
-  await stopAllLocalServers();
+  // Never force: an update must not abandon a turn another client is mid-way through.
+  const { refused } = await stopAllLocalServers();
+  if (refused.length > 0) printDim(t("cli.update.daemon_busy"));
   reexec();
 }
 

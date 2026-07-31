@@ -206,7 +206,11 @@ export const EN_MESSAGES = {
   "cli.server.start_timeout": "Timed out waiting for server at {url}",
   "cli.server.started": "Started server on port {port} (pid {pid})",
   "cli.server.stop_manual": "Unable to stop server on port {port}. Stop it manually.",
+  "cli.server.stop_refused":
+    "Server on port {port} is running a turn: {tasks}. It stays up so that work is not lost. Cancel the turn, or pass --force to stop anyway.",
   "cli.server.stopped": "Stopped server on port {port} (pid {pid})",
+  "cli.update.daemon_busy":
+    "Server kept running: a turn is in progress. It picks up the new version once that turn ends.",
   "cli.status.local_start_hint": "Server is not running. Start it with: acolyte start",
   "cli.tool.failed": "Tool command failed",
   "cli.tool.invalid_input": "Invalid input for {tool}:",
@@ -219,6 +223,8 @@ export const EN_MESSAGES = {
   "error.connection.loopback_default": "Cannot reach server at {url}. Start it with: acolyte start",
   "error.connection.loopback_https":
     "Cannot reach server at {url}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.",
+  "error.daemon.lost":
+    "The server stopped while this turn was running, so the turn was lost. The session is intact — send the message again to continue.",
   "error.model.not_configured": "No model configured. Choose a model with /model.",
   "error.model.provider_unavailable": 'Model "{model}" is unavailable. Check provider credentials and try again.',
   "error.model.provider_unavailable.anthropic":

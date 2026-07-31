@@ -1,8 +1,11 @@
+import type { SessionId } from "./session-contract";
+import type { LiveTask } from "./shutdown-contract";
 import { isTerminalTaskState, type TaskId, type TaskRecord, type TaskState } from "./task-contract";
 import { createInMemoryTaskStore, type TaskStore } from "./task-store";
 
 type TaskPatch = {
   state?: TaskState;
+  sessionId?: SessionId | null;
 };
 
 const ALLOWED_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
@@ -97,6 +100,7 @@ export class TaskRegistry {
       state: patch.state ?? existing?.state ?? "accepted",
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      sessionId: patch.sessionId ?? existing?.sessionId ?? null,
     };
     this.store.set(taskId, next);
     this.pruneIfNeeded();
@@ -105,5 +109,13 @@ export class TaskRegistry {
 
   get(taskId: TaskId): TaskRecord | null {
     return this.store.get(taskId);
+  }
+
+  liveTasks(): LiveTask[] {
+    const live: LiveTask[] = [];
+    for (const task of this.store.values()) {
+      if (task.state === "running") live.push({ taskId: task.id, sessionId: task.sessionId ?? null });
+    }
+    return live;
   }
 }

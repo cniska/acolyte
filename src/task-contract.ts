@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
 import { domainIdSchema } from "./id-contract";
+import { sessionIdSchema } from "./session-contract";
 
 export const taskStateSchema = z.enum(["accepted", "queued", "running", "completed", "failed", "cancelled"]);
 export const taskTransitionReasonSchema = z.enum([
@@ -24,6 +25,8 @@ export const taskRecordSchema = z.object({
   state: taskStateSchema,
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
+  // A refusal to stop the daemon names the session whose work would be abandoned.
+  sessionId: sessionIdSchema.nullish(),
 });
 
 export type TaskRecord = Readonly<z.infer<typeof taskRecordSchema>>;
