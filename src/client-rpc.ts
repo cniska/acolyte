@@ -8,8 +8,10 @@ import {
   rpcUrlFromApiUrl,
   validateFinalChatResponse,
 } from "./client-contract";
+import { ERROR_KINDS, TRANSPORT_ERROR_CODES } from "./error-contract";
 import { connectionHelpMessage } from "./error-messages";
 import { field } from "./field";
+import { t } from "./i18n";
 import { createRpcRequestId } from "./rpc-protocol";
 import { parseStatusFields, type StatusFields } from "./status-contract";
 import { parseTaskRecord, type TaskId, type TaskRecord } from "./task-contract";
@@ -252,7 +254,13 @@ export class RpcClient implements Client {
           reject(abortError);
           return;
         }
-        reject(createRemoteError("RPC stream closed before final reply", { taskId: acceptedTaskId }));
+        reject(
+          createRemoteError(t("error.daemon.lost"), {
+            taskId: acceptedTaskId,
+            kind: ERROR_KINDS.daemonLost,
+            errorCode: TRANSPORT_ERROR_CODES.daemonLost,
+          }),
+        );
       };
       const onError = () => {
         cleanup();

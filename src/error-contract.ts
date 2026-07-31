@@ -39,7 +39,12 @@ export const MEMORY_ERROR_CODES = {
 } as const;
 export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
 
-export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode | MemoryErrorCode;
+export const TRANSPORT_ERROR_CODES = {
+  daemonLost: "E_DAEMON_LOST",
+} as const;
+export type TransportErrorCode = (typeof TRANSPORT_ERROR_CODES)[keyof typeof TRANSPORT_ERROR_CODES];
+
+export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode | MemoryErrorCode | TransportErrorCode;
 
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
@@ -48,6 +53,7 @@ export const ERROR_KINDS = {
   fileNotFound: "file_not_found",
   budgetExhausted: "budget_exhausted",
   gitUnavailable: "git_unavailable",
+  daemonLost: "daemon_lost",
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];
