@@ -4,13 +4,21 @@ import { dedent } from "./test-utils";
 
 type DaemonDeps = Parameters<typeof startMode>[1];
 
-function createDeps(overrides?: Partial<DaemonDeps>): { deps: DaemonDeps; output: () => string } {
+function createDeps(overrides?: Partial<DaemonDeps>): {
+  deps: DaemonDeps;
+  output: () => string;
+  failures: () => number;
+} {
   const lines: string[] = [];
+  let failures = 0;
   const deps: DaemonDeps = {
     apiKey: undefined,
     hasHelpFlag: () => false,
     port: 6767,
     printDim: (message) => lines.push(message),
+    failCommand: () => {
+      failures += 1;
+    },
     serverEntry: "src/server.ts",
     commandError: () => {},
     commandHelp: () => {},
@@ -21,7 +29,7 @@ function createDeps(overrides?: Partial<DaemonDeps>): { deps: DaemonDeps; output
     stopAllLocalServers: async () => ({ stopped: [], refused: [] }),
     ...overrides,
   };
-  return { deps, output: () => lines.join("\n") };
+  return { deps, output: () => lines.join("\n"), failures: () => failures };
 }
 
 describe("cli-daemon", () => {
@@ -83,7 +91,7 @@ describe("cli-daemon", () => {
   });
 
   test("stop refuses while a turn is live and names the task and session", async () => {
-    const { deps, output } = createDeps({
+    const { deps, output, failures } = createDeps({
       stopAllLocalServers: async () => ({
         stopped: [],
         refused: [{ port: 6767, tasks: [{ taskId: "task_abc", sessionId: "sess_xyz" }] }],
@@ -92,6 +100,8 @@ describe("cli-daemon", () => {
     await stopMode([], deps);
     expect(output()).toContain("task_abc (sess_xyz)");
     expect(output()).toContain("--force");
+    // A caller chaining on exit status must not read a refusal as a stop.
+    expect(failures()).toBe(1);
   });
 
   test("stop --force passes force through and reports the stop", async () => {

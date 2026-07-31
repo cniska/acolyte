@@ -223,6 +223,9 @@ export const EN_MESSAGES = {
   "error.connection.loopback_default": "Cannot reach server at {url}. Start it with: acolyte start",
   "error.connection.loopback_https":
     "Cannot reach server at {url}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.",
+  "error.reply_timeout":
+    "No reply within the timeout, so this client closed the connection. The session is intact — send the message again to continue.",
+  "error.unauthorized": "The server rejected this connection as unauthorized. Check the configured API key.",
   "error.daemon.lost":
     "The server stopped while this turn was running, so the turn was lost. The session is intact — send the message again to continue.",
   "error.model.not_configured": "No model configured. Choose a model with /model.",

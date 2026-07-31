@@ -15,7 +15,6 @@ import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { promptHidden } from "./cli-prompt-hidden";
 import { runMode, runResourceId } from "./cli-run";
-import { requestLocalServerShutdown } from "./cli-server";
 import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
@@ -88,7 +87,9 @@ const daemonDeps = {
   hasHelpFlag,
   port: appConfig.server.port,
   printDim,
-  requestLocalServerShutdown,
+  failCommand: () => {
+    process.exitCode = 1;
+  },
   serverEntry: `${import.meta.dir}/server.ts`,
   commandError,
   commandHelp,
@@ -252,16 +253,16 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   stop: {
     help: {
       command: "stop",
-      usage: "acolyte stop",
+      usage: "acolyte stop [--force]",
       description: t("cli.help.desc.stop"),
-      examples: ["acolyte stop"],
+      examples: ["acolyte stop", "acolyte stop --force"],
     },
     handler: (args) => stopMode(args, daemonDeps),
   },
   restart: {
     help: {
       command: "restart",
-      usage: "acolyte restart",
+      usage: "acolyte restart [--force]",
       description: t("cli.help.desc.restart"),
       examples: ["acolyte restart"],
     },

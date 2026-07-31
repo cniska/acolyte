@@ -17,6 +17,7 @@ type DaemonModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   port: number;
   printDim: (message: string) => void;
+  failCommand: () => void;
   serverEntry: string;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
@@ -42,16 +43,23 @@ function formatLiveTasks(tasks: LiveTask[]): string {
   return tasks.map((task) => (task.sessionId ? `${task.taskId} (${task.sessionId})` : task.taskId)).join(", ");
 }
 
+// A refused stop must not read as success to a caller chaining on exit status.
+function printRefusal(deps: DaemonModeDeps, port: number, tasks: LiveTask[]): void {
+  deps.printDim(t("cli.server.stop_refused", { port, tasks: formatLiveTasks(tasks) }));
+  deps.failCommand();
+}
+
 function printStopResult(deps: DaemonModeDeps, port: number, result: StopResult): void {
   switch (result.kind) {
     case "stopped":
       deps.printDim(t("cli.server.stopped", { port, pid: result.pid ?? 0 }));
       return;
     case "refused":
-      deps.printDim(t("cli.server.stop_refused", { port, tasks: formatLiveTasks(result.tasks) }));
+      printRefusal(deps, port, result.tasks);
       return;
     case "unresponsive":
       deps.printDim(t("cli.server.stop_manual", { port }));
+      deps.failCommand();
       return;
     case "not_running":
       deps.printDim(t("cli.server.no_servers_running"));
@@ -75,7 +83,7 @@ export async function stopMode(args: string[], deps: DaemonModeDeps): Promise<vo
     return;
   }
   for (const entry of refused) {
-    deps.printDim(t("cli.server.stop_refused", { port: entry.port, tasks: formatLiveTasks(entry.tasks) }));
+    printRefusal(deps, entry.port, entry.tasks);
   }
   for (const entry of stopped) {
     deps.printDim(t("cli.server.stopped", { port: entry.port, pid: entry.pid }));
@@ -92,17 +100,19 @@ export async function restartMode(args: string[], deps: DaemonModeDeps): Promise
   const stopResult = await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey, force });
   // Restarting over a live turn would abandon it as surely as stopping does.
   if (stopResult.kind === "refused") {
-    deps.printDim(t("cli.server.stop_refused", { port: deps.port, tasks: formatLiveTasks(stopResult.tasks) }));
+    printRefusal(deps, deps.port, stopResult.tasks);
     return;
   }
   if (stopResult.kind === "unresponsive") {
     deps.printDim(t("cli.server.stop_manual", { port: deps.port }));
+    deps.failCommand();
     return;
   }
   if (stopResult.kind === "not_running") {
     const status = await deps.localServerStatus({ port: deps.port, apiKey: deps.apiKey });
     if (status.running) {
       deps.printDim(t("cli.server.stop_manual", { port: deps.port }));
+      deps.failCommand();
       return;
     }
   }
