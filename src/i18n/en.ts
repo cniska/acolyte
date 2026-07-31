@@ -210,7 +210,7 @@ export const EN_MESSAGES = {
     "Server on port {port} is running a turn: {tasks}. It stays up so that work is not lost. Cancel the turn, or pass --force to stop anyway.",
   "cli.server.stopped": "Stopped server on port {port} (pid {pid})",
   "cli.update.daemon_busy":
-    "Server kept running: a turn is in progress. It picks up the new version once that turn ends.",
+    "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
   "cli.status.local_start_hint": "Server is not running. Start it with: acolyte start",
   "cli.tool.failed": "Tool command failed",
   "cli.tool.invalid_input": "Invalid input for {tool}:",

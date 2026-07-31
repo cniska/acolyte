@@ -160,6 +160,18 @@ function reexec(): never {
   process.exit(result.exitCode ?? 1);
 }
 
+/**
+ * An update must never abandon a turn another client is mid-way through, so it asks without force
+ * and reports what it left running. Injectable because the surrounding update path re-execs.
+ */
+export async function stopServersForUpdate(
+  deps: { stop?: typeof stopAllLocalServers; notify?: (message: string) => void } = {},
+): Promise<void> {
+  const { stop = stopAllLocalServers, notify = printDim } = deps;
+  const { refused } = await stop();
+  if (refused.length > 0) notify(t("cli.update.daemon_busy"));
+}
+
 async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {
   renderHeader(currentVersion, update.latest);
 
@@ -173,9 +185,7 @@ async function performUpdate(currentVersion: string, update: UpdateInfo): Promis
   }
 
   renderDone(update.latest);
-  // Never force: an update must not abandon a turn another client is mid-way through.
-  const { refused } = await stopAllLocalServers();
-  if (refused.length > 0) printDim(t("cli.update.daemon_busy"));
+  await stopServersForUpdate();
   reexec();
 }
 
