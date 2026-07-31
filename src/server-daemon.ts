@@ -23,6 +23,7 @@ import { type LiveTask, parseShutdownResponse, type ShutdownRequest } from "./sh
 
 const SERVER_START_TIMEOUT_MS = 10_000;
 const SERVER_EXIT_TIMEOUT_MS = 3_000;
+const SHUTDOWN_REQUEST_TIMEOUT_MS = 5_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
 const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 
@@ -99,19 +100,50 @@ async function waitForHealthyServerOrSpawnExit(
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
-type GracefulShutdownOutcome = { kind: "shutdown" } | { kind: "refused"; tasks: LiveTask[] } | { kind: "unreachable" };
+type GracefulShutdownOutcome =
+  | { kind: "shutdown" }
+  | { kind: "refused"; tasks: LiveTask[] }
+  | { kind: "unauthorized" }
+  | { kind: "unreachable" };
 
-async function waitForServerToExit(
-  apiUrl: string,
-  apiKey?: string,
-  timeoutMs = SERVER_EXIT_TIMEOUT_MS,
-): Promise<boolean> {
+/** Anything that answers means a daemon still holds the port, whatever its version or auth. */
+async function isServerListening(apiUrl: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HEALTHCHECK_TIMEOUT_MS);
+  try {
+    await fetch(`${apiUrl.replace(/\/$/, "")}/healthz`, { signal: controller.signal });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function waitForServerToExit(apiUrl: string, timeoutMs = SERVER_EXIT_TIMEOUT_MS): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (!(await isServerHealthy(apiUrl, apiKey))) return true;
+    if (!(await isServerListening(apiUrl))) return true;
     await Bun.sleep(50);
   }
   return false;
+}
+
+async function waitForProcessToExit(pid: number, timeoutMs = SERVER_EXIT_TIMEOUT_MS): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!isProcessAlive(pid)) return true;
+    await Bun.sleep(50);
+  }
+  return false;
+}
+
+/** Only the daemon we set out to stop owns this lock; a replacement that took the port keeps its own. */
+async function removeOwnedServerLock(lockPath: string, owner: StartupLock | null): Promise<void> {
+  if (!owner) return;
+  const current = await readServerLock(lockPath);
+  if (current && current.pid !== owner.pid) return;
+  await rm(lockPath, { force: true });
 }
 
 async function requestGracefulShutdown(
@@ -119,7 +151,12 @@ async function requestGracefulShutdown(
   apiKey?: string,
   force = false,
 ): Promise<GracefulShutdownOutcome> {
-  if (!(await isServerHealthy(apiUrl, apiKey))) return { kind: "unreachable" };
+  // Liveness only, never `/v1/status`: that payload is slowest to build exactly when a turn is
+  // running, and a preflight that timed out would turn the refusal this request exists to collect
+  // into a signal. `/healthz` needs no auth and no version match, so it answers or nothing is there.
+  if (!(await isServerListening(apiUrl))) return { kind: "unreachable" };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), SHUTDOWN_REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
       method: "POST",
@@ -128,14 +165,21 @@ async function requestGracefulShutdown(
         ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({ force } satisfies ShutdownRequest),
+      signal: controller.signal,
     });
-    if (response.status === HTTP_STATUS.unauthorized) return { kind: "unreachable" };
-    const decision = parseShutdownResponse(await response.json());
-    if (decision && !decision.ok) return { kind: "refused", tasks: decision.running };
+    if (response.status === HTTP_STATUS.unauthorized) return { kind: "unauthorized" };
+    // The status is ours, so a refusal stays a refusal even when its body cannot be read.
+    if (response.status === HTTP_STATUS.conflict) {
+      const decision = parseShutdownResponse(await response.json().catch(() => null));
+      return { kind: "refused", tasks: decision && !decision.ok ? decision.live : [] };
+    }
+    return { kind: "shutdown" };
   } catch {
-    // Server may close before the response completes — that's expected.
+    // A daemon may close the socket before its reply lands; if the port is free now, it stopped.
+    return (await isServerListening(apiUrl)) ? { kind: "unreachable" } : { kind: "shutdown" };
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return { kind: "shutdown" };
 }
 
 async function tryAcquireStartupLock(path: string, port: number): Promise<boolean> {
@@ -288,8 +332,9 @@ export async function stopLocalServer(input: {
   apiKey?: string;
   env?: Env;
   force?: boolean;
+  exitTimeoutMs?: number;
 }): Promise<StopResult> {
-  const { port, apiKey, env, force = false } = input;
+  const { port, apiKey, env, force = false, exitTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const lockPath = serverLockPath(port, env);
   const lock = await readServerLock(lockPath);
@@ -297,26 +342,26 @@ export async function stopLocalServer(input: {
   // Ask before killing: only the daemon knows whether a turn is live, and a signal cannot ask.
   const graceful = await requestGracefulShutdown(apiUrl, apiKey, force);
   if (graceful.kind === "refused") return { kind: "refused", tasks: graceful.tasks };
-  if (graceful.kind === "shutdown") {
-    // The daemon closes its sockets after answering, and a caller that restarts would otherwise
-    // find the old server still healthy and attach to a process about to exit.
-    const exited = await waitForServerToExit(apiUrl, apiKey);
-    if (exited) {
-      await rm(lockPath, { force: true });
-      return { kind: "stopped", pid: lock?.pid ?? null };
-    }
-    // It accepted the request and stayed up; only its own PID can settle this.
-    if (!lock) return { kind: "unresponsive" };
-  } else if (!lock) {
-    // Nothing answered and nothing to signal.
-    return { kind: "not_running" };
+  if (graceful.kind === "shutdown" && (await waitForServerToExit(apiUrl, exitTimeoutMs))) {
+    await removeOwnedServerLock(lockPath, lock);
+    return { kind: "stopped", pid: lock?.pid ?? null };
+  }
+
+  // It never answered, could not be authenticated, or accepted the request and stayed up. Its own
+  // pid is the only lever left, and `unreachable` is the only outcome that means nothing is there.
+  const nothingAnswered = graceful.kind === "unreachable";
+  if (!lock) return nothingAnswered ? { kind: "not_running" } : { kind: "unresponsive" };
+  if (!isProcessAlive(lock.pid)) {
+    await removeOwnedServerLock(lockPath, lock);
+    return nothingAnswered ? { kind: "not_running" } : { kind: "stopped", pid: lock.pid };
   }
   try {
-    if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
+    process.kill(lock.pid, "SIGTERM");
   } catch {
-    // Ignore; lock cleanup still proceeds.
+    // Ignore; the exit check below decides the outcome.
   }
-  await rm(lockPath, { force: true });
+  if (!(await waitForProcessToExit(lock.pid, exitTimeoutMs))) return { kind: "unresponsive" };
+  await removeOwnedServerLock(lockPath, lock);
   return { kind: "stopped", pid: lock.pid };
 }
 

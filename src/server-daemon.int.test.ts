@@ -273,8 +273,8 @@ describe("server daemon", () => {
       const url = new URL(req.url);
       if (url.pathname === "/v1/status") return compatibleStatusResponse();
       if (url.pathname === "/v1/admin/shutdown") {
-        server.stop();
-        return Response.json({ ok: true });
+        setTimeout(() => server.stop(), 0);
+        return Response.json({ ok: true, shutdown: true });
       }
       return new Response("ok");
     });
@@ -285,7 +285,7 @@ describe("server daemon", () => {
 
   test("stopLocalServer asks before signalling, so a live turn survives with its lock intact", async () => {
     const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
-    const running = [{ taskId: "task_abc", sessionId: "sess_xyz" }];
+    const live = [{ taskId: "task_abc", sessionId: "sess_xyz" }];
     let signalled = false;
     // A process that outlives the test stands in for the daemon, so a stray SIGTERM is observable.
     const proc = Bun.spawn(["sleep", "60"], { detached: true });
@@ -293,7 +293,7 @@ describe("server daemon", () => {
       const url = new URL(req.url);
       if (url.pathname === "/v1/status") return compatibleStatusResponse();
       if (url.pathname === "/v1/admin/shutdown") {
-        return Response.json({ ok: false, running }, { status: 409 });
+        return Response.json({ ok: false, live }, { status: 409 });
       }
       return new Response("ok");
     });
@@ -308,7 +308,7 @@ describe("server daemon", () => {
     try {
       const result = await stopLocalServer({ port: server.port, env });
 
-      expect(result).toEqual({ kind: "refused", tasks: running });
+      expect(result).toEqual({ kind: "refused", tasks: live });
       await Bun.sleep(50);
       signalled = !isProcessAlive(proc.pid);
       expect(signalled).toBe(false);
@@ -330,9 +330,10 @@ describe("server daemon", () => {
       if (url.pathname === "/v1/admin/shutdown") {
         const body = (await req.json()) as { force?: boolean };
         forced.push(body.force ?? false);
-        if (!body.force) return Response.json({ ok: false, running: [{ taskId: "task_abc", sessionId: null }] });
+        if (!body.force)
+          return Response.json({ ok: false, live: [{ taskId: "task_abc", sessionId: null }] }, { status: 409 });
         // A forced shutdown really exits, which is what the caller waits for.
-        server.stop();
+        setTimeout(() => server.stop(), 0);
         return Response.json({ ok: true, shutdown: true });
       }
       return new Response("ok");
@@ -359,7 +360,9 @@ describe("server daemon", () => {
 
     try {
       // No lock file, so there is no pid to escalate to when it does not exit.
-      await expect(stopLocalServer({ port: server.port, env })).resolves.toEqual({ kind: "unresponsive" });
+      await expect(stopLocalServer({ port: server.port, env, exitTimeoutMs: 300 })).resolves.toEqual({
+        kind: "unresponsive",
+      });
     } finally {
       server.stop();
     }
@@ -378,7 +381,8 @@ describe("server daemon", () => {
       }),
       "utf8",
     );
-    await expect(stopLocalServer({ port: 9, env })).resolves.toEqual({ kind: "stopped", pid: 999999 });
+    // Nothing answers and the lock's owner is gone: there was no daemon to stop.
+    await expect(stopLocalServer({ port: 9, env })).resolves.toEqual({ kind: "not_running" });
     await expect(Bun.file(lockPath).exists()).resolves.toBe(false);
   });
 
@@ -390,8 +394,8 @@ describe("server daemon", () => {
       if (url.pathname === "/v1/status") return compatibleStatusResponse();
       if (url.pathname === "/v1/admin/shutdown") {
         shutdownCalled = true;
-        server.stop();
-        return Response.json({ ok: true });
+        setTimeout(() => server.stop(), 0);
+        return Response.json({ ok: true, shutdown: true });
       }
       return new Response("ok");
     });
