@@ -15,7 +15,7 @@ export type ShutdownRequest = z.infer<typeof shutdownRequestSchema>;
 
 export const shutdownResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), shutdown: z.literal(true) }),
-  z.object({ ok: z.literal(false), running: z.array(liveTaskSchema) }),
+  z.object({ ok: z.literal(false), live: z.array(liveTaskSchema) }),
 ]);
 export type ShutdownResponse = z.infer<typeof shutdownResponseSchema>;
 

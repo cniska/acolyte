@@ -111,10 +111,11 @@ export class TaskRegistry {
     return this.store.get(taskId);
   }
 
+  /** Every task that has not reached a terminal state: queued work is abandoned by a stop too. */
   liveTasks(): LiveTask[] {
     const live: LiveTask[] = [];
     for (const task of this.store.values()) {
-      if (task.state === "running") live.push({ taskId: task.id, sessionId: task.sessionId ?? null });
+      if (!isTerminalTaskState(task.state)) live.push({ taskId: task.id, sessionId: task.sessionId ?? null });
     }
     return live;
   }

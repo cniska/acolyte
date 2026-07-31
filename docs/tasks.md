@@ -44,12 +44,13 @@ Terminal states allow no further transitions. Idempotent transitions (same state
 
 ## Shutdown
 
-A `running` task blocks shutdown.
+Any unfinished task — `accepted`, `queued`, or `running` — blocks shutdown.
 
-- `POST /v1/admin/shutdown` answers `{ ok: false, running: [{ taskId, sessionId }] }` with 409 while any task runs
-- `{ "force": true }` in the body stops the daemon regardless, abandoning the turn
-- `acolyte stop` asks first and signals with SIGTERM only when the daemon cannot answer
-- a refused `restart` starts no replacement; a self-update never forces
+- `POST /v1/admin/shutdown` answers `{ ok: false, live: [{ taskId, sessionId }] }` with 409 while work is unfinished
+- `{ "force": true }` in the body stops the daemon regardless, abandoning that work
+- `acolyte stop` asks first and escalates to SIGTERM only when the daemon cannot answer or will not exit
+- a refusal exits non-zero; a refused `restart` starts no replacement, and a self-update never forces
+- a turn on `/v1/chat/stream` registers no task, so it does not block a stop
 
 ## Queue model
 

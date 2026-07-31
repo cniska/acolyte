@@ -151,8 +151,8 @@ export async function startServer(): Promise<void> {
     runChatRequest,
     serverError,
     shutdownServer: (input) => {
-      const running = taskRegistry.liveTasks();
-      if (!input.force && running.length > 0) return { ok: false, running };
+      const live = taskRegistry.liveTasks();
+      if (!input.force && live.length > 0) return { ok: false, live };
       setTimeout(() => {
         try {
           void closeAllMcpSessions();

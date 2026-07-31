@@ -62,18 +62,18 @@ describe("server-http auth coverage", () => {
   });
 
   test("/v1/admin/shutdown refuses with the live tasks while a turn runs", async () => {
-    const running = [{ taskId: "task_abc" as const, sessionId: "sess_xyz" as const }];
+    const live = [{ taskId: "task_abc" as const, sessionId: "sess_xyz" as const }];
     const handler = createServerFetchHandler(
       createTestDeps({
         hasValidAuth: () => true,
-        shutdownServer: (input) => (input.force ? { ok: true, shutdown: true } : { ok: false, running }),
+        shutdownServer: (input) => (input.force ? { ok: true, shutdown: true } : { ok: false, live }),
       }),
     );
 
     const response = await handler(new Request("http://localhost/v1/admin/shutdown", { method: "POST" }));
 
     expect(response?.status).toBe(409);
-    expect(await response?.json()).toEqual({ ok: false, running });
+    expect(await response?.json()).toEqual({ ok: false, live });
   });
 
   test("/v1/admin/shutdown honors force in the request body", async () => {

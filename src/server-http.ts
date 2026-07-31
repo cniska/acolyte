@@ -74,7 +74,7 @@ async function handleShutdown(ctx: RouteContext): Promise<Response | null> {
   log.warn("server shutdown requested", { path: ctx.url.pathname, method: ctx.req.method, force: request.force });
   const decision = ctx.deps.shutdownServer(request);
   if (!decision.ok) {
-    log.warn("server shutdown refused", { running_task_count: decision.running.length });
+    log.warn("server shutdown refused", { live_task_count: decision.live.length });
     return json(decision, HTTP_STATUS.conflict);
   }
   return json(decision);
