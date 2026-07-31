@@ -227,6 +227,36 @@ describe("cli-prompt", () => {
     );
   });
 
+  test("each assistant row after a tool row leads with its own marker", async () => {
+    const client: Client = {
+      replyStream: async (input) => {
+        input.onEvent({ type: "text-delta", text: "Opening the file." });
+        input.onEvent({
+          type: "tool-output",
+          toolCallId: "call_1",
+          toolName: "file-read",
+          content: { kind: "tool-header", labelKey: "tool.file_read.header", detail: "src/a.ts" },
+        });
+        input.onEvent({ type: "text-delta", text: "It exports one function." });
+        return {
+          outputStreamed: true,
+          output: "It exports one function.",
+          model: "gpt-5-mini",
+          toolCalls: ["file-read"],
+        };
+      },
+      status: async () => ({}),
+      taskStatus: async () => null,
+      close: () => {},
+    };
+
+    const { output } = await runPromptAndCapture("read a.ts", createTestSession(), client);
+
+    expect(output).toBe(
+      "❯ read a.ts\n◆ Opening the file.\n◆ tool.file_read.header src/a.ts\n◆ It exports one function.",
+    );
+  });
+
   // Regression: a blocking error printed onto the end of the open prose line.
   test("a blocking error starts its own line after mid-line prose", async () => {
     const client: Client = {
@@ -252,7 +282,7 @@ describe("cli-prompt", () => {
     ];
 
     const { output } = await runPromptAndCapture("hi", createTestSession(), createStreamingClient(events));
-    expect(output.indexOf("Alpha text.")).toBeLessThan(output.indexOf("trace sink is dark"));
+    expect(output).toBe("❯ hi\n◆ Alpha text.\ntrace sink is dark\n\n\n◆ done");
   });
 
   // Regression: a failed turn left the flush timer armed, so buffered text wrote to
