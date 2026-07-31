@@ -368,6 +368,36 @@ describe("server daemon", () => {
     }
   });
 
+  // Regression: a daemon that holds the port but never answers the shutdown request used to
+  // report as `not_running`, so `acolyte stop` said "No servers running" and exited zero while
+  // the process was still up.
+  test("stopLocalServer reports unresponsive when the daemon holds the port but never answers", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const listener = Bun.listen({
+      hostname: "127.0.0.1",
+      port: 0,
+      socket: {
+        data(socket, data) {
+          if (data.toString().startsWith("GET /healthz")) {
+            socket.write("HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok");
+            socket.flush();
+            return;
+          }
+          socket.end();
+        },
+      },
+    });
+
+    try {
+      // No lock file, so the port itself is the only evidence the daemon is there.
+      await expect(stopLocalServer({ port: listener.port, env, exitTimeoutMs: 300 })).resolves.toEqual({
+        kind: "unresponsive",
+      });
+    } finally {
+      listener.stop(true);
+    }
+  });
+
   test("stopLocalServer cleans up lock when pid is dead and endpoint is not healthy", async () => {
     const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
     const lockPath = serverLockPath(9, env);

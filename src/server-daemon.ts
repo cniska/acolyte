@@ -104,6 +104,7 @@ type GracefulShutdownOutcome =
   | { kind: "shutdown" }
   | { kind: "refused"; tasks: LiveTask[] }
   | { kind: "unauthorized" }
+  | { kind: "unresponsive" }
   | { kind: "unreachable" };
 
 /** Anything that answers means a daemon still holds the port, whatever its version or auth. */
@@ -176,7 +177,8 @@ async function requestGracefulShutdown(
     return { kind: "shutdown" };
   } catch {
     // A daemon may close the socket before its reply lands; if the port is free now, it stopped.
-    return (await isServerListening(apiUrl)) ? { kind: "unreachable" } : { kind: "shutdown" };
+    // Still listening means it is there and did not answer — which is not the same as absent.
+    return (await isServerListening(apiUrl)) ? { kind: "unresponsive" } : { kind: "shutdown" };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -349,11 +351,11 @@ export async function stopLocalServer(input: {
 
   // It never answered, could not be authenticated, or accepted the request and stayed up. Its own
   // pid is the only lever left, and `unreachable` is the only outcome that means nothing is there.
-  const nothingAnswered = graceful.kind === "unreachable";
-  if (!lock) return nothingAnswered ? { kind: "not_running" } : { kind: "unresponsive" };
+  const nothingThere = graceful.kind === "unreachable";
+  if (!lock) return nothingThere ? { kind: "not_running" } : { kind: "unresponsive" };
   if (!isProcessAlive(lock.pid)) {
     await removeOwnedServerLock(lockPath, lock);
-    return nothingAnswered ? { kind: "not_running" } : { kind: "stopped", pid: lock.pid };
+    return nothingThere ? { kind: "not_running" } : { kind: "stopped", pid: lock.pid };
   }
   try {
     process.kill(lock.pid, "SIGTERM");
