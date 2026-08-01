@@ -169,7 +169,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **TUI-14** — A typed prompt wraps inside the input box: no row exceeds the box interior, wrapping preserves every character, and a run too long for one row breaks across rows. Vertical cursor motion steps between visual rows at the caret's display column.
 - **TUI-15** — Consecutive blocks of assistant prose render as one transcript row separated by a paragraph break, and that break is preserved in the answer text kept for model history; a row is sealed only by an interruption such as a tool call, and text resumed after a length cutoff continues the same block rather than opening a new one.
 - **TUI-16** — Every turn closes with one footer line reporting elapsed time, tool count, and token counts, however fast the turn was. An interrupted turn closes with the same line and the same detail, labelled as interrupted in the text rather than in colour alone.
-- **TUI-17** — A wrapped list item in assistant prose hangs its continuation rows under the item's text, so a continuation never reads as a new top-level line. Ordered and unordered markers are treated alike.
+- **TUI-17** — A wrapped list item in assistant prose hangs its continuation rows under the item's text, so a continuation never reads as a new top-level line. Ordered and unordered markers are treated alike, and a list item keeps the indentation it was written with, so nesting survives rendering.
 
 ## 8. Observability requirements (OBS)
 

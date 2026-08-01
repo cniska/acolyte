@@ -12,9 +12,9 @@ function stripIndent(line: string, max: number): string {
 }
 
 // Fenced-code pre-pass over raw assistant text. Runs before the line-oriented tokenizer because a
-// fence spans multiple lines; splitting prose from code first keeps prose-only transforms (the
-// numbered-list dedent in sanitizeAssistantContent, inline markup in tokenize) off code, which must
-// survive character-for-character. Shared by the chat layout and the CLI reply formatter.
+// fence spans multiple lines; splitting prose from code first keeps prose-only transforms (list
+// hang-indent in wrapAssistantContent, inline markup in tokenize) off code, which must survive
+// character-for-character. Shared by the chat layout and the CLI reply formatter.
 export function segmentAssistantContent(text: string): AssistantSegment[] {
   const lines = text.split("\n");
   const segments: AssistantSegment[] = [];
@@ -161,15 +161,6 @@ export function wrapUserText(text: string, budget: number): string[] {
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .flatMap((logical) => wrapUserLine(expandTabs(logical), limit));
-}
-
-export function sanitizeAssistantContent(content: string): string {
-  const cleaned = content
-    .split("\n")
-    .map((line) => line.replace(/^\s+(\d+\.\s)/, "$1"))
-    .join("\n")
-    .trimEnd();
-  return cleaned;
 }
 
 function wrapWithIndent(prefix: string, continuationPrefix: string, body: string, width: number): string[] {

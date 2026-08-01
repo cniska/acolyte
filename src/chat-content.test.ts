@@ -1,19 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import {
-  sanitizeAssistantContent,
-  segmentAssistantContent,
-  wrapAssistantContent,
-  wrapCodeText,
-  wrapText,
-  wrapUserText,
-} from "./chat-content";
+import { segmentAssistantContent, wrapAssistantContent, wrapCodeText, wrapText, wrapUserText } from "./chat-content";
 
 describe("chat-content helpers", () => {
-  test("sanitizeAssistantContent left-aligns numbered findings", () => {
-    const raw = ["  1. First finding", "    2. Second finding"].join("\n");
-    expect(sanitizeAssistantContent(raw)).toBe(["1. First finding", "2. Second finding"].join("\n"));
-  });
-
   test("wrapText wraps long lines at word boundaries", () => {
     const text = "one two three four five six seven eight nine ten";
     const wrapped = wrapText(text, 30);
