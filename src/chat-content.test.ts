@@ -42,6 +42,45 @@ describe("chat-content helpers", () => {
       expect(line.startsWith("   ")).toBe(true);
     }
   });
+
+  test("wrapAssistantContent aligns continuations under the item text for every marker", () => {
+    for (const marker of ["-", "*", "+", "•", "1.", "2)"]) {
+      const prefix = `${marker} `;
+      const wrapped = wrapAssistantContent(`${prefix}hello world next line here and so on`, 16);
+      const lines = wrapped.split("\n");
+      expect(lines.length).toBeGreaterThan(1);
+      expect(lines[0]?.startsWith(prefix)).toBe(true);
+      for (const line of lines.slice(1)) {
+        expect(line.slice(0, prefix.length)).toBe(" ".repeat(prefix.length));
+        expect(line[prefix.length]).not.toBe(" ");
+      }
+    }
+  });
+
+  test("wrapAssistantContent hangs a nested bullet under its own text", () => {
+    const wrapped = wrapAssistantContent("  - hello world next line here and so on", 16);
+    const lines = wrapped.split("\n");
+    expect(lines.length).toBeGreaterThan(1);
+    for (const line of lines.slice(1)) {
+      expect(line.slice(0, 4)).toBe("    ");
+      expect(line[4]).not.toBe(" ");
+    }
+  });
+
+  test("wrapAssistantContent keeps a wide marker gap in the continuation", () => {
+    const wrapped = wrapAssistantContent("-   hello world next line here and so on", 16);
+    for (const line of wrapped.split("\n").slice(1)) {
+      expect(line.slice(0, 4)).toBe("    ");
+      expect(line[4]).not.toBe(" ");
+    }
+  });
+
+  test("wrapAssistantContent does not treat emphasis as a bullet marker", () => {
+    const wrapped = wrapAssistantContent("*emphasis* hello world next line here and so on", 16);
+    for (const line of wrapped.split("\n").slice(1)) {
+      expect(line.startsWith(" ")).toBe(false);
+    }
+  });
 });
 
 describe("segmentAssistantContent", () => {
