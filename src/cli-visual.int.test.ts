@@ -381,18 +381,19 @@ describe("cli visual regression", () => {
     {
       args: ["stop", "help"],
       output: dedent(`
-        Usage: acolyte stop
+        Usage: acolyte stop [--force]
 
         Description: stop all servers
 
         Examples:
           acolyte stop
+          acolyte stop --force
       `),
     },
     {
       args: ["restart", "help"],
       output: dedent(`
-        Usage: acolyte restart
+        Usage: acolyte restart [--force]
 
         Description: restart server
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
+import type { ErrorKind } from "./error-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { promptBreakdownSchema, tokenCountSchema, tokenUsageSchema } from "./session-contract";
 import { activeSkillSchema, activeSkillsSchema } from "./skill-contract";
@@ -117,6 +118,7 @@ export type RemoteErrorMetadata = {
   status?: number;
   errorId?: string;
   errorCode?: string;
+  kind?: ErrorKind;
   error?: z.infer<typeof streamErrorSchema>;
   taskId?: TaskId;
 };

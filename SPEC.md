@@ -148,6 +148,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **PR-7** — An abort request cancels the targeted request; a connection close cancels all of that connection's active and queued tasks.
 - **PR-8** — Task records live in memory only (not persisted across daemon restart), bounded in count with oldest terminal tasks evicted first.
 - **PR-9** — The daemon binds to the loopback interface only. When an API key is configured, every HTTP endpoint and WebSocket RPC connection (except the health check) requires bearer authentication; with no key configured, the loopback RPC is open. The transport is otherwise an implementation detail behind the contract.
+- **PR-10** — Stopping the daemon asks it to shut down before signalling it, and it refuses while any task is unfinished, naming each live task and its session, and reports that refusal as a failure. An explicit force flag stops it regardless. A restart that is refused starts no replacement, and a self-update never forces.
+- **PR-11** — A turn whose transport dies mid-flight fails with a coded error stating that the server stopped, that the session survived, and that the message can be sent again. The turn is never reconstructed from partial output.
 
 ## 7. Terminal UI requirements (TUI)
 

@@ -17,7 +17,7 @@ Launch the chat TUI on current source, drive real multi-turn work through tmux, 
 6. Read the transcript in the captured pane: each turn is `❯ prompt` → narration → tool rows → answer → `• Worked`, and every turn sits strictly below the previous one.
 7. Watch the signals: tasks that stop without completing the work; repeated identical tool calls; excessive discovery before the first write; window drops while token budget sits idle; missing or corrupted transcript content; failures that leave no trace.
 8. On surprise, capture the trace with the same XDG roots: `XDG_DATA_HOME=<data-root> XDG_STATE_HOME=<state-root> bun run src/cli.ts trace` for the latest task, or `XDG_DATA_HOME=<data-root> XDG_STATE_HOME=<state-root> bun run src/cli.ts trace task <id>`.
-9. Tear down with the same XDG roots: `tmux kill-session -t <session>; XDG_DATA_HOME=<data-root> XDG_STATE_HOME=<state-root> bun run src/cli.ts stop`. Remove the temporary roots only after capturing any needed trace.
+9. Tear down with the same XDG roots: `tmux kill-session -t <session>; XDG_DATA_HOME=<data-root> XDG_STATE_HOME=<state-root> bun run src/cli.ts stop`. Remove the temporary roots only after capturing any needed trace. If `stop` reports the daemon is running a turn, a turn outlived the client: let it finish, or pass `--force` to abandon it.
 
 ## Rules
 

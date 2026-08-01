@@ -13,6 +13,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 - `acolyte run --file <path> "<prompt>"` — one-shot with file context
 - `acolyte history` — list sessions
 - `acolyte start|stop|restart|ps` — manage server lifecycle
+- `acolyte stop|restart --force` — stop even while a turn is running, abandoning it
 - `acolyte status` — show server status
 - `acolyte memory list|add|restore` — manage memory and its archive
 - `acolyte config list|set|unset` — manage configuration

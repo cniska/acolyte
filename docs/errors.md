@@ -14,6 +14,10 @@ Runtime code throws coded errors, not untyped string failures, when the failure 
 
 Lifecycle consumes tool errors generically through error categories. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code.
 
+## Transport boundary
+
+A turn whose transport dies mid-flight fails with `E_DAEMON_LOST` and kind `daemon_lost`, carrying the task id when one was assigned. The message states that the session survived and the turn can be sent again; the turn itself is never rebuilt from partial output.
+
 ## Design rule
 
 Keep error contracts minimal. Error messages should be descriptive enough for the model to act on. Keep runtime error classes separate from parsing/normalization logic.

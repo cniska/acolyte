@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { rpcUrlFromApiUrl } from "./client-contract";
 import { createClient } from "./client-factory";
+import { ERROR_KINDS, TRANSPORT_ERROR_CODES } from "./error-contract";
+import { t } from "./i18n";
 
 const originalWebSocket = globalThis.WebSocket;
 
@@ -213,8 +215,11 @@ describe("rpc websocket lifecycle", () => {
       });
       throw new Error("expected replyStream to reject");
     } catch (error) {
-      const rpcError = error as Error & { taskId?: string };
-      expect(rpcError.message).toBe("RPC stream closed before final reply");
+      const rpcError = error as Error & { taskId?: string; kind?: string; errorCode?: string };
+      // A turn that dies with the daemon must say so in a coded way, not as a bare transport string.
+      expect(rpcError.kind).toBe(ERROR_KINDS.daemonLost);
+      expect(rpcError.errorCode).toBe(TRANSPORT_ERROR_CODES.daemonLost);
+      expect(rpcError.message).toBe(t("error.daemon.lost"));
       expect(typeof rpcError.taskId).toBe("string");
       expect(rpcError.taskId?.startsWith("task_")).toBe(true);
     }

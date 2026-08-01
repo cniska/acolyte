@@ -15,11 +15,15 @@ import {
 } from "./daemon-ops";
 import { field } from "./field";
 import { PRIVATE_FILE_MODE } from "./file-ops";
+import { HTTP_STATUS } from "./http-status";
 import { t } from "./i18n";
 import type { Env } from "./paths";
 import { PROTOCOL_VERSION } from "./protocol";
+import { type LiveTask, parseShutdownResponse, type ShutdownRequest } from "./shutdown-contract";
 
 const SERVER_START_TIMEOUT_MS = 10_000;
+const SERVER_EXIT_TIMEOUT_MS = 3_000;
+const SHUTDOWN_REQUEST_TIMEOUT_MS = 5_000;
 const HEALTHCHECK_TIMEOUT_MS = 1_200;
 const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 
@@ -43,10 +47,11 @@ type LocalServerStatus = {
   port: number;
 };
 
-type StopResult = {
-  stopped: boolean;
-  pid: number | null;
-};
+export type StopResult =
+  | { kind: "stopped"; pid: number | null }
+  | { kind: "refused"; tasks: LiveTask[] }
+  | { kind: "unresponsive" }
+  | { kind: "not_running" };
 
 export function apiUrlForPort(port: number): string {
   return `http://127.0.0.1:${port}`;
@@ -95,17 +100,87 @@ async function waitForHealthyServerOrSpawnExit(
   throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
 }
 
-async function requestGracefulShutdown(apiUrl: string, apiKey?: string): Promise<boolean> {
-  if (!(await isServerHealthy(apiUrl, apiKey))) return false;
+type GracefulShutdownOutcome =
+  | { kind: "shutdown" }
+  | { kind: "refused"; tasks: LiveTask[] }
+  | { kind: "unauthorized" }
+  | { kind: "unresponsive" }
+  | { kind: "unreachable" };
+
+/** Anything that answers means a daemon still holds the port, whatever its version or auth. */
+async function isServerListening(apiUrl: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HEALTHCHECK_TIMEOUT_MS);
   try {
-    await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
-      method: "POST",
-      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
-    });
+    await fetch(`${apiUrl.replace(/\/$/, "")}/healthz`, { signal: controller.signal });
+    return true;
   } catch {
-    // Server may close before the response completes — that's expected.
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return true;
+}
+
+async function waitForServerToExit(apiUrl: string, timeoutMs = SERVER_EXIT_TIMEOUT_MS): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await isServerListening(apiUrl))) return true;
+    await Bun.sleep(50);
+  }
+  return false;
+}
+
+async function waitForProcessToExit(pid: number, timeoutMs = SERVER_EXIT_TIMEOUT_MS): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!isProcessAlive(pid)) return true;
+    await Bun.sleep(50);
+  }
+  return false;
+}
+
+/** Only the daemon we set out to stop owns this lock; a replacement that took the port keeps its own. */
+async function removeOwnedServerLock(lockPath: string, owner: StartupLock | null): Promise<void> {
+  if (!owner) return;
+  const current = await readServerLock(lockPath);
+  if (current && current.pid !== owner.pid) return;
+  await rm(lockPath, { force: true });
+}
+
+async function requestGracefulShutdown(
+  apiUrl: string,
+  apiKey?: string,
+  force = false,
+): Promise<GracefulShutdownOutcome> {
+  // Liveness only, never `/v1/status`: that payload is slowest to build exactly when a turn is
+  // running, and a preflight that timed out would turn the refusal this request exists to collect
+  // into a signal. `/healthz` needs no auth and no version match, so it answers or nothing is there.
+  if (!(await isServerListening(apiUrl))) return { kind: "unreachable" };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), SHUTDOWN_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/v1/admin/shutdown`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({ force } satisfies ShutdownRequest),
+      signal: controller.signal,
+    });
+    if (response.status === HTTP_STATUS.unauthorized) return { kind: "unauthorized" };
+    // The status is ours, so a refusal stays a refusal even when its body cannot be read.
+    if (response.status === HTTP_STATUS.conflict) {
+      const decision = parseShutdownResponse(await response.json().catch(() => null));
+      return { kind: "refused", tasks: decision && !decision.ok ? decision.live : [] };
+    }
+    return { kind: "shutdown" };
+  } catch {
+    // A daemon may close the socket before its reply lands; if the port is free now, it stopped.
+    return (await isServerListening(apiUrl)) ? { kind: "unresponsive" } : { kind: "shutdown" };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function tryAcquireStartupLock(path: string, port: number): Promise<boolean> {
@@ -253,26 +328,42 @@ export async function localServerStatus(input: {
   return { running: false, pid: null, port };
 }
 
-export async function stopLocalServer(input: { port: number; apiKey?: string; env?: Env }): Promise<StopResult> {
-  const { port, apiKey, env } = input;
+export async function stopLocalServer(input: {
+  port: number;
+  apiKey?: string;
+  env?: Env;
+  force?: boolean;
+  exitTimeoutMs?: number;
+}): Promise<StopResult> {
+  const { port, apiKey, env, force = false, exitTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const lockPath = serverLockPath(port, env);
   const lock = await readServerLock(lockPath);
 
-  if (!lock) {
-    if (await requestGracefulShutdown(apiUrl, apiKey)) return { stopped: true, pid: null };
-    return { stopped: false, pid: null };
+  // Ask before killing: only the daemon knows whether a turn is live, and a signal cannot ask.
+  const graceful = await requestGracefulShutdown(apiUrl, apiKey, force);
+  if (graceful.kind === "refused") return { kind: "refused", tasks: graceful.tasks };
+  if (graceful.kind === "shutdown" && (await waitForServerToExit(apiUrl, exitTimeoutMs))) {
+    await removeOwnedServerLock(lockPath, lock);
+    return { kind: "stopped", pid: lock?.pid ?? null };
   }
 
-  try {
-    if (isProcessAlive(lock.pid)) process.kill(lock.pid, "SIGTERM");
-  } catch {
-    // Ignore; lock cleanup still proceeds.
+  // It never answered, could not be authenticated, or accepted the request and stayed up. Its own
+  // pid is the only lever left, and `unreachable` is the only outcome that means nothing is there.
+  const nothingThere = graceful.kind === "unreachable";
+  if (!lock) return nothingThere ? { kind: "not_running" } : { kind: "unresponsive" };
+  if (!isProcessAlive(lock.pid)) {
+    await removeOwnedServerLock(lockPath, lock);
+    return nothingThere ? { kind: "not_running" } : { kind: "stopped", pid: lock.pid };
   }
-  await rm(lockPath, { force: true });
-  // If the lock PID was dead but a server is still healthy (stale lock), shut it down.
-  if (!isProcessAlive(lock.pid)) await requestGracefulShutdown(apiUrl, apiKey);
-  return { stopped: true, pid: lock.pid };
+  try {
+    process.kill(lock.pid, "SIGTERM");
+  } catch {
+    // Ignore; the exit check below decides the outcome.
+  }
+  if (!(await waitForProcessToExit(lock.pid, exitTimeoutMs))) return { kind: "unresponsive" };
+  await removeOwnedServerLock(lockPath, lock);
+  return { kind: "stopped", pid: lock.pid };
 }
 
 function portFromLockEntry(entry: string): number | undefined {
@@ -286,7 +377,8 @@ function portFromLockEntry(entry: string): number | undefined {
 export async function stopAllLocalServers(input?: {
   apiKey?: string;
   env?: Env;
-}): Promise<Array<{ port: number; pid: number }>> {
+  force?: boolean;
+}): Promise<Array<{ port: number; result: StopResult }>> {
   const dir = daemonsDir(input?.env);
   let entries: string[];
   try {
@@ -295,16 +387,18 @@ export async function stopAllLocalServers(input?: {
     return [];
   }
 
-  const stopped: Array<{ port: number; pid: number }> = [];
+  // Every outcome travels back, including the ones that stopped nothing: a caller that sees only
+  // its successes reports a daemon it left running as a clean stop.
+  const results: Array<{ port: number; result: StopResult }> = [];
   for (const entry of entries) {
     const port = portFromLockEntry(entry);
     if (port === undefined) continue;
-    const result = await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env });
-    if (result.stopped && result.pid !== null) {
-      stopped.push({ port, pid: result.pid });
-    }
+    results.push({
+      port,
+      result: await stopLocalServer({ port, apiKey: input?.apiKey, env: input?.env, force: input?.force }),
+    });
   }
-  return stopped;
+  return results;
 }
 
 export async function listRunningDaemons(input?: {

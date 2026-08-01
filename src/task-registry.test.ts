@@ -79,6 +79,48 @@ describe("task registry", () => {
   });
 });
 
+describe("live tasks", () => {
+  test("reports every unfinished task, carrying the session it belongs to", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_running", { state: "running", sessionId: "sess_one" });
+    registry.transitionTask("task_queued", { state: "queued", sessionId: "sess_two" });
+    registry.transitionTask("task_accepted", { state: "accepted", sessionId: "sess_three" });
+
+    // Queued and accepted work is abandoned by a stop just as a running turn is.
+    expect(registry.liveTasks()).toEqual([
+      { taskId: "task_running", sessionId: "sess_one" },
+      { taskId: "task_queued", sessionId: "sess_two" },
+      { taskId: "task_accepted", sessionId: "sess_three" },
+    ]);
+  });
+
+  test("reports nothing once every task reached a terminal state", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_done", { state: "running", sessionId: "sess_one" });
+    registry.transitionTask("task_done", { state: "completed" });
+    registry.transitionTask("task_failed", { state: "running" });
+    registry.transitionTask("task_failed", { state: "failed" });
+    registry.transitionTask("task_cancelled", { state: "cancelled" });
+
+    expect(registry.liveTasks()).toEqual([]);
+  });
+
+  test("keeps the session across later transitions", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_live", { state: "accepted", sessionId: "sess_one" });
+    registry.transitionTask("task_live", { state: "running" });
+
+    expect(registry.liveTasks()).toEqual([{ taskId: "task_live", sessionId: "sess_one" }]);
+  });
+
+  test("reports a task with no session as null rather than omitting it", () => {
+    const registry = new TaskRegistry();
+    registry.transitionTask("task_live", { state: "running" });
+
+    expect(registry.liveTasks()).toEqual([{ taskId: "task_live", sessionId: null }]);
+  });
+});
+
 describe("task transition rules", () => {
   test("enforces transition allowlist", () => {
     expect(canTransitionTaskState("running", "completed")).toBe(true);

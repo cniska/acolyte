@@ -4,25 +4,32 @@ import { dedent } from "./test-utils";
 
 type DaemonDeps = Parameters<typeof startMode>[1];
 
-function createDeps(overrides?: Partial<DaemonDeps>): { deps: DaemonDeps; output: () => string } {
+function createDeps(overrides?: Partial<DaemonDeps>): {
+  deps: DaemonDeps;
+  output: () => string;
+  failures: () => number;
+} {
   const lines: string[] = [];
+  let failures = 0;
   const deps: DaemonDeps = {
     apiKey: undefined,
     hasHelpFlag: () => false,
     port: 6767,
     printDim: (message) => lines.push(message),
-    requestLocalServerShutdown: async () => false,
+    failCommand: () => {
+      failures += 1;
+    },
     serverEntry: "src/server.ts",
     commandError: () => {},
     commandHelp: () => {},
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),
     listRunningDaemons: async () => [],
     localServerStatus: async () => ({ running: true, pid: 1234, port: 6767 }),
-    stopLocalServer: async () => ({ stopped: false, pid: null }),
+    stopLocalServer: async () => ({ kind: "not_running" }),
     stopAllLocalServers: async () => [],
     ...overrides,
   };
-  return { deps, output: () => lines.join("\n") };
+  return { deps, output: () => lines.join("\n"), failures: () => failures };
 }
 
 describe("cli-daemon", () => {
@@ -50,7 +57,7 @@ describe("cli-daemon", () => {
 
   test("stop prints stopped for each daemon", async () => {
     const { deps, output } = createDeps({
-      stopAllLocalServers: async () => [{ port: 6767, pid: 1234 }],
+      stopAllLocalServers: async () => [{ port: 6767, result: { kind: "stopped", pid: 1234 } }],
     });
     await stopMode([], deps);
     expect(output()).toBe(
@@ -60,10 +67,10 @@ describe("cli-daemon", () => {
     );
   });
 
-  test("stop falls back to shutdown request when no managed daemons found", async () => {
+  test("stop falls back to the configured port when no daemon holds a lock", async () => {
     const { deps, output } = createDeps({
       stopAllLocalServers: async () => [],
-      requestLocalServerShutdown: async () => true,
+      stopLocalServer: async () => ({ kind: "stopped", pid: null }),
     });
     await stopMode([], deps);
     expect(output()).toBe(
@@ -74,10 +81,7 @@ describe("cli-daemon", () => {
   });
 
   test("stop prints no servers running when nothing to stop", async () => {
-    const { deps, output } = createDeps({
-      stopAllLocalServers: async () => [],
-      requestLocalServerShutdown: async () => false,
-    });
+    const { deps, output } = createDeps();
     await stopMode([], deps);
     expect(output()).toBe(
       dedent(`
@@ -86,10 +90,103 @@ describe("cli-daemon", () => {
     );
   });
 
+  test("stop refuses while a turn is live and names the task and session", async () => {
+    const { deps, output, failures } = createDeps({
+      stopAllLocalServers: async () => [
+        { port: 6767, result: { kind: "refused", tasks: [{ taskId: "task_abc", sessionId: "sess_xyz" }] } },
+      ],
+    });
+    await stopMode([], deps);
+    expect(output()).toContain("task_abc (sess_xyz)");
+    expect(output()).toContain("--force");
+    // A caller chaining on exit status must not read a refusal as a stop.
+    expect(failures()).toBe(1);
+  });
+
+  // Regression: a daemon that would not die was dropped from the result, so a stop that left it
+  // running printed only its successes and exited zero.
+  test("stop reports a daemon it could not stop alongside one it did", async () => {
+    const { deps, output, failures } = createDeps({
+      stopAllLocalServers: async () => [
+        { port: 4870, result: { kind: "unresponsive" } },
+        { port: 6767, result: { kind: "stopped", pid: 1234 } },
+      ],
+    });
+    await stopMode([], deps);
+    expect(output()).toBe(
+      dedent(`
+        Unable to stop server on port 4870. Stop it manually.
+        Stopped server on port 6767 (pid 1234)
+      `),
+    );
+    expect(failures()).toBe(1);
+  });
+
+  test("stop --force passes force through and reports the stop", async () => {
+    const forced: boolean[] = [];
+    const { deps, output } = createDeps({
+      stopAllLocalServers: async (input) => {
+        forced.push(input?.force ?? false);
+        return [{ port: 6767, result: { kind: "stopped", pid: 1234 } }];
+      },
+    });
+    await stopMode(["--force"], deps);
+    expect(forced).toEqual([true]);
+    expect(output()).toBe(
+      dedent(`
+        Stopped server on port 6767 (pid 1234)
+      `),
+    );
+  });
+
+  test("stop rejects an unknown argument", async () => {
+    let errored = "";
+    const { deps } = createDeps({ commandError: (name) => (errored = name) });
+    await stopMode(["--nope"], deps);
+    expect(errored).toBe("stop");
+  });
+
+  test("stop tells the user to intervene when the daemon will not go down", async () => {
+    const { deps, output } = createDeps({ stopLocalServer: async () => ({ kind: "unresponsive" }) });
+    await stopMode([], deps);
+    expect(output()).toBe(
+      dedent(`
+        Unable to stop server on port 6767. Stop it manually.
+      `),
+    );
+  });
+
+  test("restart does not start a replacement when the daemon will not go down", async () => {
+    let ensured = 0;
+    const { deps } = createDeps({
+      stopLocalServer: async () => ({ kind: "unresponsive" }),
+      ensureLocalServer: async () => {
+        ensured += 1;
+        return { port: 6767, pid: 5678, started: true };
+      },
+    });
+    await restartMode([], deps);
+    expect(ensured).toBe(0);
+  });
+
+  test("restart does not start a replacement when the stop is refused", async () => {
+    let ensured = 0;
+    const { deps, output } = createDeps({
+      stopLocalServer: async () => ({ kind: "refused", tasks: [{ taskId: "task_abc", sessionId: null }] }),
+      ensureLocalServer: async () => {
+        ensured += 1;
+        return { port: 6767, pid: 5678, started: true };
+      },
+    });
+    await restartMode([], deps);
+    expect(ensured).toBe(0);
+    expect(output()).toContain("task_abc");
+  });
+
   test("restart stops then starts on configured port", async () => {
     let ensured = 0;
     const { deps, output } = createDeps({
-      stopLocalServer: async () => ({ stopped: true, pid: 1234 }),
+      stopLocalServer: async () => ({ kind: "stopped", pid: 1234 }),
       ensureLocalServer: async () => {
         ensured += 1;
         return { port: 6767, pid: 5678, started: true };

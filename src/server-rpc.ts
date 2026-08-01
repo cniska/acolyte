@@ -5,6 +5,7 @@ import { log } from "./log";
 import { type RpcRequestId, rpcClientMessageSchema, rpcRequestIdSchema } from "./rpc-protocol";
 import { createSerialPerConnectionQueuePolicy } from "./rpc-queue";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
+import type { SessionId } from "./session-contract";
 import { createId } from "./short-id";
 import type { StatusPayload } from "./status-contract";
 import { type TaskId, type TaskState, type TaskTransitionReason, taskIdSchema } from "./task-contract";
@@ -55,7 +56,7 @@ type RpcDeps = {
   taskRegistry: TaskRegistry;
   transitionTaskState: (
     taskId: TaskId,
-    patch: { state?: TaskState; summary?: string },
+    patch: { state?: TaskState; sessionId?: SessionId | null },
     meta?: { reason?: TaskTransitionReason; transport?: string },
   ) => void;
 };
@@ -97,7 +98,11 @@ function parseRpcMessageEnvelope(raw: string | Buffer | Uint8Array): ParsedRpcEn
 }
 
 function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcDeps): Promise<void> {
-  deps.transitionTaskState(input.taskId, { state: "running" }, { reason: "chat_started", transport: "rpc" });
+  deps.transitionTaskState(
+    input.taskId,
+    { state: "running", sessionId: input.request.sessionId ?? null },
+    { reason: "chat_started", transport: "rpc" },
+  );
   log.info("rpc task started", {
     event: "rpc.task.started",
     task_id: input.taskId,
@@ -116,23 +121,12 @@ function runWorkerTask(input: WorkerRunInput, queue: QueuedRpcChat[], deps: RpcD
     },
     onDone: (reply) => {
       if (input.state.abort.signal.aborted) return;
-      deps.transitionTaskState(
-        input.taskId,
-        {
-          state: "completed",
-          summary: typeof reply.output === "string" ? reply.output.slice(0, 240) : undefined,
-        },
-        { reason: "chat_completed", transport: "rpc" },
-      );
+      deps.transitionTaskState(input.taskId, { state: "completed" }, { reason: "chat_completed", transport: "rpc" });
       input.emitDone(reply);
     },
     onError: (payload) => {
       if (input.state.abort.signal.aborted) return;
-      deps.transitionTaskState(
-        input.taskId,
-        { state: "failed", summary: payload.errorMessage },
-        { reason: "chat_failed", transport: "rpc" },
-      );
+      deps.transitionTaskState(input.taskId, { state: "failed" }, { reason: "chat_failed", transport: "rpc" });
       input.emitError(payload);
     },
   });
@@ -176,7 +170,11 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       return;
     }
 
-    deps.transitionTaskState(state.taskId, { state: "accepted" }, { reason: "chat_accepted", transport: "rpc" });
+    deps.transitionTaskState(
+      state.taskId,
+      { state: "accepted", sessionId: request.sessionId ?? null },
+      { reason: "chat_accepted", transport: "rpc" },
+    );
     log.info("rpc task accepted", {
       event: "rpc.task.accepted",
       task_id: state.taskId,
@@ -209,7 +207,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       activeState.abort.abort();
       deps.transitionTaskState(
         activeState.taskId,
-        { state: "cancelled", summary: "Cancelled by client request." },
+        { state: "cancelled" },
         { reason: "abort_requested", transport: "rpc" },
       );
       log.info("rpc task abort acknowledged", { task_id: activeState.taskId, state: "running" });
@@ -224,7 +222,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
       if (queuedItem)
         deps.transitionTaskState(
           queuedItem.state.taskId,
-          { state: "cancelled", summary: "Cancelled while queued." },
+          { state: "cancelled" },
           { reason: "abort_requested", transport: "rpc" },
         );
       log.info("rpc task abort acknowledged", { task_id: queuedItem?.state.taskId ?? null, state: "queued" });
@@ -256,7 +254,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         state.abort.abort();
         deps.transitionTaskState(
           state.taskId,
-          { state: "cancelled", summary: "Connection closed before completion." },
+          { state: "cancelled" },
           { reason: "connection_closed", transport: "rpc" },
         );
         log.info("rpc task cancelled on disconnect", {
@@ -269,7 +267,7 @@ export function createRpcWebsocketHandlers(deps: RpcDeps): Bun.WebSocketHandler<
         item.state.abort.abort();
         deps.transitionTaskState(
           item.state.taskId,
-          { state: "cancelled", summary: "Connection closed while queued." },
+          { state: "cancelled" },
           { reason: "connection_closed", transport: "rpc" },
         );
         log.info("rpc task cancelled on disconnect", {

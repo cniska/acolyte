@@ -18,7 +18,7 @@ function createTestDeps(overrides: Partial<Parameters<typeof createServerFetchHa
     },
     serverError: (_message: string, _error: unknown, _details: Record<string, unknown>, status = 500) =>
       new Response("server error", { status }),
-    shutdownServer: () => {},
+    shutdownServer: () => ({ ok: true, shutdown: true }),
     upgradeToRpc: () => true,
     ...overrides,
   } satisfies Parameters<typeof createServerFetchHandler>[0];
@@ -32,6 +32,7 @@ describe("server-http auth coverage", () => {
         hasValidAuth: () => false,
         shutdownServer: () => {
           shutdownCalls += 1;
+          return { ok: true, shutdown: true };
         },
       }),
     );
@@ -49,6 +50,7 @@ describe("server-http auth coverage", () => {
         hasValidAuth: () => true,
         shutdownServer: () => {
           shutdownCalls += 1;
+          return { ok: true, shutdown: true };
         },
       }),
     );
@@ -57,6 +59,62 @@ describe("server-http auth coverage", () => {
 
     expect(response?.status).toBe(200);
     expect(shutdownCalls).toBe(1);
+  });
+
+  test("/v1/admin/shutdown refuses with the live tasks while a turn runs", async () => {
+    const live = [{ taskId: "task_abc" as const, sessionId: "sess_xyz" as const }];
+    const handler = createServerFetchHandler(
+      createTestDeps({
+        hasValidAuth: () => true,
+        shutdownServer: (input) => (input.force ? { ok: true, shutdown: true } : { ok: false, live }),
+      }),
+    );
+
+    const response = await handler(new Request("http://localhost/v1/admin/shutdown", { method: "POST" }));
+
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toEqual({ ok: false, live });
+  });
+
+  test("/v1/admin/shutdown honors force in the request body", async () => {
+    const forced: boolean[] = [];
+    const handler = createServerFetchHandler(
+      createTestDeps({
+        hasValidAuth: () => true,
+        shutdownServer: (input) => {
+          forced.push(input.force);
+          return { ok: true, shutdown: true };
+        },
+      }),
+    );
+
+    const response = await handler(
+      new Request("http://localhost/v1/admin/shutdown", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      }),
+    );
+
+    expect(response?.status).toBe(200);
+    expect(forced).toEqual([true]);
+  });
+
+  test("/v1/admin/shutdown treats a bodyless request as force off", async () => {
+    const forced: boolean[] = [];
+    const handler = createServerFetchHandler(
+      createTestDeps({
+        hasValidAuth: () => true,
+        shutdownServer: (input) => {
+          forced.push(input.force);
+          return { ok: true, shutdown: true };
+        },
+      }),
+    );
+
+    await handler(new Request("http://localhost/v1/admin/shutdown", { method: "POST" }));
+
+    expect(forced).toEqual([false]);
   });
 
   test("/v1/chat/stream rejects unauthorized requests", async () => {

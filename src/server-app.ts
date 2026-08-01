@@ -14,6 +14,7 @@ import { hasValidAuth } from "./server-auth";
 import { isChatRequest, runChatRequest } from "./server-chat-runtime";
 import { createServerFetchHandler, json } from "./server-http";
 import { createRpcWebsocketHandlers, getRpcQueuedTaskCount, type RpcConnectionState } from "./server-rpc";
+import type { SessionId } from "./session-contract";
 import { createId } from "./short-id";
 import type { StatusPayload } from "./status-contract";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
@@ -55,7 +56,7 @@ function serverError(
 
 function transitionTaskState(
   taskId: TaskId,
-  patch: { state?: TaskState; summary?: string },
+  patch: { state?: TaskState; sessionId?: SessionId | null },
   meta?: { reason?: TaskTransitionReason; transport?: string },
 ): void {
   const previous = taskRegistry.get(taskId);
@@ -149,7 +150,9 @@ export async function startServer(): Promise<void> {
     isChatRequest,
     runChatRequest,
     serverError,
-    shutdownServer: () => {
+    shutdownServer: (input) => {
+      const live = taskRegistry.liveTasks();
+      if (!input.force && live.length > 0) return { ok: false, live };
       setTimeout(() => {
         try {
           void closeAllMcpSessions();
@@ -159,6 +162,7 @@ export async function startServer(): Promise<void> {
           // Best effort shutdown.
         }
       }, 0);
+      return { ok: true, shutdown: true };
     },
     upgradeToRpc: (req) =>
       server.upgrade(req, { data: { authed: true, activeChats: new Map(), runningChatId: null, queue: [] } }),

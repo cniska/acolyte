@@ -1,27 +1,29 @@
+import { unreachable } from "./assert";
 import { hasBoolFlag, stripFlag } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
-import type { requestLocalServerShutdown } from "./cli-server";
 import { t } from "./i18n";
 import type {
   ensureLocalServer,
   listRunningDaemons,
   localServerStatus,
+  StopResult,
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
+import type { LiveTask } from "./shutdown-contract";
 
 type DaemonModeDeps = {
   apiKey?: string;
   hasHelpFlag: (args: string[]) => boolean;
   port: number;
   printDim: (message: string) => void;
+  failCommand: () => void;
   serverEntry: string;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
   ensureLocalServer: typeof ensureLocalServer;
   listRunningDaemons: typeof listRunningDaemons;
   localServerStatus: typeof localServerStatus;
-  requestLocalServerShutdown: typeof requestLocalServerShutdown;
   stopLocalServer: typeof stopLocalServer;
   stopAllLocalServers: typeof stopAllLocalServers;
 };
@@ -37,24 +39,52 @@ export async function startMode(args: string[], deps: DaemonModeDeps): Promise<v
   else deps.printDim(t("cli.server.already_running", { port: deps.port, pid: result.pid }));
 }
 
+function formatLiveTasks(tasks: LiveTask[]): string {
+  return tasks.map((task) => (task.sessionId ? `${task.taskId} (${task.sessionId})` : task.taskId)).join(", ");
+}
+
+// A refused stop must not read as success to a caller chaining on exit status.
+function printRefusal(deps: DaemonModeDeps, port: number, tasks: LiveTask[]): void {
+  deps.printDim(t("cli.server.stop_refused", { port, tasks: formatLiveTasks(tasks) }));
+  deps.failCommand();
+}
+
+function printStopResult(deps: DaemonModeDeps, port: number, result: StopResult): void {
+  switch (result.kind) {
+    case "stopped":
+      deps.printDim(t("cli.server.stopped", { port, pid: result.pid ?? 0 }));
+      return;
+    case "refused":
+      printRefusal(deps, port, result.tasks);
+      return;
+    case "unresponsive":
+      deps.printDim(t("cli.server.stop_manual", { port }));
+      deps.failCommand();
+      return;
+    case "not_running":
+      deps.printDim(t("cli.server.no_servers_running"));
+      return;
+    default:
+      unreachable(result);
+  }
+}
+
 export async function stopMode(args: string[], deps: DaemonModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
     deps.commandHelp("stop");
     return;
   }
-  if (args.length > 0) return deps.commandError("stop");
-  const stopped = await deps.stopAllLocalServers({ apiKey: deps.apiKey });
-  if (stopped.length === 0) {
-    const shutdown = await deps.requestLocalServerShutdown({ port: deps.port, apiKey: deps.apiKey });
-    if (shutdown) {
-      deps.printDim(t("cli.server.stopped", { port: deps.port, pid: 0 }));
-      return;
-    }
-    deps.printDim(t("cli.server.no_servers_running"));
+  const force = hasBoolFlag(args, "--force");
+  if (stripFlag(args, "--force").length > 0) return deps.commandError("stop");
+  const results = await deps.stopAllLocalServers({ apiKey: deps.apiKey, force });
+  const present = results.filter(({ result }) => result.kind !== "not_running");
+  if (present.length === 0) {
+    // No daemon holds a lock file, but one may still be listening on the configured port.
+    printStopResult(deps, deps.port, await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey, force }));
     return;
   }
-  for (const entry of stopped) {
-    deps.printDim(t("cli.server.stopped", { port: entry.port, pid: entry.pid }));
+  for (const { port, result } of present) {
+    printStopResult(deps, port, result);
   }
 }
 
@@ -63,16 +93,25 @@ export async function restartMode(args: string[], deps: DaemonModeDeps): Promise
     deps.commandHelp("restart");
     return;
   }
-  if (args.length > 0) return deps.commandError("restart");
-  const stopResult = await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey });
-  if (!stopResult.stopped) {
-    const shutdown = await deps.requestLocalServerShutdown({ port: deps.port, apiKey: deps.apiKey });
-    if (!shutdown) {
-      const status = await deps.localServerStatus({ port: deps.port, apiKey: deps.apiKey });
-      if (status.running) {
-        deps.printDim(t("cli.server.stop_manual", { port: deps.port }));
-        return;
-      }
+  const force = hasBoolFlag(args, "--force");
+  if (stripFlag(args, "--force").length > 0) return deps.commandError("restart");
+  const stopResult = await deps.stopLocalServer({ port: deps.port, apiKey: deps.apiKey, force });
+  // Restarting over a live turn would abandon it as surely as stopping does.
+  if (stopResult.kind === "refused") {
+    printRefusal(deps, deps.port, stopResult.tasks);
+    return;
+  }
+  if (stopResult.kind === "unresponsive") {
+    deps.printDim(t("cli.server.stop_manual", { port: deps.port }));
+    deps.failCommand();
+    return;
+  }
+  if (stopResult.kind === "not_running") {
+    const status = await deps.localServerStatus({ port: deps.port, apiKey: deps.apiKey });
+    if (status.running) {
+      deps.printDim(t("cli.server.stop_manual", { port: deps.port }));
+      deps.failCommand();
+      return;
     }
   }
   const result = await deps.ensureLocalServer({ port: deps.port, apiKey: deps.apiKey, serverEntry: deps.serverEntry });

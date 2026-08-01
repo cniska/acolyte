@@ -68,6 +68,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 
 - workspace sandbox boundary enforcement for filesystem access
 - cooperative interruption and queued message handling
+- `acolyte stop` and `restart` refuse while work is unfinished, naming it; `--force` overrides
 
 ## Diagnostics
 

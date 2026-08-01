@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { resolveCliVersion } from "./cli-version";
+import { t } from "./i18n";
 import { stateDir } from "./paths";
 import { stopAllLocalServers } from "./server-daemon";
 import { ansi } from "./tui/styles";
@@ -159,6 +160,19 @@ function reexec(): never {
   process.exit(result.exitCode ?? 1);
 }
 
+/**
+ * An update must never abandon a turn another client is mid-way through, so it asks without force
+ * and reports what it left running. Injectable because the surrounding update path re-execs.
+ */
+export async function stopServersForUpdate(
+  deps: { stop?: typeof stopAllLocalServers; notify?: (message: string) => void } = {},
+): Promise<void> {
+  const { stop = stopAllLocalServers, notify = printDim } = deps;
+  const results = await stop();
+  if (results.some(({ result }) => result.kind === "refused")) notify(t("cli.update.daemon_busy"));
+  if (results.some(({ result }) => result.kind === "unresponsive")) notify(t("cli.update.daemon_left_running"));
+}
+
 async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {
   renderHeader(currentVersion, update.latest);
 
@@ -172,7 +186,7 @@ async function performUpdate(currentVersion: string, update: UpdateInfo): Promis
   }
 
   renderDone(update.latest);
-  await stopAllLocalServers();
+  await stopServersForUpdate();
   reexec();
 }
 
