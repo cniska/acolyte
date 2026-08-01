@@ -199,10 +199,10 @@ function wrapWithIndent(prefix: string, continuationPrefix: string, body: string
 function wrapSingleLine(line: string, width: number): string[] {
   if (line.length <= width) return [line];
 
-  const numbered = line.match(/^(\s*\d+\.\s+)(.*)$/);
-  if (numbered) {
-    const prefix = numbered[1] ?? "";
-    const body = numbered[2] ?? "";
+  const listItem = line.match(/^(\s*(?:\d+[.)]|[-*+•])\s+)(.*)$/);
+  if (listItem) {
+    const prefix = listItem[1] ?? "";
+    const body = listItem[2] ?? "";
     return wrapWithIndent(prefix, " ".repeat(prefix.length), body, width);
   }
 
