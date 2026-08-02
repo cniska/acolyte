@@ -12,9 +12,9 @@ The overview covers documented, shipped capabilities. “Partial” means the ca
 
 | Capability | Acolyte | Kimchi | Kode | OpenCode | Qwen Code | Codex | Goose | Grok Build | Reasonix |
 |---|---|---|---|---|---|---|---|---|---|
-| Multi-provider | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | partial | ✓ |
-| Client/server or editor protocol | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | ✓ | ✓ |
-| Workspace boundary or sandbox | ✓ | partial | ✓ | partial | ✓ | ✓ | partial | ✓ | ✓ |
+| Multi-provider | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | ✓ | ✓ |
+| Client/server or editor protocol | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Workspace boundary or sandbox | ✓ | partial | partial | partial | ✓ | ✓ | partial | ✓ | ✓ |
 | Agent skills | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, permission gates, and editor protocols so their presence can be compared without claiming identical isolation.
@@ -25,10 +25,10 @@ Workspace controls are not equivalent security models. The row groups path bound
 |---|---|---|
 | **Acolyte** | Headless daemon + typed RPC clients | persistent local daemon |
 | Kimchi | TypeScript CLI with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
-| Kode | TypeScript CLI with an ACP server and MCP integration | CLI + ACP |
-| OpenCode | HTTP/WebSocket server + TUI, web, and desktop clients | client/server |
+| Kode | TypeScript monorepo: CLI, ACP/HTTP server, MCP integration, and a published agent SDK | CLI + ACP + server |
+| OpenCode | HTTP + SSE server + TUI, web, and desktop clients | client/server |
 | Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
-| Codex | Rust CLI, SDKs, app-server, and app-server daemon | CLI + optional server |
+| Codex | Rust workspace (TUI, exec, core) with app-server, MCP server mode, and TypeScript/Python SDKs | CLI + desktop + optional server |
 | Goose | ACP agent server with TUI, desktop, and editor clients | CLI + client/server |
 | Grok Build | Rust terminal harness and TUI with ACP and sandboxing | CLI + ACP |
 | Reasonix | Go CLI with desktop client, plugins, and ACP integration | CLI + desktop |
@@ -72,7 +72,7 @@ The other projects expose different project-context and command-discovery mechan
 
 Acolyte enforces a workspace sandbox that prevents tool operations outside the resolved workspace root. All file paths are validated against the sandbox boundary using `realpath`-based resolution before any read, write, or delete operation.
 
-Codex provides operating-system sandbox policies with writable-directory restrictions. Qwen Code supports container sandboxes. Reasonix documents workspace permissions and sandbox controls, while Kode gates file tools through a permission engine and sandboxes shell commands on Linux. These approaches cover different threats and should not be read as equivalent to Acolyte's path boundary.
+Codex provides operating-system sandbox policies with writable-directory restrictions. Qwen Code supports container sandboxes and macOS Seatbelt profiles. Reasonix documents workspace permissions and sandbox controls. Kode has a file-tool permission engine and an OS shell sandbox, both opt-in: the default mode skips permission checks, and the sandbox engages only under `--safe`. These approaches cover different threats and should not be read as equivalent to Acolyte's path boundary.
 
 ## Observability
 
@@ -125,4 +125,4 @@ These are static engineering signals. They do not establish task success, model 
 
 Reviewed against the revisions recorded in [Benchmarks](./benchmarks.md).
 
-Updated 27 July 2026.
+Updated 2 August 2026.
