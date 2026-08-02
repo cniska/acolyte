@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { appConfig, setModel } from "./app-config";
+import { fullUsage, MEMORY_SPEC, rootUsage, subcommandUsage } from "./chat-command-specs";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
+import { formatUsage } from "./cli-help";
 import type { ConfigScope } from "./config-contract";
 import type { MemoryArchiveEntry, MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
@@ -128,6 +130,31 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory list", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.kind === "system" && row.content === "No memory saved yet.")).toBe(true);
+  });
+
+  test("dispatchSlashCommand answers an unknown /memory token with every accepted form", async () => {
+    const memoryApi = createMemoryApi();
+    const { rows, stop } = await runCommand("/memory bogus", { memoryApi });
+    expect(stop).toBe(true);
+    const content = rows.filter((row) => row.kind === "system").map((row) => row.content);
+    expect(content).toContain("Unknown subcommand: bogus");
+    // The declared root form is the grammar the default list handler actually accepts, so it is
+    // pinned literally here rather than derived from the spec the implementation also reads.
+    expect(content).toContain("Usage: /memory [all|user|project] [--archived]");
+    for (const usage of fullUsage(MEMORY_SPEC)) {
+      expect(content).toContain(formatUsage(usage));
+    }
+  });
+
+  test("dispatchSlashCommand reports the invoked form when /memory gets extra scopes", async () => {
+    const memoryApi = createMemoryApi();
+    const bare = await runCommand("/memory user project", { memoryApi });
+    const bareContent = bare.rows.filter((row) => row.kind === "system").map((row) => row.content);
+    expect(bareContent).toContain(formatUsage(rootUsage(MEMORY_SPEC)));
+
+    const sub = await runCommand("/memory list user project", { memoryApi });
+    const subContent = sub.rows.filter((row) => row.kind === "system").map((row) => row.content);
+    expect(subContent).toContain(formatUsage(subcommandUsage(MEMORY_SPEC, "list")));
   });
 
   test("dispatchSlashCommand scopes /memory list", async () => {
@@ -283,12 +310,6 @@ describe("chat-commands", () => {
     expect(rows.some((row) => isCommandOutput(row.content) && row.content.header === "Project memory 1")).toBe(true);
   });
 
-  test("dispatchSlashCommand validates /memory scope usage", async () => {
-    const { rows, stop } = await runCommand("/memory foo");
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory [add|rm|list]")).toBe(true);
-  });
-
   test("dispatchSlashCommand handles bare /memory --archived", async () => {
     let receivedScope: string | undefined = "sentinel";
     let listedActive = false;
@@ -391,12 +412,6 @@ describe("chat-commands", () => {
     const { rows, stop } = await runCommand("/memory", { memoryApi });
     expect(stop).toBe(true);
     expect(rows.some((row) => row.content === "memory unavailable")).toBe(true);
-  });
-
-  test("dispatchSlashCommand validates /memory extra args", async () => {
-    const { rows, stop } = await runCommand("/memory all extra");
-    expect(stop).toBe(true);
-    expect(rows.some((row) => row.content === "Usage: /memory list [all|user|project] [--archived]")).toBe(true);
   });
 
   test("dispatchSlashCommand handles /memory add and saves selected scope", async () => {

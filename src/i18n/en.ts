@@ -7,6 +7,7 @@ export const EN_MESSAGES = {
   "chat.at_ref.mention_path": "mention path",
   "chat.at_ref.no_matches": "No file or folder matches.",
   "chat.command.unknown": "Unknown command: {command}",
+  "chat.command.unknown_subcommand": "Unknown subcommand: {subcommand}",
   "chat.input.ctrl_c_hint": "ctrl+c again to exit",
   "chat.input.placeholder": "Ask anything…",
   "chat.memory.archive.header.all": "Retired memory {count}",
