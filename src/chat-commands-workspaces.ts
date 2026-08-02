@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { appConfig } from "./app-config";
-import { rootUsage, subcommandUsage, WORKSPACES_SPEC } from "./chat-command-specs";
+import { fullUsage, subcommandUsage, WORKSPACES_SPEC } from "./chat-command-specs";
 import type { CommandContext, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { alignCols } from "./chat-format";
@@ -13,7 +13,11 @@ import { createGitWorktree, resolveGitRepoRoot, suggestWorkspaceName, workspaceN
 export async function runWorkspacesList(ctx: CommandContext, parsed: ParsedCommand): Promise<CommandResult> {
   const { text } = ctx;
   if (parsed.args.length > 0) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage(rootUsage(WORKSPACES_SPEC)))]);
+    ctx.setRows((current) => [
+      ...current,
+      createRow("system", t("chat.command.unknown_subcommand", { subcommand: parsed.args[0] ?? "" })),
+      ...fullUsage(WORKSPACES_SPEC).map((usage) => createRow("system", formatUsage(usage))),
+    ]);
     return { stop: true, userText: text };
   }
   const workspaces = ctx.sessionState.sessions

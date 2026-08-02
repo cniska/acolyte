@@ -1,4 +1,4 @@
-import { MEMORY_SPEC, rootUsage, subcommandUsage } from "./chat-command-specs";
+import { fullUsage, MEMORY_SPEC, rootUsage, subcommandUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
@@ -75,11 +75,16 @@ async function handleMemoryList(
   const scopeTokens = parsed.args.filter((arg) => arg !== ARCHIVED_FLAG);
   const scopeToken = scopeTokens[0] ?? "";
   if (scopeToken !== "" && !isMemoryContextScope(scopeToken)) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage(rootUsage(MEMORY_SPEC)))]);
+    ctx.setRows((current) => [
+      ...current,
+      createRow("system", t("chat.command.unknown_subcommand", { subcommand: scopeToken })),
+      ...fullUsage(MEMORY_SPEC).map((usage) => createRow("system", formatUsage(usage))),
+    ]);
     return { stop: true, userText: text };
   }
   if (scopeTokens.length > 1) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "list")))]);
+    const invoked = parsed.sub === "list" ? subcommandUsage(MEMORY_SPEC, "list") : rootUsage(MEMORY_SPEC);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(invoked))]);
     return { stop: true, userText: text };
   }
   const scope: MemoryContextScope = scopeToken === "" ? "all" : scopeToken;

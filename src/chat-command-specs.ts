@@ -67,6 +67,7 @@ export const MEMORY_SPEC: CommandSpec = {
   name: "memory",
   source: "builtin",
   helpKey: "chat.slash.help.memory",
+  usage: "/memory [all|user|project] [--archived]",
   subcommands: [
     { name: "add", usage: "/memory add [--user|--project] <memory text>", helpKey: "chat.slash.help.memory.add" },
     { name: "rm", usage: "/memory rm <id-prefix>", helpKey: "chat.slash.help.memory.rm" },
@@ -93,6 +94,11 @@ export function rootUsage(spec: CommandSpec): string {
   if (spec.usage) return spec.usage;
   if (spec.subcommands.length === 0) return `/${spec.name}`;
   return `/${spec.name} [${spec.subcommands.map((sub) => sub.name).join("|")}]`;
+}
+
+/** Every form the command accepts: its root, then each declared subcommand. */
+export function fullUsage(spec: CommandSpec): string[] {
+  return [rootUsage(spec), ...spec.subcommands.map((sub) => sub.usage)];
 }
 
 export function subcommandUsage(spec: CommandSpec, name: string): string {
