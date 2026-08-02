@@ -143,7 +143,7 @@ describe("chat tui visual regression: status line and help", () => {
     "     /sessions                                     show sessions",
     "     /skills                                       show skills picker",
     "     /resume <session-id-prefix>                   resume session",
-    "     /memory [all|user|project] [--archived]       show memory notes",
+    "     /memory                                       manage memory",
     "     /memory add [--user|--project] <memory text>  add memory note",
     "     /memory rm <id-prefix>                        remove memory note",
     "     /memory list [all|user|project] [--archived]  show memory notes",

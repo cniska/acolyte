@@ -67,7 +67,6 @@ export const MEMORY_SPEC: CommandSpec = {
   name: "memory",
   source: "builtin",
   helpKey: "chat.slash.help.memory",
-  usage: "/memory [all|user|project] [--archived]",
   subcommands: [
     { name: "add", usage: "/memory add [--user|--project] <memory text>", helpKey: "chat.slash.help.memory.add" },
     { name: "rm", usage: "/memory rm <id-prefix>", helpKey: "chat.slash.help.memory.rm" },

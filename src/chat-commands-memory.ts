@@ -1,4 +1,4 @@
-import { fullUsage, MEMORY_SPEC, rootUsage, subcommandUsage } from "./chat-command-specs";
+import { fullUsage, MEMORY_SPEC, subcommandUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
@@ -83,8 +83,7 @@ async function handleMemoryList(
     return { stop: true, userText: text };
   }
   if (scopeTokens.length > 1) {
-    const invoked = parsed.sub === "list" ? subcommandUsage(MEMORY_SPEC, "list") : rootUsage(MEMORY_SPEC);
-    ctx.setRows((current) => [...current, createRow("system", formatUsage(invoked))]);
+    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "list")))]);
     return { stop: true, userText: text };
   }
   const scope: MemoryContextScope = scopeToken === "" ? "all" : scopeToken;

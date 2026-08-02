@@ -57,7 +57,7 @@ export const EN_MESSAGES = {
   "chat.skill.run_prompt": "Run the {skill} skill.",
   "chat.slash.help.clear": "clear transcript",
   "chat.slash.help.exit": "exit chat",
-  "chat.slash.help.memory": "show memory notes",
+  "chat.slash.help.memory": "manage memory",
   "chat.slash.help.memory.add": "add memory note",
   "chat.slash.help.memory.list": "show memory notes",
   "chat.slash.help.memory.rm": "remove memory note",

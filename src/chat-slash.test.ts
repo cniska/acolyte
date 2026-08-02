@@ -154,6 +154,21 @@ describe("chat-slash helpers", () => {
     }
   });
 
+  test("a root that owns subcommands offers no argument form of its own", () => {
+    const restore = setWorkspacesEnabled(true);
+    try {
+      const rows = slashCommandRows();
+      const roots = rows.filter((row) => !row.command.includes(" "));
+      for (const root of roots) {
+        const hasSubcommands = rows.some((row) => row.command.startsWith(`${root.command} `));
+        if (!hasSubcommands) continue;
+        expect(root.usage).toBe(root.command);
+      }
+    } finally {
+      restore();
+    }
+  });
+
   test("argument forms reach the help text rather than the menu", () => {
     const list = slashCommandRows().find((row) => row.command === "/memory list");
     expect(list?.usage).toBe("/memory list [all|user|project] [--archived]");
