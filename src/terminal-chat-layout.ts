@@ -1,7 +1,7 @@
 import { extname } from "node:path";
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { sanitizeAssistantContent, segmentAssistantContent, wrapAssistantContent, wrapUserText } from "./chat-content";
+import { segmentAssistantContent, wrapAssistantContent, wrapUserText } from "./chat-content";
 import { alignCols, formatCommandOutput, formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { PICKER_LABEL_WIDTH, PICKER_PAGE_SIZE } from "./chat-picker";
@@ -201,7 +201,7 @@ export function layoutTranscriptMessage(input: {
     segmentAssistantContent(input.text).forEach((segment, index) => {
       if (index > 0) contentLines.push([]);
       if (segment.kind === "prose") {
-        for (const line of wrapAssistantContent(sanitizeAssistantContent(segment.text), textWrap).split("\n")) {
+        for (const line of wrapAssistantContent(segment.text.trimEnd(), textWrap).split("\n")) {
           contentLines.push(tokenize(line).map((token) => assistantTokenSpan(token, role)));
         }
       } else {

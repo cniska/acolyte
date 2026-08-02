@@ -156,3 +156,26 @@ describe("layoutTranscriptMessage user messages", () => {
     expect(roles).toContain("syntax-deletion");
   });
 });
+
+describe("layoutTranscriptMessage assistant lists", () => {
+  const bodyOf = (text: string, columns = 80): string =>
+    layoutTranscriptMessage({ text, kind: "assistant", columns })
+      .lines.map((line) => line.spans.map((span) => span.text).join(""))
+      .join("\n");
+
+  test("keeps a nested numbered item indented under its parent bullet", () => {
+    const body = bodyOf("- parent bullet\n  1. nested numbered child");
+    const child = body.split("\n").find((line) => line.includes("nested numbered child")) ?? "";
+    const parent = body.split("\n").find((line) => line.includes("parent bullet")) ?? "";
+    expect(child.indexOf("1.") - parent.indexOf("- parent")).toBe(2);
+  });
+
+  test("preserves the indent of a numbered item at any depth", () => {
+    const body = bodyOf("intro\n    3. deeply indented item");
+    expect(body).toContain("    3. deeply indented item");
+  });
+
+  test("drops trailing blank rows from an answer", () => {
+    expect(bodyOf("answer\n\n\n")).toBe(bodyOf("answer"));
+  });
+});
