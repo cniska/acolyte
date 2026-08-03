@@ -27,15 +27,15 @@ This methodology requires a comparable public source repository. Claude Code, Cu
 
 | Project | Revision | Language | Source lines | Code | Comments | Blank | Files | Dependencies |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| **Acolyte** | `0d0dfe7db66d` | TypeScript | 33,967 | 29,660 | 1,155 | 3,152 | 273 | 12 + 6 |
+| **Acolyte** | `827331e92972` | TypeScript | 33,965 | 29,658 | 1,155 | 3,152 | 273 | 12 + 6 |
 | Kimchi | `e6fd6e14ff0f` | TypeScript | 117,897 | 88,952 | 16,039 | 12,906 | 612 | 25 + 19 |
 | Kode | `4afba64cec25` | TypeScript | 212,769 | 182,282 | 6,879 | 23,608 | 1,427 | 70 + 55 |
 | OpenCode | `1882c33827cf` | TypeScript | 419,408 | 372,795 | 9,696 | 36,917 | 2,341 | 223 + 111 |
-| Qwen Code | `e1e5b42ce110` | TypeScript | 1,079,646 | 826,110 | 167,121 | 86,415 | 3,458 | 224 + 139 |
-| Codex | `9949245d1d2b` | Rust | 960,785 | 819,028 | 62,918 | 78,839 | 2,416 | 330 + 89 |
-| Goose | `c413303ae015` | Rust | 211,710 | 173,947 | 14,400 | 23,363 | 440 | 162 + 20 |
+| Qwen Code | `89b5aa7a0361` | TypeScript | 1,080,310 | 826,695 | 167,159 | 86,456 | 3,458 | 224 + 139 |
+| Codex | `bb5054fe47ab` | Rust | 960,945 | 819,157 | 62,936 | 78,852 | 2,418 | 330 + 89 |
+| Goose | `5ab0e6df34e6` | Rust | 211,928 | 174,116 | 14,418 | 23,394 | 440 | 162 + 20 |
 | Grok Build | `a4221165824e` | Rust | 1,336,256 | 1,023,733 | 214,966 | 97,557 | 2,078 | 316 + 74 |
-| Reasonix | `15d335b86b31` | Go | 252,140 | 209,150 | 23,827 | 19,163 | 784 | 48 + 0 |
+| Reasonix | `69d0944e6361` | Go | 252,140 | 209,150 | 23,827 | 19,163 | 784 | 48 + 0 |
 
 ## Dependency surface area
 
@@ -95,7 +95,7 @@ Per 1k source lines.
 | Metric | Acolyte | Kimchi | Kode | OpenCode | Qwen Code | Codex | Goose | Grok Build | Reasonix |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Test files | 258 | 454 | 493 | 716 | 2,056 | 437 | 29 | 379 | 713 |
-| Test lines | 37,608 | 131,930 | 75,247 | 171,542 | 1,202,588 | 276,452 | 15,211 | 142,153 | 235,158 |
+| Test lines | 37,626 | 131,930 | 75,247 | 171,542 | 1,204,077 | 276,522 | 15,215 | 142,153 | 235,166 |
 | Ratio | 1.11 | 1.12 | 0.35 | 0.41 | 1.11 | 0.29 | 0.07 | 0.11 | 0.93 |
 
 This ratio measures test volume, not executed coverage or test effectiveness.
@@ -111,9 +111,9 @@ Test types include:
 
 | Metric | Acolyte | Kimchi | Kode | OpenCode | Qwen Code | Codex | Goose | Grok Build | Reasonix |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Avg lines / file | 124 | 193 | 149 | 179 | 312 | 398 | 481 | 643 | 322 |
+| Avg lines / file | 124 | 193 | 149 | 179 | 312 | 397 | 482 | 643 | 322 |
 | Files > 500 lines | 5 (2%) | 46 (8%) | 53 (4%) | 200 (9%) | 521 (15%) | 534 (22%) | 133 (30%) | 748 (36%) | 130 (17%) |
-| Largest file | 974 | 4,664 | 2,453 | 7,220 | 9,447 | 7,521 | 4,791 | 9,768 | 9,435 |
+| Largest file | 974 | 4,664 | 2,453 | 7,220 | 9,452 | 7,521 | 4,791 | 9,768 | 9,435 |
 | Barrel / index files | 1 | 37 | 73 | 70 | 163 | 78 | 51 | 201 | 2 |
 
 Acolyte has the smallest average module size and fewest large files in this snapshot.
@@ -144,4 +144,4 @@ At this snapshot, Acolyte has:
 
 These signals describe source structure and engineering patterns. They do not rank model quality or user-visible reliability.
 
-Updated 2 August 2026.
+Updated 3 August 2026.
