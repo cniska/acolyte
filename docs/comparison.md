@@ -6,16 +6,25 @@ See [Why Acolyte?](./why-acolyte.md) for a summary.
 
 Projects compared: [Kimchi](https://github.com/getkimchi/kimchi), [Kode](https://github.com/shareAI-lab/Kode-CLI), [OpenCode](https://github.com/anomalyco/opencode), [Qwen Code](https://github.com/QwenLM/qwen-code), [Codex](https://github.com/openai/codex), [Goose](https://github.com/aaif-goose/goose), [Grok Build](https://github.com/xai-org/grok-build), and [Reasonix](https://github.com/esengine/DeepSeek-Reasonix).
 
-The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope.
+The overview covers documented, shipped capabilities. “Partial” means the capability is optional, experimental, or narrower in scope; ✗ means no shipped equivalent.
 
 ## Feature overview
+
+The rows follow the order of the sections below.
 
 | Capability | Acolyte | Kimchi | Kode | OpenCode | Qwen Code | Codex | Goose | Grok Build | Reasonix |
 |---|---|---|---|---|---|---|---|---|---|
 | Multi-provider | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ | ✓ | ✓ |
 | Client/server or editor protocol | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Format and lint after edits | ✓ | partial | partial | partial | partial | partial | partial | partial | partial |
+| Project commands auto-detected | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Workspace boundary or sandbox | ✓ | partial | partial | partial | ✓ | ✓ | partial | ✓ | ✓ |
+| Local per-request trace | ✓ | ✗ | ✗ | partial | partial | partial | partial | partial | partial |
 | Agent skills | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Cross-session memory | ✓ | ✗ | partial | ✗ | ✓ | partial | partial | partial | ✓ |
+| Evicted turns retrievable | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ |
+
+What the short labels mean: format and lint run as built-in effects with no hook to write; project commands are the test, lint, and format commands the host resolves from the workspace instead of the model reading them out of an instruction file; the trace is a local per-request event record queryable by task ID; cross-session memory is maintained by the agent rather than a file you edit; evicted turns are the ones that have left the context window. Every other project can run format and lint through a hook or plugin the user configures, but none enables it by default, and their traces are opt-in, exported to an external collector, or diagnostic bundles.
 
 Workspace controls are not equivalent security models. The row groups path boundaries, operating-system sandboxes, permission gates, and editor protocols so their presence can be compared without claiming identical isolation.
 
@@ -60,13 +69,15 @@ resolve → prepare → generate → finalize
 
 The lifecycle trusts the model to make good decisions. Format and lint effects run automatically after writes, and lint errors surface in the tool result for the model to decide on. A step budget inlined into tool execution enforces one per-turn tool-call limit to prevent runaway loops.
 
+The other projects reach the same outcome through hooks or plugins that the user configures and maintains: a post-tool hook in Kimchi, Kode, Qwen Code, Codex, Goose, Grok Build, and Reasonix, and a `tool.execute.after` plugin callback in OpenCode. None of them ships a format or lint effect enabled by default.
+
 The distinction is not that other agents lack a loop. Acolyte makes its lifecycle phases, native completion, and post-tool effects explicit contracts with independent tests. The benchmark and comparison do not claim that this architecture produces better model outcomes by itself.
 
 ## Workspace detection
 
 Acolyte auto-detects project tooling from workspace config files at lifecycle start. The detected profile includes ecosystem, package manager, lint command, format command, and test command. Detection is cached per workspace and feeds into the lifecycle policy and agent instructions.
 
-The other projects expose different project-context and command-discovery mechanisms, so the comparison is not a binary capability test.
+The other projects carry project context in instruction files such as `AGENTS.md` and in user configuration; the model reads the commands from there rather than the host resolving them from the workspace.
 
 ## Workspace sandboxing
 
@@ -89,11 +100,13 @@ timestamp=... task_id=task_abc123 event=lifecycle.summary model_calls=1 read=3 s
 
 `acolyte trace task <id> --verbose` includes tool output; `--json` returns raw event lines. The trace stays local and queryable by task ID, and Acolyte does not include a product telemetry client. This is separate from provider telemetry and external tracing services. See [Observability](./observability.md) for the full event model.
 
+The other projects record less by default. Codex writes local rollout-trace bundles only when `CODEX_ROLLOUT_TRACE_ROOT` is set, and OpenCode writes a JSONL event trace only under `OPENCODE_DIRECT_TRACE`. Qwen Code and Goose emit OpenTelemetry spans to a collector the user configures, Grok Build uploads session traces with telemetry enabled, and Reasonix packages session diagnostics into a zip on request. Kimchi and Kode keep conversation logs but no event trace.
+
 ## Skills and extensibility
 
 Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/`, in the workspace for a project and in the home directory globally; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
 
-The other compared projects also document skills or equivalent skill and plugin extensions. The extension models differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
+All eight compared projects load `SKILL.md` skills natively rather than through an add-on. The extension models around them differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
 
 Core systems expose minimal, well-defined extension points: lifecycle policies, tool registration, memory strategies, skill metadata, and configuration layers. The surface is intentionally narrow; Acolyte is an opinionated product, not a general-purpose agent framework.
 
@@ -107,7 +120,7 @@ After each request, a background distiller derives durable, self-contained work 
 
 Retrieval is scope-aware and uses semantic similarity, TF-IDF token overlap, and optional topic filtering. Embeddings use the selected provider by default or an explicitly configured OpenAI-compatible endpoint, independently of chat.
 
-The other projects use different combinations of session persistence, project files, repository maps, compaction, plans, and memory extensions. These mechanisms solve different context problems and are not direct substitutes for Acolyte's scoped memory.
+Memory is no longer rare in this set, but it is usually gated. Qwen Code ships automatic workspace memory with remember, forget, and consolidation tasks, and Reasonix ships an auto-memory store with host-side recall. Codex has a full memory-write pipeline that stays off unless the `memories` feature is enabled, Grok Build's markdown memory with consolidation passes requires `--experimental-memory`, and Goose ships memory as a built-in extension the user enables. Kode stores and recalls durable entries but only extracts statements the user marks explicitly, never inferring them from ordinary prose. Kimchi and OpenCode rely on instruction files instead.
 
 ## Context budgeting
 
@@ -115,7 +128,7 @@ How each agent manages the token window when context grows large.
 
 Acolyte budgets context **before assembly** and maintains a bounded running context window. It reserves known prompt costs, keeps recent conversation within the remaining budget, and caps tool results individually. When earlier conversation falls outside the window, the model receives an explicit gap notice and can retrieve it with `session-search`. Durable session, project, and user context remains available through on-demand `memory-search`, not upfront prompt injection.
 
-The other projects use different approaches to compaction, repository-map context, planning, and session persistence. Acolyte keeps its live window bounded and retrieves earlier or durable context on demand rather than compacting the conversation into a replacement summary. Each completed request also reports input, output, total, and prompt-breakdown token counts. See [Context Budgeting](./context-budgeting.md) for the runtime behavior.
+The other projects mostly compact: earlier conversation becomes a summary the model cannot look behind. Goose exposes a `chatrecall` extension and Reasonix a `history` tool, both of which search saved sessions, so their agents can also reach past turns. Acolyte keeps its live window bounded and retrieves earlier or durable context on demand rather than compacting the conversation into a replacement summary. Each completed request also reports input, output, total, and prompt-breakdown token counts. See [Context Budgeting](./context-budgeting.md) for the runtime behavior.
 
 ## Code quality
 
@@ -125,4 +138,4 @@ These are static engineering signals. They do not establish task success, model 
 
 Reviewed against the revisions recorded in [Benchmarks](./benchmarks.md).
 
-Updated 2 August 2026.
+Updated 3 August 2026.
