@@ -280,7 +280,14 @@ printf '%s\n' "$@" > "${formatLog}"
         request: { model: "gpt-5-mini", message: "test", history: [], sessionId: "sess_undo" },
         soulPrompt: "SOUL",
         workspace: undoWorkspace,
-        features: { syncAgents: false, undoCheckpoints: true, workspaces: false, cloudSync: false, mcp: false },
+        features: {
+          syncAgents: false,
+          undoCheckpoints: true,
+          workspaces: false,
+          cloudSync: false,
+          mcp: false,
+          plugins: false,
+        },
       }),
       deps,
     );

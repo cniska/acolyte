@@ -9,7 +9,7 @@ import {
   readSkillInstructions,
   resetSkillCache,
 } from "./skill-ops";
-import { tempDir, writeSkill } from "./test-utils";
+import { tempDir, writePlugin, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 const originalHome = process.env.HOME;
@@ -26,6 +26,8 @@ afterEach(() => {
 });
 
 const BUNDLED_COUNT = BUNDLED_SKILLS.length;
+
+const PLUGIN_SKILL = "---\nname: plugin-skill\ndescription: A skill shipped inside a plugin.\n---\nBody";
 
 describe("skills loader", () => {
   test("returns only bundled skills when no project skills exist", async () => {
@@ -206,5 +208,59 @@ describe("skill scopes", () => {
     expect(replaced).toHaveLength(1);
     expect(replaced[0].source).toBe("project");
     expect(getSkillLoadDiagnostics().overrides).toBe(1);
+  });
+});
+
+describe("plugin skills", () => {
+  function enablePlugins(cwd: string): void {
+    mkdirSync(join(cwd, ".acolyte"), { recursive: true });
+    writeFileSync(join(cwd, ".acolyte", "config.json"), JSON.stringify({ features: { plugins: true } }), "utf8");
+  }
+
+  test("are absent while the flag is off", async () => {
+    const cwd = createDir("acolyte-skills-pluginoff-");
+    writePlugin(cwd, "acme", { skills: { "plugin-skill": PLUGIN_SKILL } });
+
+    const skills = await loadSkills(cwd);
+
+    expect(skills.find((s) => s.name === "plugin-skill")).toBeUndefined();
+    expect(skills).toHaveLength(BUNDLED_COUNT);
+  });
+
+  test("join the roster with their plugin recorded once the flag is on", async () => {
+    const cwd = createDir("acolyte-skills-pluginon-");
+    enablePlugins(cwd);
+    writePlugin(cwd, "acme", { skills: { "plugin-skill": PLUGIN_SKILL } });
+
+    const found = (await loadSkills(cwd)).find((s) => s.name === "plugin-skill");
+
+    expect(found?.source).toBe("plugin");
+    expect(found?.plugin).toBe("acme");
+  });
+
+  test("lose a name to a hand-placed skill", async () => {
+    const cwd = createDir("acolyte-skills-pluginlose-");
+    enablePlugins(cwd);
+    writePlugin(cwd, "acme", { skills: { "plugin-skill": PLUGIN_SKILL } });
+    writeSkill(cwd, "plugin-skill", "---\nname: plugin-skill\ndescription: Mine\n---", "# Mine");
+
+    const claimed = (await loadSkills(cwd)).filter((s) => s.name === "plugin-skill");
+
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0].source).toBe("project");
+  });
+
+  test("replace a bundled skill of the same name", async () => {
+    const cwd = createDir("acolyte-skills-pluginbundled-");
+    enablePlugins(cwd);
+    const bundledName = BUNDLED_SKILLS[0].name;
+    writePlugin(cwd, "acme", {
+      skills: { [bundledName]: `---\nname: ${bundledName}\ndescription: From a plugin.\n---\nBody` },
+    });
+
+    const claimed = (await loadSkills(cwd)).filter((s) => s.name === bundledName);
+
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0].source).toBe("plugin");
   });
 });
