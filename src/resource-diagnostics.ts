@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { configDir, type Env } from "./paths";
+import { getPluginLoadDiagnostics } from "./plugin-ops";
 import { loadProjectRulesPrompt } from "./project-rules";
 import { getLoadedSkills, getSkillLoadDiagnostics } from "./skill-ops";
 import type { StatusFields } from "./status-contract";
@@ -28,6 +29,14 @@ export function collectResourceDiagnostics(options?: { cwd?: string; env?: Env }
   if (skillDiagnostics.readErrors > 0) diagnostics["resources.skills.read_errors"] = skillDiagnostics.readErrors;
   if (skillDiagnostics.scannedDirs > 0 && skillDiagnostics.loaded === 0 && skills.length === 0)
     diagnostics["resources.skills.status"] = "no_valid_skills_loaded";
+
+  const pluginDiagnostics = getPluginLoadDiagnostics();
+  if (pluginDiagnostics.loaded > 0) diagnostics["resources.plugins.loaded"] = pluginDiagnostics.loaded;
+  if (pluginDiagnostics.rejected > 0) diagnostics["resources.plugins.rejected"] = pluginDiagnostics.rejected;
+  if (pluginDiagnostics.duplicates > 0) diagnostics["resources.plugins.duplicates"] = pluginDiagnostics.duplicates;
+  if (pluginDiagnostics.mcpDisabled > 0) diagnostics["resources.plugins.mcp_disabled"] = pluginDiagnostics.mcpDisabled;
+  if (pluginDiagnostics.skippedServers > 0)
+    diagnostics["resources.plugins.servers_skipped"] = pluginDiagnostics.skippedServers;
 
   return diagnostics;
 }

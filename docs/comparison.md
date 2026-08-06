@@ -106,7 +106,7 @@ The other projects record less by default. Codex writes local rollout-trace bund
 
 ## Skills and extensibility
 
-Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions. Skills live in `.agents/skills/`, in the workspace for a project and in the home directory globally; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
+Acolyte supports the [SKILL.md standard](https://agentskills.io) for declarative prompt extensions and the [Agent Plugins standard](https://agent-plugins.org) for packaging skills and MCP servers together. Skills live in `.agents/skills/`, in the workspace for a project and in the home directory globally; users can activate them with slash commands or the picker, and the model activates and deactivates them as work changes. Active skills persist across turns, and multiple skills can remain active in one session.
 
 All eight compared projects load `SKILL.md` skills natively rather than through an add-on. The extension models around them differ: some treat skills as prompt resources, while others also expose executable plugins or MCP servers.
 

@@ -34,6 +34,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 ## Development
 
 - [Skills](./skills/README.md) — engineering workflows for plan, build, and review
+- [Plugins](./plugins.md) — Agent Plugins that carry skills and MCP servers into any client reading the standard
 - [Testing](./testing.md) — test types, naming, and execution
 
 ## Reference

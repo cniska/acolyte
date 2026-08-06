@@ -146,6 +146,8 @@ Two transports are supported:
 
 Each server's tools appear in the agent alongside native tools. If a server is unreachable at task start it is skipped with a warning and the lifecycle continues.
 
+Installed plugins contribute servers too, namespaced by plugin name and requiring `features.plugins` as well. See [Plugins](./plugins.md).
+
 ## Feature flags
 
 Feature flags are opt-in toggles for experimental behavior, configured under `[features]` in `config.toml`.
@@ -172,6 +174,7 @@ acolyte config set features.syncAgents true
 | `workspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
 | `cloudSync` | Use the cloud API for memory and session storage. Requires `acolyte login`. |
 | `mcp` | Opt-in: load MCP servers from `.mcp.json` and expose their tools to the agent. |
+| `plugins` | Opt-in: load Agent Plugins from `.agents/plugins`, contributing their skills and — with `mcp` also on — their MCP servers. |
 
 ## All settable keys
 
@@ -195,3 +198,4 @@ acolyte config set features.syncAgents true
 | `features.workspaces` | opt-in: enable `/workspaces` chat commands |
 | `features.cloudSync` | opt-in: use cloud API for memory and session storage |
 | `features.mcp` | opt-in: enable MCP servers from `.mcp.json` |
+| `features.plugins` | opt-in: enable Agent Plugins from `.agents/plugins` |

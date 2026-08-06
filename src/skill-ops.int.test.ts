@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
+import { resetPluginCache } from "./plugin-ops";
 import {
   findSkillByName,
   getSkillLoadDiagnostics,
@@ -22,6 +23,7 @@ beforeEach(() => {
 afterEach(() => {
   process.env.HOME = originalHome;
   resetSkillCache();
+  resetPluginCache();
   cleanupDirs();
 });
 

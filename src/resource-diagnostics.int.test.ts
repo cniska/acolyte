@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { PLUGIN_MANIFEST_SCHEMA_ID } from "./plugin-contract";
+import { resetPluginCache } from "./plugin-ops";
 import { collectResourceDiagnostics } from "./resource-diagnostics";
 import { loadSkills, resetSkillCache } from "./skill-ops";
-import { tempDir, writeSkill } from "./test-utils";
+import { tempDir, writePlugin, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 
 afterEach(() => {
   resetSkillCache();
+  resetPluginCache();
   cleanupDirs();
 });
 
@@ -53,5 +56,21 @@ describe("resource diagnostics", () => {
     await loadSkills(cwd);
     const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
     expect(diagnostics).toEqual({});
+  });
+
+  test("counts loaded and rejected plugins", async () => {
+    const cwd = createDir("acolyte-resdiag-plugins-");
+    const home = createDir("acolyte-resdiag-home-");
+    writeFileSync(join(cwd, "AGENTS.md"), "# Agents\n", "utf8");
+    mkdirSync(join(cwd, ".acolyte"), { recursive: true });
+    writeFileSync(join(cwd, ".acolyte", "config.json"), JSON.stringify({ features: { plugins: true } }), "utf8");
+    writePlugin(cwd, "good", {});
+    writePlugin(cwd, "bad", { manifest: { $schema: PLUGIN_MANIFEST_SCHEMA_ID } });
+
+    await loadSkills(cwd);
+    const diagnostics = collectResourceDiagnostics({ cwd, env: { HOME: home } });
+
+    expect(diagnostics["resources.plugins.loaded"]).toBe(1);
+    expect(diagnostics["resources.plugins.rejected"]).toBe(1);
   });
 });
