@@ -33,7 +33,7 @@ Workspace controls are not equivalent security models. The row groups path bound
 | Project | Architecture | Deployment model |
 |---|---|---|
 | **Acolyte** | Headless daemon + typed RPC clients | persistent local daemon |
-| Kimchi | TypeScript CLI with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
+| Kimchi | Distribution of the third-party pi harness, extended with subagents, ACP, LSP, and remote sessions | CLI + remote sessions |
 | Kode | TypeScript monorepo: CLI, ACP/HTTP server, MCP integration, and a published agent SDK | CLI + ACP + server |
 | OpenCode | HTTP + SSE server + TUI, web, and desktop clients | client/server |
 | Qwen Code | CLI with daemon SDK/UI and IDE integrations | CLI + client/server |
@@ -41,6 +41,8 @@ Workspace controls are not equivalent security models. The row groups path bound
 | Goose | ACP agent server with TUI, desktop, and editor clients | CLI + client/server |
 | Grok Build | Rust terminal harness and TUI with ACP and sandboxing | CLI + ACP |
 | Reasonix | Go CLI with desktop client, plugins, and ACP integration | CLI + desktop |
+
+Kimchi is the only project here that does not own its agent runtime: it pins the pi packages with local patches and layers extensions and modes on them. A capability in its column can come from that substrate rather than from Kimchi.
 
 Acolyte runs as a headless daemon. The CLI and third-party clients connect over the same typed RPC protocol. Editor integrations can use that protocol without embedding a separate agent runtime.
 
@@ -134,7 +136,7 @@ The other projects mostly compact: earlier conversation becomes a summary the mo
 
 See [Benchmarks](./benchmarks.md) for the measured source comparison. At the recorded snapshot, Acolyte has the smallest measured source set, smallest average module size, fewest runtime dependencies, and highest measured TypeScript validation-call density in the selected peer set.
 
-These are static engineering signals. They do not establish task success, model quality, security equivalence, or overall product superiority.
+These are static engineering signals. They do not establish task success, model quality, security equivalence, or overall product superiority. Each figure covers a project's own source, so Kimchi's excludes the pi harness it imports.
 
 Reviewed against the revisions recorded in [Benchmarks](./benchmarks.md).
 
