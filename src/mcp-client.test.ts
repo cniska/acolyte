@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bindMcpTools, formatMcpResult, isInsecureRemoteHttp, sanitizeDescription } from "./mcp-client";
+import { bindMcpTools, buildToolId, formatMcpResult, isInsecureRemoteHttp, sanitizeDescription } from "./mcp-client";
 import type { McpServerConfig } from "./mcp-contract";
 import { createSessionContext } from "./tool-session";
 
@@ -137,5 +137,16 @@ describe("bindMcpTools", () => {
     expect(bound).toHaveLength(1);
     expect(bound[0]?.description).toBe("Read a file.");
     expect(bound[0]?.instruction).toBeUndefined();
+  });
+});
+
+describe("buildToolId", () => {
+  test("namespaces the server and normalizes underscores", () => {
+    expect(buildToolId("github", "create_issue")).toBe("mcp-github-create-issue");
+  });
+
+  test("replaces characters a provider tool name cannot carry", () => {
+    expect(buildToolId("acme.tools-github", "create_issue")).toBe("mcp-acme-tools-github-create-issue");
+    expect(buildToolId("my server", "run")).toBe("mcp-my-server-run");
   });
 });

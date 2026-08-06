@@ -1,6 +1,4 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import {
   CallToolResultSchema,
   type CompatibilityCallToolResultSchema,
@@ -14,11 +12,11 @@ import {
   MCP_CONNECT_TIMEOUT_MS,
   type McpHttpServerConfig,
   type McpServerConfig,
-  type McpStdioServerConfig,
   readMcpConfig,
-  STDIO_ENV_ALLOWLIST,
 } from "./mcp-contract";
 import { getOrConnectClient } from "./mcp-session";
+import { createMcpTransport } from "./mcp-transport";
+import { collectPluginMcpServers, ensurePluginDataDirs, loadPlugins } from "./plugin-ops";
 import type { SessionContext } from "./tool-contract";
 import { createTool, type ToolDefinition } from "./tool-contract";
 import { runTool } from "./tool-execution";
@@ -30,13 +28,6 @@ export type McpToolListing = {
   config: McpServerConfig;
   tools: McpTool[];
 };
-
-function createEphemeralTransport(config: McpServerConfig) {
-  if (config.type === "stdio") {
-    return createStdioTransport(config);
-  }
-  return createHttpTransport(config);
-}
 
 function withDeadline<T>(task: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -54,16 +45,6 @@ function withDeadline<T>(task: Promise<T>, ms: number, label: string): Promise<T
   });
 }
 
-function createStdioTransport(config: McpStdioServerConfig) {
-  const env: Record<string, string> = {};
-  for (const key of STDIO_ENV_ALLOWLIST) {
-    const val = process.env[key];
-    if (val !== undefined) env[key] = val;
-  }
-  if (config.env) Object.assign(env, config.env);
-  return new StdioClientTransport({ command: config.command, args: config.args ?? [], env });
-}
-
 export function isInsecureRemoteHttp(config: McpServerConfig): boolean {
   if (config.type !== "http") return false;
   const url = new URL(config.url);
@@ -78,12 +59,6 @@ const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
 export function sanitizeDescription(raw: string | undefined, fallback: string): string {
   const text = (raw ?? fallback).replace(CONTROL_CHAR_RE, "");
   return text.length > MCP_DESCRIPTION_MAX_CHARS ? `${text.slice(0, MCP_DESCRIPTION_MAX_CHARS)}...` : text;
-}
-
-function createHttpTransport(config: McpHttpServerConfig) {
-  return new StreamableHTTPClientTransport(new URL(config.url), {
-    requestInit: { headers: config.headers ?? {} },
-  });
 }
 
 export function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResultSchema>): string {
@@ -113,8 +88,11 @@ export function formatMcpResult(result: z.infer<typeof CompatibilityCallToolResu
   return parts.join("\n");
 }
 
-function buildToolId(serverName: string, toolName: string): string {
-  return `mcp-${serverName}-${toolName.replace(/_/g, "-")}`;
+// Providers accept only word characters and hyphens in a tool name, while server names are free-form.
+const TOOL_ID_INVALID_RE = /[^a-zA-Z0-9_-]/g;
+
+export function buildToolId(serverName: string, toolName: string): string {
+  return `mcp-${serverName}-${toolName.replace(/_/g, "-")}`.replace(TOOL_ID_INVALID_RE, "-");
 }
 
 function bindMcpToolDefinition(
@@ -152,7 +130,7 @@ function bindMcpToolDefinition(
 
         // No session (e.g. one-shot run): ephemeral connect/call/close.
         const client = new Client(MCP_CLIENT_INFO);
-        const transport = createEphemeralTransport(config);
+        const transport = createMcpTransport(config);
         try {
           await client.connect(transport);
           const result = await client.callTool({ name: mcpTool.name, arguments: args });
@@ -166,14 +144,39 @@ function bindMcpToolDefinition(
 }
 
 /**
+ * The one place a run's servers are resolved: the workspace configuration, plus every enabled
+ * plugin's servers under their plugin-qualified names. A workspace server keeps a contested name.
+ */
+export async function resolveMcpServers(
+  workspace: string,
+  pluginsEnabled: boolean,
+): Promise<Record<string, McpServerConfig>> {
+  const servers: Record<string, McpServerConfig> = { ...readMcpConfig(workspace).mcpServers };
+  if (!pluginsEnabled) return servers;
+
+  const { plugins } = await loadPlugins(workspace);
+  await ensurePluginDataDirs(plugins);
+  for (const [serverName, config] of Object.entries(collectPluginMcpServers(plugins))) {
+    if (serverName in servers) {
+      log.warn("mcp.server.collision", { server: serverName });
+      continue;
+    }
+    servers[serverName] = config;
+  }
+  return servers;
+}
+
+/**
  * Async phase: for each configured server, get the tool listing — reusing the
  * session connection if a sessionId is given, otherwise connecting ephemerally.
  */
-export async function listMcpTools(workspace: string, sessionId?: string): Promise<McpToolListing[]> {
-  const config = readMcpConfig(workspace);
+export async function listMcpTools(
+  servers: Record<string, McpServerConfig>,
+  sessionId?: string,
+): Promise<McpToolListing[]> {
   const listings: McpToolListing[] = [];
 
-  for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
+  for (const [serverName, serverConfig] of Object.entries(servers)) {
     if (isInsecureRemoteHttp(serverConfig)) {
       log.warn("mcp.server.insecure_http", { server: serverName, url: (serverConfig as McpHttpServerConfig).url });
       continue;
@@ -184,7 +187,7 @@ export async function listMcpTools(workspace: string, sessionId?: string): Promi
         listings.push({ serverName, config: serverConfig, tools });
       } else {
         const client = new Client(MCP_CLIENT_INFO);
-        const transport = createEphemeralTransport(serverConfig);
+        const transport = createMcpTransport(serverConfig);
         try {
           await withDeadline(client.connect(transport), MCP_CONNECT_TIMEOUT_MS, `mcp/${serverName}/connect`);
           const { tools } = await withDeadline(

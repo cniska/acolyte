@@ -1,17 +1,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import { errorMessage } from "./error-contract";
 import { log } from "./log";
-import {
-  MCP_CLIENT_INFO,
-  MCP_CONNECT_TIMEOUT_MS,
-  type McpHttpServerConfig,
-  type McpServerConfig,
-  type McpStdioServerConfig,
-  STDIO_ENV_ALLOWLIST,
-} from "./mcp-contract";
+import { MCP_CLIENT_INFO, MCP_CONNECT_TIMEOUT_MS, type McpServerConfig } from "./mcp-contract";
+import { createMcpTransport } from "./mcp-transport";
 
 function withDeadline<T>(task: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -40,33 +32,6 @@ type SessionState = {
 
 const sessions = new Map<string, SessionState>();
 
-function createTransport(config: McpServerConfig, onClose: () => void) {
-  if (config.type === "stdio") {
-    return createStdioTransport(config, onClose);
-  }
-  return createHttpTransport(config, onClose);
-}
-
-function createStdioTransport(config: McpStdioServerConfig, onClose: () => void) {
-  const env: Record<string, string> = {};
-  for (const key of STDIO_ENV_ALLOWLIST) {
-    const val = process.env[key];
-    if (val !== undefined) env[key] = val;
-  }
-  if (config.env) Object.assign(env, config.env);
-  const transport = new StdioClientTransport({ command: config.command, args: config.args ?? [], env });
-  transport.onclose = onClose;
-  return transport;
-}
-
-function createHttpTransport(config: McpHttpServerConfig, onClose: () => void) {
-  const transport = new StreamableHTTPClientTransport(new URL(config.url), {
-    requestInit: { headers: config.headers ?? {} },
-  });
-  transport.onclose = onClose;
-  return transport;
-}
-
 function getOrCreateSession(sessionId: string): SessionState {
   let state = sessions.get(sessionId);
   if (!state) {
@@ -90,7 +55,7 @@ export async function getOrConnectClient(
   if (existing) return existing;
 
   const client = new Client(MCP_CLIENT_INFO);
-  const transport = createTransport(config, () => {
+  const transport = createMcpTransport(config, () => {
     // Remove from registry on close so the next call reconnects automatically.
     state.connections.delete(serverName);
     log.debug("mcp.session.disconnected", { session: sessionId, server: serverName });

@@ -8,7 +8,7 @@ import { createRunAgent, phaseGenerate } from "./lifecycle-generate";
 import { createLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
 import { resolveModel } from "./lifecycle-resolve";
-import { listMcpTools } from "./mcp-client";
+import { listMcpTools, resolveMcpServers } from "./mcp-client";
 import { defaultMemoryPolicy, type MemoryCommitContext, type MemoryCommitMetrics } from "./memory-contract";
 import { commitDistiller, estimateDistillPromptTokens } from "./memory-distiller";
 import { resolveScopeKey } from "./memory-ops";
@@ -263,7 +263,9 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
 
   const { model } = deps.resolveModel(input.request.model);
 
-  const mcpListings = input.features.mcp ? await listMcpTools(sandboxWorkspace, input.request.sessionId) : [];
+  const mcpListings = input.features.mcp
+    ? await listMcpTools(await resolveMcpServers(sandboxWorkspace, input.features.plugins), input.request.sessionId)
+    : [];
 
   const prepared = deps.phasePrepare({
     request: input.request,
