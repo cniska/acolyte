@@ -73,7 +73,7 @@ A `stdio` server's `command` is a bare executable name or a `./`-relative path i
 | `PLUGIN_ROOT` | the plugin directory, with symlinks resolved |
 | `PLUGIN_DATA` | `<workspace>/.acolyte/plugin-data/<name>` for a project plugin, `<data-dir>/plugins/<name>` for a user plugin |
 
-`PLUGIN_DATA` is created before a server launches and is keyed by plugin name, so renaming a plugin gives it a new data directory.
+`PLUGIN_DATA` is created before a server launches and is keyed by plugin name, so renaming a plugin gives it a new data directory. A project plugin's data is server state, not workspace configuration; ignore `.acolyte/plugin-data/` in version control.
 
 ## Invalid plugins
 
