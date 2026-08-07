@@ -3,11 +3,13 @@ import {
   declaredSchemaVersion,
   expandPluginVars,
   isContainedPath,
+  isUsableExtensions,
   normalizePluginMcpServer,
   PLUGIN_DATA_PLACEHOLDER,
   PLUGIN_MANIFEST_SCHEMA_ID,
   PLUGIN_MCP_SCHEMA_ID,
   PLUGIN_ROOT_PLACEHOLDER,
+  type PluginPathResolver,
   type PluginPaths,
   pluginManifestSchema,
   pluginMcpFileSchema,
@@ -19,11 +21,7 @@ import {
 
 const PATHS: PluginPaths = { root: "/plugins/demo", dataDir: "/data/demo" };
 
-function parseServer(entry: unknown) {
-  const result = pluginMcpServerSchema.safeParse(entry);
-  if (!result.success) throw new Error("expected a valid server entry");
-  return result.data;
-}
+const keepPath: PluginPathResolver = (path) => path;
 
 describe("validatePluginName", () => {
   test("accepts names the spec allows", () => {
@@ -88,6 +86,15 @@ describe("pluginManifestSchema", () => {
     const raw = { $schema: PLUGIN_MANIFEST_SCHEMA_ID, name: "demo", futureThing: true };
     expect(pluginManifestSchema.safeParse(raw).success).toBe(true);
     expect(unknownManifestFields(raw)).toEqual(["futureThing"]);
+  });
+
+  test("accepts a manifest whose extensions field is not an object", () => {
+    expect(
+      pluginManifestSchema.safeParse({ $schema: PLUGIN_MANIFEST_SCHEMA_ID, name: "demo", extensions: "nope" }).success,
+    ).toBe(true);
+    expect(isUsableExtensions("nope")).toBe(false);
+    expect(isUsableExtensions([])).toBe(false);
+    expect(isUsableExtensions({ "sh.acolyte": {} })).toBe(true);
   });
 
   test("reports no unknown fields for a full manifest", () => {
@@ -207,10 +214,22 @@ describe("isContainedPath", () => {
 });
 
 describe("normalizePluginMcpServer", () => {
+  test("rejects an entry that fails validation without touching the rest of the file", () => {
+    expect(normalizePluginMcpServer({ type: "stdio", command: "node serve.js" }, PATHS, keepPath)).toEqual({
+      ok: false,
+      kind: "server-invalid",
+    });
+    expect(normalizePluginMcpServer({ type: "carrier-pigeon" }, PATHS, keepPath)).toEqual({
+      ok: false,
+      kind: "server-invalid",
+    });
+  });
+
   test("maps streamable-http onto the canonical http transport", () => {
     const result = normalizePluginMcpServer(
-      parseServer({ type: "streamable-http", url: "https://example.com/mcp", headers: { A: "1" } }),
+      { type: "streamable-http", url: "https://example.com/mcp", headers: { A: "1" } },
       PATHS,
+      keepPath,
     );
     expect(result).toEqual({
       ok: true,
@@ -219,12 +238,12 @@ describe("normalizePluginMcpServer", () => {
   });
 
   test("declines the legacy sse transport", () => {
-    const result = normalizePluginMcpServer(parseServer({ type: "sse", url: "https://example.com/sse" }), PATHS);
+    const result = normalizePluginMcpServer({ type: "sse", url: "https://example.com/sse" }, PATHS, keepPath);
     expect(result).toEqual({ ok: false, kind: "server-unsupported-transport" });
   });
 
   test("resolves a relative command against the plugin root and defaults cwd to it", () => {
-    const result = normalizePluginMcpServer(parseServer({ type: "stdio", command: "./bin/serve" }), PATHS);
+    const result = normalizePluginMcpServer({ type: "stdio", command: "./bin/serve" }, PATHS, keepPath);
     expect(result).toEqual({
       ok: true,
       server: {
@@ -237,20 +256,21 @@ describe("normalizePluginMcpServer", () => {
   });
 
   test("leaves a bare command for the platform search path", () => {
-    const result = normalizePluginMcpServer(parseServer({ type: "stdio", command: "node" }), PATHS);
+    const result = normalizePluginMcpServer({ type: "stdio", command: "node" }, PATHS, keepPath);
     expect(result.ok && result.server.type === "stdio" && result.server.command).toBe("node");
   });
 
   test("expands placeholders in args, env values, and cwd", () => {
     const result = normalizePluginMcpServer(
-      parseServer({
+      {
         type: "stdio",
         command: "node",
         args: [`${PLUGIN_ROOT_PLACEHOLDER}/server.js`, `--state=${PLUGIN_DATA_PLACEHOLDER}`],
         env: { STATE: `${PLUGIN_DATA_PLACEHOLDER}/db` },
         cwd: `${PLUGIN_DATA_PLACEHOLDER}/work`,
-      }),
+      },
       PATHS,
+      keepPath,
     );
     expect(result).toEqual({
       ok: true,
@@ -265,7 +285,7 @@ describe("normalizePluginMcpServer", () => {
   });
 
   test("injects the plugin paths even when the server declares no env", () => {
-    const result = normalizePluginMcpServer(parseServer({ type: "stdio", command: "node" }), PATHS);
+    const result = normalizePluginMcpServer({ type: "stdio", command: "node" }, PATHS, keepPath);
     expect(result.ok && result.server.type === "stdio" && result.server.env).toEqual({
       PLUGIN_ROOT: "/plugins/demo",
       PLUGIN_DATA: "/data/demo",
@@ -273,27 +293,37 @@ describe("normalizePluginMcpServer", () => {
   });
 
   test("rejects a command that escapes the plugin root", () => {
-    const result = normalizePluginMcpServer(parseServer({ type: "stdio", command: "./../evil" }), PATHS);
+    const result = normalizePluginMcpServer({ type: "stdio", command: "./../evil" }, PATHS, keepPath);
     expect(result).toEqual({ ok: false, kind: "server-path-escape" });
   });
 
   test("rejects a cwd that escapes its own base", () => {
-    expect(normalizePluginMcpServer(parseServer({ type: "stdio", command: "node", cwd: "./../up" }), PATHS)).toEqual({
+    expect(normalizePluginMcpServer({ type: "stdio", command: "node", cwd: "./../up" }, PATHS, keepPath)).toEqual({
       ok: false,
       kind: "server-path-escape",
     });
     expect(
       normalizePluginMcpServer(
-        parseServer({ type: "stdio", command: "node", cwd: `${PLUGIN_ROOT_PLACEHOLDER}/../up` }),
+        { type: "stdio", command: "node", cwd: `${PLUGIN_ROOT_PLACEHOLDER}/../up` },
         PATHS,
+        keepPath,
       ),
     ).toEqual({ ok: false, kind: "server-path-escape" });
     expect(
       normalizePluginMcpServer(
-        parseServer({ type: "stdio", command: "node", cwd: `${PLUGIN_DATA_PLACEHOLDER}/../up` }),
+        { type: "stdio", command: "node", cwd: `${PLUGIN_DATA_PLACEHOLDER}/../up` },
         PATHS,
+        keepPath,
       ),
     ).toEqual({ ok: false, kind: "server-path-escape" });
+  });
+
+  test("rejects a command whose real path leaves the plugin root", () => {
+    const throughSymlink: PluginPathResolver = (path) => (path === "/plugins/demo/bin/tool" ? "/elsewhere/tool" : path);
+    expect(normalizePluginMcpServer({ type: "stdio", command: "./bin/tool" }, PATHS, throughSymlink)).toEqual({
+      ok: false,
+      kind: "server-path-escape",
+    });
   });
 });
 

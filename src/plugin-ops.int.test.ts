@@ -194,18 +194,51 @@ describe("plugin mcp servers", () => {
     expect(diagnostics.skippedServers).toBe(1);
   });
 
-  test("an invalid mcp.json disables the plugin's servers but keeps its skills", async () => {
+  test("an invalid server entry is skipped while its siblings still load", async () => {
     const cwd = createDir("acolyte-plugins-mcpbad-");
     writePlugin(cwd, "tools", {
-      mcp: { $schema: PLUGIN_MCP_SCHEMA_ID, mcpServers: { bad: { type: "stdio", command: "node serve.js" } } },
+      mcp: {
+        $schema: PLUGIN_MCP_SCHEMA_ID,
+        mcpServers: {
+          bad: { type: "stdio", command: "node serve.js" },
+          good: { type: "streamable-http", url: "https://example.com/mcp" },
+        },
+      },
       skills: { "demo-skill": SKILL },
     });
+
+    const { plugins, diagnostics } = await scanPlugins(cwd);
+
+    expect(Object.keys(byName(plugins, "tools").mcpServers)).toEqual(["tools-good"]);
+    expect(byName(plugins, "tools").skills).toHaveLength(1);
+    expect(diagnostics.skippedServers).toBe(1);
+    expect(diagnostics.mcpDisabled).toBe(0);
+  });
+
+  test("an unreadable mcp.json disables the plugin's servers but keeps its skills", async () => {
+    const cwd = createDir("acolyte-plugins-mcpunreadable-");
+    writePlugin(cwd, "tools", { mcp: "{not json", skills: { "demo-skill": SKILL } });
 
     const { plugins, diagnostics } = await scanPlugins(cwd);
 
     expect(byName(plugins, "tools").mcpServers).toEqual({});
     expect(byName(plugins, "tools").skills).toHaveLength(1);
     expect(diagnostics.mcpDisabled).toBe(1);
+  });
+
+  test("drops a server whose command reaches outside the plugin through a symlink", async () => {
+    const cwd = createDir("acolyte-plugins-symlinkescape-");
+    const outside = createDir("acolyte-plugins-outside-");
+    writeFileSync(join(outside, "evil.sh"), "#!/bin/sh\n", "utf8");
+    const root = writePlugin(cwd, "tools", {
+      mcp: { $schema: PLUGIN_MCP_SCHEMA_ID, mcpServers: { sneaky: { type: "stdio", command: "./bin" } } },
+    });
+    symlinkSync(join(outside, "evil.sh"), join(root, "bin"));
+
+    const { plugins, diagnostics } = await scanPlugins(cwd);
+
+    expect(byName(plugins, "tools").mcpServers).toEqual({});
+    expect(diagnostics.skippedServers).toBe(1);
   });
 
   test("drops a server whose command escapes the plugin root", async () => {
@@ -245,5 +278,32 @@ describe("plugin mcp servers", () => {
     expect(byName(plugins, "user-one").dataDir).toBe(
       join(process.env.XDG_DATA_HOME as string, "acolyte", "plugins", "user-one"),
     );
+  });
+});
+
+describe("plugin skill faults", () => {
+  test("counts a skill whose SKILL.md is unusable", async () => {
+    const cwd = createDir("acolyte-plugins-badskill-");
+    const root = writePlugin(cwd, "demo", { skills: { good: SKILL.replace("demo-skill", "good") } });
+    const bad = join(root, "skills", "bad");
+    mkdirSync(bad, { recursive: true });
+    writeFileSync(join(bad, "SKILL.md"), "no frontmatter here", "utf8");
+
+    const { plugins, diagnostics } = await scanPlugins(cwd);
+
+    expect(byName(plugins, "demo").skills).toHaveLength(1);
+    expect(diagnostics.skillsInvalid).toBe(1);
+  });
+
+  test("counts a skill name a earlier plugin already claimed", async () => {
+    const cwd = createDir("acolyte-plugins-dupskill-");
+    writePlugin(cwd, "aaa", { skills: { "demo-skill": SKILL } });
+    writePlugin(cwd, "zzz", { skills: { "demo-skill": SKILL } });
+
+    const { plugins, diagnostics } = await scanPlugins(cwd);
+
+    expect(byName(plugins, "aaa").skills).toHaveLength(1);
+    expect(byName(plugins, "zzz").skills).toHaveLength(0);
+    expect(diagnostics.skillsDuplicates).toBe(1);
   });
 });

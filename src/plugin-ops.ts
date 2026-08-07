@@ -1,6 +1,6 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { mkdir, readdir, readFile, realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { log } from "./log";
 import type { McpServerConfig } from "./mcp-contract";
 import { dataDir, resolveHomeDir } from "./paths";
@@ -8,6 +8,7 @@ import {
   AGENT_PLUGINS_VERSION,
   createEmptyPluginLoadDiagnostics,
   declaredSchemaVersion,
+  isUsableExtensions,
   normalizePluginMcpServer,
   PLUGIN_DIR,
   PLUGIN_MANIFEST_FILE,
@@ -23,7 +24,7 @@ import {
   qualifyPluginServerName,
   unknownManifestFields,
 } from "./plugin-contract";
-import { createEmptySkillLoadDiagnostics, type SkillLoadDiagnostics, type SkillMeta } from "./skill-contract";
+import { createEmptySkillLoadDiagnostics, type SkillMeta } from "./skill-contract";
 import { scanSkillRoot } from "./skill-scan";
 
 const PROJECT_PLUGIN_DATA_DIR = ".acolyte/plugin-data";
@@ -42,6 +43,25 @@ async function readJsonFile(path: string): Promise<Record<string, unknown> | nul
     return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Resolves the deepest existing ancestor through the filesystem and re-appends the rest, so a
+ * containment check sees where a path really lands even when its leaf does not exist yet.
+ */
+function resolveRealPath(target: string): string {
+  const trailing: string[] = [];
+  let current = target;
+  for (;;) {
+    try {
+      return join(realpathSync(current), ...trailing);
+    } catch {
+      const parent = dirname(current);
+      if (parent === current) return target;
+      trailing.unshift(basename(current));
+      current = parent;
+    }
   }
 }
 
@@ -79,7 +99,7 @@ async function loadPluginMcpServers(
 
   const servers: Record<string, McpServerConfig> = {};
   for (const [serverName, entry] of Object.entries(parsed.data.mcpServers)) {
-    const normalized = normalizePluginMcpServer(entry, paths);
+    const normalized = normalizePluginMcpServer(entry, paths, resolveRealPath);
     if (!normalized.ok) {
       diagnostics.skippedServers += 1;
       fault(normalized.kind, root, serverName);
@@ -96,7 +116,6 @@ async function loadPlugin(
   cwd: string,
   seenNames: Set<string>,
   seenSkills: Set<string>,
-  skillDiagnostics: SkillLoadDiagnostics,
   diagnostics: PluginLoadDiagnostics,
 ): Promise<PluginMeta | null> {
   const manifestPath = join(dirPath, PLUGIN_MANIFEST_FILE);
@@ -121,6 +140,10 @@ async function loadPlugin(
     return null;
   }
 
+  if (raw.extensions !== undefined && !isUsableExtensions(raw.extensions)) {
+    log.warn("plugin.manifest.extensions_ignored", { root: dirPath });
+  }
+
   const unknown = unknownManifestFields(raw);
   if (unknown.length > 0) {
     diagnostics.unknownFields += unknown.length;
@@ -141,12 +164,15 @@ async function loadPlugin(
   const paths: PluginPaths = { root, dataDir: pluginDataDir };
 
   const skills: SkillMeta[] = [];
+  const skillFaults = createEmptySkillLoadDiagnostics();
   await scanSkillRoot(
     { root: join(root, PLUGIN_SKILLS_DIR), source: "plugin", plugin: manifest.name },
     skills,
     seenSkills,
-    skillDiagnostics,
+    skillFaults,
   );
+  diagnostics.skillsInvalid += skillFaults.invalid + skillFaults.readErrors + skillFaults.missingSkillFiles;
+  diagnostics.skillsDuplicates += skillFaults.duplicates;
 
   const mcpServers = await loadPluginMcpServers(root, paths, manifest.name, diagnostics);
 
@@ -173,7 +199,6 @@ async function scanPluginRoot(
   found: PluginMeta[],
   seenNames: Set<string>,
   seenSkills: Set<string>,
-  skillDiagnostics: SkillLoadDiagnostics,
   diagnostics: PluginLoadDiagnostics,
 ): Promise<void> {
   if (!existsSync(root)) return;
@@ -188,7 +213,7 @@ async function scanPluginRoot(
   for (const name of entries.sort()) {
     if (!isPluginDir(root, name)) continue;
     diagnostics.scannedDirs += 1;
-    const plugin = await loadPlugin(scope, join(root, name), cwd, seenNames, seenSkills, skillDiagnostics, diagnostics);
+    const plugin = await loadPlugin(scope, join(root, name), cwd, seenNames, seenSkills, diagnostics);
     if (plugin) found.push(plugin);
   }
 }
@@ -196,55 +221,29 @@ async function scanPluginRoot(
 export type PluginScanResult = {
   plugins: PluginMeta[];
   diagnostics: PluginLoadDiagnostics;
-  skillDiagnostics: SkillLoadDiagnostics;
 };
 
 /** A project plugin shadows a user plugin of the same name, matching how skill scopes resolve. */
 export async function scanPlugins(cwd = process.cwd()): Promise<PluginScanResult> {
   const diagnostics = createEmptyPluginLoadDiagnostics();
-  const skillDiagnostics = createEmptySkillLoadDiagnostics();
   diagnostics.scannedAt = new Date().toISOString();
 
   const plugins: PluginMeta[] = [];
   const seenNames = new Set<string>();
   const seenSkills = new Set<string>();
 
-  await scanPluginRoot(
-    join(cwd, PLUGIN_DIR),
-    "project",
-    cwd,
-    plugins,
-    seenNames,
-    seenSkills,
-    skillDiagnostics,
-    diagnostics,
-  );
-  await scanPluginRoot(
-    join(resolveHomeDir(), PLUGIN_DIR),
-    "user",
-    cwd,
-    plugins,
-    seenNames,
-    seenSkills,
-    skillDiagnostics,
-    diagnostics,
-  );
+  await scanPluginRoot(join(cwd, PLUGIN_DIR), "project", cwd, plugins, seenNames, seenSkills, diagnostics);
+  await scanPluginRoot(join(resolveHomeDir(), PLUGIN_DIR), "user", cwd, plugins, seenNames, seenSkills, diagnostics);
 
-  return { plugins, diagnostics, skillDiagnostics };
+  return { plugins, diagnostics };
 }
 
-let cachedPlugins: PluginMeta[] = [];
 let cachedDiagnostics: PluginLoadDiagnostics = createEmptyPluginLoadDiagnostics();
 
 export async function loadPlugins(cwd?: string): Promise<PluginScanResult> {
   const result = await scanPlugins(cwd);
-  cachedPlugins = result.plugins;
   cachedDiagnostics = result.diagnostics;
   return result;
-}
-
-export function getLoadedPlugins(): PluginMeta[] {
-  return cachedPlugins;
 }
 
 export function getPluginLoadDiagnostics(): PluginLoadDiagnostics {
@@ -252,7 +251,6 @@ export function getPluginLoadDiagnostics(): PluginLoadDiagnostics {
 }
 
 export function resetPluginCache(): void {
-  cachedPlugins = [];
   cachedDiagnostics = createEmptyPluginLoadDiagnostics();
 }
 

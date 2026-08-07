@@ -61,8 +61,12 @@ export function mergeSkills(
 
   const pluginKept: SkillMeta[] = [];
   for (const skill of plugin) {
-    if (claimed.has(skill.name) || isBuiltinCommandName(skill.name)) {
-      diagnostics.duplicates += 1;
+    if (claimed.has(skill.name)) {
+      diagnostics.overrides += 1;
+      continue;
+    }
+    if (isBuiltinCommandName(skill.name)) {
+      diagnostics.builtinCollisions += 1;
       continue;
     }
     claimed.add(skill.name);
@@ -70,10 +74,10 @@ export function mergeSkills(
   }
 
   const unshadowed = bundled.filter((s) => !claimed.has(s.name));
-  diagnostics.overrides = bundled.length - unshadowed.length;
+  diagnostics.overrides += bundled.length - unshadowed.length;
   // A bundled name colliding with a builtin is a packaging mistake, not user authority.
   const kept = unshadowed.filter((s) => !isBuiltinCommandName(s.name));
-  diagnostics.builtinCollisions = unshadowed.length - kept.length;
+  diagnostics.builtinCollisions += unshadowed.length - kept.length;
 
   const merged = [...scanned, ...pluginKept, ...kept];
   merged.sort((a, b) => a.name.localeCompare(b.name));

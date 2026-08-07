@@ -45,9 +45,14 @@ export const pluginManifestSchema = z.object({
   repository: z.string().optional(),
   license: z.string().optional(),
   keywords: z.array(z.string()).optional(),
-  extensions: z.record(z.string(), z.unknown()).optional(),
+  /** A non-object `extensions` is reported and ignored rather than rejecting the plugin, so the shape stays unconstrained here. */
+  extensions: z.unknown().optional(),
 });
 export type PluginManifest = z.infer<typeof pluginManifestSchema>;
+
+export function isUsableExtensions(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const MANIFEST_FIELDS = new Set(Object.keys(pluginManifestSchema.shape));
 
@@ -113,9 +118,10 @@ export const pluginMcpServerSchema = z
   });
 export type PluginMcpServer = z.infer<typeof pluginMcpServerSchema>;
 
+/** Entries stay unparsed here: one invalid server must not invalidate the file, so each is validated on its own. */
 export const pluginMcpFileSchema = z.strictObject({
   $schema: z.literal(PLUGIN_MCP_SCHEMA_ID),
-  mcpServers: z.record(z.string(), pluginMcpServerSchema),
+  mcpServers: z.record(z.string(), z.unknown()),
 });
 export type PluginMcpFile = z.infer<typeof pluginMcpFileSchema>;
 
@@ -153,6 +159,7 @@ export const pluginFaultKindSchema = z.enum([
   "mcp-unreadable",
   "mcp-invalid",
   "mcp-version-unsupported",
+  "server-invalid",
   "server-unsupported-transport",
   "server-path-escape",
 ]);
@@ -160,24 +167,38 @@ export type PluginFaultKind = z.infer<typeof pluginFaultKindSchema>;
 
 export type PluginServerNormalization =
   | { ok: true; server: McpServerConfig }
-  | { ok: false; kind: Extract<PluginFaultKind, "server-unsupported-transport" | "server-path-escape"> };
+  | {
+      ok: false;
+      kind: Extract<PluginFaultKind, "server-invalid" | "server-unsupported-transport" | "server-path-escape">;
+    };
+
+/** Resolves a path through the filesystem; containment is meaningless against a path whose symlinks are unresolved. */
+export type PluginPathResolver = (path: string) => string;
 
 function containmentBase(rawPath: string, paths: PluginPaths): string {
   return rawPath.startsWith(PLUGIN_DATA_PLACEHOLDER) ? paths.dataDir : paths.root;
 }
 
-function resolveStdioCwd(raw: string | undefined, paths: PluginPaths): string | { escape: true } {
+function resolveStdioCwd(
+  raw: string | undefined,
+  paths: PluginPaths,
+  realpath: PluginPathResolver,
+): string | { escape: true } {
   if (raw === undefined) return paths.root;
-  const base = containmentBase(raw, paths);
-  const resolved = resolve(paths.root, expandPluginVars(raw, paths));
+  const base = realpath(containmentBase(raw, paths));
+  const resolved = realpath(resolve(paths.root, expandPluginVars(raw, paths)));
   if (!isContainedPath(base, resolved)) return { escape: true };
   return resolved;
 }
 
-function resolveStdioCommand(command: string, paths: PluginPaths): string | { escape: true } {
+function resolveStdioCommand(
+  command: string,
+  paths: PluginPaths,
+  realpath: PluginPathResolver,
+): string | { escape: true } {
   if (!command.startsWith("./")) return command;
-  const resolved = resolve(paths.root, command);
-  if (!isContainedPath(paths.root, resolved)) return { escape: true };
+  const resolved = realpath(resolve(paths.root, command));
+  if (!isContainedPath(realpath(paths.root), resolved)) return { escape: true };
   return resolved;
 }
 
@@ -186,7 +207,15 @@ function resolveStdioCommand(command: string, paths: PluginPaths): string | { es
  * paths resolved and contained, and `PLUGIN_ROOT`/`PLUGIN_DATA` baked into the environment so the
  * MCP client stays unaware that plugins exist.
  */
-export function normalizePluginMcpServer(server: PluginMcpServer, paths: PluginPaths): PluginServerNormalization {
+export function normalizePluginMcpServer(
+  entry: unknown,
+  paths: PluginPaths,
+  realpath: PluginPathResolver,
+): PluginServerNormalization {
+  const parsed = pluginMcpServerSchema.safeParse(entry);
+  if (!parsed.success) return { ok: false, kind: "server-invalid" };
+  const server = parsed.data;
+
   if (server.type === "sse") return { ok: false, kind: "server-unsupported-transport" };
 
   if (server.type === "streamable-http") {
@@ -196,10 +225,10 @@ export function normalizePluginMcpServer(server: PluginMcpServer, paths: PluginP
     };
   }
 
-  const command = resolveStdioCommand(server.command, paths);
+  const command = resolveStdioCommand(server.command, paths, realpath);
   if (typeof command !== "string") return { ok: false, kind: "server-path-escape" };
 
-  const cwd = resolveStdioCwd(server.cwd, paths);
+  const cwd = resolveStdioCwd(server.cwd, paths, realpath);
   if (typeof cwd !== "string") return { ok: false, kind: "server-path-escape" };
 
   const env: Record<string, string> = {};
@@ -246,6 +275,8 @@ export const pluginLoadDiagnosticsSchema = z.object({
   mcpDisabled: z.number().int().nonnegative(),
   skippedServers: z.number().int().nonnegative(),
   skills: z.number().int().nonnegative(),
+  skillsInvalid: z.number().int().nonnegative(),
+  skillsDuplicates: z.number().int().nonnegative(),
   servers: z.number().int().nonnegative(),
   scannedAt: z.string().nullable(),
 });
@@ -262,6 +293,8 @@ export function createEmptyPluginLoadDiagnostics(): PluginLoadDiagnostics {
     mcpDisabled: 0,
     skippedServers: 0,
     skills: 0,
+    skillsInvalid: 0,
+    skillsDuplicates: 0,
     servers: 0,
     scannedAt: null,
   };

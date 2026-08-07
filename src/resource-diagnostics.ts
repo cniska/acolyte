@@ -37,6 +37,10 @@ export function collectResourceDiagnostics(options?: { cwd?: string; env?: Env }
   if (pluginDiagnostics.mcpDisabled > 0) diagnostics["resources.plugins.mcp_disabled"] = pluginDiagnostics.mcpDisabled;
   if (pluginDiagnostics.skippedServers > 0)
     diagnostics["resources.plugins.servers_skipped"] = pluginDiagnostics.skippedServers;
+  if (pluginDiagnostics.skillsInvalid > 0)
+    diagnostics["resources.plugins.skills_invalid"] = pluginDiagnostics.skillsInvalid;
+  if (pluginDiagnostics.skillsDuplicates > 0)
+    diagnostics["resources.plugins.skills_duplicates"] = pluginDiagnostics.skillsDuplicates;
 
   return diagnostics;
 }
