@@ -52,7 +52,7 @@ A plugin skill joins the roster like any other, and the model activates it by na
 | 4 | user plugin skill |
 | 5 | bundled skill |
 
-A hand-placed skill may replace a built-in command of the same name; a plugin skill never does. When two plugins claim one skill name, the first wins and the loss is counted in `acolyte status`.
+A hand-placed skill may replace a built-in command of the same name; a plugin skill never does. When two plugins claim one skill name, the plugin whose directory sorts first wins — project scope before user scope — and the loss is counted in `acolyte status`.
 
 ## MCP servers from plugins
 
@@ -81,16 +81,16 @@ A `stdio` server's `command` is a bare executable name or a `./`-relative path i
 |-------|--------|
 | no `plugin.json` | the directory is not a plugin |
 | manifest unreadable, invalid, or a version Acolyte does not support | the plugin is rejected whole |
-| unknown top-level manifest field | reported, and the plugin loads |
-| `mcp.json` unreadable or invalid | the plugin's servers are dropped, its skills still load |
-| one server invalid or unsupported | that server is dropped, the others still load |
-| skill that is not a valid `SKILL.md` | that skill is skipped |
+| unknown top-level manifest field, or an `extensions` field that is not an object | reported, and the plugin loads |
+| `mcp.json` unreadable, or its `$schema` or shape invalid | the plugin's servers are dropped, its skills still load |
+| one server entry invalid or of an unsupported transport | that server is dropped, the others still load |
+| skill that is not a valid `SKILL.md` | that skill is skipped, the others still load |
 
 Counts for each are in `acolyte status` under `resources.plugins.*`, and every rejection is logged. Acolyte never fetches a schema while loading a plugin.
 
 ## Extensions
 
-Acolyte reserves the `sh.acolyte` extension namespace and defines no keys in it. Namespaces belonging to other clients are ignored.
+Acolyte reads no `extensions` data and no client-namespaced directories. Its own namespace is `sh.acolyte`.
 
 ## Key files
 
