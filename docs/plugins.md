@@ -2,7 +2,7 @@
 
 Acolyte loads Agent Plugins 1.0.0: portable directories that carry skills and MCP servers, shared with every client that reads the standard.
 
-A plugin is a directory with a `plugin.json` manifest. Acolyte reads two component types from it — skills and MCP servers — and ignores anything else the standard or another client defines. The format is specified at [agent-plugins.org](https://agent-plugins.org); this page states what Acolyte does with it.
+A plugin is a directory with a `plugin.json` manifest. Acolyte reads two component types from it — skills and MCP servers — and ignores anything else the standard or another client defines. The format is specified at [agent-plugins.org](https://agent-plugins.org/specification); this page states what Acolyte does with it.
 
 ## Enabling plugins
 
