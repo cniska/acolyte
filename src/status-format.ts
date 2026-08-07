@@ -21,6 +21,13 @@ const STATUS_KEY_LABEL_MAP: Record<string, string> = {
   "resources.skills.duplicates": t("status.label.resources.skills.duplicates"),
   "resources.skills.read_errors": t("status.label.resources.skills.read_errors"),
   "resources.skills.status": t("status.label.resources.skills.status"),
+  "resources.plugins.loaded": t("status.label.resources.plugins.loaded"),
+  "resources.plugins.rejected": t("status.label.resources.plugins.rejected"),
+  "resources.plugins.duplicates": t("status.label.resources.plugins.duplicates"),
+  "resources.plugins.mcp_disabled": t("status.label.resources.plugins.mcp_disabled"),
+  "resources.plugins.servers_skipped": t("status.label.resources.plugins.servers_skipped"),
+  "resources.plugins.skills_invalid": t("status.label.resources.plugins.skills_invalid"),
+  "resources.plugins.skills_duplicates": t("status.label.resources.plugins.skills_duplicates"),
 };
 
 export function formatStatus(fields: StatusFields): string {

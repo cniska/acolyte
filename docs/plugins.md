@@ -86,7 +86,7 @@ A `stdio` server's `command` is a bare executable name or a `./`-relative path i
 | one server entry invalid or of an unsupported transport | that server is dropped, the others still load |
 | skill that is not a valid `SKILL.md` | that skill is skipped, the others still load |
 
-Counts for each are in `acolyte status` under `resources.plugins.*`, and every rejection is logged. Acolyte never fetches a schema while loading a plugin.
+Every fault is logged as it happens, and `acolyte status` reports the counts under `resources.plugins.*`. Acolyte never fetches a schema while loading a plugin.
 
 ## Extensions
 
