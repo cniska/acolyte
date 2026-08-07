@@ -154,7 +154,6 @@ export const pluginFaultKindSchema = z.enum([
   "manifest-unreadable",
   "manifest-invalid",
   "manifest-version-unsupported",
-  "manifest-name-mismatch",
   "duplicate-name",
   "mcp-unreadable",
   "mcp-invalid",
