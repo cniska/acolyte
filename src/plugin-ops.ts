@@ -110,14 +110,16 @@ async function loadPluginMcpServers(
   return servers;
 }
 
-async function loadPlugin(
-  scope: PluginScope,
-  dirPath: string,
-  cwd: string,
-  seenNames: Set<string>,
-  seenSkills: Set<string>,
-  diagnostics: PluginLoadDiagnostics,
-): Promise<PluginMeta | null> {
+type PluginScan = {
+  cwd: string;
+  plugins: PluginMeta[];
+  seenNames: Set<string>;
+  seenSkills: Set<string>;
+  diagnostics: PluginLoadDiagnostics;
+};
+
+async function loadPlugin(scope: PluginScope, dirPath: string, scan: PluginScan): Promise<PluginMeta | null> {
+  const { seenNames, seenSkills, diagnostics } = scan;
   const manifestPath = join(dirPath, PLUGIN_MANIFEST_FILE);
   if (!existsSync(manifestPath)) {
     diagnostics.missingManifests += 1;
@@ -160,7 +162,7 @@ async function loadPlugin(
 
   // Containment checks are meaningless on an unresolved path, and the spec resolves the plugin root through the filesystem.
   const root = await realpath(dirPath).catch(() => dirPath);
-  const pluginDataDir = resolvePluginDataDir(manifest.name, scope, cwd);
+  const pluginDataDir = resolvePluginDataDir(manifest.name, scope, scan.cwd);
   const paths: PluginPaths = { root, dataDir: pluginDataDir };
 
   const skills: SkillMeta[] = [];
@@ -192,15 +194,7 @@ async function loadPlugin(
   };
 }
 
-async function scanPluginRoot(
-  root: string,
-  scope: PluginScope,
-  cwd: string,
-  found: PluginMeta[],
-  seenNames: Set<string>,
-  seenSkills: Set<string>,
-  diagnostics: PluginLoadDiagnostics,
-): Promise<void> {
+async function scanPluginRoot(root: string, scope: PluginScope, scan: PluginScan): Promise<void> {
   if (!existsSync(root)) return;
 
   let entries: string[];
@@ -212,9 +206,9 @@ async function scanPluginRoot(
 
   for (const name of entries.sort()) {
     if (!isPluginDir(root, name)) continue;
-    diagnostics.scannedDirs += 1;
-    const plugin = await loadPlugin(scope, join(root, name), cwd, seenNames, seenSkills, diagnostics);
-    if (plugin) found.push(plugin);
+    scan.diagnostics.scannedDirs += 1;
+    const plugin = await loadPlugin(scope, join(root, name), scan);
+    if (plugin) scan.plugins.push(plugin);
   }
 }
 
@@ -228,14 +222,18 @@ export async function scanPlugins(cwd = process.cwd()): Promise<PluginScanResult
   const diagnostics = createEmptyPluginLoadDiagnostics();
   diagnostics.scannedAt = new Date().toISOString();
 
-  const plugins: PluginMeta[] = [];
-  const seenNames = new Set<string>();
-  const seenSkills = new Set<string>();
+  const scan: PluginScan = {
+    cwd,
+    plugins: [],
+    seenNames: new Set<string>(),
+    seenSkills: new Set<string>(),
+    diagnostics,
+  };
 
-  await scanPluginRoot(join(cwd, PLUGIN_DIR), "project", cwd, plugins, seenNames, seenSkills, diagnostics);
-  await scanPluginRoot(join(resolveHomeDir(), PLUGIN_DIR), "user", cwd, plugins, seenNames, seenSkills, diagnostics);
+  await scanPluginRoot(join(cwd, PLUGIN_DIR), "project", scan);
+  await scanPluginRoot(join(resolveHomeDir(), PLUGIN_DIR), "user", scan);
 
-  return { plugins, diagnostics };
+  return { plugins: scan.plugins, diagnostics };
 }
 
 let cachedDiagnostics: PluginLoadDiagnostics = createEmptyPluginLoadDiagnostics();
