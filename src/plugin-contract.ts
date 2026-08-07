@@ -178,27 +178,18 @@ function containmentBase(rawPath: string, paths: PluginPaths): string {
   return rawPath.startsWith(PLUGIN_DATA_PLACEHOLDER) ? paths.dataDir : paths.root;
 }
 
-function resolveStdioCwd(
-  raw: string | undefined,
-  paths: PluginPaths,
-  realpath: PluginPathResolver,
-): string | { escape: true } {
+/** Null means the path escaped the directory it named. */
+function resolveStdioCwd(raw: string | undefined, paths: PluginPaths, realpath: PluginPathResolver): string | null {
   if (raw === undefined) return paths.root;
   const base = realpath(containmentBase(raw, paths));
   const resolved = realpath(resolve(paths.root, expandPluginVars(raw, paths)));
-  if (!isContainedPath(base, resolved)) return { escape: true };
-  return resolved;
+  return isContainedPath(base, resolved) ? resolved : null;
 }
 
-function resolveStdioCommand(
-  command: string,
-  paths: PluginPaths,
-  realpath: PluginPathResolver,
-): string | { escape: true } {
+function resolveStdioCommand(command: string, paths: PluginPaths, realpath: PluginPathResolver): string | null {
   if (!command.startsWith("./")) return command;
   const resolved = realpath(resolve(paths.root, command));
-  if (!isContainedPath(realpath(paths.root), resolved)) return { escape: true };
-  return resolved;
+  return isContainedPath(realpath(paths.root), resolved) ? resolved : null;
 }
 
 /**
@@ -225,10 +216,10 @@ export function normalizePluginMcpServer(
   }
 
   const command = resolveStdioCommand(server.command, paths, realpath);
-  if (typeof command !== "string") return { ok: false, kind: "server-path-escape" };
+  if (command === null) return { ok: false, kind: "server-path-escape" };
 
   const cwd = resolveStdioCwd(server.cwd, paths, realpath);
-  if (typeof cwd !== "string") return { ok: false, kind: "server-path-escape" };
+  if (cwd === null) return { ok: false, kind: "server-path-escape" };
 
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(server.env ?? {})) {
