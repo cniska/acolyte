@@ -4,7 +4,7 @@
 plan → build → review
 ```
 
-Acolyte's engineering discipline. Each skill encodes a workflow the agent can activate when the task calls for it. Bundled skills are project-agnostic and available in every workspace.
+Acolyte's engineering discipline. Each skill encodes a workflow the agent can activate when the task calls for it, in the [Agent Skills](https://agentskills.io/specification) format. Bundled skills are project-agnostic and available in every workspace.
 
 These are specialized for Acolyte from the tool-agnostic set at [cniska/skills](https://github.com/cniska/skills), which carries the same workflow for any agent.
 

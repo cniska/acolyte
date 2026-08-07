@@ -19,6 +19,8 @@ export const featureFlagsSchema = z.object({
   cloudSync: parseBoolSchema.optional(),
   // When enabled, connect to MCP servers configured in .mcp.json.
   mcp: parseBoolSchema.optional(),
+  // When enabled, load Agent Plugins from .agents/plugins in the workspace and the home directory.
+  plugins: parseBoolSchema.optional(),
 });
 
 export type FeatureFlags = z.infer<typeof featureFlagsSchema>;
@@ -35,6 +37,7 @@ export const resolvedFeatureFlagsSchema = z.object({
   workspaces: parseBoolSchema.optional().default(false),
   cloudSync: parseBoolSchema.optional().default(false),
   mcp: parseBoolSchema.optional().default(false),
+  plugins: parseBoolSchema.optional().default(false),
 });
 
 export type ResolvedFeatureFlags = z.infer<typeof resolvedFeatureFlagsSchema>;

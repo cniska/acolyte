@@ -14,6 +14,7 @@ All metrics are extracted with [`scripts/benchmark.ts`](../scripts/benchmark.ts)
 - metrics normalized **per 1k source lines** where applicable
 - dependencies are direct declarations detected in the included project manifests and shown as **runtime + development**; Go modules do not distinguish development dependencies
 - each project is measured from a fresh shallow clone of its origin's default branch
+- installed dependencies are excluded, so an imported agent harness is not counted while a vendored or self-written one is; Kimchi imports the pi harness
 - snapshot revisions tie each result to the exact source measured
 - projects are ordered by language (TypeScript, Rust, Go), with Acolyte first and others alphabetical within each language
 

@@ -44,9 +44,11 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-16** — Shell command execution and workspace test execution through the detected test command.
 - **FR-17** — Web search and web fetch for external information.
 - **FR-18** — Session search over the current conversation's history, available to the model on demand.
-- **FR-19** — Skill activation/deactivation: a roster of skills is always advertised, and the model activates or deactivates them at runtime rather than all being injected upfront. Skills are discovered from `.agents/skills` in the workspace and in the home directory; a name claimed in both resolves to the workspace copy, a project or user skill replaces a bundled skill of the same name, and a bundled skill never replaces a built-in command.
+- **FR-19** — Skill activation/deactivation: a roster of skills is always advertised, and the model activates or deactivates them at runtime rather than all being injected upfront. Skills are discovered from `.agents/skills` in the workspace and in the home directory, and from installed plugins; a name claimed in both scopes resolves to the workspace copy, a hand-placed skill replaces a plugin skill of the same name, a hand-placed or plugin skill replaces a bundled skill of the same name, and neither a plugin nor a bundled skill ever replaces a built-in command.
 - **FR-20** — Inline multi-step task checklist the model maintains and the client renders.
-- **FR-21** — MCP client: when enabled, external MCP servers (stdio or HTTP transport) are connected and their tools appear alongside native tools.
+- **FR-21** — MCP client: when enabled, external MCP servers (stdio or HTTP transport) are connected and their tools appear alongside native tools. Servers come from the workspace MCP configuration and from installed plugins; a plugin's servers are namespaced by plugin name so they cannot collide with workspace servers.
+- **FR-49** — Agent Plugins: when enabled, plugins are discovered from `.agents/plugins` in the workspace and in the home directory, each a directory whose manifest declares the supported standard version, and each contributing skills and MCP servers from their fixed locations. A plugin's identity is its manifest name rather than its directory name, and a workspace plugin shadows a home plugin claiming the same name.
+- **FR-50** — A plugin fault is contained to the smallest thing that failed: a plugin whose manifest is unreadable, invalid, or of an unsupported version is rejected whole; an unrecognized manifest field is reported and ignored; an unreadable or invalid MCP file drops that plugin's servers while its skills still load; and an individual server or skill that fails validation is skipped while its siblings still load. Every fault is counted in the diagnostics the status surface reports.
 
 ### 2.4 Feature coverage — CLI commands
 
@@ -68,7 +70,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 2.5 Options / configuration
 
 - **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding model and optional embedding base URL, distill model, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
-- **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, workspaces, cloud sync, and MCP. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
+- **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, workspaces, cloud sync, MCP, and plugins. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
 - **FR-38** — Reasoning level (`low`/`medium`/`high`) is accepted and mapped to the selected provider's native reasoning control.
 - **FR-39** — Locale selects the UI language; an unset locale defaults to English, and an unavailable locale falls back rather than failing.
 - **FR-40** — Global update flags `--update` (force) and `--no-update` (skip) override the default startup update behavior; `--no-update` wins when both are present.
@@ -136,6 +138,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **SEC-8** — MCP is disabled by default and opt-in per repository; HTTP MCP servers must use HTTPS except for localhost, and stdio MCP subprocesses receive only a minimal environment allowlist plus explicitly configured variables.
 - **SEC-9** — Acolyte has no product telemetry: trace events, logs, and memory remain on the local machine (or the user's own cloud when cloud sync is enabled) and are never uploaded to Acolyte.
 - **SEC-10** — When the workspace sits inside a git repository, the sandbox boundary is that repository's root — the outermost enclosing repository, so a worktree nested in a repository resolves to the primary checkout and project-owned paths reached from it, including through a symlink, stay inside the boundary. Otherwise the boundary is the workspace root, which also covers a worktree living outside its repository. The boundary never widens to a repository at or above the home directory, so a git-tracked home does not turn one project's grant into everything the user owns. File enumeration and search scoping stay keyed to the workspace root in every case.
+- **SEC-11** — Plugins are disabled by default and opt-in per repository, and a plugin's MCP servers additionally require MCP to be enabled.
+- **SEC-12** — A plugin-declared executable or working directory must resolve, through the filesystem, inside that plugin's own root or data directory; one that escapes disables that server rather than launching it.
 
 ## 6. Protocol & task requirements (PR)
 
@@ -191,7 +195,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 9.1 Testing
 
 - **NF-9** — A test suite ships and must pass before release, layered into unit (pure, boundary effects mocked), integration (real server/lifecycle/tool wiring with a fake model provider), and visual TUI snapshot suites, with the boundary between unit and integration enforced by file-suffix convention.
-- **NF-10** — Each §2.7 and lifecycle edge case has a dedicated test: the terminal-step classification and single-reopen policy (LC-3, LC-4), the per-turn budget reset and notice (LC-6, LC-7), the tool-execution funnel (FR-4), the ignored-dirs precedence over gitignore (FR-45), symlink-escape denial (SEC-2), and TUI frozen-overflow rendering (TUI-4).
+- **NF-10** — Each §2.7 and lifecycle edge case has a dedicated test: the terminal-step classification and single-reopen policy (LC-3, LC-4), the per-turn budget reset and notice (LC-6, LC-7), the tool-execution funnel (FR-4), the ignored-dirs precedence over gitignore (FR-45), symlink-escape denial (SEC-2, SEC-12), and TUI frozen-overflow rendering (TUI-4).
 - **NF-11** — Filesystem, subprocess, and network boundaries are mocked in unit tests; behavior needing real such effects lives only in integration tests.
 - **NF-12** — Changes affecting agent behavior are validated by running the real agent, not tests alone, before release.
 
@@ -220,6 +224,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-13** — With MCP enabled, a reachable server's tools appear to the agent, and an unreachable server is skipped with a warning while the request still completes. (FR-21, FR-47, SEC-8)
 - **AC-14** — In interactive chat, completed transcript rows move to scrollback and are not repainted, streaming and typed input update state without a lost or stale value, and a message typed mid-turn is queued and processed in order; interrupting or exiting while a turn is in flight cancels that task and stops it — no further model call or tool call runs. (TUI-2, TUI-5, TUI-10, TUI-12, LC-14)
 - **AC-15** — `acolyte auth <provider>` stores a key with owner-only permissions, an environment-provided key overrides it for that provider, and `--logout` removes the selected credential(s); a disabled feature flag leaves its commands and behavior entirely absent. (FR-27, FR-37, SEC-6, SEC-7)
+- **AC-17** — With plugins enabled, an installed plugin's skills appear in the roster and its MCP servers' tools appear to the agent under plugin-qualified names; with plugins disabled both are absent, and with MCP disabled the plugin's servers are absent while its skills remain. A plugin carrying one invalid server or skill still contributes its valid ones. (FR-49, FR-50, FR-37, SEC-11)
 - **AC-16** — The project's full verification — lint, typecheck, all test suites, dependency audit — passes on a clean checkout, and the edge-case tests of NF-10 are present and passing. (NF-9, NF-10, NF-11)
 
 ## 12. Deliverables

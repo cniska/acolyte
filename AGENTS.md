@@ -25,6 +25,8 @@ These must always hold.
 
 - Default to autonomous execution. Pause only when a decision is ambiguous, risky, or irreversible.
 - When behavior and tests diverge, fix the implementation. Update expectations only when explicitly requested.
+- Verify every factual claim at its source before it ships, and cite it — `file:line` for code, a pinned revision for anything outside the repo. Inference, memory, and a plausible reading of a name are not verification.
+- A quantifier (`only`, `never`, `every`, `no other`) needs an exhaustive sweep, not a sample. Without one, weaken the claim to what was checked.
 - Commit only when explicitly requested.
 - Changes that affect agent behavior: dogfood with `acolyte run` before merge, not just tests.
 

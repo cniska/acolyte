@@ -23,6 +23,10 @@ Project-scoped config is always at `<cwd>/.acolyte/config.toml`, regardless of p
 
 Skills load from `<cwd>/.agents/skills` and `~/.agents/skills`, outside the XDG layout: `.agents/` is the cross-tool SKILL.md convention. Each skill is a directory holding a `SKILL.md`, and a symlink to one loads the same as a real directory.
 
+## Plugins
+
+Plugins load from `<cwd>/.agents/plugins` and `~/.agents/plugins`, beside skills and outside the XDG layout. Each plugin is a directory holding a `plugin.json`, and a symlink to one loads the same as a real directory. A project plugin's data directory is `<cwd>/.acolyte/plugin-data/<name>`; a user plugin's is `<data>/plugins/<name>`. See [Plugins](./plugins.md).
+
 ## Key files
 
 - `src/paths.ts` — path resolution logic

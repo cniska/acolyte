@@ -1,6 +1,71 @@
 import { describe, expect, test } from "bun:test";
-import { validateSkillName } from "./skill-contract";
-import { substituteArguments } from "./skill-ops";
+import { createEmptySkillLoadDiagnostics, type SkillMeta, type SkillSource, validateSkillName } from "./skill-contract";
+import { mergeSkills, substituteArguments } from "./skill-ops";
+
+function skill(name: string, source: SkillSource, plugin?: string): SkillMeta {
+  return {
+    name,
+    description: `${name} description`,
+    path: source === "bundled" ? `bundled://${name}` : `/${source}/${name}/SKILL.md`,
+    source,
+    ...(plugin ? { plugin } : {}),
+  };
+}
+
+function sourceOf(skills: SkillMeta[], name: string): SkillSource | undefined {
+  return skills.find((entry) => entry.name === name)?.source;
+}
+
+describe("mergeSkills", () => {
+  test("keeps every name claimed once, sorted", () => {
+    const merged = mergeSkills(
+      [skill("review", "bundled")],
+      [skill("lint", "plugin", "acme.tools")],
+      [skill("deploy", "project")],
+      createEmptySkillLoadDiagnostics(),
+    );
+    expect(merged.map((entry) => entry.name)).toEqual(["deploy", "lint", "review"]);
+  });
+
+  test("a hand-placed skill outranks a plugin skill of the same name", () => {
+    const diagnostics = createEmptySkillLoadDiagnostics();
+    const merged = mergeSkills([], [skill("build", "plugin", "acme.tools")], [skill("build", "project")], diagnostics);
+    expect(merged).toHaveLength(1);
+    expect(sourceOf(merged, "build")).toBe("project");
+    expect(diagnostics.overrides).toBe(1);
+  });
+
+  test("a plugin skill outranks a bundled skill of the same name", () => {
+    const diagnostics = createEmptySkillLoadDiagnostics();
+    const merged = mergeSkills([skill("build", "bundled")], [skill("build", "plugin", "acme.tools")], [], diagnostics);
+    expect(merged).toHaveLength(1);
+    expect(sourceOf(merged, "build")).toBe("plugin");
+    expect(diagnostics.overrides).toBe(1);
+  });
+
+  test("a hand-placed skill outranks bundled and plugin at once", () => {
+    const merged = mergeSkills(
+      [skill("build", "bundled")],
+      [skill("build", "plugin", "acme.tools")],
+      [skill("build", "user")],
+      createEmptySkillLoadDiagnostics(),
+    );
+    expect(merged).toHaveLength(1);
+    expect(sourceOf(merged, "build")).toBe("user");
+  });
+
+  test("a plugin skill never claims a built-in command name", () => {
+    const diagnostics = createEmptySkillLoadDiagnostics();
+    const merged = mergeSkills([], [skill("status", "plugin", "acme.tools")], [], diagnostics);
+    expect(merged).toEqual([]);
+    expect(diagnostics.builtinCollisions).toBe(1);
+  });
+
+  test("a hand-placed skill may claim a built-in command name", () => {
+    const merged = mergeSkills([], [], [skill("status", "project")], createEmptySkillLoadDiagnostics());
+    expect(sourceOf(merged, "status")).toBe("project");
+  });
+});
 
 describe("validateSkillName", () => {
   test("accepts valid names", () => {

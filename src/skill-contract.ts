@@ -13,7 +13,7 @@ export function isActiveSkillsPayload(value: unknown): value is ActiveSkill[] {
   return activeSkillsSchema.safeParse(value).success;
 }
 
-export const skillSourceSchema = z.enum(["bundled", "user", "project"]);
+export const skillSourceSchema = z.enum(["bundled", "user", "project", "plugin"]);
 export type SkillSource = z.infer<typeof skillSourceSchema>;
 
 export const skillMetaSchema = z.object({
@@ -21,6 +21,7 @@ export const skillMetaSchema = z.object({
   description: z.string().min(1).max(1024),
   path: z.string().min(1),
   source: skillSourceSchema,
+  plugin: z.string().min(1).optional(),
 });
 export type SkillMeta = z.infer<typeof skillMetaSchema>;
 

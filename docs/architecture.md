@@ -12,6 +12,7 @@ Every concept below is modeled as an explicit entity with typed contracts, its o
 - **Effects** — lifecycle-owned side effects applied per-tool-result via callback
 - **Tools** — typed definitions with categories, schemas, and output contracts
 - **Skills** — declarative prompt extensions with metadata and tool restrictions
+- **Plugins** — portable Agent Plugins directories contributing skills and MCP servers
 - **Memory sources** — pluggable memory tiers (session, project, user) with pipeline stages
 - **Protocol** — typed RPC messages with request correlation and lifecycle envelopes
 

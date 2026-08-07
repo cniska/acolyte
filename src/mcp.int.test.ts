@@ -1,11 +1,24 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { resolveMcpServers } from "./mcp-client";
 import { readMcpConfig } from "./mcp-contract";
-import { tempDir } from "./test-utils";
+import { PLUGIN_MCP_SCHEMA_ID } from "./plugin-contract";
+import { resetPluginCache } from "./plugin-ops";
+import { tempDir, writePlugin } from "./test-utils";
 
 const dirs = tempDir();
-afterEach(dirs.cleanupDirs);
+const originalHome = process.env.HOME;
+
+beforeEach(() => {
+  process.env.HOME = dirs.createDir("acolyte-mcp-home-");
+});
+
+afterEach(() => {
+  process.env.HOME = originalHome;
+  resetPluginCache();
+  dirs.cleanupDirs();
+});
 
 async function writeJson(path: string, data: unknown) {
   await writeFile(path, JSON.stringify(data), "utf8");
@@ -75,5 +88,50 @@ describe("readMcpConfig", () => {
     const config = readMcpConfig(workspace);
     expect(config.mcpServers.figma).toMatchObject({ command: "npx" });
     expect(config.mcpServers.notion).toMatchObject({ type: "http" });
+  });
+});
+
+describe("resolveMcpServers", () => {
+  function writePluginServer(workspace: string, dirName: string, serverName: string): void {
+    writePlugin(workspace, dirName, {
+      mcp: {
+        $schema: PLUGIN_MCP_SCHEMA_ID,
+        mcpServers: { [serverName]: { type: "streamable-http", url: "https://example.com/mcp" } },
+      },
+    });
+  }
+
+  test("returns only workspace servers while plugins are disabled", async () => {
+    const workspace = dirs.createDir("acolyte-mcp-resolve-off-");
+    await writeJson(join(workspace, ".mcp.json"), { mcpServers: { figma: { type: "stdio", command: "npx" } } });
+    writePluginServer(workspace, "acme", "remote");
+
+    const servers = await resolveMcpServers(workspace, false);
+
+    expect(Object.keys(servers)).toEqual(["figma"]);
+  });
+
+  test("adds plugin servers under their plugin-qualified names", async () => {
+    const workspace = dirs.createDir("acolyte-mcp-resolve-on-");
+    await writeJson(join(workspace, ".mcp.json"), { mcpServers: { figma: { type: "stdio", command: "npx" } } });
+    writePluginServer(workspace, "acme", "remote");
+
+    const servers = await resolveMcpServers(workspace, true);
+
+    expect(Object.keys(servers).sort()).toEqual(["acme-remote", "figma"]);
+    expect(servers["acme-remote"]).toEqual({ type: "http", url: "https://example.com/mcp" });
+  });
+
+  test("a workspace server keeps a name a plugin server would take", async () => {
+    const workspace = dirs.createDir("acolyte-mcp-resolve-collide-");
+    await writeJson(join(workspace, ".mcp.json"), {
+      mcpServers: { "acme-remote": { type: "stdio", command: "npx" } },
+    });
+    writePluginServer(workspace, "acme", "remote");
+
+    const servers = await resolveMcpServers(workspace, true);
+
+    expect(Object.keys(servers)).toEqual(["acme-remote"]);
+    expect(servers["acme-remote"]).toMatchObject({ type: "stdio", command: "npx" });
   });
 });

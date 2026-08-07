@@ -15,6 +15,7 @@ import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import type { LifecycleDeps } from "./lifecycle";
 import type { LifecycleInput, RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
+import { PLUGIN_MANIFEST_SCHEMA_ID } from "./plugin-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 import type { Toolset } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
@@ -229,6 +230,36 @@ export function writeSkill(base: string, dirName: string, frontmatter: string, b
   const skillDir = join(base, ".agents", "skills", dirName);
   mkdirSync(skillDir, { recursive: true });
   writeFileSync(join(skillDir, "SKILL.md"), `${frontmatter}\n${body}`, "utf8");
+}
+
+export type PluginFixture = {
+  /** `null` writes no manifest at all, for the not-a-plugin case. */
+  manifest?: Record<string, unknown> | string | null;
+  mcp?: Record<string, unknown> | string;
+  skills?: Record<string, string>;
+};
+
+export function writePlugin(base: string, dirName: string, fixture: PluginFixture = {}): string {
+  const root = join(base, ".agents", "plugins", dirName);
+  mkdirSync(root, { recursive: true });
+  const manifest =
+    fixture.manifest === undefined ? { $schema: PLUGIN_MANIFEST_SCHEMA_ID, name: dirName } : fixture.manifest;
+  if (manifest !== null) {
+    writeFileSync(
+      join(root, "plugin.json"),
+      typeof manifest === "string" ? manifest : JSON.stringify(manifest),
+      "utf8",
+    );
+  }
+  if (fixture.mcp !== undefined) {
+    writeFileSync(join(root, "mcp.json"), typeof fixture.mcp === "string" ? fixture.mcp : JSON.stringify(fixture.mcp));
+  }
+  for (const [name, frontmatter] of Object.entries(fixture.skills ?? {})) {
+    const skillDir = join(root, "skills", name);
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, "SKILL.md"), frontmatter, "utf8");
+  }
+  return root;
 }
 
 const DEFAULT_TIME = "2026-02-20T00:00:00.000Z";
