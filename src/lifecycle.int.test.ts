@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -12,7 +13,9 @@ import {
 import { appConfig } from "./app-config";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
-import { createLifecycleDeps, createLifecycleInput, tempDir } from "./test-utils";
+import { PLUGIN_MCP_SCHEMA_ID } from "./plugin-contract";
+import { resetPluginCache } from "./plugin-ops";
+import { createLifecycleDeps, createLifecycleInput, tempDir, writePlugin } from "./test-utils";
 import type { SessionContext } from "./tool-contract";
 import { runTool } from "./tool-execution";
 import { listUndoCheckpoints } from "./undo-checkpoints";
@@ -331,5 +334,70 @@ printf '%s\n' "$@" > "${formatLog}"
     expect(reply.error).toBeUndefined();
     expect(reply.output).toContain("Here is the summary of what changed.");
     expect(reply.output).not.toContain("Running the tests once more.");
+  });
+});
+
+describe("plugin mcp gating", () => {
+  const originalHome = process.env.HOME;
+
+  afterEach(() => {
+    process.env.HOME = originalHome;
+    resetPluginCache();
+  });
+
+  async function runWithFlags(mcp: boolean, plugins: boolean): Promise<{ listings: unknown; dataDir: string }> {
+    process.env.HOME = dirs.createDir("acolyte-lifecycle-plugins-home-");
+    const pluginWorkspace = dirs.createDir("acolyte-lifecycle-plugins-");
+    writePlugin(pluginWorkspace, "acme", {
+      mcp: {
+        $schema: PLUGIN_MCP_SCHEMA_ID,
+        mcpServers: { remote: { type: "streamable-http", url: "https://127.0.0.1:9/mcp" } },
+      },
+    });
+
+    let listings: unknown;
+    const deps = createLifecycleDeps();
+    const prepare = deps.phasePrepare;
+    deps.phasePrepare = ((input: Parameters<typeof prepare>[0]) => {
+      listings = (input as { mcpListings?: unknown }).mcpListings;
+      return prepare(input);
+    }) as typeof prepare;
+
+    await runLifecycle(
+      createLifecycleInput({
+        request: { model: "gpt-5-mini", message: "test", history: [], sessionId: "sess_plugin_mcp" },
+        workspace: pluginWorkspace,
+        features: {
+          syncAgents: false,
+          undoCheckpoints: false,
+          workspaces: false,
+          cloudSync: false,
+          mcp,
+          plugins,
+        },
+      }),
+      deps,
+    );
+
+    return { listings, dataDir: join(pluginWorkspace, ".acolyte", "plugin-data", "acme") };
+  }
+
+  test("a plugin's servers are absent while mcp is disabled", async () => {
+    const { listings, dataDir } = await runWithFlags(false, true);
+
+    expect(listings).toEqual([]);
+    expect(existsSync(dataDir)).toBe(false);
+  });
+
+  test("a plugin's servers are resolved once mcp is enabled", async () => {
+    const { dataDir } = await runWithFlags(true, true);
+
+    expect(existsSync(dataDir)).toBe(true);
+  });
+
+  test("no plugin server is resolved while plugins are disabled", async () => {
+    const { dataDir } = await runWithFlags(true, false);
+
+    expect(existsSync(dataDir)).toBe(false);
   });
 });
