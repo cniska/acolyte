@@ -693,3 +693,78 @@ describe("consecutive text blocks", () => {
     expect((await getFullOutput()).text).toBe("Testing received.");
   });
 });
+
+describe("step separators", () => {
+  function noopTool(): ToolDefinition {
+    return {
+      id: "noop",
+      toolkit: "test",
+      category: "execute",
+      description: "noop",
+      instruction: "noop",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        return { result: { kind: "noop" } };
+      },
+    };
+  }
+
+  async function collect(
+    turns: LanguageModelV4StreamPart[][],
+    tools: Record<string, ToolDefinition>,
+    onBeforeFinish?: () => LanguageModelV4Message[],
+  ): Promise<{ chunks: StreamChunk[]; text: string }> {
+    const model = scriptedModel(turns, []);
+    const stream = createAgentStream(model, "sys", tools, noopRateLimiter);
+    const { fullStream, getFullOutput } = await stream("hi", onBeforeFinish ? { onBeforeFinish } : {});
+    const chunks: StreamChunk[] = [];
+    const reader = fullStream.getReader();
+    const drain = (async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+    })();
+    const output = await getFullOutput();
+    await drain;
+    return { chunks, text: output.text };
+  }
+
+  const textTurn = (id: string, delta: string, reason: "stop" | "length"): LanguageModelV4StreamPart[] => [
+    { type: "text-start", id },
+    { type: "text-delta", id, delta },
+    { type: "text-end", id },
+    finishPart(reason),
+  ];
+
+  test("a completion reopen keeps one answer in one block", async () => {
+    let reopened = false;
+    const { chunks, text } = await collect(
+      [textTurn("t_1", "First half ", "length"), textTurn("t_2", "second half.", "stop")],
+      {},
+      () => {
+        if (reopened) return [];
+        reopened = true;
+        return [{ role: "user", content: [{ type: "text", text: "<<continue>>" }] }];
+      },
+    );
+
+    expect(text).toBe("First half second half.");
+    expect(chunks.filter((chunk) => chunk.type === "step-start")).toHaveLength(0);
+  });
+
+  test("a tool step separates the blocks around it", async () => {
+    const { chunks } = await collect(
+      [
+        [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
+        textTurn("t_1", "done", "stop"),
+      ],
+      { noop: noopTool() },
+    );
+
+    expect(chunks.filter((chunk) => chunk.type === "step-start")).toHaveLength(1);
+  });
+});

@@ -56,6 +56,9 @@ export function createAgentStream(
     let truncatedPrefix = "";
     const allToolCalls: ToolCallEntry[] = [];
     let loopIteration = 0;
+    // A separator belongs to a tool boundary. A completion reopen continues the same answer,
+    // so a step-start there would split one reply into two blocks on screen.
+    let separatorPending = false;
     let streamController!: ReadableStreamDefaultController<StreamChunk>;
     const fullStream = new ReadableStream<StreamChunk>({
       start(controller) {
@@ -73,7 +76,10 @@ export function createAgentStream(
         while (true) {
           if (cancelled()) break;
           loopIteration++;
-          if (loopIteration > 1) streamController.enqueue({ type: "step-start" });
+          if (separatorPending) {
+            streamController.enqueue({ type: "step-start" });
+            separatorPending = false;
+          }
           log.debug("agent-stream.loop.start", { iteration: loopIteration, pending_messages: messages.length });
 
           const preCallLimit = options.preCallInputTokenLimit;
@@ -268,6 +274,7 @@ export function createAgentStream(
 
           const extras = options.onBeforeNextCall?.(messages) ?? [];
           for (const msg of extras) messages.push(msg);
+          separatorPending = true;
         }
       };
 
