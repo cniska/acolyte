@@ -11,6 +11,7 @@ export const TOOL_ERROR_CODES = {
   editCodeUnsupportedFile: "E_EDIT_CODE_UNSUPPORTED_FILE",
   searchFilesEmptyScope: "E_SEARCH_FILES_EMPTY_SCOPE",
   searchFilesNoMatch: "E_SEARCH_FILES_NO_MATCH",
+  searchFilesUnsearchable: "E_SEARCH_FILES_UNSEARCHABLE",
   scanCodeUnsupportedFile: "E_SCAN_CODE_UNSUPPORTED_FILE",
   readFileTooLarge: "E_READ_FILE_TOO_LARGE",
   readFileRangeInvalid: "E_READ_FILE_RANGE_INVALID",

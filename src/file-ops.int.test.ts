@@ -458,6 +458,32 @@ describe("searchFiles", () => {
     });
   });
 
+  test("a capped search reports that more matches exist", async () => {
+    const workspace = dirs.createDir("acolyte-search-cap-");
+    const dir = join(workspace, "many");
+    await mkdir(dir, { recursive: true });
+    for (let i = 0; i < 5; i++) {
+      await writeFile(join(dir, `file-${i}.ts`), 'export const value = "needle";\n', "utf8");
+    }
+    const { tools } = toolsForAgent({ workspace });
+    const result = await tools.searchFiles.execute({ pattern: "needle", maxResults: 2 }, "call_search_cap");
+
+    const output = result.result.output;
+    expect(output.split("\n").filter((line) => line.includes("needle") && line.includes(".ts:"))).toHaveLength(2);
+    // Without a marker the model reads two matches as the whole truth.
+    expect(output).toMatch(/more match/i);
+  });
+
+  test("an unsearchable binary file is not reported as a missing match", async () => {
+    const workspace = dirs.createDir("acolyte-search-binary-");
+    const filePath = join(workspace, "probe.gif");
+    await writeFile(filePath, Buffer.from("GIF89a\u0000\u0001", "binary"));
+    const { tools } = toolsForAgent({ workspace });
+    await expect(
+      tools.searchFiles.execute({ pattern: "GIF", path: filePath }, "call_search_binary"),
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.searchFilesUnsearchable });
+  });
+
   test("scopes matches to a single file path", async () => {
     const workspace = dirs.createDir("acolyte-search-scope-");
     const dir = join(workspace, "sub");

@@ -118,9 +118,15 @@ export async function searchFiles(
     }
   });
 
+  // Collect one past the cap so a truncated search can say so instead of reading as the
+  // whole truth. The extra match is dropped before the result is returned.
+  let skippedBinary = false;
   for (const relPath of allFiles) {
-    if (matches.length >= maxResults) break;
-    if (isBinaryExtension(relPath)) continue;
+    if (matches.length > maxResults) break;
+    if (isBinaryExtension(relPath)) {
+      skippedBinary = true;
+      continue;
+    }
     const absPath = join(workspace, relPath);
     let content: string;
     try {
@@ -134,13 +140,24 @@ export async function searchFiles(
       if (regexes.some((regex) => regex.test(line))) {
         const lineText = (lines[i] ?? "").trimEnd();
         matches.push(`./${relPath}:${i + 1}:${lineText}`);
-        if (matches.length >= maxResults) break;
+        if (matches.length > maxResults) break;
       }
     }
   }
 
-  if (matches.length > 0) return matches.join("\n");
+  const capped = matches.length > maxResults;
+  if (capped) matches.length = maxResults;
+  if (matches.length > 0) {
+    if (!capped) return matches.join("\n");
+    return `${matches.join("\n")}\nCapped at ${maxResults} results; more matches exist. Narrow the pattern or raise maxResults.`;
+  }
   if (singleScopedFile) {
+    if (skippedBinary) {
+      throw createToolError(
+        TOOL_ERROR_CODES.searchFilesUnsearchable,
+        `'${singleScopedFile}' is a binary file and cannot be searched. Use file-read to inspect it.`,
+      );
+    }
     throw createToolError(
       TOOL_ERROR_CODES.searchFilesNoMatch,
       `No matches found in '${singleScopedFile}'. Try file-read to inspect the file directly.`,
