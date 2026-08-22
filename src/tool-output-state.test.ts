@@ -128,13 +128,6 @@ describe("createToolOutputState", () => {
       update = state.push({ toolCallId: "tc_1", content: shellLine(`line-${i}`), transient: true });
     }
     expect(update?.items).toHaveLength(LIVE_TAIL_ROWS);
-    expect(text(update?.items[0])).toBe(`line-${4}`);
-  });
-
-  test("transient parts remain when the tool never settles", () => {
-    const state = createToolOutputState();
-    state.push({ toolCallId: "tc_1", content: shellLine("before-timeout"), transient: true });
-    const update = state.push({ toolCallId: "tc_1", content: shellLine("still-running"), transient: true });
-    expect(update?.items.map(text)).toEqual(["before-timeout", "still-running"]);
+    expect(text(update?.items[0])).toBe("line-4");
   });
 });

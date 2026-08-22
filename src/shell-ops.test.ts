@@ -35,7 +35,7 @@ describe("runShellCommand", () => {
       process.env.COLORTERM = "truecolor";
 
       // `runShellCommand` pipes stdout/stderr; `env` prints to stdout.
-      const stdout = await runShellCommand(WORKSPACE, { cmd: "env" });
+      const { output: stdout } = await runShellCommand(WORKSPACE, { cmd: "env" });
 
       expect(stdout).toContain("PATH=");
       expect(stdout).not.toContain("FORCE_COLOR=");
@@ -184,7 +184,7 @@ describe("createControlSequenceScrubber", () => {
 
 describe("runShellCommand output scrubbing", () => {
   test("strips control sequences from captured stdout", async () => {
-    const result = await runShellCommand(WORKSPACE, {
+    const { output: result } = await runShellCommand(WORKSPACE, {
       cmd: "bun",
       args: ["-e", "process.stdout.write('\\u001b[2Jclean output')"],
     });

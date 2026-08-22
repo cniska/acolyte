@@ -21,6 +21,7 @@ export function renderToolOutput(content: ToolOutputPart | ToolOutputPart[], wid
 
 export type ToolOutputUpdate = {
   label?: string;
+  /** Everything to render, settled parts followed by the live tail. */
   items: ToolOutputPart[];
 };
 
@@ -28,10 +29,13 @@ export type ToolOutputUpdate = {
  *  so a command that never settles leaves its last rows visible instead of nothing. */
 export const LIVE_TAIL_ROWS = 4;
 
-export function createToolOutputState(): {
+/** `keepTransient: false` drops live parts entirely, for a renderer that writes to a stream
+ *  and cannot take a row back once printed. */
+export function createToolOutputState(options?: { keepTransient?: boolean }): {
   push: (entry: { toolCallId: string; content: ToolOutputPart; transient?: boolean }) => ToolOutputUpdate | null;
   delete: (toolCallId: string) => void;
 } {
+  const keepTransient = options?.keepTransient !== false;
   const settledByCallId = new Map<string, ToolOutputPart[]>();
   const liveByCallId = new Map<string, ToolOutputPart[]>();
   const lastRenderedByCallId = new Map<string, string>();
@@ -39,6 +43,7 @@ export function createToolOutputState(): {
   return {
     push(entry) {
       const settled = settledByCallId.get(entry.toolCallId) ?? [];
+      if (entry.transient && !keepTransient) return null;
       if (entry.transient) {
         const live = liveByCallId.get(entry.toolCallId) ?? [];
         live.push(entry.content);

@@ -27,7 +27,7 @@ export async function handlePrompt(
   setSessionTitle(session, prompt);
 
   const projector = createStdoutRowProjector();
-  const streamState = createMessageStreamState({ setRows: projector.setRows });
+  const streamState = createMessageStreamState({ setRows: projector.setRows, appendOnlyRows: true });
 
   try {
     printOutput(`❯ ${prompt}`);

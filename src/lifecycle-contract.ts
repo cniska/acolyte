@@ -41,6 +41,8 @@ export type ToolOutputEvent = {
   toolName: string;
   content: ToolOutputPart;
   toolCallId?: string;
+  /** Output from a tool still running. Replaced by the parts emitted when it settles. */
+  transient?: boolean;
 };
 
 export type ToolCallStart = {
