@@ -93,8 +93,11 @@ type CsiScan = { kind: "complete"; end: number } | { kind: "truncated" } | { kin
 
 /**
  * Scan a CSI sequence starting at `offset` (pointing at ESC).
- * CSI = ESC [ <params> <final byte>, final byte 0x40–0x7E. `truncated` means the
- * input ran out before the final byte, which a later read can still complete.
+ * CSI = ESC [ <params> <final byte>: parameter and intermediate bytes are 0x20–0x3F and the
+ * final byte is 0x40–0x7E. A control byte belongs to no part of it, so one appearing mid-scan
+ * means these bytes were never a CSI — treating it as a parameter would swallow the keystroke
+ * that sent it. `truncated` means the input ran out before the final byte, which a later read
+ * can still complete.
  */
 function scanCsi(raw: string, offset: number): CsiScan {
   if (raw[offset + 1] !== "[") return { kind: "invalid" };
@@ -103,6 +106,7 @@ function scanCsi(raw: string, offset: number): CsiScan {
     if (i - offset > MAX_CSI_LENGTH) return { kind: "invalid" };
     const code = raw.charCodeAt(i);
     if (code >= 0x40 && code <= 0x7e) return { kind: "complete", end: i + 1 };
+    if (code < 0x20) return { kind: "invalid" };
     i++;
   }
   return { kind: "truncated" };
@@ -306,15 +310,23 @@ function parseBracketedPaste(raw: string, offset: number): PasteScan | null {
 }
 
 /**
- * True when the tail of `raw` is a sequence a later read can still complete.
- *
- * A bare trailing ESC is the ambiguous case: it is either the escape key or the head of
- * a sequence whose remainder is in the next read. What separates them is what preceded it
- * in the same read. A terminal delivers an escape keypress on its own, so an ESC that
- * arrives alone is the key and dispatches now; an ESC at the tail of a longer read is the
- * head of a sequence the read boundary cut, because the bytes ahead of it came from a burst
- * whose remainder is already on its way. Holding an ESC that arrives alone would strand the
- * keypress until the user typed again, which is why the distinction is worth drawing.
+ * True when the first byte of a new read can continue the sequence held from the previous one.
+ * An ESC starts a new sequence rather than continuing one, and a meta chord reaches the reader
+ * as one atomic pair, so a held ESC is only continued by a CSI or SS3 introducer.
+ */
+function continuesHeldSequence(held: string, next: string): boolean {
+  const ch = next[0];
+  if (ch === undefined) return true;
+  if (ch === ESCAPE) return false;
+  if (held === ESCAPE) return ch === "[" || ch === "O";
+  return true;
+}
+
+/**
+ * True when the tail of `raw` is an escape sequence a later read can still complete.
+ * An ESC that is the whole read is the escape key and dispatches now — holding it would leave
+ * the key dead until the user typed again. An ESC after other bytes is held, since the burst it
+ * trails is what cut the sequence, and the read that cannot continue it releases it.
  */
 function isTruncatedSequence(raw: string, offset: number): boolean {
   if (raw[offset] !== ESCAPE) return false;
@@ -324,51 +336,74 @@ function isTruncatedSequence(raw: string, offset: number): boolean {
   return scanCsi(raw, offset).kind === "truncated";
 }
 
+type ScanResult = { events: KeyInputEvent[]; focusIn: boolean; held: string; heldIsSequence: boolean };
+
 /**
- * Parse a stdin stream into key events. A tty read can split a sequence, so the
- * parser holds the incomplete tail and the partial UTF-8 bytes until the rest arrives.
+ * Walk `raw` into key events. `final` decides what an unfinished tail means: mid-stream it is
+ * held for the read that completes it, and on an idle flush it is parsed as the keys it is —
+ * a held ESC becomes the escape key.
+ */
+function scanReads(raw: string, final: boolean): ScanResult {
+  const events: KeyInputEvent[] = [];
+  let focusIn = false;
+  let offset = 0;
+
+  while (offset < raw.length) {
+    const paste = parseBracketedPaste(raw, offset);
+    if (paste) {
+      if (paste.kind === "incomplete") {
+        return { events, focusIn, held: raw.slice(offset), heldIsSequence: false };
+      }
+      events.push(...paste.events);
+      offset += paste.consumed;
+      continue;
+    }
+    if (raw.startsWith(FOCUS_IN, offset)) {
+      focusIn = true;
+      offset += FOCUS_IN.length;
+      continue;
+    }
+    if (!final && isTruncatedSequence(raw, offset)) {
+      return { events, focusIn, held: raw.slice(offset), heldIsSequence: true };
+    }
+    const { event, consumed } = parseSingle(raw, offset);
+    events.push(event);
+    offset += consumed;
+  }
+
+  return { events, focusIn, held: "", heldIsSequence: false };
+}
+
+/**
+ * Parse a stdin stream into key events. A tty read can split a sequence, so the parser holds
+ * an unfinished tail and the partial UTF-8 bytes until the rest arrives. A held sequence is
+ * released by the first read that cannot continue it, parsed as the keys it turned out to be.
  */
 function createKeyInputParser(): {
   parse: (data: Buffer | string) => { events: KeyInputEvent[]; focusIn: boolean };
 } {
   const decoder = new TextDecoder("utf-8");
-  let pending = "";
+  let held = "";
+  let heldIsSequence = false;
 
   return {
     parse(data: Buffer | string) {
       const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
-      const raw = pending + decoder.decode(bytes, { stream: true });
-      pending = "";
-      const events: KeyInputEvent[] = [];
-      let focusIn = false;
-      let offset = 0;
+      const incoming = decoder.decode(bytes, { stream: true });
+      const released: KeyInputEvent[] = [];
 
-      while (offset < raw.length) {
-        const paste = parseBracketedPaste(raw, offset);
-        if (paste) {
-          if (paste.kind === "incomplete") {
-            pending = raw.slice(offset);
-            break;
-          }
-          events.push(...paste.events);
-          offset += paste.consumed;
-          continue;
-        }
-        if (raw.startsWith(FOCUS_IN, offset)) {
-          focusIn = true;
-          offset += FOCUS_IN.length;
-          continue;
-        }
-        if (isTruncatedSequence(raw, offset)) {
-          pending = raw.slice(offset);
-          break;
-        }
-        const { event, consumed } = parseSingle(raw, offset);
-        events.push(event);
-        offset += consumed;
+      // A read that cannot continue the held sequence settles what the held bytes were:
+      // they were keys, not an introducer, so release them ahead of the new ones.
+      if (heldIsSequence && !continuesHeldSequence(held, incoming)) {
+        released.push(...scanReads(held, true).events);
+        held = "";
+        heldIsSequence = false;
       }
 
-      return { events, focusIn };
+      const result = scanReads(held + incoming, false);
+      held = result.held;
+      heldIsSequence = result.heldIsSequence;
+      return { events: [...released, ...result.events], focusIn: result.focusIn };
     },
   };
 }

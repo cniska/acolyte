@@ -377,16 +377,41 @@ describe("parseKeyInput", () => {
       expect(events.some((e) => e.key.escape)).toBe(false);
     });
 
-    test("a held ESC at a burst tail is released by the next read", () => {
-      const events = collect(["ab\x1b", "x"]);
-      expect(events.map((e) => e.input).join("")).toBe("abx");
-      expect(events[2]?.key.meta).toBe(true);
-    });
-
-    test("a lone escape read dispatches immediately", () => {
+    test("an escape that is the whole read dispatches at once", () => {
       const events = collect(["\x1b"]);
       expect(events).toHaveLength(1);
       expect(events[0]?.key.escape).toBe(true);
+    });
+
+    test("an escape coalesced with earlier keystrokes still reaches the interrupt", () => {
+      const events = collect(["no\x1b", "\x03"]);
+      const interrupt = events.filter((e) => e.key.ctrl && e.input === "c");
+      expect(interrupt).toHaveLength(1);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(1);
+    });
+
+    test("an escape coalesced with earlier keystrokes releases before a plain letter", () => {
+      const events = collect(["no\x1b", "x"]);
+      expect(events.map((e) => e.input).join("")).toBe("nox");
+      expect(events[2]?.key.escape).toBe(true);
+      expect(events[3]?.key.meta).toBe(false);
+    });
+
+    test("a control byte after a held CSI introducer is not absorbed as a parameter", () => {
+      const events = collect(["ab\x1b", "[", "\x03"]);
+      const interrupt = events.filter((e) => e.key.ctrl && e.input === "c");
+      expect(interrupt).toHaveLength(1);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(1);
+    });
+
+    test("an escape coalesced with earlier keystrokes still cancels on a second press", () => {
+      const events = collect(["no\x1b", "\x1b"]);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(2);
+    });
+
+    test("a held SS3 introducer releases the escape rather than swallowing it", () => {
+      const events = collect(["\x1bO", "\x1b"]);
+      expect(events.filter((e) => e.key.escape).length).toBeGreaterThanOrEqual(1);
     });
 
     test("a multi-byte character split across reads is one character", () => {
