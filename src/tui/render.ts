@@ -80,7 +80,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     exitResolve?.();
   };
 
-  const dispatcher = createInputDispatcher();
+  const dispatcher = createInputDispatcher({ onFocusIn: forceRedraw });
 
   const inputContextValue: InputContextValue = {
     register(reg: InputRegistration) {
@@ -92,20 +92,10 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     },
   };
 
-  const FOCUS_IN = "\x1b[I";
-
-  const onStdinData = (data: Buffer | string) => {
-    const raw = typeof data === "string" ? data : data.toString("utf8");
-    if (raw.includes(FOCUS_IN)) {
-      forceRedraw();
-    }
-    dispatcher.dispatch(data);
-  };
-
   if (stdin.isTTY) {
     stdin.setRawMode(true);
     stdin.resume();
-    stdin.on("data", onStdinData);
+    stdin.on("data", dispatcher.dispatch);
   }
 
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -391,7 +381,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     process.removeListener("uncaughtException", onFatal);
     process.removeListener("unhandledRejection", onFatal);
     if (stdin.isTTY) {
-      stdin.removeListener("data", onStdinData);
+      stdin.removeListener("data", dispatcher.dispatch);
       stdin.setRawMode(false);
       stdin.pause();
     }

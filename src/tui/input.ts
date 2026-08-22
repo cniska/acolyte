@@ -22,6 +22,8 @@ const Char = {
 
 const ESCAPE = "\x1b";
 
+export type KeyInputEvent = { input: string; key: KeyEvent };
+
 export function emptyKey(): KeyEvent {
   return {
     return: false,
@@ -54,7 +56,7 @@ function applyModifiers(key: KeyEvent, mod: number): void {
 }
 
 /** Kitty keyboard protocol: CSI <codepoint> ; <modifiers> u */
-function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: KeyEvent } | null {
+function parseKittySequence(seq: string, key: KeyEvent): KeyInputEvent | null {
   const match = seq.match(/^(\d+)(?:;(\d+))?u$/);
   if (!match) return null;
 
@@ -85,37 +87,40 @@ function parseKittySequence(seq: string, key: KeyEvent): { input: string; key: K
   }
 }
 
-/**
- * Find the end of a CSI sequence starting at `offset` (pointing at ESC).
- * CSI = ESC [ <params> <final byte>. Final byte is 0x40–0x7E.
- * Returns the index past the final byte, or -1 if not a valid CSI.
- */
 const MAX_CSI_LENGTH = 64;
 
-function csiEnd(raw: string, offset: number): number {
-  if (offset + 1 >= raw.length || raw[offset + 1] !== "[") return -1;
+type CsiScan = { kind: "complete"; end: number } | { kind: "truncated" } | { kind: "invalid" };
+
+/**
+ * Scan a CSI sequence starting at `offset` (pointing at ESC).
+ * CSI = ESC [ <params> <final byte>, final byte 0x40–0x7E. `truncated` means the
+ * input ran out before the final byte, which a later read can still complete.
+ */
+function scanCsi(raw: string, offset: number): CsiScan {
+  if (raw[offset + 1] !== "[") return { kind: "invalid" };
   let i = offset + 2;
   while (i < raw.length) {
-    if (i - offset > MAX_CSI_LENGTH) return -1;
+    if (i - offset > MAX_CSI_LENGTH) return { kind: "invalid" };
     const code = raw.charCodeAt(i);
-    if (code >= 0x40 && code <= 0x7e) return i + 1;
+    if (code >= 0x40 && code <= 0x7e) return { kind: "complete", end: i + 1 };
     i++;
   }
-  return -1;
+  return { kind: "truncated" };
 }
 
 /**
  * Parse a single key event starting at `offset` in `raw`.
  * Returns the parsed event and the number of bytes consumed.
  */
-function parseSingle(raw: string, offset: number): { event: { input: string; key: KeyEvent }; consumed: number } {
+function parseSingle(raw: string, offset: number): { event: KeyInputEvent; consumed: number } {
   const ch0 = raw[offset] ?? "";
   const code0 = raw.charCodeAt(offset);
 
   // CSI sequences: ESC [
   if (ch0 === ESCAPE && offset + 1 < raw.length && raw[offset + 1] === "[") {
-    const end = csiEnd(raw, offset);
-    if (end > 0) {
+    const scan = scanCsi(raw, offset);
+    if (scan.kind === "complete") {
+      const end = scan.end;
       const seq = raw.slice(offset + 2, end);
       const key = emptyKey();
 
@@ -268,51 +273,112 @@ function parseSingle(raw: string, offset: number): { event: { input: string; key
 
 const PASTE_START = "\x1b[200~";
 const PASTE_END = "\x1b[201~";
+const FOCUS_IN = "\x1b[I";
 
-function parseBracketedPaste(
-  raw: string,
-  offset: number,
-): { events: Array<{ input: string; key: KeyEvent }>; consumed: number } | null {
-  if (!raw.startsWith(PASTE_START, offset)) return null;
-  const contentStart = offset + PASTE_START.length;
-  const endIdx = raw.indexOf(PASTE_END, contentStart);
-  const contentEnd = endIdx >= 0 ? endIdx : raw.length;
-  const consumed = endIdx >= 0 ? contentEnd + PASTE_END.length - offset : raw.length - offset;
-  const content = raw.slice(contentStart, contentEnd).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const events: Array<{ input: string; key: KeyEvent }> = [];
-  for (const ch of content) {
+/**
+ * A paste is held until its terminator arrives, so the terminator can land in a later read.
+ * Past this much content the terminator is treated as lost and the text is released: raw mode
+ * routes interrupt and escape through this parser, so a paste held forever would swallow every
+ * later keystroke and leave no way out of the session.
+ */
+const MAX_PASTE_LENGTH = 256 * 1024;
+
+type PasteScan = { kind: "incomplete" } | { kind: "complete"; events: KeyInputEvent[]; consumed: number };
+
+function pasteEvents(content: string, consumed: number): PasteScan {
+  const text = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const events: KeyInputEvent[] = [];
+  for (const ch of text) {
     events.push({ input: ch, key: { ...emptyKey(), paste: true } });
   }
-  return { events, consumed };
+  return { kind: "complete", events, consumed };
 }
 
-export function parseKeyInput(data: Buffer | string): Array<{ input: string; key: KeyEvent }> {
-  const raw = typeof data === "string" ? data : data.toString("utf8");
-  const results: Array<{ input: string; key: KeyEvent }> = [];
-  let offset = 0;
-  while (offset < raw.length) {
-    const paste = parseBracketedPaste(raw, offset);
-    if (paste) {
-      results.push(...paste.events);
-      offset += paste.consumed;
-      continue;
-    }
-    const { event, consumed } = parseSingle(raw, offset);
-    results.push(event);
-    offset += consumed;
+function parseBracketedPaste(raw: string, offset: number): PasteScan | null {
+  if (!raw.startsWith(PASTE_START, offset)) return null;
+  const contentStart = offset + PASTE_START.length;
+  const terminator = raw.indexOf(PASTE_END, contentStart);
+  if (terminator >= 0) {
+    return pasteEvents(raw.slice(contentStart, terminator), terminator + PASTE_END.length - offset);
   }
-  return results;
+  if (raw.length - contentStart <= MAX_PASTE_LENGTH) return { kind: "incomplete" };
+  return pasteEvents(raw.slice(contentStart), raw.length - offset);
 }
 
-export function createInputDispatcher(): {
+/**
+ * True when the tail of `raw` is a sequence a later read can still complete.
+ * A bare trailing ESC is excluded: it is the escape key, and holding it back would
+ * strand the keypress until the user types again. The cost of that choice is that
+ * an ESC introducer already followed by `[` or `O` is indistinguishable from Alt+`[`
+ * or Alt+`O`, so those two chords lose their character when split across reads.
+ */
+function isTruncatedSequence(raw: string, offset: number): boolean {
+  if (raw[offset] !== ESCAPE || offset + 1 >= raw.length) return false;
+  if (raw[offset + 1] === "O") return offset + 2 >= raw.length;
+  if (raw[offset + 1] !== "[") return false;
+  return scanCsi(raw, offset).kind === "truncated";
+}
+
+/**
+ * Parse a stdin stream into key events. A tty read can split a sequence, so the
+ * parser holds the incomplete tail and the partial UTF-8 bytes until the rest arrives.
+ */
+function createKeyInputParser(): {
+  parse: (data: Buffer | string) => { events: KeyInputEvent[]; focusIn: boolean };
+} {
+  const decoder = new TextDecoder("utf-8");
+  let pending = "";
+
+  return {
+    parse(data: Buffer | string) {
+      const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+      const raw = pending + decoder.decode(bytes, { stream: true });
+      pending = "";
+      const events: KeyInputEvent[] = [];
+      let focusIn = false;
+      let offset = 0;
+
+      while (offset < raw.length) {
+        const paste = parseBracketedPaste(raw, offset);
+        if (paste) {
+          if (paste.kind === "incomplete") {
+            pending = raw.slice(offset);
+            break;
+          }
+          events.push(...paste.events);
+          offset += paste.consumed;
+          continue;
+        }
+        if (raw.startsWith(FOCUS_IN, offset)) {
+          focusIn = true;
+          offset += FOCUS_IN.length;
+          continue;
+        }
+        if (isTruncatedSequence(raw, offset)) {
+          pending = raw.slice(offset);
+          break;
+        }
+        const { event, consumed } = parseSingle(raw, offset);
+        events.push(event);
+        offset += consumed;
+      }
+
+      return { events, focusIn };
+    },
+  };
+}
+
+export function createInputDispatcher(options: { onFocusIn?: () => void } = {}): {
   handlers: Set<{ handler: InputHandler; isActive: boolean }>;
   dispatch: (data: Buffer | string) => void;
 } {
   const handlers = new Set<{ handler: InputHandler; isActive: boolean }>();
+  const parser = createKeyInputParser();
   return {
     handlers,
     dispatch(data: Buffer | string) {
-      const events = parseKeyInput(data);
+      const { events, focusIn } = parser.parse(data);
+      if (focusIn) options.onFocusIn?.();
       for (const { input, key } of events) {
         for (const reg of handlers) {
           if (reg.isActive) reg.handler(input, key);
