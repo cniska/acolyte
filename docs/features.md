@@ -49,7 +49,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - git status/diff/log/show/add/commit
 - GitHub CLI integration for PR and issue management (view/create/edit), auto-enabled when `gh` is installed
 - on-demand session search across conversation history
-- shell and test execution
+- shell and test execution, with command output streaming into the transcript while it runs
 - web search/fetch
 - MCP client: connect to external services via stdio or HTTP MCP servers
 

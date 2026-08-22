@@ -41,6 +41,7 @@ const toolOutputEventSchema = z.object({
   toolCallId: z.string(),
   toolName: z.string(),
   content: toolOutputPartSchema,
+  transient: z.boolean().optional(),
 });
 const toolResultEventSchema = z.object({
   type: z.literal("tool-result"),

@@ -42,8 +42,19 @@ function createRunCommandTool(input: ToolkitInput) {
           const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
           let stdoutBuffer = "";
           let stderrBuffer = "";
+          let running = true;
+          // Emitted while the command runs so a long build shows progress instead of a bare
+          // header. The settled preview below replaces them; a run that times out keeps them.
           const recordLine = (stream: "stdout" | "stderr", text: string): void => {
             streamed.push({ stream, text });
+            if (running) {
+              input.onOutput({
+                toolName: "shell-run",
+                content: { kind: "shell-output", stream, text },
+                toolCallId: callId,
+                transient: true,
+              });
+            }
           };
           const flushBufferLines = (stream: "stdout" | "stderr"): void => {
             const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
@@ -74,6 +85,7 @@ function createRunCommandTool(input: ToolkitInput) {
               flushBufferLines(stream);
             },
           );
+          running = false;
           const flushRemainder = (stream: "stdout" | "stderr"): void => {
             const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
             if (remainder.length > 0) recordLine(stream, remainder);

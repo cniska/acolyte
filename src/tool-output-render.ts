@@ -24,26 +24,41 @@ export type ToolOutputUpdate = {
   items: ToolOutputPart[];
 };
 
+/** Rows of a still-running tool's output kept on screen. A settled part replaces them,
+ *  so a command that never settles leaves its last rows visible instead of nothing. */
+export const LIVE_TAIL_ROWS = 4;
+
 export function createToolOutputState(): {
-  push: (entry: { toolCallId: string; content: ToolOutputPart }) => ToolOutputUpdate | null;
+  push: (entry: { toolCallId: string; content: ToolOutputPart; transient?: boolean }) => ToolOutputUpdate | null;
   delete: (toolCallId: string) => void;
 } {
-  const contentByCallId = new Map<string, ToolOutputPart[]>();
+  const settledByCallId = new Map<string, ToolOutputPart[]>();
+  const liveByCallId = new Map<string, ToolOutputPart[]>();
   const lastRenderedByCallId = new Map<string, string>();
 
   return {
     push(entry) {
-      const items = contentByCallId.get(entry.toolCallId) ?? [];
-      const incoming = serializePart(entry.content);
-      if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
-      lastRenderedByCallId.set(entry.toolCallId, incoming);
-      items.push(entry.content);
-      contentByCallId.set(entry.toolCallId, items);
+      const settled = settledByCallId.get(entry.toolCallId) ?? [];
+      if (entry.transient) {
+        const live = liveByCallId.get(entry.toolCallId) ?? [];
+        live.push(entry.content);
+        while (live.length > LIVE_TAIL_ROWS) live.shift();
+        liveByCallId.set(entry.toolCallId, live);
+      } else {
+        const incoming = serializePart(entry.content);
+        if (lastRenderedByCallId.get(entry.toolCallId) === incoming) return null;
+        lastRenderedByCallId.set(entry.toolCallId, incoming);
+        settled.push(entry.content);
+        settledByCallId.set(entry.toolCallId, settled);
+        liveByCallId.delete(entry.toolCallId);
+      }
+      const items = [...settled, ...(liveByCallId.get(entry.toolCallId) ?? [])];
       const label = items[0] ? resolveHeader(items[0])?.label : undefined;
       return { label, items };
     },
     delete(toolCallId) {
-      contentByCallId.delete(toolCallId);
+      settledByCallId.delete(toolCallId);
+      liveByCallId.delete(toolCallId);
       lastRenderedByCallId.delete(toolCallId);
     },
   };
