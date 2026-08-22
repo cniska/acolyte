@@ -1,5 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { parseKeyInput } from "./input";
+import { createInputDispatcher, type KeyInputEvent } from "./input";
+
+/** Feed chunks through one dispatcher, as separate stdin reads. */
+function collect(chunks: Array<Buffer | string>, options: { onFocusIn?: () => void } = {}): KeyInputEvent[] {
+  const dispatcher = createInputDispatcher(options);
+  const events: KeyInputEvent[] = [];
+  dispatcher.handlers.add({
+    isActive: true,
+    handler: (input, key) => {
+      events.push({ input, key });
+    },
+  });
+  for (const chunk of chunks) dispatcher.dispatch(chunk);
+  return events;
+}
+
+function parseKeyInput(data: string) {
+  return collect([data]);
+}
 
 function parse(data: string) {
   const results = parseKeyInput(data);
@@ -244,13 +262,9 @@ describe("parseKeyInput", () => {
       expect(typed[0]?.key.paste).toBe(false);
     });
 
-    test("unterminated paste consumes remaining input as text", () => {
-      const pasted = "\x1b[200~hello world";
-      const results = parseKeyInput(pasted);
-      const hasReturn = results.some((r) => r.key.return);
-      expect(hasReturn).toBe(false);
-      const text = results.map((r) => r.input).join("");
-      expect(text).toBe("hello world");
+    test("unterminated paste emits nothing until its terminator arrives", () => {
+      const results = parseKeyInput("\x1b[200~hello world");
+      expect(results).toHaveLength(0);
     });
 
     test("empty paste produces no events", () => {
@@ -283,6 +297,138 @@ describe("parseKeyInput", () => {
       expect(results).toHaveLength(2);
       expect(results[0]?.key.upArrow).toBe(true);
       expect(results[1]?.input).toBe("x");
+    });
+  });
+  describe("sequences split across stdin reads", () => {
+    test("an arrow-key CSI split across two reads is one arrow event", () => {
+      const events = collect(["\x1b[", "A"]);
+      expect(events).toHaveLength(1);
+      expect(events[0]?.key.upArrow).toBe(true);
+      expect(events[0]?.input).toBe("");
+    });
+
+    test("a modified arrow split mid-parameters is one arrow event", () => {
+      const events = collect(["\x1b[1;", "5C"]);
+      expect(events).toHaveLength(1);
+      expect(events[0]?.key.rightArrow).toBe(true);
+      expect(events[0]?.key.ctrl).toBe(true);
+    });
+
+    test("an SS3 sequence split after the introducer is one arrow event", () => {
+      const events = collect(["\x1bO", "B"]);
+      expect(events).toHaveLength(1);
+      expect(events[0]?.key.downArrow).toBe(true);
+    });
+
+    test("a paste terminator split inside its own marker still ends the paste", () => {
+      const events = collect(["\x1b[200~ab\x1b[201", "~\r"]);
+      expect(
+        events
+          .filter((e) => e.key.paste)
+          .map((e) => e.input)
+          .join(""),
+      ).toBe("ab");
+      expect(events.filter((e) => e.key.return)).toHaveLength(1);
+    });
+
+    test("input recovers when a paste terminator never arrives", () => {
+      const events = collect([`\x1b[200~${"a".repeat(256 * 1024 + 1)}`, "\x03"]);
+      expect(events.filter((e) => e.key.paste).length).toBe(256 * 1024 + 1);
+      const interrupt = events.filter((e) => e.key.ctrl && e.input === "c");
+      expect(interrupt).toHaveLength(1);
+    });
+
+    test("a bracketed paste split across two reads never leaks a return key", () => {
+      const events = collect(["\x1b[200~hello ", "world\nline2\x1b[201~"]);
+      expect(events.some((e) => e.key.return)).toBe(false);
+      expect(events.every((e) => e.key.paste)).toBe(true);
+      expect(events.map((e) => e.input).join("")).toBe("hello world\nline2");
+    });
+
+    test("a paste marker split mid-sequence still opens the paste", () => {
+      const events = collect(["\x1b[20", "0~a\rb\x1b[201~"]);
+      expect(events.some((e) => e.key.return)).toBe(false);
+      expect(events.map((e) => e.input).join("")).toBe("a\nb");
+    });
+
+    test("a paste split so CRLF straddles the boundary yields one newline", () => {
+      const events = collect(["\x1b[200~a\r", "\nb\x1b[201~"]);
+      expect(events.some((e) => e.key.return)).toBe(false);
+      expect(events.map((e) => e.input).join("")).toBe("a\nb");
+    });
+
+    test("a kitty sequence split mid-parameters is one key event", () => {
+      const events = collect(["\x1b[27;", "5u"]);
+      expect(events).toHaveLength(1);
+      expect(events[0]?.key.escape).toBe(true);
+      expect(events[0]?.key.ctrl).toBe(true);
+    });
+
+    test("an over-long unterminated CSI is flushed instead of buffered forever", () => {
+      const events = collect([`\x1b[${"1".repeat(70)}`]);
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0]?.key.escape).toBe(true);
+    });
+
+    test("a burst whose read boundary lands on ESC still yields the arrow", () => {
+      const events = collect(["abc\x1b", "[D"]);
+      expect(events.map((e) => e.input).join("")).toBe("abc");
+      expect(events.filter((e) => e.key.leftArrow)).toHaveLength(1);
+      expect(events.some((e) => e.key.escape)).toBe(false);
+    });
+
+    test("an escape that is the whole read dispatches at once", () => {
+      const events = collect(["\x1b"]);
+      expect(events).toHaveLength(1);
+      expect(events[0]?.key.escape).toBe(true);
+    });
+
+    test("an escape coalesced with earlier keystrokes still reaches the interrupt", () => {
+      const events = collect(["no\x1b", "\x03"]);
+      const interrupt = events.filter((e) => e.key.ctrl && e.input === "c");
+      expect(interrupt).toHaveLength(1);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(1);
+    });
+
+    test("an escape coalesced with earlier keystrokes releases before a plain letter", () => {
+      const events = collect(["no\x1b", "x"]);
+      expect(events.map((e) => e.input).join("")).toBe("nox");
+      expect(events[2]?.key.escape).toBe(true);
+      expect(events[3]?.key.meta).toBe(false);
+    });
+
+    test("a control byte after a held CSI introducer is not absorbed as a parameter", () => {
+      const events = collect(["ab\x1b", "[", "\x03"]);
+      const interrupt = events.filter((e) => e.key.ctrl && e.input === "c");
+      expect(interrupt).toHaveLength(1);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(1);
+    });
+
+    test("an escape coalesced with earlier keystrokes still cancels on a second press", () => {
+      const events = collect(["no\x1b", "\x1b"]);
+      expect(events.filter((e) => e.key.escape)).toHaveLength(2);
+    });
+
+    test("a held SS3 introducer releases the escape rather than swallowing it", () => {
+      const events = collect(["\x1bO", "\x1b"]);
+      expect(events.filter((e) => e.key.escape).length).toBeGreaterThanOrEqual(1);
+    });
+
+    test("a multi-byte character split across reads is one character", () => {
+      const utf8 = Buffer.from("é");
+      const events = collect([utf8.subarray(0, 1), utf8.subarray(1)]);
+      expect(events.map((e) => e.input).join("")).toBe("é");
+    });
+
+    test("a focus-in report split across reads fires once and dispatches no keys", () => {
+      let focusIn = 0;
+      const events = collect(["\x1b[", "Ia"], {
+        onFocusIn: () => {
+          focusIn += 1;
+        },
+      });
+      expect(focusIn).toBe(1);
+      expect(events.map((e) => e.input).join("")).toBe("a");
     });
   });
 });

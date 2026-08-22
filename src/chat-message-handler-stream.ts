@@ -14,7 +14,7 @@ export type MessageStreamState = {
   onDelta: (delta: string) => void;
   onTextEnd: () => void;
   onToolCall: () => void;
-  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart }) => void;
+  onOutput: (entry: { toolCallId: string; toolName: string; content: ToolOutputPart; transient?: boolean }) => void;
   onToolResult: (entry: {
     toolCallId: string;
     toolName: string;
@@ -45,6 +45,9 @@ const MIN_DRIP_CHARS = 8;
 export function createMessageStreamState(input: {
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
+  /** Set by a consumer that writes rows to a stream and cannot revise one once written, so
+   *  the live tail of a running tool is dropped instead of rendered and then replaced. */
+  appendOnlyRows?: boolean;
 }): MessageStreamState {
   // --- agent streaming state ---
   let activeRowId: string | null = null;
@@ -64,7 +67,7 @@ export function createMessageStreamState(input: {
   // Tool rows still streaming output (no result yet) — mutable, so they block
   // promotion of everything below them until resolved.
   const pendingToolRowIds = new Set<string>();
-  const toolOutput = createToolOutputState();
+  const toolOutput = createToolOutputState({ keepTransient: !input.appendOnlyRows });
 
   // --- tasklist state ---
   const tasklistRowIdByGroupId = new Map<string, string>();

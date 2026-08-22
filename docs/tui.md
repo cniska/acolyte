@@ -28,7 +28,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 - **reconciler** — React's `react-reconciler` drives updates against a TUI DOM tree
 - **TUI DOM** — lightweight node tree (`tui-root`, `tui-box`, `tui-text`, `tui-static`, `tui-virtual`, text nodes)
 - **serialize** — walks the DOM, resolves flex layout, applies ANSI styles, produces a string. `serializeSplit` separates static (scrollback) from active (re-rendered) regions
-- **render loop** — on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion is re-rendered (see [Frozen Overflow](glossary.md)). Erase and repaint are atomic within a single DEC 2026 synchronized output block to prevent flicker
+- **render loop** — on each React commit: serialize, diff against last output, erase and rewrite the active region. Static items flush once to scrollback. When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion is re-rendered (see [Frozen Overflow](glossary.md)). Erase and repaint are atomic within a single DEC 2026 synchronized output block to prevent flicker; a commit that also flushes static covers the flush and the repaint in that same block
 - **resize** — a debounced resize listener resets frozen overflow state and triggers a re-render with updated dimensions
 - **focus repair** — on terminal focus-in (tab switch), frozen overflow state is invalidated and the active region is repainted via the normal commit path
 - **DEC 2026** — synchronized output (BSU/ESU) wraps all terminal writes to prevent partial-frame rendering. Skipped in tmux where DEC 2026 is not supported
@@ -36,6 +36,8 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 ## Input handling
 
 Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). Supports the [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) for unambiguous modifier reporting, enabled only on terminals with full support (kitty, WezTerm, ghostty, iTerm). The dispatcher fans out to all registered handlers via `InputContext`.
+
+A tty read can end mid-sequence, so the parser is stateful: an incomplete escape sequence, an unterminated bracketed paste, and a partial UTF-8 character are held until the rest of the bytes arrive. An escape keypress and the head of a sequence a read boundary cut are the same byte, told apart by whether the escape is the whole read: arriving alone it is the key and dispatches at once, and arriving after other bytes it is held, then released as keys by the first read that cannot continue it. A paste whose terminator never arrives is released once it passes the paste limit, so later keystrokes still reach their handlers. Focus-in reports are recognized here too and drive the focus repair above.
 
 Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
 

@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { createToolOutputState, renderToolOutput } from "./tool-output-render";
+import { createToolOutputState, LIVE_TAIL_ROWS, renderToolOutput } from "./tool-output-render";
+
+const shellLine = (text: string): ToolOutputPart => ({ kind: "shell-output", stream: "stdout", text });
+const text = (part: ToolOutputPart | undefined): string | undefined =>
+  part && part.kind === "shell-output" ? part.text : undefined;
 
 function setup() {
   const state = createToolOutputState();
@@ -98,5 +102,32 @@ describe("createToolOutputState", () => {
       content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "cmd2" },
     });
     expect(update?.items).toHaveLength(1);
+  });
+
+  test("transient parts render while the tool is still running", () => {
+    const state = createToolOutputState();
+    state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.shell_run" } });
+    state.push({ toolCallId: "tc_1", content: shellLine("first"), transient: true });
+    const update = state.push({ toolCallId: "tc_1", content: shellLine("second"), transient: true });
+    expect(update?.items.map(text)).toEqual([undefined, "first", "second"]);
+  });
+
+  test("a settled part replaces every transient part before it", () => {
+    const state = createToolOutputState();
+    state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.shell_run" } });
+    state.push({ toolCallId: "tc_1", content: shellLine("live-1"), transient: true });
+    state.push({ toolCallId: "tc_1", content: shellLine("live-2"), transient: true });
+    const update = state.push({ toolCallId: "tc_1", content: shellLine("settled") });
+    expect(update?.items.map(text)).toEqual([undefined, "settled"]);
+  });
+
+  test("transient parts keep only the most recent rows", () => {
+    const state = createToolOutputState();
+    let update = null;
+    for (let i = 1; i <= LIVE_TAIL_ROWS + 3; i++) {
+      update = state.push({ toolCallId: "tc_1", content: shellLine(`line-${i}`), transient: true });
+    }
+    expect(update?.items).toHaveLength(LIVE_TAIL_ROWS);
+    expect(text(update?.items[0])).toBe("line-4");
   });
 });

@@ -80,7 +80,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     exitResolve?.();
   };
 
-  const dispatcher = createInputDispatcher();
+  const dispatcher = createInputDispatcher({ onFocusIn: forceRedraw });
 
   const inputContextValue: InputContextValue = {
     register(reg: InputRegistration) {
@@ -92,20 +92,10 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     },
   };
 
-  const FOCUS_IN = "\x1b[I";
-
-  const onStdinData = (data: Buffer | string) => {
-    const raw = typeof data === "string" ? data : data.toString("utf8");
-    if (raw.includes(FOCUS_IN)) {
-      forceRedraw();
-    }
-    dispatcher.dispatch(data);
-  };
-
   if (stdin.isTTY) {
     stdin.setRawMode(true);
     stdin.resume();
-    stdin.on("data", onStdinData);
+    stdin.on("data", dispatcher.dispatch);
   }
 
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -208,6 +198,11 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
     const allLines = active.split("\n");
 
+    // The erase that precedes committed lines wipes the live region, so it and the
+    // repaint below must reach the terminal inside one synchronized-output block —
+    // ending the block early presents a frame with the prompt and viewport gone.
+    let staticPrefix = "";
+
     // Flush any new static items (write-once scrollback).
     if (staticItems.length > flushedStaticCount) {
       let appendedStatic = "";
@@ -230,11 +225,10 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
           if (appendedStatic.startsWith(frozenPrefix)) appendedStatic = appendedStatic.slice(frozenPrefix.length);
         }
       }
-      const buf = eraseSequence() + appendedStatic;
+      staticPrefix = eraseSequence() + appendedStatic;
       flushedStaticCount = staticItems.length;
       frozenLineCount = 0;
       frozenScrollbackText = "";
-      syncWrite(buf);
       lastActive = "";
       lastActiveLineCount = 0;
       // Any stale copy now sits above the flushed static lines — unreachable.
@@ -243,7 +237,10 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     }
 
     // Only re-render the active region if it changed.
-    if (active === lastActive && !forced) return;
+    if (active === lastActive && !forced) {
+      if (staticPrefix) syncWrite(staticPrefix);
+      return;
+    }
 
     // Frozen lines scrolled into append-only scrollback; eraseSequence() cannot reach
     // them. When the frozen prefix no longer matches — an edit above the fold, or a
@@ -299,9 +296,9 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       frozenLineCount += splitIdx;
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
       frozenColumns = cols;
-      syncWrite(`${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
+      syncWrite(`${staticPrefix}${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
     } else {
-      syncWrite(erase + liveLines.join("\n"));
+      syncWrite(staticPrefix + erase + liveLines.join("\n"));
     }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
@@ -384,7 +381,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     process.removeListener("uncaughtException", onFatal);
     process.removeListener("unhandledRejection", onFatal);
     if (stdin.isTTY) {
-      stdin.removeListener("data", onStdinData);
+      stdin.removeListener("data", dispatcher.dispatch);
       stdin.setRawMode(false);
       stdin.pause();
     }

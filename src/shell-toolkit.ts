@@ -1,8 +1,22 @@
 import { z } from "zod";
+import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { formatShellCommand, parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
+import { createToolError } from "./tool-error";
 import { runTool } from "./tool-execution";
 import { emitParts, shellHeadTailParts } from "./tool-output-format";
+import { LIVE_TAIL_ROWS } from "./tool-output-render";
+
+/** The shell tool owns the command's deadline: it kills the process and returns what the
+ *  command printed before the kill. `runTool`'s timeout is a backstop for a tool that fails
+ *  to return at all, so it must fire strictly later — firing first discards that output and
+ *  leaves the process streaming into a call that has already failed. */
+const SHELL_TIMEOUT_MS = 60_000;
+const BACKSTOP_GRACE_MS = 5_000;
+/** A command can print faster than anything downstream can consume. Only the newest rows are
+ *  ever displayed, so batching on this interval and keeping the tail bounds the event rate
+ *  without changing what the user sees. */
+const LIVE_FLUSH_MS = 50;
 
 function createRunCommandTool(input: ToolkitInput) {
   return createTool({
@@ -23,6 +37,7 @@ function createRunCommandTool(input: ToolkitInput) {
       output: z.string(),
     }),
     execute: async (toolInput, toolCallId) => {
+      const timeoutMs = toolInput.timeoutMs ?? SHELL_TIMEOUT_MS;
       return runTool(
         input.session,
         "shell-run",
@@ -42,8 +57,32 @@ function createRunCommandTool(input: ToolkitInput) {
           const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
           let stdoutBuffer = "";
           let stderrBuffer = "";
+          // Emitted while the command runs so a long build shows progress instead of a bare
+          // header. The settled preview below replaces them; a run that times out keeps them.
+          let pendingLive: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
+          let flushTimer: ReturnType<typeof setTimeout> | null = null;
+          const flushLive = (): void => {
+            flushTimer = null;
+            const rows = pendingLive.slice(-LIVE_TAIL_ROWS);
+            pendingLive = [];
+            for (const row of rows) {
+              input.onOutput({
+                toolName: "shell-run",
+                content: { kind: "shell-output", stream: row.stream, text: row.text },
+                toolCallId: callId,
+                transient: true,
+              });
+            }
+          };
+          const stopLive = (): void => {
+            if (flushTimer) clearTimeout(flushTimer);
+            flushTimer = null;
+            pendingLive = [];
+          };
           const recordLine = (stream: "stdout" | "stderr", text: string): void => {
             streamed.push({ stream, text });
+            pendingLive.push({ stream, text });
+            if (!flushTimer) flushTimer = setTimeout(flushLive, LIVE_FLUSH_MS);
           };
           const flushBufferLines = (stream: "stdout" | "stderr"): void => {
             const source = stream === "stdout" ? stdoutBuffer : stderrBuffer;
@@ -61,10 +100,10 @@ function createRunCommandTool(input: ToolkitInput) {
               stderrBuffer = remaining;
             }
           };
-          const rawResult = await runShellCommand(
+          const { output: rawResult, timedOut } = await runShellCommand(
             input.workspace,
             { cmd: toolInput.cmd, args: toolInput.args ?? [] },
-            toolInput.timeoutMs ?? 60_000,
+            timeoutMs,
             ({ stream, text }) => {
               if (stream === "stdout") {
                 stdoutBuffer += text;
@@ -74,6 +113,7 @@ function createRunCommandTool(input: ToolkitInput) {
               flushBufferLines(stream);
             },
           );
+          stopLive();
           const flushRemainder = (stream: "stdout" | "stderr"): void => {
             const remainder = (stream === "stdout" ? stdoutBuffer : stderrBuffer).trimEnd();
             if (remainder.length > 0) recordLine(stream, remainder);
@@ -85,6 +125,15 @@ function createRunCommandTool(input: ToolkitInput) {
           };
           flushRemainder("stdout");
           flushRemainder("stderr");
+          if (timedOut) {
+            // Killing the process is the point; discarding what it printed first is not. The
+            // live rows stay on screen because no settled part replaces them.
+            throw createToolError(
+              LIFECYCLE_ERROR_CODES.timeout,
+              `shell-run timed out after ${timeoutMs}ms\n${rawResult}`,
+              ERROR_KINDS.timeout,
+            );
+          }
           const previewParts = shellHeadTailParts(streamed);
           emitParts(previewParts, "shell-run", input.onOutput, callId);
           return {
@@ -94,7 +143,7 @@ function createRunCommandTool(input: ToolkitInput) {
             output: rawResult,
           };
         },
-        { timeoutMs: toolInput.timeoutMs },
+        { timeoutMs: timeoutMs + BACKSTOP_GRACE_MS },
       );
     },
   });

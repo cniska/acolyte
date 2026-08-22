@@ -19,7 +19,7 @@ Events are append-only and ordered per request.
 - `status` — lifecycle/status updates for UI progress
 - `reasoning` — optional model reasoning text
 - `tool-call` — tool invocation start (id, name, args)
-- `tool-output` — incremental tool output for the call id
+- `tool-output` — incremental tool output for the call id; a `transient: true` part is a still-running preview that the next non-transient part for that call id replaces, rather than appends to
 - `tool-result` — tool completion (success/error, structured error detail)
 - `text-delta` — assistant text stream chunks
 - `text-end` — end of a block of assistant text; the next block opens a new paragraph

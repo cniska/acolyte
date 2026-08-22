@@ -782,6 +782,72 @@ describe("render", () => {
     expect(hasErase).toBe(true);
   });
 
+  test("a static flush and its live repaint are atomic within one syncWrite", async () => {
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [items, setItems] = useState<string[]>([]);
+      const [dynamic, setDynamic] = useState("live-before");
+      useEffect(() => {
+        const t1 = setTimeout(() => {
+          setItems(["COMMITTED_1"]);
+          setDynamic("live-after");
+        }, 50);
+        const t2 = setTimeout(unmount, 150);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return (
+        <tui-box flexDirection="column">
+          <tui-static>
+            {items.map((item) => (
+              <tui-text key={item}>{item}</tui-text>
+            ))}
+          </tui-static>
+          <tui-text>{dynamic}</tui-text>
+          <tui-text>tail-row-2</tui-text>
+          <tui-text>tail-row-3</tui-text>
+        </tui-box>
+      );
+    }
+
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
+    const flush = extractFrameWrites(writes).find((write) => write.includes("COMMITTED_1")) ?? "";
+    // The erase wipes the live region, so it, the committed lines, and the repaint that
+    // restores the live region must land in one block, in that order. Ending the block
+    // after the committed lines presents a frame with the live region gone.
+    expect(flush).toContain(ansi.eraseDown);
+    expect(flush.indexOf(ansi.eraseDown)).toBeLessThan(flush.indexOf("COMMITTED_1"));
+    expect(flush.indexOf("COMMITTED_1")).toBeLessThan(flush.indexOf("live-after"));
+  });
+
+  test("a static flush with an empty live region still writes the committed lines", async () => {
+    function App({ unmount }: { unmount: () => void }): React.JSX.Element {
+      const [items, setItems] = useState<string[]>([]);
+      useEffect(() => {
+        const t1 = setTimeout(() => setItems(["ONLY_STATIC"]), 50);
+        const t2 = setTimeout(unmount, 150);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      }, [unmount]);
+      return (
+        <tui-box flexDirection="column">
+          <tui-static>
+            {items.map((item) => (
+              <tui-text key={item}>{item}</tui-text>
+            ))}
+          </tui-static>
+        </tui-box>
+      );
+    }
+
+    const writes = await renderCapture(({ unmount }) => <App unmount={unmount} />, { columns: 40, rows: 6 });
+    const vt = replayTerminal(extractFrameWrites(writes), 6, 40);
+    expect([...vt.scrollback, ...vt.screen].join("\n")).toContain("ONLY_STATIC");
+  });
+
   test("resize triggers a re-render with updated dimensions", async () => {
     const writes = await withMockedStdout(
       async () => {

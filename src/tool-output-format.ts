@@ -4,7 +4,13 @@ import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
 
-export type ToolOutputListener = (event: { toolName: string; content: ToolOutputPart; toolCallId?: string }) => void;
+export type ToolOutputListener = (event: {
+  toolName: string;
+  content: ToolOutputPart;
+  toolCallId?: string;
+  /** Output from a tool still running. Replaced by the parts emitted when it settles. */
+  transient?: boolean;
+}) => void;
 
 const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
   "file-find": "tool.label.file_find",

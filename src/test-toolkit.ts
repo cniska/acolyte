@@ -41,7 +41,7 @@ function createRunTestsTool(input: ToolkitInput) {
           toolCallId: callId,
         });
         const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
-        const rawResult = await runShellCommand(
+        const { output: rawResult } = await runShellCommand(
           input.workspace,
           commandSpec,
           toolInput.timeoutMs ?? 60_000,

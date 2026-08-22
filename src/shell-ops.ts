@@ -255,12 +255,14 @@ async function readStreamText(
   return combined;
 }
 
+export type ShellCommandResult = { output: string; timedOut: boolean };
+
 export async function runShellCommand(
   workspace: string,
   input: ShellCommandInput,
   timeoutMs = 60_000,
   onChunk?: (chunk: ShellChunk) => void,
-): Promise<string> {
+): Promise<ShellCommandResult> {
   const cmd = input.cmd.trim();
   if (!cmd) throw new Error("Command cannot be empty");
   const args = [...(input.args ?? [])];
@@ -302,8 +304,13 @@ export async function runShellCommand(
   ].filter(Boolean);
   const out = stdoutText.trim();
   const err = stderrText.trim();
-  if (!out && !err) return headers.join("\n");
-  return [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""].filter(Boolean).join("\n\n");
+  if (!out && !err) return { output: headers.join("\n"), timedOut };
+  return {
+    output: [headers.join("\n"), out ? `stdout:\n${out}` : "", err ? `stderr:\n${err}` : ""]
+      .filter(Boolean)
+      .join("\n\n"),
+    timedOut,
+  };
 }
 
 export function parseExitCode(result: string): number | undefined {
