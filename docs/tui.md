@@ -37,7 +37,7 @@ React tree → reconciler → TUI DOM → serialize → terminal output
 
 Centralized in `input.ts`. Raw stdin bytes are parsed into `KeyEvent` objects with named flags (`return`, `tab`, `ctrl`, `meta`, `escape`, arrows, etc.). Supports the [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) for unambiguous modifier reporting, enabled only on terminals with full support (kitty, WezTerm, ghostty, iTerm). The dispatcher fans out to all registered handlers via `InputContext`.
 
-A tty read can end mid-sequence, so the parser is stateful: an incomplete escape sequence, an unterminated bracketed paste, and a partial UTF-8 character are held until the rest of the bytes arrive. Two cases are released rather than held — a lone escape byte, which dispatches as the escape key, and a paste whose terminator never arrives, whose text is released once it passes the paste limit so later keystrokes still reach their handlers. Focus-in reports are recognized here too and drive the focus repair above.
+A tty read can end mid-sequence, so the parser is stateful: an incomplete escape sequence, an unterminated bracketed paste, and a partial UTF-8 character are held until the rest of the bytes arrive. An escape byte that arrives on its own is the escape key and dispatches at once; one at the tail of a longer read is the head of a sequence the boundary cut, and waits for the remainder. A paste whose terminator never arrives is released once it passes the paste limit, so later keystrokes still reach their handlers. Focus-in reports are recognized here too and drive the focus repair above.
 
 Components register handlers through `useInput`. Only handlers with `isActive: true` receive events.
 

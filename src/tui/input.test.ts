@@ -370,6 +370,19 @@ describe("parseKeyInput", () => {
       expect(events[0]?.key.escape).toBe(true);
     });
 
+    test("a burst whose read boundary lands on ESC still yields the arrow", () => {
+      const events = collect(["abc\x1b", "[D"]);
+      expect(events.map((e) => e.input).join("")).toBe("abc");
+      expect(events.filter((e) => e.key.leftArrow)).toHaveLength(1);
+      expect(events.some((e) => e.key.escape)).toBe(false);
+    });
+
+    test("a held ESC at a burst tail is released by the next read", () => {
+      const events = collect(["ab\x1b", "x"]);
+      expect(events.map((e) => e.input).join("")).toBe("abx");
+      expect(events[2]?.key.meta).toBe(true);
+    });
+
     test("a lone escape read dispatches immediately", () => {
       const events = collect(["\x1b"]);
       expect(events).toHaveLength(1);

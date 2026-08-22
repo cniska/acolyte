@@ -307,13 +307,18 @@ function parseBracketedPaste(raw: string, offset: number): PasteScan | null {
 
 /**
  * True when the tail of `raw` is a sequence a later read can still complete.
- * A bare trailing ESC is excluded: it is the escape key, and holding it back would
- * strand the keypress until the user types again. The cost of that choice is that
- * an ESC introducer already followed by `[` or `O` is indistinguishable from Alt+`[`
- * or Alt+`O`, so those two chords lose their character when split across reads.
+ *
+ * A bare trailing ESC is the ambiguous case: it is either the escape key or the head of
+ * a sequence whose remainder is in the next read. What separates them is what preceded it
+ * in the same read. A terminal delivers an escape keypress on its own, so an ESC that
+ * arrives alone is the key and dispatches now; an ESC at the tail of a longer read is the
+ * head of a sequence the read boundary cut, because the bytes ahead of it came from a burst
+ * whose remainder is already on its way. Holding an ESC that arrives alone would strand the
+ * keypress until the user typed again, which is why the distinction is worth drawing.
  */
 function isTruncatedSequence(raw: string, offset: number): boolean {
-  if (raw[offset] !== ESCAPE || offset + 1 >= raw.length) return false;
+  if (raw[offset] !== ESCAPE) return false;
+  if (offset + 1 >= raw.length) return offset > 0;
   if (raw[offset + 1] === "O") return offset + 2 >= raw.length;
   if (raw[offset + 1] !== "[") return false;
   return scanCsi(raw, offset).kind === "truncated";
