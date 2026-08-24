@@ -16,7 +16,7 @@ Keep user-facing copy translatable while keeping protocol and tool contracts lan
 
 - RPC method names and protocol message type identifiers
 - structured payload keys and machine-readable enums
-- tool ids and machine markers in raw tool output
+- tool ids, tool row labels, and machine markers in raw tool output
 - file/line/path metadata emitted for automation and parsing
 - prompt text sent to the model, which stays English so model behavior does not vary by locale
 
