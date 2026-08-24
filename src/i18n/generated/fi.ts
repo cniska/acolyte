@@ -299,9 +299,11 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Asetusta apiKey ei tueta. Käytä sen sijaan ACOLYTE_API_KEY-muuttujaa .env-tiedostossa." },
   ],
   "cli.config.invalid_value": [
-    { kind: "text", value: "Virheellinen arvo avaimelle " },
+    { kind: "text", value: "Virheellinen " },
     { kind: "arg", name: "key" },
     { kind: "text", value: ": " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". " },
     { kind: "arg", name: "reason" },
   ],
   "cli.config.keys": [
@@ -314,6 +316,25 @@ export const FI_MESSAGES = {
     { kind: "text", value: "): " },
     { kind: "arg", name: "reason" },
   ],
+  "cli.config.reason.at_least": [
+    { kind: "text", value: "Käytä lukua, joka on vähintään " },
+    { kind: "arg", name: "min" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.at_most": [
+    { kind: "text", value: "Käytä lukua, joka on enintään " },
+    { kind: "arg", name: "max" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.boolean": [{ kind: "text", value: "Käytä true tai false." }],
+  "cli.config.reason.https": [{ kind: "text", value: "Käytä HTTPS:ää, ellei osoite osoita localhostiin." }],
+  "cli.config.reason.one_of": [
+    { kind: "text", value: "Käytä " },
+    { kind: "arg", name: "options" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.valid": [{ kind: "text", value: "Käytä kelvollista arvoa." }],
+  "cli.config.reason.whole_number": [{ kind: "text", value: "Käytä kokonaislukua." }],
   "cli.config.removed": [
     { kind: "text", value: "Asetus " },
     { kind: "arg", name: "key" },

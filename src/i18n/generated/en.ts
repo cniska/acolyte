@@ -292,9 +292,11 @@ export const EN_MESSAGES = {
     { kind: "text", value: "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead." },
   ],
   "cli.config.invalid_value": [
-    { kind: "text", value: "Invalid value for " },
+    { kind: "text", value: "Invalid " },
     { kind: "arg", name: "key" },
     { kind: "text", value: ": " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". " },
     { kind: "arg", name: "reason" },
   ],
   "cli.config.keys": [
@@ -307,6 +309,25 @@ export const EN_MESSAGES = {
     { kind: "text", value: " config: " },
     { kind: "arg", name: "reason" },
   ],
+  "cli.config.reason.at_least": [
+    { kind: "text", value: "Use a number no lower than " },
+    { kind: "arg", name: "min" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.at_most": [
+    { kind: "text", value: "Use a number no higher than " },
+    { kind: "arg", name: "max" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.boolean": [{ kind: "text", value: "Use true or false." }],
+  "cli.config.reason.https": [{ kind: "text", value: "Use HTTPS unless it targets localhost." }],
+  "cli.config.reason.one_of": [
+    { kind: "text", value: "Use " },
+    { kind: "arg", name: "options" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.valid": [{ kind: "text", value: "Use a valid value." }],
+  "cli.config.reason.whole_number": [{ kind: "text", value: "Use a whole number." }],
   "cli.config.removed": [
     { kind: "text", value: "Removed config " },
     { kind: "arg", name: "key" },

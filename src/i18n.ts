@@ -48,3 +48,8 @@ export function setLocale(locale: TranslationLocale): void {
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
   return render(TRANSLATIONS[activeLocale][key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
 }
+
+/** Join alternatives the way the active language does, so a list of choices reads as one phrase. */
+export function formatChoices(items: string[]): string {
+  return new Intl.ListFormat(activeLocale, { type: "disjunction" }).format(items);
+}

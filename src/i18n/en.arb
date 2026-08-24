@@ -681,11 +681,14 @@
   "@cli.config.api_key_unsupported": {
     "description": "Shown when the user tries to set an api key through config. 'apiKey' and 'ACOLYTE_API_KEY' are literal identifiers and '.env' a literal filename; none of them are translated."
   },
-  "cli.config.invalid_value": "Invalid value for {key}: {reason}",
+  "cli.config.invalid_value": "Invalid {key}: {value}. {reason}",
   "@cli.config.invalid_value": {
-    "description": "Shown when a config value fails validation (config.ts:259,271). {key} is a literal config key name; {reason} is a validation message that is not itself translated.",
+    "description": "Shown when a config value fails validation (config.ts). {key} is a literal config key name, {value} is what the user typed, and {reason} is a translated directive sentence from the cli.config.reason.* keys.",
     "placeholders": {
       "key": {
+        "type": "String"
+      },
+      "value": {
         "type": "String"
       },
       "reason": {
@@ -713,6 +716,49 @@
         "type": "String"
       }
     }
+  },
+  "cli.config.reason.at_least": "Use a number no lower than {min}.",
+  "@cli.config.reason.at_least": {
+    "description": "Directive completing cli.config.invalid_value when a number is below its allowed range. {min} is the lowest accepted value.",
+    "placeholders": {
+      "min": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.config.reason.at_most": "Use a number no higher than {max}.",
+  "@cli.config.reason.at_most": {
+    "description": "Directive completing cli.config.invalid_value when a number is above its allowed range. {max} is the highest accepted value.",
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.config.reason.boolean": "Use true or false.",
+  "@cli.config.reason.boolean": {
+    "description": "Directive completing cli.config.invalid_value when a key takes a boolean. Keep the literals true and false untranslated: the user types them."
+  },
+  "cli.config.reason.https": "Use HTTPS unless it targets localhost.",
+  "@cli.config.reason.https": {
+    "description": "Directive completing cli.config.invalid_value when embeddingBaseUrl is not HTTPS and does not target localhost. Keep HTTPS and localhost untranslated."
+  },
+  "cli.config.reason.one_of": "Use {options}.",
+  "@cli.config.reason.one_of": {
+    "description": "Directive completing cli.config.invalid_value when a key accepts a fixed set. {options} is the allowed values already joined for this language.",
+    "placeholders": {
+      "options": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.config.reason.valid": "Use a valid value.",
+  "@cli.config.reason.valid": {
+    "description": "Directive completing cli.config.invalid_value for a validation failure with no more specific directive."
+  },
+  "cli.config.reason.whole_number": "Use a whole number.",
+  "@cli.config.reason.whole_number": {
+    "description": "Directive completing cli.config.invalid_value when a key takes an integer and the value was not one."
   },
   "cli.config.removed": "Removed config {key} ({scope}).",
   "@cli.config.removed": {

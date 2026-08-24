@@ -122,9 +122,16 @@ export type MessageArgs = {
   "cli.auth.timeout": never;
   "cli.auth.waiting": never;
   "cli.config.api_key_unsupported": never;
-  "cli.config.invalid_value": { key: string | number; reason: string | number };
+  "cli.config.invalid_value": { key: string | number; reason: string | number; value: string | number };
   "cli.config.keys": { keys: string | number };
   "cli.config.parse_failed": { reason: string | number; scope: string | number };
+  "cli.config.reason.at_least": { min: string | number };
+  "cli.config.reason.at_most": { max: string | number };
+  "cli.config.reason.boolean": never;
+  "cli.config.reason.https": never;
+  "cli.config.reason.one_of": { options: string | number };
+  "cli.config.reason.valid": never;
+  "cli.config.reason.whole_number": never;
   "cli.config.removed": { key: string | number; scope: string | number };
   "cli.config.saved": { key: string | number; scope: string | number };
   "cli.config.scope": never;

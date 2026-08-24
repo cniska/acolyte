@@ -303,9 +303,11 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Inställningen apiKey stöds inte. Använd ACOLYTE_API_KEY i .env i stället." },
   ],
   "cli.config.invalid_value": [
-    { kind: "text", value: "Ogiltigt värde för " },
+    { kind: "text", value: "Ogiltig " },
     { kind: "arg", name: "key" },
     { kind: "text", value: ": " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". " },
     { kind: "arg", name: "reason" },
   ],
   "cli.config.keys": [
@@ -318,6 +320,25 @@ export const SV_MESSAGES = {
     { kind: "text", value: "): " },
     { kind: "arg", name: "reason" },
   ],
+  "cli.config.reason.at_least": [
+    { kind: "text", value: "Använd ett tal som är minst " },
+    { kind: "arg", name: "min" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.at_most": [
+    { kind: "text", value: "Använd ett tal som är högst " },
+    { kind: "arg", name: "max" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.boolean": [{ kind: "text", value: "Använd true eller false." }],
+  "cli.config.reason.https": [{ kind: "text", value: "Använd HTTPS om adressen inte pekar på localhost." }],
+  "cli.config.reason.one_of": [
+    { kind: "text", value: "Använd " },
+    { kind: "arg", name: "options" },
+    { kind: "text", value: "." },
+  ],
+  "cli.config.reason.valid": [{ kind: "text", value: "Använd ett giltigt värde." }],
+  "cli.config.reason.whole_number": [{ kind: "text", value: "Använd ett heltal." }],
   "cli.config.removed": [
     { kind: "text", value: "Inställningen " },
     { kind: "arg", name: "key" },
