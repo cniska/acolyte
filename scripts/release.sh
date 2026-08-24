@@ -44,9 +44,7 @@ fi
 
 echo "$old → $new"
 
-# Verify against the bumped version. Unset the stale npm_package_version the
-# outer `bun run` exported before the bump — resolveCliVersion prefers it.
-env -u npm_package_version bun run verify
+bun run verify
 
 # Where complexity sits in the release being cut. Reported, never a gate: the score is a
 # ratio, so removing simple code raises it, and a threshold would fail good releases.

@@ -14,16 +14,13 @@ export function extractVersionFromPackageJsonText(text: string): string | null {
 export function resolveCliVersion(): string {
   const compiled = process.env.ACOLYTE_COMPILED_VERSION;
   if (compiled && compiled.trim().length > 0) return compiled.trim();
-  if (process.env.npm_package_version && process.env.npm_package_version.trim().length > 0)
-    return process.env.npm_package_version.trim();
-  const candidates = [`${process.cwd()}/package.json`, `${import.meta.dir}/../package.json`];
-  for (const path of candidates) {
-    try {
-      const version = extractVersionFromPackageJsonText(readFileSync(path, "utf8"));
-      if (version) return version;
-    } catch {
-      // Try next candidate.
-    }
+  // Only this install's own manifest can answer: the working directory and npm_package_version
+  // both describe the user's project, so reading them reports the workspace's version as ours.
+  try {
+    const version = extractVersionFromPackageJsonText(readFileSync(`${import.meta.dir}/../package.json`, "utf8"));
+    if (version) return version;
+  } catch {
+    // Fall through to the unknown-version marker.
   }
   return "dev";
 }
@@ -49,42 +46,57 @@ function gitDirFor(repoRoot: string): string | null {
   }
 }
 
+/** A linked worktree's git dir holds only HEAD and its own index; refs live in the main git dir,
+ *  which `commondir` points at. Git resolves refs through that pointer, so this must too. */
+function refSearchDirs(gitDir: string): string[] {
+  try {
+    const commonDir = readFileSync(join(gitDir, "commondir"), "utf8").trim();
+    if (!commonDir) return [gitDir];
+    return [gitDir, commonDir.startsWith("/") ? commonDir : join(gitDir, commonDir)];
+  } catch {
+    return [gitDir];
+  }
+}
+
+function resolveRef(gitDir: string, ref: string): string | null {
+  for (const dir of refSearchDirs(gitDir)) {
+    try {
+      const commit = shortCommit(readFileSync(join(dir, ref), "utf8"));
+      if (commit) return commit;
+    } catch {
+      // Loose ref absent here; try this dir's packed refs, then the next dir.
+    }
+    try {
+      const line = readFileSync(join(dir, "packed-refs"), "utf8")
+        .split("\n")
+        .find(
+          (value) => value.length > 0 && !value.startsWith("#") && !value.startsWith("^") && value.endsWith(` ${ref}`),
+        );
+      if (line) return shortCommit(line.split(" ")[0] ?? "");
+    } catch {
+      // No packed refs here either.
+    }
+  }
+  return null;
+}
+
 function resolveCommitFromGitDir(gitDir: string): string | null {
   try {
     const head = readFileSync(join(gitDir, "HEAD"), "utf8").trim();
-    if (head.startsWith("ref:")) {
-      const ref = head.slice("ref:".length).trim();
-      const refPath = join(gitDir, ref);
-      try {
-        return shortCommit(readFileSync(refPath, "utf8"));
-      } catch {
-        const packed = readFileSync(join(gitDir, "packed-refs"), "utf8");
-        const line = packed
-          .split("\n")
-          .find(
-            (value) =>
-              value.length > 0 && !value.startsWith("#") && !value.startsWith("^") && value.endsWith(` ${ref}`),
-          );
-        if (!line) return null;
-        const hash = line.split(" ")[0];
-        return shortCommit(hash ?? "");
-      }
-    }
+    if (head.startsWith("ref:")) return resolveRef(gitDir, head.slice("ref:".length).trim());
     return shortCommit(head);
   } catch {
     return null;
   }
 }
 
+export function resolveCommitShortFor(root: string): string | null {
+  const gitDir = gitDirFor(root);
+  return gitDir ? resolveCommitFromGitDir(gitDir) : null;
+}
+
 export function resolveCliCommitShort(): string | null {
-  const roots = [join(import.meta.dir, "..")];
-  for (const root of roots) {
-    const gitDir = gitDirFor(root);
-    if (!gitDir) continue;
-    const commit = resolveCommitFromGitDir(gitDir);
-    if (commit) return commit;
-  }
-  return null;
+  return resolveCommitShortFor(join(import.meta.dir, ".."));
 }
 
 export function formatVersionWithCommit(version: string, commit: string | null): string {
