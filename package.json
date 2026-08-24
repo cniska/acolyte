@@ -18,6 +18,8 @@
     "serve": "bun --env-file=.env run src/server.ts",
     "serve:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run scripts/wait-server.ts",
+    "messages": "bun run scripts/build-messages.ts && bunx biome check --write src/i18n/generated",
+    "messages:check": "bun run messages && git diff --exit-code -- src/i18n/generated",
     "format": "bunx biome format --write .",
     "lint": "bunx biome check --error-on-warnings .",
     "typecheck": "bunx tsc --noEmit",
@@ -28,7 +30,7 @@
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
     "audit": "bun audit",
-    "verify": "bun run lint && bun run typecheck && bun test && bun run audit",
+    "verify": "bun run lint && bun run typecheck && bun run messages:check && bun test && bun run audit",
     "benchmark": "bun run scripts/benchmark.ts",
     "release": "bash scripts/release.sh"
   },
