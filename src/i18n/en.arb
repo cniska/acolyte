@@ -462,7 +462,7 @@
   },
   "cli.auth.api_key.empty": "{envKey} cannot be empty.",
   "@cli.auth.api_key.empty": {
-    "description": "TODO",
+    "description": "Shown when the API key prompt was submitted with no value. {envKey} is a literal environment variable name such as 'OPENAI_API_KEY'.",
     "placeholders": {
       "envKey": {
         "type": "String"
@@ -471,7 +471,7 @@
   },
   "cli.auth.failed": "Authorization failed: {reason}",
   "@cli.auth.failed": {
-    "description": "TODO",
+    "description": "Shown when provider authorization failed. {reason} is an error string from the provider and is not itself translated.",
     "placeholders": {
       "reason": {
         "type": "String"
@@ -480,7 +480,7 @@
   },
   "cli.auth.invalid_provider": "Invalid provider. Use {providers}.",
   "@cli.auth.invalid_provider": {
-    "description": "TODO",
+    "description": "Shown when the named provider is not recognized. {providers} is a comma-joined list of literal provider ids and must not be translated.",
     "placeholders": {
       "providers": {
         "type": "String"
@@ -489,7 +489,7 @@
   },
   "cli.auth.logout": "Removed credentials for {provider}.",
   "@cli.auth.logout": {
-    "description": "TODO",
+    "description": "Confirmation that all stored credentials for a provider were removed. {provider} is a provider id such as 'openai', untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -498,7 +498,7 @@
   },
   "cli.auth.logout.key": "Removed API key for {provider}.",
   "@cli.auth.logout.key": {
-    "description": "TODO",
+    "description": "Confirmation that a stored API key was removed. {provider} is a provider id, untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -507,7 +507,7 @@
   },
   "cli.auth.logout.key_none": "No API key stored for {provider}.",
   "@cli.auth.logout.key_none": {
-    "description": "TODO",
+    "description": "Shown when logout found no stored API key for the provider. {provider} is a provider id, untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -516,7 +516,7 @@
   },
   "cli.auth.logout.subscription": "Disconnected {provider} subscription.",
   "@cli.auth.logout.subscription": {
-    "description": "TODO",
+    "description": "Confirmation that a connected subscription was disconnected. {provider} is a provider id, untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -525,7 +525,7 @@
   },
   "cli.auth.logout.subscription_none": "No {provider} subscription connected.",
   "@cli.auth.logout.subscription_none": {
-    "description": "TODO",
+    "description": "Shown when logout found no connected subscription for the provider. {provider} is a provider id, untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -534,7 +534,7 @@
   },
   "cli.auth.logout_none": "No credentials stored for {provider}.",
   "@cli.auth.logout_none": {
-    "description": "TODO",
+    "description": "Shown when logout found no credentials at all for the provider. {provider} is a provider id, untranslated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -543,23 +543,23 @@
   },
   "cli.auth.method.conflict": "Use only one of --key or --subscription.",
   "@cli.auth.method.conflict": {
-    "description": "TODO"
+    "description": "Shown when both --key and --subscription are passed. Both are literal flag names and must not be translated."
   },
   "cli.auth.method.invalid": "Invalid method. Use key or subscription.",
   "@cli.auth.method.invalid": {
-    "description": "TODO"
+    "description": "Shown when the method answer was not recognized. 'key' and 'subscription' are the literal accepted inputs (cli-auth.ts:209-214) and must not be translated."
   },
   "cli.auth.opening": "Opening browser to authorize with OpenAI…",
   "@cli.auth.opening": {
-    "description": "TODO"
+    "description": "Progress line shown before a browser is opened for provider authorization. 'OpenAI' is a company name and stays as-is."
   },
   "cli.auth.override.cancelled": "Left the existing key unchanged.",
   "@cli.auth.override.cancelled": {
-    "description": "TODO"
+    "description": "Shown when the user declined to overwrite a stored API key."
   },
   "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]: ",
   "@cli.auth.override.confirm": {
-    "description": "TODO",
+    "description": "Confirmation prompt before overwriting a stored API key (cli-auth.ts:118). {envKey} is a literal environment variable name. '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:119), so leave those letters untranslated. Ends with a colon and a trailing space.",
     "placeholders": {
       "envKey": {
         "type": "String"
@@ -568,23 +568,23 @@
   },
   "cli.auth.port_in_use": "Port 1455 is in use. OpenAI requires this exact port. Close the process using it (often Codex CLI or another login attempt) and retry.",
   "@cli.auth.port_in_use": {
-    "description": "TODO"
+    "description": "Shown when the local callback port is occupied. '1455', 'OpenAI' and 'Codex CLI' are literal values and product names that must not be translated; the port number in particular is a hard requirement the user must act on."
   },
   "cli.auth.prompt.api_key": "API key: ",
   "@cli.auth.prompt.api_key": {
-    "description": "TODO"
+    "description": "Interactive prompt asking the user to type an API key (cli-auth.ts:124). Ends with a colon and a trailing space because input continues on the same line; keep both."
   },
   "cli.auth.prompt.method": "Method [key|subscription]: ",
   "@cli.auth.prompt.method": {
-    "description": "TODO"
+    "description": "Interactive prompt asking which authentication method to use (cli-auth.ts:231). '[key|subscription]' lists the literal words the parser accepts (cli-auth.ts:209-214) and must not be translated. Ends with a colon and a trailing space; keep both."
   },
   "cli.auth.provider.required": "Provider required. Use: acolyte auth <provider>",
   "@cli.auth.provider.required": {
-    "description": "TODO"
+    "description": "Shown when 'auth' is run with no provider. The text after 'Use:' is literal command syntax, including the '<provider>' placeholder, and must not be translated."
   },
   "cli.auth.saved": "Saved {envKey} in {path}",
   "@cli.auth.saved": {
-    "description": "TODO",
+    "description": "Confirmation that a key was written to disk. {envKey} is a literal environment variable name; {path} is a filesystem path shown verbatim.",
     "placeholders": {
       "envKey": {
         "type": "String"
@@ -596,7 +596,7 @@
   },
   "cli.auth.status.line": "{provider} ({methods})",
   "@cli.auth.status.line": {
-    "description": "TODO",
+    "description": "One row of the auth status listing. {provider} is a provider id; {methods} is a comma-joined list of already-translated method names, or cli.auth.status.none_method when there are none.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -608,15 +608,15 @@
   },
   "cli.auth.status.none_method": "none",
   "@cli.auth.status.none_method": {
-    "description": "TODO"
+    "description": "Stands in for the method list in cli.auth.status.line when a provider has no credentials. Lowercase, because it sits inside parentheses mid-row."
   },
   "cli.auth.subscription.override.cancelled": "Left the existing subscription unchanged.",
   "@cli.auth.subscription.override.cancelled": {
-    "description": "TODO"
+    "description": "Shown when the user declined to replace a connected subscription."
   },
   "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]: ",
   "@cli.auth.subscription.override.confirm": {
-    "description": "TODO",
+    "description": "Confirmation prompt before replacing a connected subscription (cli-auth.ts:141). '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:142), so leave those letters untranslated. Ends with a colon and a trailing space because the user answers on the same line.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -625,7 +625,7 @@
   },
   "cli.auth.subscription.unsupported": "{provider} does not support subscription auth. Use --key.",
   "@cli.auth.subscription.unsupported": {
-    "description": "TODO",
+    "description": "Shown when a provider offers no subscription authentication. {provider} is a provider id; '--key' is a literal flag name and must not be translated.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -634,15 +634,15 @@
   },
   "cli.auth.success": "Connected. Supported models now use your OpenAI subscription.",
   "@cli.auth.success": {
-    "description": "TODO"
+    "description": "Confirmation after a subscription is connected. 'OpenAI' is a company name and stays as-is."
   },
   "cli.auth.timeout": "Authorization timed out. Please try again.",
   "@cli.auth.timeout": {
-    "description": "TODO"
+    "description": "Shown when browser authorization did not finish in time. Two sentences: the outcome, then the suggestion."
   },
   "cli.auth.waiting": "Waiting for authorization…",
   "@cli.auth.waiting": {
-    "description": "TODO"
+    "description": "Progress line shown while waiting for the browser authorization to finish."
   },
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",
   "@cli.config.api_key_unsupported": {
@@ -917,24 +917,24 @@
   },
   "cli.memory.archive.none": "No retired memories.",
   "@cli.memory.archive.none": {
-    "description": "TODO"
+    "description": "Shown by the 'memory' command with --archived when no retired notes exist (cli-memory.ts:69)."
   },
   "cli.memory.none": "No memories saved.",
   "@cli.memory.none": {
-    "description": "TODO"
+    "description": "Shown by the 'memory' command when no notes are stored (cli-memory.ts:69)."
   },
   "cli.memory.restore.none": "No retired memory found for: {ids}",
   "@cli.memory.restore.none": {
-    "description": "TODO",
+    "description": "Shown when 'memory restore' matched no retired notes. {ids} is a comma-joined list of identifiers as the user supplied them.",
     "placeholders": {
       "ids": {
         "type": "String"
       }
     }
   },
-  "cli.memory.restored": "Restored {count} memory: {ids}.",
+  "cli.memory.restored": "Restored {count, plural, one {# memory} other {# memories}}: {ids}.",
   "@cli.memory.restored": {
-    "description": "TODO",
+    "description": "Confirmation after retired notes are restored. {count} is how many; {ids} is a comma-joined list of their identifiers.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -946,7 +946,7 @@
   },
   "cli.memory.saved": "Saved {scope} memory {id}.",
   "@cli.memory.saved": {
-    "description": "TODO",
+    "description": "Confirmation after the CLI stores a note. {scope} is an untranslated lowercase English word, 'project' or 'user'; {id} is the new note's identifier.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -958,7 +958,7 @@
   },
   "cli.server.already_running": "Server already running on port {port} (pid {pid})",
   "@cli.server.already_running": {
-    "description": "TODO",
+    "description": "Reported when a server was already up, so nothing was launched. {port} and {pid} are numbers; 'pid' is a literal machine term.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -970,23 +970,23 @@
   },
   "cli.server.col.pid": "PID",
   "@cli.server.col.pid": {
-    "description": "TODO"
+    "description": "Column heading for the process id in the 'ps' table. 'PID' is a literal machine term and is normally left as-is."
   },
   "cli.server.col.port": "Port",
   "@cli.server.col.port": {
-    "description": "TODO"
+    "description": "Column heading for the port number in the 'ps' table. Narrow column."
   },
   "cli.server.col.uptime": "Uptime",
   "@cli.server.col.uptime": {
-    "description": "TODO"
+    "description": "Column heading for how long a server has been running, in the 'ps' table. Narrow column."
   },
   "cli.server.no_servers_running": "No servers running",
   "@cli.server.no_servers_running": {
-    "description": "TODO"
+    "description": "Shown by 'ps' and 'stop' when no servers are running (cli-daemon.ts:65,143). No trailing period, matching the neighbouring server lines."
   },
   "cli.server.restarted": "Restarted server on port {port} (pid {pid})",
   "@cli.server.restarted": {
-    "description": "TODO",
+    "description": "Reported after a server is stopped and started again. {port} and {pid} are numbers; 'pid' is a literal machine term.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -998,7 +998,7 @@
   },
   "cli.server.spawn_exited": "Server process exited before becoming healthy. Check logs: {logPath}",
   "@cli.server.spawn_exited": {
-    "description": "TODO",
+    "description": "Shown when a spawned server died before reporting healthy (server-daemon.ts:96). {logPath} is a filesystem path shown verbatim.",
     "placeholders": {
       "logPath": {
         "type": "String"
@@ -1007,7 +1007,7 @@
   },
   "cli.server.start_timeout": "Timed out waiting for server at {url}",
   "@cli.server.start_timeout": {
-    "description": "TODO",
+    "description": "Shown when a server did not become reachable in time (server-daemon.ts:100,227). {url} is the address that was polled, shown verbatim.",
     "placeholders": {
       "url": {
         "type": "String"
@@ -1016,7 +1016,7 @@
   },
   "cli.server.started": "Started server on port {port} (pid {pid})",
   "@cli.server.started": {
-    "description": "TODO",
+    "description": "Reported when a server was launched. {port} and {pid} are numbers; 'pid' is a literal machine term kept in parentheses.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -1028,7 +1028,7 @@
   },
   "cli.server.stop_manual": "Unable to stop server on port {port}. Stop it manually.",
   "@cli.server.stop_manual": {
-    "description": "TODO",
+    "description": "Shown when a server did not respond to a stop request. {port} is a number. Two sentences: the failure, then what the user must do.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -1037,7 +1037,7 @@
   },
   "cli.server.stop_refused": "Server on port {port} is running a turn: {tasks}. It stays up so that work is not lost. Cancel the turn, or pass --force to stop anyway.",
   "@cli.server.stop_refused": {
-    "description": "TODO",
+    "description": "Shown when stop is declined because a turn is in flight. {port} is a number; {tasks} is a comma-joined list of task identifiers. Three sentences: the state, why the server stays up, then the two ways forward. '--force' is a literal flag name and must not be translated.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -1049,7 +1049,7 @@
   },
   "cli.server.stopped": "Stopped server on port {port} (pid {pid})",
   "@cli.server.stopped": {
-    "description": "TODO",
+    "description": "Reported after a server is shut down. {port} and {pid} are numbers; 'pid' is a literal machine term.",
     "placeholders": {
       "port": {
         "type": "number"
@@ -1061,7 +1061,7 @@
   },
   "cli.skill.not_found": "Skill not found: {skill}",
   "@cli.skill.not_found": {
-    "description": "Shown by the skill CLI command when no skill matches the requested name. {skill} is the name as typed, untranslated.",
+    "description": "Shown by the 'skill' command when no skill matches the requested name (cli-skill.ts:107). {skill} is the name as typed, untranslated.",
     "placeholders": {
       "skill": {
         "type": "String"
@@ -1070,15 +1070,15 @@
   },
   "cli.status.local_start_hint": "Server is not running. Start it with: acolyte start",
   "@cli.status.local_start_hint": {
-    "description": "TODO"
+    "description": "Shown by 'status' when no local server is running. The text after 'Start it with:' is a literal command and must not be translated."
   },
   "cli.tool.failed": "Tool command failed",
   "@cli.tool.failed": {
-    "description": "TODO"
+    "description": "Shown when a directly-invoked tool failed. No trailing period; details follow separately."
   },
   "cli.tool.invalid_input": "Invalid input for {tool}:",
   "@cli.tool.invalid_input": {
-    "description": "TODO",
+    "description": "Header printed above a tool's validation errors (cli-tool.ts:86). {tool} is the tool id. Ends with a colon because the errors follow on the next lines.",
     "placeholders": {
       "tool": {
         "type": "String"
@@ -1087,7 +1087,7 @@
   },
   "cli.tool.invalid_json": "Invalid JSON input: {message}",
   "@cli.tool.invalid_json": {
-    "description": "TODO",
+    "description": "Shown when the tool input could not be parsed as JSON. {message} is the parser's own error text and is not translated.",
     "placeholders": {
       "message": {
         "type": "String"
@@ -1096,15 +1096,15 @@
   },
   "cli.tool.not_object": "Input must be a JSON object.",
   "@cli.tool.not_object": {
-    "description": "TODO"
+    "description": "Shown when the tool input parsed as JSON but was not an object."
   },
   "cli.tool.too_many_args": "Too many arguments. Pass the tool's input as one JSON object.",
   "@cli.tool.too_many_args": {
-    "description": "TODO"
+    "description": "Shown when 'tool' is given extra arguments. Two sentences: the problem, then the correct form."
   },
   "cli.tool.unknown": "Unknown tool \"{tool}\".",
   "@cli.tool.unknown": {
-    "description": "TODO",
+    "description": "Shown when the named tool does not exist. {tool} is the id as typed. The surrounding double quotes are part of the message.",
     "placeholders": {
       "tool": {
         "type": "String"
@@ -1113,7 +1113,7 @@
   },
   "cli.tool.usage": "Usage: acolyte tool <tool-id> ['<json-input>']",
   "@cli.tool.usage": {
-    "description": "TODO"
+    "description": "Usage line for the 'tool' command (cli-tool.ts:20). Everything after 'Usage:' is literal command syntax, including the bracketed and angle-bracketed placeholders, and must not be translated."
   },
   "cli.trace.col.model": "Model",
   "@cli.trace.col.model": {
@@ -1159,15 +1159,15 @@
   },
   "cli.update.daemon_busy": "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
   "@cli.update.daemon_busy": {
-    "description": "TODO"
+    "description": "Shown after an update when the old server could not be replaced because a turn was in flight. 'acolyte restart' is a literal command and must not be translated."
   },
   "cli.update.daemon_left_running": "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
   "@cli.update.daemon_left_running": {
-    "description": "TODO"
+    "description": "Shown after an update when the old server refused to stop. 'acolyte ps' and 'acolyte start' are literal commands and must not be translated. No trailing period, matching the source line."
   },
   "error.connection.generic": "Cannot reach server at {url}. Check apiUrl and server availability.",
   "@error.connection.generic": {
-    "description": "TODO",
+    "description": "Shown when the client cannot reach the server and no more specific cause applies (error-messages.ts:102). {url} is the address that was tried; 'apiUrl' is a literal config key name.",
     "placeholders": {
       "url": {
         "type": "String"
@@ -1176,7 +1176,7 @@
   },
   "error.connection.loopback_default": "Cannot reach server at {url}. Start it with: acolyte start",
   "@error.connection.loopback_default": {
-    "description": "TODO",
+    "description": "Shown when the client cannot reach a local server on the default address (error-messages.ts:98). {url} is the address tried; the text after 'Start it with:' is a literal command and must not be translated.",
     "placeholders": {
       "url": {
         "type": "String"
@@ -1185,7 +1185,7 @@
   },
   "error.connection.loopback_https": "Cannot reach server at {url}. Local daemon uses http:// (not https://); update apiUrl or run an HTTPS server.",
   "@error.connection.loopback_https": {
-    "description": "TODO",
+    "description": "Shown when a local address was configured with https, which the local server does not serve (error-messages.ts:97). {url} is the address tried; 'http://', 'https://' and 'apiUrl' are literal values and must not be translated.",
     "placeholders": {
       "url": {
         "type": "String"
@@ -1194,15 +1194,15 @@
   },
   "error.daemon.lost": "The server stopped while this turn was running, so the turn was lost. The session is intact — send the message again to continue.",
   "@error.daemon.lost": {
-    "description": "TODO"
+    "description": "Shown when the server died mid-turn (client-rpc.ts:277). Two sentences: what was lost, then the reassurance that the session survived and the message can be resent. The dash is an em dash."
   },
   "error.model.not_configured": "No model configured. Choose a model with /model.",
   "@error.model.not_configured": {
-    "description": "TODO"
+    "description": "Shown when no model has been selected yet. '/model' is a literal slash command and must not be translated."
   },
   "error.model.provider_unavailable": "Model \"{model}\" is unavailable. Check provider credentials and try again.",
   "@error.model.provider_unavailable": {
-    "description": "TODO",
+    "description": "Shown when a model cannot be reached and its provider is unknown or unhandled. {model} is a model id, untranslated; the surrounding double quotes are part of the message.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -1211,7 +1211,7 @@
   },
   "error.model.provider_unavailable.anthropic": "Model \"{model}\" is unavailable. Set ANTHROPIC_API_KEY and ensure anthropicBaseUrl ends with /v1.",
   "@error.model.provider_unavailable.anthropic": {
-    "description": "TODO",
+    "description": "Provider-specific form of error.model.provider_unavailable. {model} is a model id; 'ANTHROPIC_API_KEY', 'anthropicBaseUrl' and '/v1' are literal names and values that must not be translated.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -1220,7 +1220,7 @@
   },
   "error.model.provider_unavailable.google": "Model \"{model}\" is unavailable. Set GOOGLE_API_KEY and try again.",
   "@error.model.provider_unavailable.google": {
-    "description": "TODO",
+    "description": "Provider-specific form of error.model.provider_unavailable. {model} is a model id; 'GOOGLE_API_KEY' is a literal environment variable name.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -1229,7 +1229,7 @@
   },
   "error.model.provider_unavailable.openai": "Model \"{model}\" is unavailable. Set OPENAI_API_KEY (or configure an OpenAI-compatible base URL) and try again.",
   "@error.model.provider_unavailable.openai": {
-    "description": "TODO",
+    "description": "Provider-specific form of error.model.provider_unavailable. {model} is a model id; 'OPENAI_API_KEY' is a literal environment variable name. 'OpenAI-compatible' refers to the API shape.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -1238,7 +1238,7 @@
   },
   "error.model.provider_unavailable.vercel": "Model \"{model}\" is unavailable. Set AI_GATEWAY_API_KEY and try again.",
   "@error.model.provider_unavailable.vercel": {
-    "description": "TODO",
+    "description": "Provider-specific form of error.model.provider_unavailable. {model} is a model id; 'AI_GATEWAY_API_KEY' is a literal environment variable name.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -1247,59 +1247,59 @@
   },
   "error.prompt.quota_exceeded": "Provider quota exceeded. Add billing/credits or switch model/provider.",
   "@error.prompt.quota_exceeded": {
-    "description": "TODO"
+    "description": "Shown when the provider reports the account is out of quota. Two sentences: the cause, then the two ways forward."
   },
   "error.prompt.request_failed": "Request failed. Retry and check server logs if it keeps failing.",
   "@error.prompt.request_failed": {
-    "description": "TODO"
+    "description": "Shown when a request failed without a more specific cause. Two sentences: the outcome, then what to do if it persists."
   },
   "error.prompt.server_timed_out": "Server request timed out. Retry or reduce request scope.",
   "@error.prompt.server_timed_out": {
-    "description": "TODO"
+    "description": "Shown when the server took too long to answer. Two sentences: the outcome, then the two ways forward."
   },
   "error.prompt.server_unavailable": "Server unavailable. Start the server and retry.",
   "@error.prompt.server_unavailable": {
-    "description": "TODO"
+    "description": "Shown when the server could not be reached for a prompt. Two sentences: the state, then what to do."
   },
   "error.reply_timeout": "No reply within the timeout, so this client closed the connection. The session is intact — send the message again to continue.",
   "@error.reply_timeout": {
-    "description": "TODO"
+    "description": "Shown when the client gave up waiting for a reply and closed the connection (client-rpc.ts:264). Two sentences: what happened, then the reassurance that the session survived. The dash is an em dash."
   },
   "error.unauthorized": "The server rejected this connection as unauthorized. Check the configured API key.",
   "@error.unauthorized": {
-    "description": "TODO"
+    "description": "Shown when the server refuses the connection as unauthorized (client-rpc.ts:273). Two sentences: the rejection, then what to check."
   },
   "error.unknown": "Unknown error",
   "@error.unknown": {
-    "description": "TODO"
+    "description": "Last-resort text used when a caught error carried no message of its own (cli-status.ts:70, cli-run.ts:122). No trailing period, because callers print it as a bare value."
   },
   "lifecycle.finish.content_filter": "The response was stopped by a content filter.",
   "@lifecycle.finish.content_filter": {
-    "description": "TODO"
+    "description": "Shown in place of the answer when the provider's content filter stopped the response (lifecycle-generate.ts:134). User-facing, and deliberately states only the fact."
   },
   "lifecycle.finish.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
   "@lifecycle.finish.empty_answer": {
-    "description": "TODO"
+    "description": "Shown in place of the answer when the turn ended with no prose at all (lifecycle-generate.ts:132). User-facing, not sent to the model. Two sentences: what happened, then the two ways forward."
   },
   "lifecycle.finish.provider_error": "The response ended with a provider error. Try again.",
   "@lifecycle.finish.provider_error": {
-    "description": "TODO"
+    "description": "Shown in place of the answer when the provider ended the response with an error (lifecycle-generate.ts:135). User-facing. Two short sentences."
   },
   "lifecycle.finish.truncated": "The response hit the output-token limit and was cut off. Raise the limit or ask for less.",
   "@lifecycle.finish.truncated": {
-    "description": "TODO"
+    "description": "Shown in place of the answer when output hit the token limit mid-response (lifecycle-generate.ts:133). User-facing. Two sentences: what happened, then the two ways forward."
   },
   "lifecycle.stopped_unknown_errors": "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
   "@lifecycle.stopped_unknown_errors": {
-    "description": "TODO"
+    "description": "Becomes the turn's whole answer when it is abandoned after repeated unrecognized errors (lifecycle.ts:213). Two sentences: that it stopped, then the two ways forward."
   },
   "rpc.status.accepted": "Accepted by server…",
   "@rpc.status.accepted": {
-    "description": "TODO"
+    "description": "Transient status shown once the server has taken the request. Present tense, ends with an ellipsis character matching the other status lines."
   },
   "rpc.status.queued": "Queued (position {position})…",
   "@rpc.status.queued": {
-    "description": "TODO",
+    "description": "Transient status shown while the request waits behind others (terminal-chat-layout.ts:383). {position} is the place in the queue, a number. Ends with an ellipsis character.",
     "placeholders": {
       "position": {
         "type": "number"
@@ -1308,15 +1308,15 @@
   },
   "rpc.status.queued.unknown": "Queued…",
   "@rpc.status.queued.unknown": {
-    "description": "TODO"
+    "description": "Transient status used in place of rpc.status.queued when the queue position is not known (terminal-chat-layout.ts:384). Ends with an ellipsis character."
   },
   "run.args.invalid": "Invalid run args",
   "@run.args.invalid": {
-    "description": "TODO"
+    "description": "Shown when the 'run' command's arguments could not be parsed. No trailing period; callers print it as a bare value."
   },
   "run.file_context.attached": "Attached file context from {filePath}",
   "@run.file_context.attached": {
-    "description": "TODO",
+    "description": "Progress line confirming a file was attached to the session before the prompt runs (cli-run.ts:120, cli-skill.ts:133). {filePath} is a filesystem path shown verbatim.",
     "placeholders": {
       "filePath": {
         "type": "String"
