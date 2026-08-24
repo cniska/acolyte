@@ -5,6 +5,11 @@ import type { TranslationLocale } from "./i18n/locales";
 export type TranslationValue = string | number | boolean;
 export type TranslationKey = keyof MessageArgs;
 
+/** Keys whose message takes no placeholders, so a caller holding one can render it without arguments. */
+export type PlainTranslationKey = {
+  [K in TranslationKey]: [MessageArgs[K]] extends [never] ? K : never;
+}[TranslationKey];
+
 type TranslationArgs<K extends TranslationKey> = [MessageArgs[K]] extends [never] ? [] : [MessageArgs[K]];
 
 let activeLocale: TranslationLocale = "en";
@@ -42,10 +47,4 @@ export function setLocale(locale: TranslationLocale): void {
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
   return render(TRANSLATIONS[activeLocale][key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
-}
-
-/** Translate a key chosen at runtime. Falls back to the key itself when the catalog has no such message. */
-export function tDynamic(key: string, vars?: Record<string, TranslationValue>): string {
-  const parts = (TRANSLATIONS[activeLocale] as Record<string, Part[]>)[key];
-  return parts ? render(parts, vars, activeLocale) : key;
 }
