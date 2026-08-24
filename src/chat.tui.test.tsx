@@ -134,7 +134,7 @@ describe("chat tui visual regression: status line and help", () => {
     expect(out).toBe(`${box(["❯"])}\nacolyte · main · gpt-5-mini medium`);
   });
 
-  const HELP_SINGLE_COLUMN = [
+  const HELP_ROWS = [
     "     @path                                         mention path",
     "     /new                                          start new session",
     "     /clear                                        clear transcript",
@@ -151,14 +151,14 @@ describe("chat tui visual regression: status line and help", () => {
     "     /exit                                         exit chat",
   ];
 
-  test("renders help pane without context", () => {
+  test("renders help pane one entry per row", () => {
     const out = renderInputPanel({ showHelp: true });
-    expect(out).toBe([box(["❯"]), ...HELP_SINGLE_COLUMN].join("\n"));
+    expect(out).toBe([box(["\u276f"]), ...HELP_ROWS].join("\n"));
   });
 
-  test("renders single-column help pane at narrow width without context", () => {
-    const out = renderInputPanel({ showHelp: true }, 80);
-    expect(out).toBe([box(["❯"], 80), ...HELP_SINGLE_COLUMN].join("\n"));
+  test("keeps one entry per row on a wide terminal", () => {
+    const out = renderInputPanel({ showHelp: true }, 200);
+    expect(out).toBe([box(["\u276f"], 200), ...HELP_ROWS].join("\n"));
   });
 
   test("renders slash suggestions with selected help and no status line row", () => {

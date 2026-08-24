@@ -118,3 +118,45 @@ test("composer layout windows picker items", () => {
   const rendered = scene.lines.map((line) => line.spans.map((span) => span.text).join(""));
   expect(rendered.some((line) => line.includes("│ › two"))).toBe(true);
 });
+
+test("help entries start their description at one column, whatever the entry lengths", () => {
+  const scene = layoutComposerStatus({
+    presentation: {
+      ...base,
+      showHelp: true,
+      helpEntries: [
+        { key: "@path", description: "mention a path" },
+        { key: "/memory add [--user|--project] <memory text>", description: "remember something for later" },
+        { key: "/new", description: "start a new session" },
+      ],
+    },
+    constraints: { columns: 200, rows: 40 },
+  });
+  const helpLines = scene.lines.filter((line) => line.spans.some((span) => span.role === "muted"));
+  expect(helpLines).toHaveLength(3);
+  const descriptionColumns = helpLines.map((line) =>
+    line.spans
+      .slice(
+        0,
+        line.spans.findIndex((span) => span.role === "muted"),
+      )
+      .reduce((sum, span) => sum + Bun.stringWidth(span.text), 0),
+  );
+  expect(new Set(descriptionColumns).size).toBe(1);
+});
+
+test("help rows separate the command from its argument form", () => {
+  const scene = layoutComposerStatus({
+    presentation: {
+      ...base,
+      showHelp: true,
+      helpEntries: [{ key: "/memory add [--user|--project] <memory text>", description: "add memory note" }],
+    },
+    constraints: { columns: 120, rows: 40 },
+  });
+  const row = scene.lines.at(-1);
+  expect(row?.spans.find((span) => span.role === "plain" && span.text.includes("/memory"))?.text.trim()).toBe(
+    "/memory add",
+  );
+  expect(row?.spans.find((span) => span.role === "faint")?.text.trim()).toBe("[--user|--project] <memory text>");
+});

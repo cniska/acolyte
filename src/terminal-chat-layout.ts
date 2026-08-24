@@ -86,10 +86,15 @@ const BOX_PAD = 1;
 // The column where content begins: transcript rows inset by the box's border+pad thickness so
 // their glyphs align with the boxed composer prompt, even though only the composer draws a frame.
 const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
-// Fixed, not measured: the description column must not move when the entry set changes — a flag
-// flips, a skill loads — so the key column is sized once to the widest usage form it must carry.
-const HELP_KEY_WIDTH = 46;
-const HELP_DESCRIPTION_WIDTH = 22;
+const HELP_COLUMN_GAP = "  ";
+
+// A cheatsheet row leads with what the user types and trails with the argument form; splitting at
+// the first placeholder lets the arguments recede without losing them.
+function splitUsage(usage: string): { command: string; args: string } {
+  const start = usage.search(/\s[<[]/);
+  if (start === -1) return { command: usage, args: "" };
+  return { command: usage.slice(0, start), args: usage.slice(start) };
+}
 function contentWidth(columns: number): number {
   return Math.max(24, columns - 2 * CONTENT_COLUMN);
 }
@@ -544,27 +549,20 @@ export function layoutComposerStatus(input: {
   const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
   const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
-    const columnWidth = 2 + HELP_KEY_WIDTH + HELP_DESCRIPTION_WIDTH;
-    const helpColumns = cw >= columnWidth * 2 ? 2 : 1;
-    const rowsPerColumn =
-      helpColumns === 2 ? Math.ceil(presentation.helpEntries.length / 2) : presentation.helpEntries.length;
-    for (let row = 0; row < rowsPerColumn; row++) {
-      const entries = [
-        presentation.helpEntries[row],
-        helpColumns === 2 ? presentation.helpEntries[row + rowsPerColumn] : undefined,
-      ];
+    const keys = presentation.helpEntries.map((entry) => splitUsage(entry.key));
+    const keyWidth = Math.min(cw - 2, Math.max(0, ...keys.map(({ command, args }) => width(command) + width(args))));
+    for (const [index, entry] of presentation.helpEntries.entries()) {
+      const { command, args } = keys[index] ?? { command: entry.key, args: "" };
+      const pad = " ".repeat(Math.max(0, keyWidth - width(command) - width(args)));
       attached.push({
-        spans: entries.flatMap((entry) =>
-          entry
-            ? [
-                {
-                  text: `  ${truncateToWidth(entry.key, HELP_KEY_WIDTH).padEnd(HELP_KEY_WIDTH)}`,
-                  role: "plain" as const,
-                },
-                { text: entry.description.padEnd(HELP_DESCRIPTION_WIDTH), role: "muted" as const },
-              ]
-            : [],
-        ),
+        spans: [
+          { text: `  ${command}`, role: "plain" as const },
+          { text: `${args}${pad}`, role: "faint" as const },
+          {
+            text: truncateToWidth(`${HELP_COLUMN_GAP}${entry.description}`, Math.max(1, cw - 2 - keyWidth)),
+            role: "muted" as const,
+          },
+        ],
       });
     }
   } else if (presentation.suggestions.kind === "at") {
