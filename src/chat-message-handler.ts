@@ -1,4 +1,6 @@
+import { findCommandEntry } from "./chat-command-registry";
 import { dispatchSlashCommand } from "./chat-commands";
+import { parseSlashCommand } from "./chat-commands-contract";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
@@ -356,7 +358,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       return;
     }
     if (text.startsWith("/")) {
-      input.setRows((current) => [...current, createRow("user", text)]);
+      const entry = findCommandEntry(parseSlashCommand(text).root);
+      input.setRows((current) => [...current, createRow(entry?.isSkill ? "user" : "command", text)]);
     }
     if (!acquireTurn()) return;
     let userText = text;

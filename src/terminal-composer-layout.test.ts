@@ -20,8 +20,10 @@ const base = {
 
 test("composer layout preserves box frame and continuation prompt", () => {
   const scene = layoutComposerStatus({ presentation: base, constraints: { columns: 12, rows: 20 } });
-  expect(scene.lines[0]?.spans[1]?.text).toBe(`╭${"─".repeat(20)}╮`);
-  expect(scene.lines.at(-1)?.spans[1]?.text).toBe(`╰${"─".repeat(20)}╯`);
+  // Below the clamped minimum interior the box keeps its own width rather than the terminal's, so
+  // the rule spans the interior the rows pad to and the corners still meet the vertical borders.
+  expect(scene.lines[0]?.spans[1]?.text).toBe(`╭${"─".repeat(26)}╮`);
+  expect(scene.lines.at(-1)?.spans[1]?.text).toBe(`╰${"─".repeat(26)}╯`);
   expect(scene.lines[2]?.spans[3]?.text).toBe("  ");
   expect(scene.cursor?.row).toBeGreaterThan(0);
 });

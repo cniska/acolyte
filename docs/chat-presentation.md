@@ -58,6 +58,7 @@ finalized section → immutable slice → terminal scrollback → removed from a
 
 - **One owner** — layout owns display-cell measurement, grapheme-safe wrapping, gutters, markers, borders, fills, ellipsis, diff line numbers, and cursor coordinates.
 - **Composer rows** — `prompt-display` wraps the typed prompt into rows that tile the text and fit the box interior in display cells, and maps a cursor offset to a row and column. Layout renders those rows and the input handler moves through them; neither re-derives the wrapping.
+- **Sent messages carry the composer frame** — a message to the agent renders inside the same rounded box the composer draws, so it keeps the shape it had while it was typed. A control command, which never reaches the model, echoes on a marker line instead.
 - **Local coordinates** — sub-layouts receive only a width budget and lay out from column zero. Composition alone applies physical insets and frames.
 - **Shared tool layout** — CLI output and interactive chat consume the same tool layout, preserving ordering, headers, diff gutters, fitting, and truncation.
 - **One truncation rule** — content exceeding any width budget, terminal-wide or nested, receives a trailing ellipsis through the grapheme-aware layout helper.

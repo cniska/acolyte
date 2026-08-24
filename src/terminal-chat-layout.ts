@@ -156,7 +156,9 @@ function composerGhost(presentation: ChatViewportPresentation["composer"]): stri
 function frameScene(interior: TerminalScene, columns: number): TerminalScene {
   const inner = contentWidth(columns);
   const gutter = " ".repeat(GUTTER);
-  const rule = "─".repeat(Math.max(0, columns - 2 * GUTTER - 2));
+  // The rule spans the interior the body rows pad to, so the corners meet the vertical borders at
+  // every width — `contentWidth` clamps, and a rule measured off `columns` would not.
+  const rule = "─".repeat(inner + 2 * BOX_PAD);
   const horizontal = (left: string, right: string): TerminalLine => ({
     spans: [
       { text: gutter, role: "plain" },
@@ -218,61 +220,33 @@ export function layoutTranscriptMessage(input: {
       })),
     };
   }
-  // The gray band insets one column from each terminal edge and fills solid across every row. Leading
-  // pad carries the user-fill role so its own background paints up to the marker; each row stops one
-  // column short of the right edge, so the terminal ground shows through as the matching right gutter.
-  const inner = Math.max(1, input.columns - 2 * GUTTER);
+  // A sent message takes the composer's own frame, so what was typed and what was sent read as one
+  // object. Interior text measures against the same `contentWidth` the composer wraps to, which is
+  // what keeps a message the same shape after it leaves the input.
   const budget = Math.max(1, contentWidth(input.columns) - width(marker));
-  const gutterSpan = { text: " ".repeat(GUTTER), role: "plain" as const };
-  const bandLine = (): TerminalLine => ({
-    spans: [gutterSpan, { text: " ".repeat(inner), role: "user-fill" as const }],
-  });
-  // Fenced code highlights like the assistant path; unfenced text stays one prose segment and renders
-  // verbatim (whitespace-faithful). An empty row array is a blank band row. Whitespace spans take the
-  // fill role because the renderer extends `fill` only rightward from the first non-blank span, so a
-  // leading indent would otherwise leave a hole in the band.
+  // Fenced code highlights like the assistant path; unfenced text stays one prose segment and
+  // renders verbatim (whitespace-faithful). An empty row array is a blank interior row.
   const rows: TerminalSpan[][] = [];
   segmentAssistantContent(input.text).forEach((segment, index) => {
     if (index > 0) rows.push([]);
     if (segment.kind === "prose") {
       for (const line of wrapUserText(segment.text, budget)) {
-        if (!/\S/.test(line)) {
-          rows.push([]);
-          continue;
-        }
-        rows.push(
-          tokenize(line).map((token) =>
-            /\S/.test(token.text) ? assistantTokenSpan(token, role) : { text: token.text, role: "user-fill" as const },
-          ),
-        );
+        rows.push(/\S/.test(line) ? tokenize(line).map((token) => assistantTokenSpan(token, role)) : []);
       }
     } else {
       for (const codeLine of highlightCode(segment.text, segment.lang)) {
-        for (const wrapped of wrapSpans(codeLine, budget)) {
-          rows.push(wrapped.map((span) => (/\S/.test(span.text) ? span : { text: span.text, role: "user-fill" })));
-        }
+        for (const wrapped of wrapSpans(codeLine, budget)) rows.push(wrapped);
       }
     }
   });
-  const textLines: TerminalLine[] = rows.map((spans, index) => {
-    // A blank interior row has no marker to anchor the fill, so render it as a solid band row.
-    if (index > 0 && spans.length === 0) return bandLine();
-    const lead =
-      index === 0
-        ? [
-            { text: " ".repeat(CONTENT_COLUMN - GUTTER), role: "user-fill" as const },
-            { text: marker, role },
-          ]
-        : [{ text: " ".repeat(CONTENT_COLUMN - GUTTER + width(marker)), role: "user-fill" as const }];
-    // Measured post-strip: the markup mapper drops delimiters, so the rendered width is below the raw line.
-    const rendered = spans.reduce((total, span) => total + width(span.text), 0);
-    const pad = Math.max(0, inner - (CONTENT_COLUMN - GUTTER) - width(marker) - rendered);
-    return {
-      fill: "user-fill" as const,
-      spans: [gutterSpan, ...lead, ...spans, ...(pad ? [{ text: " ".repeat(pad), role: "user-fill" as const }] : [])],
-    };
-  });
-  return { lines: [bandLine(), ...textLines, bandLine()] };
+  const interior: TerminalScene = {
+    lines: rows.map((spans, index) =>
+      index > 0 && spans.length === 0
+        ? { spans: [] }
+        : { spans: [{ text: index === 0 ? marker : "  ", role }, ...spans] },
+    ),
+  };
+  return frameScene(interior, input.columns);
 }
 
 export function layoutTranscriptText(input: {
@@ -897,6 +871,23 @@ export function layoutChatViewport(input: {
               ],
             })),
           },
+          CONTENT_COLUMN,
+        ),
+      );
+    } else if (row.kind === "command") {
+      // Control input never reaches the model, so it echoes as one line rather than taking the
+      // composer frame a message keeps.
+      append(
+        row.id,
+        true,
+        insetScene(
+          layoutTranscriptText({
+            text: row.content.text,
+            marker: `${GLYPH_USER} `,
+            markerRole: "user",
+            textRole: "user",
+            columns: cw,
+          }),
           CONTENT_COLUMN,
         ),
       );

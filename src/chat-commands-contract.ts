@@ -83,4 +83,6 @@ export type CommandEntry = {
   /** Runs a bare root and any undeclared token, which arrives as the handler's first argument. */
   run: CommandHandler;
   runSub?: Record<string, CommandHandler>;
+  /** A skill carries a prompt to the model; every other command is control and stops here. */
+  isSkill?: boolean;
 };

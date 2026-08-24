@@ -86,3 +86,70 @@ test("viewport layout orders finalized transcript before mutable pending and com
   ]);
   expect(scene.cursor?.row).toBeGreaterThan(0);
 });
+
+test("a user message is framed and separated by exactly one blank line", () => {
+  const scene = layoutTranscript([
+    { id: "row_a", kind: "assistant", status: "complete", content: { kind: "message", text: "before" } },
+    { id: "row_user", kind: "user", status: "complete", content: { kind: "message", text: "hello" } },
+    { id: "row_b", kind: "assistant", status: "complete", content: { kind: "message", text: "after" } },
+  ]);
+  const section = scene.sections?.find((s) => s.id === "row_user");
+  if (!section) throw new Error("user section missing");
+  const row = (index: number): string => (scene.lines[index]?.spans ?? []).map((span) => span.text).join("");
+  expect(row(section.lineStart)).toContain("╭");
+  expect(row(section.lineEnd - 1)).toContain("╰");
+  expect(row(section.lineStart - 1).trim()).toBe("");
+  expect(row(section.lineStart - 2).trim()).not.toBe("");
+  expect(row(section.lineEnd).trim()).toBe("");
+  expect(row(section.lineEnd + 1).trim()).not.toBe("");
+});
+
+test("a control command echoes on one line, unframed, one blank line from its neighbors", () => {
+  const scene = layoutTranscript([
+    { id: "row_a", kind: "assistant", status: "complete", content: { kind: "message", text: "before" } },
+    { id: "row_cmd", kind: "command", status: "complete", content: { kind: "message", text: "/status" } },
+    { id: "row_b", kind: "assistant", status: "complete", content: { kind: "message", text: "after" } },
+  ]);
+  const section = scene.sections?.find((s) => s.id === "row_cmd");
+  if (!section) throw new Error("command section missing");
+  const row = (index: number): string => (scene.lines[index]?.spans ?? []).map((span) => span.text).join("");
+  expect(section.lineEnd - section.lineStart).toBe(1);
+  expect(row(section.lineStart)).toContain("❯ /status");
+  expect(row(section.lineStart)).not.toContain("╭");
+  expect(row(section.lineStart - 1).trim()).toBe("");
+  expect(row(section.lineStart - 2).trim()).not.toBe("");
+  expect(row(section.lineEnd).trim()).toBe("");
+  expect(row(section.lineEnd + 1).trim()).not.toBe("");
+});
+
+test("a wrapped command aligns its continuation under the first line's text", () => {
+  const scene = layoutTranscript([
+    {
+      id: "row_cmd",
+      status: "complete",
+      kind: "command",
+      content: { kind: "message", text: "/memory add --project the release script owns the gates and the changelog" },
+    },
+  ]);
+  const section = scene.sections?.find((s) => s.id === "row_cmd");
+  if (!section) throw new Error("command section missing");
+  const rows = scene.lines
+    .slice(section.lineStart, section.lineEnd)
+    .map((line) => line.spans.map((span) => span.text).join(""));
+  expect(rows.length).toBeGreaterThan(1);
+  // The marker on the first line and its width in spaces on the rest, so text starts in one column.
+  for (const row of rows) expect(/^ {3}(?:❯ | {2})\S/.test(row)).toBe(true);
+});
+
+test("the prompt marker sits in one column across commands, messages, and the composer", () => {
+  const scene = layoutTranscript([
+    { id: "row_cmd", kind: "command", status: "complete", content: { kind: "message", text: "/status" } },
+    { id: "row_user", kind: "user", status: "complete", content: { kind: "message", text: "ship it" } },
+  ]);
+  const columns = scene.lines
+    .map((line) => line.spans.map((span) => span.text).join(""))
+    .filter((text) => text.includes("❯"))
+    .map((text) => text.indexOf("❯"));
+  expect(columns.length).toBe(3);
+  expect(new Set(columns).size).toBe(1);
+});

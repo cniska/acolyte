@@ -57,6 +57,7 @@ function skillEntry(skill: SkillMeta): CommandEntry {
       subcommands: [],
     },
     run: createSkillHandler(skill),
+    isSkill: true,
   };
 }
 

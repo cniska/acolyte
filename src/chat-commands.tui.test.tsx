@@ -64,7 +64,6 @@ describe("chat slash command visual regression", () => {
       dedent(`
         ❯ /status
 
-
           Status
 
           Providers:          openai (api key)
@@ -118,7 +117,6 @@ describe("chat slash command visual regression", () => {
       dedent(`
         ❯ /usage
 
-
           Usage
 
           Input:              15.9k  42.0k
@@ -152,7 +150,6 @@ describe("chat slash command visual regression", () => {
       expect(renderTranscript(allRows)).toBe(
         dedent(`
           ❯ /sessions
-
 
             Sessions 2
 

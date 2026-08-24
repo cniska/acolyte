@@ -130,7 +130,28 @@ describe("layoutTranscriptMessage user messages", () => {
     }
   });
 
-  test("highlights a fenced code block and keeps the band whole behind indentation", () => {
+  test("every frame row is one width, below the clamped minimum too", () => {
+    for (const columns of [20, 24, 30, 80]) {
+      const scene = layoutTranscriptMessage({ text: "hello world this wraps", kind: "user", columns });
+      const widths = new Set(scene.lines.map((line) => [...line.spans.map((span) => span.text).join("")].length));
+      expect(widths.size).toBe(1);
+    }
+  });
+
+  test("wrapped text aligns under the first line, past the marker", () => {
+    const scene = layoutTranscriptMessage({
+      text: "this is a long user message that has to wrap across several lines",
+      kind: "user",
+      columns: 46,
+    });
+    const interior = scene.lines.slice(1, -1).map((line) => line.spans.map((span) => span.text).join(""));
+    expect(interior.length).toBeGreaterThan(1);
+    // Frame, then the marker on the first line and its width in spaces on the rest, then text —
+    // so every line's first character lands in the same column.
+    for (const line of interior) expect(/^ │ (?:❯ | {2})\S/.test(line)).toBe(true);
+  });
+
+  test("highlights a fenced code block inside the frame", () => {
     const scene = layoutTranscriptMessage({
       text: "look:\n```ts\n  const x = 1\n```",
       kind: "user",
@@ -138,11 +159,8 @@ describe("layoutTranscriptMessage user messages", () => {
     });
     const allSpans = scene.lines.flatMap((line) => line.spans);
     expect(allSpans).toContainEqual({ text: "const", role: "syntax-keyword" });
-    // Indentation inside the code takes the fill role, never a foreground-only syntax role, which
-    // would paint no background and leave a hole in the band.
-    for (const span of allSpans) {
-      if (!/\S/.test(span.text)) expect(span.role.startsWith("syntax-")).toBe(false);
-    }
+    expect(rowText(scene.lines[0]?.spans ?? [])).toContain("╭");
+    expect(rowText(scene.lines.at(-1)?.spans ?? [])).toContain("╰");
   });
 
   test("colors a fenced diff block with foreground-only add/delete roles", () => {
