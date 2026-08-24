@@ -2,31 +2,23 @@
   "@@locale": "en",
   "agent.output.no_output": "No output from model. Check /status and server logs, then retry or switch model/provider.",
   "@agent.output.no_output": {
-    "description": "TODO"
+    "description": "Shown in the transcript when the model returned nothing at all for a turn. Names the two places a user can look before retrying."
   },
   "agent.output.no_response_after_tools": "No final response after tool execution. Retry, or check server logs if this repeats.",
   "@agent.output.no_response_after_tools": {
-    "description": "TODO"
-  },
-  "agent.output.blocked": "Blocked. More input is needed.",
-  "@agent.output.blocked": {
-    "description": "TODO"
+    "description": "Shown when the model ran tools but never produced closing prose, so the turn ended with no answer."
   },
   "agent.status.working": "Working…",
   "@agent.status.working": {
-    "description": "TODO"
+    "description": "Transient status shown beside the spinner while a turn is in flight. Present participle; keep it short enough for a narrow terminal."
   },
   "chat.at_ref.mention_path": "mention path",
   "@chat.at_ref.mention_path": {
-    "description": "TODO"
-  },
-  "chat.at_ref.no_matches": "No file or folder matches.",
-  "@chat.at_ref.no_matches": {
-    "description": "TODO"
+    "description": "Placeholder label for the @-mention picker that inserts a file or folder path into the composer."
   },
   "chat.command.unknown": "Unknown command: {command}",
   "@chat.command.unknown": {
-    "description": "TODO",
+    "description": "Error shown when the user types a slash command that does not exist. {command} is the name as typed, without the leading slash.",
     "placeholders": {
       "command": {
         "type": "String"
@@ -35,7 +27,7 @@
   },
   "chat.command.unknown_subcommand": "Unknown subcommand: {subcommand}",
   "@chat.command.unknown_subcommand": {
-    "description": "TODO",
+    "description": "Error shown when a known slash command is given an unrecognized subcommand, for example '/memory bogus'. {subcommand} is the word as typed.",
     "placeholders": {
       "subcommand": {
         "type": "String"
@@ -44,11 +36,11 @@
   },
   "chat.input.ctrl_c_hint": "ctrl+c again to exit",
   "@chat.input.ctrl_c_hint": {
-    "description": "TODO"
+    "description": "Hint shown after a first ctrl+c, telling the user a second press exits. Lowercase and terse because it sits inline under the composer. 'ctrl+c' is a literal key name and must not be translated."
   },
   "chat.input.placeholder": "Ask anything…",
   "@chat.input.placeholder": {
-    "description": "TODO"
+    "description": "Placeholder text inside the empty message composer, inviting the first prompt."
   },
   "chat.memory.archive.header.all": "Retired memory {count}",
   "@chat.memory.archive.header.all": {
@@ -102,7 +94,7 @@
   },
   "chat.memory.none": "No {scope}memory saved yet.",
   "@chat.memory.none": {
-    "description": "TODO",
+    "description": "Shown by /memory list when the selected scope holds no notes. {scope} is either empty or an untranslated lowercase English word with a trailing space, 'project ' or 'user ' (chat-commands-memory.ts:112) — so the message must read correctly both with and without it.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -136,7 +128,7 @@
   },
   "chat.model.changed": "Changed model to {model}.",
   "@chat.model.changed": {
-    "description": "TODO",
+    "description": "Confirmation after /model switches the active model. {model} is a model id such as 'claude-opus-5' and is never translated.",
     "placeholders": {
       "model": {
         "type": "String"
@@ -145,59 +137,55 @@
   },
   "chat.model.failed": "Failed to set model.",
   "@chat.model.failed": {
-    "description": "TODO"
+    "description": "Shown when /model could not apply the requested model."
   },
   "chat.picker.hint.model": "Type to filter · Enter to apply · Esc to close",
   "@chat.picker.hint.model": {
-    "description": "TODO"
+    "description": "Key hints along the bottom of the model picker. The three actions are separated by ' · '. 'Enter' and 'Esc' are literal key names and must not be translated."
   },
   "chat.picker.hint.resume": "Enter to resume · Esc to close",
   "@chat.picker.hint.resume": {
-    "description": "TODO"
+    "description": "Key hints along the bottom of the session-resume picker. 'Enter' and 'Esc' are literal key names and must not be translated."
   },
   "chat.picker.hint.skills": "Enter to select · Esc to close",
   "@chat.picker.hint.skills": {
-    "description": "TODO"
+    "description": "Key hints along the bottom of the skills picker. 'Enter' and 'Esc' are literal key names and must not be translated."
   },
   "chat.picker.loading": "Loading…",
   "@chat.picker.loading": {
-    "description": "TODO"
+    "description": "Shown inside a picker while its entries are still being fetched."
   },
   "chat.picker.no_matches": "No matches.",
   "@chat.picker.no_matches": {
-    "description": "TODO"
+    "description": "Shown inside any picker when the typed filter matches no entries."
   },
   "chat.picker.sessions.none": "No saved sessions.",
   "@chat.picker.sessions.none": {
-    "description": "TODO"
+    "description": "Shown in the resume picker when no previous sessions exist on disk."
   },
   "chat.picker.skills.none": "No skills found in ./.agents/skills.",
   "@chat.picker.skills.none": {
-    "description": "TODO"
+    "description": "Shown in the skills picker when the workspace has no skills. './.agents/skills' is a literal path and must not be translated."
   },
   "chat.picker.label.model": "Model",
   "@chat.picker.label.model": {
-    "description": "TODO"
+    "description": "Column or field label naming the model in the model picker. Noun, not a verb."
   },
   "chat.picker.title.resume": "Resume Session",
   "@chat.picker.title.resume": {
-    "description": "TODO"
+    "description": "Title bar of the picker that reopens a previous session. Title case in English."
   },
   "chat.picker.title.skills": "Skills",
   "@chat.picker.title.skills": {
-    "description": "TODO"
-  },
-  "chat.progress.thinking": "Thinking…",
-  "@chat.progress.thinking": {
-    "description": "TODO"
+    "description": "Title bar of the skills picker. Title case in English."
   },
   "chat.remember.failed": "Failed to save memory.",
   "@chat.remember.failed": {
-    "description": "TODO"
+    "description": "Shown when saving a memory note did not succeed."
   },
   "chat.remember.saved": "Saved {scope} memory: {content}",
   "@chat.remember.saved": {
-    "description": "TODO",
+    "description": "Confirmation after a memory note is stored. {scope} is an untranslated lowercase English word, 'project' or 'user', passed raw from the memory record (chat-commands-memory.ts:178, chat-message-handler.ts:341) — build the sentence so an English word reads acceptably inside it. {content} is the note text, shown verbatim.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -209,7 +197,7 @@
   },
   "chat.resume.ambiguous": "Ambiguous prefix: {prefix}. Matches: {matches}",
   "@chat.resume.ambiguous": {
-    "description": "TODO",
+    "description": "Shown when a session id prefix matches more than one session. {prefix} is what the user typed; {matches} is a comma-joined list of full session ids.",
     "placeholders": {
       "prefix": {
         "type": "String"
@@ -221,7 +209,7 @@
   },
   "chat.resume.matches": "Matches: {matches}",
   "@chat.resume.matches": {
-    "description": "TODO",
+    "description": "Standalone line listing candidate session ids. {matches} is a comma-joined list of ids.",
     "placeholders": {
       "matches": {
         "type": "String"
@@ -230,7 +218,7 @@
   },
   "chat.resume.not_found": "No session found for prefix: {prefix}",
   "@chat.resume.not_found": {
-    "description": "TODO",
+    "description": "Shown when no stored session starts with the typed id prefix. {prefix} is what the user typed.",
     "placeholders": {
       "prefix": {
         "type": "String"
@@ -239,7 +227,7 @@
   },
   "chat.resume.use_command": "Use: {command}",
   "@chat.resume.use_command": {
-    "description": "TODO",
+    "description": "Points the user at the exact command to run. {command} is a literal shell command and must not be translated.",
     "placeholders": {
       "command": {
         "type": "String"
@@ -248,7 +236,7 @@
   },
   "chat.resume.with_command": "Resume this session with:\n{command}",
   "@chat.resume.with_command": {
-    "description": "TODO",
+    "description": "Tells the user how to reopen the session later. Contains a newline: the sentence is the first line and {command}, a literal shell command, sits alone on the second.",
     "placeholders": {
       "command": {
         "type": "String"
@@ -307,7 +295,7 @@
     "description": "TODO",
     "placeholders": {
       "pid": {
-        "type": "number"
+        "type": "String"
       }
     }
   },
@@ -337,10 +325,6 @@
         "type": "String"
       }
     }
-  },
-  "chat.skill.label": "Skill",
-  "@chat.skill.label": {
-    "description": "TODO"
   },
   "chat.skill.not_found": "Skill not found: {skill}",
   "@chat.skill.not_found": {
@@ -390,10 +374,6 @@
   },
   "chat.slash.help.new": "start new session",
   "@chat.slash.help.new": {
-    "description": "TODO"
-  },
-  "chat.slash.help.remember": "save memory note",
-  "@chat.slash.help.remember": {
     "description": "TODO"
   },
   "chat.slash.help.resume": "resume session",
@@ -470,10 +450,6 @@
   },
   "chat.task.followup.running_hint": "Task is still running. Use /status to check server health.",
   "@chat.task.followup.running_hint": {
-    "description": "TODO"
-  },
-  "chat.task.followup.still_running": "Still running on server…",
-  "@chat.task.followup.still_running": {
     "description": "TODO"
   },
   "chat.usage.header": "Usage",
@@ -810,10 +786,6 @@
   "@cli.login.token.empty": {
     "description": "TODO"
   },
-  "cli.login.url.empty": "URL cannot be empty.",
-  "@cli.login.url.empty": {
-    "description": "TODO"
-  },
   "cli.logout.done": "Logged out.",
   "@cli.logout.done": {
     "description": "TODO"
@@ -1147,29 +1119,8 @@
   "@cli.server.no_servers_running": {
     "description": "TODO"
   },
-  "cli.server.not_running": "No server running on port {port}",
-  "@cli.server.not_running": {
-    "description": "TODO",
-    "placeholders": {
-      "port": {
-        "type": "number"
-      }
-    }
-  },
   "cli.server.restarted": "Restarted server on port {port} (pid {pid})",
   "@cli.server.restarted": {
-    "description": "TODO",
-    "placeholders": {
-      "port": {
-        "type": "number"
-      },
-      "pid": {
-        "type": "number"
-      }
-    }
-  },
-  "cli.server.running": "Server running on port {port} (pid {pid})",
-  "@cli.server.running": {
     "description": "TODO",
     "placeholders": {
       "port": {
@@ -1437,10 +1388,6 @@
   },
   "rpc.status.queued.unknown": "Queued…",
   "@rpc.status.queued.unknown": {
-    "description": "TODO"
-  },
-  "rpc.status.running": "Running…",
-  "@rpc.status.running": {
     "description": "TODO"
   },
   "run.args.invalid": "Invalid run args",
@@ -1714,26 +1661,8 @@
       }
     }
   },
-  "unit.history_message": "{count, plural, one {# history message} other {# history messages}}",
-  "@unit.history_message": {
-    "description": "TODO",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
   "unit.line": "{count, plural, one {# line} other {# lines}}",
   "@unit.line": {
-    "description": "TODO",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
-  "unit.location": "{count, plural, one {# location} other {# locations}}",
-  "@unit.location": {
     "description": "TODO",
     "placeholders": {
       "count": {
@@ -1761,15 +1690,6 @@
   },
   "unit.pattern": "{count, plural, one {# pattern} other {# patterns}}",
   "@unit.pattern": {
-    "description": "TODO",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
-  "unit.replacement": "{count, plural, one {# replacement} other {# replacements}}",
-  "@unit.replacement": {
     "description": "TODO",
     "placeholders": {
       "count": {
