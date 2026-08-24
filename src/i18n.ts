@@ -41,13 +41,11 @@ export function setLocale(locale: TranslationLocale): void {
 }
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
-  const catalog = TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en;
-  return render(catalog[key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
+  return render(TRANSLATIONS[activeLocale][key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
 }
 
 /** Translate a key chosen at runtime. Falls back to the key itself when the catalog has no such message. */
 export function tDynamic(key: string, vars?: Record<string, TranslationValue>): string {
-  const catalog = TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en;
-  const parts = (catalog as Record<string, Part[]>)[key];
+  const parts = (TRANSLATIONS[activeLocale] as Record<string, Part[]>)[key];
   return parts ? render(parts, vars, activeLocale) : key;
 }
