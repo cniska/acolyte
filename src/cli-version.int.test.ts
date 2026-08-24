@@ -9,7 +9,16 @@ import { gitEnv } from "./test-utils";
 let root = "";
 
 const git = (cwd: string, ...args: string[]): string =>
-  execFileSync("git", args, { cwd, encoding: "utf8", env: gitEnv() }).trim();
+  execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: gitEnv({
+      GIT_AUTHOR_NAME: "T",
+      GIT_AUTHOR_EMAIL: "t@t.dev",
+      GIT_COMMITTER_NAME: "T",
+      GIT_COMMITTER_EMAIL: "t@t.dev",
+    }),
+  }).trim();
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "acolyte-commit-"));
