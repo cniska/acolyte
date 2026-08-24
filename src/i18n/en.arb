@@ -44,7 +44,7 @@
   },
   "chat.memory.archive.header.all": "Retired memory {count}",
   "@chat.memory.archive.header.all": {
-    "description": "TODO",
+    "description": "Header of the /memory list --archived table when no scope filter is applied. {count} is the number of retired notes and renders as a trailing count beside the title, not inside a sentence.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -53,7 +53,7 @@
   },
   "chat.memory.archive.header.scope": "Retired {scope} memory {count}",
   "@chat.memory.archive.header.scope": {
-    "description": "TODO",
+    "description": "Header of the /memory list --archived table when filtered to one scope. {scope} is a translated label from chat.scope.* via scopeLabel (chat-commands-memory.ts:17-21); {count} is the number of retired notes and renders as a trailing count beside the title.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -65,11 +65,11 @@
   },
   "chat.memory.archive.none": "No retired memory.",
   "@chat.memory.archive.none": {
-    "description": "TODO"
+    "description": "Shown by /memory list --archived when no retired notes exist in the selected scope."
   },
   "chat.memory.header.all": "Memory {count}",
   "@chat.memory.header.all": {
-    "description": "TODO",
+    "description": "Header of the /memory list table when no scope filter is applied. {count} is the number of notes and renders as a trailing count beside the title, not inside a sentence.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -78,7 +78,7 @@
   },
   "chat.memory.header.scope": "{scope} memory {count}",
   "@chat.memory.header.scope": {
-    "description": "TODO",
+    "description": "Header of the /memory list table when filtered to one scope. {scope} is a translated label from chat.scope.* via scopeLabel (chat-commands-memory.ts:17-21); {count} is the number of notes and renders as a trailing count beside the title.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -90,7 +90,7 @@
   },
   "chat.memory.list.failed": "Failed to list memory.",
   "@chat.memory.list.failed": {
-    "description": "TODO"
+    "description": "Fallback shown when /memory list fails and the underlying error carried no message of its own (chat-commands-memory.ts:97)."
   },
   "chat.memory.none": "No {scope}memory saved yet.",
   "@chat.memory.none": {
@@ -103,11 +103,11 @@
   },
   "chat.memory.rm.failed": "Failed to remove memory.",
   "@chat.memory.rm.failed": {
-    "description": "TODO"
+    "description": "Fallback shown when /memory rm fails and the underlying error carried no message of its own (chat-commands-memory.ts:62)."
   },
   "chat.memory.rm.not_found": "No memory found for id: {id}",
   "@chat.memory.rm.not_found": {
-    "description": "TODO",
+    "description": "Shown when /memory rm matches no stored note. {id} is the id prefix as resolved by the memory store.",
     "placeholders": {
       "id": {
         "type": "String"
@@ -116,7 +116,7 @@
   },
   "chat.memory.rm.removed": "Removed {scope} memory {id}.",
   "@chat.memory.rm.removed": {
-    "description": "TODO",
+    "description": "Confirmation after /memory rm deletes a note. {scope} is an untranslated lowercase English word, 'project' or 'user', passed raw from the memory record (chat-commands-memory.ts:57); {id} is the note's identifier.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -245,7 +245,7 @@
   },
   "chat.relative_time.days_ago": "{count}d ago",
   "@chat.relative_time.days_ago": {
-    "description": "TODO",
+    "description": "Relative timestamp a day or more old (datetime.ts:53). {count} is whole days. English abbreviates hard ('5d ago') to fit narrow list columns; keep it short.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -254,7 +254,7 @@
   },
   "chat.relative_time.hours_ago": "{count}h ago",
   "@chat.relative_time.hours_ago": {
-    "description": "TODO",
+    "description": "Relative timestamp under a day old (datetime.ts:51). {count} is whole hours. English abbreviates hard ('5h ago') to fit narrow list columns; keep it short.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -263,11 +263,11 @@
   },
   "chat.relative_time.just_now": "just now",
   "@chat.relative_time.just_now": {
-    "description": "TODO"
+    "description": "Relative timestamp for anything under a minute old (datetime.ts:47). Lowercase; appears in session and memory lists."
   },
   "chat.relative_time.minutes_ago": "{count}m ago",
   "@chat.relative_time.minutes_ago": {
-    "description": "TODO",
+    "description": "Relative timestamp under an hour old (datetime.ts:49). {count} is whole minutes. English abbreviates hard ('5m ago') to fit narrow list columns; keep it short.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -276,23 +276,23 @@
   },
   "chat.scope.all": "All",
   "@chat.scope.all": {
-    "description": "TODO"
+    "description": "Scope name for memory covering both project and user scopes. Used as a standalone label and interpolated into the memory list headers, so it must read correctly in both."
   },
   "chat.scope.project": "Project",
   "@chat.scope.project": {
-    "description": "TODO"
+    "description": "Scope name for memory stored with the current project. Used as a standalone label and interpolated into the memory list headers."
   },
   "chat.scope.user": "User",
   "@chat.scope.user": {
-    "description": "TODO"
+    "description": "Scope name for memory stored against the user across all projects. Used as a standalone label and interpolated into the memory list headers."
   },
   "chat.session.default_title": "New Session",
   "@chat.session.default_title": {
-    "description": "TODO"
+    "description": "Title given to a session that the user has not named. Title case in English."
   },
   "chat.session.locked": "Session is already open in another process (pid {pid}).",
   "@chat.session.locked": {
-    "description": "TODO",
+    "description": "Error shown when opening a session another process already holds. {pid} is the owning process id, or the untranslated literal 'unknown' when it could not be read (cli-chat.ts:87), so do not phrase the sentence as if it is always a number.",
     "placeholders": {
       "pid": {
         "type": "String"
@@ -301,7 +301,7 @@
   },
   "chat.sessions.header": "Sessions {count}",
   "@chat.sessions.header": {
-    "description": "TODO",
+    "description": "Header of the /sessions table. {count} is the number of saved sessions and renders as a trailing count beside the title, not inside a sentence.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1236,7 +1236,7 @@
   "@cli.tool.too_many_args": {
     "description": "TODO"
   },
-  "cli.tool.unknown": "Unknown tool '{tool}'.",
+  "cli.tool.unknown": "Unknown tool \"{tool}\".",
   "@cli.tool.unknown": {
     "description": "TODO",
     "placeholders": {

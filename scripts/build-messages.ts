@@ -39,11 +39,15 @@ if (!locales.includes(REFERENCE_LOCALE)) throw new Error(`missing ${REFERENCE_LO
 
 const reference = readArb(REFERENCE_LOCALE);
 const referenceKeys = Object.keys(reference.messages);
-const referenceArgs = new Map<string, Set<string>>(
-  referenceKeys.map((key) => [key, argNames(parseMessage(reference.messages[key]))]),
-);
-
 const errors: string[] = [];
+const referenceArgs = new Map<string, Set<string>>();
+for (const key of referenceKeys) {
+  try {
+    referenceArgs.set(key, argNames(parseMessage(reference.messages[key])));
+  } catch (error) {
+    errors.push(`${REFERENCE_LOCALE}.arb: ${key}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 const parsed = new Map<string, Record<string, Part[]>>();
 
 for (const locale of locales) {
@@ -80,9 +84,10 @@ for (const locale of locales) {
   parsed.set(locale, byKey);
 }
 
-if (errors.length) {
-  for (const line of errors) console.error(`error  ${line}`);
-  console.error(`\n${errors.length} message error(s).`);
+const unique = [...new Set(errors)];
+if (unique.length) {
+  for (const line of unique) console.error(`error  ${line}`);
+  console.error(`\n${unique.length} message error(s).`);
   process.exit(1);
 }
 

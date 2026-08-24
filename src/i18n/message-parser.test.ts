@@ -77,3 +77,17 @@ describe("argNames", () => {
     expect(argNames(parseMessage("Status")).size).toBe(0);
   });
 });
+
+describe("ICU quoting", () => {
+  test("rejects an apostrophe that would quote message syntax", () => {
+    expect(() => parseMessage("Unknown tool '{tool}'.")).toThrow(MessageSyntaxError);
+  });
+
+  test("accepts an apostrophe in ordinary prose", () => {
+    expect(parseMessage("Pass the tool's input")).toEqual([{ kind: "text", value: "Pass the tool's input" }]);
+  });
+
+  test("accepts an apostrophe that does not touch message syntax", () => {
+    expect(parseMessage("acolyte tool <tool-id> ['<json-input>']")).toHaveLength(1);
+  });
+});

@@ -32,6 +32,11 @@ export function parseMessage(input: string): Part[] {
         i++;
         continue;
       }
+      if (ch === "'" && (input[i + 1] === "{" || input[i + 1] === "}" || input[i + 1] === "#")) {
+        throw new MessageSyntaxError(
+          "apostrophe before { } or # is an ICU quoting escape; rephrase so the apostrophe does not touch message syntax",
+        );
+      }
       if (ch !== "{") {
         text += ch;
         i++;
