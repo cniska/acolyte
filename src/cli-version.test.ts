@@ -16,8 +16,7 @@ describe("cli-version", () => {
     expect(extractVersionFromPackageJsonText("{bad json}")).toBeNull();
   });
 
-  test("resolveCliVersion prefers the compiled-in version over npm_package_version and package.json", () => {
-    process.env.npm_package_version = "0.0.1-source";
+  test("resolveCliVersion prefers the compiled-in version over the install's package.json", () => {
     process.env.ACOLYTE_COMPILED_VERSION = "1.2.3";
     expect(resolveCliVersion()).toBe("1.2.3");
   });
